@@ -1,0 +1,1 @@
+ALTER TABLE vb_reports DROP COLUMN IF EXISTS content;

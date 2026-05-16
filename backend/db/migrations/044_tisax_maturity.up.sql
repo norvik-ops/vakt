@@ -1,0 +1,1 @@
+ALTER TABLE ck_controls ADD COLUMN IF NOT EXISTS maturity_score SMALLINT NOT NULL DEFAULT 0 CHECK (maturity_score BETWEEN 0 AND 3);

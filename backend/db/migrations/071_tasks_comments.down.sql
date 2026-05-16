@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS ck_comments;
+DROP TABLE IF EXISTS ck_tasks;

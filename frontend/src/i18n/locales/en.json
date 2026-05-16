@@ -1,0 +1,101 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "alerting": "Notifications",
+    "retention": "Data Management",
+    "branding": "Branding",
+    "account": "My Account",
+    "sessions": "Sessions",
+    "search": "Search",
+    "modules": "Modules",
+    "system": "System"
+  },
+  "modules": {
+    "secpulse": "SecPulse",
+    "secvitals": "SecVitals",
+    "secvault": "SecVault",
+    "secreflex": "SecReflex",
+    "secprivacy": "SecPrivacy"
+  },
+  "secpulse": {
+    "assets": "Assets",
+    "findings": "Findings",
+    "sla": "SLA Dashboard",
+    "reports": "Reports"
+  },
+  "secvitals": {
+    "frameworks": "Frameworks",
+    "risks": "Risks",
+    "incidents": "Incidents",
+    "policies": "Policies",
+    "audits": "Audits",
+    "nis2": "NIS2 Requirements",
+    "nis2assistant": "NIS2 Assistant",
+    "iso27001": "ISO 27001 Annex A",
+    "grundschutz": "BSI Basic Protection",
+    "aiReport": "AI Report"
+  },
+  "secprivacy": {
+    "vvt": "VVT",
+    "dpia": "DPIA",
+    "avv": "DPA",
+    "breach": "Data Breaches",
+    "dsr": "DSR"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "confirm": "Confirm",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "import": "Import",
+    "refresh": "Refresh",
+    "add": "Add",
+    "remove": "Remove",
+    "submit": "Submit"
+  },
+  "states": {
+    "loading": "Loading...",
+    "error": "Error",
+    "noEntries": "No entries found",
+    "noData": "No data available",
+    "success": "Success",
+    "pending": "Pending",
+    "active": "Active",
+    "inactive": "Inactive"
+  },
+  "auth": {
+    "login": "Sign In",
+    "logout": "Log Out",
+    "signOut": "Sign out",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "loginTitle": "Welcome to Vakt",
+    "loginSubtitle": "Sign in to continue"
+  },
+  "language": {
+    "switchTo": "Switch language",
+    "de": "Deutsch",
+    "en": "English"
+  },
+  "theme": {
+    "lightMode": "Light Mode",
+    "darkMode": "Dark Mode"
+  },
+  "demo": {
+    "banner": "Demo Environment",
+    "description": "All data shown is sample data."
+  },
+  "backup": {
+    "staleWarning": "No backup in the last 7 days"
+  }
+}

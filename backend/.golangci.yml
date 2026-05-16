@@ -1,0 +1,30 @@
+version: "2"
+
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - misspell
+    - ineffassign
+    - unused
+
+formatters:
+  enable:
+    - gofmt
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+  staticcheck:
+    checks: ["all"]
+
+issues:
+  rules:
+    - linters:
+        - errcheck
+      path: "_test\\.go"

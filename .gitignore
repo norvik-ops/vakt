@@ -1,0 +1,6 @@
+.env
+*.env.local
+backend/tmp/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/

@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS po_breaches;
+DROP TABLE IF EXISTS po_avvs;
+DROP TABLE IF EXISTS po_dpias;
+DROP TABLE IF EXISTS po_vvt_entries;

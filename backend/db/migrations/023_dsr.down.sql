@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS po_dsr;

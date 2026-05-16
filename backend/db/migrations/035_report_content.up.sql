@@ -1,0 +1,1 @@
+ALTER TABLE vb_reports ADD COLUMN IF NOT EXISTS content BYTEA;

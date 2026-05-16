@@ -1,0 +1,101 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "settings": "Einstellungen",
+    "alerting": "Benachrichtigungen",
+    "retention": "Datenpflege",
+    "branding": "Branding",
+    "account": "Mein Account",
+    "sessions": "Sitzungen",
+    "search": "Suchen",
+    "modules": "Modules",
+    "system": "System"
+  },
+  "modules": {
+    "secpulse": "SecPulse",
+    "secvitals": "SecVitals",
+    "secvault": "SecVault",
+    "secreflex": "SecReflex",
+    "secprivacy": "SecPrivacy"
+  },
+  "secpulse": {
+    "assets": "Assets",
+    "findings": "Findings",
+    "sla": "SLA-Dashboard",
+    "reports": "Berichte"
+  },
+  "secvitals": {
+    "frameworks": "Frameworks",
+    "risks": "Risiken",
+    "incidents": "Vorfälle",
+    "policies": "Richtlinien",
+    "audits": "Audits",
+    "nis2": "NIS2-Anforderungen",
+    "nis2assistant": "NIS2-Assistent",
+    "iso27001": "ISO 27001 Annex A",
+    "grundschutz": "BSI Grundschutz",
+    "aiReport": "KI-Bericht"
+  },
+  "secprivacy": {
+    "vvt": "VVT",
+    "dpia": "DPIA",
+    "avv": "AVV",
+    "breach": "Datenpannen",
+    "dsr": "DSR"
+  },
+  "actions": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "create": "Erstellen",
+    "confirm": "Bestätigen",
+    "close": "Schließen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "search": "Suchen",
+    "filter": "Filtern",
+    "export": "Exportieren",
+    "import": "Importieren",
+    "refresh": "Aktualisieren",
+    "add": "Hinzufügen",
+    "remove": "Entfernen",
+    "submit": "Absenden"
+  },
+  "states": {
+    "loading": "Laden...",
+    "error": "Fehler",
+    "noEntries": "Kein Eintrag gefunden",
+    "noData": "Keine Daten verfügbar",
+    "success": "Erfolgreich",
+    "pending": "Ausstehend",
+    "active": "Aktiv",
+    "inactive": "Inaktiv"
+  },
+  "auth": {
+    "login": "Anmelden",
+    "logout": "Abmelden",
+    "signOut": "Sign out",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "forgotPassword": "Passwort vergessen?",
+    "loginTitle": "Willkommen bei Vakt",
+    "loginSubtitle": "Melden Sie sich an, um fortzufahren"
+  },
+  "language": {
+    "switchTo": "Sprache wechseln",
+    "de": "Deutsch",
+    "en": "English"
+  },
+  "theme": {
+    "lightMode": "Light Mode",
+    "darkMode": "Dark Mode"
+  },
+  "demo": {
+    "banner": "Demo-Umgebung",
+    "description": "Alle Daten sind Beispieldaten."
+  },
+  "backup": {
+    "staleWarning": "Kein Backup in den letzten 7 Tagen"
+  }
+}

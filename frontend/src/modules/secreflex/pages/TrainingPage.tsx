@@ -1,0 +1,161 @@
+import { useState } from 'react'
+import { GraduationCap, ChevronDown, ChevronUp, UserPlus } from 'lucide-react'
+import { PageHeader } from '../../../shared/components/PageHeader'
+import { Badge } from '../../../components/ui/badge'
+import { Button } from '../../../components/ui/button'
+import { EmptyState } from '../../../shared/components/EmptyState'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
+import { Label } from '../../../components/ui/label'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/ui/table'
+import { useTrainingModules, useAssignments, useAssignModule } from '../hooks/useTraining'
+import type { TrainingModule, Assignment } from '../types'
+
+const assignmentStatusVariant: Record<Assignment['status'], React.ComponentProps<typeof Badge>['variant']> = {
+  assigned: 'secondary',
+  completed: 'success',
+  failed: 'destructive',
+}
+
+function ModuleRow({ module }: { module: TrainingModule }) {
+  const [expanded, setExpanded] = useState(false)
+  const [assignOpen, setAssignOpen] = useState(false)
+  const [emails, setEmails] = useState('')
+  const { data: assignments, isLoading } = useAssignments(expanded ? module.id : '')
+  const assignModule = useAssignModule(module.id)
+
+  function handleAssign(e: React.FormEvent) {
+    e.preventDefault()
+    const emailList = emails.split(/[\s,;]+/).map((e) => e.trim()).filter(Boolean)
+    if (emailList.length === 0) return
+    assignModule.mutate({ user_emails: emailList }, {
+      onSuccess: () => {
+        setAssignOpen(false)
+        setEmails('')
+      },
+    })
+  }
+
+  return (
+    <div className="border border-border rounded-lg bg-surface overflow-hidden">
+      <div
+        className="flex items-center gap-4 p-4 cursor-pointer hover:bg-surface2"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <GraduationCap className="w-5 h-5 text-blue-500 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm">{module.title}</p>
+          <p className="text-xs text-secondary truncate">{module.description}</p>
+        </div>
+        <span className="text-xs text-secondary">Pass: {module.passing_score}%</span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1"
+          onClick={(e) => { e.stopPropagation(); setAssignOpen(true) }}
+        >
+          <UserPlus className="w-3.5 h-3.5" />
+          Assign
+        </Button>
+        {expanded ? <ChevronUp className="w-4 h-4 text-secondary" /> : <ChevronDown className="w-4 h-4 text-secondary" />}
+      </div>
+
+      {expanded && (
+        <div className="border-t border-border p-4">
+          {isLoading ? (
+            <div className="flex justify-center py-4">
+              <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : !assignments || assignments.length === 0 ? (
+            <p className="text-sm text-secondary text-center py-4">No assignments yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Benutzer</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Punktzahl</TableHead>
+                  <TableHead>Zugewiesen</TableHead>
+                  <TableHead>Abgeschlossen</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {assignments.map((a) => (
+                  <TableRow key={a.id}>
+                    <TableCell className="font-mono text-xs">{a.user_email}</TableCell>
+                    <TableCell>
+                      <Badge variant={assignmentStatusVariant[a.status]} className="capitalize">{a.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {a.score != null ? `${a.score}%` : '—'}
+                    </TableCell>
+                    <TableCell className="text-sm text-secondary">
+                      {new Date(a.assigned_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-sm text-secondary">
+                      {a.completed_at ? new Date(a.completed_at).toLocaleDateString() : '—'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      )}
+
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Training zuweisen: {module.title}</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { void handleAssign(e) }}>
+            <div className="py-4 space-y-1.5">
+              <Label htmlFor="assign-emails">Benutzer-E-Mails</Label>
+              <textarea
+                id="assign-emails"
+                rows={4}
+                className="w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
+                placeholder="user@example.com&#10;other@example.com"
+                value={emails}
+                onChange={(e) => setEmails(e.target.value)}
+              />
+              <p className="text-xs text-secondary">One email per line, or comma/semicolon separated.</p>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAssignOpen(false)}>Abbrechen</Button>
+              <Button type="submit" disabled={assignModule.isPending}>
+                {assignModule.isPending ? 'Assigning…' : 'Assign'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+export default function TrainingPage() {
+  const { data: modules, isLoading } = useTrainingModules()
+
+  return (
+    <div className="flex flex-col h-full">
+      <PageHeader
+        title="Sicherheitstraining"
+        description="Sicherheitstrainings für Benutzer zuweisen und verwalten."
+      />
+
+      <div className="flex-1 p-6 space-y-3">
+        {isLoading ? (
+          <div className="flex justify-center py-16">
+            <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : !modules || modules.length === 0 ? (
+          <EmptyState
+            icon={GraduationCap}
+            title="Noch keine Trainingsmodule vorhanden"
+            description="Trainingsmodule werden von Ihrem Plattform-Administrator konfiguriert."
+          />
+        ) : (
+          modules.map((m) => <ModuleRow key={m.id} module={m} />)
+        )}
+      </div>
+    </div>
+  )
+}
