@@ -140,11 +140,9 @@ export default function SecVitalsOverviewPage() {
                 </>
               )}
             </Button>
-            <ProGate error={reportError instanceof FeatureLockedError ? reportError : null}>{null}</ProGate>
-            {reportError && !(reportError instanceof FeatureLockedError) && (
-              <p className="text-[10px] text-red-500">
-                {reportError instanceof Error ? reportError.message : 'Unbekannter Fehler'}
-              </p>
+            <ProGate error={reportError instanceof FeatureLockedError ? reportError : null}>{''}</ProGate>
+            {reportError instanceof Error && !(reportError instanceof FeatureLockedError) && (
+              <p className="text-[10px] text-red-500">{reportError.message}</p>
             )}
           </div>
         }

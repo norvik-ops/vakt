@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, getAuthToken } from '../../../api/client'
+import { apiFetch } from '../../../api/client'
 import type { Finding, FindingsListResponse } from '../types'
 
 export interface FindingsFilter {

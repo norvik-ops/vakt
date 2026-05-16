@@ -735,13 +735,11 @@ function AuditReportSection() {
           )}
         </Button>
         {/* Show ProGate upgrade prompt for Community users */}
-        <ProGate error={error instanceof FeatureLockedError ? error : null}>{null}</ProGate>
+        <ProGate error={error instanceof FeatureLockedError ? error : null}>{''}</ProGate>
 
         {/* Show generic error for other failures */}
-        {error && !(error instanceof FeatureLockedError) && (
-          <p className="text-[11px] text-red-500">
-            {error instanceof Error ? error.message : 'Unbekannter Fehler'}
-          </p>
+        {error instanceof Error && !(error instanceof FeatureLockedError) && (
+          <p className="text-[11px] text-red-500">{error.message}</p>
         )}
         <p className="text-[11px] text-secondary">
           Der Bericht enthält alle Compliance-Daten der Organisation — keine Cloud-Übertragung.
