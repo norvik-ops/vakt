@@ -15,7 +15,7 @@ import (
 const (
 	cacheKey          = "system:latest_version"
 	cacheTTL          = 24 * time.Hour
-	githubReleasesURL = "https://api.github.com/repos/norvik-ops/vakt/releases/latest"
+	githubReleasesURL = "https://api.github.com/repos/norvik-ops/vatk/releases/latest"
 )
 
 type UpdateInfo struct {
