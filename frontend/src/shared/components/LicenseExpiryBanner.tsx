@@ -31,17 +31,17 @@ function daysUntilExpiry(expiresAt: string): number {
 }
 
 /** localStorage key includes today's date so the banner reappears each new day. */
-function dismissalKey(expiresAt: string): string {
+function dismissalKey(): string {
   const today = new Date().toISOString().slice(0, 10)
   return `vakt_license_warning_dismissed_${today}`
 }
 
-function isAlreadyDismissed(expiresAt: string): boolean {
-  return localStorage.getItem(dismissalKey(expiresAt)) === '1'
+function isAlreadyDismissed(): boolean {
+  return localStorage.getItem(dismissalKey()) === '1'
 }
 
-function persistDismissal(expiresAt: string) {
-  localStorage.setItem(dismissalKey(expiresAt), '1')
+function persistDismissal() {
+  localStorage.setItem(dismissalKey(), '1')
 }
 
 export function LicenseExpiryBanner() {
@@ -65,7 +65,7 @@ export function LicenseExpiryBanner() {
   }
 
   // Dismissed in this render cycle or already stored in localStorage
-  if (dismissed || isAlreadyDismissed(expiresAt)) {
+  if (dismissed || isAlreadyDismissed()) {
     return null
   }
 
@@ -74,7 +74,7 @@ export function LicenseExpiryBanner() {
   const isUrgent = days <= 7 // includes expired
 
   function handleDismiss() {
-    persistDismissal(expiresAt)
+    persistDismissal()
     setDismissed(true)
   }
 
