@@ -28,5 +28,5 @@ func TestHealthEndpoint(t *testing.T) {
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"status":"ok","version":"0.1.0","demo":false}`, rec.Body.String())
+	assert.JSONEq(t, `{"status":"ok","version":"0.1.0","demo":false,"sso_enabled":false}`, rec.Body.String())
 }
