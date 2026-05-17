@@ -1,0 +1,365 @@
+import { useState, useMemo } from 'react'
+import { ShieldAlert, Download, RefreshCw } from 'lucide-react'
+import { PageHeader } from '../shared/components/PageHeader'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { Badge } from '../components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../components/ui/table'
+import { Skeleton } from '../components/ui/skeleton'
+import { useAuthStore } from '../shared/stores/auth'
+import { useAuditLog, type AuditLogEntry } from '../hooks/useAuditLog'
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const ACTIONS = ['create', 'update', 'delete', 'approve', 'export'] as const
+const PAGE_SIZE = 25
+const MAX_FETCH = 500
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatTimestamp(iso: string): string {
+  return new Date(iso).toLocaleString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+}
+
+function actionBadge(action: string) {
+  switch (action) {
+    case 'create':
+      return <Badge className="bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-0 text-[11px]">erstellt</Badge>
+    case 'update':
+      return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-0 text-[11px]">geändert</Badge>
+    case 'delete':
+      return <Badge className="bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border-0 text-[11px]">gelöscht</Badge>
+    case 'approve':
+      return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-0 text-[11px]">genehmigt</Badge>
+    case 'export':
+      return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-0 text-[11px]">exportiert</Badge>
+    default:
+      return <Badge variant="secondary" className="text-[11px]">{action}</Badge>
+  }
+}
+
+function detailsText(entry: AuditLogEntry): string {
+  const parts: string[] = []
+  if (entry.resource_name) parts.push(entry.resource_name)
+  if (entry.resource_type) parts.push(`(${entry.resource_type})`)
+  if (entry.details && Object.keys(entry.details).length > 0) {
+    const extras = Object.entries(entry.details)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join(', ')
+    parts.push(`— ${extras}`)
+  }
+  return parts.join(' ') || entry.resource_id || '–'
+}
+
+function escapeCsvCell(value: string): string {
+  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+    return `"${value.replace(/"/g, '""')}"`
+  }
+  return value
+}
+
+function exportCsv(entries: AuditLogEntry[]) {
+  const headers = ['Zeitstempel', 'Benutzer', 'Aktion', 'Ressourcentyp', 'Details', 'IP-Adresse']
+  const rows = entries.map((e) => [
+    formatTimestamp(e.created_at),
+    e.user_email ?? e.user_id ?? 'System',
+    e.action,
+    e.resource_type,
+    detailsText(e),
+    e.ip_address ?? '',
+  ].map(escapeCsvCell).join(','))
+
+  const csv = [headers.join(','), ...rows].join('\n')
+  const blob = new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+// ─── Skeleton rows ────────────────────────────────────────────────────────────
+
+function SkeletonRows() {
+  return (
+    <>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <TableRow key={i}>
+          <TableCell><Skeleton className="h-4 w-36" /></TableCell>
+          <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+          <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+          <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+        </TableRow>
+      ))}
+    </>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function AuditLogPage() {
+  const { user } = useAuthStore()
+  const isAdminOrOwner = user?.roles?.includes('admin') || user?.roles?.includes('owner')
+
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
+  const [userFilter, setUserFilter] = useState('')
+  const [actionFilter, setActionFilter] = useState<string>('all')
+  const [page, setPage] = useState(0)
+
+  const { data, isLoading, isError, refetch, isFetching } = useAuditLog({ limit: MAX_FETCH })
+
+  // Client-side filtering (backend only supports limit for now)
+  const filtered = useMemo(() => {
+    if (!data) return []
+    return data.filter((e) => {
+      if (actionFilter !== 'all' && e.action !== actionFilter) return false
+      if (userFilter.trim()) {
+        const needle = userFilter.trim().toLowerCase()
+        const haystack = (e.user_email ?? e.user_id ?? '').toLowerCase()
+        if (!haystack.includes(needle)) return false
+      }
+      if (fromDate) {
+        if (new Date(e.created_at) < new Date(fromDate)) return false
+      }
+      if (toDate) {
+        // include full "to" day
+        const end = new Date(toDate)
+        end.setDate(end.getDate() + 1)
+        if (new Date(e.created_at) >= end) return false
+      }
+      return true
+    })
+  }, [data, actionFilter, userFilter, fromDate, toDate])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePageIndex = Math.min(page, totalPages - 1)
+  const pageEntries = filtered.slice(safePageIndex * PAGE_SIZE, (safePageIndex + 1) * PAGE_SIZE)
+
+  function handleFilterChange() {
+    setPage(0)
+  }
+
+  if (!isAdminOrOwner) {
+    return (
+      <div className="flex flex-col h-full">
+        <PageHeader
+          title="Audit-Log"
+          description="Protokoll aller sicherheitsrelevanten Ereignisse"
+        />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-2">
+            <ShieldAlert className="w-10 h-10 text-destructive mx-auto" />
+            <p className="text-sm font-medium text-primary">Kein Zugriff</p>
+            <p className="text-xs text-secondary">Diese Seite ist nur für Administratoren zugänglich.</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <PageHeader
+        title="Audit-Log"
+        description="Protokoll aller sicherheitsrelevanten Ereignisse in Ihrer Organisation"
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void refetch()}
+              disabled={isFetching}
+              className="h-8 text-xs"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching ? 'animate-spin' : ''}`} />
+              Aktualisieren
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { if (filtered.length > 0) exportCsv(filtered) }}
+              disabled={filtered.length === 0}
+              className="h-8 text-xs"
+            >
+              <Download className="w-3.5 h-3.5 mr-1.5" />
+              CSV exportieren
+            </Button>
+          </div>
+        }
+      />
+
+      {/* Filters */}
+      <div className="px-6 pt-4 pb-2">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1">
+            <p className="text-[11px] text-secondary font-medium">Von</p>
+            <Input
+              type="date"
+              value={fromDate}
+              onChange={(e) => { setFromDate(e.target.value); handleFilterChange() }}
+              className="h-8 text-xs w-36"
+            />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[11px] text-secondary font-medium">Bis</p>
+            <Input
+              type="date"
+              value={toDate}
+              onChange={(e) => { setToDate(e.target.value); handleFilterChange() }}
+              className="h-8 text-xs w-36"
+            />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[11px] text-secondary font-medium">Benutzer</p>
+            <Input
+              type="text"
+              placeholder="E-Mail filtern…"
+              value={userFilter}
+              onChange={(e) => { setUserFilter(e.target.value); handleFilterChange() }}
+              className="h-8 text-xs w-48"
+            />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[11px] text-secondary font-medium">Aktion</p>
+            <Select
+              value={actionFilter}
+              onValueChange={(v) => { setActionFilter(v); handleFilterChange() }}
+            >
+              <SelectTrigger className="h-8 text-xs w-36">
+                <SelectValue placeholder="Alle Aktionen" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Aktionen</SelectItem>
+                {ACTIONS.map((a) => (
+                  <SelectItem key={a} value={a}>{a}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {(fromDate || toDate || userFilter || actionFilter !== 'all') && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs self-end"
+              onClick={() => {
+                setFromDate('')
+                setToDate('')
+                setUserFilter('')
+                setActionFilter('all')
+                setPage(0)
+              }}
+            >
+              Filter zurücksetzen
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="flex-1 px-6 pb-6 overflow-auto">
+        {isError ? (
+          <div className="mt-8 text-center text-sm text-destructive">
+            Fehler beim Laden des Audit-Logs. Bitte versuchen Sie es erneut.
+          </div>
+        ) : (
+          <>
+            <div className="rounded-lg border border-border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-surface">
+                    <TableHead className="text-[11px] font-semibold text-secondary w-44">Zeitstempel</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-secondary">Benutzer</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-secondary w-28">Aktion</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-secondary">Details</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <SkeletonRows />
+                  ) : pageEntries.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-sm text-secondary py-12">
+                        Keine Ereignisse gefunden
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    pageEntries.map((entry) => (
+                      <TableRow key={entry.id} className="hover:bg-surface/50">
+                        <TableCell className="text-[12px] text-secondary whitespace-nowrap font-mono">
+                          {formatTimestamp(entry.created_at)}
+                        </TableCell>
+                        <TableCell className="text-[12px] text-primary max-w-[200px] truncate">
+                          {entry.user_email ?? entry.user_id ?? <span className="text-secondary italic">System</span>}
+                        </TableCell>
+                        <TableCell>
+                          {actionBadge(entry.action)}
+                        </TableCell>
+                        <TableCell className="text-[12px] text-primary max-w-[360px]">
+                          <span className="truncate block" title={detailsText(entry)}>
+                            {detailsText(entry)}
+                          </span>
+                          {entry.ip_address && (
+                            <span className="text-[10px] text-secondary">{entry.ip_address}</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Pagination */}
+            {!isLoading && filtered.length > PAGE_SIZE && (
+              <div className="flex items-center justify-between mt-3">
+                <p className="text-[11px] text-secondary">
+                  {filtered.length} Ereignisse gesamt · Seite {safePageIndex + 1} von {totalPages}
+                </p>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs px-2"
+                    disabled={safePageIndex === 0}
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  >
+                    Zurück
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs px-2"
+                    disabled={safePageIndex >= totalPages - 1}
+                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  >
+                    Weiter
+                  </Button>
+                </div>
+              </div>
+            )}
+            {!isLoading && filtered.length > 0 && filtered.length <= PAGE_SIZE && (
+              <p className="text-[11px] text-secondary mt-3">{filtered.length} Ereignis{filtered.length !== 1 ? 'se' : ''} gesamt</p>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}

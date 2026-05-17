@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/hex"
 	"fmt"
 	"os"
 	"strings"
@@ -122,6 +123,16 @@ func Load() (*Config, error) {
 
 	if cfg.APIPort == "" {
 		return nil, fmt.Errorf("VAKT_API_PORT must not be empty")
+	}
+
+	if cfg.SecretKey != "" {
+		keyBytes, err := hex.DecodeString(cfg.SecretKey)
+		if err != nil {
+			return nil, fmt.Errorf("VAKT_SECRET_KEY is not valid hex: %w", err)
+		}
+		if len(keyBytes) != 32 {
+			return nil, fmt.Errorf("VAKT_SECRET_KEY must be exactly 32 bytes (64 hex chars), got %d bytes — regenerate with: openssl rand -hex 32", len(keyBytes))
+		}
 	}
 
 	return cfg, nil

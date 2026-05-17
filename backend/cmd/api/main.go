@@ -67,6 +67,12 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	e.HideBanner = true
 	e.HidePort = true
 
+	e.Use(middleware.SecureWithConfig(middleware.SecureConfig{
+		XSSProtection:      "0",
+		ContentTypeNosniff: "nosniff",
+		XFrameOptions:      "DENY",
+		HSTSMaxAge:         31536000,
+	}))
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogMethod:  true,
 		LogURI:     true,

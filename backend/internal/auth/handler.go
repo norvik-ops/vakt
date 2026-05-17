@@ -277,3 +277,78 @@ func (h *Handler) SAMLMetadata(c echo.Context) error {
 func (h *Handler) SAMLACS(c echo.Context) error {
 	return h.SAMLCallback(c)
 }
+
+// RequestPasswordReset handles POST /api/v1/auth/password-reset/request.
+// Always returns 200 to avoid leaking whether an email address exists.
+func (h *Handler) RequestPasswordReset(c echo.Context) error {
+	var body struct {
+		Email string `json:"email" validate:"required,email"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid request body",
+			"code":  "AUTH_BAD_REQUEST",
+		})
+	}
+	if err := h.validate.Struct(body); err != nil {
+		// Still return 200 — no detail exposed.
+		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+	}
+
+	frontendURL := ""
+	smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom := "", "", "", "", ""
+	if h.cfg != nil {
+		frontendURL = h.cfg.FrontendURL
+		smtpHost = h.cfg.SMTPHost
+		smtpPort = h.cfg.SMTPPort
+		smtpUser = h.cfg.SMTPUser
+		smtpPass = h.cfg.SMTPPass
+		smtpFrom = h.cfg.SMTPFrom
+	}
+
+	if err := h.service.RequestPasswordReset(
+		c.Request().Context(),
+		body.Email,
+		frontendURL,
+		smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom,
+	); err != nil {
+		log.Error().Err(err).Str("email", body.Email).Msg("password reset request failed")
+	}
+	// Always 200.
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// ResetPassword handles POST /api/v1/auth/password-reset/confirm.
+func (h *Handler) ResetPassword(c echo.Context) error {
+	var body struct {
+		Token    string `json:"token"    validate:"required"`
+		Password string `json:"password" validate:"required,min=8,max=72"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid request body",
+			"code":  "AUTH_BAD_REQUEST",
+		})
+	}
+	if err := h.validate.Struct(body); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
+			"error": err.Error(),
+			"code":  "AUTH_VALIDATION_ERROR",
+		})
+	}
+
+	if err := h.service.ResetPassword(c.Request().Context(), body.Token, body.Password); err != nil {
+		if errors.Is(err, ErrTokenInvalid) {
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"error": "Link ungültig oder abgelaufen",
+				"code":  "AUTH_RESET_TOKEN_INVALID",
+			})
+		}
+		log.Error().Err(err).Msg("password reset confirm failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Passwort konnte nicht zurückgesetzt werden",
+			"code":  "AUTH_RESET_FAILED",
+		})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}

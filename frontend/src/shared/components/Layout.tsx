@@ -7,7 +7,7 @@ import {
   Server, ScanSearch, BarChart2, Clock, Search, Bell,
   User, Trash2, MonitorSmartphone, Palette, Shield, Sparkles, FlaskConical,
   Building2, Bot, PackageX, Mail, GraduationCap, Target, Flag, LayoutTemplate, UserCog, Activity, UserCheck,
-  Plug, ClipboardCheck, CalendarClock, Inbox, ExternalLink, Menu, X, ArrowUpCircle,
+  Plug, ClipboardCheck, CalendarClock, Inbox, ExternalLink, Menu, X, ArrowUpCircle, ScrollText,
 } from 'lucide-react'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
@@ -18,6 +18,7 @@ import { useBackupStatus } from '../../hooks/useDashboard'
 import { useDemoMode } from '../hooks/useDemoMode'
 import { GlobalSearch } from './GlobalSearch'
 import { VersionBanner } from './VersionBanner'
+import { WhatsNewModal } from './WhatsNewModal'
 import { useOverdueControls } from '../../modules/secvitals/hooks/useControlReviews'
 import { useAutoEvidence } from '../../modules/secvitals/hooks/useEvidenceAuto'
 import { useUpdateCheck } from '../hooks/useUpdateCheck'
@@ -381,6 +382,20 @@ export default function Layout() {
               <Users className={cn('w-4 h-4 shrink-0', isActive('/settings/team') ? 'text-brand' : '')} />
               Team
             </Link>
+            {isAdminOrOwner && (
+              <Link
+                to="/settings/audit-log"
+                className={cn(
+                  'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
+                  isActive('/settings/audit-log')
+                    ? 'bg-[#eef2ff] dark:bg-[#1E2235] text-brand dark:text-primary'
+                    : 'text-secondary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] hover:text-primary',
+                )}
+              >
+                <ScrollText className={cn('w-4 h-4 shrink-0', isActive('/settings/audit-log') ? 'text-brand' : '')} />
+                Audit-Log
+              </Link>
+            )}
             <Link
               to="/account"
               className={cn(
@@ -474,6 +489,7 @@ export default function Layout() {
       </div>
       <GlobalSearch />
       {demoMode && <FeedbackWidget />}
+      <WhatsNewModal />
     </div>
   )
 }

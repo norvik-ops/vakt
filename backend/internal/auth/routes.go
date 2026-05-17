@@ -23,4 +23,8 @@ func Register(g *echo.Group, h *Handler) {
 	g.GET("/saml/metadata", h.SAMLMetadata, license.Require(license.FeatureSSO))
 	g.POST("/saml/callback", h.SAMLCallback, license.Require(license.FeatureSSO))
 	g.POST("/saml/acs", h.SAMLACS, license.Require(license.FeatureSSO))
+
+	// Password reset — local auth only, no auth middleware required.
+	g.POST("/password-reset/request", h.RequestPasswordReset)
+	g.POST("/password-reset/confirm", h.ResetPassword)
 }

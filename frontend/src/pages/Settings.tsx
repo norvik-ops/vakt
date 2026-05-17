@@ -10,6 +10,7 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Badge } from '../components/ui/badge'
+import { Switch } from '../components/ui/switch'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { apiFetch, FeatureLockedError } from '../api/client'
@@ -22,6 +23,33 @@ import { useExportData } from '../hooks/useDataExport'
 import { useAuditReport } from '../modules/secvitals/hooks/useAuditReport'
 import { ProGate } from '../shared/components/ProGate'
 import { useUpdateCheck } from '../shared/hooks/useUpdateCheck'
+
+// ─── Retention / Digest hooks (used by DigestToggleSection) ──────────────────
+
+interface RetentionConfig {
+  digest_enabled: boolean
+  digest_hour: number
+}
+
+function useRetentionConfig() {
+  return useQuery<RetentionConfig>({
+    queryKey: ['retention', 'config'],
+    queryFn: () => apiFetch<RetentionConfig>('/retention/config'),
+    staleTime: 60_000,
+  })
+}
+
+function useUpdateDigestEnabled() {
+  const qc = useQueryClient()
+  return useMutation<RetentionConfig, Error, boolean>({
+    mutationFn: (enabled) =>
+      apiFetch<RetentionConfig>('/retention/config', {
+        method: 'PUT',
+        body: JSON.stringify({ digest_enabled: enabled }),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['retention'] }),
+  })
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -462,6 +490,62 @@ function ModulesSection() {
           </p>
         </div>
       )}
+    </SectionCard>
+  )
+}
+
+// ─── Weekly Digest Toggle ────────────────────────────────────────────────────
+
+function DigestToggleSection() {
+  const { data, isLoading } = useRetentionConfig()
+  const update = useUpdateDigestEnabled()
+  const [checked, setChecked] = useState(false)
+
+  useEffect(() => {
+    if (data) setChecked(data.digest_enabled)
+  }, [data])
+
+  function handleToggle(value: boolean) {
+    setChecked(value)
+    update.mutate(value)
+  }
+
+  return (
+    <SectionCard title="Sicherheits-Digest" icon={Mail}>
+      <div className="space-y-3">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-10">
+            <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-primary">Wöchentlicher Sicherheits-Digest</p>
+              <p className="text-[11px] text-secondary leading-relaxed">
+                Jeden Montag eine Zusammenfassung offener Findings und Fristen per E-Mail an alle Admins.
+              </p>
+            </div>
+            <Switch
+              checked={checked}
+              onCheckedChange={handleToggle}
+              disabled={update.isPending}
+              aria-label="Wöchentlichen Sicherheits-Digest aktivieren"
+            />
+          </div>
+        )}
+        {update.isError && (
+          <p className="text-[11px] text-red-500">Fehler beim Speichern. Bitte erneut versuchen.</p>
+        )}
+        {update.isSuccess && (
+          <p className="text-[11px] text-green-600 dark:text-green-400">
+            {checked ? 'Digest aktiviert.' : 'Digest deaktiviert.'}
+          </p>
+        )}
+        <p className="text-[11px] text-secondary">
+          SMTP muss konfiguriert sein. Detaileinstellungen unter{' '}
+          <a href="/settings/retention" className="underline text-brand">Datenpflege</a>.
+        </p>
+      </div>
     </SectionCard>
   )
 }
@@ -926,6 +1010,7 @@ export default function Settings() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <SmtpSection />
               <NotificationsSection />
+              <DigestToggleSection />
             </div>
           </div>
 

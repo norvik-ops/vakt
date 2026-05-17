@@ -183,6 +183,16 @@ func (h *Handler) UploadEvidence(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "file is required", "CK_BAD_REQUEST")
 	}
 
+	allowed := map[string]bool{
+		".pdf": true, ".png": true, ".jpg": true, ".jpeg": true,
+		".gif": true, ".webp": true, ".txt": true, ".csv": true,
+		".xlsx": true, ".docx": true, ".zip": true,
+	}
+	ext := strings.ToLower(filepath.Ext(fh.Filename))
+	if !allowed[ext] {
+		return echo.NewHTTPError(http.StatusBadRequest, "Dateityp nicht erlaubt")
+	}
+
 	src, err := fh.Open()
 	if err != nil {
 		return errResp(c, http.StatusInternalServerError, "failed to open uploaded file", "CK_UPLOAD_FAILED")
@@ -198,7 +208,6 @@ func (h *Handler) UploadEvidence(c echo.Context) error {
 		return errResp(c, http.StatusInternalServerError, "failed to create upload directory", "CK_UPLOAD_FAILED")
 	}
 
-	ext := filepath.Ext(fh.Filename)
 	destName := uuid.New().String() + ext
 	destPath := filepath.Join(orgDir, destName)
 

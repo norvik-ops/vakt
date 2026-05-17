@@ -16,6 +16,7 @@ import type { RiskSummary, ActivityEntry } from '../hooks/useDashboard'
 import { useOnboardingStatus } from '../hooks/useOnboarding'
 import { OnboardingBanner, OnboardingWizard } from '../components/OnboardingWizard'
 import { Skeleton } from '../components/ui/skeleton'
+import type { FrameworkScore } from '../hooks/useDashboard'
 
 function fmt(n: number | null | undefined): string {
   return n == null ? '—' : n.toString()
@@ -237,6 +238,67 @@ function ActivityTimeline({ entries }: { entries: ActivityEntry[] }) {
         )
       })}
     </ol>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Compliance progress card — aggregates all framework controls
+// ---------------------------------------------------------------------------
+
+function ComplianceProgressCard({
+  scores,
+  isLoading,
+}: {
+  scores: FrameworkScore[]
+  isLoading?: boolean
+}) {
+  const totals = scores.reduce(
+    (acc, fw) => {
+      acc.total += fw.total_controls
+      acc.implemented += fw.implemented_controls
+      return acc
+    },
+    { total: 0, implemented: 0 },
+  )
+  const pct = totals.total > 0 ? Math.round((totals.implemented / totals.total) * 100) : 0
+  const color = barColor(pct)
+
+  return (
+    <section className="rounded-lg border border-border bg-surface p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-[13px] font-semibold text-primary">Compliance-Fortschritt</h2>
+        {!isLoading && totals.total > 0 && (
+          <span className="text-[11px] text-secondary">{pct}%</span>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-2 w-full" />
+        </div>
+      ) : totals.total === 0 ? (
+        <p className="text-[12px] text-secondary">Keine Frameworks konfiguriert.</p>
+      ) : (
+        <>
+          <div className="flex items-end justify-between mb-1.5">
+            <span className="text-[12px] text-primary">
+              <span className="font-semibold">{totals.implemented}</span>
+              <span className="text-secondary"> von {totals.total} Controls umgesetzt</span>
+            </span>
+            <span className={`text-[11px] font-medium ${pct >= 80 ? 'text-[#22c55e]' : pct >= 50 ? 'text-[#f59e0b]' : 'text-[#ef4444]'}`}>
+              {totals.total - totals.implemented} offen
+            </span>
+          </div>
+          <div className="h-2 rounded-full bg-border overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${color}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </>
+      )}
+    </section>
   )
 }
 
@@ -469,6 +531,9 @@ export default function Dashboard() {
             />
           </div>
         </section>
+
+        {/* ── Compliance progress ── */}
+        <ComplianceProgressCard scores={agg?.framework_scores ?? []} isLoading={aggLoading} />
 
         {/* ── Framework progress + Top risks ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

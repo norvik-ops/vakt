@@ -26,6 +26,9 @@ import AuditorAcceptPage from './pages/AuditorAcceptPage'
 import PolicyAcceptPage from './pages/PolicyAcceptPage'
 import InviteAcceptPage from './pages/InviteAcceptPage'
 import TeamSettingsPage from './pages/TeamSettingsPage'
+import AuditLogPage from './pages/AuditLogPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 
 // Lazy module pages — filled in by module agents
 import { lazy, Suspense } from 'react'
@@ -145,6 +148,14 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: '/auth/forgot-password',
+    element: <ForgotPasswordPage />,
+  },
+  {
+    path: '/auth/reset-password',
+    element: <ResetPasswordPage />,
+  },
+  {
     element: (
       <SetupGuard>
         <AuthGuard />
@@ -165,6 +176,7 @@ export const router = createBrowserRouter([
           { path: '/settings/trust-center', element: <TrustCenterSettingsPage /> },
           { path: '/settings/auditors', element: <AuditorSettingsPage /> },
           { path: '/settings/team', element: <TeamSettingsPage /> },
+          { path: '/settings/audit-log', element: <AuditLogPage /> },
           {
             path: '/secpulse/*',
             element: <ModuleShell moduleKey="secpulse"><SecPulse /></ModuleShell>,

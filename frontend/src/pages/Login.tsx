@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { apiFetch } from '../api/client'
 import { useAuthStore } from '../shared/stores/auth'
 import { useDemoMode } from '../shared/hooks/useDemoMode'
@@ -89,6 +89,14 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+                <div className="text-right">
+                  <Link
+                    to="/auth/forgot-password"
+                    className="text-xs text-secondary hover:text-primary hover:underline"
+                  >
+                    Passwort vergessen?
+                  </Link>
+                </div>
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
               <Button type="submit" className="w-full" disabled={loading}>
