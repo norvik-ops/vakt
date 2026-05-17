@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSavedFilters } from '../shared/hooks/useSavedFilters'
 import { ShieldAlert, Download, RefreshCw } from 'lucide-react'
 import { PageHeader } from '../shared/components/PageHeader'
 import { Button } from '../components/ui/button'
@@ -126,11 +127,14 @@ export default function AuditLogPage() {
   const { user } = useAuthStore()
   const isAdminOrOwner = user?.roles?.includes('admin') || user?.roles?.includes('owner')
 
-  // Filter state (committed to API on button click or select change)
-  const [fromDate, setFromDate] = useState('')
-  const [toDate, setToDate] = useState('')
-  const [userFilter, setUserFilter] = useState('')
-  const [actionFilter, setActionFilter] = useState<string>('all')
+  // Filter state — persisted across page reloads via localStorage
+  const [filters, setFilters] = useSavedFilters('audit-log', {
+    fromDate: '',
+    toDate: '',
+    userFilter: '',
+    actionFilter: 'all',
+  })
+  const { fromDate, toDate, userFilter, actionFilter } = filters
   const [page, setPage] = useState(0)
 
   const offset = page * PAGE_SIZE
@@ -149,10 +153,7 @@ export default function AuditLogPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   function resetFilters() {
-    setFromDate('')
-    setToDate('')
-    setUserFilter('')
-    setActionFilter('all')
+    setFilters({ fromDate: '', toDate: '', userFilter: '', actionFilter: 'all' })
     setPage(0)
   }
 
@@ -217,7 +218,7 @@ export default function AuditLogPage() {
             <Input
               type="date"
               value={fromDate}
-              onChange={(e) => { setFromDate(e.target.value); handleFilterChange() }}
+              onChange={(e) => { setFilters((f) => ({ ...f, fromDate: e.target.value })); handleFilterChange() }}
               className="h-8 text-xs w-36"
             />
           </div>
@@ -226,7 +227,7 @@ export default function AuditLogPage() {
             <Input
               type="date"
               value={toDate}
-              onChange={(e) => { setToDate(e.target.value); handleFilterChange() }}
+              onChange={(e) => { setFilters((f) => ({ ...f, toDate: e.target.value })); handleFilterChange() }}
               className="h-8 text-xs w-36"
             />
           </div>
@@ -236,7 +237,7 @@ export default function AuditLogPage() {
               type="text"
               placeholder="E-Mail filtern…"
               value={userFilter}
-              onChange={(e) => { setUserFilter(e.target.value); handleFilterChange() }}
+              onChange={(e) => { setFilters((f) => ({ ...f, userFilter: e.target.value })); handleFilterChange() }}
               className="h-8 text-xs w-48"
             />
           </div>
@@ -244,7 +245,7 @@ export default function AuditLogPage() {
             <p className="text-[11px] text-secondary font-medium">Aktion</p>
             <Select
               value={actionFilter}
-              onValueChange={(v) => { setActionFilter(v); handleFilterChange() }}
+              onValueChange={(v) => { setFilters((f) => ({ ...f, actionFilter: v })); handleFilterChange() }}
             >
               <SelectTrigger className="h-8 text-xs w-36">
                 <SelectValue placeholder="Alle Aktionen" />

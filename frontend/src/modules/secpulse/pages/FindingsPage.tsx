@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useSavedFilters } from '../../../shared/hooks/useSavedFilters'
 import { useNavigate } from 'react-router-dom'
 import { Download, AlertTriangle, Upload } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -25,13 +26,16 @@ const severityClass: Record<Finding['severity'], string> = {
 
 export default function FindingsPage() {
   const navigate = useNavigate()
-  const [severityFilter, setSeverityFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [filters, setFilters] = useSavedFilters('findings', {
+    severityFilter: 'all',
+    statusFilter: 'all',
+    searchQuery: '',
+  })
+  const { severityFilter, statusFilter, searchQuery } = filters
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkStatus, setBulkStatus] = useState<Finding['status']>('resolved')
   const [importOpen, setImportOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
-  const [searchQuery, setSearchQuery] = useState('')
   const [page, setPage] = useState(1)
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -106,7 +110,7 @@ export default function FindingsPage() {
             ref={searchRef}
             type="text"
             value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setFocusedIndex(-1); setPage(1) }}
+            onChange={(e) => { setFilters((f) => ({ ...f, searchQuery: e.target.value })); setFocusedIndex(-1); setPage(1) }}
             placeholder="Suchen… (Titel, CVE, Asset)"
             className="w-full max-w-sm rounded-md border border-border bg-surface px-3 py-1.5 text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand"
           />
@@ -115,7 +119,7 @@ export default function FindingsPage() {
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3">
-          <Select value={severityFilter} onValueChange={(v) => { setSeverityFilter(v); setPage(1) }}>
+          <Select value={severityFilter} onValueChange={(v) => { setFilters((f) => ({ ...f, severityFilter: v })); setPage(1) }}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Alle Schweregrade" />
             </SelectTrigger>
@@ -129,7 +133,7 @@ export default function FindingsPage() {
             </SelectContent>
           </Select>
 
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1) }}>
+          <Select value={statusFilter} onValueChange={(v) => { setFilters((f) => ({ ...f, statusFilter: v })); setPage(1) }}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Alle Status" />
             </SelectTrigger>

@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -79,6 +80,16 @@ func PasetoMiddleware(key paseto.V4SymmetricKey, rdb ...*redis.Client) echo.Midd
 				})
 			}
 
+			// Verify pw_version — reject tokens issued before the last password change.
+			if redisClient != nil {
+				if err := checkPwVersion(c.Request().Context(), redisClient, claims); err != nil {
+					return c.JSON(http.StatusUnauthorized, map[string]string{
+						"error": "session invalidated — please log in again",
+						"code":  "AUTH_SESSION_INVALIDATED",
+					})
+				}
+			}
+
 			c.Set("user_id", claims.UserID)
 			c.Set("org_id", claims.OrgID)
 			c.Set("roles", claims.Roles)
@@ -144,6 +155,16 @@ func AuthMiddleware(key paseto.V4SymmetricKey, db *pgxpool.Pool, rdb ...*redis.C
 					"error": "invalid or expired token",
 					"code":  "AUTH_INVALID_TOKEN",
 				})
+			}
+
+			// Verify pw_version — reject tokens issued before the last password change.
+			if redisClient != nil {
+				if err := checkPwVersion(c.Request().Context(), redisClient, claims); err != nil {
+					return c.JSON(http.StatusUnauthorized, map[string]string{
+						"error": "session invalidated — please log in again",
+						"code":  "AUTH_SESSION_INVALIDATED",
+					})
+				}
 			}
 
 			c.Set("user_id", claims.UserID)
@@ -364,6 +385,37 @@ func RequireRole(allowedRoles ...string) echo.MiddlewareFunc {
 			})
 		}
 	}
+}
+
+// checkPwVersion compares the pw_version embedded in the token claims against
+// the current value stored in Redis.  Returns a non-nil error if the token is
+// stale (i.e. the user changed their password after this token was issued).
+// Redis unavailability is treated as a pass-through to avoid locking users out
+// during transient Redis downtime.
+func checkPwVersion(ctx context.Context, rdb *redis.Client, claims *Claims) error {
+	key := pwVersionKey(claims.UserID)
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	current, err := rdb.Get(ctx, key).Int64()
+	if err != nil {
+		if err == redis.Nil {
+			// Key doesn't exist — treat current version as 0.
+			// Tokens with pw_version == 0 are valid.
+			if claims.PwVersion != 0 {
+				return fmt.Errorf("pw_version mismatch")
+			}
+			return nil
+		}
+		// Redis unavailable — log and allow through.
+		log.Warn().Err(err).Str("user_id", claims.UserID).Msg("pw_version check skipped — Redis unavailable")
+		return nil
+	}
+
+	if claims.PwVersion != current {
+		return fmt.Errorf("pw_version mismatch: token=%d current=%d", claims.PwVersion, current)
+	}
+	return nil
 }
 
 // bearerToken extracts the token string from an "Authorization: Bearer <token>" header.

@@ -106,14 +106,31 @@ func (h *Handler) Login(c echo.Context) error {
 		})
 	}
 
+	// Account lockout: reject immediately if too many recent failures.
+	locked, lockErr := h.service.checkAccountLocked(c.Request().Context(), body.Email)
+	if lockErr != nil {
+		log.Warn().Err(lockErr).Str("email", body.Email).Msg("login: lockout check error")
+	}
+	if locked {
+		return c.JSON(http.StatusTooManyRequests, map[string]string{
+			"error": "Account temporarily locked. Try again in 15 minutes.",
+			"code":  "ACCOUNT_LOCKED",
+		})
+	}
+
 	resp, err := h.service.Login(c.Request().Context(), body.Email, body.Password)
 	if err != nil {
 		log.Debug().Err(err).Str("email", body.Email).Msg("login failed")
+		// Record failure to enable lockout after repeated bad credentials.
+		h.service.recordLoginFailure(c.Request().Context(), body.Email)
 		return c.JSON(http.StatusUnauthorized, map[string]string{
 			"error": "invalid credentials",
 			"code":  "AUTH_INVALID_CREDENTIALS",
 		})
 	}
+
+	// Successful login — clear any accumulated failure counter.
+	h.service.clearLoginFailures(c.Request().Context(), body.Email)
 	return c.JSON(http.StatusOK, resp)
 }
 

@@ -8,8 +8,9 @@ import (
 )
 
 // Register mounts admin routes under g.  All routes require the "Admin" role.
-func Register(g *echo.Group, h *Handler) {
+func Register(g *echo.Group, h *Handler, health *HealthHandler) {
 	admin := g.Group("/admin", auth.RequireRole("Admin"))
+	admin.GET("/health", health.HandleHealth)
 	admin.GET("/audit-logs", h.ListAuditLogs)
 	admin.GET("/users", h.ListUsers)
 	admin.POST("/users/invite", h.InviteUser)

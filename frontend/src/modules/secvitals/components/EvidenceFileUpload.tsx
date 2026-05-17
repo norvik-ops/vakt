@@ -1,11 +1,12 @@
 import React, { useRef, useState } from 'react'
-import { Paperclip, Download, Trash2, Upload } from 'lucide-react'
+import { Paperclip, Eye, Trash2, Upload } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import {
   useEvidenceFilesByControl,
   useUploadEvidenceFile,
   useDeleteEvidenceFile,
 } from '../hooks/useEvidenceFiles'
+import { FilePreviewDialog, type PreviewFile } from '../../../shared/components/FilePreviewDialog'
 
 interface EvidenceFileUploadProps {
   controlId: string
@@ -28,6 +29,13 @@ export function EvidenceFileUpload({ controlId, evidenceId: _evidenceId }: Evide
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
+  const [previewFile, setPreviewFile] = useState<PreviewFile | null>(null)
+
+  const PREVIEWABLE = ['application/pdf', 'image/png', 'image/jpg', 'image/jpeg', 'image/gif', 'image/webp']
+
+  function openPreview(f: { original_name: string; mime_type: string; download_url: string }) {
+    setPreviewFile({ name: f.original_name, url: f.download_url, mimeType: f.mime_type })
+  }
 
   function handleFile(file: File) {
     setLocalError(null)
@@ -71,6 +79,7 @@ export function EvidenceFileUpload({ controlId, evidenceId: _evidenceId }: Evide
 
   return (
     <div className="space-y-3">
+      <FilePreviewDialog file={previewFile} onClose={() => setPreviewFile(null)} />
       {/* Drop zone */}
       <div
         className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 transition-colors cursor-pointer ${
@@ -131,15 +140,21 @@ export function EvidenceFileUpload({ controlId, evidenceId: _evidenceId }: Evide
               <span className="text-xs text-secondary shrink-0">
                 {formatBytes(f.size_bytes)}
               </span>
-              <a
-                href={f.download_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shrink-0 text-brand hover:text-brand/80"
-                title="Herunterladen"
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 h-6 w-6 p-0 text-brand hover:text-brand/80"
+                title={PREVIEWABLE.includes(f.mime_type) ? 'Vorschau' : 'Herunterladen'}
+                onClick={() => {
+                  if (PREVIEWABLE.includes(f.mime_type)) {
+                    openPreview(f)
+                  } else {
+                    window.open(f.download_url, '_blank', 'noopener,noreferrer')
+                  }
+                }}
               >
-                <Download className="w-4 h-4" />
-              </a>
+                <Eye className="w-4 h-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"

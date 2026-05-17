@@ -203,10 +203,27 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*AuthRespon
 	return s.issueTokenPair(ctx, payload.UserID, payload.OrgID, payload.Roles)
 }
 
+// pwVersionKey returns the Redis key used to track a user's password version.
+func pwVersionKey(userID string) string {
+	return "user_pw_version:" + userID
+}
+
+// currentPwVersion returns the current password version for a user from Redis.
+// If the key does not yet exist (user predates the feature), 0 is returned.
+func (s *Service) currentPwVersion(ctx context.Context, userID string) int64 {
+	val, err := s.redis.Get(ctx, pwVersionKey(userID)).Int64()
+	if err != nil {
+		// redis.Nil means key doesn't exist yet — treat as version 0.
+		return 0
+	}
+	return val
+}
+
 // issueTokenPair generates an access + refresh token pair and stores the
 // refresh token in Redis.
 func (s *Service) issueTokenPair(ctx context.Context, userID, orgID string, roles []string) (*AuthResponse, error) {
-	claims := Claims{UserID: userID, OrgID: orgID, Roles: roles}
+	pwVersion := s.currentPwVersion(ctx, userID)
+	claims := Claims{UserID: userID, OrgID: orgID, Roles: roles, PwVersion: pwVersion}
 
 	accessToken, err := IssueAccessToken(s.key, claims)
 	if err != nil {
@@ -234,6 +251,61 @@ func (s *Service) issueTokenPair(ctx context.Context, userID, orgID string, role
 		RefreshToken: refreshToken,
 		ExpiresIn:    int(AccessTokenTTL / time.Second),
 	}, nil
+}
+
+const (
+	// loginFailMax is the number of consecutive failed logins that trigger a lockout.
+	loginFailMax = 5
+	// loginLockoutTTL is the lockout duration and the TTL of the failure counter.
+	loginLockoutTTL = 15 * time.Minute
+)
+
+// loginFailKey returns the Redis key used to count consecutive login failures.
+func loginFailKey(email string) string {
+	return "login_fail:" + email
+}
+
+// checkAccountLocked returns true if the account is currently locked out.
+func (s *Service) checkAccountLocked(ctx context.Context, email string) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	val, err := s.redis.Get(ctx, loginFailKey(email)).Int64()
+	if err == redis.Nil {
+		return false, nil
+	}
+	if err != nil {
+		// Redis unavailable — fail open to avoid blocking legitimate logins.
+		log.Warn().Err(err).Str("email", email).Msg("login lockout check skipped — Redis unavailable")
+		return false, nil
+	}
+	return val >= loginFailMax, nil
+}
+
+// recordLoginFailure increments the failure counter for the given email,
+// setting a 15-minute TTL on first increment.
+func (s *Service) recordLoginFailure(ctx context.Context, email string) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	key := loginFailKey(email)
+	// Use a pipeline: INCR then SET EX only if the key was just created.
+	// We use SetNX so that an existing TTL is preserved (not reset on each failure).
+	pipe := s.redis.Pipeline()
+	incrCmd := pipe.Incr(ctx, key)
+	pipe.Expire(ctx, key, loginLockoutTTL)
+	if _, err := pipe.Exec(ctx); err != nil {
+		log.Warn().Err(err).Str("email", email).Msg("login: failed to record login failure")
+		return
+	}
+	log.Debug().Str("email", email).Int64("count", incrCmd.Val()).Msg("login: recorded failure")
+}
+
+// clearLoginFailures deletes the login failure counter for the given email.
+func (s *Service) clearLoginFailures(ctx context.Context, email string) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	if err := s.redis.Del(ctx, loginFailKey(email)).Err(); err != nil && err != redis.Nil {
+		log.Warn().Err(err).Str("email", email).Msg("login: failed to clear login failures")
+	}
 }
 
 // RevokeToken blacklists an access token in Redis so that AuthMiddleware will

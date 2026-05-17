@@ -128,7 +128,22 @@ func (s *Service) ResetPassword(ctx context.Context, rawToken, newPassword strin
 		return fmt.Errorf("mark token used: %w", err)
 	}
 
-	return tx.Commit(ctx)
+	if err = tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	// Invalidate all existing Paseto tokens for this user by incrementing the
+	// password version counter. Any token carrying a stale pw_version will be
+	// rejected by AuthMiddleware / PasetoMiddleware.
+	incrCtx, incrCancel := context.WithTimeout(ctx, 2*time.Second)
+	defer incrCancel()
+	if incrErr := s.redis.Incr(incrCtx, pwVersionKey(userID)).Err(); incrErr != nil {
+		// Non-fatal: log the failure but do not block the password reset response.
+		// The password has already been updated; tokens will still expire naturally.
+		log.Error().Err(incrErr).Str("user_id", userID).Msg("password reset: failed to increment pw_version in Redis")
+	}
+
+	return nil
 }
 
 // sendPasswordResetEmail delivers a plain-text reset email via stdlib net/smtp.

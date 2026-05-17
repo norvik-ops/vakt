@@ -72,10 +72,11 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	e.HidePort = true
 
 	e.Use(middleware.SecureWithConfig(middleware.SecureConfig{
-		XSSProtection:      "0",
-		ContentTypeNosniff: "nosniff",
-		XFrameOptions:      "DENY",
-		HSTSMaxAge:         31536000,
+		XSSProtection:         "0",
+		ContentTypeNosniff:    "nosniff",
+		XFrameOptions:         "DENY",
+		HSTSMaxAge:            31536000,
+		ContentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
 	}))
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogMethod:  true,
@@ -226,7 +227,8 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisOpt.Addr})
 	adminSvc := admin.NewService(pool, cfg.ModulesEnabled, asynqClient)
 	adminSvc.WithNotifyService(notify.NewService(pool, cfg))
-	admin.Register(protected, admin.NewHandler(adminSvc))
+	adminHealth := admin.NewHealthHandler(pool, rdb, cfg)
+	admin.Register(protected, admin.NewHandler(adminSvc), adminHealth)
 	log.Info().Msg("admin routes registered")
 
 	if cfg.Staging {

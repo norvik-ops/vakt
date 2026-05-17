@@ -16,9 +16,10 @@ const (
 
 // Claims holds the user-identifying data embedded in access tokens.
 type Claims struct {
-	UserID string   `json:"user_id"`
-	OrgID  string   `json:"org_id"`
-	Roles  []string `json:"roles"`
+	UserID    string   `json:"user_id"`
+	OrgID     string   `json:"org_id"`
+	Roles     []string `json:"roles"`
+	PwVersion int64    `json:"pw_version"`
 }
 
 // GenerateSymmetricKey creates a Paseto v4 symmetric key from a 32-byte hex-encoded secret.
@@ -51,6 +52,9 @@ func IssueAccessTokenWithTTL(key paseto.V4SymmetricKey, claims Claims, ttl time.
 	token.SetString("org_id", claims.OrgID)
 	if err := token.Set("roles", claims.Roles); err != nil {
 		return "", fmt.Errorf("set roles claim: %w", err)
+	}
+	if err := token.Set("pw_version", claims.PwVersion); err != nil {
+		return "", fmt.Errorf("set pw_version claim: %w", err)
 	}
 	return token.V4Encrypt(key, nil), nil
 }
@@ -88,9 +92,15 @@ func ParseAccessToken(key paseto.V4SymmetricKey, tokenStr string) (*Claims, erro
 		return nil, fmt.Errorf("get roles claim: %w", err)
 	}
 
+	// pw_version may be absent in tokens minted before this feature was added;
+	// treat a missing claim as version 0.
+	var pwVersion int64
+	_ = token.Get("pw_version", &pwVersion)
+
 	return &Claims{
-		UserID: userID,
-		OrgID:  orgID,
-		Roles:  roles,
+		UserID:    userID,
+		OrgID:     orgID,
+		Roles:     roles,
+		PwVersion: pwVersion,
 	}, nil
 }
