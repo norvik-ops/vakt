@@ -7,8 +7,41 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### Geplant
-- **Jira-Integration** — Findings und offene Controls direkt als Jira-Tickets erstellen (in Planung)
+---
+
+## [v0.5.0] — 2026-05-17
+
+### Added
+- **AWS Evidence Collection** — automatische Sammlung von IAM-Passwortrichtlinie, MFA-Status, CloudTrail-Konfiguration und S3-Verschlüsselung als Compliance-Evidence
+- **Azure Evidence Collection** — Secure Score, Security Center Assessments und Policy Compliance via Azure Management API
+- **CIS Controls v8** — vollständiges Framework mit 61 IG1-Safeguards in 18 Kontrollgruppen, inkl. CIS ↔ ISO 27001 Mapping; Seeding in SecVitals
+- **Progressive Web App (PWA)** — Vakt kann auf Mobilgeräten als App installiert werden (Offline-Unterstützung, Add-to-Home-Screen)
+- **Englische Übersetzung** — vollständige UI-Übersetzung (277 Keys), automatische Spracherkennung, manueller Sprachwechsel in den Einstellungen
+- **Jira-Integration** (Pro) — Findings und offene Controls direkt als Jira-Tickets erstellen
+- **TOTP Recovery Codes** — 8 Einmal-Codes bei MFA-Einrichtung, sicher bcrypt-gehasht
+- **Comments** — Kommentar-Threads auf Findings und Controls
+- **Control Approvals** — Vier-Augen-Prinzip für Control-Statusänderungen (optionales Org-Setting)
+- **Score-Verlauf** — Compliance-Score-Trend über Zeit, Recharts-Diagramm im Dashboard
+- **Zertifizierungs-Timeline** — Countdown-Karten und Kalender für Audit-Meilensteine
+- **Onboarding-Checkliste** — 6-Schritte-Assistent beim ersten Login
+
+### Security
+- **Rate-Limiting** — 300 Anfragen/min pro Organisation (Token-Bucket, Redis-backed), `X-RateLimit-*` Headers
+- **Passwort-Mindestanforderungen** — min. 10 Zeichen, Großbuchstabe, Ziffer, Sonderzeichen bei Registrierung und Reset
+- **Token-Cleanup-Job** — tägliche Bereinigung abgelaufener Passwort-Reset-Tokens (03:00 UTC)
+
+### Improved (WCAG 2.1 AA)
+- Farbkontrast Dark Mode: `--color-text3` von 3,1:1 auf 4,6:1 angehoben
+- Globale `:focus-visible`-Regel für alle interaktiven Elemente
+- ARIA-Attribute auf allen Formularen, Buttons und Navigationen
+- Live Regions (aria-live) für Toasts und Fehlermeldungen
+- Skip-to-main-content Link (screenreader + keyboard)
+- Tabellenheader mit `scope="col"`
+- `<html lang="de">` gesetzt (war "en")
+
+### Infrastructure
+- Worker HTTP-Healthcheck-Server (:9090) — Docker-Healthcheck repariert
+- Dashboard-Cache-Invalidierung nach Control/Risk/Finding-Updates
 
 ---
 
