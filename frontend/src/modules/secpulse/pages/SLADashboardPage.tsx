@@ -146,7 +146,7 @@ export default function SLADashboardPage() {
         )}
 
         {!isLoading && !error && filtered.length > 0 && (
-          <div className="rounded-md border border-border bg-surface overflow-hidden">
+          <div className="rounded-md border border-border bg-surface overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>

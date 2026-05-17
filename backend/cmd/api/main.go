@@ -47,6 +47,7 @@ import (
 	"github.com/sechealth-app/sechealth/internal/shared/auditor"
 	"github.com/sechealth-app/sechealth/internal/shared/demoseed"
 	ghintegration "github.com/sechealth-app/sechealth/internal/shared/integrations/github"
+	jiraintegration "github.com/sechealth-app/sechealth/internal/shared/integrations/jira"
 	"github.com/sechealth-app/sechealth/internal/shared/metrics"
 	"github.com/sechealth-app/sechealth/internal/shared/notify"
 	"github.com/sechealth-app/sechealth/internal/shared/retention"
@@ -246,6 +247,7 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	// Module routes — all behind auth middleware, sharing the same DB pool
 	if cfg.IsModuleEnabled("secpulse") {
 		vbSvc := secpulse.NewService(pool, asynq.RedisClientOpt{Addr: redisOpt.Addr})
+		vbSvc.WithRedis(rdb)
 		secpulse.Register(protected.Group("/secpulse"), secpulse.NewHandler(vbSvc))
 		log.Info().Msg("secpulse routes registered")
 	}
@@ -259,6 +261,7 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 
 	if cfg.IsModuleEnabled("secvitals") {
 		ckSvc := secvitals.NewService(pool)
+		ckSvc.WithRedis(rdb)
 		ckSvc.WithNotifyService(notify.NewService(pool, cfg))
 		if cfg.AIProvider != "disabled" && cfg.AIProvider != "" && cfg.AIBaseURL != "" {
 			ckSvc.WithAIClient(ai.NewAIClient(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel))
@@ -374,6 +377,17 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 		} else {
 			ghintegration.RegisterRoutes(protected.Group("/integrations/github"), pool, ghMasterKey)
 			log.Info().Msg("github integration routes registered")
+		}
+	}
+
+	// Jira integration — push findings as Jira issues, store config encrypted
+	if cfg.SecretKey != "" {
+		jiraMasterKey, err := hex.DecodeString(cfg.SecretKey)
+		if err != nil {
+			log.Warn().Err(err).Msg("invalid secret key (hex decode) — jira integration routes disabled")
+		} else {
+			jiraintegration.RegisterRoutes(protected.Group("/integrations/jira"), pool, jiraMasterKey)
+			log.Info().Msg("jira integration routes registered")
 		}
 	}
 

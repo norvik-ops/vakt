@@ -187,6 +187,7 @@ export function Comments({ entityType, entityId }: CommentsProps) {
                     onClick={() => deleteComment.mutate(comment.id)}
                     disabled={deleteComment.isPending}
                     className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity shrink-0 mt-0.5"
+                    aria-label="Kommentar löschen"
                     title="Kommentar löschen"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

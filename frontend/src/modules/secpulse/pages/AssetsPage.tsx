@@ -17,6 +17,7 @@ import type { Asset } from '../types'
 import type { CreateAssetInput, ImportAssetsResult } from '../hooks/useAssets'
 import { toast } from '../../../shared/hooks/useToast'
 import { Skeleton } from '../../../components/ui/skeleton'
+import { ErrorState } from '../../../shared/components/ErrorState'
 
 const criticalityVariant: Record<Asset['criticality'], React.ComponentProps<typeof Badge>['variant']> = {
   low: 'secondary',
@@ -51,7 +52,7 @@ const emptyForm: CreateAssetInput = {
 export default function AssetsPage() {
   const navigate = useNavigate()
   const [page, setPage] = useState(1)
-  const { data: assets, isLoading, error, pagination } = useAssets(page)
+  const { data: assets, isLoading, isError, error, pagination, refetch } = useAssets(page)
   const createAsset = useCreateAsset()
   const importAssets = useImportAssets()
   const [open, setOpen] = useState(false)
@@ -147,13 +148,14 @@ export default function AssetsPage() {
           </div>
         )}
 
-        {error && (
-          <p className="text-sm text-red-600 p-4">
-            Error: {error.message}
-          </p>
+        {isError && (
+          <ErrorState
+            message={error?.message}
+            onRetry={() => void refetch()}
+          />
         )}
 
-        {!isLoading && !error && assets && assets.length === 0 && (
+        {!isLoading && !isError && assets && assets.length === 0 && (
           <EmptyState
             icon={Server}
             title="Noch keine Assets vorhanden"
@@ -167,8 +169,8 @@ export default function AssetsPage() {
           />
         )}
 
-        {!isLoading && !error && assets && assets.length > 0 && (
-          <div className="rounded-md border border-border bg-surface overflow-hidden">
+        {!isLoading && !isError && assets && assets.length > 0 && (
+          <div className="rounded-md border border-border bg-surface overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>

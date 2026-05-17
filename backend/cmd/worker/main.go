@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -21,6 +22,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/sechealth-app/sechealth/internal/admin"
+	"github.com/sechealth-app/sechealth/internal/auth"
 	"github.com/sechealth-app/sechealth/internal/shared/demo"
 	"github.com/sechealth-app/sechealth/internal/config"
 	"github.com/sechealth-app/sechealth/internal/modules/secprivacy"
@@ -142,6 +144,9 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 
 	// Notifications: daily compliance deadline email alerts
 	mux.HandleFunc(notifications.TaskNotifyDeadlines, handleNotifyDeadlines(cfg, pool))
+
+	// Auth: daily cleanup of expired and used password reset tokens
+	mux.HandleFunc(auth.TaskCleanupPasswordResetTokens, handleCleanupPasswordResetTokens(pool))
 
 	return srv, mux
 }
@@ -844,6 +849,12 @@ func handleRetentionRun(pool *pgxpool.Pool) asynq.HandlerFunc {
 	}
 }
 
+func handleCleanupPasswordResetTokens(pool *pgxpool.Pool) asynq.HandlerFunc {
+	return func(ctx context.Context, _ *asynq.Task) error {
+		return auth.CleanupPasswordResetTokens(ctx, pool)
+	}
+}
+
 func handleWeeklyDigest(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
 		smtpCfg := emaildigest.SMTPConfig{}
@@ -1240,6 +1251,13 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		log.Error().Err(err).Msg("failed to register deadline notification cron")
 	}
 
+	// Daily at 03:00 UTC: delete expired and old used password-reset tokens.
+	if _, err := scheduler.Register("0 3 * * *",
+		auth.NewCleanupPasswordResetTokensTask(),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register password reset token cleanup cron")
+	}
+
 	return scheduler
 }
 
@@ -1303,6 +1321,30 @@ func main() {
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+
+	// Minimal health server on :9090 — used by the Docker Compose healthcheck.
+	// Returns 200 OK while the worker process is alive and its DB pool is healthy.
+	go func() {
+		healthMux := http.NewServeMux()
+		healthMux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+			if err := pool.Ping(r.Context()); err != nil {
+				http.Error(w, `{"status":"unavailable"}`, http.StatusServiceUnavailable)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ok"}`))
+		})
+		healthSrv := &http.Server{
+			Addr:         ":9090",
+			Handler:      healthMux,
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 5 * time.Second,
+		}
+		if err := healthSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error().Err(err).Msg("worker health server error")
+		}
+	}()
 
 	go func() {
 		if err := srv.Run(mux); err != nil {

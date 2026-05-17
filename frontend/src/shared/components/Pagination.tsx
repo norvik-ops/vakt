@@ -19,6 +19,7 @@ export function Pagination({ page, totalPages, onPageChange }: Props) {
           size="sm"
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
+          aria-label="Vorherige Seite"
         >
           &larr;
         </Button>
@@ -27,6 +28,7 @@ export function Pagination({ page, totalPages, onPageChange }: Props) {
           size="sm"
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
+          aria-label="Nächste Seite"
         >
           &rarr;
         </Button>

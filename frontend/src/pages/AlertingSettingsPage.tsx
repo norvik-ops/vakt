@@ -245,7 +245,7 @@ function ChannelsSection() {
   }
 
   return (
-    <div className="bg-surface border border-border rounded-xl overflow-hidden">
+    <div className="bg-surface border border-border rounded-xl overflow-x-auto">
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
         <div className="flex items-center gap-3">
           <Bell className="w-4 h-4 text-brand" />
@@ -368,7 +368,7 @@ function DeliveryHistorySection() {
   const { data: entries = [], isLoading } = useAlertDeliveryLog()
 
   return (
-    <div className="bg-surface border border-border rounded-xl overflow-hidden">
+    <div className="bg-surface border border-border rounded-xl overflow-x-auto">
       <button
         onClick={() => setExpanded((v) => !v)}
         className="w-full flex items-center justify-between px-5 py-3.5 border-b border-border hover:bg-surface2/50 transition-colors"

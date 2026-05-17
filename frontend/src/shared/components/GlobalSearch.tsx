@@ -132,7 +132,7 @@ export function GlobalSearch() {
         role="dialog"
         aria-label="Suche"
         aria-modal="true"
-        className="w-full max-w-lg bg-white dark:bg-[#1E2235] rounded-xl shadow-2xl border border-border overflow-hidden"
+        className="w-full max-w-lg bg-background dark:bg-card rounded-xl shadow-2xl border border-border overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Input row */}
@@ -176,8 +176,8 @@ export function GlobalSearch() {
                   className={[
                     'w-full flex items-center gap-3 px-4 py-2 text-left transition-colors',
                     idx === activeIdx
-                      ? 'bg-[#eef2ff] dark:bg-[#252b40]'
-                      : 'hover:bg-[#f1f5f9] dark:hover:bg-[#252b40]',
+                      ? 'bg-brand/10 dark:bg-muted/50'
+                      : 'hover:bg-muted/50',
                   ].join(' ')}
                 >
                   {ENTITY_ICONS[r.entity_type] ?? <FileText className="w-3.5 h-3.5 text-secondary shrink-0" />}

@@ -171,7 +171,7 @@ export default function AssetDetailPage() {
             {findings.length === 0 ? (
               <p className="text-sm text-secondary py-8 text-center">No findings for this asset.</p>
             ) : (
-              <div className="rounded-md border border-border bg-surface overflow-hidden">
+              <div className="rounded-md border border-border bg-surface overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>

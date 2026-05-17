@@ -59,7 +59,7 @@ function DomainSection({
   const navigate = useNavigate()
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden">
+    <div className="border border-border rounded-lg overflow-x-auto">
       <button
         type="button"
         className="w-full flex items-center justify-between px-4 py-2.5 bg-surface2 hover:bg-surface text-left"

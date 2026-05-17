@@ -58,7 +58,7 @@ const SelectItem = React.forwardRef<
     ref={ref}
     className={cn(
       'relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-[13px] text-primary',
-      'hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] focus:bg-[#f1f5f9] dark:focus:bg-[#1E2235] outline-none',
+      'hover:bg-muted/50 focus:bg-muted/50 outline-none',
       'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       className,
     )}

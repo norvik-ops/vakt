@@ -15,8 +15,10 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 
+	"github.com/sechealth-app/sechealth/internal/shared/dashboard"
 	"github.com/sechealth-app/sechealth/internal/shared/evidence_auto"
 	"github.com/sechealth-app/sechealth/internal/shared/notify"
 )
@@ -25,6 +27,7 @@ import (
 type Service struct {
 	repo        *Repository
 	db          *pgxpool.Pool
+	rdb         *redis.Client
 	asynqClient *asynq.Client
 }
 
@@ -39,6 +42,19 @@ func NewService(db *pgxpool.Pool, asynqOpt asynq.RedisClientOpt) *Service {
 		repo:        NewRepository(db),
 		db:          db,
 		asynqClient: client,
+	}
+}
+
+// WithRedis sets the Redis client used for dashboard cache invalidation.
+func (s *Service) WithRedis(rdb *redis.Client) {
+	s.rdb = rdb
+}
+
+// invalidateDashboardCache deletes the cached dashboard aggregate for the given
+// org from Redis. It is a no-op when Redis is not configured.
+func (s *Service) invalidateDashboardCache(ctx context.Context, orgID string) {
+	if err := dashboard.InvalidateDashboardCache(ctx, s.rdb, orgID); err != nil {
+		log.Warn().Err(err).Str("org_id", orgID).Msg("secpulse: dashboard cache invalidation failed")
 	}
 }
 
@@ -297,11 +313,6 @@ func (s *Service) GetFinding(ctx context.Context, orgID, findingID string) (*Fin
 // setting status to "accepted_risk".  When status is set to "resolved" an
 // auto-evidence job is enqueued so that related SecVitals patch controls are
 // updated automatically.
-//
-// TODO(dashboard-cache): call dashboard.InvalidateDashboardCache(ctx, rdb, orgID) after
-// a successful update so the executive dashboard reflects the new finding state
-// immediately. Requires injecting *redis.Client into Service — defer until the
-// service-layer Redis refactor.
 func (s *Service) UpdateFinding(ctx context.Context, orgID, findingID string, input UpdateFindingInput) (*Finding, error) {
 	if input.Status != nil && *input.Status == "accepted_risk" {
 		if input.Justification == nil || strings.TrimSpace(*input.Justification) == "" {
@@ -370,6 +381,7 @@ func (s *Service) UpdateFinding(ctx context.Context, orgID, findingID string, in
 		}()
 	}
 
+	s.invalidateDashboardCache(ctx, orgID)
 	return finding, nil
 }
 

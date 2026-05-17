@@ -16,6 +16,7 @@ import {
 } from '../components/ui/table'
 import { Skeleton } from '../components/ui/skeleton'
 import { useAuthStore } from '../shared/stores/auth'
+import { ErrorState } from '../shared/components/ErrorState'
 import { useAuditLog, type AuditLogEntry } from '../hooks/useAuditLog'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -274,12 +275,13 @@ export default function AuditLogPage() {
       {/* Table */}
       <div className="flex-1 px-6 pb-6 overflow-auto">
         {isError ? (
-          <div className="mt-8 text-center text-sm text-destructive">
-            Fehler beim Laden des Audit-Logs. Bitte versuchen Sie es erneut.
-          </div>
+          <ErrorState
+            message="Audit-Log konnte nicht geladen werden."
+            onRetry={() => void refetch()}
+          />
         ) : (
           <>
-            <div className="rounded-lg border border-border overflow-hidden">
+            <div className="rounded-lg border border-border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-surface">

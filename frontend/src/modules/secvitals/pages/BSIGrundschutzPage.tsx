@@ -158,7 +158,7 @@ function CategoryCard({ cat, expanded, onToggle }: {
       {/* Header */}
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] transition-colors text-left"
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors text-left"
       >
         <div className="flex items-center gap-3">
           <Badge className="bg-[#1e3a5f] text-[#93c5fd] border-transparent text-xs font-mono shrink-0">

@@ -24,6 +24,7 @@ import { useDashboardScore, useDashboardAggregate } from '../hooks/useDashboard'
 import type { RiskSummary, ActivityEntry } from '../hooks/useDashboard'
 import { useOnboardingStatus } from '../hooks/useOnboarding'
 import { OnboardingBanner, OnboardingWizard } from '../components/OnboardingWizard'
+import { GettingStartedChecklist } from '../shared/components/GettingStartedChecklist'
 import { Skeleton } from '../components/ui/skeleton'
 import type { FrameworkScore } from '../hooks/useDashboard'
 import { useScoreHistory } from '../modules/secvitals/hooks/useScoreHistory'
@@ -379,12 +380,16 @@ function ScoreHistoryCard() {
             <button
               className={`px-2 py-1 transition-colors ${days === 30 ? 'bg-brand text-white' : 'bg-surface text-secondary hover:bg-border/50'}`}
               onClick={() => setDays(30)}
+              aria-label="Verlauf 30 Tage anzeigen"
+              aria-pressed={days === 30}
             >
               30 Tage
             </button>
             <button
               className={`px-2 py-1 transition-colors ${days === 90 ? 'bg-brand text-white' : 'bg-surface text-secondary hover:bg-border/50'}`}
               onClick={() => setDays(90)}
+              aria-label="Verlauf 90 Tage anzeigen"
+              aria-pressed={days === 90}
             >
               90 Tage
             </button>
@@ -448,8 +453,8 @@ export default function Dashboard() {
   const { data: onboarding } = useOnboardingStatus()
   const [wizardOpen, setWizardOpen] = useState(false)
 
-  const { data: scoreData, isLoading: scoreLoading } = useDashboardScore()
-  const { data: agg, isLoading: aggLoading } = useDashboardAggregate()
+  const { data: scoreData, isLoading: scoreLoading, isError: scoreError } = useDashboardScore()
+  const { data: agg, isLoading: aggLoading, isError: aggError } = useDashboardAggregate()
   const { data: scoreHistory } = useScoreHistory(30)
   const { data: critFindings, isLoading: findingsLoading } = useFindings({ severity: 'critical' })
   const { data: frameworks, isLoading: fwLoading } = useFrameworks()
@@ -641,6 +646,20 @@ export default function Dashboard() {
 
       {/* Right panel */}
       <div className="flex-1 overflow-auto p-6 space-y-6">
+        {/* Getting Started Checklist */}
+        <GettingStartedChecklist />
+
+        {/* Error banner when main dashboard data fails */}
+        {(scoreError || aggError) && (
+          <div
+            role="alert"
+            className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+          >
+            <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span>Dashboard-Daten konnten nicht geladen werden.</span>
+          </div>
+        )}
+
         {/* Onboarding (preserved) */}
         {onboarding && !onboarding.completed && !onboarding.dismissed && (
           <OnboardingBanner status={onboarding} onOpen={() => setWizardOpen(true)} />
@@ -656,7 +675,7 @@ export default function Dashboard() {
         {/* ── Compliance KPI cards ── */}
         <section>
           <h2 className="text-[14px] font-semibold text-primary mb-3">Compliance-Übersicht</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <KPICard
               label="Offene CAPAs"
               value={agg?.open_capas}
@@ -768,7 +787,7 @@ export default function Dashboard() {
               <Link
                 key={label}
                 to={path}
-                className="flex items-center justify-between py-3 border-b border-border hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] -mx-1 px-1 rounded-sm transition-colors group"
+                className="flex items-center justify-between py-3 border-b border-border hover:bg-muted/50 -mx-1 px-1 rounded-sm transition-colors group"
               >
                 <div className="flex items-center gap-3">
                   <Icon className={`w-4 h-4 shrink-0 ${iconColor}`} />
@@ -792,7 +811,7 @@ export default function Dashboard() {
           <div className="space-y-px">
             <Link
               to="/settings/score-config"
-              className="flex items-center justify-between py-3 border-b border-border hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] -mx-1 px-1 rounded-sm transition-colors group"
+              className="flex items-center justify-between py-3 border-b border-border hover:bg-muted/50 -mx-1 px-1 rounded-sm transition-colors group"
             >
               <div className="flex items-center gap-3">
                 <Settings className="w-4 h-4 shrink-0 text-secondary" />
@@ -805,7 +824,7 @@ export default function Dashboard() {
             </Link>
             <Link
               to="/settings/alerting"
-              className="flex items-center justify-between py-3 border-b border-border hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] -mx-1 px-1 rounded-sm transition-colors group"
+              className="flex items-center justify-between py-3 border-b border-border hover:bg-muted/50 -mx-1 px-1 rounded-sm transition-colors group"
             >
               <div className="flex items-center gap-3">
                 <Settings className="w-4 h-4 shrink-0 text-secondary" />

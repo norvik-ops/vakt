@@ -22,6 +22,7 @@ import {
 } from '../hooks/useTeam'
 import { UserPermissionsEditor } from '../components/UserPermissionsEditor'
 import { toast } from '../shared/hooks/useToast'
+import { ErrorState } from '../shared/components/ErrorState'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -193,7 +194,7 @@ function MembersTable({ members, currentUserID }: { members: TeamMember[]; curre
   }
 
   return (
-    <div className="rounded-lg border border-border overflow-hidden">
+    <div className="rounded-lg border border-border overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
@@ -331,7 +332,7 @@ function InvitationsTable({ invitations }: { invitations: TeamInvitation[] }) {
       <h2 className="text-sm font-semibold text-secondary uppercase tracking-wide">
         Ausstehende Einladungen
       </h2>
-      <div className="rounded-lg border border-border overflow-hidden">
+      <div className="rounded-lg border border-border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -393,10 +394,11 @@ function InvitationsTable({ invitations }: { invitations: TeamInvitation[] }) {
 export default function TeamSettingsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const { user } = useAuthStore()
-  const { data: members = [], isLoading: membersLoading } = useTeamMembers()
-  const { data: invitations = [], isLoading: invLoading } = useInvitations()
+  const { data: members = [], isLoading: membersLoading, isError: membersError, refetch: refetchMembers } = useTeamMembers()
+  const { data: invitations = [], isLoading: invLoading, isError: invError, refetch: refetchInv } = useInvitations()
 
   const isLoading = membersLoading || invLoading
+  const isError = membersError || invError
 
   return (
     <div className="p-6 space-y-8 max-w-5xl">
@@ -411,7 +413,12 @@ export default function TeamSettingsPage() {
         }
       />
 
-      {isLoading ? (
+      {isError ? (
+        <ErrorState
+          message="Teamdaten konnten nicht geladen werden."
+          onRetry={() => { void refetchMembers(); void refetchInv() }}
+        />
+      ) : isLoading ? (
         <div className="flex items-center justify-center h-32 text-secondary text-sm">
           Laden...
         </div>

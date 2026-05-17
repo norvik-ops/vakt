@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useSavedFilters } from '../../../shared/hooks/useSavedFilters'
 import { useNavigate } from 'react-router-dom'
-import { Download, AlertTriangle, Upload, Trash2, RefreshCw, FileDown } from 'lucide-react'
+import { Download, AlertTriangle, Upload, Trash2, RefreshCw, FileDown, ExternalLink } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Pagination } from '../../../shared/components/Pagination'
@@ -25,6 +25,9 @@ import { useKeyboardNav } from '../../../shared/hooks/useKeyboardNav'
 import { toast } from '../../../shared/hooks/useToast'
 import { Skeleton } from '../../../components/ui/skeleton'
 import { exportToCSV } from '../../../lib/csv'
+import { ErrorState } from '../../../shared/components/ErrorState'
+import { useJiraConfig, useCreateJiraIssue } from '../../../hooks/useJira'
+import type { JiraIssue } from '../../../hooks/useJira'
 
 const severityClass: Record<Finding['severity'], string> = {
   info:     'bg-[#374151] text-[#94a3b8] border-transparent',
@@ -32,6 +35,51 @@ const severityClass: Record<Finding['severity'], string> = {
   medium:   'bg-[#78350f] text-[#f59e0b] border-transparent',
   high:     'bg-[#7c2d12] text-[#f97316] border-transparent',
   critical: 'bg-[#7f1d1d] text-[#ef4444] border-transparent',
+}
+
+// --- Jira issue cell ---
+
+function JiraCell({ findingId, issue, isConfigured }: { findingId: string; issue: JiraIssue | undefined; isConfigured: boolean }) {
+  const createIssue = useCreateJiraIssue()
+
+  if (!isConfigured) return null
+
+  if (issue) {
+    return (
+      <a
+        href={issue.issue_url}
+        target="_blank"
+        rel="noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className="inline-flex items-center gap-1 text-xs font-mono text-brand hover:underline"
+      >
+        {issue.issue_key}
+        <ExternalLink className="w-3 h-3" />
+      </a>
+    )
+  }
+
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation()
+        createIssue.mutate(findingId, {
+          onSuccess: (data) => {
+            toast(`Ticket ${data.issue_key} erstellt`, 'success')
+          },
+          onError: (err) => {
+            toast(err.message, 'error')
+          },
+        })
+      }}
+      disabled={createIssue.isPending}
+      title="Jira-Ticket erstellen"
+      className="inline-flex items-center gap-1 text-xs text-secondary hover:text-brand transition-colors disabled:opacity-50"
+    >
+      <ExternalLink className="w-3.5 h-3.5" />
+      Ticket
+    </button>
+  )
 }
 
 export default function FindingsPage() {
@@ -49,17 +97,21 @@ export default function FindingsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
   const [page, setPage] = useState(1)
+  const [jiraIssueMap, setJiraIssueMap] = useState<Map<string, JiraIssue>>(new Map())
   const searchRef = useRef<HTMLInputElement>(null)
 
-  const { data, isLoading, error } = useFindings({
+  const { data, isLoading, isError, error, refetch } = useFindings({
     severity: severityFilter === 'all' ? undefined : severityFilter,
     status: statusFilter === 'all' ? undefined : statusFilter,
     search: searchQuery || undefined,
   }, page)
   const bulkUpdate = useBulkUpdateFindings()
   const deleteFinding = useDeleteFinding()
+  const createJiraIssue = useCreateJiraIssue()
+  const { data: jiraConfig } = useJiraConfig()
 
   const findings = data?.data ?? []
+  const jiraConfigured = jiraConfig?.is_configured ?? false
 
   useKeyboardNav(focusedIndex, setFocusedIndex, {
     itemCount: findings.length,
@@ -126,6 +178,31 @@ export default function FindingsPage() {
       updated_at: f.updated_at,
     }))
     exportToCSV('findings-export', rows)
+  }
+
+  async function handleBulkCreateJiraIssues() {
+    if (selected.size === 0) return
+    const ids = Array.from(selected)
+    let created = 0
+    let failed = 0
+    for (const id of ids) {
+      try {
+        const result = await createJiraIssue.mutateAsync(id)
+        setJiraIssueMap((prev) => new Map(prev).set(id, {
+          id: '',
+          org_id: '',
+          finding_id: id,
+          issue_key: result.issue_key,
+          issue_url: result.issue_url,
+          created_at: new Date().toISOString(),
+        }))
+        created++
+      } catch {
+        failed++
+      }
+    }
+    if (created > 0) toast(`${created} Jira-Ticket(s) erstellt`, 'success')
+    if (failed > 0) toast(`${failed} Ticket(s) fehlgeschlagen`, 'error')
   }
 
   return (
@@ -218,6 +295,7 @@ export default function FindingsPage() {
             value={searchQuery}
             onChange={(e) => { setFilters((f) => ({ ...f, searchQuery: e.target.value })); setFocusedIndex(-1); setPage(1) }}
             placeholder="Suchen… (Titel, CVE, Asset)"
+            aria-label="Suche nach Findings"
             className="w-full max-w-sm rounded-md border border-border bg-surface px-3 py-1.5 text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand"
           />
           <p className="text-xs text-muted mt-1">j/k navigieren · Enter öffnen · e bearbeiten · / suchen</p>
@@ -262,9 +340,14 @@ export default function FindingsPage() {
             ))}
           </div>
         )}
-        {error && <p className="text-sm text-red-600">Error: {error.message}</p>}
+        {isError && (
+          <ErrorState
+            message={error?.message}
+            onRetry={() => void refetch()}
+          />
+        )}
 
-        {!isLoading && !error && findings.length === 0 && (
+        {!isLoading && !isError && findings.length === 0 && (
           <EmptyState
             icon={AlertTriangle}
             title="Keine Befunde"
@@ -272,8 +355,8 @@ export default function FindingsPage() {
           />
         )}
 
-        {!isLoading && !error && findings.length > 0 && (
-          <div className="rounded-md border border-border bg-surface overflow-hidden">
+        {!isLoading && !isError && findings.length > 0 && (
+          <div className="rounded-md border border-border bg-surface overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -285,6 +368,7 @@ export default function FindingsPage() {
                         if (el) el.indeterminate = selected.size > 0 && selected.size < findings.length
                       }}
                       onChange={toggleAll}
+                      aria-label="Alle Befunde auswählen"
                       className="rounded"
                     />
                   </TableHead>
@@ -294,6 +378,7 @@ export default function FindingsPage() {
                   <TableHead>Asset</TableHead>
                   <TableHead>CVE</TableHead>
                   <TableHead>CVSS</TableHead>
+                  {jiraConfigured && <TableHead>Jira</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -303,7 +388,7 @@ export default function FindingsPage() {
                     tabIndex={0}
                     className={cn(
                       'cursor-pointer hover:bg-surface2',
-                      index === focusedIndex && 'ring-1 ring-brand bg-[#eef2ff] dark:bg-[#1E2235]',
+                      index === focusedIndex && 'ring-1 ring-brand bg-brand/10 dark:bg-muted/50',
                       selected.has(f.id) && 'bg-brand/5',
                     )}
                     onClick={() => setFocusedIndex(index)}
@@ -337,6 +422,15 @@ export default function FindingsPage() {
                     <TableCell onClick={() => navigate(`/secpulse/findings/${f.id}`)}>
                       {f.cvss_score != null ? f.cvss_score.toFixed(1) : '—'}
                     </TableCell>
+                    {jiraConfigured && (
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <JiraCell
+                          findingId={f.id}
+                          issue={jiraIssueMap.get(f.id)}
+                          isConfigured={jiraConfigured}
+                        />
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -364,10 +458,16 @@ export default function FindingsPage() {
             icon: FileDown,
             onClick: handleExportSelected,
           },
+          ...(jiraConfigured ? [{
+            label: 'Jira-Tickets erstellen',
+            icon: ExternalLink,
+            onClick: () => { void handleBulkCreateJiraIssues() },
+            disabled: createJiraIssue.isPending,
+          }] : []),
           {
             label: 'Löschen',
             icon: Trash2,
-            variant: 'destructive',
+            variant: 'destructive' as const,
             onClick: () => setDeleteDialogOpen(true),
             disabled: deleteFinding.isPending,
           },

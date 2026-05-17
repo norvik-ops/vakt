@@ -34,7 +34,7 @@ function TargetGroupRow({ group, onDelete }: { group: TargetGroup; onDelete: () 
   }
 
   return (
-    <div className="border border-border rounded-lg bg-surface overflow-hidden">
+    <div className="border border-border rounded-lg bg-surface overflow-x-auto">
       <div
         className="flex items-center gap-4 p-4 cursor-pointer hover:bg-surface2"
         onClick={() => setExpanded(!expanded)}

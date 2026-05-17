@@ -322,7 +322,7 @@ function ApiKeysContent() {
 
         <Card className="p-0 overflow-hidden">
           {/* Table header */}
-          <div className="grid grid-cols-[2fr_1.5fr_1.5fr_1.5fr_auto] gap-x-4 px-4 py-2.5 border-b border-border bg-[#f8fafc] dark:bg-[#1E2235]">
+          <div className="grid grid-cols-[2fr_1.5fr_1.5fr_1.5fr_auto] gap-x-4 px-4 py-2.5 border-b border-border bg-muted/30">
             <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">Name / Prefix</span>
             <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">Erstellt am</span>
             <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">Zuletzt verwendet</span>

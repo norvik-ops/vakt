@@ -85,7 +85,7 @@ export default function PhishReportsPage() {
               description="Sobald Mitarbeiter verdächtige E-Mails über das Add-in melden, erscheinen sie hier."
             />
           ) : (
-            <div className="rounded-md border border-border bg-surface overflow-hidden">
+            <div className="rounded-md border border-border bg-surface overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>

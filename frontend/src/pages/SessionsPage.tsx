@@ -79,7 +79,7 @@ export default function SessionsPage() {
 
       <Card className="p-0 overflow-hidden">
         {/* Table header */}
-        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-x-4 px-4 py-2.5 border-b border-border bg-[#f8fafc] dark:bg-[#1E2235]">
+        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-x-4 px-4 py-2.5 border-b border-border bg-muted/30">
           <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">Gerät / Browser</span>
           <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">IP-Adresse</span>
           <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">Erstellt am</span>

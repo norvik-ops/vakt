@@ -19,9 +19,11 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 
 	"github.com/sechealth-app/sechealth/internal/shared/ai"
+	"github.com/sechealth-app/sechealth/internal/shared/dashboard"
 	"github.com/sechealth-app/sechealth/internal/shared/notify"
 )
 
@@ -34,6 +36,7 @@ var ErrNotFound = errors.New("not found")
 // Service handles ComplyKit business logic.
 type Service struct {
 	db       *pgxpool.Pool
+	rdb      *redis.Client
 	repo     *Repository
 	notifSvc notifyService
 	aiClient *ai.AIClient
@@ -49,6 +52,19 @@ func NewService(db *pgxpool.Pool) *Service {
 	return &Service{
 		db:   db,
 		repo: NewRepository(db),
+	}
+}
+
+// WithRedis sets the Redis client used for dashboard cache invalidation.
+func (s *Service) WithRedis(rdb *redis.Client) {
+	s.rdb = rdb
+}
+
+// invalidateDashboardCache deletes the cached dashboard aggregate for the given
+// org from Redis. It is a no-op when Redis is not configured.
+func (s *Service) invalidateDashboardCache(ctx context.Context, orgID string) {
+	if err := dashboard.InvalidateDashboardCache(ctx, s.rdb, orgID); err != nil {
+		log.Warn().Err(err).Str("org_id", orgID).Msg("secvitals: dashboard cache invalidation failed")
 	}
 }
 
@@ -430,10 +446,6 @@ func (s *Service) ListControls(ctx context.Context, orgID, frameworkID string) (
 }
 
 // UpdateControl updates not_applicable, reason, manual_status, and optionally maturity_score on a control.
-//
-// TODO(dashboard-cache): call dashboard.InvalidateDashboardCache(ctx, rdb, orgID) after
-// a successful update. Requires injecting *redis.Client into Service — defer until the
-// service-layer Redis refactor.
 func (s *Service) UpdateControl(ctx context.Context, orgID, controlID string, input UpdateControlInput) (*Control, error) {
 	if input.MaturityScore != nil && (*input.MaturityScore < 0 || *input.MaturityScore > 3) {
 		return nil, fmt.Errorf("maturity_score must be between 0 and 3")
@@ -441,6 +453,7 @@ func (s *Service) UpdateControl(ctx context.Context, orgID, controlID string, in
 	if err := s.repo.UpdateControl(ctx, orgID, controlID, input.NotApplicable, input.Reason, input.ManualStatus, input.MaturityScore); err != nil {
 		return nil, fmt.Errorf("update control: %w", err)
 	}
+	s.invalidateDashboardCache(ctx, orgID)
 	return s.GetControl(ctx, orgID, controlID)
 }
 
@@ -1151,15 +1164,22 @@ func (s *Service) GetRisk(ctx context.Context, orgID, id string) (*Risk, error) 
 	return s.repo.GetRisk(ctx, orgID, id)
 }
 
-// TODO(dashboard-cache): call dashboard.InvalidateDashboardCache(ctx, rdb, orgID) after
-// CreateRisk/UpdateRisk. Requires injecting *redis.Client into Service — defer until the
-// service-layer Redis refactor.
 func (s *Service) CreateRisk(ctx context.Context, orgID string, in CreateRiskInput) (*Risk, error) {
-	return s.repo.CreateRisk(ctx, orgID, in)
+	risk, err := s.repo.CreateRisk(ctx, orgID, in)
+	if err != nil {
+		return nil, err
+	}
+	s.invalidateDashboardCache(ctx, orgID)
+	return risk, nil
 }
 
 func (s *Service) UpdateRisk(ctx context.Context, orgID, id string, in UpdateRiskInput) (*Risk, error) {
-	return s.repo.UpdateRisk(ctx, orgID, id, in)
+	risk, err := s.repo.UpdateRisk(ctx, orgID, id, in)
+	if err != nil {
+		return nil, err
+	}
+	s.invalidateDashboardCache(ctx, orgID)
+	return risk, nil
 }
 
 // UpdateRiskTreatment patches the treatment workflow fields of a risk (ISO 27001 Clause 6).

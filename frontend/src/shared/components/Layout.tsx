@@ -149,6 +149,14 @@ export default function Layout() {
 
   return (
     <div className="flex flex-col h-screen bg-bg">
+      {/* Skip to main content */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 z-50 bg-background px-4 py-2 rounded-lg border font-medium"
+      >
+        Zum Hauptinhalt springen
+      </a>
+
       {demoMode && !demoBannerDismissed && (
         <div className="bg-brand/10 border-b border-brand/30 px-4 py-2 flex items-center justify-between text-sm shrink-0">
           <span className="text-brand flex items-center gap-2">
@@ -241,7 +249,7 @@ export default function Layout() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 overflow-y-auto">
+        <nav role="navigation" aria-label="Hauptnavigation" className="flex-1 px-3 overflow-y-auto">
           <p className="px-2 mb-1 text-[10px] font-semibold text-secondary uppercase tracking-wider opacity-60">
             Module
           </p>
@@ -253,11 +261,12 @@ export default function Layout() {
                 <div key={path}>
                   <Link
                     to={path}
+                    onClick={() => setSidebarOpen(false)}
                     className={cn(
                       'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                       active
-                        ? 'bg-[#eef2ff] dark:bg-[#1E2235] text-brand dark:text-primary'
-                        : 'text-secondary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] hover:text-primary',
+                        ? 'bg-brand/10 dark:bg-muted/50 text-brand dark:text-primary'
+                        : 'text-secondary hover:bg-muted/50 hover:text-primary',
                     )}
                   >
                     <Icon className={cn('w-4 h-4 shrink-0', active ? 'text-brand' : '')} />
@@ -274,11 +283,12 @@ export default function Layout() {
                           <Link
                             key={cp}
                             to={cp}
+                            onClick={() => setSidebarOpen(false)}
                             className={cn(
                               'flex items-center gap-2 px-2 py-[6px] rounded-md text-[12px] font-medium transition-all duration-150',
                               childActive
-                                ? 'text-brand bg-[#eef2ff] dark:bg-[#1E2235]'
-                                : 'text-secondary hover:text-primary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235]',
+                                ? 'text-brand bg-brand/10 dark:bg-muted/50'
+                                : 'text-secondary hover:text-primary hover:bg-muted/50',
                             )}
                           >
                             <CIcon className="w-3.5 h-3.5 shrink-0" />
@@ -314,11 +324,12 @@ export default function Layout() {
           <div className="space-y-[2px]">
             <Link
               to="/settings"
+              onClick={() => setSidebarOpen(false)}
               className={cn(
                 'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                 location.pathname === '/settings'
-                  ? 'bg-[#eef2ff] dark:bg-[#1E2235] text-brand dark:text-primary'
-                  : 'text-secondary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] hover:text-primary',
+                  ? 'bg-brand/10 dark:bg-muted/50 text-brand dark:text-primary'
+                  : 'text-secondary hover:bg-muted/50 hover:text-primary',
               )}
             >
               <Settings className={cn('w-4 h-4 shrink-0', location.pathname === '/settings' ? 'text-brand' : '')} />
@@ -326,11 +337,12 @@ export default function Layout() {
             </Link>
             <Link
               to="/settings/alerting"
+              onClick={() => setSidebarOpen(false)}
               className={cn(
                 'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                 isActive('/settings/alerting')
-                  ? 'bg-[#eef2ff] dark:bg-[#1E2235] text-brand dark:text-primary'
-                  : 'text-secondary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] hover:text-primary',
+                  ? 'bg-brand/10 dark:bg-muted/50 text-brand dark:text-primary'
+                  : 'text-secondary hover:bg-muted/50 hover:text-primary',
               )}
             >
               <Bell className={cn('w-4 h-4 shrink-0', isActive('/settings/alerting') ? 'text-brand' : '')} />
@@ -338,11 +350,12 @@ export default function Layout() {
             </Link>
             <Link
               to="/settings/retention"
+              onClick={() => setSidebarOpen(false)}
               className={cn(
                 'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                 isActive('/settings/retention')
-                  ? 'bg-[#eef2ff] dark:bg-[#1E2235] text-brand dark:text-primary'
-                  : 'text-secondary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] hover:text-primary',
+                  ? 'bg-brand/10 dark:bg-muted/50 text-brand dark:text-primary'
+                  : 'text-secondary hover:bg-muted/50 hover:text-primary',
               )}
             >
               <Trash2 className={cn('w-4 h-4 shrink-0', isActive('/settings/retention') ? 'text-brand' : '')} />
@@ -350,11 +363,12 @@ export default function Layout() {
             </Link>
             <Link
               to="/settings/branding"
+              onClick={() => setSidebarOpen(false)}
               className={cn(
                 'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                 isActive('/settings/branding')
-                  ? 'bg-[#eef2ff] dark:bg-[#1E2235] text-brand dark:text-primary'
-                  : 'text-secondary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] hover:text-primary',
+                  ? 'bg-brand/10 dark:bg-muted/50 text-brand dark:text-primary'
+                  : 'text-secondary hover:bg-muted/50 hover:text-primary',
               )}
             >
               <Palette className={cn('w-4 h-4 shrink-0', isActive('/settings/branding') ? 'text-brand' : '')} />
@@ -362,11 +376,12 @@ export default function Layout() {
             </Link>
             <Link
               to="/settings/trust-center"
+              onClick={() => setSidebarOpen(false)}
               className={cn(
                 'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                 isActive('/settings/trust-center')
-                  ? 'bg-[#eef2ff] dark:bg-[#1E2235] text-brand dark:text-primary'
-                  : 'text-secondary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] hover:text-primary',
+                  ? 'bg-brand/10 dark:bg-muted/50 text-brand dark:text-primary'
+                  : 'text-secondary hover:bg-muted/50 hover:text-primary',
               )}
             >
               <Shield className={cn('w-4 h-4 shrink-0', isActive('/settings/trust-center') ? 'text-brand' : '')} />
@@ -374,11 +389,12 @@ export default function Layout() {
             </Link>
             <Link
               to="/settings/auditors"
+              onClick={() => setSidebarOpen(false)}
               className={cn(
                 'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                 isActive('/settings/auditors')
-                  ? 'bg-[#eef2ff] dark:bg-[#1E2235] text-brand dark:text-primary'
-                  : 'text-secondary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] hover:text-primary',
+                  ? 'bg-brand/10 dark:bg-muted/50 text-brand dark:text-primary'
+                  : 'text-secondary hover:bg-muted/50 hover:text-primary',
               )}
             >
               <UserCheck className={cn('w-4 h-4 shrink-0', isActive('/settings/auditors') ? 'text-brand' : '')} />
@@ -386,11 +402,12 @@ export default function Layout() {
             </Link>
             <Link
               to="/settings/team"
+              onClick={() => setSidebarOpen(false)}
               className={cn(
                 'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                 isActive('/settings/team')
-                  ? 'bg-[#eef2ff] dark:bg-[#1E2235] text-brand dark:text-primary'
-                  : 'text-secondary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] hover:text-primary',
+                  ? 'bg-brand/10 dark:bg-muted/50 text-brand dark:text-primary'
+                  : 'text-secondary hover:bg-muted/50 hover:text-primary',
               )}
             >
               <Users className={cn('w-4 h-4 shrink-0', isActive('/settings/team') ? 'text-brand' : '')} />
@@ -399,11 +416,12 @@ export default function Layout() {
             {isAdminOrOwner && (
               <Link
                 to="/settings/audit-log"
+                onClick={() => setSidebarOpen(false)}
                 className={cn(
                   'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                   isActive('/settings/audit-log')
-                    ? 'bg-[#eef2ff] dark:bg-[#1E2235] text-brand dark:text-primary'
-                    : 'text-secondary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] hover:text-primary',
+                    ? 'bg-brand/10 dark:bg-muted/50 text-brand dark:text-primary'
+                    : 'text-secondary hover:bg-muted/50 hover:text-primary',
                 )}
               >
                 <ScrollText className={cn('w-4 h-4 shrink-0', isActive('/settings/audit-log') ? 'text-brand' : '')} />
@@ -413,11 +431,12 @@ export default function Layout() {
             {isAdminOrOwner && (
               <Link
                 to="/admin/health"
+                onClick={() => setSidebarOpen(false)}
                 className={cn(
                   'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                   isActive('/admin/health')
-                    ? 'bg-[#eef2ff] dark:bg-[#1E2235] text-brand dark:text-primary'
-                    : 'text-secondary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] hover:text-primary',
+                    ? 'bg-brand/10 dark:bg-muted/50 text-brand dark:text-primary'
+                    : 'text-secondary hover:bg-muted/50 hover:text-primary',
                 )}
               >
                 <HeartPulse className={cn('w-4 h-4 shrink-0', isActive('/admin/health') ? 'text-brand' : '')} />
@@ -427,11 +446,12 @@ export default function Layout() {
             {isAdminOrOwner && (
               <Link
                 to="/admin/tenants"
+                onClick={() => setSidebarOpen(false)}
                 className={cn(
                   'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                   isActive('/admin/tenants')
-                    ? 'bg-[#eef2ff] dark:bg-[#1E2235] text-brand dark:text-primary'
-                    : 'text-secondary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] hover:text-primary',
+                    ? 'bg-brand/10 dark:bg-muted/50 text-brand dark:text-primary'
+                    : 'text-secondary hover:bg-muted/50 hover:text-primary',
                 )}
               >
                 <Building2 className={cn('w-4 h-4 shrink-0', isActive('/admin/tenants') ? 'text-brand' : '')} />
@@ -441,11 +461,12 @@ export default function Layout() {
             {isAdminOrOwner && (
               <Link
                 to="/admin/security"
+                onClick={() => setSidebarOpen(false)}
                 className={cn(
                   'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                   isActive('/admin/security')
-                    ? 'bg-[#eef2ff] dark:bg-[#1E2235] text-brand dark:text-primary'
-                    : 'text-secondary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] hover:text-primary',
+                    ? 'bg-brand/10 dark:bg-muted/50 text-brand dark:text-primary'
+                    : 'text-secondary hover:bg-muted/50 hover:text-primary',
                 )}
               >
                 <ShieldAlert className={cn('w-4 h-4 shrink-0', isActive('/admin/security') ? 'text-brand' : '')} />
@@ -454,11 +475,12 @@ export default function Layout() {
             )}
             <Link
               to="/account"
+              onClick={() => setSidebarOpen(false)}
               className={cn(
                 'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                 isActive('/account')
-                  ? 'bg-[#eef2ff] dark:bg-[#1E2235] text-brand dark:text-primary'
-                  : 'text-secondary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] hover:text-primary',
+                  ? 'bg-brand/10 dark:bg-muted/50 text-brand dark:text-primary'
+                  : 'text-secondary hover:bg-muted/50 hover:text-primary',
               )}
             >
               <User className={cn('w-4 h-4 shrink-0', isActive('/account') ? 'text-brand' : '')} />
@@ -466,11 +488,12 @@ export default function Layout() {
             </Link>
             <Link
               to="/account/sessions"
+              onClick={() => setSidebarOpen(false)}
               className={cn(
                 'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                 isActive('/account/sessions')
-                  ? 'bg-[#eef2ff] dark:bg-[#1E2235] text-brand dark:text-primary'
-                  : 'text-secondary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] hover:text-primary',
+                  ? 'bg-brand/10 dark:bg-muted/50 text-brand dark:text-primary'
+                  : 'text-secondary hover:bg-muted/50 hover:text-primary',
               )}
             >
               <MonitorSmartphone className={cn('w-4 h-4 shrink-0', isActive('/account/sessions') ? 'text-brand' : '')} />
@@ -488,7 +511,7 @@ export default function Layout() {
             href="https://github.com/norvik-ops/vakt/wiki"
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] text-secondary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] hover:text-primary transition-all duration-150"
+            className="w-full flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] text-secondary hover:bg-muted/50 hover:text-primary transition-all duration-150"
           >
             <BookOpen className="w-4 h-4 shrink-0" />
             Dokumentation
@@ -497,7 +520,7 @@ export default function Layout() {
           <button
             onClick={toggle}
             aria-label="Theme wechseln"
-            className="w-full flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] text-secondary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] hover:text-primary transition-all duration-150"
+            className="w-full flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] text-secondary hover:bg-muted/50 hover:text-primary transition-all duration-150"
           >
             {theme === 'dark'
               ? <><Sun className="w-4 h-4 shrink-0" />Heller Modus</>
@@ -511,7 +534,7 @@ export default function Layout() {
           )}
           <button
             onClick={logout}
-            className="w-full flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] text-secondary hover:bg-[#f1f5f9] dark:hover:bg-[#1E2235] hover:text-red-500 transition-all duration-150"
+            className="w-full flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] text-secondary hover:bg-muted/50 hover:text-red-500 transition-all duration-150"
           >
             <LogOut className="w-4 h-4 shrink-0" />
             Abmelden
@@ -523,7 +546,7 @@ export default function Layout() {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-auto bg-bg flex flex-col min-w-0">
+      <main id="main-content" role="main" className="flex-1 overflow-auto bg-bg flex flex-col min-w-0">
         {/* Mobile top bar with hamburger */}
         <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-border bg-surface shrink-0">
           <button

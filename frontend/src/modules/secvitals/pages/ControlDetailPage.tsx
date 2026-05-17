@@ -32,6 +32,7 @@ import { maturityLabel, maturityColor } from '../utils/tisax'
 import { ControlMappingsBadge } from '../components/ControlMappingsBadge'
 import { toast } from '../../../shared/hooks/useToast'
 import { useAuthStore } from '../../../shared/stores/auth'
+import { ErrorState } from '../../../shared/components/ErrorState'
 import { useApprovalSetting, useRequestControlApproval } from '../hooks/useApprovals'
 import { Textarea } from '../../../components/ui/textarea'
 
@@ -146,7 +147,7 @@ export default function ControlDetailPage() {
   const { user } = useAuthStore()
   const isAdmin = user?.roles?.includes('Admin') ?? false
 
-  const { data: control, isLoading: controlLoading } = useControl(controlId)
+  const { data: control, isLoading: controlLoading, isError: controlError, refetch: refetchControl } = useControl(controlId)
   const { data: framework } = useFramework(frameworkId)
   const { data: allControls } = useFrameworkControls(frameworkId)
   const { data: evidence, isLoading: evidenceLoading } = useEvidence(controlId)
@@ -336,6 +337,13 @@ export default function ControlDetailPage() {
       />
 
       <div className="flex-1 p-6 space-y-6">
+        {controlError && (
+          <ErrorState
+            message="Control konnte nicht geladen werden."
+            onRetry={() => void refetchControl()}
+          />
+        )}
+
         {/* Control info card */}
         {controlLoading ? (
           <div className="flex justify-center py-8">

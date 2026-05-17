@@ -36,6 +36,7 @@ export function BulkActionBar({ selectedCount, onClearSelection, actions }: Bulk
           size="icon"
           className="h-6 w-6 text-white/60 hover:text-white hover:bg-white/10"
           onClick={onClearSelection}
+          aria-label="Auswahl aufheben"
           title="Auswahl aufheben"
         >
           <X className="w-3.5 h-3.5" />

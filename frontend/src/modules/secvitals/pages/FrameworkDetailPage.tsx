@@ -49,6 +49,7 @@ import { useAuditorLinks, useRevokeAuditorLink, useCreateAuditorLink } from '../
 import { useUpdateControl } from '../hooks/useControls'
 import { toast } from '../../../shared/hooks/useToast'
 import { Skeleton } from '../../../components/ui/skeleton'
+import { ErrorState } from '../../../shared/components/ErrorState'
 
 // ── DORA → ISO 27001 mapping info block ──────────────────────────────────────
 
@@ -221,6 +222,7 @@ function AuditorLinksTab({ frameworkId }: { frameworkId: string }) {
                       className="text-red-600 hover:text-red-700"
                       onClick={() => revokeLink.mutate(link.id)}
                       disabled={revokeLink.isPending}
+                      aria-label={`Auditor-Link ${link.label ?? link.id} widerrufen`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -503,7 +505,7 @@ function DomainSection({
   ).length
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden">
+    <div className="border border-border rounded-lg overflow-x-auto">
       <button
         type="button"
         className="w-full flex items-center justify-between px-4 py-2.5 bg-surface2 hover:bg-surface text-left"
@@ -814,10 +816,10 @@ export default function FrameworkDetailPage() {
   const navigate = useNavigate()
   const frameworkId = id ?? ''
 
-  const { data: framework, isLoading: frameworkLoading } = useFramework(frameworkId)
+  const { data: framework, isLoading: frameworkLoading, isError: frameworkError, refetch: refetchFramework } = useFramework(frameworkId)
   const { data: report, isLoading: reportLoading } = useReadinessReport(frameworkId)
   const { data: gaps, isLoading: gapsLoading } = useGapAnalysis(frameworkId)
-  const { data: controls, isLoading: controlsLoading } = useFrameworkControls(frameworkId)
+  const { data: controls, isLoading: controlsLoading, isError: controlsError, refetch: refetchControls } = useFrameworkControls(frameworkId)
   const downloadPDF = useDownloadFrameworkPDF()
 
   const frameworkTitle = frameworkLoading
@@ -859,6 +861,20 @@ export default function FrameworkDetailPage() {
       />
 
       <div className="flex-1 p-6 space-y-6">
+        {frameworkError && (
+          <ErrorState
+            message="Framework konnte nicht geladen werden."
+            onRetry={() => void refetchFramework()}
+          />
+        )}
+
+        {!frameworkError && controlsError && (
+          <ErrorState
+            message="Controls konnten nicht geladen werden."
+            onRetry={() => void refetchControls()}
+          />
+        )}
+
         {/* Readiness score header */}
         <div className="flex items-center gap-6 p-6 bg-surface border border-border rounded-lg">
           {reportLoading ? (
