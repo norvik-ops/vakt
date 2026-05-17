@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
   Building2, Layers, Bell, Trash2, Plus, Check, X,
-  Webhook, Globe, Mail, Server, MapPin, Download, ShieldCheck, FileText, ExternalLink, Sparkles, Rocket, Key, Clock,
+  Webhook, Globe, Mail, Server, MapPin, Download, ShieldCheck, FileText, ExternalLink, Sparkles, Rocket, Key, Clock, ArrowUpCircle, RefreshCw,
 } from 'lucide-react'
 import { PageHeader } from '../shared/components/PageHeader'
 import { Button } from '../components/ui/button'
@@ -21,6 +21,7 @@ import { SECTOR_LABELS } from '../modules/secvitals/types'
 import { useExportData } from '../hooks/useDataExport'
 import { useAuditReport } from '../modules/secvitals/hooks/useAuditReport'
 import { ProGate } from '../shared/components/ProGate'
+import { useUpdateCheck } from '../shared/hooks/useUpdateCheck'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -639,6 +640,59 @@ function NotificationsSection() {
 
 // ─── Server Info ──────────────────────────────────────────────────────────────
 
+function UpdateSection() {
+  const { data, isLoading } = useUpdateCheck()
+
+  return (
+    <SectionCard title="Updates" icon={RefreshCw}>
+      <div className="space-y-2 text-xs">
+        {isLoading && <p className="text-secondary">Wird geprüft…</p>}
+
+        {!isLoading && !data?.check_enabled && (
+          <p className="text-secondary">
+            Update-Prüfung deaktiviert. Aktivieren mit <code className="font-mono bg-surface2 px-1 rounded">VAKT_UPDATE_CHECK=true</code> in der <code className="font-mono bg-surface2 px-1 rounded">.env</code>.
+          </p>
+        )}
+
+        {!isLoading && data?.check_enabled && (
+          <div className="space-y-1.5">
+            <div className="flex justify-between py-1.5 px-3 rounded-lg bg-surface2">
+              <span className="text-secondary">Installierte Version</span>
+              <span className="font-mono font-medium text-primary">{data.current_version || '—'}</span>
+            </div>
+            <div className="flex justify-between py-1.5 px-3 rounded-lg bg-surface2">
+              <span className="text-secondary">Neueste Version</span>
+              <span className="font-mono font-medium text-primary">{data.latest_version || '—'}</span>
+            </div>
+
+            {data.update_available ? (
+              <div className="flex items-center gap-2 py-2 px-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                <ArrowUpCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span className="text-amber-700 dark:text-amber-400 flex-1">Update verfügbar</span>
+                {data.release_url && (
+                  <a
+                    href={data.release_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-1"
+                  >
+                    Release Notes <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 py-1.5 px-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+                <Check className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                <span className="text-green-700 dark:text-green-400">Aktuell — kein Update erforderlich</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </SectionCard>
+  )
+}
+
 function ServerSection() {
   return (
     <SectionCard title="Server" icon={Server}>
@@ -888,7 +942,8 @@ export default function Settings() {
           {/* Row 4: System info — read-only reference, visually de-emphasized */}
           <div>
             <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">System</h3>
-            <div className="max-w-sm">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 max-w-2xl">
+              <UpdateSection />
               <ServerSection />
             </div>
           </div>
