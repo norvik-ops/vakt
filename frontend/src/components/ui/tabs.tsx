@@ -23,8 +23,10 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
+      /* WCAG 2.4.7: focus-visible ring for keyboard navigation */
       'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium text-secondary transition-all',
       'hover:text-primary',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1',
       'data-[state=active]:bg-surface data-[state=active]:text-primary data-[state=active]:shadow-sm',
       'disabled:pointer-events-none disabled:opacity-50',
       className,

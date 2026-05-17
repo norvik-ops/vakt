@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Trash2, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { apiFetch } from '../../api/client'
@@ -18,9 +19,18 @@ interface Comment {
 
 // ── Relative time helper ──────────────────────────────────────────────────────
 
-function relativeTime(dateStr: string): string {
+function relativeTime(dateStr: string, lang: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const minutes = Math.floor(diff / 60_000)
+  if (lang === 'en') {
+    if (minutes < 1) return 'just now'
+    if (minutes < 60) return `${minutes.toString()} min. ago`
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return `${hours.toString()} hr. ago`
+    const days = Math.floor(hours / 24)
+    if (days < 7) return `${days.toString()} day${days === 1 ? '' : 's'} ago`
+    return new Date(dateStr).toLocaleDateString('en-GB')
+  }
   if (minutes < 1) return 'Gerade eben'
   if (minutes < 60) return `vor ${minutes.toString()} Min.`
   const hours = Math.floor(minutes / 60)
@@ -99,6 +109,7 @@ export interface CommentsProps {
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export function Comments({ entityType, entityId }: CommentsProps) {
+  const { t, i18n } = useTranslation()
   const { data: comments, isLoading } = useComments(entityType, entityId)
   const createComment = useCreateComment(entityType, entityId)
   const deleteComment = useDeleteComment(entityType, entityId)
@@ -107,6 +118,7 @@ export function Comments({ entityType, entityId }: CommentsProps) {
   const [expanded, setExpanded] = useState(true)
 
   const count = comments?.length ?? 0
+  const lang = i18n.language
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -123,7 +135,7 @@ export function Comments({ entityType, entityId }: CommentsProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-2">
             <MessageSquare className="w-4 h-4" />
-            Kommentare
+            {t('comments.title')}
             {count > 0 && (
               <span className="text-xs font-normal text-secondary">({count.toString()})</span>
             )}
@@ -137,12 +149,14 @@ export function Comments({ entityType, entityId }: CommentsProps) {
               {expanded ? (
                 <>
                   <ChevronUp className="w-3.5 h-3.5" />
-                  Ausblenden
+                  {t('comments.collapse')}
                 </>
               ) : (
                 <>
                   <ChevronDown className="w-3.5 h-3.5" />
-                  {count.toString()} {count === 1 ? 'Kommentar' : 'Kommentare'} anzeigen
+                  {count === 1
+                    ? t('comments.expand', { count })
+                    : t('comments.expandPlural', { count })}
                 </>
               )}
             </button>
@@ -158,7 +172,7 @@ export function Comments({ entityType, entityId }: CommentsProps) {
             <CommentSkeleton />
           </div>
         ) : count === 0 ? (
-          <p className="text-xs text-muted-foreground">Noch keine Kommentare.</p>
+          <p className="text-xs text-muted-foreground">{t('comments.empty')}</p>
         ) : expanded ? (
           <ul className="space-y-3">
             {comments?.map((comment) => (
@@ -172,9 +186,9 @@ export function Comments({ entityType, entityId }: CommentsProps) {
                     <span className="text-xs font-medium text-primary">{comment.author_name}</span>
                     <span
                       className="text-xs text-secondary"
-                      title={new Date(comment.created_at).toLocaleString('de-DE')}
+                      title={new Date(comment.created_at).toLocaleString(lang === 'en' ? 'en-GB' : 'de-DE')}
                     >
-                      {relativeTime(comment.created_at)}
+                      {relativeTime(comment.created_at, lang)}
                     </span>
                   </div>
                   <p className="text-sm text-primary leading-relaxed whitespace-pre-wrap break-words">
@@ -187,8 +201,8 @@ export function Comments({ entityType, entityId }: CommentsProps) {
                     onClick={() => deleteComment.mutate(comment.id)}
                     disabled={deleteComment.isPending}
                     className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity shrink-0 mt-0.5"
-                    aria-label="Kommentar löschen"
-                    title="Kommentar löschen"
+                    aria-label={t('comments.delete')}
+                    title={t('comments.delete')}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -202,7 +216,7 @@ export function Comments({ entityType, entityId }: CommentsProps) {
         <form onSubmit={handleSubmit} className="space-y-2 border-t border-border pt-4">
           <textarea
             rows={3}
-            placeholder="Kommentar schreiben …"
+            placeholder={t('comments.placeholder')}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             maxLength={4000}
@@ -214,7 +228,7 @@ export function Comments({ entityType, entityId }: CommentsProps) {
               size="sm"
               disabled={!content.trim() || createComment.isPending}
             >
-              {createComment.isPending ? 'Wird gesendet…' : 'Kommentieren'}
+              {createComment.isPending ? t('comments.submitting') : t('comments.submit')}
             </Button>
           </div>
         </form>

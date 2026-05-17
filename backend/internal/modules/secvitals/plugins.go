@@ -61,4 +61,5 @@ var builtinAvailable = []struct {
 	{"ISO42001", "ISO/IEC 42001:2023 — KI-Managementsystem-Standard für verantwortungsvolle KI-Entwicklung und -Nutzung."},
 	{"TISAX", "TISAX® / VDA ISA — Informationssicherheitsstandard der Automobilindustrie für Zulieferer mit OEM-Datenzugang."},
 	{"DSGVO-TOM", "DSGVO Art. 32 TOMs — Technische und organisatorische Maßnahmen gemäß Art. 32 DSGVO, abgeleitet aus ISO 27001."},
+	{"CIS", "CIS Controls v8 — 18 Kontrollgruppen des Center for Internet Security. IG1-Safeguards als Mindestanforderung für alle Organisationen."},
 }

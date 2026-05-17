@@ -85,8 +85,9 @@ export default function Login() {
           </CardHeader>
           <CardContent>
             <form onSubmit={(e) => { void handleSubmit(e) }} className="space-y-4">
+              {/* WCAG 3.3.2: required attribute + aria-required communicates required fields */}
               <div className="space-y-1">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">E-Mail</Label>
                 <Input
                   id="email"
                   type="email"
@@ -94,17 +95,23 @@ export default function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@example.com"
                   required
+                  aria-required="true"
+                  aria-describedby={error ? 'login-error' : undefined}
+                  aria-invalid={!!error}
                   autoFocus
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Passwort</Label>
                 <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  aria-required="true"
+                  aria-describedby={error ? 'login-error' : undefined}
+                  aria-invalid={!!error}
                 />
                 <div className="text-right">
                   <Link
@@ -115,7 +122,8 @@ export default function Login() {
                   </Link>
                 </div>
               </div>
-              {error && <p className="text-sm text-red-600">{error}</p>}
+              {/* WCAG 3.3.1 + 4.1.3: role="alert" announces errors immediately to screen readers */}
+              {error && <p id="login-error" role="alert" aria-live="assertive" className="text-sm text-red-600">{error}</p>}
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Signing in…' : 'Sign in'}
               </Button>
@@ -135,7 +143,8 @@ export default function Login() {
                   href="/auth/sso"
                   className="flex items-center justify-center gap-2 w-full rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-primary hover:bg-muted transition-colors"
                 >
-                  <Building2 className="w-4 h-4 shrink-0" />
+                  {/* WCAG 1.1.1: icon is decorative, link text "Mit SSO anmelden" names the element */}
+                  <Building2 className="w-4 h-4 shrink-0" aria-hidden="true" />
                   Mit SSO anmelden
                 </a>
               </>

@@ -41,12 +41,15 @@ export function NotificationBell() {
         variant="ghost"
         size="icon"
         className="w-8 h-8 relative"
-        aria-label="Benachrichtigungen"
+        aria-label={unread > 0 ? `Benachrichtigungen (${unread} ungelesen)` : 'Benachrichtigungen'}
+        aria-expanded={open}
+        aria-haspopup="true"
         onClick={() => setOpen((v) => !v)}
       >
-        {unread > 0 ? <BellDot className="w-4 h-4 text-brand" /> : <Bell className="w-4 h-4" />}
+        {/* WCAG 1.1.1: bell icons are decorative — label on button conveys state */}
+        {unread > 0 ? <BellDot className="w-4 h-4 text-brand" aria-hidden="true" /> : <Bell className="w-4 h-4" aria-hidden="true" />}
         {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center" aria-hidden="true">
             {unread > 9 ? '9+' : unread}
           </span>
         )}
@@ -54,7 +57,8 @@ export function NotificationBell() {
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          {/* WCAG 2.1.1: backdrop is click-to-close only; panel can also be closed via the bell button (toggle) */}
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden="true" />
           <div className="absolute left-0 bottom-10 w-80 z-50 bg-surface border border-border rounded-xl shadow-xl overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <span className="text-sm font-semibold">Benachrichtigungen</span>
@@ -107,13 +111,15 @@ function NotificationItem({ notification: n, onRead }: { notification: UserNotif
         !n.read && 'bg-brand/5',
       )}
     >
-      <Icon className={cn('w-4 h-4 mt-0.5 shrink-0', typeColor[n.type] ?? 'text-secondary')} />
+      {/* WCAG 1.1.1: type icon is decorative, notification type is conveyed in title */}
+      <Icon className={cn('w-4 h-4 mt-0.5 shrink-0', typeColor[n.type] ?? 'text-secondary')} aria-hidden="true" />
       <div className="flex-1 min-w-0">
         <p className={cn('text-xs font-medium', !n.read && 'text-primary')}>{n.title}</p>
         <p className="text-xs text-secondary line-clamp-2 mt-0.5">{n.body}</p>
         <p className="text-[10px] text-secondary mt-1">{date}</p>
       </div>
-      {!n.read && <span className="w-2 h-2 bg-brand rounded-full shrink-0 mt-1" />}
+      {/* WCAG 1.1.1: unread dot is conveyed via button aria-label instead */}
+      {!n.read && <span className="w-2 h-2 bg-brand rounded-full shrink-0 mt-1" aria-hidden="true" />}
     </button>
   )
 }

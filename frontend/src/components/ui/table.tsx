@@ -32,8 +32,9 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
 TableRow.displayName = 'TableRow'
 
 const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<HTMLTableCellElement>>(
-  ({ className, ...props }, ref) => (
-    <th ref={ref} className={cn('h-10 px-4 text-left align-middle text-xs font-semibold text-secondary uppercase tracking-wide', className)} {...props} />
+  ({ className, scope = 'col', ...props }, ref) => (
+    /* WCAG 1.3.1: scope="col" associates header cells with their columns for screen readers */
+    <th ref={ref} scope={scope} className={cn('h-10 px-4 text-left align-middle text-xs font-semibold text-secondary uppercase tracking-wide', className)} {...props} />
   ),
 )
 TableHead.displayName = 'TableHead'

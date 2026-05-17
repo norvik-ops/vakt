@@ -9,7 +9,12 @@
     "sessions": "Sessions",
     "search": "Search",
     "modules": "Modules",
-    "system": "System"
+    "system": "System",
+    "documentation": "Documentation",
+    "skipToContent": "Skip to main content",
+    "mainNav": "Main navigation",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "modules": {
     "secpulse": "SecPulse",
@@ -22,7 +27,62 @@
     "assets": "Assets",
     "findings": "Findings",
     "sla": "SLA Dashboard",
-    "reports": "Reports"
+    "reports": "Reports",
+    "eol": "EOL Dashboard",
+    "findingsPage": {
+      "title": "Security Findings",
+      "total": "{{count}} total findings",
+      "searchPlaceholder": "Search… (title, CVE, asset)",
+      "searchLabel": "Search findings",
+      "keyboardHint": "j/k navigate · Enter open · e edit · / search",
+      "allSeverities": "All Severities",
+      "allStatuses": "All Statuses",
+      "selectAll": "Select all findings",
+      "noFindings": "No Findings",
+      "noFindingsDesc": "No findings match the current filters.",
+      "statusChangeTitle": "Change Status",
+      "statusChangeDesc": "Set new status for {{count}} selected finding{{suffix}}:",
+      "deleteTitle": "Delete Findings",
+      "deleteDesc": "Do you want to permanently delete {{count}} selected finding{{suffix}}? This action cannot be undone.",
+      "deleting": "Deleting…",
+      "saving": "Saving…",
+      "apply": "Apply",
+      "colTitle": "Title",
+      "colSeverity": "Severity",
+      "colStatus": "Status",
+      "colAsset": "Asset",
+      "colCve": "CVE",
+      "colCvss": "CVSS",
+      "colJira": "Jira",
+      "createJiraTicket": "Create Jira ticket",
+      "jiraTicketsCreated": "{{count}} Jira ticket(s) created",
+      "jiraTicketsFailed": "{{count}} ticket(s) failed",
+      "ticketCreated": "Ticket {{key}} created",
+      "bulkDeleted": "{{count}} finding(s) deleted",
+      "deleteFailed": "Delete partially failed",
+      "saved": "Saved",
+      "saveFailed": "Something went wrong"
+    },
+    "bulk": {
+      "changeStatus": "Change Status",
+      "exportSelected": "Export",
+      "createJiraIssues": "Create Jira Tickets",
+      "delete": "Delete"
+    },
+    "severity": {
+      "critical": "Critical",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low",
+      "info": "Info"
+    },
+    "status": {
+      "open": "Open",
+      "in_progress": "In Progress",
+      "accepted_risk": "Accepted Risk",
+      "false_positive": "False Positive",
+      "resolved": "Resolved"
+    }
   },
   "secvitals": {
     "frameworks": "Frameworks",
@@ -34,7 +94,40 @@
     "nis2assistant": "NIS2 Assistant",
     "iso27001": "ISO 27001 Annex A",
     "grundschutz": "BSI Basic Protection",
-    "aiReport": "AI Report"
+    "aiReport": "AI Report",
+    "frameworksSection": {
+      "title": "Frameworks",
+      "readinessScore": "Readiness Score",
+      "controls": "Controls",
+      "implemented": "Implemented",
+      "inProgress": "In Progress",
+      "open": "Open",
+      "notApplicable": "Not Applicable"
+    },
+    "risksSection": {
+      "title": "Risks",
+      "newRisk": "New Risk"
+    },
+    "incidentsSection": {
+      "title": "Incidents",
+      "newIncident": "New Incident"
+    },
+    "policiesSection": {
+      "title": "Policies",
+      "newPolicy": "New Policy"
+    },
+    "evidence": {
+      "upload": "Upload Evidence",
+      "expiryDate": "Expiry Date",
+      "expires": "Expires",
+      "expired": "Expired"
+    },
+    "control": {
+      "statusOpen": "Open",
+      "statusInProgress": "In Progress",
+      "statusImplemented": "Implemented",
+      "statusNotApplicable": "Not Applicable"
+    }
   },
   "secprivacy": {
     "vvt": "VVT",
@@ -42,6 +135,48 @@
     "avv": "DPA",
     "breach": "Data Breaches",
     "dsr": "DSR"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "close": "Close",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "import": "Import",
+    "refresh": "Refresh",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No",
+    "all": "All",
+    "none": "None",
+    "status": "Status",
+    "date": "Date",
+    "actions": "Actions",
+    "description": "Description",
+    "name": "Name",
+    "type": "Type",
+    "retry": "Retry",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "of": "of",
+    "items": "Items",
+    "add": "Add",
+    "remove": "Remove",
+    "submit": "Submit",
+    "page": "Page",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "pageOf": "Page {{page}} of {{total}}",
+    "selected": "{{count}} selected",
+    "clearSelection": "Clear selection"
   },
   "actions": {
     "save": "Save",
@@ -80,22 +215,131 @@
     "password": "Password",
     "forgotPassword": "Forgot password?",
     "loginTitle": "Welcome to Vakt",
-    "loginSubtitle": "Sign in to continue"
+    "loginSubtitle": "Sign in to continue",
+    "twoFactor": "Two-Factor Authentication",
+    "recoveryCode": "Recovery Code"
+  },
+  "settings": {
+    "title": "Settings",
+    "organization": "Organization",
+    "team": "Team",
+    "security": "Security",
+    "notifications": "Notifications",
+    "integrations": "Integrations",
+    "apiKeys": "API Keys",
+    "sessions": "Sessions"
+  },
+  "errors": {
+    "loadFailed": "Failed to Load",
+    "networkError": "Network Error",
+    "unauthorized": "Unauthorized",
+    "retry": "Try Again"
+  },
+  "onboarding": {
+    "title": "Getting Started",
+    "completed": "{{count}} of {{total}} completed",
+    "dismiss": "Hide Guide",
+    "steps": {
+      "org": "Set up organization",
+      "framework": "Activate first framework",
+      "asset": "Add first asset",
+      "team": "Invite team member",
+      "evidence": "Upload evidence",
+      "mfa": "Enable 2FA"
+    }
+  },
+  "comments": {
+    "title": "Comments",
+    "empty": "No comments yet.",
+    "placeholder": "Write a comment …",
+    "submit": "Comment",
+    "submitting": "Sending…",
+    "delete": "Delete comment",
+    "collapse": "Collapse",
+    "expand": "Show {{count}} comment",
+    "expandPlural": "Show {{count}} comments"
+  },
+  "pagination": {
+    "pageOf": "Page {{page}} of {{total}}",
+    "previous": "Previous page",
+    "next": "Next page"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "securityScore": "Security Score",
+    "overallRating": "Overall rating",
+    "dataPannen": "Data Breaches",
+    "noOpenBreaches": "No open data breaches",
+    "openBreaches": "{{count}} open data breach",
+    "openBreachesPlural": "{{count}} open data breaches",
+    "loadError": "Dashboard data could not be loaded.",
+    "complianceOverview": "Compliance Overview",
+    "complianceProgress": "Compliance Progress",
+    "complianceTrend": "Compliance Trend",
+    "frameworkProgress": "Framework Progress",
+    "topRisks": "Top 5 Risks",
+    "showAll": "Show all",
+    "recentActivity": "Recent Activity",
+    "modules": "Modules",
+    "settingsSection": "Settings",
+    "noFrameworks": "No frameworks configured.",
+    "noRisks": "No risks recorded.",
+    "noActivity": "No activity yet.",
+    "historyCollecting": "History data will be collected starting tomorrow",
+    "days30": "30 days",
+    "days90": "90 days",
+    "show30Days": "Show 30-day history",
+    "show90Days": "Show 90-day history",
+    "controlsImplemented": "of {{total}} controls implemented",
+    "open": "open",
+    "nextAudit": "Next audit: {{title}}",
+    "today": "Today",
+    "inDays": "in {{count}} days",
+    "overdueDays": "{{count}} days overdue",
+    "stats": {
+      "criticalFindings": "Critical Findings",
+      "activeFrameworks": "Active Frameworks",
+      "vaultProjects": "Vault Projects",
+      "activeCampaigns": "Active Campaigns",
+      "openBreaches": "Open Data Breaches"
+    },
+    "kpi": {
+      "openCapas": "Open CAPAs",
+      "overdueControls": "Overdue Controls",
+      "criticalRisks": "Critical Risks",
+      "openTasks": "Open Tasks"
+    },
+    "policiesActive": "{{approved}} / {{total}} policies active",
+    "scoreConfig": "Score Configuration",
+    "scoreConfigDesc": "Customize score formula and weightings",
+    "alerting": "Alerting",
+    "alertingDesc": "Manage notification channels"
+  },
+  "theme": {
+    "lightMode": "Light Mode",
+    "darkMode": "Dark Mode",
+    "toggle": "Toggle theme",
+    "light": "Light Mode",
+    "dark": "Dark Mode"
+  },
+  "demo": {
+    "banner": "Demo Environment",
+    "description": "All data shown is sample data.",
+    "fullBanner": "Demo Environment — All data is sample data. Login: admin@vakt.local / admin1234",
+    "close": "Close"
+  },
+  "backup": {
+    "staleWarning": "No backup in the last 7 days",
+    "staleAction": "No backup in the last 7 days — run make backup"
   },
   "language": {
     "switchTo": "Switch language",
     "de": "Deutsch",
     "en": "English"
   },
-  "theme": {
-    "lightMode": "Light Mode",
-    "darkMode": "Dark Mode"
-  },
-  "demo": {
-    "banner": "Demo Environment",
-    "description": "All data shown is sample data."
-  },
-  "backup": {
-    "staleWarning": "No backup in the last 7 days"
+  "update": {
+    "available": "is available",
+    "updateNow": "Update now →",
+    "updateNowLabel": "Update now"
   }
 }

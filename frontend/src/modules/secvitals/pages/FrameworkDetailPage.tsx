@@ -848,6 +848,15 @@ export default function FrameworkDetailPage() {
                 TISAX-Ansicht öffnen
               </Button>
             )}
+            {framework?.name === 'CIS' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/secvitals/cis-controls')}
+              >
+                CIS Controls v8 öffnen
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => downloadPDF(frameworkId, framework?.name)}>
               <FileDown className="w-4 h-4 mr-1" />
               PDF Export

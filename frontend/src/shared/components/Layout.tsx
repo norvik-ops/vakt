@@ -9,6 +9,7 @@ import {
   Building2, Bot, PackageX, Mail, GraduationCap, Target, Flag, LayoutTemplate, UserCog, Activity, UserCheck,
   Plug, ClipboardCheck, CalendarClock, Inbox, ExternalLink, Menu, X, ArrowUpCircle, ScrollText, HeartPulse, CalendarDays,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import { cn } from '../../lib/utils'
@@ -25,6 +26,7 @@ import { useAutoEvidence } from '../../modules/secvitals/hooks/useEvidenceAuto'
 import { usePendingApprovalCount } from '../../modules/secvitals/hooks/useApprovals'
 import { useUpdateCheck } from '../hooks/useUpdateCheck'
 import { Toaster } from './Toaster'
+import { PWAInstallPrompt } from './PWAInstallPrompt'
 
 interface NavItem {
   path: string
@@ -67,7 +69,7 @@ const MODULES_NAV: NavItem[] = [
       { path: '/secvitals/nis2-assistant', label: 'NIS2-Assistent',    icon: Shield },
       { path: '/secvitals/iso27001',       label: 'ISO 27001 Annex A', icon: Shield },
       { path: '/secvitals/grundschutz',    label: 'BSI Grundschutz',   icon: Shield },
-      { path: '/secvitals/ai-report',      label: 'KI-Bericht',        icon: Sparkles },
+      { path: '/secvitals/cis-controls',  label: 'CIS Controls v8',    icon: Shield },
       { path: '/secvitals/ccm',            label: 'CCM',               icon: Activity },
       { path: '/secvitals/capas',          label: 'Korrekturmaßnahmen', icon: ClipboardCheck },
       { path: '/secvitals/overdue-reviews', label: 'Überfällige Kontrollen', icon: CalendarClock },
@@ -114,6 +116,7 @@ const MODULES_NAV: NavItem[] = [
 ]
 
 export default function Layout() {
+  const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
   const { user, clearAuth } = useAuthStore()
@@ -154,24 +157,24 @@ export default function Layout() {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 z-50 bg-background px-4 py-2 rounded-lg border font-medium"
       >
-        Zum Hauptinhalt springen
+        {t('nav.skipToContent')}
       </a>
 
       {demoMode && !demoBannerDismissed && (
         <div className="bg-brand/10 border-b border-brand/30 px-4 py-2 flex items-center justify-between text-sm shrink-0">
           <span className="text-brand flex items-center gap-2">
             <FlaskConical className="w-4 h-4 shrink-0" />
-            <strong>Demo-Umgebung</strong> — Alle Daten sind Beispieldaten. Login: <code className="mx-1 bg-brand/10 px-1 rounded">admin@vakt.local</code> / <code className="mx-1 bg-brand/10 px-1 rounded">admin1234</code>
+            <strong>{t('demo.banner')}</strong> — {t('demo.description')} Login: <code className="mx-1 bg-brand/10 px-1 rounded">admin@vakt.local</code> / <code className="mx-1 bg-brand/10 px-1 rounded">admin1234</code>
           </span>
-          <button onClick={() => setDemoBannerDismissed(true)} aria-label="Schließen" className="text-brand/60 hover:text-brand ml-4">✕</button>
+          <button onClick={() => setDemoBannerDismissed(true)} aria-label={t('common.close')} className="text-brand/60 hover:text-brand ml-4">✕</button>
         </div>
       )}
       {backupStatus?.stale && !backupDismissed && !demoMode && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between text-sm shrink-0">
           <span className="text-amber-800">
-            ⚠ Kein Backup in den letzten 7 Tagen — <code>make backup</code> ausführen
+            ⚠ {t('backup.staleWarning')} — <code>make backup</code> ausführen
           </span>
-          <button onClick={() => setBackupDismissed(true)} aria-label="Schließen" className="text-amber-600 hover:text-amber-800 ml-4">✕</button>
+          <button onClick={() => setBackupDismissed(true)} aria-label={t('common.close')} className="text-amber-600 hover:text-amber-800 ml-4">✕</button>
         </div>
       )}
       <VersionBanner />
@@ -180,7 +183,7 @@ export default function Layout() {
           <span className="text-amber-800 dark:text-amber-300 flex items-center gap-2">
             <ArrowUpCircle className="w-4 h-4 shrink-0" />
             <span>
-              <strong>Vakt {updateInfo.latest_version}</strong> ist verfügbar —{' '}
+              <strong>Vakt {updateInfo.latest_version}</strong> {t('update.available')} —{' '}
               {updateInfo.release_url ? (
                 <a
                   href={updateInfo.release_url}
@@ -188,16 +191,16 @@ export default function Layout() {
                   rel="noopener noreferrer"
                   className="underline hover:text-amber-900 dark:hover:text-amber-200 font-medium"
                 >
-                  Jetzt aktualisieren →
+                  {t('update.updateNow')}
                 </a>
               ) : (
-                <span className="font-medium">Jetzt aktualisieren</span>
+                <span className="font-medium">{t('update.updateNowLabel')}</span>
               )}
             </span>
           </span>
           <button
             onClick={() => setUpdateDismissed(true)}
-            aria-label="Schließen"
+            aria-label={t('common.close')}
             className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 ml-4"
           >
             ✕
@@ -208,9 +211,12 @@ export default function Layout() {
       <div className="flex flex-1 min-h-0">
       {/* Mobile backdrop */}
       {sidebarOpen && (
+        /* WCAG 2.1.1: keyboard-accessible dismiss — tabIndex={-1} keeps it out of tab order
+           but allows Escape to close via the document-level keydown listener */
         <div
           className="fixed inset-0 z-20 bg-black/40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
         />
       )}
       {/* Sidebar */}
@@ -228,9 +234,9 @@ export default function Layout() {
             <button
               className="ml-auto lg:hidden text-secondary hover:text-primary p-1 rounded"
               onClick={() => setSidebarOpen(false)}
-              aria-label="Menü schließen"
+              aria-label={t('nav.closeMenu')}
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
           <p className="text-[11px] text-secondary px-2">Security Platform</p>
@@ -239,19 +245,22 @@ export default function Layout() {
         {/* Search trigger */}
         <div className="px-3 pb-2">
           <button
+            type="button"
+            aria-label="Globale Suche öffnen (Cmd+K)"
             onClickCapture={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))}
             className="w-full flex items-center gap-2 text-xs text-secondary border border-border rounded-md px-3 py-1.5 hover:border-brand/40 transition-colors"
           >
-            <Search className="w-3 h-3" />
-            <span>Suchen</span>
-            <kbd className="ml-auto opacity-60">⌘K</kbd>
+            {/* WCAG 1.1.1: search icon is decorative, button is named by aria-label */}
+            <Search className="w-3 h-3" aria-hidden="true" />
+            <span>{t('nav.search')}</span>
+            <kbd className="ml-auto opacity-60" aria-hidden="true">⌘K</kbd>
           </button>
         </div>
 
         {/* Nav */}
-        <nav role="navigation" aria-label="Hauptnavigation" className="flex-1 px-3 overflow-y-auto">
+        <nav role="navigation" aria-label={t('nav.mainNav')} className="flex-1 px-3 overflow-y-auto">
           <p className="px-2 mb-1 text-[10px] font-semibold text-secondary uppercase tracking-wider opacity-60">
-            Module
+            {t('nav.modules')}
           </p>
           <div className="space-y-[2px] mb-4">
             {MODULES_NAV.map(({ path, label, icon: Icon, exact, children }) => {
@@ -259,9 +268,11 @@ export default function Layout() {
               const expanded = active && children && children.length > 0
               return (
                 <div key={path}>
+                  {/* WCAG 2.4.4 + 4.1.2: aria-current="page" identifies the active link */}
                   <Link
                     to={path}
                     onClick={() => setSidebarOpen(false)}
+                    aria-current={active ? 'page' : undefined}
                     className={cn(
                       'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                       active
@@ -269,7 +280,8 @@ export default function Layout() {
                         : 'text-secondary hover:bg-muted/50 hover:text-primary',
                     )}
                   >
-                    <Icon className={cn('w-4 h-4 shrink-0', active ? 'text-brand' : '')} />
+                    {/* WCAG 1.1.1: nav icons are decorative — label comes from text */}
+                    <Icon className={cn('w-4 h-4 shrink-0', active ? 'text-brand' : '')} aria-hidden="true" />
                     {label}
                   </Link>
                   {expanded && (
@@ -284,6 +296,7 @@ export default function Layout() {
                             key={cp}
                             to={cp}
                             onClick={() => setSidebarOpen(false)}
+                            aria-current={childActive ? 'page' : undefined}
                             className={cn(
                               'flex items-center gap-2 px-2 py-[6px] rounded-md text-[12px] font-medium transition-all duration-150',
                               childActive
@@ -291,20 +304,29 @@ export default function Layout() {
                                 : 'text-secondary hover:text-primary hover:bg-muted/50',
                             )}
                           >
-                            <CIcon className="w-3.5 h-3.5 shrink-0" />
+                            <CIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                             <span className="flex-1">{cl}</span>
                             {isOverduePath && overdueCount > 0 && (
-                              <span className="ml-auto text-[10px] font-semibold bg-destructive text-destructive-foreground rounded-full px-1.5 py-0.5 leading-none">
+                              <span
+                                className="ml-auto text-[10px] font-semibold bg-destructive text-destructive-foreground rounded-full px-1.5 py-0.5 leading-none"
+                                aria-label={`${overdueCount} überfällige Kontrollen`}
+                              >
                                 {overdueCount}
                               </span>
                             )}
                             {isAutoEvidencePath && autoEvidenceCount > 0 && (
-                              <span className="ml-auto text-[10px] font-semibold bg-brand text-white rounded-full px-1.5 py-0.5 leading-none">
+                              <span
+                                className="ml-auto text-[10px] font-semibold bg-brand text-white rounded-full px-1.5 py-0.5 leading-none"
+                                aria-label={`${autoEvidenceCount} neue Nachweise`}
+                              >
                                 {autoEvidenceCount}
                               </span>
                             )}
                             {isApprovalsPath && pendingApprovalCount > 0 && (
-                              <span className="ml-auto text-[10px] font-semibold bg-amber-500 text-white rounded-full px-1.5 py-0.5 leading-none">
+                              <span
+                                className="ml-auto text-[10px] font-semibold bg-amber-500 text-white rounded-full px-1.5 py-0.5 leading-none"
+                                aria-label={`${pendingApprovalCount} ausstehende Genehmigungen`}
+                              >
                                 {pendingApprovalCount}
                               </span>
                             )}
@@ -319,12 +341,14 @@ export default function Layout() {
           </div>
 
           <p className="px-2 mb-1 text-[10px] font-semibold text-secondary uppercase tracking-wider opacity-60">
-            System
+            {t('nav.system')}
           </p>
+          {/* WCAG 2.4.4 + 4.1.2: aria-current="page" on each active system link */}
           <div className="space-y-[2px]">
             <Link
               to="/settings"
               onClick={() => setSidebarOpen(false)}
+              aria-current={location.pathname === '/settings' ? 'page' : undefined}
               className={cn(
                 'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                 location.pathname === '/settings'
@@ -332,12 +356,13 @@ export default function Layout() {
                   : 'text-secondary hover:bg-muted/50 hover:text-primary',
               )}
             >
-              <Settings className={cn('w-4 h-4 shrink-0', location.pathname === '/settings' ? 'text-brand' : '')} />
-              Einstellungen
+              <Settings className={cn('w-4 h-4 shrink-0', location.pathname === '/settings' ? 'text-brand' : '')} aria-hidden="true" />
+              {t('nav.settings')}
             </Link>
             <Link
               to="/settings/alerting"
               onClick={() => setSidebarOpen(false)}
+              aria-current={isActive('/settings/alerting') ? 'page' : undefined}
               className={cn(
                 'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                 isActive('/settings/alerting')
@@ -345,12 +370,13 @@ export default function Layout() {
                   : 'text-secondary hover:bg-muted/50 hover:text-primary',
               )}
             >
-              <Bell className={cn('w-4 h-4 shrink-0', isActive('/settings/alerting') ? 'text-brand' : '')} />
-              Benachrichtigungen
+              <Bell className={cn('w-4 h-4 shrink-0', isActive('/settings/alerting') ? 'text-brand' : '')} aria-hidden="true" />
+              {t('nav.alerting')}
             </Link>
             <Link
               to="/settings/retention"
               onClick={() => setSidebarOpen(false)}
+              aria-current={isActive('/settings/retention') ? 'page' : undefined}
               className={cn(
                 'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                 isActive('/settings/retention')
@@ -358,12 +384,13 @@ export default function Layout() {
                   : 'text-secondary hover:bg-muted/50 hover:text-primary',
               )}
             >
-              <Trash2 className={cn('w-4 h-4 shrink-0', isActive('/settings/retention') ? 'text-brand' : '')} />
-              Datenpflege
+              <Trash2 className={cn('w-4 h-4 shrink-0', isActive('/settings/retention') ? 'text-brand' : '')} aria-hidden="true" />
+              {t('nav.retention')}
             </Link>
             <Link
               to="/settings/branding"
               onClick={() => setSidebarOpen(false)}
+              aria-current={isActive('/settings/branding') ? 'page' : undefined}
               className={cn(
                 'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                 isActive('/settings/branding')
@@ -371,12 +398,13 @@ export default function Layout() {
                   : 'text-secondary hover:bg-muted/50 hover:text-primary',
               )}
             >
-              <Palette className={cn('w-4 h-4 shrink-0', isActive('/settings/branding') ? 'text-brand' : '')} />
+              <Palette className={cn('w-4 h-4 shrink-0', isActive('/settings/branding') ? 'text-brand' : '')} aria-hidden="true" />
               Branding
             </Link>
             <Link
               to="/settings/trust-center"
               onClick={() => setSidebarOpen(false)}
+              aria-current={isActive('/settings/trust-center') ? 'page' : undefined}
               className={cn(
                 'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                 isActive('/settings/trust-center')
@@ -384,12 +412,13 @@ export default function Layout() {
                   : 'text-secondary hover:bg-muted/50 hover:text-primary',
               )}
             >
-              <Shield className={cn('w-4 h-4 shrink-0', isActive('/settings/trust-center') ? 'text-brand' : '')} />
+              <Shield className={cn('w-4 h-4 shrink-0', isActive('/settings/trust-center') ? 'text-brand' : '')} aria-hidden="true" />
               Trust Center
             </Link>
             <Link
               to="/settings/auditors"
               onClick={() => setSidebarOpen(false)}
+              aria-current={isActive('/settings/auditors') ? 'page' : undefined}
               className={cn(
                 'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                 isActive('/settings/auditors')
@@ -397,12 +426,13 @@ export default function Layout() {
                   : 'text-secondary hover:bg-muted/50 hover:text-primary',
               )}
             >
-              <UserCheck className={cn('w-4 h-4 shrink-0', isActive('/settings/auditors') ? 'text-brand' : '')} />
+              <UserCheck className={cn('w-4 h-4 shrink-0', isActive('/settings/auditors') ? 'text-brand' : '')} aria-hidden="true" />
               Auditoren
             </Link>
             <Link
               to="/settings/team"
               onClick={() => setSidebarOpen(false)}
+              aria-current={isActive('/settings/team') ? 'page' : undefined}
               className={cn(
                 'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                 isActive('/settings/team')
@@ -410,13 +440,14 @@ export default function Layout() {
                   : 'text-secondary hover:bg-muted/50 hover:text-primary',
               )}
             >
-              <Users className={cn('w-4 h-4 shrink-0', isActive('/settings/team') ? 'text-brand' : '')} />
+              <Users className={cn('w-4 h-4 shrink-0', isActive('/settings/team') ? 'text-brand' : '')} aria-hidden="true" />
               Team
             </Link>
             {isAdminOrOwner && (
               <Link
                 to="/settings/audit-log"
                 onClick={() => setSidebarOpen(false)}
+                aria-current={isActive('/settings/audit-log') ? 'page' : undefined}
                 className={cn(
                   'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                   isActive('/settings/audit-log')
@@ -424,7 +455,7 @@ export default function Layout() {
                     : 'text-secondary hover:bg-muted/50 hover:text-primary',
                 )}
               >
-                <ScrollText className={cn('w-4 h-4 shrink-0', isActive('/settings/audit-log') ? 'text-brand' : '')} />
+                <ScrollText className={cn('w-4 h-4 shrink-0', isActive('/settings/audit-log') ? 'text-brand' : '')} aria-hidden="true" />
                 Audit-Log
               </Link>
             )}
@@ -432,6 +463,7 @@ export default function Layout() {
               <Link
                 to="/admin/health"
                 onClick={() => setSidebarOpen(false)}
+                aria-current={isActive('/admin/health') ? 'page' : undefined}
                 className={cn(
                   'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                   isActive('/admin/health')
@@ -439,7 +471,7 @@ export default function Layout() {
                     : 'text-secondary hover:bg-muted/50 hover:text-primary',
                 )}
               >
-                <HeartPulse className={cn('w-4 h-4 shrink-0', isActive('/admin/health') ? 'text-brand' : '')} />
+                <HeartPulse className={cn('w-4 h-4 shrink-0', isActive('/admin/health') ? 'text-brand' : '')} aria-hidden="true" />
                 System-Status
               </Link>
             )}
@@ -447,6 +479,7 @@ export default function Layout() {
               <Link
                 to="/admin/tenants"
                 onClick={() => setSidebarOpen(false)}
+                aria-current={isActive('/admin/tenants') ? 'page' : undefined}
                 className={cn(
                   'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                   isActive('/admin/tenants')
@@ -454,7 +487,7 @@ export default function Layout() {
                     : 'text-secondary hover:bg-muted/50 hover:text-primary',
                 )}
               >
-                <Building2 className={cn('w-4 h-4 shrink-0', isActive('/admin/tenants') ? 'text-brand' : '')} />
+                <Building2 className={cn('w-4 h-4 shrink-0', isActive('/admin/tenants') ? 'text-brand' : '')} aria-hidden="true" />
                 Mandanten
               </Link>
             )}
@@ -462,6 +495,7 @@ export default function Layout() {
               <Link
                 to="/admin/security"
                 onClick={() => setSidebarOpen(false)}
+                aria-current={isActive('/admin/security') ? 'page' : undefined}
                 className={cn(
                   'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                   isActive('/admin/security')
@@ -469,13 +503,14 @@ export default function Layout() {
                     : 'text-secondary hover:bg-muted/50 hover:text-primary',
                 )}
               >
-                <ShieldAlert className={cn('w-4 h-4 shrink-0', isActive('/admin/security') ? 'text-brand' : '')} />
+                <ShieldAlert className={cn('w-4 h-4 shrink-0', isActive('/admin/security') ? 'text-brand' : '')} aria-hidden="true" />
                 Sicherheitsereignisse
               </Link>
             )}
             <Link
               to="/account"
               onClick={() => setSidebarOpen(false)}
+              aria-current={isActive('/account') ? 'page' : undefined}
               className={cn(
                 'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                 isActive('/account')
@@ -483,12 +518,13 @@ export default function Layout() {
                   : 'text-secondary hover:bg-muted/50 hover:text-primary',
               )}
             >
-              <User className={cn('w-4 h-4 shrink-0', isActive('/account') ? 'text-brand' : '')} />
-              Mein Account
+              <User className={cn('w-4 h-4 shrink-0', isActive('/account') ? 'text-brand' : '')} aria-hidden="true" />
+              {t('nav.account')}
             </Link>
             <Link
               to="/account/sessions"
               onClick={() => setSidebarOpen(false)}
+              aria-current={isActive('/account/sessions') ? 'page' : undefined}
               className={cn(
                 'flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] font-medium transition-all duration-150',
                 isActive('/account/sessions')
@@ -496,8 +532,8 @@ export default function Layout() {
                   : 'text-secondary hover:bg-muted/50 hover:text-primary',
               )}
             >
-              <MonitorSmartphone className={cn('w-4 h-4 shrink-0', isActive('/account/sessions') ? 'text-brand' : '')} />
-              Sitzungen
+              <MonitorSmartphone className={cn('w-4 h-4 shrink-0', isActive('/account/sessions') ? 'text-brand' : '')} aria-hidden="true" />
+              {t('nav.sessions')}
             </Link>
           </div>
         </nav>
@@ -513,18 +549,19 @@ export default function Layout() {
             rel="noopener noreferrer"
             className="w-full flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] text-secondary hover:bg-muted/50 hover:text-primary transition-all duration-150"
           >
-            <BookOpen className="w-4 h-4 shrink-0" />
-            Dokumentation
-            <ExternalLink className="w-3 h-3 ml-auto opacity-40" />
+            <BookOpen className="w-4 h-4 shrink-0" aria-hidden="true" />
+            {t('nav.documentation')}
+            {/* WCAG 2.4.4: external-link icon is decorative; label names the link */}
+            <ExternalLink className="w-3 h-3 ml-auto opacity-40" aria-hidden="true" />
           </a>
           <button
             onClick={toggle}
-            aria-label="Theme wechseln"
+            aria-label={theme === 'dark' ? 'Zu hellem Modus wechseln' : 'Zu dunklem Modus wechseln'}
             className="w-full flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] text-secondary hover:bg-muted/50 hover:text-primary transition-all duration-150"
           >
             {theme === 'dark'
-              ? <><Sun className="w-4 h-4 shrink-0" />Heller Modus</>
-              : <><Moon className="w-4 h-4 shrink-0" />Dunkler Modus</>
+              ? <><Sun className="w-4 h-4 shrink-0" aria-hidden="true" />{t('theme.light')}</>
+              : <><Moon className="w-4 h-4 shrink-0" aria-hidden="true" />{t('theme.dark')}</>
             }
           </button>
           {user?.email && (
@@ -536,8 +573,8 @@ export default function Layout() {
             onClick={logout}
             className="w-full flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] text-secondary hover:bg-muted/50 hover:text-red-500 transition-all duration-150"
           >
-            <LogOut className="w-4 h-4 shrink-0" />
-            Abmelden
+            <LogOut className="w-4 h-4 shrink-0" aria-hidden="true" />
+            {t('auth.logout')}
           </button>
           <div className="px-3 py-2 border-t border-border mt-1">
             <p className="text-[10px] text-secondary/50">© 2026 NorvikOps · ELv2</p>
@@ -551,10 +588,11 @@ export default function Layout() {
         <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-border bg-surface shrink-0">
           <button
             onClick={() => setSidebarOpen(true)}
-            aria-label="Menü öffnen"
+            aria-label={t('nav.openMenu')}
             className="text-secondary hover:text-primary p-1 rounded"
           >
-            <Menu className="w-5 h-5" />
+            {/* WCAG 1.1.1: icon is decorative, button is named by aria-label */}
+            <Menu className="w-5 h-5" aria-hidden="true" />
           </button>
           <div className="flex items-center gap-2">
             <img src="/logo.svg" alt="Vakt" className="w-5 h-5 shrink-0" />
@@ -570,6 +608,7 @@ export default function Layout() {
       {demoMode && <FeedbackWidget />}
       <WhatsNewModal />
       <Toaster />
+      <PWAInstallPrompt />
     </div>
   )
 }

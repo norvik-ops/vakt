@@ -8,8 +8,13 @@
     "account": "Mein Account",
     "sessions": "Sitzungen",
     "search": "Suchen",
-    "modules": "Modules",
-    "system": "System"
+    "modules": "Module",
+    "system": "System",
+    "documentation": "Dokumentation",
+    "skipToContent": "Zum Hauptinhalt springen",
+    "mainNav": "Hauptnavigation",
+    "openMenu": "Menü öffnen",
+    "closeMenu": "Menü schließen"
   },
   "modules": {
     "secpulse": "SecPulse",
@@ -22,7 +27,62 @@
     "assets": "Assets",
     "findings": "Findings",
     "sla": "SLA-Dashboard",
-    "reports": "Berichte"
+    "reports": "Berichte",
+    "eol": "EOL-Dashboard",
+    "findingsPage": {
+      "title": "Sicherheitsbefunde",
+      "total": "{{count}} Gesamt-Befunde",
+      "searchPlaceholder": "Suchen… (Titel, CVE, Asset)",
+      "searchLabel": "Suche nach Findings",
+      "keyboardHint": "j/k navigieren · Enter öffnen · e bearbeiten · / suchen",
+      "allSeverities": "Alle Schweregrade",
+      "allStatuses": "Alle Status",
+      "selectAll": "Alle Befunde auswählen",
+      "noFindings": "Keine Befunde",
+      "noFindingsDesc": "Keine Befunde entsprechen den aktuellen Filtern.",
+      "statusChangeTitle": "Status ändern",
+      "statusChangeDesc": "Neuen Status für {{count}} ausgewählte{{suffix}} setzen:",
+      "deleteTitle": "Befunde löschen",
+      "deleteDesc": "Möchtest du {{count}} ausgewählte{{suffix}} endgültig löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "deleting": "Wird gelöscht…",
+      "saving": "Wird gespeichert…",
+      "apply": "Anwenden",
+      "colTitle": "Titel",
+      "colSeverity": "Schweregrad",
+      "colStatus": "Status",
+      "colAsset": "Asset",
+      "colCve": "CVE",
+      "colCvss": "CVSS",
+      "colJira": "Jira",
+      "createJiraTicket": "Jira-Ticket erstellen",
+      "jiraTicketsCreated": "{{count}} Jira-Ticket(s) erstellt",
+      "jiraTicketsFailed": "{{count}} Ticket(s) fehlgeschlagen",
+      "ticketCreated": "Ticket {{key}} erstellt",
+      "bulkDeleted": "{{count}} Befund(e) gelöscht",
+      "deleteFailed": "Löschen teilweise fehlgeschlagen",
+      "saved": "Gespeichert",
+      "saveFailed": "Etwas ist schiefgelaufen"
+    },
+    "bulk": {
+      "changeStatus": "Status ändern",
+      "exportSelected": "Exportieren",
+      "createJiraIssues": "Jira-Tickets erstellen",
+      "delete": "Löschen"
+    },
+    "severity": {
+      "critical": "Kritisch",
+      "high": "Hoch",
+      "medium": "Mittel",
+      "low": "Niedrig",
+      "info": "Info"
+    },
+    "status": {
+      "open": "Offen",
+      "in_progress": "In Bearbeitung",
+      "accepted_risk": "Akzeptiertes Risiko",
+      "false_positive": "Falsch positiv",
+      "resolved": "Behoben"
+    }
   },
   "secvitals": {
     "frameworks": "Frameworks",
@@ -34,7 +94,40 @@
     "nis2assistant": "NIS2-Assistent",
     "iso27001": "ISO 27001 Annex A",
     "grundschutz": "BSI Grundschutz",
-    "aiReport": "KI-Bericht"
+    "aiReport": "KI-Bericht",
+    "frameworksSection": {
+      "title": "Frameworks",
+      "readinessScore": "Reifegrad",
+      "controls": "Controls",
+      "implemented": "Umgesetzt",
+      "inProgress": "In Bearbeitung",
+      "open": "Offen",
+      "notApplicable": "Nicht zutreffend"
+    },
+    "risksSection": {
+      "title": "Risiken",
+      "newRisk": "Neues Risiko"
+    },
+    "incidentsSection": {
+      "title": "Vorfälle",
+      "newIncident": "Neuer Vorfall"
+    },
+    "policiesSection": {
+      "title": "Richtlinien",
+      "newPolicy": "Neue Richtlinie"
+    },
+    "evidence": {
+      "upload": "Evidence hochladen",
+      "expiryDate": "Ablaufdatum",
+      "expires": "Läuft ab",
+      "expired": "Abgelaufen"
+    },
+    "control": {
+      "statusOpen": "Offen",
+      "statusInProgress": "In Bearbeitung",
+      "statusImplemented": "Umgesetzt",
+      "statusNotApplicable": "Nicht anwendbar"
+    }
   },
   "secprivacy": {
     "vvt": "VVT",
@@ -42,6 +135,48 @@
     "avv": "AVV",
     "breach": "Datenpannen",
     "dsr": "DSR"
+  },
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "create": "Erstellen",
+    "close": "Schließen",
+    "loading": "Wird geladen...",
+    "error": "Fehler",
+    "success": "Erfolgreich",
+    "search": "Suchen",
+    "filter": "Filtern",
+    "export": "Exportieren",
+    "import": "Importieren",
+    "refresh": "Aktualisieren",
+    "confirm": "Bestätigen",
+    "yes": "Ja",
+    "no": "Nein",
+    "all": "Alle",
+    "none": "Keine",
+    "status": "Status",
+    "date": "Datum",
+    "actions": "Aktionen",
+    "description": "Beschreibung",
+    "name": "Name",
+    "type": "Typ",
+    "retry": "Erneut versuchen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "previous": "Vorherige",
+    "of": "von",
+    "items": "Einträge",
+    "add": "Hinzufügen",
+    "remove": "Entfernen",
+    "submit": "Absenden",
+    "page": "Seite",
+    "previousPage": "Vorherige Seite",
+    "nextPage": "Nächste Seite",
+    "pageOf": "Seite {{page}} von {{total}}",
+    "selected": "{{count}} ausgewählt",
+    "clearSelection": "Auswahl aufheben"
   },
   "actions": {
     "save": "Speichern",
@@ -80,22 +215,131 @@
     "password": "Passwort",
     "forgotPassword": "Passwort vergessen?",
     "loginTitle": "Willkommen bei Vakt",
-    "loginSubtitle": "Melden Sie sich an, um fortzufahren"
+    "loginSubtitle": "Melden Sie sich an, um fortzufahren",
+    "twoFactor": "Zwei-Faktor-Authentifizierung",
+    "recoveryCode": "Wiederherstellungscode"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "organization": "Organisation",
+    "team": "Team",
+    "security": "Sicherheit",
+    "notifications": "Benachrichtigungen",
+    "integrations": "Integrationen",
+    "apiKeys": "API-Schlüssel",
+    "sessions": "Sitzungen"
+  },
+  "errors": {
+    "loadFailed": "Fehler beim Laden",
+    "networkError": "Netzwerkfehler",
+    "unauthorized": "Nicht autorisiert",
+    "retry": "Erneut versuchen"
+  },
+  "onboarding": {
+    "title": "Erste Schritte",
+    "completed": "{{count}} von {{total}} abgeschlossen",
+    "dismiss": "Anleitung ausblenden",
+    "steps": {
+      "org": "Organisation einrichten",
+      "framework": "Erstes Framework aktivieren",
+      "asset": "Ersten Asset hinzufügen",
+      "team": "Team-Mitglied einladen",
+      "evidence": "Evidence hochladen",
+      "mfa": "2FA aktivieren"
+    }
+  },
+  "comments": {
+    "title": "Kommentare",
+    "empty": "Noch keine Kommentare.",
+    "placeholder": "Kommentar schreiben …",
+    "submit": "Kommentieren",
+    "submitting": "Wird gesendet…",
+    "delete": "Kommentar löschen",
+    "collapse": "Ausblenden",
+    "expand": "{{count}} Kommentar anzeigen",
+    "expandPlural": "{{count}} Kommentare anzeigen"
+  },
+  "pagination": {
+    "pageOf": "Seite {{page}} von {{total}}",
+    "previous": "Vorherige Seite",
+    "next": "Nächste Seite"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "securityScore": "Security Score",
+    "overallRating": "Gesamtbewertung",
+    "dataPannen": "Datenpannen",
+    "noOpenBreaches": "Keine offenen Datenpannen",
+    "openBreaches": "{{count}} offene Datenpanne",
+    "openBreachesPlural": "{{count}} offene Datenpannen",
+    "loadError": "Dashboard-Daten konnten nicht geladen werden.",
+    "complianceOverview": "Compliance-Übersicht",
+    "complianceProgress": "Compliance-Fortschritt",
+    "complianceTrend": "Compliance-Verlauf",
+    "frameworkProgress": "Framework-Fortschritt",
+    "topRisks": "Top-5-Risiken",
+    "showAll": "Alle anzeigen",
+    "recentActivity": "Letzte Aktivitäten",
+    "modules": "Module",
+    "settingsSection": "Einstellungen",
+    "noFrameworks": "Keine Frameworks konfiguriert.",
+    "noRisks": "Keine Risiken erfasst.",
+    "noActivity": "Keine Aktivitäten vorhanden.",
+    "historyCollecting": "Verlaufsdaten werden ab morgen gesammelt",
+    "days30": "30 Tage",
+    "days90": "90 Tage",
+    "show30Days": "Verlauf 30 Tage anzeigen",
+    "show90Days": "Verlauf 90 Tage anzeigen",
+    "controlsImplemented": "von {{total}} Controls umgesetzt",
+    "open": "offen",
+    "nextAudit": "Nächste Prüfung: {{title}}",
+    "today": "Heute",
+    "inDays": "in {{count}} Tagen",
+    "overdueDays": "{{count}} Tage überfällig",
+    "stats": {
+      "criticalFindings": "Kritische Findings",
+      "activeFrameworks": "Frameworks aktiv",
+      "vaultProjects": "Vault-Projekte",
+      "activeCampaigns": "Aktive Kampagnen",
+      "openBreaches": "Offene Datenpannen"
+    },
+    "kpi": {
+      "openCapas": "Offene CAPAs",
+      "overdueControls": "Überfällige Controls",
+      "criticalRisks": "Kritische Risiken",
+      "openTasks": "Offene Aufgaben"
+    },
+    "policiesActive": "{{approved}} / {{total}} Richtlinien aktiv",
+    "scoreConfig": "Score-Konfiguration",
+    "scoreConfigDesc": "Score-Formel und Gewichtungen anpassen",
+    "alerting": "Alerting",
+    "alertingDesc": "Benachrichtigungskanäle verwalten"
+  },
+  "theme": {
+    "lightMode": "Light Mode",
+    "darkMode": "Dark Mode",
+    "toggle": "Theme wechseln",
+    "light": "Heller Modus",
+    "dark": "Dunkler Modus"
+  },
+  "demo": {
+    "banner": "Demo-Umgebung",
+    "description": "Alle Daten sind Beispieldaten.",
+    "fullBanner": "Demo-Umgebung — Alle Daten sind Beispieldaten. Login: admin@vakt.local / admin1234",
+    "close": "Schließen"
+  },
+  "backup": {
+    "staleWarning": "Kein Backup in den letzten 7 Tagen",
+    "staleAction": "Kein Backup in den letzten 7 Tagen — make backup ausführen"
   },
   "language": {
     "switchTo": "Sprache wechseln",
     "de": "Deutsch",
     "en": "English"
   },
-  "theme": {
-    "lightMode": "Light Mode",
-    "darkMode": "Dark Mode"
-  },
-  "demo": {
-    "banner": "Demo-Umgebung",
-    "description": "Alle Daten sind Beispieldaten."
-  },
-  "backup": {
-    "staleWarning": "Kein Backup in den letzten 7 Tagen"
+  "update": {
+    "available": "ist verfügbar",
+    "updateNow": "Jetzt aktualisieren →",
+    "updateNowLabel": "Jetzt aktualisieren"
   }
 }

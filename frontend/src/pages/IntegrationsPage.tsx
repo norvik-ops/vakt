@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plug, GitBranch, RefreshCw, Trash2, ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertCircle, Plus, ExternalLink } from 'lucide-react'
+import { Plug, GitBranch, RefreshCw, Trash2, ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertCircle, Plus, ExternalLink, Cloud } from 'lucide-react'
 import {
   useGitHubIntegrations,
   useAddGitHubIntegration,
@@ -14,6 +14,21 @@ import {
   useSaveJiraConfig,
   useTestJiraConnection,
 } from '../hooks/useJira'
+import {
+  useAWSConfig,
+  useSaveAWSConfig,
+  useTestAWSConnection,
+  useSyncAWS,
+  useAWSStatus,
+  useAWSEvidence,
+  useAzureConfig,
+  useSaveAzureConfig,
+  useTestAzureConnection,
+  useSyncAzure,
+  useAzureStatus,
+  useAzureEvidence,
+  type CloudEvidenceItem,
+} from '../hooks/useCloud'
 import { toast } from '../shared/hooks/useToast'
 
 // --- Status badge ---
@@ -478,12 +493,460 @@ function JiraTab() {
   )
 }
 
+// --- Cloud sync status badge ---
+
+function SyncLastBadge({ status, lastSyncAt }: { status: string | null; lastSyncAt: string | null }) {
+  if (!lastSyncAt) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+        <AlertCircle className="w-3 h-3" /> Nie synchronisiert
+      </span>
+    )
+  }
+  if (status === 'success') {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+        <CheckCircle2 className="w-3 h-3" /> Erfolgreich
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-full px-2 py-0.5">
+      <XCircle className="w-3 h-3" /> Fehler
+    </span>
+  )
+}
+
+// --- Recent evidence list ---
+
+function RecentEvidenceList({ items }: { items: CloudEvidenceItem[] }) {
+  if (items.length === 0) {
+    return <p className="text-xs text-secondary py-2">Noch keine Evidence gesammelt. Synchronisierung starten.</p>
+  }
+  return (
+    <div className="mt-3 space-y-2">
+      {items.map((item) => (
+        <div key={item.id} className="flex items-start gap-2 bg-bg rounded-md border border-border px-3 py-2">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-primary truncate">{item.title}</p>
+            <p className="text-[11px] text-secondary mt-0.5">
+              {new Date(item.created_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// --- AWS tab ---
+
+const AWS_REGIONS = [
+  'eu-central-1',
+  'eu-west-1',
+  'eu-west-2',
+  'eu-west-3',
+  'eu-north-1',
+  'us-east-1',
+  'us-east-2',
+  'us-west-1',
+  'us-west-2',
+  'ap-southeast-1',
+  'ap-northeast-1',
+]
+
+function AWSTab() {
+  const { data: cfg, isLoading } = useAWSConfig()
+  const { data: status } = useAWSStatus()
+  const { data: evidence } = useAWSEvidence()
+  const saveConfig = useSaveAWSConfig()
+  const testConnection = useTestAWSConnection()
+  const syncAWS = useSyncAWS()
+
+  const [accessKeyID, setAccessKeyID] = useState('')
+  const [secretAccessKey, setSecretAccessKey] = useState('')
+  const [region, setRegion] = useState('eu-central-1')
+  const [accountID, setAccountID] = useState('')
+  const [initialized, setInitialized] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
+
+  if (cfg && !initialized) {
+    setAccessKeyID(cfg.access_key_id)
+    setSecretAccessKey(cfg.secret_access_key)
+    setRegion(cfg.region || 'eu-central-1')
+    setAccountID(cfg.account_id)
+    setInitialized(true)
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await saveConfig.mutateAsync({ access_key_id: accessKeyID, secret_access_key: secretAccessKey, region, account_id: accountID })
+      toast('AWS-Konfiguration gespeichert', 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Speichern fehlgeschlagen', 'error')
+    }
+  }
+
+  async function handleTest() {
+    setTestResult(null)
+    try {
+      const result = await testConnection.mutateAsync()
+      setTestResult({ ok: result.ok, message: result.ok ? 'Verbindung erfolgreich' : (result.error ?? 'Verbindung fehlgeschlagen') })
+    } catch (err) {
+      setTestResult({ ok: false, message: err instanceof Error ? err.message : 'Verbindung fehlgeschlagen' })
+    }
+  }
+
+  async function handleSync() {
+    try {
+      const result = await syncAWS.mutateAsync()
+      if (result.ok) {
+        toast(`Synchronisierung abgeschlossen — ${result.evidence_created} Evidence-Einträge erstellt`, 'success')
+      } else {
+        toast(result.error ?? 'Synchronisierung fehlgeschlagen', 'error')
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Synchronisierung fehlgeschlagen', 'error')
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  const lastSyncFormatted = status?.last_sync_at
+    ? new Date(status.last_sync_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
+    : null
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold text-primary">AWS-Integration</h2>
+        <p className="text-xs text-secondary mt-0.5">
+          IAM-Richtlinien, CloudTrail-Konfiguration, S3-Verschlüsselung und MFA-Status automatisch als Compliance-Evidence erfassen.
+          Credentials werden AES-256-GCM verschlüsselt gespeichert.
+        </p>
+      </div>
+
+      {/* Status row */}
+      {status && (
+        <div className="flex items-center gap-3 mb-5 p-3 rounded-lg border border-border bg-surface">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-secondary">
+              {lastSyncFormatted ? `Letzter Sync: ${lastSyncFormatted}` : 'Noch nie synchronisiert'}
+              {status.evidence_count > 0 && ` · ${status.evidence_count} Evidence-Einträge`}
+            </p>
+            {status.last_sync_error && (
+              <p className="text-xs text-red-500 truncate mt-0.5">{status.last_sync_error}</p>
+            )}
+          </div>
+          <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
+          <button
+            onClick={() => { void handleSync() }}
+            disabled={syncAWS.isPending || !cfg?.is_configured}
+            title="Jetzt synchronisieren"
+            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${syncAWS.isPending ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      )}
+
+      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Access Key ID</label>
+          <input
+            type="text"
+            value={accessKeyID}
+            onChange={(e) => setAccessKeyID(e.target.value)}
+            placeholder="AKIA..."
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Secret Access Key</label>
+          <input
+            type="password"
+            value={secretAccessKey}
+            onChange={(e) => setSecretAccessKey(e.target.value)}
+            placeholder={cfg?.is_configured ? '****' : 'Secret Access Key eingeben'}
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required
+          />
+          <p className="text-[11px] text-secondary mt-1">
+            Empfohlen: IAM-Benutzer mit schreibgeschützter Policy (<code>SecurityAudit</code> + <code>ReadOnlyAccess</code>).
+          </p>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Region</label>
+          <select
+            value={region}
+            onChange={(e) => setRegion(e.target.value)}
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary focus:outline-none focus:ring-2 focus:ring-brand/30"
+          >
+            {AWS_REGIONS.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Account ID (optional)</label>
+          <input
+            type="text"
+            value={accountID}
+            onChange={(e) => setAccountID(e.target.value)}
+            placeholder="123456789012"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+          />
+        </div>
+
+        {testResult && (
+          <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-md border ${testResult.ok ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-red-700 bg-red-50 border-red-200'}`}>
+            {testResult.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
+            {testResult.message}
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() => { void handleTest() }}
+            disabled={testConnection.isPending || !cfg?.is_configured}
+            className="px-3 py-1.5 text-xs rounded-md border border-border text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50"
+          >
+            {testConnection.isPending ? 'Teste…' : 'Verbindung testen'}
+          </button>
+          <button
+            type="submit"
+            disabled={saveConfig.isPending}
+            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50"
+          >
+            {saveConfig.isPending ? 'Wird gespeichert…' : 'Speichern'}
+          </button>
+        </div>
+      </form>
+
+      {/* Recent evidence */}
+      {evidence && evidence.length > 0 && (
+        <div className="mt-6">
+          <p className="text-xs font-medium text-secondary mb-2">Zuletzt gesammelte Evidence</p>
+          <RecentEvidenceList items={evidence} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- Azure tab ---
+
+function AzureTab() {
+  const { data: cfg, isLoading } = useAzureConfig()
+  const { data: status } = useAzureStatus()
+  const { data: evidence } = useAzureEvidence()
+  const saveConfig = useSaveAzureConfig()
+  const testConnection = useTestAzureConnection()
+  const syncAzure = useSyncAzure()
+
+  const [tenantID, setTenantID] = useState('')
+  const [clientID, setClientID] = useState('')
+  const [clientSecret, setClientSecret] = useState('')
+  const [subscriptionID, setSubscriptionID] = useState('')
+  const [initialized, setInitialized] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
+
+  if (cfg && !initialized) {
+    setTenantID(cfg.tenant_id)
+    setClientID(cfg.client_id)
+    setClientSecret(cfg.client_secret)
+    setSubscriptionID(cfg.subscription_id)
+    setInitialized(true)
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await saveConfig.mutateAsync({ tenant_id: tenantID, client_id: clientID, client_secret: clientSecret, subscription_id: subscriptionID })
+      toast('Azure-Konfiguration gespeichert', 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Speichern fehlgeschlagen', 'error')
+    }
+  }
+
+  async function handleTest() {
+    setTestResult(null)
+    try {
+      const result = await testConnection.mutateAsync()
+      setTestResult({ ok: result.ok, message: result.ok ? 'Verbindung erfolgreich' : (result.error ?? 'Verbindung fehlgeschlagen') })
+    } catch (err) {
+      setTestResult({ ok: false, message: err instanceof Error ? err.message : 'Verbindung fehlgeschlagen' })
+    }
+  }
+
+  async function handleSync() {
+    try {
+      const result = await syncAzure.mutateAsync()
+      if (result.ok) {
+        toast(`Synchronisierung abgeschlossen — ${result.evidence_created} Evidence-Einträge erstellt`, 'success')
+      } else {
+        toast(result.error ?? 'Synchronisierung fehlgeschlagen', 'error')
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Synchronisierung fehlgeschlagen', 'error')
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  const lastSyncFormatted = status?.last_sync_at
+    ? new Date(status.last_sync_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
+    : null
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold text-primary">Azure-Integration</h2>
+        <p className="text-xs text-secondary mt-0.5">
+          Azure Secure Score, Security Center Findings und Policy Compliance automatisch als Evidence erfassen.
+          Client Secret wird AES-256-GCM verschlüsselt gespeichert.
+        </p>
+      </div>
+
+      {/* Status row */}
+      {status && (
+        <div className="flex items-center gap-3 mb-5 p-3 rounded-lg border border-border bg-surface">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-secondary">
+              {lastSyncFormatted ? `Letzter Sync: ${lastSyncFormatted}` : 'Noch nie synchronisiert'}
+              {status.evidence_count > 0 && ` · ${status.evidence_count} Evidence-Einträge`}
+            </p>
+            {status.last_sync_error && (
+              <p className="text-xs text-red-500 truncate mt-0.5">{status.last_sync_error}</p>
+            )}
+          </div>
+          <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
+          <button
+            onClick={() => { void handleSync() }}
+            disabled={syncAzure.isPending || !cfg?.is_configured}
+            title="Jetzt synchronisieren"
+            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${syncAzure.isPending ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      )}
+
+      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Tenant ID</label>
+          <input
+            type="text"
+            value={tenantID}
+            onChange={(e) => setTenantID(e.target.value)}
+            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Client ID (App Registration)</label>
+          <input
+            type="text"
+            value={clientID}
+            onChange={(e) => setClientID(e.target.value)}
+            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Client Secret</label>
+          <input
+            type="password"
+            value={clientSecret}
+            onChange={(e) => setClientSecret(e.target.value)}
+            placeholder={cfg?.is_configured ? '****' : 'Client Secret eingeben'}
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required
+          />
+          <p className="text-[11px] text-secondary mt-1">
+            Service Principal mit <code>Security Reader</code> + <code>Policy Insights Reader</code> Rollen.
+          </p>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Subscription ID</label>
+          <input
+            type="text"
+            value={subscriptionID}
+            onChange={(e) => setSubscriptionID(e.target.value)}
+            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required
+          />
+        </div>
+
+        {testResult && (
+          <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-md border ${testResult.ok ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-red-700 bg-red-50 border-red-200'}`}>
+            {testResult.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
+            {testResult.message}
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() => { void handleTest() }}
+            disabled={testConnection.isPending || !cfg?.is_configured}
+            className="px-3 py-1.5 text-xs rounded-md border border-border text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50"
+          >
+            {testConnection.isPending ? 'Teste…' : 'Verbindung testen'}
+          </button>
+          <button
+            type="submit"
+            disabled={saveConfig.isPending}
+            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50"
+          >
+            {saveConfig.isPending ? 'Wird gespeichert…' : 'Speichern'}
+          </button>
+        </div>
+      </form>
+
+      {/* Recent evidence */}
+      {evidence && evidence.length > 0 && (
+        <div className="mt-6">
+          <p className="text-xs font-medium text-secondary mb-2">Zuletzt gesammelte Evidence</p>
+          <RecentEvidenceList items={evidence} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 // --- Main page ---
 
-type Tab = 'github' | 'jira'
+type Tab = 'github' | 'jira' | 'aws' | 'azure'
 
 export default function IntegrationsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('github')
+
+  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: 'github', label: 'GitHub', icon: <GitBranch className="w-4 h-4" /> },
+    { id: 'jira', label: 'Jira', icon: <ExternalLink className="w-4 h-4" /> },
+    { id: 'aws', label: 'AWS', icon: <Cloud className="w-4 h-4" /> },
+    { id: 'azure', label: 'Azure', icon: <Cloud className="w-4 h-4" /> },
+  ]
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -498,33 +961,27 @@ export default function IntegrationsPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-border mb-6">
-        <button
-          onClick={() => setActiveTab('github')}
-          className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
-            activeTab === 'github'
-              ? 'border-brand text-brand'
-              : 'border-transparent text-secondary hover:text-primary'
-          }`}
-        >
-          <GitBranch className="w-4 h-4" />
-          GitHub
-        </button>
-        <button
-          onClick={() => setActiveTab('jira')}
-          className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
-            activeTab === 'jira'
-              ? 'border-brand text-brand'
-              : 'border-transparent text-secondary hover:text-primary'
-          }`}
-        >
-          <ExternalLink className="w-4 h-4" />
-          Jira
-        </button>
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              activeTab === tab.id
+                ? 'border-brand text-brand'
+                : 'border-transparent text-secondary hover:text-primary'
+            }`}
+          >
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Tab content */}
       {activeTab === 'github' && <GitHubTab />}
       {activeTab === 'jira' && <JiraTab />}
+      {activeTab === 'aws' && <AWSTab />}
+      {activeTab === 'azure' && <AzureTab />}
     </div>
   )
 }

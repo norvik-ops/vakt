@@ -124,6 +124,7 @@ export function GlobalSearch() {
   if (!open) return null
 
   return (
+    {/* WCAG 2.1.1: Escape closes via global keydown handler above; backdrop is click-to-close */}
     <div
       className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/40"
       onClick={() => setOpen(false)}
@@ -137,20 +138,27 @@ export function GlobalSearch() {
       >
         {/* Input row */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-          <Search className="w-4 h-4 text-secondary shrink-0" />
+          {/* WCAG 1.1.1: search icon is decorative, input has its own aria-label */}
+          <Search className="w-4 h-4 text-secondary shrink-0" aria-hidden="true" />
           <input
             ref={inputRef}
             value={query}
             onChange={e => { setQuery(e.target.value); setActiveIdx(-1) }}
             onKeyDown={handleKeyDown}
             placeholder="Suchen…"
+            aria-label="Globale Suche"
+            aria-autocomplete="list"
+            aria-controls="global-search-results"
+            aria-activedescendant={activeIdx >= 0 ? `search-result-${activeIdx}` : undefined}
+            role="combobox"
+            aria-expanded={displayList.length > 0}
             className="flex-1 bg-transparent text-sm outline-none text-primary placeholder:text-secondary"
           />
           {isFetching
-            ? <Loader2 className="w-3.5 h-3.5 text-secondary animate-spin shrink-0" />
+            ? <Loader2 className="w-3.5 h-3.5 text-secondary animate-spin shrink-0" aria-label="Wird gesucht" />
             : null
           }
-          <kbd className="text-xs text-secondary border border-border rounded px-1 shrink-0">Esc</kbd>
+          <kbd className="text-xs text-secondary border border-border rounded px-1 shrink-0" aria-label="Escape zum Schließen">Esc</kbd>
         </div>
 
         {/* Results / recent / empty states */}
@@ -168,9 +176,9 @@ export function GlobalSearch() {
         )}
 
         {displayList.length > 0 && (
-          <ul ref={listRef} className="max-h-80 overflow-y-auto py-1.5">
+          <ul ref={listRef} id="global-search-results" role="listbox" aria-label="Suchergebnisse" className="max-h-80 overflow-y-auto py-1.5">
             {displayList.map((r, idx) => (
-              <li key={r.id + r.entity_type}>
+              <li key={r.id + r.entity_type} role="option" aria-selected={idx === activeIdx} id={`search-result-${idx}`}>
                 <button
                   onClick={() => handleSelect(r)}
                   className={[

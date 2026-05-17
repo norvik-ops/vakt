@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useSavedFilters } from '../../../shared/hooks/useSavedFilters'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Download, AlertTriangle, Upload, Trash2, RefreshCw, FileDown, ExternalLink } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
@@ -40,6 +41,7 @@ const severityClass: Record<Finding['severity'], string> = {
 // --- Jira issue cell ---
 
 function JiraCell({ findingId, issue, isConfigured }: { findingId: string; issue: JiraIssue | undefined; isConfigured: boolean }) {
+  const { t } = useTranslation()
   const createIssue = useCreateJiraIssue()
 
   if (!isConfigured) return null
@@ -52,9 +54,11 @@ function JiraCell({ findingId, issue, isConfigured }: { findingId: string; issue
         rel="noreferrer"
         onClick={(e) => e.stopPropagation()}
         className="inline-flex items-center gap-1 text-xs font-mono text-brand hover:underline"
+        aria-label={`Jira-Ticket ${issue.issue_key} öffnen (neues Fenster)`}
       >
         {issue.issue_key}
-        <ExternalLink className="w-3 h-3" />
+        {/* WCAG 1.1.1: icon is decorative, link is named by aria-label */}
+        <ExternalLink className="w-3 h-3" aria-hidden="true" />
       </a>
     )
   }
@@ -65,7 +69,7 @@ function JiraCell({ findingId, issue, isConfigured }: { findingId: string; issue
         e.stopPropagation()
         createIssue.mutate(findingId, {
           onSuccess: (data) => {
-            toast(`Ticket ${data.issue_key} erstellt`, 'success')
+            toast(t('secpulse.findingsPage.ticketCreated', { key: data.issue_key }), 'success')
           },
           onError: (err) => {
             toast(err.message, 'error')
@@ -73,16 +77,17 @@ function JiraCell({ findingId, issue, isConfigured }: { findingId: string; issue
         })
       }}
       disabled={createIssue.isPending}
-      title="Jira-Ticket erstellen"
+      title={t('secpulse.findingsPage.createJiraTicket')}
       className="inline-flex items-center gap-1 text-xs text-secondary hover:text-brand transition-colors disabled:opacity-50"
     >
-      <ExternalLink className="w-3.5 h-3.5" />
+      <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
       Ticket
     </button>
   )
 }
 
 export default function FindingsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [filters, setFilters] = useSavedFilters('findings', {
     severityFilter: 'all',
@@ -145,9 +150,9 @@ export default function FindingsPage() {
       await bulkUpdate.mutateAsync({ ids: Array.from(selected), status: bulkStatus })
       setSelected(new Set())
       setStatusDialogOpen(false)
-      toast('Gespeichert', 'success')
+      toast(t('secpulse.findingsPage.saved'), 'success')
     } catch {
-      toast('Etwas ist schiefgelaufen', 'error')
+      toast(t('secpulse.findingsPage.saveFailed'), 'error')
     }
   }
 
@@ -158,9 +163,9 @@ export default function FindingsPage() {
       await Promise.allSettled(ids.map((id) => deleteFinding.mutateAsync(id)))
       setSelected(new Set())
       setDeleteDialogOpen(false)
-      toast(`${ids.length} Befund(e) gelöscht`, 'success')
+      toast(t('secpulse.findingsPage.bulkDeleted', { count: ids.length }), 'success')
     } catch {
-      toast('Löschen teilweise fehlgeschlagen', 'error')
+      toast(t('secpulse.findingsPage.deleteFailed'), 'error')
     }
   }
 
@@ -201,8 +206,8 @@ export default function FindingsPage() {
         failed++
       }
     }
-    if (created > 0) toast(`${created} Jira-Ticket(s) erstellt`, 'success')
-    if (failed > 0) toast(`${failed} Ticket(s) fehlgeschlagen`, 'error')
+    if (created > 0) toast(t('secpulse.findingsPage.jiraTicketsCreated', { count: created }), 'success')
+    if (failed > 0) toast(t('secpulse.findingsPage.jiraTicketsFailed', { count: failed }), 'error')
   }
 
   return (
@@ -216,29 +221,32 @@ export default function FindingsPage() {
       <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Status ändern</DialogTitle>
+            <DialogTitle>{t('secpulse.findingsPage.statusChangeTitle')}</DialogTitle>
           </DialogHeader>
           <div className="py-3 space-y-3">
             <p className="text-sm text-secondary">
-              Neuen Status für {selected.size} ausgewählte{selected.size === 1 ? 'n Befund' : ' Befunde'} setzen:
+              {t('secpulse.findingsPage.statusChangeDesc', {
+                count: selected.size,
+                suffix: selected.size === 1 ? 'n' : '',
+              })}
             </p>
             <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as Finding['status'])}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="open">Offen</SelectItem>
-                <SelectItem value="in_progress">In Bearbeitung</SelectItem>
-                <SelectItem value="accepted_risk">Akzeptiertes Risiko</SelectItem>
-                <SelectItem value="false_positive">Falsch positiv</SelectItem>
-                <SelectItem value="resolved">Behoben</SelectItem>
+                <SelectItem value="open">{t('secpulse.status.open')}</SelectItem>
+                <SelectItem value="in_progress">{t('secpulse.status.in_progress')}</SelectItem>
+                <SelectItem value="accepted_risk">{t('secpulse.status.accepted_risk')}</SelectItem>
+                <SelectItem value="false_positive">{t('secpulse.status.false_positive')}</SelectItem>
+                <SelectItem value="resolved">{t('secpulse.status.resolved')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={() => { void handleBulkUpdate() }} disabled={bulkUpdate.isPending}>
-              {bulkUpdate.isPending ? 'Wird gespeichert…' : 'Anwenden'}
+              {bulkUpdate.isPending ? t('secpulse.findingsPage.saving') : t('secpulse.findingsPage.apply')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -248,35 +256,37 @@ export default function FindingsPage() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Befunde löschen</DialogTitle>
+            <DialogTitle>{t('secpulse.findingsPage.deleteTitle')}</DialogTitle>
           </DialogHeader>
           <div className="py-3">
             <p className="text-sm text-secondary">
-              Möchtest du {selected.size} ausgewählte{selected.size === 1 ? 'n Befund' : ' Befunde'} endgültig löschen?
-              Diese Aktion kann nicht rückgängig gemacht werden.
+              {t('secpulse.findingsPage.deleteDesc', {
+                count: selected.size,
+                suffix: selected.size === 1 ? 'n' : '',
+              })}
             </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button
               variant="destructive"
               onClick={() => { void handleBulkDelete() }}
               disabled={deleteFinding.isPending}
             >
-              {deleteFinding.isPending ? 'Wird gelöscht…' : `${selected.size} löschen`}
+              {deleteFinding.isPending ? t('secpulse.findingsPage.deleting') : `${selected.size} ${t('common.delete')}`}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <PageHeader
-        title="Sicherheitsbefunde"
-        description={data ? `${data.pagination.total} Gesamt-Befunde` : undefined}
+        title={t('secpulse.findingsPage.title')}
+        description={data ? t('secpulse.findingsPage.total', { count: data.pagination.total }) : undefined}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
               <Upload className="w-4 h-4 mr-1" />
-              Importieren
+              {t('common.import')}
             </Button>
             <Button variant="outline" size="sm" onClick={exportFindingsCsv}>
               <Download className="w-4 h-4 mr-1" />
@@ -294,40 +304,40 @@ export default function FindingsPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => { setFilters((f) => ({ ...f, searchQuery: e.target.value })); setFocusedIndex(-1); setPage(1) }}
-            placeholder="Suchen… (Titel, CVE, Asset)"
-            aria-label="Suche nach Findings"
+            placeholder={t('secpulse.findingsPage.searchPlaceholder')}
+            aria-label={t('secpulse.findingsPage.searchLabel')}
             className="w-full max-w-sm rounded-md border border-border bg-surface px-3 py-1.5 text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand"
           />
-          <p className="text-xs text-muted mt-1">j/k navigieren · Enter öffnen · e bearbeiten · / suchen</p>
+          <p className="text-xs text-muted mt-1">{t('secpulse.findingsPage.keyboardHint')}</p>
         </div>
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3">
           <Select value={severityFilter} onValueChange={(v) => { setFilters((f) => ({ ...f, severityFilter: v })); setPage(1) }}>
             <SelectTrigger className="w-40">
-              <SelectValue placeholder="Alle Schweregrade" />
+              <SelectValue placeholder={t('secpulse.findingsPage.allSeverities')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Alle Schweregrade</SelectItem>
-              <SelectItem value="critical">Kritisch</SelectItem>
-              <SelectItem value="high">Hoch</SelectItem>
-              <SelectItem value="medium">Mittel</SelectItem>
-              <SelectItem value="low">Niedrig</SelectItem>
-              <SelectItem value="info">Info</SelectItem>
+              <SelectItem value="all">{t('secpulse.findingsPage.allSeverities')}</SelectItem>
+              <SelectItem value="critical">{t('secpulse.severity.critical')}</SelectItem>
+              <SelectItem value="high">{t('secpulse.severity.high')}</SelectItem>
+              <SelectItem value="medium">{t('secpulse.severity.medium')}</SelectItem>
+              <SelectItem value="low">{t('secpulse.severity.low')}</SelectItem>
+              <SelectItem value="info">{t('secpulse.severity.info')}</SelectItem>
             </SelectContent>
           </Select>
 
           <Select value={statusFilter} onValueChange={(v) => { setFilters((f) => ({ ...f, statusFilter: v })); setPage(1) }}>
             <SelectTrigger className="w-40">
-              <SelectValue placeholder="Alle Status" />
+              <SelectValue placeholder={t('secpulse.findingsPage.allStatuses')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Alle Status</SelectItem>
-              <SelectItem value="open">Offen</SelectItem>
-              <SelectItem value="in_progress">In Bearbeitung</SelectItem>
-              <SelectItem value="accepted_risk">Akzeptiertes Risiko</SelectItem>
-              <SelectItem value="false_positive">Falsch positiv</SelectItem>
-              <SelectItem value="resolved">Behoben</SelectItem>
+              <SelectItem value="all">{t('secpulse.findingsPage.allStatuses')}</SelectItem>
+              <SelectItem value="open">{t('secpulse.status.open')}</SelectItem>
+              <SelectItem value="in_progress">{t('secpulse.status.in_progress')}</SelectItem>
+              <SelectItem value="accepted_risk">{t('secpulse.status.accepted_risk')}</SelectItem>
+              <SelectItem value="false_positive">{t('secpulse.status.false_positive')}</SelectItem>
+              <SelectItem value="resolved">{t('secpulse.status.resolved')}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -350,14 +360,17 @@ export default function FindingsPage() {
         {!isLoading && !isError && findings.length === 0 && (
           <EmptyState
             icon={AlertTriangle}
-            title="Keine Befunde"
-            description="Keine Befunde entsprechen den aktuellen Filtern."
+            title={t('secpulse.findingsPage.noFindings')}
+            description={t('secpulse.findingsPage.noFindingsDesc')}
           />
         )}
 
         {!isLoading && !isError && findings.length > 0 && (
           <div className="rounded-md border border-border bg-surface overflow-x-auto">
-            <Table>
+            {/* WCAG 1.3.1: aria-label names the table for screen readers */}
+            <Table aria-label="Sicherheitsbefunde"
+              role="grid"
+            >
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10">
@@ -368,17 +381,17 @@ export default function FindingsPage() {
                         if (el) el.indeterminate = selected.size > 0 && selected.size < findings.length
                       }}
                       onChange={toggleAll}
-                      aria-label="Alle Befunde auswählen"
+                      aria-label={t('secpulse.findingsPage.selectAll')}
                       className="rounded"
                     />
                   </TableHead>
-                  <TableHead>Titel</TableHead>
-                  <TableHead>Schweregrad</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Asset</TableHead>
-                  <TableHead>CVE</TableHead>
-                  <TableHead>CVSS</TableHead>
-                  {jiraConfigured && <TableHead>Jira</TableHead>}
+                  <TableHead>{t('secpulse.findingsPage.colTitle')}</TableHead>
+                  <TableHead>{t('secpulse.findingsPage.colSeverity')}</TableHead>
+                  <TableHead>{t('secpulse.findingsPage.colStatus')}</TableHead>
+                  <TableHead>{t('secpulse.findingsPage.colAsset')}</TableHead>
+                  <TableHead>{t('secpulse.findingsPage.colCve')}</TableHead>
+                  <TableHead>{t('secpulse.findingsPage.colCvss')}</TableHead>
+                  {jiraConfigured && <TableHead>{t('secpulse.findingsPage.colJira')}</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -386,6 +399,14 @@ export default function FindingsPage() {
                   <TableRow
                     key={f.id}
                     tabIndex={0}
+                    /* WCAG 2.1.1: onKeyDown allows keyboard activation of the row */
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        navigate(`/secpulse/findings/${f.id}`)
+                      }
+                    }}
+                    aria-selected={selected.has(f.id)}
                     className={cn(
                       'cursor-pointer hover:bg-surface2',
                       index === focusedIndex && 'ring-1 ring-brand bg-brand/10 dark:bg-muted/50',
@@ -398,6 +419,7 @@ export default function FindingsPage() {
                         type="checkbox"
                         checked={selected.has(f.id)}
                         onChange={() => toggleSelect(f.id)}
+                        aria-label={`Befund "${f.title}" auswählen`}
                         className="rounded"
                       />
                     </TableCell>
@@ -449,23 +471,23 @@ export default function FindingsPage() {
         onClearSelection={() => setSelected(new Set())}
         actions={[
           {
-            label: 'Status ändern',
+            label: t('secpulse.bulk.changeStatus'),
             icon: RefreshCw,
             onClick: () => setStatusDialogOpen(true),
           },
           {
-            label: 'Exportieren',
+            label: t('secpulse.bulk.exportSelected'),
             icon: FileDown,
             onClick: handleExportSelected,
           },
           ...(jiraConfigured ? [{
-            label: 'Jira-Tickets erstellen',
+            label: t('secpulse.bulk.createJiraIssues'),
             icon: ExternalLink,
             onClick: () => { void handleBulkCreateJiraIssues() },
             disabled: createJiraIssue.isPending,
           }] : []),
           {
-            label: 'Löschen',
+            label: t('secpulse.bulk.delete'),
             icon: Trash2,
             variant: 'destructive' as const,
             onClick: () => setDeleteDialogOpen(true),

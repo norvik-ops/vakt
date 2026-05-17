@@ -36,6 +36,7 @@ import OverdueReviewsPage from './pages/OverdueReviewsPage'
 import EvidenceAutoPage from './pages/EvidenceAutoPage'
 import ApprovalsPage from './pages/ApprovalsPage'
 import CertificationTimelinePage from './pages/CertificationTimelinePage'
+import CISControlsPage from './pages/CISControlsPage'
 
 export default function SecVitalsRoutes() {
   return (
@@ -45,6 +46,7 @@ export default function SecVitalsRoutes() {
       <Route path="frameworks/:id" element={<FrameworkDetailPage />} />
       {/* CRITICAL: tisax route must be before the :id/controls catch-all */}
       <Route path="frameworks/:id/tisax" element={<TISAXPage />} />
+      <Route path="cis-controls" element={<CISControlsPage />} />
       <Route path="tisax-mapping" element={<TISAXMappingPage />} />
       {/* CRITICAL: overdue-reviews must be before controls/:id to avoid catch-all match */}
       <Route path="overdue-reviews" element={<OverdueReviewsPage />} />

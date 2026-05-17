@@ -48,6 +48,7 @@ import (
 	"github.com/sechealth-app/sechealth/internal/shared/demoseed"
 	ghintegration "github.com/sechealth-app/sechealth/internal/shared/integrations/github"
 	jiraintegration "github.com/sechealth-app/sechealth/internal/shared/integrations/jira"
+	cloudintegration "github.com/sechealth-app/sechealth/internal/shared/integrations/cloud"
 	"github.com/sechealth-app/sechealth/internal/shared/metrics"
 	"github.com/sechealth-app/sechealth/internal/shared/notify"
 	"github.com/sechealth-app/sechealth/internal/shared/retention"
@@ -388,6 +389,17 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 		} else {
 			jiraintegration.RegisterRoutes(protected.Group("/integrations/jira"), pool, jiraMasterKey)
 			log.Info().Msg("jira integration routes registered")
+		}
+	}
+
+	// Cloud integrations — AWS + Azure automated evidence collection
+	if cfg.SecretKey != "" {
+		cloudMasterKey, err := hex.DecodeString(cfg.SecretKey)
+		if err != nil {
+			log.Warn().Err(err).Msg("invalid secret key (hex decode) — cloud integration routes disabled")
+		} else {
+			cloudintegration.RegisterRoutes(protected.Group("/integrations/cloud"), pool, cloudMasterKey)
+			log.Info().Msg("cloud integration routes registered")
 		}
 	}
 

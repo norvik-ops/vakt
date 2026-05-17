@@ -221,7 +221,14 @@ function CAPACard({ capa }: { capa: CAPA }) {
 
   return (
     <Card className="overflow-hidden">
-      <div className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setExpanded((v) => !v)}>
+      {/* WCAG 2.1.1 + 4.1.2: interactive div replaced with button for keyboard + screen-reader support */}
+      <button
+        type="button"
+        className="w-full text-left flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        aria-controls={`capa-detail-${capa.id}`}
+      >
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-1.5 mb-1">
             <Badge variant="outline" className="text-xs">{SOURCE_LABEL[capa.source_type]}</Badge>
@@ -235,13 +242,20 @@ function CAPACard({ capa }: { capa: CAPA }) {
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={handleDelete}>
-            <Trash2 className="w-3.5 h-3.5" />
+          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={handleDelete} aria-label="CAPA löschen">
+            <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
           </Button>
-          {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+          {expanded
+            ? <ChevronUp className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            : <ChevronDown className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          }
         </div>
-      </div>
-      {expanded && <CAPADetail capa={capa} onClose={() => setExpanded(false)} />}
+      </button>
+      {expanded && (
+        <div id={`capa-detail-${capa.id}`}>
+          <CAPADetail capa={capa} onClose={() => setExpanded(false)} />
+        </div>
+      )}
     </Card>
   )
 }

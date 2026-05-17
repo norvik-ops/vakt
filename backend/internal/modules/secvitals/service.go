@@ -336,10 +336,70 @@ func (s *Service) SeedFrameworkMappings(ctx context.Context) error {
 		return nil
 	}
 
+	// CIS Controls v8 (IG1) ↔ ISO 27001:2022 bidirectional mappings.
+	// CIS group codes as stored in DB (e.g. "CIS-1.1") mapped to ISO 27001 control IDs.
+	const cis = "CIS"
+
+	isoCIS := []entry{
+		// CIS 1 (Asset Inventory) ↔ ISO A.8.1 (Asset Inventory)
+		{iso, "A.8.1", cis, "CIS-1.1", "equivalent"},
+		{iso, "A.8.1", cis, "CIS-1.2", "partial"},
+		// CIS 2 (Software Inventory) ↔ ISO A.8.1
+		{iso, "A.8.1", cis, "CIS-2.1", "equivalent"},
+		// CIS 3 (Data Protection) ↔ ISO A.8.2 (Classification) + A.8.3 (Handling)
+		{iso, "A.8.2", cis, "CIS-3.2", "equivalent"},
+		{iso, "A.8.3", cis, "CIS-3.3", "equivalent"},
+		// CIS 4 (Secure Configuration) ↔ ISO A.12.6 (Vulnerability Management / Hardening)
+		{iso, "A.12.6", cis, "CIS-4.1", "equivalent"},
+		{iso, "A.12.6", cis, "CIS-4.4", "partial"},
+		// CIS 5 (Account Management) ↔ ISO A.9.2 (User Access Provisioning)
+		{iso, "A.9.2", cis, "CIS-5.1", "equivalent"},
+		{iso, "A.9.2", cis, "CIS-5.3", "equivalent"},
+		// CIS 6 (Access Control) ↔ ISO A.9.1 (Business requirements) + A.9.4 (System access)
+		{iso, "A.9.1", cis, "CIS-6.1", "equivalent"},
+		{iso, "A.9.4", cis, "CIS-6.3", "equivalent"},
+		// CIS 7 (Vulnerability Management) ↔ ISO A.12.6
+		{iso, "A.12.6", cis, "CIS-7.1", "equivalent"},
+		{iso, "A.12.6", cis, "CIS-7.2", "equivalent"},
+		// CIS 8 (Audit Logs) ↔ ISO A.12.4 (Logging and Monitoring)
+		{iso, "A.12.4", cis, "CIS-8.2", "equivalent"},
+		{iso, "A.12.4", cis, "CIS-8.4", "equivalent"},
+		// CIS 9 (Email/Web) ↔ ISO A.6.1 (closest: internal organisation / communication security)
+		{iso, "A.6.1", cis, "CIS-9.3", "partial"},
+		// CIS 10 (Malware) ↔ ISO A.12.2 (Protection from malware)
+		{iso, "A.12.2", cis, "CIS-10.1", "equivalent"},
+		// CIS 11 (Data Recovery) ↔ ISO A.12.3 (Backup)
+		{iso, "A.12.3", cis, "CIS-11.1", "equivalent"},
+		{iso, "A.12.3", cis, "CIS-11.2", "equivalent"},
+		{iso, "A.12.3", cis, "CIS-11.4", "partial"},
+		// CIS 12 (Network Infrastructure) ↔ ISO A.13.1 (Network controls)
+		{iso, "A.13.1", cis, "CIS-12.1", "equivalent"},
+		// CIS 13 (Network Monitoring) ↔ ISO A.12.4 (Logging) + A.13.1
+		{iso, "A.12.4", cis, "CIS-13.1", "partial"},
+		// CIS 14 (Security Awareness) ↔ ISO A.7.2 (Awareness, education, training)
+		{iso, "A.7.2", cis, "CIS-14.1", "equivalent"},
+		{iso, "A.7.2", cis, "CIS-14.2", "equivalent"},
+		{iso, "A.7.2", cis, "CIS-14.3", "partial"},
+		// CIS 15 (Service Provider Management) ↔ ISO A.15.1 (Supplier relationships)
+		{iso, "A.15.1", cis, "CIS-15.1", "equivalent"},
+		{iso, "A.15.1", cis, "CIS-15.2", "equivalent"},
+		// CIS 16 (Application Security) ↔ ISO A.14.1 (Security requirements in development)
+		{iso, "A.14.1", cis, "CIS-16.1", "equivalent"},
+		{iso, "A.14.1", cis, "CIS-16.3", "partial"},
+		// CIS 17 (Incident Response) ↔ ISO A.16.1 (Management of incidents)
+		{iso, "A.16.1", cis, "CIS-17.1", "equivalent"},
+		{iso, "A.16.1", cis, "CIS-17.2", "partial"},
+		// CIS 18 (Penetration Testing) ↔ ISO A.12.6 (Vulnerability management)
+		{iso, "A.12.6", cis, "CIS-18.2", "informative"},
+	}
+
 	if err := seed(isoNIS2); err != nil {
 		return err
 	}
-	return seed(isoBSI)
+	if err := seed(isoBSI); err != nil {
+		return err
+	}
+	return seed(isoCIS)
 }
 
 // GetFramework returns a single framework by ID.
@@ -2129,6 +2189,8 @@ func builtinControls(frameworkID, orgID, name string) []Control {
 		return tisaxControls(frameworkID, orgID)
 	case "DSGVO-TOM":
 		return dsgvoTOMControls(frameworkID, orgID)
+	case "CIS":
+		return cisControls(frameworkID, orgID)
 	}
 	return nil
 }
@@ -4294,6 +4356,243 @@ func dsgvoTOMControls(frameworkID, orgID string) []Control {
 		c("TOM-11", "Integrität", "Sicherstellung, dass personenbezogene Daten nicht unbefugt verändert werden (Hashes, digitale Signaturen). Nachweis: Integritätskonzept.", 2),
 		c("TOM-12", "Wiederherstellung", "Fähigkeit zur schnellen Wiederherstellung von Verfügbarkeit und Zugang nach Zwischenfällen. Nachweis: BCM-Plan, Wiederherstellungstests.", 3),
 		c("TOM-13", "Überprüfungsverfahren", "Regelmäßige Überprüfung und Bewertung der Wirksamkeit der TOMs (mindestens jährlich). Nachweis: Prüfberichte, Revisionsprotokoll.", 2),
+	}
+}
+
+// cisControls returns the CIS Controls v8 IG1 safeguards (basic hygiene for all orgs).
+// Each control group (1–18) is represented by its key IG1 safeguards.
+func cisControls(frameworkID, orgID string) []Control {
+	c := func(id, title, desc, domain string, w int) Control {
+		return Control{
+			FrameworkID:  frameworkID,
+			OrgID:        orgID,
+			ControlID:    id,
+			Title:        title,
+			Description:  desc,
+			Domain:       domain,
+			EvidenceType: "manual",
+			Weight:       w,
+		}
+	}
+	return []Control{
+		// CIS 1 — Inventarisierung und Kontrolle von Unternehmens-Assets
+		c("CIS-1.1", "Inventarisierung von Unternehmens-Assets",
+			"Erstellen und pflegen Sie eine präzise, detaillierte und aktuelle Bestandsaufnahme aller Unternehmens-Assets mit Zugang zu Infrastruktur, einschließlich End-User-Geräten, Netzwerkgeräten, IoT-Geräten und Servern. Nachweis: aktuelles Asset-Register mit Datum und Verantwortlichem.",
+			"Asset-Inventarisierung", 3),
+		c("CIS-1.2", "Adressierung nicht autorisierter Assets",
+			"Stellen Sie sicher, dass ein Prozess existiert, um nicht autorisierte Assets zu identifizieren, zu isolieren oder zu entfernen. Nachweis: Eskalationsverfahren, CMDB-Prüfprotokoll.",
+			"Asset-Inventarisierung", 2),
+		c("CIS-1.3", "DHCP-Protokollierung für Asset-Erkennung nutzen",
+			"Nutzen Sie DHCP-Protokolle zur Aktualisierung des Asset-Inventars. Nachweis: DHCP-Log-Konfiguration, automatischer Asset-Abgleich.",
+			"Asset-Inventarisierung", 1),
+
+		// CIS 2 — Inventarisierung und Kontrolle von Software-Assets
+		c("CIS-2.1", "Inventarisierung von Software-Assets",
+			"Erstellen und pflegen Sie eine aktuelle Liste genehmigter Software inkl. Versionsinformationen und Herstellerdaten. Nachweis: Software-Inventar, Lizenzübersicht.",
+			"Software-Inventarisierung", 3),
+		c("CIS-2.2", "Sicherstellen, dass autorisierte Software gepflegt wird",
+			"Stellen Sie sicher, dass nur aktuell gewartete und unterstützte Software verwendet wird. Nachweis: EOL-Prüfbericht, Patch-Status-Übersicht.",
+			"Software-Inventarisierung", 2),
+		c("CIS-2.3", "Adressierung nicht autorisierter Software",
+			"Stellen Sie sicher, dass nicht autorisierte Software zeitnah deinstalliert oder im Netzwerk isoliert wird. Nachweis: Richtlinie zur Softwarefreigabe, Prüfprotokoll.",
+			"Software-Inventarisierung", 2),
+
+		// CIS 3 — Datenschutz
+		c("CIS-3.1", "Datenverwaltungsrichtlinie einrichten",
+			"Etablieren Sie und pflegen Sie eine Daten-Management-Richtlinie, die Anforderungen an Klassifizierung, Aufbewahrung und Handhabung festlegt. Nachweis: genehmigtes Richtliniendokument.",
+			"Datenschutz", 3),
+		c("CIS-3.2", "Daten-Inventar einrichten und pflegen",
+			"Inventarisieren Sie alle Datenbestände mit Klassifizierung, Eigentümer und Verarbeitungsort. Nachweis: Dateninventar, Datenflussdiagramm.",
+			"Datenschutz", 2),
+		c("CIS-3.3", "Daten auf Unternehmensgeräten schützen",
+			"Schützen Sie alle Daten auf Unternehmensgeräten mit geeigneten Maßnahmen (Verschlüsselung, Zugriffskontrolle). Nachweis: Verschlüsselungsrichtlinie, MDM-Konfiguration.",
+			"Datenschutz", 3),
+
+		// CIS 4 — Sichere Konfiguration von Unternehmens-Assets und Software
+		c("CIS-4.1", "Sichere Konfiguration einrichten und pflegen",
+			"Erstellen Sie sichere Konfigurationsvorlagen für alle Unternehmens-Assets (CIS Benchmarks). Nachweis: Hardening-Baseline, Scan-Bericht.",
+			"Sichere Konfiguration", 3),
+		c("CIS-4.2", "Standardpasswörter ändern",
+			"Ändern Sie alle Standard-Passwörter vor dem Einsatz. Nachweis: Inbetriebnahme-Checkliste, Passwortrichtlinie.",
+			"Sichere Konfiguration", 3),
+		c("CIS-4.3", "Automatische Sperrung von Sitzungen einrichten",
+			"Konfigurieren Sie automatische Bildschirmsperren und Sitzungs-Timeouts auf allen Assets. Nachweis: MDM-Konfiguration, GPO-Einstellung.",
+			"Sichere Konfiguration", 2),
+		c("CIS-4.4", "Nicht benötigte Dienste, Protokolle und Ports deaktivieren",
+			"Deaktivieren Sie nicht benötigte Netzwerkdienste, -protokolle und -ports auf allen Assets. Nachweis: Port-Scan-Bericht, Konfigurationsprüfung.",
+			"Sichere Konfiguration", 2),
+
+		// CIS 5 — Kontoverwaltung
+		c("CIS-5.1", "Verfahren zur Kontoverwaltung einrichten",
+			"Etablieren und pflegen Sie einen Prozess für die Erstellung, Verwendung, Verwaltung, Nachverfolgung und Löschung von Konten. Nachweis: IAM-Richtlinie, Onboarding/Offboarding-Verfahren.",
+			"Kontoverwaltung", 3),
+		c("CIS-5.2", "Nutzung privilegierter Konten kontrollieren",
+			"Verwenden Sie privilegierte Konten nur für administrative Aufgaben. Nachweis: Inventar privilegierter Konten, PAM-Konfiguration.",
+			"Kontoverwaltung", 3),
+		c("CIS-5.3", "Nicht verwendete Konten deaktivieren",
+			"Deaktivieren oder löschen Sie Konten nach einer definierten Inaktivitätsperiode. Nachweis: AD-Prüfbericht, Kontoreinigungs-Protokoll.",
+			"Kontoverwaltung", 2),
+		c("CIS-5.4", "Dienstkonten auf Dienste beschränken",
+			"Beschränken Sie Dienstkonten auf den minimal notwendigen Zugang. Stellen Sie sicher, dass sie sich nicht interaktiv einloggen können. Nachweis: Dienstkonto-Inventar, Konfigurationsnachweis.",
+			"Kontoverwaltung", 2),
+
+		// CIS 6 — Zugriffskontrollmanagement
+		c("CIS-6.1", "Zugriffsrechte nach Least Privilege einrichten",
+			"Weisen Sie Benutzern und Systemen nur die minimal notwendigen Berechtigungen zu. Nachweis: Zugriffsrechte-Matrix, Berechtigungskonzept.",
+			"Zugriffskontrolle", 3),
+		c("CIS-6.2", "Zugriffsrechte regelmäßig überprüfen",
+			"Führen Sie mindestens jährlich eine Überprüfung aller vergebenen Zugriffsrechte durch. Nachweis: Prüfprotokoll, Bereinigungsnachweise.",
+			"Zugriffskontrolle", 2),
+		c("CIS-6.3", "Multi-Faktor-Authentifizierung für alle Konten",
+			"Aktivieren Sie MFA für alle Benutzerkonten — insbesondere für Remote-Zugang und privilegierte Konten. Nachweis: MFA-Konfiguration, Ausnahmeliste.",
+			"Zugriffskontrolle", 3),
+
+		// CIS 7 — Kontinuierliches Schwachstellenmanagement
+		c("CIS-7.1", "Prozess zur Schwachstellenverwaltung einrichten",
+			"Etablieren und pflegen Sie einen Schwachstellenmanagement-Prozess mit klar definierten Rollen, Prioritäten und Fristen. Nachweis: Prozessdokumentation, Verantwortlichkeitenmatrix.",
+			"Schwachstellenmanagement", 3),
+		c("CIS-7.2", "Automatisierte Patch-Verwaltung für Betriebssysteme",
+			"Automatisieren Sie das Einspielen von Betriebssystem-Patches auf allen Assets. Nachweis: Patch-Management-Tool-Konfiguration, Compliance-Bericht.",
+			"Schwachstellenmanagement", 3),
+		c("CIS-7.3", "Automatisierte Patch-Verwaltung für Anwendungen",
+			"Automatisieren Sie das Einspielen von Anwendungs-Patches auf allen Assets. Nachweis: Anwendungs-Patch-Bericht.",
+			"Schwachstellenmanagement", 2),
+		c("CIS-7.4", "Verwaltung von Sicherheitsupdates für Drittanbieter-Software",
+			"Pflegen Sie Sicherheitsupdates für alle Drittanbieter-Software zeitnah ein (kritisch ≤ 72 h). Nachweis: SLA-Dokument, Umsetzungsnachweis.",
+			"Schwachstellenmanagement", 2),
+
+		// CIS 8 — Verwaltung von Audit-Logs
+		c("CIS-8.1", "Audit-Log-Verwaltungsrichtlinie einrichten",
+			"Erstellen und pflegen Sie eine Protokollverwaltungsrichtlinie mit Aufbewahrungsfristen, Schutz und Überprüfungsintervallen. Nachweis: Log-Richtlinie, SIEM-Architektur.",
+			"Audit-Log-Verwaltung", 2),
+		c("CIS-8.2", "Ereignisprotokolle sammeln",
+			"Sammeln Sie Audit-Logs auf allen Unternehmens-Assets. Nachweis: Log-Konfiguration aller Systeme, SIEM-Einspeisung.",
+			"Audit-Log-Verwaltung", 3),
+		c("CIS-8.3", "Protokollierungsfähigkeit ausreichend dimensionieren",
+			"Stellen Sie sicher, dass ausreichend Speicherkapazität für Protokolldaten bereitsteht. Nachweis: Storage-Monitoring, Kapazitätsplanung.",
+			"Audit-Log-Verwaltung", 1),
+		c("CIS-8.4", "Zentralisierte Log-Verwaltung aktivieren",
+			"Zentralisieren Sie alle Logs in einem SIEM oder einer zentralen Log-Plattform. Nachweis: SIEM-Konfiguration, Log-Quellen-Liste.",
+			"Audit-Log-Verwaltung", 2),
+
+		// CIS 9 — E-Mail- und Webbrowser-Schutz
+		c("CIS-9.1", "Nur vollständig unterstützte Browser und E-Mail-Clients nutzen",
+			"Stellen Sie sicher, dass ausschließlich vollständig gepflegte und unterstützte Browser und E-Mail-Clients eingesetzt werden. Nachweis: Software-Inventar, EOL-Prüfung.",
+			"E-Mail und Web-Schutz", 2),
+		c("CIS-9.2", "DNS-Filterung nutzen",
+			"Setzen Sie DNS-Filterung ein, um bösartige Domains zu blockieren. Nachweis: DNS-Filter-Konfiguration, Blacklist-Überblick.",
+			"E-Mail und Web-Schutz", 2),
+		c("CIS-9.3", "E-Mail-Authentifizierung einsetzen (DMARC, SPF, DKIM)",
+			"Konfigurieren Sie SPF, DKIM und DMARC für alle eigenen Domains. Nachweis: DNS-Einträge, DMARC-Bericht.",
+			"E-Mail und Web-Schutz", 3),
+
+		// CIS 10 — Malware-Abwehr
+		c("CIS-10.1", "Malware-Abwehr einsetzen",
+			"Setzen Sie Anti-Malware-Software auf allen Unternehmens-Endgeräten ein. Stellen Sie automatische Signatur-Updates sicher. Nachweis: AV-Konfiguration, Scan-Berichte.",
+			"Malware-Abwehr", 3),
+		c("CIS-10.2", "Automatische Signaturaktualisierungen konfigurieren",
+			"Konfigurieren Sie automatische Updates für alle Anti-Malware-Signaturen. Nachweis: Update-Richtlinie, Compliance-Scan.",
+			"Malware-Abwehr", 2),
+		c("CIS-10.3", "Autorun und Autoplay für Wechselmedien deaktivieren",
+			"Deaktivieren Sie Autorun und Autoplay für alle Wechselmedien und externen Geräte. Nachweis: GPO-/MDM-Konfiguration.",
+			"Malware-Abwehr", 2),
+
+		// CIS 11 — Datensicherung und -wiederherstellung
+		c("CIS-11.1", "Datensicherungsrichtlinie einrichten",
+			"Erstellen und pflegen Sie eine Datensicherungsrichtlinie mit Häufigkeit, Aufbewahrung und Verschlüsselung (3-2-1-Regel). Nachweis: Backup-Richtlinie, Backup-Job-Konfiguration.",
+			"Datensicherung", 3),
+		c("CIS-11.2", "Backups durchführen",
+			"Führen Sie automatisierte Backups aller kritischen Systeme und Daten durch. Nachweis: Backup-Job-Protokolle, Erfolgsquote.",
+			"Datensicherung", 3),
+		c("CIS-11.3", "Backups schützen",
+			"Schützen Sie Backup-Daten mit Verschlüsselung und Zugriffskontrollen. Trennen Sie Backup-Daten physisch oder logisch vom Primärsystem. Nachweis: Offline-Backup-Nachweis, Verschlüsselungskonfiguration.",
+			"Datensicherung", 3),
+		c("CIS-11.4", "Wiederherstellung testen",
+			"Testen Sie die Datenwiederherstellung mindestens vierteljährlich. Nachweis: Wiederherstellungstest-Protokoll mit Ergebnis und Datum.",
+			"Datensicherung", 2),
+
+		// CIS 12 — Verwaltung der Netzwerkinfrastruktur
+		c("CIS-12.1", "Netzwerk-Infrastruktur absichern",
+			"Stellen Sie sicher, dass die Netzwerk-Infrastruktur mit aktuellen Firmware-Versionen und sicheren Konfigurationen betrieben wird. Nachweis: Firmware-Inventar, Konfigurations-Baseline.",
+			"Netzwerkinfrastruktur", 3),
+		c("CIS-12.2", "Netzwerk-Infrastruktur-Verwaltung absichern",
+			"Verwalten Sie Netzwerkgeräte über dedizierte Managementnetze oder Out-of-Band-Kanäle. Nachweis: Netzwerkplan, Verwaltungszugriffs-Konfiguration.",
+			"Netzwerkinfrastruktur", 2),
+		c("CIS-12.3", "Sichere Netzwerk-Konfigurationsmanagement",
+			"Verwenden Sie automatisiertes Konfigurations-Management für Netzwerkgeräte. Nachweis: Änderungsprotokoll, Konfigurationsbackup.",
+			"Netzwerkinfrastruktur", 2),
+
+		// CIS 13 — Netzwerküberwachung und -verteidigung
+		c("CIS-13.1", "Zentrales Netzwerk-Monitoring einrichten",
+			"Stellen Sie sicher, dass der gesamte Netzwerkverkehr zentral überwacht und protokolliert wird. Nachweis: IDS/IPS-Konfiguration, SIEM-Einbindung.",
+			"Netzwerküberwachung", 2),
+		c("CIS-13.2", "Netzwerkdatenflüsse erfassen",
+			"Erfassen Sie Netzwerkdatenflüsse (NetFlow, sFlow) zur Anomalie-Erkennung. Nachweis: Flow-Collector-Konfiguration, Analyse-Dashboard.",
+			"Netzwerküberwachung", 2),
+		c("CIS-13.3", "DNS-Abfragen auf Angreifer-Infrastruktur erkennen",
+			"Implementieren Sie DNS-basierte Erkennungsmechanismen für Command-and-Control-Aktivitäten. Nachweis: DNS-Sicherheitskonfiguration, Alarmierungsregel.",
+			"Netzwerküberwachung", 2),
+
+		// CIS 14 — Security-Awareness und Schulungen
+		c("CIS-14.1", "Schulungsprogramm für Sicherheitsbewusstsein einrichten",
+			"Erstellen Sie ein dauerhaftes Security-Awareness-Programm für alle Mitarbeitenden. Nachweis: Programmbeschreibung, Schulungsplan, Teilnahmenachweise.",
+			"Security Awareness", 3),
+		c("CIS-14.2", "Sicherheitsbewusstsein schulen",
+			"Schulen Sie alle Mitarbeitenden mindestens jährlich zu aktuellen Bedrohungen (Phishing, Passwortsicherheit, Social Engineering). Nachweis: Schulungsnachweise, Klausur-/Testergebnisse.",
+			"Security Awareness", 3),
+		c("CIS-14.3", "Phishing-Simulationen durchführen",
+			"Führen Sie regelmäßige Phishing-Simulationen durch und nutzen Sie die Ergebnisse für gezielte Nachschulungen. Nachweis: Simulationsberichte mit Klickraten und Folgemaßnahmen.",
+			"Security Awareness", 2),
+		c("CIS-14.4", "Rollenspezifische Schulungen anbieten",
+			"Bieten Sie zusätzliche sicherheitsbezogene Schulungen für Rollen mit erhöhtem Risikoprofil an (Admins, Entwickler, Management). Nachweis: Rollenspezifische Schulungspläne und -nachweise.",
+			"Security Awareness", 2),
+
+		// CIS 15 — Dienstleistermanagement
+		c("CIS-15.1", "Inventar der Dienstleister erstellen",
+			"Erstellen und pflegen Sie ein Inventar aller Drittanbieter, die Daten oder Systeme der Organisation verwalten. Nachweis: Lieferantenregister mit Risikoklassifizierung.",
+			"Dienstleistermanagement", 2),
+		c("CIS-15.2", "Dienstleister-Richtlinie einrichten",
+			"Erstellen Sie eine Dienstleister-Sicherheitsrichtlinie mit Mindestanforderungen für alle Auftragsverarbeiter. Nachweis: Richtliniendokument, AVV-Muster.",
+			"Dienstleistermanagement", 3),
+		c("CIS-15.3", "Dienstleister regelmäßig überprüfen",
+			"Führen Sie mindestens jährliche Sicherheitsbewertungen aller kritischen Dienstleister durch. Nachweis: Bewertungsberichte, Fragebogenrückläufe.",
+			"Dienstleistermanagement", 2),
+
+		// CIS 16 — Anwendungssoftware-Sicherheit
+		c("CIS-16.1", "Anwendungssicherheitsanforderungen definieren",
+			"Definieren Sie Sicherheitsanforderungen für alle selbst entwickelten und beschafften Anwendungen. Nachweis: Sicherheitsanforderungs-Dokument, Abnahme-Checkliste.",
+			"Anwendungssicherheit", 2),
+		c("CIS-16.2", "Sicherheitsanforderungen bei Beschaffung berücksichtigen",
+			"Prüfen Sie Sicherheitsanforderungen vor der Beschaffung neuer Software und integrieren Sie diese in Verträge. Nachweis: Beschaffungs-Checkliste, Vertragsklauseln.",
+			"Anwendungssicherheit", 2),
+		c("CIS-16.3", "Sichere Entwicklungspraktiken anwenden",
+			"Integrieren Sie sichere Entwicklungspraktiken in den SDLC (Threat Modeling, Code-Review, SAST/DAST). Nachweis: SDLC-Dokumentation, Review-Nachweise.",
+			"Anwendungssicherheit", 2),
+
+		// CIS 17 — Incident-Response-Management
+		c("CIS-17.1", "Incident-Response-Programm einrichten",
+			"Erstellen und pflegen Sie ein formales Incident-Response-Programm mit Richtlinie, Klassifizierungsschema und Eskalationspfaden. Nachweis: IR-Richtlinie, Prozessdokumentation.",
+			"Incident Response", 3),
+		c("CIS-17.2", "Incident-Response-Rollen und -Verantwortlichkeiten definieren",
+			"Definieren und dokumentieren Sie klare Rollen und Verantwortlichkeiten im Incident-Response-Team. Nachweis: Teamplan, Beauftragungsschreiben, Erreichbarkeitsmatrix.",
+			"Incident Response", 2),
+		c("CIS-17.3", "Incident-Response-Verfahren dokumentieren",
+			"Erstellen Sie dokumentierte Playbooks für häufige Vorfallstypen (Ransomware, Datenpanne, Phishing). Nachweis: Playbook-Dokumente, Testergebnis.",
+			"Incident Response", 2),
+		c("CIS-17.4", "Incident-Response-Übungen durchführen",
+			"Führen Sie mindestens jährliche IR-Übungen (Tabletop oder Live-Test) durch. Nachweis: Übungsprotokoll mit Ergebnissen und Verbesserungsmaßnahmen.",
+			"Incident Response", 2),
+
+		// CIS 18 — Penetrationstests
+		c("CIS-18.1", "Penetrationstest-Strategie einrichten",
+			"Erstellen und pflegen Sie eine Penetrationstest-Strategie, die Umfang, Häufigkeit und Methodik festlegt. Nachweis: Pentest-Richtlinie, Zeitplan.",
+			"Penetrationstests", 2),
+		c("CIS-18.2", "Penetrationstests der Unternehmens-Infrastruktur durchführen",
+			"Führen Sie mindestens jährliche externe und interne Penetrationstests durch. Nachweis: Pentest-Bericht mit Datum, Scope und Behebungsstatus.",
+			"Penetrationstests", 3),
+		c("CIS-18.3", "Penetrationstests von Webanwendungen durchführen",
+			"Führen Sie mindestens jährliche Penetrationstests aller öffentlich zugänglichen Webanwendungen durch. Nachweis: Pentest-Bericht (OWASP-Methodik), Behebungsnachweise.",
+			"Penetrationstests", 2),
 	}
 }
 

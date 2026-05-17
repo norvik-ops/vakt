@@ -137,15 +137,17 @@ function KPICard({
     <Link
       to={to}
       className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-4 hover:border-brand/60 transition-colors"
+      aria-label={`${label}: ${value ?? 'wird geladen'}`}
     >
       <div className="flex items-center gap-2 mb-1">
-        <Icon className={`w-4 h-4 ${isAlert ? 'text-[#ef4444]' : 'text-secondary'}`} />
+        {/* WCAG 1.1.1: icon is decorative, label text conveys meaning */}
+        <Icon className={`w-4 h-4 ${isAlert ? 'text-[#ef4444]' : 'text-secondary'}`} aria-hidden="true" />
         <span className="text-[11px] text-secondary uppercase tracking-wider font-semibold">{label}</span>
       </div>
       {isLoading ? (
-        <Skeleton className="h-8 w-16 mt-1" />
+        <Skeleton className="h-8 w-16 mt-1" aria-label={`${label} wird geladen`} />
       ) : (
-        <p className={`text-[32px] font-black leading-none ${isAlert ? 'text-[#ef4444]' : 'text-primary'}`}>
+        <p className={`text-[32px] font-black leading-none ${isAlert ? 'text-[#ef4444]' : 'text-primary'}`} aria-hidden="true">
           {value ?? '—'}
         </p>
       )}
@@ -172,17 +174,27 @@ function FrameworkProgress({
       {scores.map((fw) => {
         const pct = Math.round(fw.score_pct)
         const color = barColor(pct)
+        const progressId = `fw-progress-${fw.framework_id}`
         return (
           <div key={fw.framework_id}>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[12px] font-medium text-primary truncate max-w-[60%]">
+              <span className="text-[12px] font-medium text-primary truncate max-w-[60%]" id={progressId}>
                 {fw.framework_name}
               </span>
               <span className="text-[12px] text-secondary shrink-0 ml-2">
                 {fw.implemented_controls} / {fw.total_controls} · {pct}%
               </span>
             </div>
-            <div className="h-1.5 rounded-full bg-border overflow-hidden">
+            {/* WCAG 1.3.1: progressbar role with aria-valuenow communicates progress to screen readers */}
+            <div
+              className="h-1.5 rounded-full bg-border overflow-hidden"
+              role="progressbar"
+              aria-valuenow={pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-labelledby={progressId}
+              aria-label={`${fw.framework_name}: ${pct}% umgesetzt`}
+            >
               <div
                 className={`h-full rounded-full transition-all ${color}`}
                 style={{ width: `${pct}%` }}
@@ -234,7 +246,7 @@ function ActivityTimeline({ entries }: { entries: ActivityEntry[] }) {
         const relTime = relativeTime(e.created_at)
         return (
           <li key={e.id} className="flex items-start gap-2.5">
-            <span className="mt-0.5 p-1 rounded bg-border/60 shrink-0">
+            <span className="mt-0.5 p-1 rounded bg-border/60 shrink-0" aria-hidden="true">
               <Icon className="w-3 h-3 text-secondary" />
             </span>
             <div className="flex-1 min-w-0">
@@ -303,7 +315,15 @@ function ComplianceProgressCard({
               {totals.total - totals.implemented} offen
             </span>
           </div>
-          <div className="h-2 rounded-full bg-border overflow-hidden">
+          {/* WCAG 1.3.1: progressbar communicates overall compliance progress */}
+          <div
+            className="h-2 rounded-full bg-border overflow-hidden"
+            role="progressbar"
+            aria-valuenow={pct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`Gesamt-Compliance: ${pct}%`}
+          >
             <div
               className={`h-full rounded-full transition-all duration-500 ${color}`}
               style={{ width: `${pct}%` }}
@@ -365,13 +385,16 @@ function ScoreHistoryCard() {
         <h2 className="text-[13px] font-semibold text-primary">Compliance-Verlauf</h2>
         <div className="flex items-center gap-2">
           {trendDelta !== null && (
-            <span className={`flex items-center gap-0.5 text-[11px] font-semibold ${trendDelta > 0.5 ? 'text-[#22c55e]' : trendDelta < -0.5 ? 'text-[#ef4444]' : 'text-secondary'}`}>
+            <span
+              className={`flex items-center gap-0.5 text-[11px] font-semibold ${trendDelta > 0.5 ? 'text-[#22c55e]' : trendDelta < -0.5 ? 'text-[#ef4444]' : 'text-secondary'}`}
+              aria-label={`Trend: ${trendDelta > 0 ? '+' : ''}${trendDelta.toFixed(1)}%`}
+            >
               {trendDelta > 0.5 ? (
-                <TrendingUp className="w-3 h-3" />
+                <TrendingUp className="w-3 h-3" aria-hidden="true" />
               ) : trendDelta < -0.5 ? (
-                <TrendingDown className="w-3 h-3" />
+                <TrendingDown className="w-3 h-3" aria-hidden="true" />
               ) : (
-                <Minus className="w-3 h-3" />
+                <Minus className="w-3 h-3" aria-hidden="true" />
               )}
               {trendDelta > 0 ? '+' : ''}{trendDelta.toFixed(1)}%
             </span>
@@ -592,13 +615,16 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 mt-1">
             <p className="text-[12px] text-secondary">Gesamtbewertung</p>
             {scoreTrend !== null && (
-              <span className={`flex items-center gap-0.5 text-[11px] font-semibold ${scoreTrend > 0.5 ? 'text-[#22c55e]' : scoreTrend < -0.5 ? 'text-[#ef4444]' : 'text-secondary'}`}>
+              <span
+                className={`flex items-center gap-0.5 text-[11px] font-semibold ${scoreTrend > 0.5 ? 'text-[#22c55e]' : scoreTrend < -0.5 ? 'text-[#ef4444]' : 'text-secondary'}`}
+                aria-label={`Trend: ${scoreTrend > 0 ? '+' : ''}${scoreTrend.toFixed(1)}%`}
+              >
                 {scoreTrend > 0.5 ? (
-                  <TrendingUp className="w-3 h-3" />
+                  <TrendingUp className="w-3 h-3" aria-hidden="true" />
                 ) : scoreTrend < -0.5 ? (
-                  <TrendingDown className="w-3 h-3" />
+                  <TrendingDown className="w-3 h-3" aria-hidden="true" />
                 ) : (
-                  <Minus className="w-3 h-3" />
+                  <Minus className="w-3 h-3" aria-hidden="true" />
                 )}
                 {scoreTrend > 0 ? '+' : ''}{scoreTrend.toFixed(1)}%
               </span>

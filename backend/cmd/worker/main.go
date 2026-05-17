@@ -25,6 +25,7 @@ import (
 	"github.com/sechealth-app/sechealth/internal/auth"
 	"github.com/sechealth-app/sechealth/internal/shared/demo"
 	"github.com/sechealth-app/sechealth/internal/config"
+	cloudintegration "github.com/sechealth-app/sechealth/internal/shared/integrations/cloud"
 	"github.com/sechealth-app/sechealth/internal/modules/secprivacy"
 	"github.com/sechealth-app/sechealth/internal/modules/secreflex"
 	"github.com/sechealth-app/sechealth/internal/modules/secpulse"
@@ -147,6 +148,9 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 
 	// Auth: daily cleanup of expired and used password reset tokens
 	mux.HandleFunc(auth.TaskCleanupPasswordResetTokens, handleCleanupPasswordResetTokens(pool))
+
+	// Cloud integrations: daily evidence collection from AWS + Azure
+	mux.HandleFunc(cloudintegration.TaskCloudSync, handleCloudSync(cfg, pool))
 
 	return srv, mux
 }
@@ -1133,6 +1137,28 @@ func handleNotifyDeadlines(cfg *config.Config, pool *pgxpool.Pool) asynq.Handler
 	}
 }
 
+// handleCloudSync runs evidence collection for all enabled AWS + Azure cloud integrations.
+func handleCloudSync(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
+	return func(ctx context.Context, _ *asynq.Task) error {
+		if cfg == nil || cfg.SecretKey == "" {
+			log.Warn().Msg("cloud_sync: master key not configured, skipping")
+			return nil
+		}
+		masterKey, err := hexDecodeKey(cfg.SecretKey)
+		if err != nil {
+			log.Error().Err(err).Msg("cloud_sync: invalid master key")
+			return err
+		}
+		svc := cloudintegration.NewService(pool, masterKey)
+		if err := svc.SyncAllEnabled(ctx); err != nil {
+			log.Error().Err(err).Msg("cloud_sync: failed")
+			return err
+		}
+		log.Info().Msg("cloud_sync: completed")
+		return nil
+	}
+}
+
 // connectDB opens a pgx pool using the config's DB URL.
 func connectDB(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 	dbURL := ""
@@ -1256,6 +1282,13 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		auth.NewCleanupPasswordResetTokensTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register password reset token cleanup cron")
+	}
+
+	// Daily at 04:00 UTC: collect cloud evidence from all enabled AWS + Azure integrations.
+	if _, err := scheduler.Register("0 4 * * *",
+		cloudintegration.NewCloudSyncTask(),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register cloud sync cron")
 	}
 
 	return scheduler

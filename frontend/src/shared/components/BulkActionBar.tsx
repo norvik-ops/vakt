@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import { X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '../../components/ui/button'
 
 interface BulkAction {
@@ -21,6 +22,8 @@ interface BulkActionBarProps {
  * Renders nothing when selectedCount === 0.
  */
 export function BulkActionBar({ selectedCount, onClearSelection, actions }: BulkActionBarProps) {
+  const { t } = useTranslation()
+
   if (selectedCount === 0) return null
 
   return (
@@ -28,7 +31,7 @@ export function BulkActionBar({ selectedCount, onClearSelection, actions }: Bulk
       <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-white/10 bg-[#1a1f2e] shadow-2xl">
         {/* Selection count + clear */}
         <span className="text-sm font-medium text-white whitespace-nowrap">
-          {selectedCount} ausgewählt
+          {t('common.selected', { count: selectedCount })}
         </span>
 
         <Button
@@ -36,10 +39,11 @@ export function BulkActionBar({ selectedCount, onClearSelection, actions }: Bulk
           size="icon"
           className="h-6 w-6 text-white/60 hover:text-white hover:bg-white/10"
           onClick={onClearSelection}
-          aria-label="Auswahl aufheben"
-          title="Auswahl aufheben"
+          aria-label={t('common.clearSelection')}
+          title={t('common.clearSelection')}
         >
-          <X className="w-3.5 h-3.5" />
+          {/* WCAG 1.1.1: X icon is decorative, button is named by aria-label */}
+          <X className="w-3.5 h-3.5" aria-hidden="true" />
         </Button>
 
         <div className="w-px h-5 bg-white/20" />
@@ -61,7 +65,8 @@ export function BulkActionBar({ selectedCount, onClearSelection, actions }: Bulk
                 onClick={action.onClick}
                 disabled={action.disabled}
               >
-                {Icon && <Icon className="w-3.5 h-3.5" />}
+                {/* WCAG 1.1.1: action icon is decorative, button label provides the name */}
+                {Icon && <Icon className="w-3.5 h-3.5" aria-hidden="true" />}
                 {action.label}
               </Button>
             )

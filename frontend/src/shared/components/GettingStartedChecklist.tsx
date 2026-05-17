@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, Circle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../../api/client'
 import { useFrameworks } from '../../modules/secvitals/hooks/useFrameworks'
@@ -35,12 +36,13 @@ function useHasEvidence() {
 
 interface Step {
   id: string
-  label: string
+  labelKey: keyof { org: string; framework: string; asset: string; team: string; evidence: string; mfa: string }
   done: boolean
   to: string
 }
 
 export function GettingStartedChecklist() {
+  const { t } = useTranslation()
   const [dismissed, setDismissed] = useState(
     () => localStorage.getItem(DISMISS_KEY) === '1',
   )
@@ -54,37 +56,37 @@ export function GettingStartedChecklist() {
   const steps: Step[] = [
     {
       id: 'org',
-      label: 'Organisation einrichten',
+      labelKey: 'org',
       done: true,
       to: '/settings',
     },
     {
       id: 'framework',
-      label: 'Erstes Framework aktivieren',
+      labelKey: 'framework',
       done: (frameworks?.length ?? 0) > 0,
       to: '/secvitals/frameworks',
     },
     {
       id: 'asset',
-      label: 'Ersten Asset hinzufügen',
+      labelKey: 'asset',
       done: (assetPagination?.total ?? 0) > 0,
       to: '/secpulse/assets',
     },
     {
       id: 'team',
-      label: 'Team-Mitglied einladen',
+      labelKey: 'team',
       done: (members?.length ?? 0) > 1,
       to: '/settings/team',
     },
     {
       id: 'evidence',
-      label: 'Evidence hochladen',
+      labelKey: 'evidence',
       done: hasEvidence ?? false,
       to: '/secvitals/frameworks',
     },
     {
       id: '2fa',
-      label: '2FA aktivieren',
+      labelKey: 'mfa',
       done: totpStatus?.enabled ?? false,
       to: '/account',
     },
@@ -104,14 +106,14 @@ export function GettingStartedChecklist() {
 
   return (
     <section
-      aria-label="Erste Schritte"
+      aria-label={t('onboarding.title')}
       className="rounded-lg border border-border bg-surface p-4 space-y-3"
     >
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-[13px] font-semibold text-primary">Erste Schritte</h2>
+        <h2 className="text-[13px] font-semibold text-primary">{t('onboarding.title')}</h2>
         <span className="text-[11px] text-secondary">
-          {completedCount} von {steps.length} abgeschlossen
+          {t('onboarding.completed', { count: completedCount, total: steps.length })}
         </span>
       </div>
 
@@ -121,7 +123,7 @@ export function GettingStartedChecklist() {
         aria-valuenow={pct}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={`${completedCount} von ${steps.length} Schritte abgeschlossen`}
+        aria-label={t('onboarding.completed', { count: completedCount, total: steps.length })}
         className="h-1.5 rounded-full bg-border overflow-hidden"
       >
         <div
@@ -152,7 +154,7 @@ export function GettingStartedChecklist() {
               <span
                 className={`text-[12px] ${step.done ? 'line-through text-secondary' : 'text-primary group-hover:text-brand'}`}
               >
-                {step.label}
+                {t(`onboarding.steps.${step.labelKey}`)}
               </span>
             </Link>
           </li>
@@ -166,7 +168,7 @@ export function GettingStartedChecklist() {
           onClick={handleDismiss}
           className="text-[11px] text-secondary hover:text-primary underline transition-colors"
         >
-          Anleitung ausblenden
+          {t('onboarding.dismiss')}
         </button>
       </div>
     </section>

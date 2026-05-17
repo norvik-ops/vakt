@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Button } from '../../components/ui/button'
 
 interface Props {
@@ -7,11 +8,13 @@ interface Props {
 }
 
 export function Pagination({ page, totalPages, onPageChange }: Props) {
+  const { t } = useTranslation()
+
   if (totalPages <= 1) return null
   return (
     <div className="flex items-center justify-between mt-4 text-sm">
       <span className="text-muted-foreground">
-        Seite {page} von {totalPages}
+        {t('pagination.pageOf', { page, total: totalPages })}
       </span>
       <div className="flex gap-1">
         <Button
@@ -19,7 +22,7 @@ export function Pagination({ page, totalPages, onPageChange }: Props) {
           size="sm"
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          aria-label="Vorherige Seite"
+          aria-label={t('pagination.previous')}
         >
           &larr;
         </Button>
@@ -28,7 +31,7 @@ export function Pagination({ page, totalPages, onPageChange }: Props) {
           size="sm"
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
-          aria-label="Nächste Seite"
+          aria-label={t('pagination.next')}
         >
           &rarr;
         </Button>
