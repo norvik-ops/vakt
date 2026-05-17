@@ -4,9 +4,6 @@
 
 package main
 
-// version is injected at build time via -ldflags "-X main.version=..."
-var version = "dev"
-
 import (
 	"context"
 	"encoding/hex"
@@ -63,6 +60,9 @@ import (
 	"github.com/sechealth-app/sechealth/internal/shared/usermgmt"
 	"github.com/sechealth-app/sechealth/internal/shared/apikeys"
 )
+
+// version is injected at build time via -ldflags "-X main.version=..."
+var version = "dev"
 
 func setupEcho(cfg *config.Config) *echo.Echo {
 	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
