@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { Plus, Trash2, Users } from 'lucide-react'
+import { Plus, ShieldCheck, Trash2, Users } from 'lucide-react'
 import { PageHeader } from '../shared/components/PageHeader'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../components/ui/dialog'
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../components/ui/alert-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table'
@@ -20,6 +20,7 @@ import {
   type TeamMember,
   type TeamInvitation,
 } from '../hooks/useTeam'
+import { UserPermissionsEditor } from '../components/UserPermissionsEditor'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -127,6 +128,31 @@ function InviteDialog({ open, onClose }: InviteDialogProps) {
 }
 
 // ---------------------------------------------------------------------------
+// Permissions Dialog
+// ---------------------------------------------------------------------------
+
+interface PermissionsDialogProps {
+  member: TeamMember | null
+  onClose: () => void
+}
+
+function PermissionsDialog({ member, onClose }: PermissionsDialogProps) {
+  return (
+    <Dialog open={member !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Modulberechtigungen</DialogTitle>
+          <DialogDescription>
+            {member ? (member.name || member.email) : ''} — Zugriff je Modul konfigurieren
+          </DialogDescription>
+        </DialogHeader>
+        {member && <UserPermissionsEditor userId={member.id} />}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Members table
 // ---------------------------------------------------------------------------
 
@@ -134,6 +160,7 @@ function MembersTable({ members, currentUserID }: { members: TeamMember[]; curre
   const updateRole = useUpdateRole()
   const removeUser = useRemoveUser()
   const [removeTarget, setRemoveTarget] = useState<TeamMember | null>(null)
+  const [permTarget, setPermTarget] = useState<TeamMember | null>(null)
 
   const adminCount = members.filter((m) => m.role === 'admin').length
 
@@ -210,23 +237,35 @@ function MembersTable({ members, currentUserID }: { members: TeamMember[]; curre
                 </TableCell>
                 <TableCell className="text-secondary text-sm">{formatDate(member.created_at)}</TableCell>
                 <TableCell>
-                  {!isSelf && !isLastAdmin && (
+                  <div className="flex items-center justify-end gap-1">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleRemove(member)}
-                      disabled={removeUser.isPending}
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setPermTarget(member)}
+                      title="Modulberechtigungen bearbeiten"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <ShieldCheck className="w-4 h-4 text-secondary" />
                     </Button>
-                  )}
+                    {!isSelf && !isLastAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemove(member)}
+                        disabled={removeUser.isPending}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             )
           })}
         </TableBody>
       </Table>
+
+      <PermissionsDialog member={permTarget} onClose={() => setPermTarget(null)} />
 
       <AlertDialog open={removeTarget !== null} onOpenChange={(open) => !open && setRemoveTarget(null)}>
         <AlertDialogContent>

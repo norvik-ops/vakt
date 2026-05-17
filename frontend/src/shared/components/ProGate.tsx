@@ -21,7 +21,7 @@ export function ProGate({ error, children }: ProGateProps) {
           <p className="font-semibold text-primary text-sm mb-1">Pro-Feature</p>
           <p className="text-secondary text-sm leading-relaxed mb-2">
             Dieses Feature ist in der Community Edition nicht verfügbar.
-            Vakt Pro mit TISAX, DORA, EU AI Act, KI-Berater und mehr ist in Planung.
+            Vakt Pro mit TISAX, DORA, EU AI Act, KI-Berater, granularen Modul-Berechtigungen und mehr ist in Planung.
           </p>
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand">
             <Clock className="w-3.5 h-3.5" />

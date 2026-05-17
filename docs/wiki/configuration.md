@@ -163,6 +163,27 @@ VAKT_UPDATE_CHECK=true
 
 ---
 
+## Benutzerverwaltung & Rollen
+
+Vakt unterscheidet zwischen der kostenlosen **Community Edition** mit vier festen Rollen und der **Pro**-Edition mit granularen Modul-Berechtigungen.
+
+### Community-Rollen
+
+| Rolle | Rechte |
+|-------|--------|
+| **Admin** | Vollzugriff — Benutzer verwalten, Module konfigurieren |
+| **Analyst** | Lesen + Schreiben in allen Modulen |
+| **Viewer** | Nur lesen — alle Module |
+| **Auditor** | Nur lesen + Audit-Bericht exportieren |
+
+### Pro: Granulare Modul-Berechtigungen
+
+Mit einer Pro-Lizenz können Benutzerrechte zusätzlich auf einzelne Module eingeschränkt werden. Jeder Benutzer erhält pro Modul (Vakt Scan, Vakt Comply, Vakt Vault, Vakt Aware, Vakt Privacy) eine separate `can_read`- und `can_write`-Berechtigung.
+
+**Verwaltung:** Einstellungen → Benutzerverwaltung → Shield-Icon neben dem jeweiligen Benutzer.
+
+---
+
 ## OIDC / SAML Single Sign-On (optional)
 
 SSO wird über [Casdoor](https://casdoor.org) als OIDC/SAML-Proxy unterstützt. Damit können Azure AD, Okta, Keycloak und Google Workspace eingebunden werden.

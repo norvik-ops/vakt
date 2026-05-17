@@ -30,6 +30,9 @@ const (
 	// FeatureSecPulse gates SBOM scanning, EOL tracking, and report generation/export.
 	// Basic findings listing and the vulnerability dashboard remain Community.
 	FeatureSecPulse = "secpulse_advanced"
+	// FeatureGranularPermissions gates the per-user module permission management API.
+	// Admins on Community may still see permissions; only writing (PUT) is gated.
+	FeatureGranularPermissions = "granular_permissions"
 )
 
 var publicKeyPEM = `-----BEGIN PUBLIC KEY-----
@@ -48,6 +51,7 @@ var allFeatures = []string{
 	FeatureAPI,
 	FeatureSecReflex,
 	FeatureSecPulse,
+	FeatureGranularPermissions,
 }
 
 // License describes the capabilities granted to this Vakt instance.

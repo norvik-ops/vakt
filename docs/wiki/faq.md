@@ -102,6 +102,16 @@ Vakt prüft automatisch, ob eine neue Version verfügbar ist, und zeigt es im Da
 
 ---
 
+### Kann ich Benutzerrechte auf bestimmte Module einschränken?
+
+In der **Community Edition** haben Benutzer feste Rollen (Admin, Analyst, Viewer, Auditor), die für alle Module gelten.
+
+Mit **Vakt Pro** lassen sich Berechtigungen granular pro Modul vergeben: Jeder Benutzer erhält separat `can_read` und `can_write` für jedes der fünf Module (Vakt Scan, Vakt Comply, Vakt Vault, Vakt Aware, Vakt Privacy). Damit kann z. B. ein Analyst Lesezugriff auf Vakt Comply erhalten, ohne Schreibrechte in Vakt Vault zu bekommen.
+
+Verwaltung: **Einstellungen → Benutzerverwaltung → Shield-Icon** neben dem jeweiligen Benutzer.
+
+---
+
 ### Kann ich einzelne Module deaktivieren?
 
 Ja. Jedes Modul kann unabhängig über die Umgebungsvariable `VAKT_MODULES_ENABLED` deaktiviert werden:

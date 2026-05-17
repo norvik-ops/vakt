@@ -16,15 +16,17 @@ import (
 
 // Handler holds HTTP handler methods for admin endpoints.
 type Handler struct {
-	service  *Service
-	validate *validator.Validate
+	service     *Service
+	validate    *validator.Validate
+	Permissions *PermissionsHandler
 }
 
 // NewHandler constructs an admin Handler.
 func NewHandler(service *Service) *Handler {
 	return &Handler{
-		service:  service,
-		validate: validator.New(),
+		service:     service,
+		validate:    validator.New(),
+		Permissions: NewPermissionsHandler(service.db),
 	}
 }
 

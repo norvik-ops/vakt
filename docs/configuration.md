@@ -144,6 +144,21 @@ VAKT_AI_MODEL=llama3.2
 
 ---
 
+## Benutzerverwaltung
+
+Vakt unterstützt vier Rollen in der Community Edition:
+
+| Rolle | Rechte |
+|-------|--------|
+| **Admin** | Vollzugriff — Benutzer verwalten, Module konfigurieren |
+| **Analyst** | Lesen + Schreiben in allen Modulen |
+| **Viewer** | Nur lesen — alle Module |
+| **Auditor** | Nur lesen + Audit-Bericht exportieren |
+
+Mit einer **Pro**-Lizenz werden zusätzlich granulare Modul-Berechtigungen freigeschaltet: Pro Benutzer kann `can_read` und `can_write` je Modul separat gesetzt werden. Verwaltung über **Einstellungen → Benutzerverwaltung**.
+
+---
+
 ## Externe Authentifizierung — OIDC/SAML SSO (optional)
 
 SecHealth unterstützt Single Sign-On über [Casdoor](https://casdoor.org) als OIDC/SAML-Proxy. Damit können bestehende Identity-Provider (Azure AD, Okta, Keycloak, Google Workspace) eingebunden werden.

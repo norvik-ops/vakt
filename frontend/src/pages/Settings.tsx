@@ -116,6 +116,7 @@ const FEATURE_LABELS: Record<string, string> = {
   api_access: 'API-Zugang',
   secreflex_advanced: 'Vakt Aware Pro',
   secpulse_advanced: 'Vakt Scan Pro',
+  granular_permissions: 'Granulare Modul-Berechtigungen pro Benutzer',
 }
 
 function useLicense() {
@@ -227,10 +228,26 @@ function LicenseSection() {
         )}
 
         {!isPro && (
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand">
-            <Clock className="w-3.5 h-3.5" />
-            Vakt Pro — demnächst verfügbar
-          </span>
+          <div className="space-y-1.5">
+            <p className="text-xs text-secondary">Pro schaltet frei:</p>
+            <ul className="text-xs text-secondary space-y-0.5 list-none">
+              {[
+                'Rollen: Admin, Analyst, Viewer, Auditor',
+                'Granulare Modul-Berechtigungen pro Benutzer',
+                'TISAX, DORA, EU AI Act, CRA',
+                'KI-Berater, Audit-PDF Export, SSO, API-Zugang',
+              ].map((f) => (
+                <li key={f} className="flex items-center gap-1.5">
+                  <span className="text-brand">›</span>
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand">
+              <Clock className="w-3.5 h-3.5" />
+              Vakt Pro — demnächst verfügbar
+            </span>
+          </div>
         )}
 
         {/* Pro-Key activation */}
