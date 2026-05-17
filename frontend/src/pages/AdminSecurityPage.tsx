@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ShieldAlert, LockOpen, RefreshCw, AlertTriangle, Lock } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { apiFetch } from '../api/client'
 import { PageHeader } from '../shared/components/PageHeader'
 import { Button } from '../components/ui/button'
@@ -41,14 +42,17 @@ function formatDateTime(iso: string) {
   })
 }
 
-function formatTimeRelative(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60_000)
-  if (mins < 1) return 'gerade eben'
-  if (mins < 60) return `vor ${mins.toString()} Min.`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `vor ${hrs.toString()} Std.`
-  return formatDateTime(iso)
+function useFormatTimeRelative() {
+  const { t } = useTranslation()
+  return function formatTimeRelative(iso: string) {
+    const diff = Date.now() - new Date(iso).getTime()
+    const mins = Math.floor(diff / 60_000)
+    if (mins < 1) return t('admin.security.justNow')
+    if (mins < 60) return t('admin.security.minutesAgo', { count: mins })
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24) return t('admin.security.hoursAgo', { count: hrs })
+    return formatDateTime(iso)
+  }
 }
 
 // ─── Summary Card ─────────────────────────────────────────────────────────────
@@ -103,6 +107,8 @@ function PageSkeleton() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminSecurityPage() {
+  const { t } = useTranslation()
+  const formatTimeRelative = useFormatTimeRelative()
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -118,11 +124,11 @@ export default function AdminSecurityPage() {
         method: 'DELETE',
       }),
     onSuccess: (_data, email) => {
-      toast({ title: `Account entsperrt: ${email}`, variant: 'default' })
+      toast({ title: t('admin.security.unlockSuccess', { email }), variant: 'default' })
       void queryClient.invalidateQueries({ queryKey: ['admin', 'security-events'] })
     },
     onError: (e: Error) => {
-      toast({ title: 'Fehler beim Entsperren', description: e.message, variant: 'destructive' })
+      toast({ title: t('admin.security.unlockError'), description: e.message, variant: 'destructive' })
     },
   })
 
@@ -132,8 +138,8 @@ export default function AdminSecurityPage() {
   return (
     <div>
       <PageHeader
-        title="Sicherheitsereignisse"
-        description="Gesperrte Accounts, fehlgeschlagene Logins und verdächtige Aktivitäten."
+        title={t('admin.security.title')}
+        description={t('admin.security.description')}
         actions={
           <Button
             variant="outline"
@@ -142,7 +148,7 @@ export default function AdminSecurityPage() {
             disabled={isFetching}
           >
             <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching ? 'animate-spin' : ''}`} />
-            Aktualisieren
+            {t('admin.security.refresh')}
           </Button>
         }
       />
@@ -151,7 +157,7 @@ export default function AdminSecurityPage() {
 
       {isError && (
         <div className="m-6 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-          Fehler beim Laden: {error instanceof Error ? error.message : 'Unbekannter Fehler'}
+          {t('admin.security.loadError', { message: error instanceof Error ? error.message : t('admin.security.unknownError') })}
         </div>
       )}
 
@@ -161,13 +167,13 @@ export default function AdminSecurityPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <SummaryCard
               icon={Lock}
-              label="Gesperrte Accounts"
+              label={t('admin.security.lockedAccounts')}
               value={data.total_locked}
               accent={data.total_locked > 0}
             />
             <SummaryCard
               icon={AlertTriangle}
-              label="Login-Fehler (24 h)"
+              label={t('admin.security.loginFailures24h')}
               value={data.failures_last_24h}
               accent={data.failures_last_24h >= 10}
             />
@@ -177,24 +183,24 @@ export default function AdminSecurityPage() {
           <div>
             <h2 className="text-sm font-semibold text-primary mb-3 flex items-center gap-2">
               <Lock className="w-4 h-4 shrink-0" />
-              Gesperrte Accounts
+              {t('admin.security.lockedAccounts')}
             </h2>
             <Card>
               <CardContent className="p-0">
                 {lockedAccounts.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 text-secondary gap-2">
                     <ShieldAlert className="w-7 h-7 opacity-30" />
-                    <p className="text-sm">Keine gesperrten Accounts.</p>
+                    <p className="text-sm">{t('admin.security.noLockedAccounts')}</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-border text-secondary text-[12px] uppercase tracking-wider">
-                          <th className="px-4 py-3 text-left font-medium">E-Mail</th>
-                          <th className="px-4 py-3 text-left font-medium">Gesperrt seit</th>
-                          <th className="px-4 py-3 text-left font-medium">Gesperrt bis</th>
-                          <th className="px-4 py-3 text-right font-medium">Aktion</th>
+                          <th className="px-4 py-3 text-left font-medium">{t('admin.security.colEmail')}</th>
+                          <th className="px-4 py-3 text-left font-medium">{t('admin.security.colLockedSince')}</th>
+                          <th className="px-4 py-3 text-left font-medium">{t('admin.security.colLockedUntil')}</th>
+                          <th className="px-4 py-3 text-right font-medium">{t('admin.security.colAction')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
@@ -215,7 +221,7 @@ export default function AdminSecurityPage() {
                                 onClick={() => unlockMutation.mutate(acc.email)}
                               >
                                 <LockOpen className="w-3 h-3 mr-1.5" />
-                                Entsperren
+                                {t('admin.security.unlock')}
                               </Button>
                             </td>
                           </tr>
@@ -232,24 +238,24 @@ export default function AdminSecurityPage() {
           <div>
             <h2 className="text-sm font-semibold text-primary mb-3 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0" />
-              Fehlgeschlagene Logins (letzte 24 h)
+              {t('admin.security.failuresSection')}
             </h2>
             <Card>
               <CardContent className="p-0">
                 {recentFailures.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 text-secondary gap-2">
                     <ShieldAlert className="w-7 h-7 opacity-30" />
-                    <p className="text-sm">Keine fehlgeschlagenen Logins in den letzten 24 Stunden.</p>
+                    <p className="text-sm">{t('admin.security.noFailures')}</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-border text-secondary text-[12px] uppercase tracking-wider">
-                          <th className="px-4 py-3 text-left font-medium">E-Mail</th>
-                          <th className="px-4 py-3 text-left font-medium">IP-Adresse</th>
-                          <th className="px-4 py-3 text-left font-medium">Letzter Versuch</th>
-                          <th className="px-4 py-3 text-right font-medium">Anzahl</th>
+                          <th className="px-4 py-3 text-left font-medium">{t('admin.security.colEmail')}</th>
+                          <th className="px-4 py-3 text-left font-medium">{t('admin.security.colIp')}</th>
+                          <th className="px-4 py-3 text-left font-medium">{t('admin.security.colLastAttempt')}</th>
+                          <th className="px-4 py-3 text-right font-medium">{t('admin.security.colCount')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">

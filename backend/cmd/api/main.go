@@ -48,7 +48,6 @@ import (
 	"github.com/sechealth-app/sechealth/internal/shared/auditor"
 	"github.com/sechealth-app/sechealth/internal/shared/demoseed"
 	ghintegration "github.com/sechealth-app/sechealth/internal/shared/integrations/github"
-	jiraintegration "github.com/sechealth-app/sechealth/internal/shared/integrations/jira"
 	cloudintegration "github.com/sechealth-app/sechealth/internal/shared/integrations/cloud"
 	"github.com/sechealth-app/sechealth/internal/shared/metrics"
 	"github.com/sechealth-app/sechealth/internal/shared/notify"
@@ -64,6 +63,7 @@ import (
 	"github.com/sechealth-app/sechealth/internal/shared/usermgmt"
 	"github.com/sechealth-app/sechealth/internal/shared/apikeys"
 	"github.com/sechealth-app/sechealth/internal/shared/comments"
+	"github.com/sechealth-app/sechealth/internal/shared/scheduledreports"
 )
 
 // version is injected at build time via -ldflags "-X main.version=..."
@@ -263,10 +263,15 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 		log.Info().Msg("staging routes registered")
 	}
 
+	// Outgoing webhooks — created before modules so event triggers can be wired in.
+	// The webhookSvc is also registered as routes below (after module routes).
+	webhookSvc := sharedwebhooks.NewWebhookService(pool)
+
 	// Module routes — all behind auth middleware, sharing the same DB pool
 	if cfg.IsModuleEnabled("secpulse") {
 		vbSvc := secpulse.NewService(pool, asynq.RedisClientOpt{Addr: redisOpt.Addr})
 		vbSvc.WithRedis(rdb)
+		vbSvc.WithWebhooks(webhookSvc)
 		secpulse.Register(protected.Group("/secpulse"), secpulse.NewHandler(vbSvc))
 		log.Info().Msg("secpulse routes registered")
 	}
@@ -282,6 +287,7 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 		ckSvc := secvitals.NewService(pool)
 		ckSvc.WithRedis(rdb)
 		ckSvc.WithNotifyService(notify.NewService(pool, cfg))
+		ckSvc.WithWebhooks(webhookSvc)
 		if cfg.AIProvider != "disabled" && cfg.AIProvider != "" && cfg.AIBaseURL != "" {
 			ckSvc.WithAIClient(ai.NewAIClient(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel))
 		}
@@ -399,17 +405,6 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 		}
 	}
 
-	// Jira integration — push findings as Jira issues, store config encrypted
-	if cfg.SecretKey != "" {
-		jiraMasterKey, err := hex.DecodeString(cfg.SecretKey)
-		if err != nil {
-			log.Warn().Err(err).Msg("invalid secret key (hex decode) — jira integration routes disabled")
-		} else {
-			jiraintegration.RegisterRoutes(protected.Group("/integrations/jira"), pool, jiraMasterKey)
-			log.Info().Msg("jira integration routes registered")
-		}
-	}
-
 	// Cloud integrations — AWS + Azure automated evidence collection
 	if cfg.SecretKey != "" {
 		cloudMasterKey, err := hex.DecodeString(cfg.SecretKey)
@@ -422,10 +417,21 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	}
 
 	// Outgoing webhooks — org-scoped event delivery (cross-module).
-	webhookSvc := sharedwebhooks.NewWebhookService(pool)
+	// webhookSvc was created before the module section; register routes here.
 	webhookHandler := sharedwebhooks.NewHandler(webhookSvc)
 	sharedwebhooks.Register(protected.Group("/webhooks"), webhookHandler)
 	log.Info().Msg("webhook routes registered")
+
+	// Scheduled reports — automated compliance/findings/risk report delivery via email
+	srSvc := scheduledreports.NewService(pool, scheduledreports.SMTPConfig{
+		Host: cfg.SMTPHost,
+		Port: cfg.SMTPPort,
+		User: cfg.SMTPUser,
+		Pass: cfg.SMTPPass,
+		From: cfg.SMTPFrom,
+	})
+	scheduledreports.Register(protected.Group("/reports"), scheduledreports.NewHandler(srSvc))
+	log.Info().Msg("scheduled reports routes registered")
 
 	// API key management — personal keys for programmatic access (Pro feature)
 	apikeys.Register(protected, pool)

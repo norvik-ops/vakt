@@ -39,6 +39,7 @@ import (
 	"github.com/sechealth-app/sechealth/internal/shared/notifications"
 	"github.com/sechealth-app/sechealth/internal/shared/notify"
 	"github.com/sechealth-app/sechealth/internal/shared/retention"
+	"github.com/sechealth-app/sechealth/internal/shared/scheduledreports"
 )
 
 // workerConcurrency returns the Asynq concurrency from env (VAKT_WORKER_CONCURRENCY),
@@ -151,6 +152,9 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 
 	// Cloud integrations: daily evidence collection from AWS + Azure
 	mux.HandleFunc(cloudintegration.TaskCloudSync, handleCloudSync(cfg, pool))
+
+	// Scheduled reports: daily delivery run
+	mux.HandleFunc(scheduledreports.TaskProcessScheduledReports, handleProcessScheduledReports(cfg, pool))
 
 	return srv, mux
 }
@@ -1137,6 +1141,27 @@ func handleNotifyDeadlines(cfg *config.Config, pool *pgxpool.Pool) asynq.Handler
 	}
 }
 
+// handleProcessScheduledReports runs all active reports that are due for delivery.
+func handleProcessScheduledReports(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
+	return func(ctx context.Context, _ *asynq.Task) error {
+		smtpCfg := scheduledreports.SMTPConfig{}
+		if cfg != nil {
+			smtpCfg.Host = cfg.SMTPHost
+			smtpCfg.Port = cfg.SMTPPort
+			smtpCfg.User = cfg.SMTPUser
+			smtpCfg.Pass = cfg.SMTPPass
+			smtpCfg.From = cfg.SMTPFrom
+		}
+		svc := scheduledreports.NewService(pool, smtpCfg)
+		if err := svc.ProcessDue(ctx); err != nil {
+			log.Error().Err(err).Msg("scheduled_reports: process_due failed")
+			return err
+		}
+		log.Info().Msg("scheduled_reports: process_due completed")
+		return nil
+	}
+}
+
 // handleCloudSync runs evidence collection for all enabled AWS + Azure cloud integrations.
 func handleCloudSync(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
@@ -1289,6 +1314,13 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		cloudintegration.NewCloudSyncTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register cloud sync cron")
+	}
+
+	// Daily at 08:00 UTC: process all due scheduled reports.
+	if _, err := scheduler.Register("0 8 * * *",
+		asynq.NewTask(scheduledreports.TaskProcessScheduledReports, nil),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register scheduled reports cron")
 	}
 
 	return scheduler

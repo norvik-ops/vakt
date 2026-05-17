@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plug, GitBranch, RefreshCw, Trash2, ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertCircle, Plus, ExternalLink, Cloud } from 'lucide-react'
+import { Plug, GitBranch, RefreshCw, Trash2, ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertCircle, Plus, Cloud, ShieldAlert } from 'lucide-react'
 import {
   useGitHubIntegrations,
   useAddGitHubIntegration,
@@ -9,11 +9,6 @@ import {
   type GitHubIntegration,
   type GitHubCheckResult,
 } from '../hooks/useGitHub'
-import {
-  useJiraConfig,
-  useSaveJiraConfig,
-  useTestJiraConnection,
-} from '../hooks/useJira'
 import {
   useAWSConfig,
   useSaveAWSConfig,
@@ -348,147 +343,20 @@ function GitHubTab() {
   )
 }
 
-// --- Jira tab ---
+// --- No third-party integrations info box ---
 
-function JiraTab() {
-  const { data: cfg, isLoading } = useJiraConfig()
-  const saveConfig = useSaveJiraConfig()
-  const testConnection = useTestJiraConnection()
-
-  const [jiraUrl, setJiraUrl] = useState('')
-  const [projectKey, setProjectKey] = useState('')
-  const [userEmail, setUserEmail] = useState('')
-  const [apiToken, setApiToken] = useState('')
-  const [initialized, setInitialized] = useState(false)
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
-
-  // Pre-fill fields once config loads
-  if (cfg && !initialized) {
-    setJiraUrl(cfg.jira_url)
-    setProjectKey(cfg.project_key)
-    setUserEmail(cfg.user_email)
-    setApiToken(cfg.api_token) // "****" mask or empty
-    setInitialized(true)
-  }
-
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault()
-    try {
-      await saveConfig.mutateAsync({ jira_url: jiraUrl, project_key: projectKey, user_email: userEmail, api_token: apiToken })
-      toast('Jira-Konfiguration gespeichert', 'success')
-    } catch (err) {
-      toast(err instanceof Error ? err.message : 'Speichern fehlgeschlagen', 'error')
-    }
-  }
-
-  async function handleTest() {
-    setTestResult(null)
-    try {
-      const result = await testConnection.mutateAsync()
-      if (result.success) {
-        setTestResult({ success: true, message: result.display_name ? `Verbunden als ${result.display_name}` : 'Verbunden' })
-      } else {
-        setTestResult({ success: false, message: result.error ?? 'Verbindung fehlgeschlagen' })
-      }
-    } catch (err) {
-      setTestResult({ success: false, message: err instanceof Error ? err.message : 'Verbindung fehlgeschlagen' })
-    }
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-32">
-        <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
-
+function NoThirdPartyInfoBox() {
   return (
-    <div>
-      <div className="mb-4">
-        <h2 className="text-sm font-semibold text-primary">Jira-Integration</h2>
-        <p className="text-xs text-secondary mt-0.5">
-          Sicherheitsbefunde direkt als Jira-Tickets erstellen. API-Token wird AES-256-GCM verschlüsselt gespeichert.
+    <div className="flex items-start gap-4 p-5 rounded-xl border border-border bg-surface max-w-lg">
+      <ShieldAlert className="w-6 h-6 text-amber-500 shrink-0 mt-0.5" />
+      <div>
+        <p className="text-sm font-semibold text-primary mb-1">Keine Drittanbieter-Integrationen</p>
+        <p className="text-xs text-secondary leading-relaxed">
+          Aus Datenschutzgründen (DSGVO Art. 28) verzichtet Vakt auf Integrationen,
+          die Sicherheitsdaten an externe SaaS-Dienste übertragen. Nutze Webhooks für
+          eigene Automatisierungen.
         </p>
       </div>
-
-      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Jira-URL</label>
-          <input
-            type="url"
-            value={jiraUrl}
-            onChange={(e) => setJiraUrl(e.target.value)}
-            placeholder="https://yourorg.atlassian.net"
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Projekt-Schlüssel</label>
-          <input
-            type="text"
-            value={projectKey}
-            onChange={(e) => setProjectKey(e.target.value)}
-            placeholder="z.B. SEC"
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Benutzer-E-Mail</label>
-          <input
-            type="email"
-            value={userEmail}
-            onChange={(e) => setUserEmail(e.target.value)}
-            placeholder="admin@yourorg.com"
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">API-Token</label>
-          <input
-            type="password"
-            value={apiToken}
-            onChange={(e) => setApiToken(e.target.value)}
-            placeholder={cfg?.is_configured ? '****' : 'API-Token eingeben'}
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
-            required
-          />
-          <p className="text-[11px] text-secondary mt-1">
-            Erstelle ein API-Token unter{' '}
-            <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noreferrer" className="underline hover:text-primary">
-              id.atlassian.com
-            </a>.
-          </p>
-        </div>
-
-        {testResult && (
-          <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-md border ${testResult.success ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-red-700 bg-red-50 border-red-200'}`}>
-            {testResult.success ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
-            {testResult.message}
-          </div>
-        )}
-
-        <div className="flex items-center gap-2 pt-1">
-          <button
-            type="button"
-            onClick={() => { void handleTest() }}
-            disabled={testConnection.isPending || !cfg?.is_configured}
-            className="px-3 py-1.5 text-xs rounded-md border border-border text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50"
-          >
-            {testConnection.isPending ? 'Teste…' : 'Verbindung testen'}
-          </button>
-          <button
-            type="submit"
-            disabled={saveConfig.isPending}
-            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50"
-          >
-            {saveConfig.isPending ? 'Wird gespeichert…' : 'Speichern'}
-          </button>
-        </div>
-      </form>
     </div>
   )
 }
@@ -936,14 +804,13 @@ function AzureTab() {
 
 // --- Main page ---
 
-type Tab = 'github' | 'jira' | 'aws' | 'azure'
+type Tab = 'github' | 'aws' | 'azure'
 
 export default function IntegrationsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('github')
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'github', label: 'GitHub', icon: <GitBranch className="w-4 h-4" /> },
-    { id: 'jira', label: 'Jira', icon: <ExternalLink className="w-4 h-4" /> },
     { id: 'aws', label: 'AWS', icon: <Cloud className="w-4 h-4" /> },
     { id: 'azure', label: 'Azure', icon: <Cloud className="w-4 h-4" /> },
   ]
@@ -979,9 +846,13 @@ export default function IntegrationsPage() {
 
       {/* Tab content */}
       {activeTab === 'github' && <GitHubTab />}
-      {activeTab === 'jira' && <JiraTab />}
       {activeTab === 'aws' && <AWSTab />}
       {activeTab === 'azure' && <AzureTab />}
+
+      {/* No third-party integrations notice */}
+      <div className="mt-6">
+        <NoThirdPartyInfoBox />
+      </div>
     </div>
   )
 }

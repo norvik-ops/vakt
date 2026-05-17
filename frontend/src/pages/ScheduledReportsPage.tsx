@@ -1,10 +1,9 @@
 /**
  * ScheduledReportsPage — geplante Berichte verwalten.
- *
- * TODO: Backend-Anbindung über /api/v1/reports/scheduled sobald Endpoint verfügbar.
- *       Aktuell: lokaler State (useState) als vollständige UI-Implementierung.
+ * Backend: /api/v1/reports/scheduled
  */
 import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2, Play, Calendar, X } from 'lucide-react'
 import { PageHeader } from '../shared/components/PageHeader'
 import { Button } from '../components/ui/button'
@@ -35,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select'
+import { apiFetch } from '../api/client'
 import { toast } from '../shared/hooks/useToast'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -50,8 +50,63 @@ interface ScheduledReport {
   schedule: Schedule
   recipients: string[]
   format: Format
-  next_run: string
+  next_run_at: string | null
+  last_run_at: string | null
   created_at: string
+}
+
+type CreateScheduledReportInput = Omit<ScheduledReport, 'id' | 'created_at' | 'next_run_at' | 'last_run_at'>
+
+// ─── API hooks ────────────────────────────────────────────────────────────────
+
+const BASE = '/reports/scheduled'
+
+function useScheduledReports() {
+  return useQuery<ScheduledReport[]>({
+    queryKey: ['scheduled-reports'],
+    queryFn: () => apiFetch<ScheduledReport[]>(BASE),
+    staleTime: 30_000,
+  })
+}
+
+function useCreateScheduledReport() {
+  const qc = useQueryClient()
+  return useMutation<ScheduledReport, Error, CreateScheduledReportInput>({
+    mutationFn: (data) =>
+      apiFetch<ScheduledReport>(BASE, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['scheduled-reports'] }),
+  })
+}
+
+function useUpdateScheduledReport() {
+  const qc = useQueryClient()
+  return useMutation<ScheduledReport, Error, { id: string } & CreateScheduledReportInput>({
+    mutationFn: ({ id, ...data }) =>
+      apiFetch<ScheduledReport>(`${BASE}/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['scheduled-reports'] }),
+  })
+}
+
+function useDeleteScheduledReport() {
+  const qc = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: (id) =>
+      apiFetch<void>(`${BASE}/${id}`, { method: 'DELETE' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['scheduled-reports'] }),
+  })
+}
+
+function useRunReport() {
+  return useMutation<void, Error, string>({
+    mutationFn: (id) =>
+      apiFetch<void>(`${BASE}/${id}/run`, { method: 'POST' }),
+  })
 }
 
 // ─── Labels ───────────────────────────────────────────────────────────────────
@@ -73,28 +128,10 @@ const FORMAT_LABELS: Record<Format, string> = {
   csv: 'CSV',
 }
 
-// ─── Next run helpers ─────────────────────────────────────────────────────────
+// ─── Date helpers ─────────────────────────────────────────────────────────────
 
-function computeNextRun(schedule: Schedule): string {
-  const now = new Date()
-  if (schedule === 'weekly') {
-    const next = new Date(now)
-    const daysUntilMonday = (1 - now.getDay() + 7) % 7 || 7
-    next.setDate(now.getDate() + daysUntilMonday)
-    return next.toISOString()
-  }
-  if (schedule === 'monthly') {
-    const next = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-    return next.toISOString()
-  }
-  // quarterly
-  const currentQ = Math.floor(now.getMonth() / 3)
-  const nextQMonth = (currentQ + 1) * 3
-  const next = new Date(now.getFullYear(), nextQMonth, 1)
-  return next.toISOString()
-}
-
-function formatDate(iso: string) {
+function formatDate(iso: string | null) {
+  if (!iso) return '—'
   return new Date(iso).toLocaleDateString('de-DE', {
     day: '2-digit',
     month: '2-digit',
@@ -170,19 +207,20 @@ interface ReportDialogProps {
   open: boolean
   onClose: () => void
   initial?: ScheduledReport
-  onSave: (data: Omit<ScheduledReport, 'id' | 'created_at' | 'next_run'>) => void
+  onSave: (data: CreateScheduledReportInput) => void
+  isSaving?: boolean
 }
 
-const emptyForm = {
+const emptyForm: CreateScheduledReportInput = {
   name: '',
-  type: 'compliance' as ReportType,
-  schedule: 'monthly' as Schedule,
-  recipients: [] as string[],
-  format: 'pdf' as Format,
+  type: 'compliance',
+  schedule: 'monthly',
+  recipients: [],
+  format: 'pdf',
 }
 
-function ReportDialog({ open, onClose, initial, onSave }: ReportDialogProps) {
-  const [form, setForm] = useState(() =>
+function ReportDialog({ open, onClose, initial, onSave, isSaving }: ReportDialogProps) {
+  const [form, setForm] = useState<CreateScheduledReportInput>(() =>
     initial
       ? { name: initial.name, type: initial.type, schedule: initial.schedule, recipients: initial.recipients, format: initial.format }
       : { ...emptyForm }
@@ -191,7 +229,6 @@ function ReportDialog({ open, onClose, initial, onSave }: ReportDialogProps) {
   function handleSave() {
     if (!form.name.trim() || form.recipients.length === 0) return
     onSave(form)
-    onClose()
   }
 
   function handleOpenChange(v: boolean) {
@@ -209,7 +246,6 @@ function ReportDialog({ open, onClose, initial, onSave }: ReportDialogProps) {
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Name */}
           <div className="space-y-1.5">
             <Label htmlFor="rep-name">Name des Berichts</Label>
             <Input
@@ -220,7 +256,6 @@ function ReportDialog({ open, onClose, initial, onSave }: ReportDialogProps) {
             />
           </div>
 
-          {/* Type */}
           <div className="space-y-1.5">
             <Label>Typ</Label>
             <Select
@@ -238,7 +273,6 @@ function ReportDialog({ open, onClose, initial, onSave }: ReportDialogProps) {
             </Select>
           </div>
 
-          {/* Schedule */}
           <div className="space-y-1.5">
             <Label>Zeitplan</Label>
             <Select
@@ -256,7 +290,6 @@ function ReportDialog({ open, onClose, initial, onSave }: ReportDialogProps) {
             </Select>
           </div>
 
-          {/* Recipients */}
           <div className="space-y-1.5">
             <Label>Empfänger</Label>
             <ChipsInput
@@ -268,7 +301,6 @@ function ReportDialog({ open, onClose, initial, onSave }: ReportDialogProps) {
             </p>
           </div>
 
-          {/* Format */}
           <div className="space-y-1.5">
             <Label>Format</Label>
             <Select
@@ -295,7 +327,14 @@ function ReportDialog({ open, onClose, initial, onSave }: ReportDialogProps) {
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Abbrechen</Button>
-          <Button onClick={handleSave} disabled={!canSave}>Speichern</Button>
+          <Button onClick={handleSave} disabled={!canSave || isSaving}>
+            {isSaving ? (
+              <>
+                <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1.5" />
+                Wird gespeichert…
+              </>
+            ) : 'Speichern'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -309,9 +348,10 @@ interface ReportCardProps {
   onEdit: () => void
   onDelete: () => void
   onRunNow: () => void
+  isRunning?: boolean
 }
 
-function ReportCard({ report, onEdit, onDelete, onRunNow }: ReportCardProps) {
+function ReportCard({ report, onEdit, onDelete, onRunNow, isRunning }: ReportCardProps) {
   return (
     <div className="bg-surface border border-border rounded-xl p-5 flex flex-col gap-3 hover:border-brand/30 transition-colors">
       <div className="flex items-start justify-between gap-2">
@@ -326,6 +366,7 @@ function ReportCard({ report, onEdit, onDelete, onRunNow }: ReportCardProps) {
             className="h-7 w-7 p-0"
             title="Jetzt senden"
             onClick={onRunNow}
+            disabled={isRunning}
           >
             <Play className="w-3.5 h-3.5" aria-hidden="true" />
             <span className="sr-only">Jetzt senden</span>
@@ -358,7 +399,10 @@ function ReportCard({ report, onEdit, onDelete, onRunNow }: ReportCardProps) {
         <div className="text-primary font-medium">{SCHEDULE_LABELS[report.schedule]}</div>
 
         <div className="text-secondary">Nächste Ausführung</div>
-        <div className="text-primary font-medium">{formatDate(report.next_run)}</div>
+        <div className="text-primary font-medium">{formatDate(report.next_run_at)}</div>
+
+        <div className="text-secondary">Letzte Ausführung</div>
+        <div className="text-primary font-medium">{formatDate(report.last_run_at)}</div>
 
         <div className="text-secondary">Format</div>
         <div>
@@ -402,16 +446,17 @@ function EmptyReports({ onCreate }: { onCreate: () => void }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-// TODO: Replace local state with API calls once /api/v1/reports/scheduled is available.
-// useQuery: queryKey ['scheduled-reports']
-// Mutations: POST /api/v1/reports/scheduled, PUT /api/v1/reports/scheduled/:id,
-//            DELETE /api/v1/reports/scheduled/:id, POST /api/v1/reports/scheduled/:id/run
-
 export default function ScheduledReportsPage() {
-  const [reports, setReports] = useState<ScheduledReport[]>([])
+  const { data: reports, isLoading, isError } = useScheduledReports()
+  const createReport = useCreateScheduledReport()
+  const updateReport = useUpdateScheduledReport()
+  const deleteReport = useDeleteScheduledReport()
+  const runReport = useRunReport()
+
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<ScheduledReport | undefined>()
   const [deleteTarget, setDeleteTarget] = useState<ScheduledReport | null>(null)
+  const [runningId, setRunningId] = useState<string | null>(null)
 
   function openCreate() {
     setEditTarget(undefined)
@@ -423,39 +468,52 @@ export default function ScheduledReportsPage() {
     setDialogOpen(true)
   }
 
-  function handleSave(data: Omit<ScheduledReport, 'id' | 'created_at' | 'next_run'>) {
+  async function handleSave(data: CreateScheduledReportInput) {
     if (editTarget) {
-      setReports((prev) =>
-        prev.map((r) =>
-          r.id === editTarget.id
-            ? { ...r, ...data, next_run: computeNextRun(data.schedule) }
-            : r
-        )
-      )
-      toast('Bericht aktualisiert', 'success')
-    } else {
-      const newReport: ScheduledReport = {
-        id: crypto.randomUUID(),
-        ...data,
-        next_run: computeNextRun(data.schedule),
-        created_at: new Date().toISOString(),
+      try {
+        await updateReport.mutateAsync({ id: editTarget.id, ...data })
+        toast('Bericht aktualisiert', 'success')
+        setDialogOpen(false)
+        setEditTarget(undefined)
+      } catch (err) {
+        toast(err instanceof Error ? err.message : 'Speichern fehlgeschlagen', 'error')
       }
-      setReports((prev) => [...prev, newReport])
-      toast('Bericht geplant', 'success')
+    } else {
+      try {
+        await createReport.mutateAsync(data)
+        toast('Bericht geplant', 'success')
+        setDialogOpen(false)
+      } catch (err) {
+        toast(err instanceof Error ? err.message : 'Erstellen fehlgeschlagen', 'error')
+      }
     }
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deleteTarget) return
-    setReports((prev) => prev.filter((r) => r.id !== deleteTarget.id))
-    setDeleteTarget(null)
-    toast('Bericht gelöscht', 'success')
+    try {
+      await deleteReport.mutateAsync(deleteTarget.id)
+      toast('Bericht gelöscht', 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Löschen fehlgeschlagen', 'error')
+    } finally {
+      setDeleteTarget(null)
+    }
   }
 
-  function handleRunNow(report: ScheduledReport) {
-    // TODO: POST /api/v1/reports/scheduled/:id/run
-    toast(`„${report.name}" wurde zur sofortigen Ausführung eingeplant`, 'info')
+  async function handleRunNow(report: ScheduledReport) {
+    setRunningId(report.id)
+    try {
+      await runReport.mutateAsync(report.id)
+      toast(`„${report.name}" wurde zur sofortigen Ausführung eingeplant`, 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Ausführung fehlgeschlagen', 'error')
+    } finally {
+      setRunningId(null)
+    }
   }
+
+  const reportList = reports ?? []
 
   return (
     <div className="flex flex-col h-full">
@@ -463,7 +521,7 @@ export default function ScheduledReportsPage() {
         title="Geplante Berichte"
         description="Automatisch versendete Compliance- und Sicherheitsberichte."
         actions={
-          reports.length > 0 ? (
+          reportList.length > 0 ? (
             <Button onClick={openCreate}>
               <Plus className="w-4 h-4 mr-1.5" />
               Bericht planen
@@ -473,25 +531,36 @@ export default function ScheduledReportsPage() {
       />
 
       <div className="flex-1 p-6 overflow-auto">
-        {reports.length === 0 ? (
+        {isLoading && (
+          <div className="flex items-center justify-center h-32">
+            <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+
+        {isError && (
+          <p className="text-sm text-red-500">
+            Fehler beim Laden der Berichte.
+          </p>
+        )}
+
+        {!isLoading && !isError && reportList.length === 0 && (
           <EmptyReports onCreate={openCreate} />
-        ) : (
+        )}
+
+        {!isLoading && !isError && reportList.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl">
-            {reports.map((r) => (
+            {reportList.map((r) => (
               <ReportCard
                 key={r.id}
                 report={r}
                 onEdit={() => openEdit(r)}
                 onDelete={() => setDeleteTarget(r)}
-                onRunNow={() => handleRunNow(r)}
+                onRunNow={() => { void handleRunNow(r) }}
+                isRunning={runningId === r.id}
               />
             ))}
           </div>
         )}
-
-        <p className="text-[11px] text-secondary mt-6">
-          Backend-Anbindung ausstehend — Daten werden aktuell nur im lokalen State gespeichert.
-        </p>
       </div>
 
       {/* Create / Edit Dialog */}
@@ -500,7 +569,8 @@ export default function ScheduledReportsPage() {
           open={dialogOpen}
           onClose={() => { setDialogOpen(false); setEditTarget(undefined) }}
           initial={editTarget}
-          onSave={handleSave}
+          onSave={(data) => { void handleSave(data) }}
+          isSaving={createReport.isPending || updateReport.isPending}
         />
       )}
 
@@ -516,10 +586,11 @@ export default function ScheduledReportsPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={() => { void handleDelete() }}
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              disabled={deleteReport.isPending}
             >
-              Löschen
+              {deleteReport.isPending ? 'Wird gelöscht…' : 'Löschen'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

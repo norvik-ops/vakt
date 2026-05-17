@@ -1141,6 +1141,16 @@ export default function Settings() {
                   </Link>
                 </div>
               </SectionCard>
+              <SectionCard title="Benachrichtigungseinstellungen" icon={Bell}>
+                <div className="space-y-3">
+                  <p className="text-xs text-secondary leading-relaxed">
+                    Steuere welche Ereignisse du per E-Mail oder In-App erhältst — Digest, Findings, Vorfälle, Genehmigungen.
+                  </p>
+                  <Link to="/settings/notifications" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                    Benachrichtigungen konfigurieren <ExternalLink className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              </SectionCard>
               <SectionCard title={t('settingsPage.scheduledReportsPlan')} icon={FileBarChart2}>
                 <div className="space-y-3">
                   <p className="text-xs text-secondary leading-relaxed">

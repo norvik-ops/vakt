@@ -12,6 +12,7 @@ import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { ExportButton } from '../../../shared/components/ExportButton'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Pagination } from '../../../shared/components/Pagination'
 import { ProGate } from '../../../shared/components/ProGate'
@@ -212,6 +213,12 @@ export default function PoliciesPage() {
         description={t('secvitals.policiesPage.description')}
         actions={
           <div className="flex gap-2">
+            <ExportButton
+              endpoint="/api/v1/secvitals/policies/export/xlsx"
+              filename={`richtlinien-${new Date().toISOString().slice(0, 10)}`}
+              label="Exportieren"
+              format="xlsx"
+            />
             <Button variant="outline" onClick={() => setTemplateOpen(true)}>
               <LayoutTemplate className="w-4 h-4 mr-1" />
               {t('secvitals.policiesPage.fromTemplate')}

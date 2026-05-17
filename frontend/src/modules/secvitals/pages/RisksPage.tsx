@@ -11,6 +11,7 @@ import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { ExportButton } from '../../../shared/components/ExportButton'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Pagination } from '../../../shared/components/Pagination'
 import { useSortableTable } from '../../../shared/hooks/useSortableTable'
@@ -145,6 +146,12 @@ export default function RisksPage() {
                 {t('secvitals.risksPage.viewHeatmap')}
               </Button>
             </div>
+            <ExportButton
+              endpoint="/api/v1/secvitals/risks/export/xlsx"
+              filename={`risiken-${new Date().toISOString().slice(0, 10)}`}
+              label="Exportieren"
+              format="xlsx"
+            />
             <Button onClick={openDialog}>
               <Plus className="w-4 h-4 mr-1" />
               {t('secvitals.risksPage.addRisk')}

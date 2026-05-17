@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { apiFetch } from '../api/client'
 import {
   useFieldValidation,
@@ -14,15 +15,21 @@ import { Label } from '../components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 
 const STRENGTH_COLORS = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500']
-const STRENGTH_LABELS = ['Sehr schwach', 'Schwach', 'Mittel', 'Stark']
 
 function PasswordStrengthBar({ password }: { password: string }) {
+  const { t } = useTranslation()
+  const strengthLabels = [
+    t('auth.passwordStrengthVeryWeak'),
+    t('auth.passwordStrengthWeak'),
+    t('auth.passwordStrengthMedium'),
+    t('auth.passwordStrengthStrong'),
+  ]
   const score = getPasswordStrengthScore(password)
   if (!password) return null
 
   return (
     <div className="mt-1.5 space-y-1">
-      <div className="flex gap-1" role="img" aria-label={`Passwortstärke: ${STRENGTH_LABELS[score - 1] ?? 'Sehr schwach'}`}>
+      <div className="flex gap-1" role="img" aria-label={`Passwortstärke: ${strengthLabels[score - 1] ?? t('auth.passwordStrengthVeryWeak')}`}>
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
@@ -33,13 +40,14 @@ function PasswordStrengthBar({ password }: { password: string }) {
         ))}
       </div>
       {score > 0 && (
-        <p className="text-[11px] text-secondary">{STRENGTH_LABELS[score - 1]}</p>
+        <p className="text-[11px] text-secondary">{strengthLabels[score - 1]}</p>
       )}
     </div>
   )
 }
 
 export default function ResetPasswordPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') ?? ''
@@ -52,7 +60,7 @@ export default function ResetPasswordPage() {
   const passwordValidation = useFieldValidation(password, [required, passwordStrengthRule])
   const confirmValidation = useFieldValidation(passwordConfirm, [
     required,
-    { test: (v) => v === password, message: 'Die Passwörter stimmen nicht überein.' },
+    { test: (v) => v === password, message: t('auth.resetPasswordMismatch') },
   ])
 
   async function handleSubmit(e: FormEvent) {
@@ -60,11 +68,11 @@ export default function ResetPasswordPage() {
     setError(null)
 
     if (!passwordStrengthRule.test(password)) {
-      setError('Das Passwort erfüllt die Sicherheitsanforderungen nicht.')
+      setError(t('auth.resetPasswordWeak'))
       return
     }
     if (password !== passwordConfirm) {
-      setError('Die Passwörter stimmen nicht überein.')
+      setError(t('auth.resetPasswordMismatch'))
       return
     }
 
@@ -75,11 +83,11 @@ export default function ResetPasswordPage() {
         body: JSON.stringify({ token, password }),
       })
       navigate('/login', {
-        state: { successMessage: 'Passwort erfolgreich zurückgesetzt. Sie können sich jetzt anmelden.' },
+        state: { successMessage: t('auth.resetPasswordSuccess') },
         replace: true,
       })
     } catch {
-      setError('Link ungültig oder abgelaufen. Bitte fordern Sie einen neuen Link an.')
+      setError(t('auth.resetPasswordExpired'))
     } finally {
       setLoading(false)
     }
@@ -95,17 +103,17 @@ export default function ResetPasswordPage() {
                 <img src="/logo.svg" alt="Vakt" className="w-9 h-9 shrink-0" />
                 <span className="font-semibold text-[16px] text-brand">Vakt</span>
               </div>
-              <CardTitle>Link ungültig</CardTitle>
+              <CardTitle>{t('auth.resetPasswordInvalidLink')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-secondary">
-                Dieser Link zum Zurücksetzen des Passworts ist ungültig oder abgelaufen.
+                {t('auth.resetPasswordInvalidDesc')}
               </p>
               <Link
                 to="/auth/forgot-password"
                 className="text-sm text-brand hover:underline block text-center"
               >
-                Neuen Link anfordern
+                {t('auth.resetPasswordRequestNew')}
               </Link>
             </CardContent>
           </Card>
@@ -123,18 +131,18 @@ export default function ResetPasswordPage() {
               <img src="/logo.svg" alt="Vakt" className="w-9 h-9 shrink-0" />
               <span className="font-semibold text-[16px] text-brand">Vakt</span>
             </div>
-            <CardTitle>Neues Passwort festlegen</CardTitle>
+            <CardTitle>{t('auth.resetPasswordTitle')}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={(e) => { void handleSubmit(e) }} className="space-y-4">
               <div className="space-y-1">
-                <Label htmlFor="password">Neues Passwort</Label>
+                <Label htmlFor="password">{t('auth.resetPasswordNewLabel')}</Label>
                 <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mindestens 10 Zeichen"
+                  placeholder={t('auth.resetPasswordNewPlaceholder')}
                   required
                   autoFocus
                   aria-invalid={!!passwordValidation.error}
@@ -143,13 +151,13 @@ export default function ResetPasswordPage() {
                 <FieldError error={passwordValidation.error} />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="password-confirm">Passwort bestätigen</Label>
+                <Label htmlFor="password-confirm">{t('auth.resetPasswordConfirmLabel')}</Label>
                 <Input
                   id="password-confirm"
                   type="password"
                   value={passwordConfirm}
                   onChange={(e) => setPasswordConfirm(e.target.value)}
-                  placeholder="Passwort wiederholen"
+                  placeholder={t('auth.resetPasswordConfirmPlaceholder')}
                   required
                   aria-invalid={!!confirmValidation.error}
                 />
@@ -157,11 +165,11 @@ export default function ResetPasswordPage() {
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Wird gespeichert…' : 'Passwort zurücksetzen'}
+                {loading ? t('auth.resetPasswordSaving') : t('auth.resetPasswordSubmit')}
               </Button>
               <div className="text-center">
                 <Link to="/login" className="text-sm text-secondary hover:text-primary hover:underline">
-                  Zurück zum Login
+                  {t('auth.backToLogin')}
                 </Link>
               </div>
             </form>

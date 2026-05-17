@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { apiFetch } from '../api/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -30,24 +31,25 @@ interface Step1Props {
 }
 
 function Step1OrgName({ orgName, onChange, onNext }: Step1Props) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold">Schritt 1 von 3 — Organisation</h2>
+        <h2 className="text-xl font-semibold">{t('setup.step1Title')}</h2>
         <p className="text-secondary text-sm mt-1">
-          Geben Sie den Namen Ihrer Organisation ein. Dieser wird nur zur Anzeige verwendet.
+          {t('setup.step1Desc')}
         </p>
       </div>
       <div className="space-y-1">
         <label htmlFor="org_name" className="block text-sm font-medium">
-          Organisationsname
+          {t('setup.orgNameLabel')}
         </label>
         <input
           id="org_name"
           type="text"
           value={orgName}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Muster GmbH"
+          placeholder={t('setup.orgNamePlaceholder')}
           className="w-full border border-border rounded px-3 py-2 text-sm bg-surface2 text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand"
           autoFocus
         />
@@ -57,7 +59,7 @@ function Step1OrgName({ orgName, onChange, onNext }: Step1Props) {
         disabled={orgName.trim().length < 2}
         className="w-full bg-brand text-white py-2 rounded text-sm font-medium hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Weiter
+        {t('setup.next')}
       </button>
     </div>
   )
@@ -80,40 +82,41 @@ function Step2AdminAccount({
   onBack,
   onNext,
 }: Step2Props) {
+  const { t } = useTranslation()
   const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && password.length >= 8
 
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold">Schritt 2 von 3 — Admin-Konto</h2>
+        <h2 className="text-xl font-semibold">{t('setup.step2Title')}</h2>
         <p className="text-secondary text-sm mt-1">
-          Erstellen Sie das initiale Administrator-Konto. Weitere Benutzer können nach der Einrichtung hinzugefügt werden.
+          {t('setup.step2Desc')}
         </p>
       </div>
       <div className="space-y-1">
         <label htmlFor="admin_email" className="block text-sm font-medium">
-          E-Mail-Adresse
+          {t('setup.adminEmailLabel')}
         </label>
         <input
           id="admin_email"
           type="email"
           value={email}
           onChange={(e) => onChangeEmail(e.target.value)}
-          placeholder="admin@example.com"
+          placeholder={t('setup.adminEmailPlaceholder')}
           className="w-full border border-border rounded px-3 py-2 text-sm bg-surface2 text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand"
           autoFocus
         />
       </div>
       <div className="space-y-1">
         <label htmlFor="admin_password" className="block text-sm font-medium">
-          Passwort <span className="text-secondary font-normal">(mind. 8 Zeichen)</span>
+          {t('setup.adminPasswordLabel')} <span className="text-secondary font-normal">{t('setup.adminPasswordHint')}</span>
         </label>
         <input
           id="admin_password"
           type="password"
           value={password}
           onChange={(e) => onChangePassword(e.target.value)}
-          placeholder="••••••••"
+          placeholder={t('setup.adminPasswordPlaceholder')}
           className="w-full border border-border rounded px-3 py-2 text-sm bg-surface2 text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand"
         />
       </div>
@@ -122,14 +125,14 @@ function Step2AdminAccount({
           onClick={onBack}
           className="flex-1 border border-border py-2 rounded text-sm font-medium text-primary hover:bg-surface2"
         >
-          Zurück
+          {t('setup.back')}
         </button>
         <button
           onClick={onNext}
           disabled={!valid}
           className="flex-1 bg-brand text-white py-2 rounded text-sm font-medium hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Weiter
+          {t('setup.next')}
         </button>
       </div>
     </div>
@@ -146,35 +149,14 @@ interface Step3Props {
 }
 
 function Step3Modules({ modules, onToggle, onBack, onSubmit, submitting, error }: Step3Props) {
-  const labels: Record<string, { label: string; description: string }> = {
-    secpulse:  {
-      label: 'Vakt Scan — Schwachstellenmanagement',
-      description: 'Orchestriert bestehende Scanner (Trivy, Nuclei, OpenVAS), dedupliziert Findings und priorisiert nach Risiko. Ergebnisse fließen automatisch als Compliance-Nachweis in Vakt Comply.',
-    },
-    secvitals:  {
-      label: 'Vakt Comply — Compliance & Governance',
-      description: 'Führt durch NIS2, ISO 27001 und BSI-Grundschutz. Verwaltet Controls, Lücken und Fortschritt. Speichert versionierte Nachweise und erstellt prüfungsfertige Dokumentation.',
-    },
-    secvault:  {
-      label: 'Vakt Vault — Secrets & Git-Scanning',
-      description: 'Sichere Secrets-Verwaltung mit AES-256-GCM-Verschlüsselung. Scannt Git-Repositories auf durchgesickerte Zugangsdaten und unterstützt automatische Rotation.',
-    },
-    secreflex: {
-      label: 'Vakt Aware — Phishing-Simulationen',
-      description: 'Interne Phishing-Simulationen und Micro-Trainings für Mitarbeiter. Betriebsratskonform durch anonymisierte Berichte. Abgeschlossene Trainings fließen als Nachweis in Vakt Comply.',
-    },
-    secprivacy: {
-      label: 'Vakt Privacy — DSGVO-Dokumentation',
-      description: 'Vollständige DSGVO-Dokumentation: Verzeichnis von Verarbeitungstätigkeiten (Art. 30), Datenschutz-Folgenabschätzungen (Art. 35), AV-Verträge (Art. 28) und Datenpannen-Register mit 72h-Meldepflicht (Art. 33/34).',
-    },
-  }
+  const { t } = useTranslation()
 
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold">Schritt 3 von 3 — Module</h2>
+        <h2 className="text-xl font-semibold">{t('setup.step3Title')}</h2>
         <p className="text-secondary text-sm mt-1">
-          Wählen Sie die zu aktivierenden Module. Dies kann später über Umgebungsvariablen geändert werden.
+          {t('setup.step3Desc')}
         </p>
       </div>
       <div className="space-y-2">
@@ -190,8 +172,8 @@ function Step3Modules({ modules, onToggle, onBack, onSubmit, submitting, error }
               className="mt-0.5"
             />
             <div>
-              <div className="text-sm font-semibold">{labels[mod].label}</div>
-              <div className="text-xs text-secondary mt-1 leading-relaxed">{labels[mod].description}</div>
+              <div className="text-sm font-semibold">{t(`setup.modules.${mod}.label`)}</div>
+              <div className="text-xs text-secondary mt-1 leading-relaxed">{t(`setup.modules.${mod}.description`)}</div>
             </div>
           </label>
         ))}
@@ -207,14 +189,14 @@ function Step3Modules({ modules, onToggle, onBack, onSubmit, submitting, error }
           disabled={submitting}
           className="flex-1 border border-border py-2 rounded text-sm font-medium text-primary hover:bg-surface2 disabled:opacity-50"
         >
-          Zurück
+          {t('setup.back')}
         </button>
         <button
           onClick={onSubmit}
           disabled={submitting || modules.length === 0}
           className="flex-1 bg-brand text-white py-2 rounded text-sm font-medium hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {submitting ? 'Wird eingerichtet…' : 'Einrichtung abschließen'}
+          {submitting ? t('setup.finishing') : t('setup.finish')}
         </button>
       </div>
     </div>
@@ -224,6 +206,7 @@ function Step3Modules({ modules, onToggle, onBack, onSubmit, submitting, error }
 // ── Main wizard ───────────────────────────────────────────────────────────────
 
 export default function Setup() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
 
   const [step, setStep] = useState(1)
@@ -256,7 +239,7 @@ export default function Setup() {
       })
       navigate('/', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Einrichtung fehlgeschlagen. Bitte versuchen Sie es erneut.')
+      setError(err instanceof Error ? err.message : t('setup.setupFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -266,8 +249,8 @@ export default function Setup() {
     <div className="min-h-screen flex items-center justify-center bg-surface2 p-4">
       <div className="w-full max-w-md bg-surface rounded-xl shadow-sm border border-border p-8 text-primary">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight">Vakt</h1>
-          <p className="text-secondary text-sm">Ersteinrichtungs-Assistent</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t('setup.title')}</h1>
+          <p className="text-secondary text-sm">{t('setup.subtitle')}</p>
         </div>
 
         {step === 1 && (

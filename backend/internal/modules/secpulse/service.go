@@ -21,7 +21,13 @@ import (
 	"github.com/sechealth-app/sechealth/internal/shared/dashboard"
 	"github.com/sechealth-app/sechealth/internal/shared/evidence_auto"
 	"github.com/sechealth-app/sechealth/internal/shared/notify"
+	"github.com/sechealth-app/sechealth/internal/shared/webhooks"
 )
+
+// webhookTrigger abstracts the webhook delivery dependency for testability.
+type webhookTrigger interface {
+	TriggerEvent(ctx context.Context, orgID, eventType string, payload any)
+}
 
 // Service handles VulnBoard business logic.
 type Service struct {
@@ -29,6 +35,7 @@ type Service struct {
 	db          *pgxpool.Pool
 	rdb         *redis.Client
 	asynqClient *asynq.Client
+	webhookSvc  webhookTrigger
 }
 
 // NewService creates a new VulnBoard service.
@@ -48,6 +55,29 @@ func NewService(db *pgxpool.Pool, asynqOpt asynq.RedisClientOpt) *Service {
 // WithRedis sets the Redis client used for dashboard cache invalidation.
 func (s *Service) WithRedis(rdb *redis.Client) {
 	s.rdb = rdb
+}
+
+// WithWebhooks sets the webhook service used to fire outgoing events.
+func (s *Service) WithWebhooks(svc *webhooks.WebhookService) {
+	s.webhookSvc = svc
+}
+
+// triggerWebhook fires a webhook event in a background goroutine so the caller
+// is never blocked by network latency or a slow endpoint.
+func (s *Service) triggerWebhook(orgID, eventType string, payload map[string]any) {
+	if s.webhookSvc == nil {
+		return
+	}
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error().Interface("panic", r).Msg("secpulse: webhook goroutine panic recovered")
+			}
+		}()
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		s.webhookSvc.TriggerEvent(ctx, orgID, eventType, payload)
+	}()
 }
 
 // invalidateDashboardCache deletes the cached dashboard aggregate for the given
@@ -294,6 +324,22 @@ func taskTypeForScanner(scanner string) string {
 // Findings
 // ---------------------------------------------------------------------------
 
+// UpsertFinding upserts a single finding and fires the finding.created webhook.
+// It is used by scanner import flows that create findings one-by-one.
+func (s *Service) UpsertFinding(ctx context.Context, orgID string, f Finding) (*Finding, error) {
+	result, err := s.repo.UpsertFinding(ctx, orgID, f)
+	if err != nil {
+		return nil, err
+	}
+	s.triggerWebhook(orgID, "finding.created", map[string]any{
+		"id":       result.ID,
+		"title":    result.Title,
+		"severity": result.Severity,
+		"org_id":   orgID,
+	})
+	return result, nil
+}
+
 // ListFindings returns findings for an org with optional filtering.
 func (s *Service) ListFindings(ctx context.Context, orgID string, filter FindingFilter) ([]Finding, error) {
 	return s.repo.ListFindings(ctx, orgID, filter)
@@ -379,6 +425,16 @@ func (s *Service) UpdateFinding(ctx context.Context, orgID, findingID string, in
 				log.Warn().Err(autoErr).Msg("auto-evidence collection failed")
 			}
 		}()
+	}
+
+	// Trigger outgoing webhook for severity change (non-blocking).
+	if input.Severity != nil {
+		s.triggerWebhook(orgID, "finding.severity_changed", map[string]any{
+			"id":       finding.ID,
+			"title":    finding.Title,
+			"severity": finding.Severity,
+			"org_id":   orgID,
+		})
 	}
 
 	s.invalidateDashboardCache(ctx, orgID)

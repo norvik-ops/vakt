@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { Building2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { apiFetch } from '../api/client'
 import { useAuthStore } from '../shared/stores/auth'
 import { useDemoMode } from '../shared/hooks/useDemoMode'
@@ -34,6 +35,7 @@ const DEMO_USERS = [
 ]
 
 export default function Login() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const setAuth = useAuthStore((s) => s.setAuth)
@@ -71,7 +73,7 @@ export default function Login() {
       setAuth(data.access_token, data.user)
       navigate('/')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed')
+      setError(err instanceof Error ? err.message : t('auth.loginFailed'))
     } finally {
       setLoading(false)
     }
@@ -86,19 +88,19 @@ export default function Login() {
               <img src="/logo.svg" alt="Vakt" className="w-9 h-9 shrink-0" />
               <span className="font-semibold text-[16px] text-brand">Vakt</span>
             </div>
-            <CardTitle>Sign in</CardTitle>
+            <CardTitle>{t('auth.signIn')}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={(e) => { void handleSubmit(e) }} className="space-y-4">
               {/* WCAG 3.3.2: required attribute + aria-required communicates required fields */}
               <div className="space-y-1">
-                <Label htmlFor="email">E-Mail</Label>
+                <Label htmlFor="email">{t('auth.emailLabel')}</Label>
                 <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@example.com"
+                  placeholder={t('auth.emailPlaceholder')}
                   required
                   aria-required="true"
                   aria-describedby={error ? 'login-error' : undefined}
@@ -108,7 +110,7 @@ export default function Login() {
                 <FieldError error={emailValidation.error} />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="password">Passwort</Label>
+                <Label htmlFor="password">{t('auth.passwordLabel')}</Label>
                 <Input
                   id="password"
                   type="password"
@@ -125,14 +127,14 @@ export default function Login() {
                     to="/auth/forgot-password"
                     className="text-xs text-secondary hover:text-primary hover:underline"
                   >
-                    Passwort vergessen?
+                    {t('auth.forgotPassword')}
                   </Link>
                 </div>
               </div>
               {/* WCAG 3.3.1 + 4.1.3: role="alert" announces errors immediately to screen readers */}
               {error && <p id="login-error" role="alert" aria-live="assertive" className="text-sm text-red-600">{error}</p>}
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Signing in…' : 'Sign in'}
+                {loading ? t('auth.signingIn') : t('auth.signIn')}
               </Button>
             </form>
 
@@ -143,16 +145,16 @@ export default function Login() {
                     <span className="w-full border-t border-border" />
                   </div>
                   <div className="relative flex justify-center text-xs">
-                    <span className="bg-card px-2 text-secondary">oder</span>
+                    <span className="bg-card px-2 text-secondary">{t('auth.orSeparator')}</span>
                   </div>
                 </div>
                 <a
                   href="/auth/sso"
                   className="flex items-center justify-center gap-2 w-full rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-primary hover:bg-muted transition-colors"
                 >
-                  {/* WCAG 1.1.1: icon is decorative, link text "Mit SSO anmelden" names the element */}
+                  {/* WCAG 1.1.1: icon is decorative, link text names the element */}
                   <Building2 className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  Mit SSO anmelden
+                  {t('auth.ssoButton')}
                 </a>
               </>
             )}
@@ -163,8 +165,8 @@ export default function Login() {
           <>
             <Card className="border-brand/30 bg-brand/5">
               <CardContent className="pt-4 pb-4 space-y-3">
-                <p className="text-xs font-semibold text-brand uppercase tracking-wide">Demo-Zugangsdaten</p>
-                <p className="text-xs text-secondary">Einfach auf einen Account klicken — das Formular wird automatisch ausgefüllt.</p>
+                <p className="text-xs font-semibold text-brand uppercase tracking-wide">{t('auth.demoCredentials')}</p>
+                <p className="text-xs text-secondary">{t('auth.demoHint')}</p>
                 {((): { label: string; email: string; password: string }[] => {
                   const passed = (location.state as { demoEmails?: { admin: string; analyst: string } } | null)?.demoEmails
                   return passed
@@ -188,8 +190,7 @@ export default function Login() {
             </Card>
 
             <p className="text-xs text-secondary text-center px-2">
-              Dies ist eine öffentliche Demo-Instanz. Bitte keine echten oder sensiblen Daten eingeben.
-              NorvikOps übernimmt keine Haftung für eingegebene Daten.{' '}
+              {t('auth.demoDisclaimer')}{' '}
               <a href="https://norvikops.de" className="underline hover:text-primary">norvikops.de</a>
             </p>
           </>

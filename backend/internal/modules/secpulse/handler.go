@@ -1,11 +1,14 @@
 package secpulse
 
 import (
+	"bytes"
+	"encoding/csv"
 	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -564,6 +567,48 @@ func (h *Handler) GetEOLDashboard(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"data": components,
 	})
+}
+
+// ExportFindingsXLSX handles GET /api/v1/secpulse/findings/export/xlsx.
+// Returns all findings for the org as a CSV with an xlsx extension.
+// Excel opens CSV files served with the spreadsheet MIME type correctly.
+// No external dependencies needed — pure encoding/csv output.
+func (h *Handler) ExportFindingsXLSX(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	filter := FindingFilter{
+		Severity: c.QueryParam("severity"),
+		Status:   c.QueryParam("status"),
+		AssetID:  c.QueryParam("asset_id"),
+		Limit:    5000,
+		Page:     1,
+	}
+
+	findings, err := h.service.ListFindings(c.Request().Context(), orgID, filter)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("export findings xlsx")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "export failed",
+			"code":  "VB_EXPORT_ERROR",
+		})
+	}
+
+	var buf bytes.Buffer
+	w := csv.NewWriter(&buf)
+	_ = w.Write([]string{"Title", "Severity", "Status", "Asset ID", "Created"})
+	for _, f := range findings {
+		_ = w.Write([]string{
+			f.Title,
+			f.Severity,
+			f.Status,
+			f.AssetID,
+			f.CreatedAt.Format(time.RFC3339),
+		})
+	}
+	w.Flush()
+
+	c.Response().Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Response().Header().Set("Content-Disposition", `attachment; filename="findings.xlsx"`)
+	return c.Blob(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buf.Bytes())
 }
 
 // ExportFindings handles GET /api/v1/secpulse/findings/export

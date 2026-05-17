@@ -1,0 +1,5 @@
+-- intentionally empty (irreversible removal)
+-- The jira_issues table and jira_* columns on organisations have been dropped.
+-- Restoring them would require recreating the schema and re-running the
+-- original migration 095_jira_integration.up.sql, which is not safe to do
+-- automatically. If you need to roll back, restore from a database backup.

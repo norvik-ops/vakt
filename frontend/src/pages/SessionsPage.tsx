@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Monitor, Trash2, LogOut } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../shared/components/PageHeader'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
@@ -54,18 +55,23 @@ function formatDate(iso: string): string {
   }
 }
 
-function parseUserAgent(ua?: string): string {
-  if (!ua) return 'Unbekanntes Gerät'
-  if (ua.includes('Firefox')) return 'Firefox'
-  if (ua.includes('Chrome')) return 'Chrome'
-  if (ua.includes('Safari')) return 'Safari'
-  if (ua.includes('Edge')) return 'Edge'
-  return ua.slice(0, 60)
+function useParseUserAgent() {
+  const { t } = useTranslation()
+  return function parseUserAgent(ua?: string): string {
+    if (!ua) return t('settings.sessionsPage.unknownDevice')
+    if (ua.includes('Firefox')) return 'Firefox'
+    if (ua.includes('Chrome')) return 'Chrome'
+    if (ua.includes('Safari')) return 'Safari'
+    if (ua.includes('Edge')) return 'Edge'
+    return ua.slice(0, 60)
+  }
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SessionsPage() {
+  const { t } = useTranslation()
+  const parseUserAgent = useParseUserAgent()
   const { data: sessions, isLoading, isError } = useSessions()
   const revoke = useRevokeSession()
   const revokeAll = useRevokeAllSessions()
@@ -73,38 +79,38 @@ export default function SessionsPage() {
   return (
     <div className="space-y-6 p-6">
       <PageHeader
-        title="Aktive Sitzungen"
-        description="Verwalte alle aktiven Anmeldungen deines Kontos."
+        title={t('settings.sessionsPage.title')}
+        description={t('settings.sessionsPage.description')}
       />
 
       <Card className="p-0 overflow-hidden">
         {/* Table header */}
         <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-x-4 px-4 py-2.5 border-b border-border bg-muted/30">
-          <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">Gerät / Browser</span>
-          <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">IP-Adresse</span>
-          <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">Erstellt am</span>
-          <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">Ablauf</span>
-          <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">Aktionen</span>
+          <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">{t('settings.sessionsPage.colDevice')}</span>
+          <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">{t('settings.sessionsPage.colIp')}</span>
+          <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">{t('settings.sessionsPage.colCreated')}</span>
+          <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">{t('settings.sessionsPage.colExpiry')}</span>
+          <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">{t('settings.sessionsPage.colActions')}</span>
         </div>
 
         {/* Loading */}
         {isLoading && (
           <div className="px-4 py-8 text-center text-sm text-secondary">
-            Lade Sitzungen...
+            {t('settings.sessionsPage.loading')}
           </div>
         )}
 
         {/* Error */}
         {isError && (
           <div className="px-4 py-8 text-center text-sm text-destructive">
-            Sitzungen konnten nicht geladen werden.
+            {t('settings.sessionsPage.loadError')}
           </div>
         )}
 
         {/* Empty */}
         {!isLoading && !isError && sessions?.length === 0 && (
           <div className="px-4 py-8 text-center text-sm text-secondary">
-            Keine aktiven Sitzungen gefunden.
+            {t('settings.sessionsPage.noSessions')}
           </div>
         )}
 
@@ -137,7 +143,7 @@ export default function SessionsPage() {
               onClick={() => revoke.mutate(session.id)}
             >
               <Trash2 className="w-4 h-4" />
-              <span className="sr-only">Widerrufen</span>
+              <span className="sr-only">{t('settings.sessionsPage.revokeSession')}</span>
             </Button>
           </div>
         ))}
@@ -152,7 +158,7 @@ export default function SessionsPage() {
             onClick={() => revokeAll.mutate()}
           >
             <LogOut className="mr-2 h-4 w-4" />
-            {revokeAll.isPending ? 'Wird beendet...' : 'Alle anderen Sitzungen beenden'}
+            {revokeAll.isPending ? t('settings.sessionsPage.revokingAll') : t('settings.sessionsPage.revokeAll')}
           </Button>
         </div>
       )}

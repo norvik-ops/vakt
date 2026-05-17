@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Badge } from '../../../components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { ExportButton } from '../../../shared/components/ExportButton'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { useFrameworks, useEnableFramework, useDeleteFramework } from '../hooks/useFrameworks'
 import { getAuthToken } from '../../../api/client'
@@ -189,6 +190,12 @@ export default function FrameworksPage() {
         description={t('secvitals.frameworksPage.description')}
         actions={
           <div className="flex items-center gap-2">
+            <ExportButton
+              endpoint="/api/v1/secvitals/controls/export/xlsx"
+              filename={`controls-${new Date().toISOString().slice(0, 10)}`}
+              label="Controls exportieren"
+              format="xlsx"
+            />
             <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="w-3.5 h-3.5 mr-1" />
               {t('secvitals.frameworksPage.exportAuditPackage')}

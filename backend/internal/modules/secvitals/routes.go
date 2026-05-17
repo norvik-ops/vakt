@@ -56,9 +56,10 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.POST("/frameworks/CRA/enable", h.EnableFramework, license.Require(license.FeatureCRA))
 	g.POST("/frameworks/:name/enable", h.EnableFramework)
 	g.DELETE("/frameworks/:id", h.DeleteFramework)
-	// CRITICAL: overdue-reviews is a static path and must be registered BEFORE /controls/:id
-	// to prevent Echo from matching it as a param route.
+	// CRITICAL: overdue-reviews and export/xlsx are static paths and must be registered BEFORE /controls/:id
+	// to prevent Echo from matching them as param routes.
 	g.GET("/controls/overdue-reviews", h.ListOverdueControls)
+	g.GET("/controls/export/xlsx", h.ExportControlsXLSX)
 	g.GET("/controls/:id", h.GetControlByID)
 	g.GET("/frameworks/:id/report", h.GetReadinessReport)
 	g.GET("/frameworks/:id/export-pdf", h.ExportFrameworkPDF, license.Require(license.FeatureAuditPDF))
@@ -122,6 +123,8 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.DELETE("/auditor-links/:id", h.RevokeAuditorLink)
 
 	// Risk Assessment
+	// CRITICAL: /risks/export/xlsx must be registered BEFORE /risks/:id to avoid route conflict.
+	g.GET("/risks/export/xlsx", h.ExportRisksXLSX)
 	g.GET("/risks", h.ListRisks)
 	g.POST("/risks", h.CreateRisk)
 	g.GET("/risks/:id", h.GetRisk)

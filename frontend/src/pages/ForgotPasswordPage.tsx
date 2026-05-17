@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { apiFetch } from '../api/client'
 import { useFieldValidation, required, email as emailRule } from '../shared/hooks/useFieldValidation'
 import { FieldError } from '../shared/components/FieldError'
@@ -9,6 +10,7 @@ import { Label } from '../components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 
 export default function ForgotPasswordPage() {
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -39,37 +41,34 @@ export default function ForgotPasswordPage() {
               <img src="/logo.svg" alt="Vakt" className="w-9 h-9 shrink-0" />
               <span className="font-semibold text-[16px] text-brand">Vakt</span>
             </div>
-            <CardTitle>Passwort zurücksetzen</CardTitle>
+            <CardTitle>{t('auth.forgotPasswordTitle')}</CardTitle>
           </CardHeader>
           <CardContent>
             {submitted ? (
               <div className="space-y-4">
                 <p className="text-sm text-secondary">
-                  Falls ein Konto mit dieser E-Mail-Adresse existiert, wurde eine E-Mail mit einem
-                  Link zum Zurücksetzen des Passworts gesendet. Bitte prüfen Sie auch Ihren
-                  Spam-Ordner.
+                  {t('auth.forgotPasswordSuccess')}
                 </p>
                 <Link
                   to="/login"
                   className="text-sm text-brand hover:underline block text-center"
                 >
-                  Zurück zum Login
+                  {t('auth.backToLogin')}
                 </Link>
               </div>
             ) : (
               <form onSubmit={(e) => { void handleSubmit(e) }} className="space-y-4">
                 <p className="text-sm text-secondary">
-                  Geben Sie Ihre E-Mail-Adresse ein. Wir senden Ihnen einen Link zum Zurücksetzen
-                  Ihres Passworts.
+                  {t('auth.forgotPasswordDesc')}
                 </p>
                 <div className="space-y-1">
-                  <Label htmlFor="email">E-Mail-Adresse</Label>
+                  <Label htmlFor="email">{t('auth.forgotPasswordEmailLabel')}</Label>
                   <Input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@example.com"
+                    placeholder={t('auth.emailPlaceholder')}
                     required
                     autoFocus
                     aria-invalid={!!emailValidation.error}
@@ -77,11 +76,11 @@ export default function ForgotPasswordPage() {
                   <FieldError error={emailValidation.error} />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Wird gesendet…' : 'Link anfordern'}
+                  {loading ? t('auth.requestingSending') : t('auth.requestLink')}
                 </Button>
                 <div className="text-center">
                   <Link to="/login" className="text-sm text-secondary hover:text-primary hover:underline">
-                    Zurück zum Login
+                    {t('auth.backToLogin')}
                   </Link>
                 </div>
               </form>

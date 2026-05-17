@@ -769,6 +769,11 @@ func (r *Repository) UpdateFinding(ctx context.Context, orgID, findingID string,
 		args = append(args, *input.Justification)
 		argN++
 	}
+	if input.Severity != nil {
+		setClauses = append(setClauses, fmt.Sprintf("severity = $%d", argN))
+		args = append(args, *input.Severity)
+		argN++
+	}
 
 	args = append(args, findingID, orgID)
 	query := fmt.Sprintf(`

@@ -340,6 +340,64 @@ function ComplianceProgressCard({
 }
 
 // ---------------------------------------------------------------------------
+// Linear forecast helper
+// ---------------------------------------------------------------------------
+
+function linearForecast(points: { x: number; y: number }[], futureX: number): number {
+  const n = points.length
+  const sumX = points.reduce((a, p) => a + p.x, 0)
+  const sumY = points.reduce((a, p) => a + p.y, 0)
+  const sumXY = points.reduce((a, p) => a + p.x * p.y, 0)
+  const sumXX = points.reduce((a, p) => a + p.x * p.x, 0)
+  const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX)
+  const intercept = (sumY - slope * sumX) / n
+  return slope * futureX + intercept
+}
+
+/** Build a short forecast hint line from the last up-to-4 score history entries. */
+function ScoreForecastHint({ entries }: { entries: ScoreHistoryEntry[] }) {
+  // Use last 4 data points
+  const sample = entries.slice(-4)
+  if (sample.length < 2) return null
+
+  const points = sample.map((e, i) => ({ x: i, y: e.score }))
+  const lastX = points[points.length - 1].x
+
+  // Project 6 weeks: each data point is roughly 1 week apart in typical usage
+  const futureX = lastX + 6
+  const forecast = linearForecast(points, futureX)
+  const slope = points[points.length - 1].y - points[0].y
+
+  const currentScore = sample[sample.length - 1].score
+  const forecastClamped = Math.min(100, Math.max(0, Math.round(forecast)))
+
+  if (Math.abs(slope) < 0.5) {
+    return (
+      <p className="text-[11px] text-secondary mt-2">
+        Trend stagniert — keine signifikante Veränderung der letzten Messpunkte.
+      </p>
+    )
+  }
+
+  if (slope > 0) {
+    return (
+      <p className="text-[11px] text-secondary mt-2">
+        Bei aktuellem Tempo erreichst du voraussichtlich{' '}
+        <span className="font-semibold text-[#22c55e]">{forecastClamped}%</span> in ~6 Wochen
+        {forecastClamped <= currentScore ? ' (Score bereits stabil)' : ''}.
+      </p>
+    )
+  }
+
+  return (
+    <p className="text-[11px] text-secondary mt-2">
+      Abwärtstrend — ohne Maßnahmen könnte der Score auf{' '}
+      <span className="font-semibold text-[#ef4444]">{forecastClamped}%</span> in ~6 Wochen fallen.
+    </p>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Compliance trend chart
 // ---------------------------------------------------------------------------
 
@@ -888,7 +946,14 @@ export default function Dashboard() {
         )}
 
         {/* ── Compliance trend chart ── */}
-        {widgets.compliance_score && <ScoreHistoryCard />}
+        {widgets.compliance_score && (
+          <div>
+            <ScoreHistoryCard />
+            {scoreHistory && scoreHistory.length >= 2 && (
+              <ScoreForecastHint entries={scoreHistory} />
+            )}
+          </div>
+        )}
 
         {/* ── Framework progress + Top risks ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

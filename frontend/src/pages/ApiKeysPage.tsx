@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Key, Plus, Trash2, Copy, Check, AlertTriangle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../shared/components/PageHeader'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -82,6 +83,7 @@ function formatDate(iso: string | null): string {
 }
 
 function CopyButton({ text }: { text: string }) {
+  const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
 
   function handleCopy() {
@@ -99,9 +101,9 @@ function CopyButton({ text }: { text: string }) {
       onClick={handleCopy}
     >
       {copied ? (
-        <><Check className="w-3.5 h-3.5 text-green-500" />Kopiert</>
+        <><Check className="w-3.5 h-3.5 text-green-500" />{t('settings.apiKeysPage.copied')}</>
       ) : (
-        <><Copy className="w-3.5 h-3.5" />Kopieren</>
+        <><Copy className="w-3.5 h-3.5" />{t('settings.apiKeysPage.copy')}</>
       )}
     </Button>
   )
@@ -116,6 +118,7 @@ type CreateDialogProps = {
 }
 
 function CreateKeyDialog({ open, onOpenChange, onCreated }: CreateDialogProps) {
+  const { t } = useTranslation()
   const [name, setName] = useState('')
   const [expiresAt, setExpiresAt] = useState('')
   const [nameTouched, setNameTouched] = useState(false)
@@ -147,7 +150,7 @@ function CreateKeyDialog({ open, onOpenChange, onCreated }: CreateDialogProps) {
       onSuccess: (result) => {
         handleClose(false)
         onCreated(result.raw_key)
-        toast('API-Key erstellt', 'success')
+        toast(t('settings.apiKeysPage.toastCreated'), 'success')
       },
       onError: (err) => toast(`Fehler: ${err.message}`, 'error'),
     })
@@ -157,11 +160,11 @@ function CreateKeyDialog({ open, onOpenChange, onCreated }: CreateDialogProps) {
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Neuen API-Key erstellen</DialogTitle>
+          <DialogTitle>{t('settings.apiKeysPage.createDialogTitle')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label>Name <span className="text-destructive">*</span></Label>
+            <Label>{t('settings.apiKeysPage.labelName')} <span className="text-destructive">*</span></Label>
             <Input
               placeholder="z.B. GitHub Actions CI"
               value={name}
@@ -170,18 +173,18 @@ function CreateKeyDialog({ open, onOpenChange, onCreated }: CreateDialogProps) {
               aria-invalid={nameTouched && !name.trim()}
             />
             {nameTouched && !name.trim() && (
-              <p className="text-xs text-destructive">Name ist erforderlich.</p>
+              <p className="text-xs text-destructive">{t('settings.apiKeysPage.labelNameRequired')}</p>
             )}
           </div>
           <div className="space-y-1.5">
-            <Label>Ablaufdatum <span className="text-secondary text-xs">(optional)</span></Label>
+            <Label>{t('settings.apiKeysPage.labelExpiry')} <span className="text-secondary text-xs">{t('settings.apiKeysPage.labelExpiryOptional')}</span></Label>
             <Input
               type="date"
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
               min={new Date().toISOString().split('T')[0]}
             />
-            <p className="text-[11px] text-secondary">Leer lassen für unbegrenzte Gültigkeit.</p>
+            <p className="text-[11px] text-secondary">{t('settings.apiKeysPage.labelExpiryHint')}</p>
           </div>
         </div>
         {createKey.isError && (
@@ -189,10 +192,10 @@ function CreateKeyDialog({ open, onOpenChange, onCreated }: CreateDialogProps) {
         )}
         <DialogFooter>
           <Button variant="outline" onClick={() => handleClose(false)}>
-            Abbrechen
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleCreate} disabled={createKey.isPending}>
-            {createKey.isPending ? 'Wird erstellt…' : 'Key erstellen'}
+            {createKey.isPending ? t('settings.apiKeysPage.creating') : t('settings.apiKeysPage.createSubmit')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -208,21 +211,22 @@ type NewKeyDialogProps = {
 }
 
 function NewKeyDialog({ rawKey, onClose }: NewKeyDialogProps) {
+  const { t } = useTranslation()
   return (
     <Dialog open={rawKey !== null} onOpenChange={(open) => { if (!open) onClose() }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>API-Key erstellt</DialogTitle>
+          <DialogTitle>{t('settings.apiKeysPage.newKeyTitle')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <p className="text-sm text-amber-700 dark:text-amber-400 leading-relaxed">
-              <strong>Dieser Key wird nur einmal angezeigt.</strong> Kopiere ihn jetzt — er kann danach nicht mehr eingesehen werden.
+              <strong>{t('settings.apiKeysPage.newKeyWarning')}</strong> {t('settings.apiKeysPage.newKeyWarningFull').replace(t('settings.apiKeysPage.newKeyWarning') + ' ', '')}
             </p>
           </div>
           <div className="space-y-2">
-            <Label>Dein API-Key</Label>
+            <Label>{t('settings.apiKeysPage.newKeyLabel')}</Label>
             <div className="flex gap-2">
               <Input
                 value={rawKey ?? ''}
@@ -234,7 +238,7 @@ function NewKeyDialog({ rawKey, onClose }: NewKeyDialogProps) {
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={onClose}>Verstanden, schließen</Button>
+          <Button onClick={onClose}>{t('settings.apiKeysPage.understood')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -252,11 +256,12 @@ type ConfirmRevokeProps = {
 }
 
 function ConfirmRevokeDialog({ keyId, keyName, onConfirm, onCancel, isPending }: ConfirmRevokeProps) {
+  const { t } = useTranslation()
   return (
     <Dialog open={keyId !== null} onOpenChange={(open) => { if (!open) onCancel() }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>API-Key widerrufen?</DialogTitle>
+          <DialogTitle>{t('settings.apiKeysPage.revokeDialogTitle')}</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-secondary py-2">
           Der Key <strong className="text-primary">{keyName}</strong> wird sofort ungültig.
@@ -265,10 +270,10 @@ function ConfirmRevokeDialog({ keyId, keyName, onConfirm, onCancel, isPending }:
         </p>
         <DialogFooter>
           <Button variant="outline" onClick={onCancel} disabled={isPending}>
-            Abbrechen
+            {t('common.cancel')}
           </Button>
           <Button variant="destructive" onClick={onConfirm} disabled={isPending}>
-            {isPending ? 'Wird widerrufen…' : 'Widerrufen'}
+            {isPending ? t('settings.apiKeysPage.revoking') : t('settings.apiKeysPage.revokeConfirm')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -279,6 +284,7 @@ function ConfirmRevokeDialog({ keyId, keyName, onConfirm, onCancel, isPending }:
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 function ApiKeysContent() {
+  const { t } = useTranslation()
   const [createOpen, setCreateOpen] = useState(false)
   const [newRawKey, setNewRawKey] = useState<string | null>(null)
   const [revokingKey, setRevokingKey] = useState<APIKey | null>(null)
@@ -293,7 +299,7 @@ function ApiKeysContent() {
     revoke.mutate(revokingKey.id, {
       onSuccess: () => {
         setRevokingKey(null)
-        toast('API-Key widerrufen', 'success')
+        toast(t('settings.apiKeysPage.toastRevoked'), 'success')
       },
       onError: (err) => {
         setRevokingKey(null)
@@ -307,8 +313,8 @@ function ApiKeysContent() {
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <PageHeader
-            title="API-Keys"
-            description="Persönliche API-Keys für programmatischen Zugang (CI/CD, Integrationen)."
+            title={t('settings.apiKeysPage.title')}
+            description={t('settings.apiKeysPage.description')}
           />
           <Button
             size="sm"
@@ -316,24 +322,24 @@ function ApiKeysContent() {
             onClick={() => setCreateOpen(true)}
           >
             <Plus className="w-4 h-4" />
-            Neuen API-Key erstellen
+            {t('settings.apiKeysPage.createKey')}
           </Button>
         </div>
 
         <Card className="p-0 overflow-hidden">
           {/* Table header */}
           <div className="grid grid-cols-[2fr_1.5fr_1.5fr_1.5fr_auto] gap-x-4 px-4 py-2.5 border-b border-border bg-muted/30">
-            <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">Name / Prefix</span>
-            <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">Erstellt am</span>
-            <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">Zuletzt verwendet</span>
-            <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">Ablauf</span>
-            <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">Aktionen</span>
+            <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">{t('settings.apiKeysPage.colNamePrefix')}</span>
+            <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">{t('settings.apiKeysPage.colCreated')}</span>
+            <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">{t('settings.apiKeysPage.colLastUsed')}</span>
+            <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">{t('settings.apiKeysPage.colExpiry')}</span>
+            <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">{t('settings.apiKeysPage.colActions')}</span>
           </div>
 
           {/* Loading */}
           {isLoading && (
             <div className="px-4 py-8 text-center text-sm text-secondary">
-              Lade API-Keys…
+              {t('settings.apiKeysPage.loading')}
             </div>
           )}
 
@@ -342,9 +348,9 @@ function ApiKeysContent() {
             <div className="px-4 py-10 flex flex-col items-center gap-3 text-center">
               <Key className="w-8 h-8 text-secondary opacity-40" />
               <div>
-                <p className="text-sm font-medium text-primary">Keine API-Keys vorhanden</p>
+                <p className="text-sm font-medium text-primary">{t('settings.apiKeysPage.noKeys')}</p>
                 <p className="text-xs text-secondary mt-1">
-                  Erstelle einen Key für CI/CD-Pipelines oder externe Integrationen.
+                  {t('settings.apiKeysPage.noKeysDesc')}
                 </p>
               </div>
             </div>
@@ -365,7 +371,7 @@ function ApiKeysContent() {
               <span className="text-sm text-secondary">{formatDate(key.created_at)}</span>
               <span className="text-sm text-secondary">{formatDate(key.last_used_at)}</span>
               <span className="text-sm text-secondary">
-                {key.expires_at ? formatDate(key.expires_at) : 'Nie'}
+                {key.expires_at ? formatDate(key.expires_at) : t('settings.apiKeysPage.never')}
               </span>
               <Button
                 variant="ghost"
@@ -374,15 +380,14 @@ function ApiKeysContent() {
                 onClick={() => setRevokingKey(key)}
               >
                 <Trash2 className="w-4 h-4" />
-                <span className="sr-only">Widerrufen</span>
+                <span className="sr-only">{t('settings.apiKeysPage.revokeKey')}</span>
               </Button>
             </div>
           ))}
         </Card>
 
         <p className="text-xs text-secondary">
-          API-Keys gewähren den gleichen Zugang wie dein Benutzerkonto.
-          Teile sie nicht und widerrufe sie, wenn sie nicht mehr benötigt werden.
+          {t('settings.apiKeysPage.securityHint')}
         </p>
 
         <CreateKeyDialog

@@ -128,6 +128,7 @@ type UpdateFindingInput struct {
 	Status        *string `json:"status"        validate:"omitempty,oneof=open in_progress resolved accepted_risk false_positive"`
 	AssignedTo    *string `json:"assigned_to"`
 	Justification *string `json:"justification"`
+	Severity      *string `json:"severity"      validate:"omitempty,oneof=critical high medium low info"`
 }
 
 // BulkFindingInput is the request body for bulk-updating findings.

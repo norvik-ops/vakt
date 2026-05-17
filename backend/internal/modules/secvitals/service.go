@@ -25,6 +25,7 @@ import (
 	"github.com/sechealth-app/sechealth/internal/shared/ai"
 	"github.com/sechealth-app/sechealth/internal/shared/dashboard"
 	"github.com/sechealth-app/sechealth/internal/shared/notify"
+	"github.com/sechealth-app/sechealth/internal/shared/webhooks"
 )
 
 // ErrDORANotEnabled is returned when DORA framework is not enabled for the organisation.
@@ -35,16 +36,22 @@ var ErrNotFound = errors.New("not found")
 
 // Service handles ComplyKit business logic.
 type Service struct {
-	db       *pgxpool.Pool
-	rdb      *redis.Client
-	repo     *Repository
-	notifSvc notifyService
-	aiClient *ai.AIClient
+	db         *pgxpool.Pool
+	rdb        *redis.Client
+	repo       *Repository
+	notifSvc   notifyService
+	aiClient   *ai.AIClient
+	webhookSvc webhookTrigger
 }
 
 // notifyService abstracts the notify.Service dependency for testability.
 type notifyService interface {
 	Notify(ctx context.Context, msg notify.Message) error
+}
+
+// webhookTrigger abstracts the webhook delivery dependency for testability.
+type webhookTrigger interface {
+	TriggerEvent(ctx context.Context, orgID, eventType string, payload any)
 }
 
 // NewService creates a new ComplyKit service.
@@ -76,6 +83,29 @@ func (s *Service) WithNotifyService(n notifyService) {
 // WithAIClient sets the AI client used for policy draft generation.
 func (s *Service) WithAIClient(c *ai.AIClient) {
 	s.aiClient = c
+}
+
+// WithWebhooks sets the webhook service used to fire outgoing events.
+func (s *Service) WithWebhooks(svc *webhooks.WebhookService) {
+	s.webhookSvc = svc
+}
+
+// triggerWebhook fires a webhook event in a background goroutine so the caller
+// is never blocked by network latency or a slow endpoint.
+func (s *Service) triggerWebhook(orgID, eventType string, payload map[string]any) {
+	if s.webhookSvc == nil {
+		return
+	}
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error().Interface("panic", r).Msg("secvitals: webhook goroutine panic recovered")
+			}
+		}()
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		s.webhookSvc.TriggerEvent(ctx, orgID, eventType, payload)
+	}()
 }
 
 // Repo exposes the underlying repository for use by ancillary services (e.g. EvidenceFileService).
@@ -514,7 +544,19 @@ func (s *Service) UpdateControl(ctx context.Context, orgID, controlID string, in
 		return nil, fmt.Errorf("update control: %w", err)
 	}
 	s.invalidateDashboardCache(ctx, orgID)
-	return s.GetControl(ctx, orgID, controlID)
+	ctrl, err := s.GetControl(ctx, orgID, controlID)
+	if err != nil {
+		return nil, err
+	}
+	if input.ManualStatus != "" || input.NotApplicable {
+		s.triggerWebhook(orgID, "control.status_changed", map[string]any{
+			"id":     ctrl.ID,
+			"title":  ctrl.Title,
+			"status": ctrl.Status,
+			"org_id": orgID,
+		})
+	}
+	return ctrl, nil
 }
 
 // filterTISAXByProtectionLevel filters controls based on protection level.
@@ -1303,6 +1345,13 @@ func (s *Service) CreateIncident(ctx context.Context, orgID string, in CreateInc
 		return nil, err
 	}
 	inc.DeadlineStatus = computeDeadlineStatus(inc)
+	s.triggerWebhook(orgID, "incident.created", map[string]any{
+		"id":       inc.ID,
+		"title":    inc.Title,
+		"severity": inc.Severity,
+		"status":   inc.Status,
+		"org_id":   orgID,
+	})
 	return inc, nil
 }
 
@@ -1315,6 +1364,15 @@ func (s *Service) UpdateIncident(ctx context.Context, orgID, id string, in Updat
 		return nil, err
 	}
 	inc.DeadlineStatus = computeDeadlineStatus(inc)
+	if in.Status != "" {
+		s.triggerWebhook(orgID, "incident.status_changed", map[string]any{
+			"id":       inc.ID,
+			"title":    inc.Title,
+			"severity": inc.Severity,
+			"status":   inc.Status,
+			"org_id":   orgID,
+		})
+	}
 	return inc, nil
 }
 

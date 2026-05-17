@@ -36,6 +36,7 @@ func Register(g *echo.Group, h *Handler) {
 	assets.GET("/scans/:id", h.GetScan)
 
 	// --- Pro: Findings bulk export/import and Wazuh import — must be before /:id routes ---
+	assets.GET("/findings/export/xlsx", h.ExportFindingsXLSX, license.Require(license.FeatureSecPulse))
 	assets.GET("/findings/export", h.ExportFindings, license.Require(license.FeatureSecPulse))
 	assets.POST("/findings/import", h.ImportFindings, rw, license.Require(license.FeatureSecPulse))
 	assets.POST("/findings/import/csv", h.ImportFindingsCSV, rw, license.Require(license.FeatureSecPulse))

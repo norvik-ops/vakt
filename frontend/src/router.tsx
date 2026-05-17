@@ -35,6 +35,7 @@ import AdminTenantsPage from './pages/AdminTenantsPage'
 import AdminSecurityPage from './pages/AdminSecurityPage'
 import WebhooksPage from './pages/WebhooksPage'
 import ScheduledReportsPage from './pages/ScheduledReportsPage'
+import NotificationPreferencesPage from './pages/NotificationPreferencesPage'
 
 // Lazy module pages — filled in by module agents
 import { lazy, Suspense } from 'react'
@@ -186,6 +187,7 @@ export const router = createBrowserRouter([
           { path: '/settings/api-keys', element: <ApiKeysPage /> },
           { path: '/settings/webhooks', element: <WebhooksPage /> },
           { path: '/settings/reports', element: <ScheduledReportsPage /> },
+          { path: '/settings/notifications', element: <NotificationPreferencesPage /> },
           { path: '/admin/health', element: <AdminHealthPage /> },
           { path: '/admin/tenants', element: <AdminTenantsPage /> },
           { path: '/admin/security', element: <AdminSecurityPage /> },

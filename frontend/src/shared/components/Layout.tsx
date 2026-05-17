@@ -30,6 +30,7 @@ import { Toaster } from './Toaster'
 import { PWAInstallPrompt } from './PWAInstallPrompt'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal'
+import { AppTour } from './AppTour'
 
 interface NavItem {
   path: string
@@ -401,6 +402,7 @@ export default function Layout() {
               { to: '/settings/team', icon: Users, label: 'Team' },
               { to: '/settings/webhooks', icon: Webhook, label: 'Webhooks' },
               { to: '/settings/reports', icon: FileBarChart2, label: 'Geplante Berichte' },
+              { to: '/settings/notifications', icon: Bell, label: 'Benachrichtigungen' },
               ...(isAdminOrOwner ? [
                 { to: '/settings/audit-log', icon: ScrollText, label: 'Audit-Log' },
                 { to: '/admin/health', icon: HeartPulse, label: 'System-Status' },
@@ -561,6 +563,7 @@ export default function Layout() {
       <WhatsNewModal />
       <Toaster />
       <PWAInstallPrompt />
+      <AppTour />
     </div>
   )
 }

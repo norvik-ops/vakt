@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Building2, Plus, ExternalLink, Trash2, Search, RefreshCw } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { apiFetch } from '../api/client'
 import { PageHeader } from '../shared/components/PageHeader'
 import { Button } from '../components/ui/button'
@@ -87,6 +88,7 @@ interface CreateDialogProps {
 }
 
 function CreateOrgDialog({ open, onClose, onCreated }: CreateDialogProps) {
+  const { t } = useTranslation()
   const [form, setForm] = useState<CreateOrgInput>({ name: '', plan: 'msp_managed' })
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
@@ -98,7 +100,7 @@ function CreateOrgDialog({ open, onClose, onCreated }: CreateDialogProps) {
         body: JSON.stringify(input),
       }),
     onSuccess: () => {
-      toast({ title: 'Organisation erstellt', variant: 'default' })
+      toast({ title: t('admin.tenants.createSuccess'), variant: 'default' })
       setForm({ name: '', plan: 'msp_managed' })
       setError(null)
       onCreated()
@@ -112,7 +114,7 @@ function CreateOrgDialog({ open, onClose, onCreated }: CreateDialogProps) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.name.trim()) {
-      setError('Name ist erforderlich.')
+      setError(t('admin.tenants.nameRequired'))
       return
     }
     mutation.mutate(form)
@@ -122,20 +124,20 @@ function CreateOrgDialog({ open, onClose, onCreated }: CreateDialogProps) {
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Neue Organisation anlegen</DialogTitle>
+          <DialogTitle>{t('admin.tenants.createDialogTitle')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Organisationsname</label>
+            <label className="text-sm font-medium">{t('admin.tenants.labelName')}</label>
             <Input
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Muster GmbH"
+              placeholder={t('admin.tenants.namePlaceholder')}
               autoFocus
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Lizenzebene</label>
+            <label className="text-sm font-medium">{t('admin.tenants.labelPlan')}</label>
             <select
               value={form.plan}
               onChange={(e) => setForm({ ...form, plan: e.target.value })}
@@ -153,10 +155,10 @@ function CreateOrgDialog({ open, onClose, onCreated }: CreateDialogProps) {
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              Abbrechen
+              {t('admin.tenants.cancel')}
             </Button>
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? 'Wird erstellt…' : 'Anlegen'}
+              {mutation.isPending ? t('admin.tenants.creating') : t('admin.tenants.create')}
             </Button>
           </DialogFooter>
         </form>
@@ -168,6 +170,7 @@ function CreateOrgDialog({ open, onClose, onCreated }: CreateDialogProps) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminTenantsPage() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const [search, setSearch] = useState('')
@@ -183,11 +186,11 @@ export default function AdminTenantsPage() {
     mutationFn: (orgId: string) =>
       apiFetch<void>(`/admin/organizations/${orgId}`, { method: 'DELETE' }),
     onSuccess: () => {
-      toast({ title: 'Organisation zur Deaktivierung vorgemerkt', variant: 'default' })
+      toast({ title: t('admin.tenants.deactivateSuccess'), variant: 'default' })
       void queryClient.invalidateQueries({ queryKey: ['admin', 'tenants'] })
     },
     onError: (e: Error) => {
-      toast({ title: 'Fehler', description: e.message, variant: 'destructive' })
+      toast({ title: t('admin.tenants.genericError'), description: e.message, variant: 'destructive' })
     },
   })
 
@@ -202,7 +205,7 @@ export default function AdminTenantsPage() {
       window.location.href = '/'
     },
     onError: (e: Error) => {
-      toast({ title: 'Anmeldung fehlgeschlagen', description: e.message, variant: 'destructive' })
+      toast({ title: t('admin.tenants.impersonateError'), description: e.message, variant: 'destructive' })
     },
   })
 
@@ -214,17 +217,17 @@ export default function AdminTenantsPage() {
   return (
     <div>
       <PageHeader
-        title="Mandanten-Verwaltung"
-        description="Verwaltung aller verwalteten Kundenorganisationen dieses MSP-Kontos."
+        title={t('admin.tenants.title')}
+        description={t('admin.tenants.description')}
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => void refetch()} disabled={isFetching}>
               <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching ? 'animate-spin' : ''}`} />
-              Aktualisieren
+              {t('admin.tenants.refresh')}
             </Button>
             <Button size="sm" onClick={() => setCreateOpen(true)}>
               <Plus className="w-3.5 h-3.5 mr-1.5" />
-              Neue Organisation
+              {t('admin.tenants.newOrg')}
             </Button>
           </div>
         }
@@ -237,7 +240,7 @@ export default function AdminTenantsPage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Organisationen suchen…"
+            placeholder={t('admin.tenants.searchPlaceholder')}
             className="pl-8"
           />
         </div>
@@ -245,7 +248,7 @@ export default function AdminTenantsPage() {
         {/* Error */}
         {isError && (
           <div className="rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-            Fehler beim Laden: {error instanceof Error ? error.message : 'Unbekannter Fehler'}
+            {t('admin.tenants.loadError', { message: error instanceof Error ? error.message : t('admin.tenants.unknownError') })}
           </div>
         )}
 
@@ -266,7 +269,7 @@ export default function AdminTenantsPage() {
                 <div className="flex flex-col items-center justify-center py-16 text-secondary gap-3">
                   <Building2 className="w-8 h-8 opacity-30" />
                   <p className="text-sm">
-                    {search ? 'Keine Treffer für diese Suche.' : 'Noch keine verwalteten Organisationen.'}
+                    {search ? t('admin.tenants.noSearchResults') : t('admin.tenants.noOrgs')}
                   </p>
                 </div>
               ) : (
@@ -274,11 +277,11 @@ export default function AdminTenantsPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border text-secondary text-[12px] uppercase tracking-wider">
-                        <th className="px-4 py-3 text-left font-medium">Organisation</th>
-                        <th className="px-4 py-3 text-left font-medium">Lizenzebene</th>
-                        <th className="px-4 py-3 text-left font-medium">Erstellt</th>
-                        <th className="px-4 py-3 text-left font-medium">Status</th>
-                        <th className="px-4 py-3 text-right font-medium">Aktionen</th>
+                        <th className="px-4 py-3 text-left font-medium">{t('admin.tenants.colOrg')}</th>
+                        <th className="px-4 py-3 text-left font-medium">{t('admin.tenants.colPlan')}</th>
+                        <th className="px-4 py-3 text-left font-medium">{t('admin.tenants.colCreated')}</th>
+                        <th className="px-4 py-3 text-left font-medium">{t('admin.tenants.colStatus')}</th>
+                        <th className="px-4 py-3 text-right font-medium">{t('admin.tenants.colActions')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -292,11 +295,11 @@ export default function AdminTenantsPage() {
                           <td className="px-4 py-3">
                             {org.scheduled_deletion_at ? (
                               <Badge className="border-0 bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 text-[11px]">
-                                Löschung: {formatDate(org.scheduled_deletion_at)}
+                                {t('admin.tenants.statusDeletion', { date: formatDate(org.scheduled_deletion_at) })}
                               </Badge>
                             ) : (
                               <Badge className="border-0 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 text-[11px]">
-                                Aktiv
+                                {t('admin.tenants.statusActive')}
                               </Badge>
                             )}
                           </td>
@@ -309,7 +312,7 @@ export default function AdminTenantsPage() {
                                 onClick={() => impersonateMutation.mutate(org.id)}
                               >
                                 <ExternalLink className="w-3 h-3 mr-1" />
-                                Öffnen
+                                {t('admin.tenants.open')}
                               </Button>
                               <Button
                                 variant="outline"
@@ -319,7 +322,7 @@ export default function AdminTenantsPage() {
                                 onClick={() => setDeactivateTarget(org)}
                               >
                                 <Trash2 className="w-3 h-3 mr-1" />
-                                Deaktivieren
+                                {t('admin.tenants.deactivate')}
                               </Button>
                             </div>
                           </td>
@@ -345,14 +348,13 @@ export default function AdminTenantsPage() {
       <AlertDialog open={!!deactivateTarget} onOpenChange={(v) => { if (!v) setDeactivateTarget(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Organisation deaktivieren?</AlertDialogTitle>
+            <AlertDialogTitle>{t('admin.tenants.deactivateDialogTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              <strong>{deactivateTarget?.name}</strong> wird zur Löschung nach einer 30-tägigen Frist vorgemerkt.
-              Diese Aktion kann nicht rückgängig gemacht werden.
+              <strong>{deactivateTarget?.name}</strong> {t('admin.tenants.deactivateDialogDesc', { name: '' }).replace('<strong>{{name}}</strong> ', '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogCancel>{t('admin.tenants.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
               onClick={() => {
@@ -362,7 +364,7 @@ export default function AdminTenantsPage() {
                 }
               }}
             >
-              Deaktivieren
+              {t('admin.tenants.deactivateConfirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
