@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Trash2, Plus, FlaskConical, ChevronDown, ChevronRight, Bell, GitBranch, History } from 'lucide-react'
+import { Trash2, Plus, FlaskConical, ChevronDown, ChevronRight, Bell, History } from 'lucide-react'
 import { PageHeader } from '../shared/components/PageHeader'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -438,144 +438,6 @@ function DeliveryHistorySection() {
   )
 }
 
-// ─── Escalation Chain Section ─────────────────────────────────────────────────
-
-function EscalationChainSection() {
-  const [tier1Days, setTier1Days] = useState(3)
-  const [tier2Days, setTier2Days] = useState(7)
-  const [tier2Email, setTier2Email] = useState('')
-  const [tier3Days, setTier3Days] = useState(14)
-  const [tier3Email, setTier3Email] = useState('')
-  const [saved, setSaved] = useState<string | null>(null)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
-
-  useEffect(() => () => clearTimeout(timerRef.current), [])
-
-  function handleSave() {
-    setSaved('Konfiguration gespeichert (Feature in Vorbereitung)')
-    timerRef.current = setTimeout(() => setSaved(null), 3000)
-  }
-
-  return (
-    <div className="bg-surface border border-border rounded-xl overflow-hidden">
-      <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border">
-        <GitBranch className="w-4 h-4 text-brand" />
-        <h2 className="text-sm font-semibold text-primary">Eskalationskette</h2>
-        <span className="ml-auto inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border bg-amber-900/30 text-amber-300 border-amber-800/40">
-          In Entwicklung
-        </span>
-      </div>
-
-      <div className="px-5 py-4 space-y-5">
-        <p className="text-xs text-secondary leading-relaxed">
-          Wenn ein Alerting-Channel nicht reagiert oder ein Finding die SLA überschreitet,
-          können Eskalationsstufen definiert werden.
-        </p>
-
-        {saved && (
-          <div className="px-4 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
-            {saved}
-          </div>
-        )}
-
-        <div className="space-y-4">
-          {/* Tier 1 */}
-          <div className="bg-surface border border-border rounded-lg p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-secondary border border-border rounded px-1.5 py-0.5">
-                Stufe 1
-              </span>
-              <span className="text-sm font-medium text-primary">Analyst benachrichtigen</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Label className="text-xs text-secondary whitespace-nowrap">Nach</Label>
-              <Input
-                type="number"
-                min={1}
-                max={365}
-                value={tier1Days}
-                onChange={(e) => setTier1Days(Number(e.target.value))}
-                className="h-8 text-sm w-20"
-              />
-              <Label className="text-xs text-secondary">Tagen</Label>
-            </div>
-          </div>
-
-          {/* Tier 2 */}
-          <div className="bg-surface border border-border rounded-lg p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-secondary border border-border rounded px-1.5 py-0.5">
-                Stufe 2
-              </span>
-              <span className="text-sm font-medium text-primary">CISO benachrichtigen</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Label className="text-xs text-secondary whitespace-nowrap">Nach</Label>
-              <Input
-                type="number"
-                min={1}
-                max={365}
-                value={tier2Days}
-                onChange={(e) => setTier2Days(Number(e.target.value))}
-                className="h-8 text-sm w-20"
-              />
-              <Label className="text-xs text-secondary">Tagen</Label>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-secondary">E-Mail-Adresse CISO</Label>
-              <Input
-                type="email"
-                placeholder="ciso@example.com"
-                value={tier2Email}
-                onChange={(e) => setTier2Email(e.target.value)}
-                className="h-8 text-sm"
-              />
-            </div>
-          </div>
-
-          {/* Tier 3 */}
-          <div className="bg-surface border border-border rounded-lg p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-secondary border border-border rounded px-1.5 py-0.5">
-                Stufe 3
-              </span>
-              <span className="text-sm font-medium text-primary">Geschäftsführung per E-Mail</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Label className="text-xs text-secondary whitespace-nowrap">Nach</Label>
-              <Input
-                type="number"
-                min={1}
-                max={365}
-                value={tier3Days}
-                onChange={(e) => setTier3Days(Number(e.target.value))}
-                className="h-8 text-sm w-20"
-              />
-              <Label className="text-xs text-secondary">Tagen</Label>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-secondary">E-Mail-Adresse Geschäftsführung</Label>
-              <Input
-                type="email"
-                placeholder="ceo@example.com"
-                value={tier3Email}
-                onChange={(e) => setTier3Email(e.target.value)}
-                className="h-8 text-sm"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-end pt-1">
-          <Button size="sm" onClick={handleSave} className="h-8 text-sm">
-            Speichern
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AlertingSettingsPage() {
@@ -589,8 +451,6 @@ export default function AlertingSettingsPage() {
         <div className="max-w-5xl space-y-5">
           <ChannelsSection />
           <DeliveryHistorySection />
-          {/* TODO: implement when backend exists */}
-          {false && <EscalationChainSection />}
         </div>
       </div>
     </div>

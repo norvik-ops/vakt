@@ -14,6 +14,7 @@ Vakt ist eine selbst gehostete Security- & Compliance-Plattform für KMU im DACH
 |-------|--------------|
 | [Installation](installation.md) | Systemanforderungen, Docker-Compose-Quickstart, HTTPS, erste Schritte |
 | [Konfigurationsreferenz](configuration.md) | Alle Umgebungsvariablen vollständig dokumentiert |
+| [API-Referenz](api-reference.md) | REST API — Endpoints, Authentifizierung, Beispiele; OpenAPI 3.0 Spec |
 | [FAQ](faq.md) | Häufige Fragen zu Lizenz, Datenschutz, Updates und Unterschieden zu kommerziellen Tools |
 
 ### Module

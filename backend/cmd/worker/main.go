@@ -156,6 +156,9 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	// Scheduled reports: daily delivery run
 	mux.HandleFunc(scheduledreports.TaskProcessScheduledReports, handleProcessScheduledReports(cfg, pool))
 
+	// Queue health: every 5 minutes — warn when failed/archived jobs accumulate
+	mux.HandleFunc(taskQueueHealthCheck, handleQueueHealthCheck(cfg))
+
 	return srv, mux
 }
 
@@ -1323,7 +1326,57 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		log.Error().Err(err).Msg("failed to register scheduled reports cron")
 	}
 
+	// Every 5 minutes: check for failed/archived job accumulation.
+	if _, err := scheduler.Register("*/5 * * * *",
+		asynq.NewTask(taskQueueHealthCheck, nil),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register queue health check cron")
+	}
+
 	return scheduler
+}
+
+const taskQueueHealthCheck = "queue:health:check"
+
+// handleQueueHealthCheck inspects Asynq queues and logs warnings when failed or
+// archived job counts exceed thresholds. No DB required — reads directly from Redis.
+func handleQueueHealthCheck(cfg *config.Config) asynq.HandlerFunc {
+	return func(ctx context.Context, _ *asynq.Task) error {
+		redisAddr := "localhost:6379"
+		if cfg != nil && cfg.RedisUrl != "" {
+			redisAddr = cfg.RedisUrl
+		}
+
+		inspector := asynq.NewInspector(asynq.RedisClientOpt{Addr: redisAddr})
+		defer inspector.Close()
+
+		queues, err := inspector.Queues()
+		if err != nil {
+			log.Warn().Err(err).Msg("queue_health: could not list queues")
+			return nil
+		}
+
+		for _, q := range queues {
+			info, err := inspector.GetQueueInfo(q)
+			if err != nil {
+				continue
+			}
+			if info.Failed > 0 {
+				log.Warn().
+					Str("queue", q).
+					Int("failed", info.Failed).
+					Int("archived", info.Archived).
+					Msg("queue_health: failed jobs detected — review /admin/health or asynq CLI")
+			}
+			if info.Archived > 10 {
+				log.Warn().
+					Str("queue", q).
+					Int("archived", info.Archived).
+					Msg("queue_health: high archived job count — consider running 'asynq queue purge'")
+			}
+		}
+		return nil
+	}
 }
 
 // handleSBOMGenerate handles secpulse:sbom:generate jobs.
