@@ -193,3 +193,9 @@ func (h *Handler) IncidentReportPDF(c echo.Context) error {
 	c.Response().Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	return c.Blob(http.StatusOK, "application/pdf", pdfBytes)
 }
+
+// NIS2ReportingEnabled handles GET /api/v1/secvitals/nis2/enabled.
+// License probe for the NIS2 reporting feature — the route itself is gated.
+func (h *Handler) NIS2ReportingEnabled(c echo.Context) error {
+	return c.JSON(http.StatusOK, map[string]bool{"enabled": true})
+}

@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { apiFetch } from '../../../api/client'
+import { ProGate } from '../../../shared/components/ProGate'
 import { Shield, ChevronRight, ChevronLeft, Printer, ExternalLink, CheckSquare, Square } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -557,6 +560,12 @@ function Step4Checklist({ classification, checkedItems, onToggle, onBack }: Step
 export default function NIS2AssistantPage() {
   const navigate = useNavigate()
 
+  const { error: licenseError } = useQuery({
+    queryKey: ['nis2', 'enabled'],
+    queryFn: () => apiFetch<{ enabled: boolean }>('/secvitals/nis2/enabled'),
+    retry: false,
+  })
+
   const [state, setState] = useState<WizardState>({
     step: 1,
     selectedSectorId: null,
@@ -622,6 +631,7 @@ export default function NIS2AssistantPage() {
   }
 
   return (
+    <ProGate error={licenseError ?? null}>
     <div className="flex flex-col h-full">
       {/* Print styles injected inline */}
       <style>{`
@@ -697,5 +707,6 @@ export default function NIS2AssistantPage() {
         </div>
       </div>
     </div>
+    </ProGate>
   )
 }

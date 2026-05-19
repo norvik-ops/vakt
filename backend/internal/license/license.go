@@ -33,6 +33,12 @@ const (
 	// FeatureGranularPermissions gates the per-user module permission management API.
 	// Admins on Community may still see permissions; only writing (PUT) is gated.
 	FeatureGranularPermissions = "granular_permissions"
+	// FeatureSupplierPortal gates the full supplier register, assessments, and external portal.
+	// Reading a shared portal link (/supplier/:token GET) remains public.
+	FeatureSupplierPortal = "supplier_portal"
+	// FeatureNIS2Reporting gates NIS2/BSI incident reportability assessment, deadline tracking,
+	// and the structured notification form generator.
+	FeatureNIS2Reporting = "nis2_reporting"
 )
 
 var publicKeyPEM = `-----BEGIN PUBLIC KEY-----
@@ -52,6 +58,8 @@ var allFeatures = []string{
 	FeatureSecReflex,
 	FeatureSecPulse,
 	FeatureGranularPermissions,
+	FeatureSupplierPortal,
+	FeatureNIS2Reporting,
 }
 
 // License describes the capabilities granted to this Vakt instance.

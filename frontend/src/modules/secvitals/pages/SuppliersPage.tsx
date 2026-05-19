@@ -11,6 +11,7 @@ import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { useSuppliers, useCreateSupplier, useUpdateSupplier, useDeleteSupplier, useImportSuppliersCSV } from '../hooks/useSuppliers'
+import { ProGate } from '../../../shared/components/ProGate'
 import { useSupplierStatus, statusToVariant } from '../hooks/useAssessments'
 import type { Supplier, CreateSupplierInput } from '../types'
 import { SkeletonCardGrid } from '../../../shared/components/SkeletonLoaders'
@@ -189,7 +190,7 @@ export default function SuppliersPage() {
     criticality: filterCriticality || undefined,
     assessmentStatus: filterAssessmentStatus || undefined,
   }
-  const { data: suppliers, isLoading, isError } = useSuppliers(filters)
+  const { data: suppliers, isLoading, isError, error } = useSuppliers(filters)
   const createSupplier = useCreateSupplier()
   const updateSupplier = useUpdateSupplier(editId ?? '')
   const deleteSupplier = useDeleteSupplier()
@@ -288,6 +289,7 @@ export default function SuppliersPage() {
   const isPending = createSupplier.isPending || updateSupplier.isPending
 
   return (
+    <ProGate error={isError ? error : null}>
     <div className="flex flex-col h-full">
       {toast.message && (
         <div className="fixed bottom-4 right-4 z-50 bg-red-500/90 text-white text-sm px-4 py-2 rounded-lg shadow-lg" data-testid="export-error-toast">
@@ -500,5 +502,6 @@ export default function SuppliersPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </ProGate>
   )
 }

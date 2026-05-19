@@ -149,34 +149,36 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.POST("/incidents", h.CreateIncident)
 	g.GET("/incidents/:id", h.GetIncident)
 	g.PATCH("/incidents/:id", h.UpdateIncident)
-	g.POST("/incidents/:id/mark-reported", h.MarkDeadlineReported)
-	g.POST("/incidents/:id/assess-reportability", h.AssessReportability)
+	// CRITICAL: nis2/enabled must be registered BEFORE incidents/:id to avoid route conflict
+	g.GET("/nis2/enabled", h.NIS2ReportingEnabled, license.Require(license.FeatureNIS2Reporting))
+	g.POST("/incidents/:id/mark-reported", h.MarkDeadlineReported, license.Require(license.FeatureNIS2Reporting))
+	g.POST("/incidents/:id/assess-reportability", h.AssessReportability, license.Require(license.FeatureNIS2Reporting))
 	// CRITICAL: incidents/:id/reports must be before incidents/:id/report-pdf to avoid ambiguity
-	g.GET("/incidents/:id/reports", h.ListIncidentReports)
-	g.POST("/incidents/:id/reports", h.GenerateIncidentReportForm)
+	g.GET("/incidents/:id/reports", h.ListIncidentReports, license.Require(license.FeatureNIS2Reporting))
+	g.POST("/incidents/:id/reports", h.GenerateIncidentReportForm, license.Require(license.FeatureNIS2Reporting))
 	g.GET("/incidents/:id/report-pdf", h.IncidentReportPDF, license.Require(license.FeatureAuditPDF))
 	// Report download (separate resource path)
 	g.GET("/incident-reports/:reportId/pdf", h.DownloadIncidentReportPDF, license.Require(license.FeatureAuditPDF))
 
-	// Supplier Register
-	g.GET("/suppliers", h.ListSuppliers)
-	g.POST("/suppliers", h.CreateSupplier)
+	// Supplier Register — Pro feature
+	g.GET("/suppliers", h.ListSuppliers, license.Require(license.FeatureSupplierPortal))
+	g.POST("/suppliers", h.CreateSupplier, license.Require(license.FeatureSupplierPortal))
 	// CRITICAL: static paths must be registered BEFORE /suppliers/:id to avoid route conflict
-	g.GET("/suppliers/export", h.ExportSuppliers)
-	g.POST("/suppliers/import-csv", h.ImportSuppliersCSV)
-	g.GET("/suppliers/:id", h.GetSupplier)
-	g.PATCH("/suppliers/:id", h.UpdateSupplier)
-	g.DELETE("/suppliers/:id", h.DeleteSupplier)
-	g.GET("/suppliers/:id/incidents", h.GetSupplierIncidents)
-	g.POST("/suppliers/:id/risks", h.LinkSupplierRisk)
-	g.GET("/suppliers/:id/risks", h.ListSupplierRisks)
-	g.DELETE("/suppliers/:id/risks/:riskId", h.UnlinkSupplierRisk)
+	g.GET("/suppliers/export", h.ExportSuppliers, license.Require(license.FeatureSupplierPortal))
+	g.POST("/suppliers/import-csv", h.ImportSuppliersCSV, license.Require(license.FeatureSupplierPortal))
+	g.GET("/suppliers/:id", h.GetSupplier, license.Require(license.FeatureSupplierPortal))
+	g.PATCH("/suppliers/:id", h.UpdateSupplier, license.Require(license.FeatureSupplierPortal))
+	g.DELETE("/suppliers/:id", h.DeleteSupplier, license.Require(license.FeatureSupplierPortal))
+	g.GET("/suppliers/:id/incidents", h.GetSupplierIncidents, license.Require(license.FeatureSupplierPortal))
+	g.POST("/suppliers/:id/risks", h.LinkSupplierRisk, license.Require(license.FeatureSupplierPortal))
+	g.GET("/suppliers/:id/risks", h.ListSupplierRisks, license.Require(license.FeatureSupplierPortal))
+	g.DELETE("/suppliers/:id/risks/:riskId", h.UnlinkSupplierRisk, license.Require(license.FeatureSupplierPortal))
 	// CRITICAL: static paths under /suppliers/:id must come before the bare /suppliers/:id param routes
-	g.GET("/suppliers/:id/status", h.GetSupplierStatus)
+	g.GET("/suppliers/:id/status", h.GetSupplierStatus, license.Require(license.FeatureSupplierPortal))
 
-	// Supplier assessments (Story 29.3)
-	g.POST("/suppliers/:id/assessments", h.CreateSupplierAssessment)
-	g.GET("/suppliers/:id/assessments", h.ListSupplierAssessments)
+	// Supplier assessments (Story 29.3) — Pro feature
+	g.POST("/suppliers/:id/assessments", h.CreateSupplierAssessment, license.Require(license.FeatureSupplierPortal))
+	g.GET("/suppliers/:id/assessments", h.ListSupplierAssessments, license.Require(license.FeatureSupplierPortal))
 
 	// Assessment routes — CRITICAL: static sub-paths before bare :id to avoid route conflicts
 	g.GET("/assessments/:id/answers", h.GetAssessmentAnswers)
