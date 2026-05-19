@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/sechealth-app/sechealth/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/notify"
 )
 
 // AuditLog is a single audit log entry as returned by the admin API.

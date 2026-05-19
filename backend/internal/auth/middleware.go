@@ -40,6 +40,12 @@ func PasetoMiddleware(key paseto.V4SymmetricKey, rdb ...*redis.Client) echo.Midd
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			header := c.Request().Header.Get("Authorization")
+			// Fall back to httpOnly cookie if no Authorization header (browser sessions).
+			if header == "" {
+				if cookie, err := c.Cookie("access_token"); err == nil && cookie.Value != "" {
+					header = "Bearer " + cookie.Value
+				}
+			}
 			if header == "" {
 				return c.JSON(http.StatusUnauthorized, map[string]string{
 					"error": "unauthorized",
@@ -93,6 +99,7 @@ func PasetoMiddleware(key paseto.V4SymmetricKey, rdb ...*redis.Client) echo.Midd
 			c.Set("user_id", claims.UserID)
 			c.Set("org_id", claims.OrgID)
 			c.Set("roles", claims.Roles)
+			c.Set("token_raw", tokenStr)
 			return next(c)
 		}
 	}
@@ -111,6 +118,12 @@ func AuthMiddleware(key paseto.V4SymmetricKey, db *pgxpool.Pool, rdb ...*redis.C
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			header := c.Request().Header.Get("Authorization")
+			// Fall back to httpOnly cookie if no Authorization header (browser sessions).
+			if header == "" {
+				if cookie, err := c.Cookie("access_token"); err == nil && cookie.Value != "" {
+					header = "Bearer " + cookie.Value
+				}
+			}
 			if header == "" {
 				return c.JSON(http.StatusUnauthorized, map[string]string{
 					"error": "unauthorized",
@@ -170,6 +183,7 @@ func AuthMiddleware(key paseto.V4SymmetricKey, db *pgxpool.Pool, rdb ...*redis.C
 			c.Set("user_id", claims.UserID)
 			c.Set("org_id", claims.OrgID)
 			c.Set("roles", claims.Roles)
+			c.Set("token_raw", tokenStr)
 			return next(c)
 		}
 	}
@@ -219,10 +233,11 @@ func MFAEnforceMiddleware(db *pgxpool.Pool) echo.MiddlewareFunc {
 				`SELECT require_mfa FROM organizations WHERE id = $1::uuid`, orgID,
 			).Scan(&requireMFA)
 			if err != nil {
-				// If we can't read the org row, let the request through — fail open
-				// to avoid locking users out due to transient DB issues.
-				log.Warn().Err(err).Str("org_id", orgID).Msg("mfa enforce: org lookup failed, skipping check")
-				return next(c)
+				log.Error().Err(err).Str("org_id", orgID).Msg("mfa enforce: org lookup failed")
+				return c.JSON(http.StatusServiceUnavailable, map[string]string{
+					"error": "service temporarily unavailable",
+					"code":  "SERVICE_UNAVAILABLE",
+				})
 			}
 
 			if !requireMFA {

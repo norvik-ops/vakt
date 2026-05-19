@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/sechealth-app/sechealth/internal/auth"
+	"github.com/matharnica/vakt/internal/auth"
 )
 
 // testHexKey is a valid 32-byte hex-encoded key for tests.

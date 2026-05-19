@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"net/http"
 	"time"
 
@@ -85,21 +87,39 @@ func (h *SessionHandler) RevokeSession(c echo.Context) error {
 }
 
 // RevokeAllOtherSessions revokes all sessions for the user except the current one.
+// The current session is identified by the raw bearer token stored in context by
+// AuthMiddleware (key "token_raw"), hashed to match the sessions.token_hash column.
 func (h *SessionHandler) RevokeAllOtherSessions(c echo.Context) error {
 	userID, ok := c.Get("user_id").(string)
 	if !ok || userID == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
-	// The current session's token hash isn't in context — revoke everything for this user
-	_, err := h.db.Exec(c.Request().Context(), `
-        UPDATE sessions
-        SET revoked_at = NOW()
-        WHERE user_id = $1::uuid
-          AND revoked_at IS NULL`,
-		userID,
-	)
+
+	// Exclude the current session's token from revocation.
+	tokenRaw, _ := c.Get("token_raw").(string)
+	var err error
+	if tokenRaw != "" {
+		sum := sha256.Sum256([]byte(tokenRaw))
+		tokenHash := hex.EncodeToString(sum[:])
+		_, err = h.db.Exec(c.Request().Context(), `
+            UPDATE sessions
+            SET revoked_at = NOW()
+            WHERE user_id = $1::uuid
+              AND token_hash != $2
+              AND revoked_at IS NULL`,
+			userID, tokenHash,
+		)
+	} else {
+		_, err = h.db.Exec(c.Request().Context(), `
+            UPDATE sessions
+            SET revoked_at = NOW()
+            WHERE user_id = $1::uuid
+              AND revoked_at IS NULL`,
+			userID,
+		)
+	}
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "db error"})
 	}
-	return c.JSON(http.StatusOK, map[string]string{"status": "all revoked"})
+	return c.JSON(http.StatusOK, map[string]string{"status": "other sessions revoked"})
 }

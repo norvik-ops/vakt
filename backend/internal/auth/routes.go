@@ -6,7 +6,7 @@ package auth
 import (
 	"github.com/labstack/echo/v4"
 
-	"github.com/sechealth-app/sechealth/internal/license"
+	"github.com/matharnica/vakt/internal/license"
 )
 
 // Register mounts the auth routes onto the given echo Group.
@@ -17,6 +17,7 @@ func Register(g *echo.Group, h *Handler) {
 	g.POST("/logout", h.Logout)
 
 	// OIDC (OAuth2 via Casdoor sidecar) — SSO Pro feature
+	g.GET("/oidc/initiate", h.OIDCInitiate, license.Require(license.FeatureSSO))
 	g.POST("/oidc/callback", h.OIDCCallback, license.Require(license.FeatureSSO))
 
 	// SAML (proxied through Casdoor) — SSO Pro feature
@@ -27,4 +28,11 @@ func Register(g *echo.Group, h *Handler) {
 	// Password reset — local auth only, no auth middleware required.
 	g.POST("/password-reset/request", h.RequestPasswordReset)
 	g.POST("/password-reset/confirm", h.ResetPassword)
+}
+
+// RegisterAdminRoutes mounts admin-only auth management routes onto g.
+// g must already be behind auth middleware; the Admin role check is applied here.
+func RegisterAdminRoutes(g *echo.Group, h *Handler) {
+	admin := g.Group("/admin", RequireRole("Admin"))
+	admin.POST("/users/:email/password-reset-token", h.AdminGeneratePasswordResetToken)
 }

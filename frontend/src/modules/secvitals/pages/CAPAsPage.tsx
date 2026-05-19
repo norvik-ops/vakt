@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import {
-  ClipboardCheck, Plus, ChevronDown, ChevronUp, Trash2,
+  ClipboardCheck, Plus, ChevronDown, ChevronUp, Trash2, AlertTriangle, CheckSquare,
 } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Pagination } from '../../../shared/components/Pagination'
+import { BulkActionBar } from '../../../shared/components/BulkActionBar'
+import { FieldError } from '../../../shared/components/FieldError'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Card } from '../../../components/ui/card'
@@ -13,8 +15,10 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { useFormValidation } from '../../../shared/hooks/useFormValidation'
+import { toast } from '../../../shared/hooks/useToast'
 import {
-  useCAPAs, useCreateCAPA, useUpdateCAPA, useDeleteCAPA,
+  useCAPAs, useCreateCAPA, useUpdateCAPA, useDeleteCAPA, useBulkUpdateCAPAs,
   type CAPA, type CreateCAPAInput, type UpdateCAPAInput,
 } from '../hooks/useCAPAs'
 
@@ -85,21 +89,33 @@ function CreateDialog({ open, onClose, prefillSourceType, prefillSourceId }: Cre
     priority:    'medium',
   })
   const create = useCreateCAPA()
+  const { errors: capaErrors, validate: validateCapa, clearError: clearCapaError, clearAll: clearCapaErrors } = useFormValidation<Record<string, unknown>>({
+    title: { required: true },
+  })
 
   function handleSubmit() {
-    create.mutate(form, { onSuccess: () => { setForm({ source_type: 'manual', title: '', description: '', assignee_email: '', priority: 'medium' }); onClose() } })
+    if (!validateCapa({ title: form.title })) return
+    create.mutate(form, {
+      onSuccess: () => {
+        setForm({ source_type: 'manual', title: '', description: '', assignee_email: '', priority: 'medium' })
+        clearCapaErrors()
+        toast('Korrekturmaßnahme erstellt', 'success')
+        onClose()
+      },
+    })
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { clearCapaErrors(); onClose() } }}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Neue Korrekturmaßnahme</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label>Titel *</Label>
-            <Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="Kurzbeschreibung der Maßnahme" />
+            <Label>Titel <span className="text-red-400 text-xs">*</span></Label>
+            <Input value={form.title} onChange={(e) => { setForm((f) => ({ ...f, title: e.target.value })); clearCapaError('title') }} placeholder="Kurzbeschreibung der Maßnahme" />
+            <FieldError error={capaErrors.title ?? null} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -143,8 +159,8 @@ function CreateDialog({ open, onClose, prefillSourceType, prefillSourceId }: Cre
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Abbrechen</Button>
-          <Button onClick={handleSubmit} disabled={!form.title.trim() || create.isPending}>
+          <Button variant="outline" onClick={() => { clearCapaErrors(); onClose() }}>Abbrechen</Button>
+          <Button onClick={handleSubmit} disabled={create.isPending}>
             {create.isPending ? 'Erstellen …' : 'Erstellen'}
           </Button>
         </DialogFooter>
@@ -210,7 +226,15 @@ function CAPADetail({ capa, onClose }: { capa: CAPA; onClose: () => void }) {
 
 // ---- CAPA card ----
 
-function CAPACard({ capa }: { capa: CAPA }) {
+function CAPACard({
+  capa,
+  selected,
+  onToggleSelect,
+}: {
+  capa: CAPA
+  selected: boolean
+  onToggleSelect: (id: string) => void
+}) {
   const [expanded, setExpanded] = useState(false)
   const del = useDeleteCAPA()
 
@@ -220,11 +244,22 @@ function CAPACard({ capa }: { capa: CAPA }) {
   }
 
   return (
-    <Card className="overflow-hidden">
+    <Card className={`overflow-hidden${selected ? ' ring-1 ring-brand' : ''}`}>
       {/* WCAG 2.1.1 + 4.1.2: interactive div replaced with button for keyboard + screen-reader support */}
+      <div className="flex items-start gap-2 px-4 py-3">
+        {/* Checkbox — stops propagation so it doesn't toggle the expand panel */}
+        <div className="pt-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelect(capa.id)}
+            aria-label={`CAPA "${capa.title}" auswählen`}
+            className="rounded"
+          />
+        </div>
       <button
         type="button"
-        className="w-full text-left flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset"
+        className="flex-1 min-w-0 text-left flex items-start gap-3 cursor-pointer hover:bg-muted/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset rounded"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
         aria-controls={`capa-detail-${capa.id}`}
@@ -234,11 +269,25 @@ function CAPACard({ capa }: { capa: CAPA }) {
             <Badge variant="outline" className="text-xs">{SOURCE_LABEL[capa.source_type]}</Badge>
             <Badge className={`text-xs ${PRIORITY_CLASS[capa.priority]}`}>{PRIORITY_LABEL[capa.priority]}</Badge>
             <Badge className={`text-xs ${STATUS_CLASS[capa.status]}`}>{STATUS_LABEL[capa.status]}</Badge>
+            {capa.due_date && !['closed', 'verified'].includes(capa.status) && new Date(capa.due_date) < new Date() && (
+              <Badge variant="destructive" className="text-xs gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                Überfällig
+              </Badge>
+            )}
           </div>
           <p className="font-medium text-sm truncate">{capa.title}</p>
           <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
             {capa.assignee_email && <span>{capa.assignee_email}</span>}
-            {capa.due_date && <span>Fällig: {new Date(capa.due_date).toLocaleDateString('de-DE')}</span>}
+            {capa.due_date && (
+              <span className={
+                !['closed', 'verified'].includes(capa.status) && new Date(capa.due_date) < new Date()
+                  ? 'text-red-400 font-medium'
+                  : ''
+              }>
+                Fällig: {new Date(capa.due_date).toLocaleDateString('de-DE')}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
@@ -251,6 +300,7 @@ function CAPACard({ capa }: { capa: CAPA }) {
           }
         </div>
       </button>
+      </div>
       {expanded && (
         <div id={`capa-detail-${capa.id}`}>
           <CAPADetail capa={capa} onClose={() => setExpanded(false)} />
@@ -286,8 +336,35 @@ export default function CAPAsPage() {
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const [createOpen, setCreateOpen] = useState(false)
   const [page, setPage] = useState(1)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const { data: capas, isLoading, pagination } = useCAPAs(activeTab === 'all' ? undefined : activeTab, page)
+  const bulkUpdateCAPAs = useBulkUpdateCAPAs()
+
+  const today = new Date()
+  const overdueCAPAs = capas?.filter(
+    (c) => c.due_date && !['closed', 'verified'].includes(c.status) && new Date(c.due_date) < today,
+  ) ?? []
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function handleBulkStatusChange(status: CAPA['status']) {
+    if (selected.size === 0) return
+    try {
+      await bulkUpdateCAPAs.mutateAsync({ ids: Array.from(selected), status })
+      setSelected(new Set())
+      toast('Status aktualisiert', 'success')
+    } catch {
+      toast('Bulk-Update fehlgeschlagen', 'error')
+    }
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -295,10 +372,18 @@ export default function CAPAsPage() {
         title="Korrekturmaßnahmen (CAPA)"
         description="Korrektur- und Vorbeugemaßnahmen — ISO 27001 PDCA-Regelkreis"
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="w-4 h-4 mr-1" />
-            Neue Korrekturmaßnahme
-          </Button>
+          <div className="flex items-center gap-3">
+            {overdueCAPAs.length > 0 && (
+              <span className="flex items-center gap-1 text-sm text-red-400 font-medium">
+                <AlertTriangle className="w-4 h-4" />
+                {overdueCAPAs.length} überfällig
+              </span>
+            )}
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="w-4 h-4 mr-1" />
+              Neue Korrekturmaßnahme
+            </Button>
+          </div>
         }
       />
 
@@ -342,7 +427,12 @@ export default function CAPAsPage() {
         ) : (
           <div className="space-y-2">
             {capas.map((capa) => (
-              <CAPACard key={capa.id} capa={capa} />
+              <CAPACard
+                key={capa.id}
+                capa={capa}
+                selected={selected.has(capa.id)}
+                onToggleSelect={toggleSelect}
+              />
             ))}
           </div>
         )}
@@ -354,6 +444,30 @@ export default function CAPAsPage() {
       </div>
 
       <CreateDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+
+      <BulkActionBar
+        selectedCount={selected.size}
+        onClearSelection={() => setSelected(new Set())}
+        actions={[
+          {
+            label: 'Abschließen',
+            icon: CheckSquare,
+            onClick: () => { void handleBulkStatusChange('closed') },
+            disabled: bulkUpdateCAPAs.isPending,
+          },
+          {
+            label: 'In Bearbeitung',
+            onClick: () => { void handleBulkStatusChange('in_progress') },
+            disabled: bulkUpdateCAPAs.isPending,
+          },
+          {
+            label: 'Abbrechen',
+            variant: 'destructive' as const,
+            onClick: () => { void handleBulkStatusChange('open') },
+            disabled: bulkUpdateCAPAs.isPending,
+          },
+        ]}
+      />
     </div>
   )
 }

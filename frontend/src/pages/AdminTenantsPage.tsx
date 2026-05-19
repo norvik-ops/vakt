@@ -199,9 +199,10 @@ export default function AdminTenantsPage() {
       apiFetch<ImpersonateResponse>(`/admin/organizations/${orgId}/impersonate`, {
         method: 'POST',
       }),
-    onSuccess: (resp) => {
-      // Store the impersonation token and reload to tenant context.
-      setAuthToken(resp.access_token)
+    onSuccess: () => {
+      // Cookie-based auth: the backend sets the impersonation token as an httpOnly
+      // cookie in the response. Clear local user info and reload to tenant context.
+      setAuthToken(null)
       window.location.href = '/'
     },
     onError: (e: Error) => {

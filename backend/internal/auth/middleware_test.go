@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/sechealth-app/sechealth/internal/auth"
+	"github.com/matharnica/vakt/internal/auth"
 )
 
 // executeWithPasetoMiddleware issues a request through PasetoMiddleware and optional

@@ -70,7 +70,7 @@ export default function Login() {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       })
-      setAuth(data.access_token, data.user)
+      setAuth(data.user)
       navigate('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : t('auth.loginFailed'))
@@ -191,7 +191,7 @@ export default function Login() {
 
             <p className="text-xs text-secondary text-center px-2">
               {t('auth.demoDisclaimer')}{' '}
-              <a href="https://norvikops.de" className="underline hover:text-primary">norvikops.de</a>
+              <a href="https://vakt.io" className="underline hover:text-primary">vakt.io</a>
             </p>
           </>
         )}

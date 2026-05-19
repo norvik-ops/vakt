@@ -1,6 +1,26 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, getAuthToken } from '../../../api/client'
+import { apiFetch } from '../../../api/client'
 import type { Control, Evidence, UpdateControlInput } from '../types'
+
+export interface BulkUpdateControlsInput {
+  ids: string[]
+  status: 'implemented' | 'in_progress' | 'not_implemented' | 'not_applicable'
+}
+
+export function useBulkUpdateControls() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, BulkUpdateControlsInput>({
+    mutationFn: (data) =>
+      apiFetch<void>('/secvitals/controls/bulk', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['secvitals', 'frameworks'] })
+      void queryClient.invalidateQueries({ queryKey: ['secvitals', 'controls'] })
+    },
+  })
+}
 
 export function useControl(controlId: string) {
   return useQuery<Control>({
@@ -38,10 +58,9 @@ export function useUploadEvidence(controlId: string) {
   const queryClient = useQueryClient()
   return useMutation<Evidence, Error, FormData>({
     mutationFn: (formData) => {
-      const token = getAuthToken()
       return fetch(`/api/v1/secvitals/controls/${controlId}/evidence/upload`, {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
         body: formData,
       }).then(async (res) => {
         if (!res.ok) {
@@ -92,9 +111,8 @@ export function useUpdateControl(frameworkId: string) {
 
 export function useExportControl(controlId: string) {
   return () => {
-    const token = getAuthToken() ?? ''
     fetch(`/api/v1/secvitals/controls/${controlId}/export`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
     })
       .then((r) => r.blob())
       .then((blob) => {

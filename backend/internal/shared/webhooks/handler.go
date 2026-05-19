@@ -10,7 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/sechealth-app/sechealth/internal/auth"
+	"github.com/matharnica/vakt/internal/auth"
 )
 
 // Handler holds HTTP handler methods for outgoing webhook endpoints.

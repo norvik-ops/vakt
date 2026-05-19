@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useAISystem } from '../hooks/useAISystems'
 import { useAIDocumentation, useAIDocumentationVersions, useSaveAIDocumentation } from '../hooks/useAISystems'
 import type { UpsertAIDocumentationInput } from '../types'
-import { getAuthToken } from '../../../api/client'
 
 function emptyForm(): UpsertAIDocumentationInput {
   return {
@@ -88,9 +87,8 @@ export default function AIDocumentationPage() {
   async function handleExportPDF() {
     try {
       setPdfError(null)
-      const token = getAuthToken()
       const res = await fetch(`/api/v1/secvitals/ai-systems/${id}/documentation/export-pdf`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
       })
       if (!res.ok) throw new Error('Export failed')
       const blob = await res.blob()

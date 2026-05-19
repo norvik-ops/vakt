@@ -11,7 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/sechealth-app/sechealth/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/notify"
 )
 
 // Handler holds HTTP handler methods for admin endpoints.

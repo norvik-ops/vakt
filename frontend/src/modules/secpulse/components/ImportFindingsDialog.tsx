@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../../components/ui/select'
-import { getAuthToken } from '../../../api/client'
 import { useAssets } from '../hooks/useAssets'
 
 interface ImportFindingsDialogProps {
@@ -66,13 +65,12 @@ export function ImportFindingsDialog({
     const formData = new FormData()
     formData.append('file', file)
 
-    const token = getAuthToken()
     const url = `/api/v1/secpulse/findings/import?asset_id=${encodeURIComponent(assetId)}&format=${format}`
 
     try {
       const res = await fetch(url, {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
         body: formData,
       })
 

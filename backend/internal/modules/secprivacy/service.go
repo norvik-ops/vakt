@@ -19,8 +19,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
-	"github.com/sechealth-app/sechealth/internal/shared/crossevidence"
-	"github.com/sechealth-app/sechealth/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/crossevidence"
+	"github.com/matharnica/vakt/internal/shared/notify"
 )
 
 // Service handles PrivacyOps business logic.
@@ -404,7 +404,7 @@ func (s *Service) UpdateDSR(ctx context.Context, orgID, id string, in UpdateDSRI
 		p := crossevidence.EvidencePayload{
 			OrgID:        orgID,
 			Source:       "secprivacy",
-			ResourceType: "dsr_completed",
+			ResourceType: "vakt-privacy/dsr-completed",
 			ResourceID:   id,
 			Title:        "Betroffenenanfrage (DSR) abgeschlossen",
 			Description:  "Eine Datenschutz-Betroffenenanfrage wurde vollständig bearbeitet und abgeschlossen.",

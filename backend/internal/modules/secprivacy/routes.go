@@ -2,7 +2,7 @@ package secprivacy
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/sechealth-app/sechealth/internal/license"
+	"github.com/matharnica/vakt/internal/license"
 )
 
 // Register wires PrivacyOps routes under the provided group.

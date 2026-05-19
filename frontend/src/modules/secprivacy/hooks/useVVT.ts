@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, getAuthToken } from '../../../api/client'
+import { apiFetch } from '../../../api/client'
 import type { VVTEntry, CreateVVTInput, UpdateVVTInput } from '../types'
 import type { PaginatedResponse } from '../../../shared/types/pagination'
 
@@ -50,26 +50,18 @@ export function useDeleteVVT() {
 
 export function useExportVVT() {
   return () => {
-    const token = getAuthToken()
     const url = '/api/v1/secprivacy/vvt/export'
     const a = document.createElement('a')
-    a.href = url
-    if (token) {
-      // For authenticated downloads, open directly — the browser will send cookies.
-      // Token-based auth requires a fetch + blob download approach.
-      void fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-        .then((res) => res.blob())
-        .then((blob) => {
-          const objectUrl = URL.createObjectURL(blob)
-          a.href = objectUrl
-          a.download = `vvt-export-${new Date().toISOString().slice(0, 10)}.pdf`
-          document.body.appendChild(a)
-          a.click()
-          a.remove()
-          URL.revokeObjectURL(objectUrl)
-        })
-    } else {
-      window.open(url, '_blank')
-    }
+    void fetch(url, { credentials: 'include' })
+      .then((res) => res.blob())
+      .then((blob) => {
+        const objectUrl = URL.createObjectURL(blob)
+        a.href = objectUrl
+        a.download = `vvt-export-${new Date().toISOString().slice(0, 10)}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(objectUrl)
+      })
   }
 }

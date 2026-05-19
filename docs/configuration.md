@@ -1,4 +1,4 @@
-# SecHealth — Konfigurationsreferenz
+# Vakt — Konfigurationsreferenz
 
 Alle Konfigurationswerte werden über Umgebungsvariablen gesetzt. In Docker-Deployments wird die Datei `.env` im Projektverzeichnis verwendet (`env_file: .env` in `docker-compose.yml`).
 
@@ -11,13 +11,13 @@ Eine vollständige Vorlage aller Variablen findest du in `.env.example`.
 | Variable | Pflicht | Standard | Beschreibung |
 |---|---|---|---|
 | `VAKT_DB_URL` | ✅ | – | PostgreSQL-Verbindungsstring. Format: `postgres://user:pass@host:5432/db?sslmode=disable` |
-| `POSTGRES_PASSWORD` | – | `sechealth` | Passwort für den PostgreSQL-Container (wird von `docker-compose.yml` ausgelesen). Muss mit dem Passwort in `VAKT_DB_URL` übereinstimmen. |
+| `POSTGRES_PASSWORD` | – | `vakt` | Passwort für den PostgreSQL-Container (wird von `docker-compose.yml` ausgelesen). Muss mit dem Passwort in `VAKT_DB_URL` übereinstimmen. |
 
 **Beispiel:**
 
 ```env
-VAKT_DB_URL=postgres://sechealth:sechealth@postgres:5432/sechealth?sslmode=disable
-POSTGRES_PASSWORD=sechealth
+VAKT_DB_URL=postgres://vakt:vakt@postgres:5432/vakt?sslmode=disable
+POSTGRES_PASSWORD=vakt
 ```
 
 ---
@@ -58,7 +58,7 @@ VAKT_SECRET_KEY=a3f8c2e1d4b7a9f0e2c5d8b1a4f7e0c3d6b9a2f5e8c1d4b7a0f3e6c9d2b5a8f1
 | `VAKT_API_PORT` | – | `8080` | Port, auf dem der API-Server lauscht (innerhalb des Containers). |
 | `VAKT_MODULES_ENABLED` | – | alle aktiv | Kommaseparierte Liste der aktivierten Module. Mögliche Werte: `secpulse`, `secvitals`, `secvault`, `secreflex`, `secprivacy`. |
 | `AUTO_MIGRATE` | – | `false` | Wenn `true`, führt der API-Container beim Start automatisch ausstehende Datenbankmigrationen aus. |
-| `VAKT_DEMO` | – | `false` | Wenn `true`, werden beim ersten Start Demo-Daten eingespielt. Aktiviert zwei Testbenutzer: `admin@sechealth.local / admin1234` und `analyst@sechealth.local / analyst1234`. |
+| `VAKT_DEMO` | – | `false` | Wenn `true`, werden beim ersten Start Demo-Daten eingespielt. Aktiviert zwei Testbenutzer: `admin@vakt.local / admin1234` und `analyst@vakt.local / analyst1234`. |
 | `VAKT_FRONTEND_URL` | – | `http://localhost:5173` | Öffentlich erreichbare URL des Frontends. Wird von SecReflex für Tracking-Pixel und Klick-Links in Kampagnen-E-Mails verwendet. In Produktion auf die echte Domain setzen. |
 
 **Beispiel:**
@@ -69,7 +69,7 @@ VAKT_API_PORT=8080
 VAKT_MODULES_ENABLED=secpulse,secvitals,secvault,secreflex,secprivacy
 AUTO_MIGRATE=false
 VAKT_DEMO=false
-VAKT_FRONTEND_URL=https://sechealth.meine-firma.de
+VAKT_FRONTEND_URL=https://vakt.meine-firma.de
 ```
 
 ---
@@ -116,7 +116,7 @@ VAKT_SMTP_FROM=secreflex@meine-firma.de
 
 ## AI-Berichte (optional)
 
-SecHealth kann automatisch Compliance-Berichte über einen OpenAI-kompatiblen Provider generieren. Standardmäßig deaktiviert. Unterstützt werden OpenAI, Mistral AI, Groq, Ollama, LM Studio und jeder weitere OpenAI-kompatible Endpunkt.
+Vakt kann automatisch Compliance-Berichte über einen OpenAI-kompatiblen Provider generieren. Standardmäßig deaktiviert. Unterstützt werden OpenAI, Mistral AI, Groq, Ollama, LM Studio und jeder weitere OpenAI-kompatible Endpunkt.
 
 | Variable | Pflicht | Standard | Beschreibung |
 |---|---|---|---|
@@ -161,15 +161,15 @@ Mit einer **Pro**-Lizenz werden zusätzlich granulare Modul-Berechtigungen freig
 
 ## Externe Authentifizierung — OIDC/SAML SSO (optional)
 
-SecHealth unterstützt Single Sign-On über [Casdoor](https://casdoor.org) als OIDC/SAML-Proxy. Damit können bestehende Identity-Provider (Azure AD, Okta, Keycloak, Google Workspace) eingebunden werden.
+Vakt unterstützt Single Sign-On über [Casdoor](https://casdoor.org) als OIDC/SAML-Proxy. Damit können bestehende Identity-Provider (Azure AD, Okta, Keycloak, Google Workspace) eingebunden werden.
 
 | Variable | Pflicht | Standard | Beschreibung |
 |---|---|---|---|
 | `CASDOOR_URL` | – | – | URL des Casdoor-Servers. Beispiel: `https://auth.meine-firma.de` |
-| `CASDOOR_CLIENT_ID` | – | – | OAuth2 / OIDC Client-ID der SecHealth-Anwendung in Casdoor. |
+| `CASDOOR_CLIENT_ID` | – | – | OAuth2 / OIDC Client-ID der Vakt-Anwendung in Casdoor. |
 | `CASDOOR_CLIENT_SECRET` | – | – | OAuth2 / OIDC Client-Secret. Sicher aufbewahren, nicht in Git committen. |
 
-Casdoor-Einrichtung: Siehe [Casdoor-Dokumentation](https://casdoor.org/docs/overview) und die SecHealth-Architektur-Dokumentation (`docs/architecture.md`).
+Casdoor-Einrichtung: Siehe [Casdoor-Dokumentation](https://casdoor.org/docs/overview) und die Vakt-Architektur-Dokumentation (`docs/architecture.md`).
 
 ---
 

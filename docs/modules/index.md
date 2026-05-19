@@ -1,4 +1,4 @@
-# SecHealth — Modul-Dokumentation
+# Vakt — Modul-Dokumentation
 
 Jedes Modul kann über `VAKT_MODULES_ENABLED` unabhängig aktiviert oder deaktiviert werden.
 

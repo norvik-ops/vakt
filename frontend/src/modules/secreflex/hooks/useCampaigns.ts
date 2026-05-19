@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, getAuthToken } from '../../../api/client'
+import { apiFetch } from '../../../api/client'
 import type { Campaign, CreateCampaignInput, CampaignStats } from '../types'
 
 const BASE = '/secreflex'
@@ -70,9 +70,8 @@ export function useAbortCampaign(id: string) {
 
 export function useDownloadCampaignReport() {
   return (campaignId: string, campaignName?: string) => {
-    const token = getAuthToken() ?? ''
     fetch(`/api/v1/secreflex/campaigns/${campaignId}/report`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
     })
       .then((r) => r.blob())
       .then((blob) => {

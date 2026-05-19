@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
-import { Trash2, Plus, FlaskConical, ChevronDown, ChevronRight, Bell, History } from 'lucide-react'
+import { useState } from 'react'
+import { Trash2, Plus, FlaskConical, ChevronDown, ChevronRight, Bell, History, ExternalLink, Zap } from 'lucide-react'
 import { PageHeader } from '../shared/components/PageHeader'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -43,6 +43,202 @@ function formatDate(iso: string) {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   })
+}
+
+// ─── Quick Setup: Slack & Teams ───────────────────────────────────────────────
+
+interface QuickSetupCardProps {
+  logo: React.ReactNode
+  title: string
+  description: string
+  placeholder: string
+  guideText: string
+  guideUrl: string
+  channelType: 'slack' | 'teams'
+  defaultName: string
+}
+
+function QuickSetupCard({
+  logo,
+  title,
+  description,
+  placeholder,
+  guideText,
+  guideUrl,
+  channelType,
+  defaultName,
+}: QuickSetupCardProps) {
+  const [url, setUrl]           = useState('')
+  const [saving, setSaving]       = useState(false)
+  const [saved, setSaved]         = useState(false)
+  const [testing, setTesting]     = useState(false)
+  const [testOk, setTestOk]       = useState<boolean | null>(null)
+  const [createdId, setCreatedId] = useState<string | null>(null)
+
+  const create    = useCreateAlertChannel()
+  const testMut   = useTestAlertChannel()
+
+  function handleSave() {
+    if (!url.trim()) return
+    setSaving(true)
+    setSaved(false)
+    setTestOk(null)
+    create.mutate(
+      {
+        name: defaultName,
+        type: channelType,
+        url: url.trim(),
+        events: ALERT_EVENTS.map((e) => e.value),
+      },
+      {
+        onSuccess: (ch) => {
+          setSaving(false)
+          setSaved(true)
+          setCreatedId(ch.id)
+        },
+        onError: () => { setSaving(false) },
+      },
+    )
+  }
+
+  function handleTest() {
+    if (!createdId) return
+    setTesting(true)
+    setTestOk(null)
+    testMut.mutate(createdId, {
+      onSuccess: () => { setTesting(false); setTestOk(true)  },
+      onError:   () => { setTesting(false); setTestOk(false) },
+    })
+  }
+
+  return (
+    <div className="bg-surface2/50 border border-border rounded-xl p-5 flex flex-col gap-3">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 shrink-0">{logo}</div>
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-primary">{title}</h3>
+          <p className="text-xs text-secondary mt-0.5">{description}</p>
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <Input
+          className="flex-1 text-xs h-8"
+          placeholder={placeholder}
+          value={url}
+          onChange={(e) => { setUrl(e.target.value); setSaved(false); setCreatedId(null); setTestOk(null) }}
+        />
+        {saved && createdId ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs shrink-0"
+            onClick={handleTest}
+            disabled={testing}
+          >
+            {testing ? (
+              <div className="w-3 h-3 border border-brand border-t-transparent rounded-full animate-spin mr-1.5" />
+            ) : (
+              <FlaskConical className="w-3.5 h-3.5 mr-1.5" />
+            )}
+            Testen
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            className="h-8 text-xs shrink-0"
+            onClick={handleSave}
+            disabled={!url.trim() || saving}
+          >
+            {saving ? (
+              <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin mr-1.5" />
+            ) : null}
+            Speichern
+          </Button>
+        )}
+      </div>
+
+      {testOk === true  && <p className="text-[11px] text-green-400">Testbenachrichtigung erfolgreich gesendet.</p>}
+      {testOk === false && <p className="text-[11px] text-red-400">Test fehlgeschlagen. Bitte URL prüfen.</p>}
+      {saved && testOk === null && <p className="text-[11px] text-green-400">Kanal gespeichert. Klicke &ldquo;Testen&rdquo; um die Verbindung zu prüfen.</p>}
+
+      <a
+        href={guideUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center gap-1 text-[11px] text-brand hover:underline"
+      >
+        <ExternalLink className="w-3 h-3" />
+        {guideText}
+      </a>
+    </div>
+  )
+}
+
+// Inline SVG logos (no external CDN dependency)
+function SlackLogo() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.27 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.833 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.833 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.833 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.833zm0 1.27a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.833a2.528 2.528 0 0 1 2.522-2.521h6.311zm10.124 2.521a2.528 2.528 0 0 1 2.521-2.521A2.528 2.528 0 0 1 24 8.833a2.528 2.528 0 0 1-2.522 2.521h-2.521V8.833zm-1.268 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.166 0a2.528 2.528 0 0 1 2.523 2.522v6.311zm-2.523 10.124a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.166 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.268a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" fill="#E01E5A"/>
+    </svg>
+  )
+}
+
+function TeamsLogo() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M20.625 6.375a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0z" fill="#5059C9"/>
+      <path d="M22.5 10.5h-7.875a.375.375 0 0 0-.375.375V16.5a5.625 5.625 0 0 0 5.25 5.625V20.25h.375A1.875 1.875 0 0 0 21.75 18.375v-7.5A.375.375 0 0 0 22.5 10.5z" fill="#5059C9"/>
+      <path d="M12.375 4.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" fill="#7B83EB"/>
+      <path d="M15.375 10.5H3.375A.375.375 0 0 0 3 10.875v8.25A5.25 5.25 0 0 0 8.25 24h2.25a5.25 5.25 0 0 0 5.25-5.25v-7.875a.375.375 0 0 0-.375-.375z" fill="#7B83EB"/>
+      <path d="M9.375 10.5H3.375A.375.375 0 0 0 3 10.875v8.25A5.25 5.25 0 0 0 8.25 24h1.125V10.5z" fill="#7B83EB" opacity=".1"/>
+      <path d="M14.25 10.5H9.375V24h1.125a5.25 5.25 0 0 0 5.25-5.25v-7.875a.375.375 0 0 0-.5-.375z" fill="#7B83EB" opacity=".2"/>
+    </svg>
+  )
+}
+
+function QuickSetupSection() {
+  const { data: channels = [] } = useAlertChannels()
+  const hasSlack = channels.some((ch) => ch.type === 'slack')
+  const hasTeams = channels.some((ch) => ch.type === 'teams')
+
+  if (hasSlack && hasTeams) return null
+
+  return (
+    <div className="bg-surface border border-border rounded-xl overflow-hidden">
+      <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border">
+        <Zap className="w-4 h-4 text-brand" />
+        <h2 className="text-sm font-semibold text-primary">Schnell einrichten</h2>
+        <span className="text-xs text-secondary">Slack und Teams in einem Schritt verbinden</span>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5">
+        {!hasSlack && (
+          <QuickSetupCard
+            logo={<SlackLogo />}
+            title="Slack"
+            description="Erhalten Sie Alerts direkt in Ihrem Slack-Kanal."
+            placeholder="https://hooks.slack.com/services/…"
+            guideText="Anleitung: Incoming Webhook in Slack erstellen"
+            guideUrl="https://api.slack.com/messaging/webhooks"
+            channelType="slack"
+            defaultName="Slack"
+          />
+        )}
+        {!hasTeams && (
+          <QuickSetupCard
+            logo={<TeamsLogo />}
+            title="Microsoft Teams"
+            description="Erhalten Sie Alerts direkt in Ihrem Teams-Kanal."
+            placeholder="https://outlook.office.com/webhook/…"
+            guideText="Anleitung: Teams → Kanal → Connectors → Incoming Webhook"
+            guideUrl="https://learn.microsoft.com/de-de/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook"
+            channelType="teams"
+            defaultName="Microsoft Teams"
+          />
+        )}
+      </div>
+    </div>
+  )
 }
 
 // ─── Add Channel Dialog ───────────────────────────────────────────────────────
@@ -449,6 +645,7 @@ export default function AlertingSettingsPage() {
       />
       <div className="flex-1 p-6 overflow-auto">
         <div className="max-w-5xl space-y-5">
+          <QuickSetupSection />
           <ChannelsSection />
           <DeliveryHistorySection />
         </div>

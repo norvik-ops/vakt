@@ -11,8 +11,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
-	sharedcrypto "github.com/sechealth-app/sechealth/internal/shared/crypto"
-	"github.com/sechealth-app/sechealth/internal/shared/evidence_auto"
+	sharedcrypto "github.com/matharnica/vakt/internal/shared/crypto"
+	"github.com/matharnica/vakt/internal/shared/evidence_auto"
 )
 
 // Service handles GitHub integration business logic.

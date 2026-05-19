@@ -5,12 +5,13 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/sechealth-app/sechealth/internal/modules/secvault"
+	sharedcrypto "github.com/matharnica/vakt/internal/shared/crypto"
 )
 
 // TotpHandler holds handler state for the 2FA/TOTP endpoints.
@@ -28,7 +29,7 @@ func NewTotpHandler(db *pgxpool.Pool, masterKey []byte, svc *Service) *TotpHandl
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 func (h *TotpHandler) encryptSecret(plaintext string) (string, error) {
-	ct, err := secvault.Encrypt(h.masterKey, []byte(plaintext))
+	ct, err := sharedcrypto.Encrypt(h.masterKey, []byte(plaintext))
 	if err != nil {
 		return "", fmt.Errorf("encrypt totp secret: %w", err)
 	}
@@ -40,7 +41,7 @@ func (h *TotpHandler) decryptSecret(cipherhex string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("decode cipherhex: %w", err)
 	}
-	plain, err := secvault.Decrypt(h.masterKey, ct)
+	plain, err := sharedcrypto.Decrypt(h.masterKey, ct)
 	if err != nil {
 		return "", fmt.Errorf("decrypt totp secret: %w", err)
 	}
@@ -205,6 +206,12 @@ func (h *TotpHandler) Confirm(c echo.Context) error {
 			"code":  "TOTP_INVALID_CODE",
 		})
 	}
+	if err := h.checkAndMarkTOTPCode(ctx, userID, body.Code); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
+			"error": "TOTP code already used",
+			"code":  "TOTP_CODE_REPLAYED",
+		})
+	}
 
 	plainCodes, hashedCodes, err := GenerateBackupCodes()
 	if err != nil {
@@ -307,6 +314,12 @@ func (h *TotpHandler) Disable(c echo.Context) error {
 			"code":  "TOTP_INVALID_CODE",
 		})
 	}
+	if err := h.checkAndMarkTOTPCode(ctx, userID, body.Code); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
+			"error": "TOTP code already used",
+			"code":  "TOTP_CODE_REPLAYED",
+		})
+	}
 
 	_, err = h.db.Exec(ctx,
 		`DELETE FROM totp_secrets WHERE user_id = $1::uuid`, userID,
@@ -406,8 +419,32 @@ func (h *TotpHandler) Verify(c echo.Context) error {
 			"code":  "TOTP_INVALID_CODE",
 		})
 	}
+	if err := h.checkAndMarkTOTPCode(ctx, userID, body.Code); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
+			"error": "TOTP code already used",
+			"code":  "TOTP_CODE_REPLAYED",
+		})
+	}
 
 	return c.JSON(http.StatusOK, map[string]string{"status": "verified"})
+}
+
+// checkAndMarkTOTPCode uses Redis SetNX to ensure a TOTP code cannot be replayed
+// within its valid window (90 seconds). Returns an error if the code was already used.
+// Fails open on Redis errors to avoid locking users out during transient downtime.
+func (h *TotpHandler) checkAndMarkTOTPCode(ctx context.Context, userID, code string) error {
+	if h.svc == nil || h.svc.redis == nil {
+		return nil
+	}
+	key := "totp_used:" + userID + ":" + code
+	set, err := h.svc.redis.SetNX(ctx, key, "1", 90*time.Second).Result()
+	if err != nil {
+		return nil // fail open on Redis error
+	}
+	if !set {
+		return fmt.Errorf("TOTP code already used")
+	}
+	return nil
 }
 
 func (h *TotpHandler) updateBackupCodes(ctx context.Context, userID string, codes []string) error {

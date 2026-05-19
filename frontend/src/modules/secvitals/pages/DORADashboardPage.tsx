@@ -8,7 +8,6 @@ import { Button } from '../../../components/ui/button'
 import { cn } from '../../../lib/utils'
 import { useDORADashboard } from '../hooks/useDORADashboard'
 import { ProGate } from '../../../shared/components/ProGate'
-import { useAuthStore } from '../../../shared/stores/auth'
 
 function readinessColorClass(pct: number): string {
   if (pct >= 80) return 'text-green-500'
@@ -35,12 +34,11 @@ function formatCountdown(deadlineAt: string): string {
 
 export default function DORADashboardPage() {
   const { data: result, isLoading, isError, error } = useDORADashboard()
-  const token = useAuthStore((s) => s.token)
   const [pdfError, setPdfError] = useState<string | null>(null)
 
   async function handleDownloadPDF() {
     const res = await fetch('/api/v1/secvitals/dora/report-pdf', {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
     })
     if (!res.ok) {
       setPdfError('PDF-Export fehlgeschlagen. Bitte versuchen Sie es erneut.')

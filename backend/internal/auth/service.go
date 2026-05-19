@@ -372,6 +372,31 @@ func refreshRedisKey(rawToken string) string {
 	return "refresh:" + hex.EncodeToString(sum[:])
 }
 
+// StoreOIDCState stores a one-time OIDC state value in Redis with a 10-minute TTL.
+// The state is used to prevent OAuth2 CSRF attacks (RFC 6749 §10.12).
+func (s *Service) StoreOIDCState(ctx context.Context, state string) error {
+	if s.redis == nil {
+		return nil // skip in tests
+	}
+	return s.redis.Set(ctx, "oidc_state:"+state, "1", 10*time.Minute).Err()
+}
+
+// ValidateAndConsumeOIDCState verifies that the given state exists in Redis and
+// deletes it atomically so it cannot be reused (one-time-use).
+func (s *Service) ValidateAndConsumeOIDCState(ctx context.Context, state string) error {
+	if s.redis == nil {
+		return nil // skip in tests
+	}
+	deleted, err := s.redis.Del(ctx, "oidc_state:"+state).Result()
+	if err != nil {
+		return fmt.Errorf("state validation error: %w", err)
+	}
+	if deleted == 0 {
+		return fmt.Errorf("invalid or expired OIDC state")
+	}
+	return nil
+}
+
 // slugify converts a string to a URL-safe slug (lowercase, hyphens).
 func slugify(s string) string {
 	s = strings.ToLower(s)

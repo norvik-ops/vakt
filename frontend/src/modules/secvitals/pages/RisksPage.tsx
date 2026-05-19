@@ -23,6 +23,82 @@ import RiskHeatmap from '../components/RiskHeatmap'
 import { Skeleton } from '../../../components/ui/skeleton'
 import type { Risk, CreateRiskInput } from '../types'
 
+// ---- Risk Matrix Heatmap (inline, list-view summary) -------------------------
+
+function RiskMatrixHeatmap({ risks }: { risks: Risk[] }) {
+  const counts: Record<string, number> = {}
+  for (const r of risks) {
+    if (r.status !== 'open') continue
+    const key = `${r.likelihood}-${r.impact}`
+    counts[key] = (counts[key] ?? 0) + 1
+  }
+
+  function cellColor(l: number, i: number): string {
+    const score = l * i
+    if (score >= 15) return '#fecaca'
+    if (score >= 10) return '#fed7aa'
+    if (score >= 5) return '#fef3c7'
+    return '#d1fae5'
+  }
+
+  return (
+    <div className="bg-white dark:bg-surface border rounded-lg p-4">
+      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Risikomatrix (offene Risiken)</h3>
+      <div className="flex gap-2">
+        {/* Y-axis label */}
+        <div
+          className="flex flex-col justify-between text-xs text-gray-400 py-1"
+          style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', height: 5 * 44 + 'px' }}
+        >
+          Auswirkung →
+        </div>
+        <div>
+          {/* Grid: impact 5 (top) to 1 (bottom), likelihood 1 (left) to 5 (right) */}
+          {[5, 4, 3, 2, 1].map(impact => (
+            <div key={impact} className="flex">
+              <span className="text-xs text-gray-400 w-4 flex items-center justify-center">{impact}</span>
+              {[1, 2, 3, 4, 5].map(likelihood => {
+                const count = counts[`${likelihood}-${impact}`] ?? 0
+                return (
+                  <div
+                    key={likelihood}
+                    className="w-10 h-10 border border-white flex items-center justify-center text-xs font-semibold rounded-sm m-0.5"
+                    style={{ backgroundColor: cellColor(likelihood, impact) }}
+                    title={`Wahrscheinlichkeit ${likelihood} × Auswirkung ${impact} = ${likelihood * impact}`}
+                  >
+                    {count > 0 ? count : ''}
+                  </div>
+                )
+              })}
+            </div>
+          ))}
+          {/* X-axis */}
+          <div className="flex mt-1 pl-4">
+            {[1, 2, 3, 4, 5].map(l => (
+              <span key={l} className="w-10 m-0.5 text-center text-xs text-gray-400">{l}</span>
+            ))}
+          </div>
+          <div className="text-xs text-gray-400 text-center mt-1 pl-4">← Eintrittswahrscheinlichkeit</div>
+        </div>
+        {/* Legend */}
+        <div className="ml-4 flex flex-col gap-1 justify-center text-xs">
+          {[
+            { color: '#fecaca', label: 'Kritisch (15–25)' },
+            { color: '#fed7aa', label: 'Hoch (10–14)' },
+            { color: '#fef3c7', label: 'Mittel (5–9)' },
+            { color: '#d1fae5', label: 'Niedrig (1–4)' },
+          ].map(({ color, label }) => (
+            <div key={label} className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} />
+              <span className="text-gray-600 dark:text-gray-400">{label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const SCORE_COLOR = (score: number) => {
   if (score >= 15) return 'bg-red-500/20 text-red-400 border-red-500/30'
   if (score >= 9) return 'bg-amber-500/20 text-amber-400 border-amber-500/30'
@@ -287,6 +363,7 @@ export default function RisksPage() {
         )}
         {!isLoading && !isError && risks && risks.length > 0 && view === 'list' && (
           <>
+            <RiskMatrixHeatmap risks={risks} />
             {high.length > 0 && (
               <div className="space-y-3">
                 <h2 className="text-sm font-semibold text-red-400">{t('secvitals.risksPage.highRisk')}</h2>

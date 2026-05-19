@@ -14,6 +14,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/auditlog"
 )
 
 var validate = validator.New()
@@ -59,6 +61,11 @@ func (h *Handler) CreateProject(c echo.Context) error {
 		log.Error().Err(err).Msg("CreateProject failed")
 		return serverError(c, err)
 	}
+	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+		OrgID: orgID, UserID: userID, Action: "create",
+		ResourceType: "vakt-vault/project", ResourceID: project.ID, ResourceName: project.Name,
+		IPAddress: c.RealIP(),
+	})
 	return c.JSON(http.StatusCreated, project)
 }
 
@@ -87,6 +94,11 @@ func (h *Handler) DeleteProject(c echo.Context) error {
 		log.Error().Err(err).Msg("DeleteProject failed")
 		return serverError(c, err)
 	}
+	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+		OrgID: orgID, UserID: mustString(c, "user_id"), Action: "delete",
+		ResourceType: "vakt-vault/project", ResourceID: projectID,
+		IPAddress: c.RealIP(),
+	})
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -169,6 +181,11 @@ func (h *Handler) SetSecret(c echo.Context) error {
 		log.Error().Err(err).Msg("SetSecret failed")
 		return serverError(c, err)
 	}
+	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+		OrgID: orgID, UserID: userID, Action: "update",
+		ResourceType: "vakt-vault/secret", ResourceID: key,
+		IPAddress: c.RealIP(),
+	})
 	return c.JSON(http.StatusOK, secret)
 }
 
@@ -248,6 +265,11 @@ func (h *Handler) DeleteSecret(c echo.Context) error {
 		log.Error().Err(err).Msg("DeleteSecret failed")
 		return serverError(c, err)
 	}
+	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+		OrgID: orgID, UserID: mustString(c, "user_id"), Action: "delete",
+		ResourceType: "vakt-vault/secret", ResourceID: key,
+		IPAddress: c.RealIP(),
+	})
 	return c.NoContent(http.StatusNoContent)
 }
 

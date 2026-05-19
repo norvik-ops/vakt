@@ -254,6 +254,19 @@ type PortalDSRInput struct {
 	Locale      string `json:"locale"`
 }
 
+// DSRPublicStatus is the public-facing view of a DSR returned to unauthenticated
+// token holders via the DSR portal status endpoint.  Internal fields (org_id,
+// notes, requester details) are deliberately omitted to prevent information
+// disclosure to unauthenticated callers (GDPR, H6/H7 security fix).
+type DSRPublicStatus struct {
+	ID          string     `json:"id"`
+	Status      string     `json:"status"`
+	Type        string     `json:"type"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+}
+
 // DSRPortalInfo is the public-facing metadata returned for a given portal slug.
 type DSRPortalInfo struct {
 	OrgName string `json:"org_name"`

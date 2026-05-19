@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, getAuthToken } from '../../../api/client'
+import { apiFetch } from '../../../api/client'
 import type { Framework, ReadinessReport, GapAnalysis, Control } from '../types'
 import type { PaginatedResponse } from '../../../shared/types/pagination'
 
@@ -89,9 +89,8 @@ export function useFrameworkControls(frameworkId: string, page = 1, limit = 25) 
 
 export function useDownloadFrameworkPDF() {
   return (frameworkId: string, frameworkName?: string) => {
-    const token = getAuthToken() ?? ''
     fetch(`/api/v1/secvitals/frameworks/${frameworkId}/export-pdf`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
     })
       .then((r) => r.blob())
       .then((blob) => {
@@ -111,9 +110,8 @@ export function useDownloadFrameworkPDF() {
 
 export function useDownloadSoAPDF() {
   return (frameworkId: string, frameworkName?: string) => {
-    const token = getAuthToken() ?? ''
     fetch(`/api/v1/secvitals/frameworks/${frameworkId}/soa.pdf`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
     })
       .then((r) => r.blob())
       .then((blob) => {
@@ -133,9 +131,8 @@ export function useDownloadSoAPDF() {
 
 export function useDownloadAuditPackage() {
   return (frameworkId: string, frameworkName?: string) => {
-    const token = getAuthToken() ?? ''
     fetch(`/api/v1/secvitals/frameworks/${frameworkId}/audit-package.zip`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
     })
       .then((r) => r.blob())
       .then((blob) => {

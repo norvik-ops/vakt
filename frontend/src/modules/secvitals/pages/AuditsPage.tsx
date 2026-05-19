@@ -11,6 +11,7 @@ import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
+import { ComplianceTooltip } from '../../../shared/components/ComplianceTooltip'
 import { useAuditRecords, useCreateAuditRecord } from '../hooks/useAudits'
 import type { AuditRecord, CreateAuditRecordInput } from '../types'
 
@@ -116,7 +117,7 @@ export default function AuditsPage() {
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{t('secvitals.auditsPage.dialogTitle')}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle><ComplianceTooltip term="audit">{t('secvitals.auditsPage.dialogTitle')}</ComplianceTooltip></DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
               <Label htmlFor="audit-title">{t('secvitals.auditsPage.labelTitle')} *</Label>

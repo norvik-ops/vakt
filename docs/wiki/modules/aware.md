@@ -24,7 +24,7 @@ Vakt Aware benötigt einen SMTP-Server, um Phishing-Simulations-E-Mails zu verse
 | `VAKT_SMTP_PORT` | `1025` | Port — `1025` für Mailpit (Entwicklung), `587` für STARTTLS, `465` für SSL |
 | `VAKT_SMTP_USER` | — | Benutzername (erforderlich für Port 587/465) |
 | `VAKT_SMTP_PASS` | — | Passwort (erforderlich für Port 587/465) |
-| `VAKT_SMTP_FROM` | `secreflex@sechealth.local` | Absenderadresse für Kampagnen |
+| `VAKT_SMTP_FROM` | `secreflex@vakt.local` | Absenderadresse für Kampagnen |
 
 Für lokale Entwicklung und Tests ist [Mailpit](https://github.com/axllent/mailpit) bereits in der Dev-Compose-Konfiguration enthalten.
 

@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
-	sharedcrypto "github.com/sechealth-app/sechealth/internal/shared/crypto"
+	sharedcrypto "github.com/matharnica/vakt/internal/shared/crypto"
 )
 
 // Service handles cloud integration business logic (config persistence + evidence sync).
@@ -20,14 +20,16 @@ type Service struct {
 	db        *pgxpool.Pool
 	repo      *Repository
 	masterKey []byte
+	evidence  EvidenceWriter
 }
 
 // NewService creates a new cloud integration service.
-func NewService(db *pgxpool.Pool, masterKey []byte) *Service {
+func NewService(db *pgxpool.Pool, masterKey []byte, evidence EvidenceWriter) *Service {
 	return &Service{
 		db:        db,
 		repo:      NewRepository(db),
 		masterKey: masterKey,
+		evidence:  evidence,
 	}
 }
 
@@ -137,7 +139,7 @@ func (s *Service) TestAWSConnection(ctx context.Context, orgID string) error {
 		return fmt.Errorf("AWS nicht konfiguriert")
 	}
 
-	collector := NewAWSCollector(s.db)
+	collector := NewAWSCollector(s.db, s.evidence)
 	// Test by calling IAM GetAccountPasswordPolicy (lightweight, non-destructive)
 	_, testErr := collector.collectPasswordPolicy(ctx, orgID, buildAWSConfig(cfg), nil)
 	if testErr != nil {
@@ -157,7 +159,7 @@ func (s *Service) SyncAWS(ctx context.Context, orgID string) (int, error) {
 		return 0, fmt.Errorf("AWS nicht konfiguriert")
 	}
 
-	collector := NewAWSCollector(s.db)
+	collector := NewAWSCollector(s.db, s.evidence)
 	count, syncErr := collector.Collect(ctx, orgID, *cfg)
 
 	status := "success"
@@ -299,7 +301,7 @@ func (s *Service) TestAzureConnection(ctx context.Context, orgID string) error {
 		return fmt.Errorf("Azure nicht konfiguriert")
 	}
 
-	collector := NewAzureCollector(s.db)
+	collector := NewAzureCollector(s.db, s.evidence)
 	_, tokenErr := collector.getAccessToken(ctx, *cfg)
 	if tokenErr != nil {
 		return fmt.Errorf("Azure-Verbindung fehlgeschlagen: %w", tokenErr)
@@ -317,7 +319,7 @@ func (s *Service) SyncAzure(ctx context.Context, orgID string) (int, error) {
 		return 0, fmt.Errorf("Azure nicht konfiguriert")
 	}
 
-	collector := NewAzureCollector(s.db)
+	collector := NewAzureCollector(s.db, s.evidence)
 	count, syncErr := collector.Collect(ctx, orgID, *cfg)
 
 	status := "success"

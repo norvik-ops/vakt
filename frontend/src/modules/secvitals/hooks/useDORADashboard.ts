@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getAuthToken, FeatureLockedError } from '../../../api/client'
+import { FeatureLockedError } from '../../../api/client'
 import type { DORADashboard } from '../types'
 
 interface DORADashboardResult {
@@ -8,12 +8,9 @@ interface DORADashboardResult {
 }
 
 async function fetchDORADashboard(): Promise<DORADashboardResult> {
-  const token = getAuthToken()
   const res = await fetch('/api/v1/secvitals/dora/dashboard', {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
   })
 
   if (res.status === 404) {

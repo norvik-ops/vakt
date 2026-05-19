@@ -9,12 +9,12 @@ Alle Konfigurationswerte werden über Umgebungsvariablen gesetzt. In Docker-Depl
 | Variable | Pflicht | Standard | Beschreibung |
 |----------|---------|----------|--------------|
 | `VAKT_DB_URL` | Ja | — | PostgreSQL-Verbindungsstring. Format: `postgres://user:pass@host:5432/db?sslmode=disable` |
-| `POSTGRES_PASSWORD` | — | `sechealth` | Passwort für den PostgreSQL-Container (wird von `docker-compose.yml` ausgelesen). Muss mit dem Passwort in `VAKT_DB_URL` übereinstimmen. |
+| `POSTGRES_PASSWORD` | — | `vakt` | Passwort für den PostgreSQL-Container (wird von `docker-compose.yml` ausgelesen). Muss mit dem Passwort in `VAKT_DB_URL` übereinstimmen. |
 
 **Beispiel:**
 
 ```env
-VAKT_DB_URL=postgres://sechealth:sicherespasswort@postgres:5432/sechealth?sslmode=disable
+VAKT_DB_URL=postgres://vakt:sicherespasswort@postgres:5432/vakt?sslmode=disable
 POSTGRES_PASSWORD=sicherespasswort
 ```
 
@@ -84,7 +84,7 @@ SMTP wird für Benachrichtigungs-E-Mails, Phishing-Simulations-Kampagnen (Vakt A
 | `VAKT_SMTP_PORT` | — | `1025` | SMTP-Port. `1025` für Mailpit (Entwicklung), `587` für STARTTLS, `465` für SSL/TLS. |
 | `VAKT_SMTP_USER` | — | — | SMTP-Benutzername. Erforderlich für Port 587/465. |
 | `VAKT_SMTP_PASS` | — | — | SMTP-Passwort. Erforderlich für Port 587/465. |
-| `VAKT_SMTP_FROM` | — | `secreflex@sechealth.local` | Absenderadresse für alle E-Mails. Muss eine gültige Adresse sein, die der SMTP-Server akzeptiert. |
+| `VAKT_SMTP_FROM` | — | `secreflex@vakt.local` | Absenderadresse für alle E-Mails. Muss eine gültige Adresse sein, die der SMTP-Server akzeptiert. |
 
 **Beispiel Entwicklung (Mailpit):**
 
@@ -236,7 +236,7 @@ VAKT_LDAP_TLS=false
 
 ```env
 # ── Pflichtfelder ──────────────────────────────────────────────────────────────
-VAKT_DB_URL=postgres://sechealth:passwort@postgres:5432/sechealth?sslmode=disable
+VAKT_DB_URL=postgres://vakt:passwort@postgres:5432/vakt?sslmode=disable
 VAKT_REDIS_URL=redis://redis:6379
 VAKT_SECRET_KEY=<openssl rand -hex 32>
 

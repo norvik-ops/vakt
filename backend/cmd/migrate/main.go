@@ -12,7 +12,7 @@ import (
 	"runtime"
 
 	"github.com/rs/zerolog"
-	shareddb "github.com/sechealth-app/sechealth/internal/shared/db"
+	shareddb "github.com/matharnica/vakt/internal/shared/db"
 )
 
 func main() {

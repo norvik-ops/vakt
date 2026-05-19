@@ -20,7 +20,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/sechealth-app/sechealth/internal/shared/crossevidence"
+	"github.com/matharnica/vakt/internal/shared/crossevidence"
 )
 
 // Service handles SecVault business logic.
@@ -559,7 +559,7 @@ func (s *Service) RotateSecret(ctx context.Context, orgID, envID, key string, in
 		p := crossevidence.EvidencePayload{
 			OrgID:        orgID,
 			Source:       "secvault",
-			ResourceType: "secret_rotated",
+			ResourceType: "vakt-vault/secret-rotated",
 			ResourceID:   key,
 			Title:        "Secret rotiert: " + key,
 			Description:  "Ein Secret wurde gemäß Rotationsrichtlinie aktualisiert.",

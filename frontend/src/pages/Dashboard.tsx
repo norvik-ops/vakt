@@ -20,6 +20,8 @@ import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../api/client'
 import { useFindings } from '../modules/secpulse/hooks/useFindings'
 import { useFrameworks } from '../modules/secvitals/hooks/useFrameworks'
+import { useRisks } from '../modules/secvitals/hooks/useRisks'
+import { useIncidents } from '../modules/secvitals/hooks/useIncidents'
 import { useProjects } from '../modules/secvault/hooks/useProjects'
 import { useCampaigns } from '../modules/secreflex/hooks/useCampaigns'
 import { useBreaches } from '../modules/secprivacy/hooks/useBreaches'
@@ -37,7 +39,7 @@ import { useRecentPages } from '../shared/hooks/useRecentPages'
 import { Switch } from '../components/ui/switch'
 import { Label } from '../components/ui/label'
 import { Button } from '../components/ui/button'
-import type { Control } from '../modules/secvitals/types'
+import type { Control, Risk, Incident } from '../modules/secvitals/types'
 
 function fmt(n: number | null | undefined): string {
   return n == null ? '—' : n.toString()
@@ -535,18 +537,119 @@ function ScoreHistoryCard() {
 }
 
 // ---------------------------------------------------------------------------
+// Today widget
+// ---------------------------------------------------------------------------
+
+function TodayWidget() {
+  const navigate = useNavigate()
+  const today = new Date().toISOString().slice(0, 10)
+
+  const { data: risks } = useRisks(1, 100)
+  const { data: incidents } = useIncidents(1, 100)
+
+  const todayRisks = (risks ?? []).filter((r: Risk) => {
+    if (r.status !== 'open') return false
+    const due = r.treatment_due_date
+    if (!due) return false
+    return due.slice(0, 10) <= today
+  })
+
+  const todayIncidents = (incidents ?? []).filter((i: Incident) => {
+    if (i.status === 'resolved' || i.status === 'closed') return false
+    const created = i.created_at.slice(0, 10)
+    return created === today || i.status === 'open'
+  })
+
+  const total = todayRisks.length + todayIncidents.length
+
+  if (total === 0) {
+    return (
+      <section className="rounded-lg border border-border bg-surface p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <ListTodo className="w-4 h-4 text-secondary" aria-hidden="true" />
+          <h2 className="text-[13px] font-semibold text-primary">Heute zu tun</h2>
+        </div>
+        <p className="text-[12px] text-secondary">Nichts Dringendes heute 🎉</p>
+      </section>
+    )
+  }
+
+  return (
+    <section className="rounded-lg border border-border bg-surface p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <ListTodo className="w-4 h-4 text-brand" aria-hidden="true" />
+        <h2 className="text-[13px] font-semibold text-primary">Heute zu tun</h2>
+        <span className="ml-auto text-[11px] font-bold text-brand">{total}</span>
+      </div>
+      <div className="space-y-3">
+        {todayRisks.length > 0 && (
+          <div>
+            <p className="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1.5">
+              Risiken fällig
+            </p>
+            <ol className="space-y-1.5">
+              {todayRisks.slice(0, 5).map((r) => {
+                const isOverdue = (r.treatment_due_date ?? '') < today
+                return (
+                  <li key={r.id}>
+                    <button
+                      className="w-full flex items-center gap-2 text-left rounded-md px-2 py-1.5 hover:bg-border/50 transition-colors group"
+                      onClick={() => { navigate(`/secvitals/risks/${r.id}`) }}
+                    >
+                      <TriangleAlert className={`w-3.5 h-3.5 shrink-0 ${isOverdue ? 'text-[#ef4444]' : 'text-[#f59e0b]'}`} aria-hidden="true" />
+                      <span className="text-[12px] text-primary flex-1 truncate group-hover:text-brand">{r.title}</span>
+                      <span className={`text-[10px] shrink-0 ${isOverdue ? 'text-[#ef4444]' : 'text-secondary'}`}>
+                        {isOverdue ? 'Überfällig' : 'Heute fällig'}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ol>
+          </div>
+        )}
+        {todayIncidents.length > 0 && (
+          <div>
+            <p className="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1.5">
+              Vorfälle offen
+            </p>
+            <ol className="space-y-1.5">
+              {todayIncidents.slice(0, 5).map((i) => (
+                <li key={i.id}>
+                  <button
+                    className="w-full flex items-center gap-2 text-left rounded-md px-2 py-1.5 hover:bg-border/50 transition-colors group"
+                    onClick={() => { navigate(`/secvitals/incidents/${i.id}`) }}
+                  >
+                    <Flame className="w-3.5 h-3.5 shrink-0 text-[#ef4444]" aria-hidden="true" />
+                    <span className="text-[12px] text-primary flex-1 truncate group-hover:text-brand">{i.title}</span>
+                    <span className="text-[10px] text-secondary shrink-0">{i.severity}</span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Dashboard widget order — drag & drop persistence
 // ---------------------------------------------------------------------------
 
-const DEFAULT_WIDGET_ORDER = ['score_history', 'quick_wins', 'compliance_progress', 'frameworks', 'risks', 'activity', 'modules']
+const DEFAULT_WIDGET_ORDER = ['today', 'score_history', 'quick_wins', 'compliance_progress', 'frameworks', 'risks', 'activity', 'modules']
 
 function useDashboardOrder(defaultOrder: string[]) {
   const [order, setOrder] = useState<string[]>(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('vakt_dashboard_order') ?? '[]') as string[]
-      return saved.length === defaultOrder.length ? saved : defaultOrder
+      // Merge: keep saved order but add any new widgets from defaultOrder
+      const merged = saved.filter((id) => defaultOrder.includes(id))
+      const added = defaultOrder.filter((id) => !merged.includes(id))
+      const result = [...merged, ...added]
+      return result.length > 0 ? result : defaultOrder
     } catch {
-      // ignore parse errors, use defaults
       return defaultOrder
     }
   })
@@ -1098,6 +1201,16 @@ export default function Dashboard() {
             const widgetOpacity = editMode ? 'transition-opacity' : ''
 
             switch (widgetId) {
+              case 'today':
+                return (
+                  <div key={widgetId} {...wrapperProps}>
+                    {dragHandle}
+                    <div className={widgetOpacity}>
+                      <TodayWidget />
+                    </div>
+                  </div>
+                )
+
               case 'score_history':
                 return widgets.compliance_score ? (
                   <div key={widgetId} {...wrapperProps}>

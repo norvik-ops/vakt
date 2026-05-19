@@ -4,17 +4,21 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/sechealth-app/sechealth/internal/config"
+	"github.com/matharnica/vakt/internal/config"
 )
 
 // weakPasswordCode is the error code returned to clients when a password does
@@ -42,13 +46,21 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 }
 
 // Logout handles POST /api/v1/auth/logout.
-// It reads the Paseto token from the Authorization header, hashes it with
-// SHA-256, and stores the hash in Redis with a TTL equal to the remaining
-// token lifetime so that AuthMiddleware can reject the token even before it
-// naturally expires.
+// It reads the Paseto token from the Authorization header or the httpOnly
+// cookie, hashes it with SHA-256, and stores the hash in Redis with a TTL
+// equal to the remaining token lifetime so that AuthMiddleware can reject
+// the token even before it naturally expires.
 func (h *Handler) Logout(c echo.Context) error {
 	header := c.Request().Header.Get("Authorization")
 	const prefix = "Bearer "
+
+	// Accept token from cookie when no Authorization header is present.
+	if header == "" {
+		if cookie, err := c.Cookie("access_token"); err == nil && cookie.Value != "" {
+			header = prefix + cookie.Value
+		}
+	}
+
 	if len(header) <= len(prefix) {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "missing authorization header",
@@ -61,6 +73,19 @@ func (h *Handler) Logout(c echo.Context) error {
 		log.Error().Err(err).Msg("logout: revoke token failed")
 		// Still return 200 — the token will expire naturally.
 	}
+
+	// Clear the httpOnly access token cookie.
+	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
+	c.SetCookie(&http.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/api/v1",
+		MaxAge:   -1,
+	})
+
 	return c.JSON(http.StatusOK, map[string]string{"status": "logged out"})
 }
 
@@ -141,6 +166,20 @@ func (h *Handler) Login(c echo.Context) error {
 
 	// Successful login — clear any accumulated failure counter.
 	h.service.clearLoginFailures(c.Request().Context(), body.Email)
+
+	// Set access token as httpOnly cookie (XSS protection).
+	// SameSite=Strict prevents CSRF. Vite proxy + Nginx ensure same-origin in all envs.
+	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
+	c.SetCookie(&http.Cookie{
+		Name:     "access_token",
+		Value:    resp.AccessToken,
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/api/v1",
+		MaxAge:   3600, // 1 hour, matches access token TTL
+	})
+
 	return c.JSON(http.StatusOK, resp)
 }
 
@@ -170,7 +209,69 @@ func (h *Handler) Refresh(c echo.Context) error {
 			"code":  "AUTH_INVALID_REFRESH_TOKEN",
 		})
 	}
+
+	// Rotate the httpOnly access token cookie on every refresh.
+	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
+	c.SetCookie(&http.Cookie{
+		Name:     "access_token",
+		Value:    resp.AccessToken,
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/api/v1",
+		MaxAge:   3600, // 1 hour, matches access token TTL
+	})
+
 	return c.JSON(http.StatusOK, resp)
+}
+
+// OIDCInitiate handles GET /api/v1/auth/oidc/initiate.
+// Generates a cryptographically random state, stores it in Redis with a 10-minute TTL,
+// and returns the Casdoor authorization URL with the state embedded (OAuth2 CSRF protection).
+func (h *Handler) OIDCInitiate(c echo.Context) error {
+	provider := c.QueryParam("provider")
+	if provider == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "provider required"})
+	}
+
+	raw := make([]byte, 16)
+	if _, err := rand.Read(raw); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "state generation failed"})
+	}
+	state := hex.EncodeToString(raw)
+
+	ctx := c.Request().Context()
+	if err := h.service.StoreOIDCState(ctx, state); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "state storage failed"})
+	}
+
+	casdoorURL := ""
+	clientID := ""
+	frontendURL := ""
+	if h.cfg != nil {
+		casdoorURL = h.cfg.CasdoorURL
+		clientID = h.cfg.CasdoorClientID
+		frontendURL = h.cfg.FrontendURL
+	}
+	if casdoorURL == "" {
+		return c.JSON(http.StatusNotImplemented, map[string]string{
+			"error": "OIDC not configured",
+			"code":  "AUTH_OIDC_NOT_CONFIGURED",
+		})
+	}
+
+	redirectURI := strings.TrimRight(frontendURL, "/") + "/auth/callback"
+	redirectURL := strings.TrimRight(casdoorURL, "/") + "/login/oauth/authorize?" +
+		"client_id=" + clientID +
+		"&response_type=code" +
+		"&redirect_uri=" + url.QueryEscape(redirectURI) +
+		"&scope=openid+profile+email" +
+		"&state=" + state
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"state":        state,
+		"redirect_url": redirectURL,
+	})
 }
 
 // OIDCCallback handles POST /api/v1/auth/oidc/callback.
@@ -191,6 +292,13 @@ func (h *Handler) OIDCCallback(c echo.Context) error {
 		})
 	}
 
+	if err := h.service.ValidateAndConsumeOIDCState(c.Request().Context(), input.State); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid state parameter",
+			"code":  "AUTH_INVALID_STATE",
+		})
+	}
+
 	resp, err := h.service.OIDCLogin(c.Request().Context(), h.cfg, input.Provider, input.Code, input.State)
 	if err != nil {
 		if errors.Is(err, ErrCasdoorNotConfigured) {
@@ -205,6 +313,19 @@ func (h *Handler) OIDCCallback(c echo.Context) error {
 			"code":  "AUTH_OIDC_FAILED",
 		})
 	}
+
+	// Set access token as httpOnly cookie — same policy as password login.
+	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
+	c.SetCookie(&http.Cookie{
+		Name:     "access_token",
+		Value:    resp.AccessToken,
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/api/v1",
+		MaxAge:   3600,
+	})
+
 	return c.JSON(http.StatusOK, resp)
 }
 
@@ -238,6 +359,19 @@ func (h *Handler) SAMLCallback(c echo.Context) error {
 			"code":  "AUTH_SAML_FAILED",
 		})
 	}
+
+	// Set access token as httpOnly cookie — same policy as password login.
+	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
+	c.SetCookie(&http.Cookie{
+		Name:     "access_token",
+		Value:    resp.AccessToken,
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/api/v1",
+		MaxAge:   3600,
+	})
+
 	return c.JSON(http.StatusOK, resp)
 }
 
@@ -343,6 +477,43 @@ func (h *Handler) RequestPasswordReset(c echo.Context) error {
 	}
 	// Always 200.
 	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// AdminGeneratePasswordResetToken handles POST /api/v1/admin/users/:email/password-reset-token.
+// Admin-only endpoint that generates a password reset link without requiring SMTP.
+func (h *Handler) AdminGeneratePasswordResetToken(c echo.Context) error {
+	email := c.Param("email")
+	if email == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "email is required",
+			"code":  "AUTH_BAD_REQUEST",
+		})
+	}
+
+	frontendURL := ""
+	if h.cfg != nil {
+		frontendURL = h.cfg.FrontendURL
+	}
+
+	resetLink, err := h.service.GeneratePasswordResetLink(c.Request().Context(), email, frontendURL)
+	if err != nil {
+		log.Error().Err(err).Str("email", email).Msg("admin: generate password reset link failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to generate reset link",
+			"code":  "AUTH_RESET_GENERATE_FAILED",
+		})
+	}
+	if resetLink == "" {
+		return c.JSON(http.StatusNotFound, map[string]string{
+			"error": "user not found",
+			"code":  "AUTH_USER_NOT_FOUND",
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"reset_link": resetLink,
+		"expires_in": "1h",
+	})
 }
 
 // ResetPassword handles POST /api/v1/auth/password-reset/confirm.

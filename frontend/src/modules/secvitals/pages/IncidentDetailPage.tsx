@@ -15,7 +15,6 @@ import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { useIncident, useUpdateIncident, useMarkDeadlineReported, useIncidentReports, useGenerateIncidentReport } from '../hooks/useIncidents'
-import { useAuthStore } from '../../../shared/stores/auth'
 import { ReportabilityWizard } from '../components/ReportabilityWizard'
 import type { Incident, UpdateIncidentInput, DeadlineInfo, IncidentReport } from '../types'
 
@@ -128,8 +127,6 @@ export default function IncidentDetailPage() {
   const navigate = useNavigate()
   const { data: incident, isLoading, isError } = useIncident(id ?? '')
   const update = useUpdateIncident(id ?? '')
-  const token = useAuthStore((s) => s.token)
-
   const { data: incidentReports } = useIncidentReports(id ?? '')
   const generateReport = useGenerateIncidentReport(id ?? '')
 
@@ -142,7 +139,7 @@ export default function IncidentDetailPage() {
   async function handleDownloadPDF() {
     if (!id) return
     const res = await fetch(`/api/v1/secvitals/incidents/${id}/report-pdf`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
     })
     if (!res.ok) {
       setPdfError(new FeatureLockedError('report-pdf'))

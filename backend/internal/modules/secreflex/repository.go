@@ -388,6 +388,33 @@ func (r *Repository) CreateCompletion(ctx context.Context, orgID, assignmentID s
 	return &c, err
 }
 
+// GetCompletionByAssignment returns the completion record for a given assignment, if one exists.
+func (r *Repository) GetCompletionByAssignment(ctx context.Context, orgID, assignmentID string) (*Completion, error) {
+	const q = `SELECT id, org_id, assignment_id, score, passed, completed_at
+	           FROM pg_completions WHERE assignment_id=$1 AND org_id=$2 LIMIT 1`
+	var c Completion
+	err := r.db.QueryRow(ctx, q, assignmentID, orgID).Scan(&c.ID, &c.OrgID, &c.AssignmentID, &c.Score, &c.Passed, &c.CompletedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+// GetModuleByID returns a training module by its ID within the org.
+func (r *Repository) GetModuleByID(ctx context.Context, orgID, moduleID string) (*TrainingModule, error) {
+	const q = `SELECT id, org_id, title, type, attack_type, content_url, duration_seconds, passing_score, questions, created_by, created_at
+	           FROM pg_training_modules WHERE id=$1 AND org_id=$2`
+	var m TrainingModule
+	var questionsB []byte
+	err := r.db.QueryRow(ctx, q, moduleID, orgID).
+		Scan(&m.ID, &m.OrgID, &m.Title, &m.Type, &m.AttackType, &m.ContentURL, &m.DurationSeconds, &m.PassingScore, &questionsB, &m.CreatedBy, &m.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal(questionsB, &m.Questions)
+	return &m, nil
+}
+
 // ── Phish-Button (Feature 5) ──────────────────────────────────────────────────
 
 // GetOrgByPhishToken returns the org ID for the given phish_report_token.

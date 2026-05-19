@@ -100,7 +100,7 @@ docker compose exec postgres pg_dump -U vakt vakt > backup-$(date +%Y%m%d).sql
 Rollback is only safe if no `UP` migration was applied. If migrations ran:
 
 1. Restore the database backup taken before the upgrade.
-2. Pull the previous image tag (e.g. `ghcr.io/norvik-gmbh/vakt:0.5.3`).
+2. Pull the previous image tag (e.g. `ghcr.io/matharnica/vakt-api:0.5.3`).
 3. Start with the restored DB + old image.
 
 ```bash

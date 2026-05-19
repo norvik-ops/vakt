@@ -231,6 +231,130 @@ function MiniCalendar({ milestones }: { milestones: AuditMilestone[] }) {
   )
 }
 
+// ---- Gantt Chart ----
+
+const GANTT_STATUS_COLORS: Record<MilestoneStatus, string> = {
+  completed: '#22c55e',
+  upcoming:  '#3b82f6',
+  missed:    '#ef4444',
+  cancelled: '#94a3b8',
+}
+
+function GanttChart({ milestones }: { milestones: AuditMilestone[] }) {
+  if (milestones.length === 0) return null
+
+  const now = new Date()
+  const sorted = [...milestones].sort(
+    (a, b) => a.milestone_date.localeCompare(b.milestone_date),
+  )
+
+  // Date range: 30 days in the past → 90 days in the future
+  const rangeStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+  const rangeEnd   = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000)
+  const totalMs    = rangeEnd.getTime() - rangeStart.getTime()
+
+  function xPct(date: Date): number {
+    return Math.max(0, Math.min(100, ((date.getTime() - rangeStart.getTime()) / totalMs) * 100))
+  }
+
+  const todayPct = xPct(now)
+  const rowH = 36
+  const headerH = 20
+  const svgH = sorted.length * rowH + headerH + 8
+
+  return (
+    <div className="rounded-lg border border-border bg-surface p-4 overflow-x-auto">
+      <h3 className="text-[13px] font-semibold text-primary mb-3">Audit-Zeitplan (Gantt)</h3>
+      <svg width="100%" height={svgH} className="min-w-[600px]">
+        {/* Grid lines + month labels */}
+        {Array.from({ length: 5 }, (_, i) => {
+          const fraction = i / 4
+          const d = new Date(rangeStart.getTime() + fraction * totalMs)
+          const x = fraction * 100
+          return (
+            <g key={i}>
+              <line
+                x1={`${x}%`} y1="0"
+                x2={`${x}%`} y2={svgH}
+                stroke="#e5e7eb" strokeWidth="1"
+              />
+              <text
+                x={`${x}%`} y={headerH - 4}
+                fontSize="10" fill="#9ca3af" textAnchor="middle"
+              >
+                {d.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' })}
+              </text>
+            </g>
+          )
+        })}
+
+        {/* Today marker */}
+        <line
+          x1={`${todayPct}%`} y1="0"
+          x2={`${todayPct}%`} y2={svgH}
+          stroke="#6366f1" strokeWidth="2" strokeDasharray="4 2"
+        />
+        <text
+          x={`${todayPct}%`} y={headerH - 4}
+          fontSize="9" fill="#6366f1" textAnchor="middle"
+        >
+          Heute
+        </text>
+
+        {/* Milestone bars */}
+        {sorted.map((m, i) => {
+          const dueDate  = new Date(m.milestone_date)
+          // Show each milestone as a 14-day bar ending on milestone_date
+          const barStart = new Date(dueDate.getTime() - 14 * 24 * 60 * 60 * 1000)
+          const x1 = xPct(barStart)
+          const x2 = xPct(dueDate)
+          const y  = headerH + 4 + i * rowH
+          const color = GANTT_STATUS_COLORS[m.status]
+
+          return (
+            <g key={m.id}>
+              <rect
+                x={`${x1}%`}
+                y={y}
+                width={`${Math.max(x2 - x1, 0.5)}%`}
+                height={rowH - 8}
+                rx="4"
+                fill={color}
+                fillOpacity="0.85"
+              />
+              <text
+                x={`${x1}%`}
+                y={y + (rowH - 8) / 2 + 4}
+                dx="6"
+                fontSize="11"
+                fill="white"
+                fontWeight="500"
+              >
+                {m.title.length > 28 ? m.title.substring(0, 27) + '…' : m.title}
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-4 mt-3 text-[11px] text-secondary">
+        {([
+          ['#22c55e', 'Abgeschlossen'],
+          ['#3b82f6', 'Bevorstehend'],
+          ['#ef4444', 'Verpasst'],
+          ['#94a3b8', 'Abgebrochen'],
+        ] as const).map(([c, l]) => (
+          <div key={l} className="flex items-center gap-1">
+            <div className="w-3 h-2 rounded" style={{ backgroundColor: c }} />
+            <span>{l}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ---- Add Milestone Dialog ----
 
 const EMPTY_FORM: CreateMilestoneInput = {
@@ -454,6 +578,16 @@ export default function CertificationTimelinePage() {
               <CountdownCardWrapper key={m.id} m={m} />
             ))}
           </div>
+        </section>
+      )}
+
+      {/* Gantt Chart */}
+      {milestones.length > 0 && (
+        <section>
+          <h2 className="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-3">
+            Zeitplan-Übersicht
+          </h2>
+          <GanttChart milestones={milestones} />
         </section>
       )}
 

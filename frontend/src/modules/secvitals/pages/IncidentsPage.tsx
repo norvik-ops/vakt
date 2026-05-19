@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Siren, Plus, AlertTriangle, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react'
+import { Siren, Plus, AlertTriangle, ChevronsUpDown, ChevronUp, ChevronDown, Printer } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent } from '../../../components/ui/card'
@@ -13,12 +13,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Pagination } from '../../../shared/components/Pagination'
-import { useSortableTable } from '../../../shared/hooks/useSortableTable'
+import { FieldError } from '../../../shared/components/FieldError'
+import { useSavedFilters } from '../../../shared/hooks/useSavedFilters'
+import { useFormValidation } from '../../../shared/hooks/useFormValidation'
 import { useIncidents, useCreateIncident } from '../hooks/useIncidents'
 import { useCAPAsForSource } from '../hooks/useCAPAs'
 import type { Incident, CreateIncidentInput } from '../types'
 import { toast } from '../../../shared/hooks/useToast'
-import { Skeleton } from '../../../components/ui/skeleton'
+import { handleApiError } from '../../../shared/utils/errorMessages'
+import { SkeletonCardGrid } from '../../../shared/components/SkeletonLoaders'
+import { ComplianceTooltip } from '../../../shared/components/ComplianceTooltip'
+import type { SortDir } from '../../../shared/hooks/useSortableTable'
 
 const SEVERITY_NUM: Record<Incident['severity'], number> = { critical: 4, high: 3, medium: 2, low: 1 }
 type SortableIncident = Incident & { severity_order: number }
@@ -143,6 +148,9 @@ export default function IncidentsPage() {
 
   const { data: incidents, isLoading, isError, pagination } = useIncidents(page)
   const createIncident = useCreateIncident()
+  const { errors: incErrors, validate: validateInc, clearError: clearIncError, clearAll: clearIncErrors } = useFormValidation<Record<string, unknown>>({
+    title: { required: true, maxLength: 255 },
+  })
 
   const INCIDENT_SORT_OPTIONS: { key: keyof SortableIncident; label: string }[] = [
     { key: 'title', label: t('common.name') },
@@ -156,9 +164,37 @@ export default function IncidentsPage() {
     ...i,
     severity_order: SEVERITY_NUM[i.severity] ?? 0,
   }))
-  const { sorted: sortedIncidents, sortKey, sortDir, toggleSort } = useSortableTable<SortableIncident>(
-    incidentsWithOrder, { key: 'created_at', dir: 'desc' },
+
+  const [incidentSort, setIncidentSort] = useSavedFilters<{ sortKey: keyof SortableIncident; sortDir: SortDir }>(
+    'incidents_sort',
+    { sortKey: 'created_at', sortDir: 'desc' },
   )
+  const { sortKey, sortDir } = incidentSort
+
+  function toggleSort(key: keyof SortableIncident) {
+    setIncidentSort((prev) =>
+      prev.sortKey === key
+        ? { ...prev, sortDir: prev.sortDir === 'asc' ? 'desc' : 'asc' }
+        : { sortKey: key, sortDir: 'asc' },
+    )
+  }
+
+  const sortedIncidents = useMemo(() => {
+    return [...incidentsWithOrder].sort((a, b) => {
+      const av = a[sortKey]
+      const bv = b[sortKey]
+      if (av == null && bv == null) return 0
+      if (av == null) return 1
+      if (bv == null) return -1
+      let cmp: number
+      if (typeof av === 'number' && typeof bv === 'number') {
+        cmp = av - bv
+      } else {
+        cmp = String(av).localeCompare(String(bv), 'de', { sensitivity: 'base' })
+      }
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+  }, [incidentsWithOrder, sortKey, sortDir])
 
   const open = sortedIncidents.filter((i) => i.status === 'open' || i.status === 'investigating')
   const closed = sortedIncidents.filter((i) => i.status === 'resolved' || i.status === 'closed')
@@ -166,10 +202,12 @@ export default function IncidentsPage() {
   function openDialog() {
     setForm(emptyForm())
     setRawSystems('')
+    clearIncErrors()
     setDialogOpen(true)
   }
 
   function handleSubmit() {
+    if (!validateInc({ title: form.title })) return
     const payload: CreateIncidentInput = {
       ...form,
       discovered_at: new Date(form.discovered_at).toISOString(),
@@ -178,9 +216,9 @@ export default function IncidentsPage() {
     createIncident.mutate(payload, {
       onSuccess: () => {
         setDialogOpen(false)
-        toast(t('secvitals.incidentsPage.successReported'), 'success')
+        toast('Vorfall gemeldet: Der Vorfall wurde dokumentiert und wird nachverfolgt.', 'success')
       },
-      onError: (err) => toast(`${t('common.error')}: ${err.message}`, 'error'),
+      onError: (err) => toast(handleApiError(err), 'error'),
     })
   }
 
@@ -192,10 +230,16 @@ export default function IncidentsPage() {
         title={t('secvitals.incidentsPage.title')}
         description={t('secvitals.incidentsPage.description')}
         actions={
-          <Button onClick={openDialog} variant="destructive">
-            <Plus className="w-4 h-4 mr-1" />
-            {t('secvitals.incidentsPage.reportIncident')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => window.print()} className="no-print">
+              <Printer className="w-4 h-4 mr-1" />
+              Drucken
+            </Button>
+            <Button onClick={openDialog} variant="destructive" aria-haspopup="dialog">
+              <Plus className="w-4 h-4 mr-1" />
+              {t('secvitals.incidentsPage.reportIncident')}
+            </Button>
+          </div>
         }
       />
 
@@ -230,13 +274,7 @@ export default function IncidentsPage() {
           </div>
         )}
 
-        {isLoading && (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full rounded-lg" />
-            ))}
-          </div>
-        )}
+        {isLoading && <SkeletonCardGrid count={6} />}
         {isError && (
           <div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">{t('secvitals.incidentsPage.loadError')}</div>
         )}
@@ -245,14 +283,14 @@ export default function IncidentsPage() {
             icon={Siren}
             title="Kein offener Vorfall"
             description="Das ist gut! Wenn etwas passiert, dokumentierst du Vorfälle hier — NIS2-konform"
-            action={<Button onClick={openDialog} variant="destructive"><Plus className="w-4 h-4 mr-1" />Vorfall anlegen</Button>}
+            action={<Button onClick={openDialog} variant="destructive" aria-haspopup="dialog"><Plus className="w-4 h-4 mr-1" />Vorfall anlegen</Button>}
           />
         )}
         {!isLoading && !isError && incidents && incidents.length > 0 && (
           <>
             {open.length > 0 && (
               <div className="space-y-3">
-                <h2 className="text-sm font-semibold text-red-400">{t('secvitals.incidentsPage.activeIncidents', { count: open.length })}</h2>
+                <h2 className="text-sm font-semibold text-red-400"><ComplianceTooltip term="incident">{t('secvitals.incidentsPage.activeIncidents', { count: open.length })}</ComplianceTooltip></h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {open.map((i) => <IncidentCard key={i.id} incident={i} onClick={() => navigate(`/secvitals/incidents/${i.id}`)} />)}
                 </div>
@@ -280,9 +318,10 @@ export default function IncidentsPage() {
           <DialogHeader><DialogTitle>{t('secvitals.incidentsPage.dialogTitle')}</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label htmlFor="inc-title">{t('secvitals.incidentsPage.labelTitle')} *</Label>
+              <Label htmlFor="inc-title">{t('secvitals.incidentsPage.labelTitle')} <span className="text-red-400 text-xs">*</span></Label>
               <Input id="inc-title" placeholder={t('secvitals.incidentsPage.placeholderTitle')} value={form.title}
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+                onChange={(e) => { setForm((f) => ({ ...f, title: e.target.value })); clearIncError('title') }} />
+              <FieldError error={incErrors.title ?? null} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="inc-severity">{t('secvitals.incidentsPage.labelSeverity')} *</Label>
@@ -396,7 +435,7 @@ export default function IncidentsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button variant="destructive" onClick={handleSubmit}
-              disabled={!form.title || !form.description || createIncident.isPending}>
+              disabled={createIncident.isPending}>
               {createIncident.isPending ? t('secvitals.incidentsPage.reporting') : t('secvitals.incidentsPage.reportIncident')}
             </Button>
           </DialogFooter>

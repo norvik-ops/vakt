@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, Plus, LayoutTemplate, Sparkles, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react'
+import { BookOpen, Plus, LayoutTemplate, Sparkles, ChevronsUpDown, ChevronUp, ChevronDown, Printer } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../../components/ui/button'
@@ -16,13 +16,17 @@ import { ExportButton } from '../../../shared/components/ExportButton'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Pagination } from '../../../shared/components/Pagination'
 import { ProGate } from '../../../shared/components/ProGate'
-import { useSortableTable } from '../../../shared/hooks/useSortableTable'
+import { FieldError } from '../../../shared/components/FieldError'
+import { useSavedFilters } from '../../../shared/hooks/useSavedFilters'
+import { useFormValidation } from '../../../shared/hooks/useFormValidation'
 import { usePolicies, useCreatePolicy, useGeneratePolicyDraft } from '../hooks/usePolicies'
 import { apiFetch } from '../../../api/client'
 import type { Policy, CreatePolicyInput, Framework } from '../types'
+import type { SortDir } from '../../../shared/hooks/useSortableTable'
 
 import { toast } from '../../../shared/hooks/useToast'
-import { Skeleton } from '../../../components/ui/skeleton'
+import { handleApiError } from '../../../shared/utils/errorMessages'
+import { SkeletonCardGrid } from '../../../shared/components/SkeletonLoaders'
 
 const POLICY_TYPES = [
   'Informationssicherheitsrichtlinie (ISO 27001 A.5.1)',
@@ -119,6 +123,9 @@ export default function PoliciesPage() {
   const { data: policies, isLoading, isError, pagination } = usePolicies(page)
   const createPolicy = useCreatePolicy()
   const generateDraft = useGeneratePolicyDraft()
+  const { errors: polErrors, validate: validatePol, clearError: clearPolError, clearAll: clearPolErrors } = useFormValidation<Record<string, unknown>>({
+    title: { required: true },
+  })
 
   const POLICY_SORT_OPTIONS: { key: keyof Policy; label: string }[] = [
     { key: 'title', label: t('common.name') },
@@ -127,9 +134,37 @@ export default function PoliciesPage() {
     { key: 'version_num', label: t('secvitals.policiesPage.labelVersion') },
   ]
 
-  const { sorted: sortedPolicies, sortKey, sortDir, toggleSort } = useSortableTable<Policy>(
-    policies ?? [], { key: 'title', dir: 'asc' },
+  const [policySort, setPolicySort] = useSavedFilters<{ sortKey: keyof Policy; sortDir: SortDir }>(
+    'policies_sort',
+    { sortKey: 'title', sortDir: 'asc' },
   )
+  const { sortKey, sortDir } = policySort
+
+  function toggleSort(key: keyof Policy) {
+    setPolicySort((prev) =>
+      prev.sortKey === key
+        ? { ...prev, sortDir: prev.sortDir === 'asc' ? 'desc' : 'asc' }
+        : { sortKey: key, sortDir: 'asc' },
+    )
+  }
+
+  const sortedPolicies = useMemo(() => {
+    const data = policies ?? []
+    return [...data].sort((a, b) => {
+      const av = a[sortKey]
+      const bv = b[sortKey]
+      if (av == null && bv == null) return 0
+      if (av == null) return 1
+      if (bv == null) return -1
+      let cmp: number
+      if (typeof av === 'number' && typeof bv === 'number') {
+        cmp = av - bv
+      } else {
+        cmp = String(av).localeCompare(String(bv), 'de', { sensitivity: 'base' })
+      }
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+  }, [policies, sortKey, sortDir])
 
   const { data: frameworks } = useQuery<Framework[]>({
     queryKey: ['secvitals', 'frameworks'],
@@ -152,21 +187,23 @@ export default function PoliciesPage() {
       setTemplateOpen(false)
       toast(t('secvitals.policiesPage.toastTemplateCreated'), 'success')
     },
-    onError: (err) => toast(`${t('common.error')}: ${err.message}`, 'error'),
+    onError: (err) => toast(handleApiError(err), 'error'),
   })
 
   function openDialog() {
     setForm(emptyForm())
+    clearPolErrors()
     setDialogOpen(true)
   }
 
   function handleSubmit() {
+    if (!validatePol({ title: form.title })) return
     createPolicy.mutate(form, {
       onSuccess: () => {
         setDialogOpen(false)
-        toast(t('secvitals.policiesPage.toastCreated'), 'success')
+        toast('Richtlinie erstellt', 'success')
       },
-      onError: (err) => toast(`${t('common.error')}: ${err.message}`, 'error'),
+      onError: (err) => toast(handleApiError(err), 'error'),
     })
   }
 
@@ -202,7 +239,7 @@ export default function PoliciesPage() {
         setAiDraft('')
         toast(t('secvitals.policiesPage.toastAiCreated'), 'success')
       },
-      onError: (err) => toast(`${t('common.error')}: ${err.message}`, 'error'),
+      onError: (err) => toast(handleApiError(err), 'error'),
     })
   }
 
@@ -219,15 +256,19 @@ export default function PoliciesPage() {
               label="Exportieren"
               format="xlsx"
             />
-            <Button variant="outline" onClick={() => setTemplateOpen(true)}>
+            <Button variant="outline" size="sm" onClick={() => window.print()} className="no-print">
+              <Printer className="w-4 h-4 mr-1" />
+              Drucken
+            </Button>
+            <Button variant="outline" onClick={() => setTemplateOpen(true)} aria-haspopup="dialog">
               <LayoutTemplate className="w-4 h-4 mr-1" />
               {t('secvitals.policiesPage.fromTemplate')}
             </Button>
-            <Button variant="outline" onClick={openAiDialog}>
+            <Button variant="outline" onClick={openAiDialog} aria-haspopup="dialog">
               <Sparkles className="w-4 h-4 mr-1" />
               {t('secvitals.policiesPage.aiDraft')}
             </Button>
-            <Button onClick={openDialog}>
+            <Button onClick={openDialog} aria-haspopup="dialog">
               <Plus className="w-4 h-4 mr-1" />
               {t('secvitals.policiesPage.createPolicy')}
             </Button>
@@ -265,13 +306,7 @@ export default function PoliciesPage() {
             })}
           </div>
         )}
-        {isLoading && (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full rounded-lg" />
-            ))}
-          </div>
-        )}
+        {isLoading && <SkeletonCardGrid count={6} />}
         {isError && (
           <div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">{t('secvitals.policiesPage.loadError')}</div>
         )}
@@ -280,7 +315,7 @@ export default function PoliciesPage() {
             icon={BookOpen}
             title={t('secvitals.policiesPage.noPolicies')}
             description={t('secvitals.policiesPage.noPoliciesDesc')}
-            action={<Button onClick={openDialog}><Plus className="w-4 h-4 mr-1" />{t('secvitals.policiesPage.createPolicy')}</Button>}
+            action={<Button onClick={openDialog} aria-haspopup="dialog"><Plus className="w-4 h-4 mr-1" />{t('secvitals.policiesPage.createPolicy')}</Button>}
           />
         )}
         {!isLoading && !isError && policies && policies.length > 0 && (
@@ -456,9 +491,10 @@ export default function PoliciesPage() {
           <DialogHeader><DialogTitle>{t('secvitals.policiesPage.createDialogTitle')}</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label htmlFor="pol-title">{t('secvitals.policiesPage.labelTitle')} *</Label>
+              <Label htmlFor="pol-title">{t('secvitals.policiesPage.labelTitle')} <span className="text-red-400 text-xs">*</span></Label>
               <Input id="pol-title" placeholder={t('secvitals.policiesPage.placeholderTitle')} value={form.title}
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+                onChange={(e) => { setForm((f) => ({ ...f, title: e.target.value })); clearPolError('title') }} />
+              <FieldError error={polErrors.title ?? null} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="pol-category">{t('secvitals.policiesPage.labelCategory')}</Label>
@@ -497,7 +533,7 @@ export default function PoliciesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
-            <Button onClick={handleSubmit} disabled={!form.title || createPolicy.isPending}>
+            <Button onClick={handleSubmit} disabled={createPolicy.isPending}>
               {createPolicy.isPending ? t('secvitals.policiesPage.saving') : t('secvitals.policiesPage.createPolicy')}
             </Button>
           </DialogFooter>

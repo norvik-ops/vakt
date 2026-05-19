@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { UserPlus, Pencil, Trash2, Users } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { UserPlus, Pencil, Trash2, Users, Play } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
@@ -33,13 +34,96 @@ import {
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Pagination } from '../../../shared/components/Pagination'
+import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
+import { FieldError } from '../../../shared/components/FieldError'
+import { useFormValidation } from '../../../shared/hooks/useFormValidation'
+import { toast } from '../../../shared/hooks/useToast'
 import {
   useEmployees,
   useCreateEmployee,
   useUpdateEmployee,
   useDeleteEmployee,
+  useChecklistRuns,
+  useChecklists,
+  useStartChecklistRun,
 } from '../hooks/useHR'
 import type { Employee, CreateEmployeeInput, UpdateEmployeeInput } from '../types'
+
+function ChecklistRunCell({ employee }: { employee: Employee }) {
+  const navigate = useNavigate()
+  const { data: runs } = useChecklistRuns(employee.id)
+  const { data: checklists } = useChecklists()
+  const startRun = useStartChecklistRun()
+  const [pickOpen, setPickOpen] = useState(false)
+  const [selectedChecklistId, setSelectedChecklistId] = useState('')
+
+  const activeRun = runs?.find((r) => r.status === 'in_progress')
+
+  if (activeRun) {
+    return (
+      <Link to={`/hr/checklist-runs/${activeRun.id}`}>
+        <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 cursor-pointer hover:bg-blue-500/30 transition-colors">
+          Laufen
+        </Badge>
+      </Link>
+    )
+  }
+
+  async function handleStart() {
+    if (!selectedChecklistId) return
+    const run = await startRun.mutateAsync({ employee_id: employee.id, checklist_id: selectedChecklistId })
+    setPickOpen(false)
+    navigate(`/hr/checklist-runs/${run.id}`)
+  }
+
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 px-2 text-xs text-secondary hover:text-primary"
+        onClick={() => { setPickOpen(true) }}
+      >
+        <Play className="w-3 h-3 mr-1" />
+        Checkliste starten
+      </Button>
+
+      <Dialog open={pickOpen} onOpenChange={setPickOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Checkliste auswählen</DialogTitle>
+          </DialogHeader>
+          <div className="py-3 space-y-3">
+            <p className="text-sm text-secondary">
+              Checkliste für <strong className="text-primary">{employee.first_name} {employee.last_name}</strong> starten:
+            </p>
+            <Select value={selectedChecklistId} onValueChange={setSelectedChecklistId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Checkliste wählen…" />
+              </SelectTrigger>
+              <SelectContent>
+                {(checklists ?? []).map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name} ({c.type === 'onboarding' ? 'Onboarding' : 'Offboarding'})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setPickOpen(false) }}>Abbrechen</Button>
+            <Button
+              onClick={() => { void handleStart() }}
+              disabled={!selectedChecklistId || startRun.isPending}
+            >
+              {startRun.isPending ? 'Wird gestartet…' : 'Starten'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
 
 type StatusFilter = 'all' | 'active' | 'offboarding' | 'terminated'
 
@@ -99,6 +183,11 @@ export default function EmployeesPage() {
   const createEmployee = useCreateEmployee()
   const updateEmployee = useUpdateEmployee()
   const deleteEmployee = useDeleteEmployee()
+  const { errors: empErrors, validate: validateEmp, clearError: clearEmpError, clearAll: clearEmpErrors } = useFormValidation<Record<string, unknown>>({
+    first_name: { required: true },
+    last_name: { required: true },
+    email: { required: true, pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, patternMessage: 'Bitte eine gültige E-Mail-Adresse eingeben.' },
+  })
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -113,17 +202,20 @@ export default function EmployeesPage() {
   function openCreate() {
     setEditTarget(null)
     setForm(emptyForm())
+    clearEmpErrors()
     setDialogOpen(true)
   }
 
   function openEdit(e: Employee) {
     setEditTarget(e)
     setForm(formFromEmployee(e))
+    clearEmpErrors()
     setDialogOpen(true)
   }
 
   function handleField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }))
+    clearEmpError(key as string)
   }
 
   async function handleSubmit() {
@@ -138,7 +230,9 @@ export default function EmployeesPage() {
         notes: form.notes || undefined,
       }
       await updateEmployee.mutateAsync({ id: editTarget.id, input })
+      setDialogOpen(false)
     } else {
+      if (!validateEmp({ first_name: form.first_name, last_name: form.last_name, email: form.email })) return
       const input: CreateEmployeeInput = {
         first_name: form.first_name,
         last_name: form.last_name,
@@ -149,8 +243,9 @@ export default function EmployeesPage() {
         notes: form.notes || undefined,
       }
       await createEmployee.mutateAsync(input)
+      toast('Mitarbeiter hinzugefügt', 'success')
+      setDialogOpen(false)
     }
-    setDialogOpen(false)
   }
 
   function handleDelete(id: string) {
@@ -192,23 +287,21 @@ export default function EmployeesPage() {
         ))}
       </div>
 
-      {isLoading && (
-        <div className="flex justify-center py-12">
-          <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
+      {isLoading && <SkeletonTable rows={5} cols={8} />}
 
       {!isLoading && filtered.length === 0 && (
         <EmptyState
           icon={Users}
-          title="Keine Mitarbeiter"
-          description="Fügen Sie den ersten Mitarbeiter hinzu, um mit dem Onboarding zu beginnen."
+          title="Noch keine Mitarbeiter"
+          description="Verwalte Mitarbeiter-Lifecycle: Onboarding, Offboarding und Zugriffsrechte. Füge den ersten Mitarbeiter hinzu."
+          action={<Button size="sm" onClick={openCreate}><UserPlus className="w-4 h-4 mr-2" />Mitarbeiter hinzufügen</Button>}
         />
       )}
 
       {!isLoading && filtered.length > 0 && (
         <Card>
           <CardContent className="p-0">
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-secondary text-xs uppercase tracking-wide">
@@ -218,6 +311,7 @@ export default function EmployeesPage() {
                   <th className="text-left px-4 py-3 font-medium">Rolle</th>
                   <th className="text-left px-4 py-3 font-medium">Eintrittsdatum</th>
                   <th className="text-left px-4 py-3 font-medium">Status</th>
+                  <th className="text-left px-4 py-3 font-medium">Checkliste</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -233,6 +327,9 @@ export default function EmployeesPage() {
                     <td className="px-4 py-3 text-secondary">{e.start_date ?? '—'}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={e.status} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <ChecklistRunCell employee={e} />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1 justify-end">
@@ -253,6 +350,7 @@ export default function EmployeesPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -275,32 +373,35 @@ export default function EmployeesPage() {
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>Vorname *</Label>
+                <Label>Vorname <span className="text-red-400 text-xs">*</span></Label>
                 <Input
                   value={form.first_name}
                   onChange={(e) => handleField('first_name', e.target.value)}
                   placeholder="Max"
                 />
+                <FieldError error={empErrors.first_name ?? null} />
               </div>
               <div className="space-y-1">
-                <Label>Nachname *</Label>
+                <Label>Nachname <span className="text-red-400 text-xs">*</span></Label>
                 <Input
                   value={form.last_name}
                   onChange={(e) => handleField('last_name', e.target.value)}
                   placeholder="Mustermann"
                 />
+                <FieldError error={empErrors.last_name ?? null} />
               </div>
             </div>
 
             {!editTarget && (
               <div className="space-y-1">
-                <Label>E-Mail *</Label>
+                <Label>E-Mail <span className="text-red-400 text-xs">*</span></Label>
                 <Input
                   type="email"
                   value={form.email}
                   onChange={(e) => handleField('email', e.target.value)}
                   placeholder="max.mustermann@example.com"
                 />
+                <FieldError error={empErrors.email ?? null} />
               </div>
             )}
 

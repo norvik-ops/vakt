@@ -2,8 +2,8 @@ package secpulse
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/sechealth-app/sechealth/internal/auth"
-	"github.com/sechealth-app/sechealth/internal/license"
+	"github.com/matharnica/vakt/internal/auth"
+	"github.com/matharnica/vakt/internal/license"
 )
 
 // Register wires VulnBoard routes under the provided group.
@@ -72,4 +72,7 @@ func Register(g *echo.Group, h *Handler) {
 	assets.POST("/assets/:id/sbom", h.TriggerSBOMScan, rw, license.Require(license.FeatureSecPulse))
 	assets.GET("/assets/:id/sbom", h.GetAssetSBOM, license.Require(license.FeatureSecPulse))
 	assets.GET("/sbom/eol", h.GetEOLDashboard, license.Require(license.FeatureSecPulse))
+
+	// --- Community: CI/CD evidence webhook (push model for any CI system) ---
+	assets.POST("/ci-evidence", h.ReceiveCIEvidence, rw)
 }

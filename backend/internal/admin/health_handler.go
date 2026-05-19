@@ -14,7 +14,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 
-	"github.com/sechealth-app/sechealth/internal/config"
+	"github.com/matharnica/vakt/internal/config"
 )
 
 // healthStartTime is set once at package init and used to compute uptime.

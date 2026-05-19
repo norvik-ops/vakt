@@ -12,8 +12,11 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { useSuppliers, useCreateSupplier, useUpdateSupplier, useDeleteSupplier, useImportSuppliersCSV } from '../hooks/useSuppliers'
 import { useSupplierStatus, statusToVariant } from '../hooks/useAssessments'
-import { useAuthStore } from '../../../shared/stores/auth'
 import type { Supplier, CreateSupplierInput } from '../types'
+import { SkeletonCardGrid } from '../../../shared/components/SkeletonLoaders'
+import { FieldError } from '../../../shared/components/FieldError'
+import { useFormValidation } from '../../../shared/hooks/useFormValidation'
+import { toast as globalToast } from '../../../shared/hooks/useToast'
 
 // ─── Toast (minimal inline) ───────────────────────────────────────────────────
 function useToast() {
@@ -191,13 +194,17 @@ export default function SuppliersPage() {
   const updateSupplier = useUpdateSupplier(editId ?? '')
   const deleteSupplier = useDeleteSupplier()
   const importCSV = useImportSuppliersCSV()
-  const token = useAuthStore((s) => s.token)
   const toast = useToast()
+  const { errors: supErrors, validate: validateSup, clearError: clearSupError, clearAll: clearSupErrors } = useFormValidation<Record<string, unknown>>({
+    name: { required: true, maxLength: 200 },
+    contact_email: { pattern: /^$|^[^\s@]+@[^\s@]+\.[^\s@]+$/, patternMessage: 'Bitte eine gültige E-Mail-Adresse eingeben.' },
+  })
 
   function openCreate() {
     setEditId(null)
     setForm(emptyForm())
     setSubSuppliersRaw('')
+    clearSupErrors()
     setDialogOpen(true)
   }
 
@@ -205,6 +212,7 @@ export default function SuppliersPage() {
     setEditId(s.id)
     setForm(supplierToForm(s))
     setSubSuppliersRaw((s.sub_suppliers ?? []).join(', '))
+    clearSupErrors()
     setDialogOpen(true)
   }
 
@@ -215,6 +223,7 @@ export default function SuppliersPage() {
   }
 
   function handleSubmit() {
+    if (!validateSup({ name: form.name, contact_email: form.contact_email ?? '' })) return
     const sub = subSuppliersRaw
       .split(',')
       .map((v) => v.trim())
@@ -227,13 +236,18 @@ export default function SuppliersPage() {
     if (editId) {
       updateSupplier.mutate(payload, { onSuccess: () => setDialogOpen(false) })
     } else {
-      createSupplier.mutate(payload, { onSuccess: () => setDialogOpen(false) })
+      createSupplier.mutate(payload, {
+        onSuccess: () => {
+          setDialogOpen(false)
+          globalToast(`Lieferant hinzugefügt: ${form.name} wurde zur Lieferantenliste hinzugefügt.`, 'success')
+        },
+      })
     }
   }
 
   async function handleExportCSV() {
     const res = await fetch('/api/v1/secvitals/suppliers/export', {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
     })
     if (!res.ok) {
       toast.show('CSV-Export fehlgeschlagen. Bitte versuchen Sie es erneut.')
@@ -360,19 +374,15 @@ export default function SuppliersPage() {
       </div>
 
       <div className="flex-1 p-6">
-        {isLoading && (
-          <div className="flex items-center justify-center h-48">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        )}
+        {isLoading && <SkeletonCardGrid count={6} />}
         {isError && (
           <div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">Fehler beim Laden des Lieferanten-Registers.</div>
         )}
         {!isLoading && !isError && suppliers?.length === 0 && (
           <EmptyState
             icon={Building2}
-            title="Keine Lieferanten"
-            description="Füge deinen ersten Lieferanten hinzu."
+            title="Noch keine Lieferanten"
+            description="Dokumentiere Drittanbieter und Dienstleister. Die Lieferantenverwaltung hilft dir, Abhängigkeiten und Risiken im Blick zu behalten."
             action={<Button onClick={openCreate}><Plus className="w-4 h-4 mr-1" />Lieferant hinzufügen</Button>}
           />
         )}
@@ -392,9 +402,10 @@ export default function SuppliersPage() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>Name *</Label>
+              <Label>Name <span className="text-red-400 text-xs">*</span></Label>
               <Input placeholder="z.B. Cloudflare Inc." value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+                onChange={(e) => { setForm((f) => ({ ...f, name: e.target.value })); clearSupError('name') }} />
+              <FieldError error={supErrors.name ?? null} />
             </div>
             <div className="space-y-1.5">
               <Label>Dienstleistungstyp</Label>
@@ -444,7 +455,8 @@ export default function SuppliersPage() {
               <div className="space-y-1.5">
                 <Label>E-Mail</Label>
                 <Input placeholder="E-Mail" type="email" value={form.contact_email ?? ''}
-                  onChange={(e) => setForm((f) => ({ ...f, contact_email: e.target.value }))} />
+                  onChange={(e) => { setForm((f) => ({ ...f, contact_email: e.target.value })); clearSupError('contact_email') }} />
+                <FieldError error={supErrors.contact_email ?? null} />
               </div>
             </div>
             <div className="space-y-1.5">
@@ -481,7 +493,7 @@ export default function SuppliersPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Abbrechen</Button>
-            <Button onClick={handleSubmit} disabled={!form.name || isPending}>
+            <Button onClick={handleSubmit} disabled={isPending}>
               {isPending ? 'Speichern …' : editId ? 'Speichern' : 'Hinzufügen'}
             </Button>
           </DialogFooter>

@@ -34,10 +34,78 @@ type dsrSummary struct {
 	Overdue  int // due_date already passed, not completed/rejected
 }
 
-// adminEmail holds the e-mail address and user ID of an admin user.
+// adminEmail holds the e-mail address, user ID, and preferred language of an admin user.
 type adminEmail struct {
-	Email  string
-	UserID string
+	Email    string
+	UserID   string
+	Language string
+}
+
+// digestI18n holds the translated strings for a single language.
+type digestI18n struct {
+	Subject  string // printf template with one %s arg (date)
+	Score    string
+	Findings string
+	Capas    string
+	Risks    string
+	DSR      string
+	DueSoon  string
+	Overdue  string
+	Footer   string
+}
+
+// forLang returns the digestI18n for the given BCP-47 language tag, defaulting to "de".
+func forLang(lang string) digestI18n {
+	switch lang {
+	case "en":
+		return digestI18n{
+			Subject:  "[Vakt] Weekly Security Overview — %s",
+			Score:    "Compliance Score",
+			Findings: "Open Findings",
+			Capas:    "Open CAPAs",
+			Risks:    "Open Risks",
+			DSR:      "DSR Requests",
+			DueSoon:  "Due in 7 days",
+			Overdue:  "Overdue",
+			Footer:   "This email was sent automatically by Vakt. To unsubscribe, disable the digest in your retention settings.",
+		}
+	case "fr":
+		return digestI18n{
+			Subject:  "[Vakt] Aperçu hebdomadaire de sécurité — %s",
+			Score:    "Score de conformité",
+			Findings: "Constats ouverts",
+			Capas:    "CAPAs ouvertes",
+			Risks:    "Risques ouverts",
+			DSR:      "Demandes DSR",
+			DueSoon:  "Échéance 7 jours",
+			Overdue:  "En retard",
+			Footer:   "Cet e-mail a été envoyé automatiquement par Vakt. Pour vous désabonner, désactivez le résumé dans vos paramètres de rétention.",
+		}
+	case "nl":
+		return digestI18n{
+			Subject:  "[Vakt] Wekelijks beveiligingsoverzicht — %s",
+			Score:    "Compliance-score",
+			Findings: "Openstaande bevindingen",
+			Capas:    "Openstaande CAPAs",
+			Risks:    "Openstaande risico's",
+			DSR:      "DSR-verzoeken",
+			DueSoon:  "Vervalt in 7 dagen",
+			Overdue:  "Achterstallig",
+			Footer:   "Deze e-mail werd automatisch verzonden door Vakt. Schakel de samenvatting uit in uw bewaarinstellingen om u af te melden.",
+		}
+	default: // "de"
+		return digestI18n{
+			Subject:  "[Vakt] Wöchentlicher Sicherheits-Überblick — %s",
+			Score:    "Compliance-Score",
+			Findings: "Offene Findings",
+			Capas:    "Offene CAPAs",
+			Risks:    "Offene Risiken",
+			DSR:      "DSR-Anfragen",
+			DueSoon:  "Fällig in 7 Tagen",
+			Overdue:  "Überfällig",
+			Footer:   "Diese E-Mail wurde automatisch von Vakt versandt. Um den Digest zu deaktivieren, ändern Sie Ihre Aufbewahrungseinstellungen.",
+		}
+	}
 }
 
 // DigestService sends weekly digest e-mails for an organisation.
@@ -86,15 +154,13 @@ func (s *DigestService) SendDigest(ctx context.Context, orgID string) error {
 		return nil
 	}
 
-	// 5. Build e-mail body.
-	subject, body := s.buildEmail(orgID, severityCounts, dsr)
-
-	// 6. Send to each admin — respecting per-user email_weekly_digest preference.
+	// 5. Send to each admin — build per-user email with their preferred language.
 	for _, a := range admins {
 		if !s.weeklyDigestEnabled(ctx, a.UserID) {
 			log.Debug().Str("org_id", orgID).Str("user_id", a.UserID).Msg("emaildigest: skipped (preference disabled)")
 			continue
 		}
+		subject, body := s.buildEmail(orgID, severityCounts, dsr, a.Language)
 		if err := s.send(a.Email, subject, body); err != nil {
 			log.Error().Err(err).Str("org_id", orgID).Str("to", a.Email).Msg("emaildigest: send failed")
 		} else {
@@ -180,7 +246,7 @@ func (s *DigestService) fetchDSRSummary(ctx context.Context, orgID string) (dsrS
 
 func (s *DigestService) fetchAdminEmails(ctx context.Context, orgID string) ([]adminEmail, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT u.email, u.id::text
+		SELECT u.email, u.id::text, COALESCE(u.preferred_language, 'de')
 		FROM   org_members om
 		JOIN   users u ON u.id = om.user_id
 		JOIN   roles r ON r.id = om.role_id
@@ -197,7 +263,7 @@ func (s *DigestService) fetchAdminEmails(ctx context.Context, orgID string) ([]a
 	var admins []adminEmail
 	for rows.Next() {
 		var a adminEmail
-		if err := rows.Scan(&a.Email, &a.UserID); err != nil {
+		if err := rows.Scan(&a.Email, &a.UserID, &a.Language); err != nil {
 			return nil, err
 		}
 		admins = append(admins, a)
@@ -222,19 +288,20 @@ func (s *DigestService) weeklyDigestEnabled(ctx context.Context, userID string) 
 	return enabled
 }
 
-func (s *DigestService) buildEmail(orgID string, severityCounts []findingSeverityCount, dsr dsrSummary) (subject, body string) {
-	subject = fmt.Sprintf("[Vakt] Weekly Security Digest — %s", time.Now().UTC().Format("2006-01-02"))
+func (s *DigestService) buildEmail(orgID string, severityCounts []findingSeverityCount, dsr dsrSummary, lang string) (subject, body string) {
+	i18n := forLang(lang)
+	subject = fmt.Sprintf(i18n.Subject, time.Now().UTC().Format("2006-01-02"))
 
 	var buf bytes.Buffer
 	buf.WriteString(`<!DOCTYPE html><html><body style="font-family:sans-serif;color:#1a202c;">`)
-	buf.WriteString(`<h2 style="color:#2b6cb0;">Vakt — Weekly Security Digest</h2>`)
+	buf.WriteString(fmt.Sprintf(`<h2 style="color:#2b6cb0;">Vakt — %s</h2>`, i18n.Findings))
 	buf.WriteString(fmt.Sprintf(`<p>Generated: %s UTC</p>`, time.Now().UTC().Format("2006-01-02 15:04")))
 	buf.WriteString(fmt.Sprintf(`<p style="color:#718096;font-size:0.85em;">Org: %s</p>`, orgID))
 
 	// Findings section
-	buf.WriteString(`<h3>Open Findings</h3>`)
+	buf.WriteString(fmt.Sprintf(`<h3>%s</h3>`, i18n.Findings))
 	if len(severityCounts) == 0 {
-		buf.WriteString(`<p style="color:#38a169;">No open findings — great work!</p>`)
+		buf.WriteString(`<p style="color:#38a169;">&#10003;</p>`)
 	} else {
 		buf.WriteString(`<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;">`)
 		buf.WriteString(`<tr style="background:#ebf8ff;"><th>Severity</th><th>Count</th></tr>`)
@@ -259,23 +326,23 @@ func (s *DigestService) buildEmail(orgID string, severityCounts []findingSeverit
 	}
 
 	// DSR section
-	buf.WriteString(`<h3>DSR Requests</h3>`)
+	buf.WriteString(fmt.Sprintf(`<h3>%s</h3>`, i18n.DSR))
 	buf.WriteString(`<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;">`)
 	buf.WriteString(`<tr style="background:#ebf8ff;"><th>Category</th><th>Count</th></tr>`)
-	buf.WriteString(fmt.Sprintf(`<tr><td>Due within 7 days</td><td>%d</td></tr>`, dsr.DueSoon))
+	buf.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%d</td></tr>`, i18n.DueSoon, dsr.DueSoon))
 	overdueColor := "#1a202c"
 	if dsr.Overdue > 0 {
 		overdueColor = "#c53030"
 	}
 	buf.WriteString(fmt.Sprintf(
-		`<tr><td style="color:%s;">Overdue</td><td style="color:%s;font-weight:bold;">%d</td></tr>`,
-		overdueColor, overdueColor, dsr.Overdue,
+		`<tr><td style="color:%s;">%s</td><td style="color:%s;font-weight:bold;">%d</td></tr>`,
+		overdueColor, i18n.Overdue, overdueColor, dsr.Overdue,
 	))
 	buf.WriteString(`</table>`)
 
 	buf.WriteString(`<hr style="margin-top:24px;"/><p style="font-size:0.75em;color:#a0aec0;">`)
-	buf.WriteString(`This digest was sent automatically by Vakt. To unsubscribe, disable the digest in your retention settings.</p>`)
-	buf.WriteString(`</body></html>`)
+	buf.WriteString(i18n.Footer)
+	buf.WriteString(`</p></body></html>`)
 
 	return subject, buf.String()
 }

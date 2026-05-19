@@ -19,6 +19,20 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('[ErrorBoundary]', error, info.componentStack)
+    // Forward to backend tracing endpoint when available (picks up X-Trace-ID correlation).
+    const traceId = document.cookie.match(/trace_id=([^;]+)/)?.[1] ?? 'unknown'
+    fetch('/api/v1/errors', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: error.message,
+        stack: error.stack,
+        component_stack: info.componentStack,
+        url: window.location.href,
+        trace_id: traceId,
+      }),
+    }).catch(() => { /* best-effort — ignore if endpoint unavailable */ })
   }
 
   render() {

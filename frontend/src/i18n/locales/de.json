@@ -857,7 +857,15 @@
     "selected": "{{count}} ausgewählt",
     "clearSelection": "Auswahl aufheben",
     "saving": "Speichern …",
-    "sort": "Sortieren"
+    "sort": "Sortieren",
+    "noData": "Keine Daten vorhanden",
+    "statusLabels": {
+      "active": "Aktiv",
+      "inactive": "Inaktiv",
+      "pending": "Ausstehend",
+      "completed": "Abgeschlossen",
+      "draft": "Entwurf"
+    }
   },
   "actions": {
     "save": "Speichern",
@@ -909,7 +917,7 @@
     "orSeparator": "oder",
     "demoCredentials": "Demo-Zugangsdaten",
     "demoHint": "Einfach auf einen Account klicken — das Formular wird automatisch ausgefüllt.",
-    "demoDisclaimer": "Dies ist eine öffentliche Demo-Instanz. Bitte keine echten oder sensiblen Daten eingeben. NorvikOps übernimmt keine Haftung für eingegebene Daten.",
+    "demoDisclaimer": "Dies ist eine öffentliche Demo-Instanz. Bitte keine echten oder sensiblen Daten eingeben. Vakt übernimmt keine Haftung für eingegebene Daten.",
     "forgotPasswordTitle": "Passwort zurücksetzen",
     "forgotPasswordDesc": "Geben Sie Ihre E-Mail-Adresse ein. Wir senden Ihnen einen Link zum Zurücksetzen Ihres Passworts.",
     "forgotPasswordEmailLabel": "E-Mail-Adresse",
@@ -1113,15 +1121,18 @@
   },
   "onboarding": {
     "title": "Erste Schritte",
+    "intro": "Ihr erster Schritt ist gemacht. Folgen Sie diesem Leitfaden für einen schnellen Einstieg in die Compliance-Dokumentation.",
     "completed": "{{count}} von {{total}} abgeschlossen",
     "dismiss": "Anleitung ausblenden",
     "steps": {
-      "org": "Organisation einrichten",
-      "framework": "Erstes Framework aktivieren",
+      "vvt": "DSGVO-VVT anlegen (Vakt Privacy)",
+      "framework": "Framework aktivieren",
+      "control": "Ersten Control bewerten",
+      "org": "Organisation vervollständigen",
       "asset": "Ersten Asset hinzufügen",
       "team": "Team-Mitglied einladen",
       "evidence": "Evidence hochladen",
-      "mfa": "2FA aktivieren"
+      "mfa": "2FA einrichten"
     }
   },
   "comments": {

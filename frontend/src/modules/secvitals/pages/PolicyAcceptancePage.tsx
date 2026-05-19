@@ -88,20 +88,22 @@ function CampaignDetails({ campaignId }: { campaignId: string }) {
   }
 
   return (
-    <table className="w-full mt-3">
-      <thead>
-        <tr className="text-xs text-muted-foreground border-b border-border">
-          <th className="text-left pb-1 pr-4 font-medium">E-Mail</th>
-          <th className="text-left pb-1 pr-4 font-medium">Name</th>
-          <th className="text-left pb-1 font-medium">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {requests.map((req) => (
-          <RequestRow key={req.id} req={req} />
-        ))}
-      </tbody>
-    </table>
+    <div className="overflow-x-auto">
+      <table className="w-full mt-3">
+        <thead>
+          <tr className="text-xs text-muted-foreground border-b border-border">
+            <th className="text-left pb-1 pr-4 font-medium">E-Mail</th>
+            <th className="text-left pb-1 pr-4 font-medium">Name</th>
+            <th className="text-left pb-1 font-medium">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {requests.map((req) => (
+            <RequestRow key={req.id} req={req} />
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
@@ -315,8 +317,14 @@ export default function PolicyAcceptancePage() {
       {!isLoading && (!campaigns || campaigns.length === 0) && (
         <EmptyState
           icon={Users}
-          title="Keine Kampagnen"
-          description="Erstellen Sie eine Kampagne, um Mitarbeiter um Bestätigung zu bitten."
+          title="Noch keine Akzeptanzkampagne"
+          description="Erstellen Sie eine Kampagne, um Mitarbeiter um Bestätigung dieser Richtlinie zu bitten."
+          action={
+            <Button size="sm" onClick={() => setDialogOpen(true)}>
+              <Plus size={14} className="mr-1" />
+              Neue Kampagne
+            </Button>
+          }
         />
       )}
 

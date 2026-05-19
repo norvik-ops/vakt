@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, getAuthToken, FeatureLockedError } from '../../../api/client'
+import { apiFetch, FeatureLockedError } from '../../../api/client'
 import type { DPIA, CreateDPIAInput, UpdateDPIAInput } from '../types'
 
 export function useDPIAs() {
@@ -55,28 +55,23 @@ export function useDeleteDPIA() {
 
 export function useExportDPIA() {
   return async (): Promise<void> => {
-    const token = getAuthToken()
     const url = '/api/v1/secprivacy/dpias/export'
-    if (token) {
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-      if (res.status === 402) {
-        const body = (await res.json().catch(() => ({}))) as { feature?: string }
-        throw new FeatureLockedError(body.feature ?? 'audit_pdf')
-      }
-      if (!res.ok) {
-        throw new Error(`Export failed: ${res.statusText}`)
-      }
-      const blob = await res.blob()
-      const objectUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = objectUrl
-      a.download = `dpia-export-${new Date().toISOString().slice(0, 10)}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(objectUrl)
-    } else {
-      window.open(url, '_blank')
+    const res = await fetch(url, { credentials: 'include' })
+    if (res.status === 402) {
+      const body = (await res.json().catch(() => ({}))) as { feature?: string }
+      throw new FeatureLockedError(body.feature ?? 'audit_pdf')
     }
+    if (!res.ok) {
+      throw new Error(`Export failed: ${res.statusText}`)
+    }
+    const blob = await res.blob()
+    const objectUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = objectUrl
+    a.download = `dpia-export-${new Date().toISOString().slice(0, 10)}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(objectUrl)
   }
 }

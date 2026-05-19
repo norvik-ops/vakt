@@ -67,11 +67,9 @@ export function useImportSuppliersCSV() {
   const queryClient = useQueryClient()
   return useMutation<CSVImportResult, Error, FormData>({
     mutationFn: async (formData) => {
-      const { getAuthToken } = await import('../../../api/client')
-      const token = getAuthToken()
       const res = await fetch('/api/v1/secvitals/suppliers/import-csv', {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
         body: formData,
         // Do NOT set Content-Type — browser sets multipart boundary automatically.
       })

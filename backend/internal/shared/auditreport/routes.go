@@ -7,8 +7,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 
-	"github.com/sechealth-app/sechealth/internal/auth"
-	"github.com/sechealth-app/sechealth/internal/license"
+	"github.com/matharnica/vakt/internal/auth"
+	"github.com/matharnica/vakt/internal/license"
 )
 
 // RegisterRoutes mounts GET /audit-report on the provided echo group.

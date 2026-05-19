@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { Users, Plus, Pencil, Trash2, AlertTriangle, Download } from 'lucide-react'
-import { getAuthToken } from '../../../api/client'
+import { Users, Plus, Pencil, Trash2, AlertTriangle, Download, ShieldCheck } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
@@ -14,6 +13,7 @@ import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { InfoBanner } from '../../../shared/components/InfoBanner'
 import { useDSRs, useCreateDSR, useUpdateDSR, useDeleteDSR } from '../hooks/useDSRs'
+import { ComplianceTooltip } from '../../../shared/components/ComplianceTooltip'
 import type { DSR, DSRType, DSRStatus, CreateDSRInput, UpdateDSRInput } from '../types'
 
 /**
@@ -97,10 +97,12 @@ function DSRCard({
   dsr,
   onEdit,
   onDelete,
+  onErasure,
 }: {
   dsr: DSR
   onEdit: (d: DSR) => void
   onDelete: (id: string) => void
+  onErasure?: (id: string) => void
 }) {
   const overdue = isOverdue(dsr.due_date)
   const receivedDate = new Date(dsr.received_at).toLocaleDateString('de-DE', {
@@ -145,7 +147,18 @@ function DSRCard({
           <p className="text-xs text-muted-foreground italic line-clamp-1">{dsr.notes}</p>
         )}
 
-        <div className="flex justify-end gap-1 pt-1">
+        <div className="flex justify-end gap-1 pt-1 flex-wrap">
+          {dsr.type === 'erasure' && dsr.status !== 'completed' && dsr.status !== 'rejected' && onErasure && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs gap-1 text-green-400 border-green-500/30 hover:bg-green-500/10"
+              onClick={() => onErasure(dsr.id)}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              Löschung durchgeführt
+            </Button>
+          )}
           <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Bearbeiten" onClick={() => onEdit(dsr)}>
             <Pencil className="w-3.5 h-3.5" />
           </Button>
@@ -177,6 +190,8 @@ export default function DSRPage() {
   const [createForm, setCreateForm] = useState<CreateFormState>(emptyCreateForm())
   const [editForm, setEditForm] = useState<EditFormState>({ status: 'open', notes: '' })
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [erasureId, setErasureId] = useState<string | null>(null)
+  const [erasureNote, setErasureNote] = useState('')
 
   const { data: dsrs, isLoading, isError } = useDSRs()
   const createDSR = useCreateDSR()
@@ -197,6 +212,24 @@ export default function DSRPage() {
 
   function handleDelete(id: string) {
     setDeleteId(id)
+  }
+
+  function handleErasureOpen(id: string) {
+    setErasureId(id)
+    setErasureNote('')
+  }
+
+  function handleErasureConfirm() {
+    if (!erasureId) return
+    const id = erasureId
+    setErasureId(null)
+    updateDSR.mutate({
+      id,
+      input: {
+        status: 'completed',
+        notes: erasureNote || 'Löschung ausgeführt (Art. 17 DSGVO). Datensätze wurden gelöscht.',
+      },
+    })
   }
 
   function confirmDelete() {
@@ -240,8 +273,7 @@ export default function DSRPage() {
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => {
-              const token = getAuthToken()
-              fetch('/api/v1/secprivacy/dsrs/export.csv', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+              fetch('/api/v1/secprivacy/dsrs/export.csv', { credentials: 'include' })
                 .then(res => res.blob())
                 .then(blob => {
                   const url = URL.createObjectURL(blob)
@@ -320,7 +352,7 @@ export default function DSRPage() {
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {openDSRs.map((d) => (
-                    <DSRCard key={d.id} dsr={d} onEdit={openEdit} onDelete={handleDelete} />
+                    <DSRCard key={d.id} dsr={d} onEdit={openEdit} onDelete={handleDelete} onErasure={handleErasureOpen} />
                   ))}
                 </div>
               </div>
@@ -333,7 +365,7 @@ export default function DSRPage() {
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {closedDSRs.map((d) => (
-                    <DSRCard key={d.id} dsr={d} onEdit={openEdit} onDelete={handleDelete} />
+                    <DSRCard key={d.id} dsr={d} onEdit={openEdit} onDelete={handleDelete} onErasure={handleErasureOpen} />
                   ))}
                 </div>
               </div>
@@ -341,6 +373,35 @@ export default function DSRPage() {
           </>
         )}
       </div>
+
+      {/* Art. 17 Erasure execution dialog */}
+      <Dialog open={erasureId !== null} onOpenChange={(open) => !open && setErasureId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Löschung bestätigen (Art. 17 DSGVO)</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Bestätigen Sie, dass die Daten der betroffenen Person gelöscht wurden. Diese Bestätigung wird als Compliance-Nachweis gespeichert.
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="erasure-note">Nachweis / Notiz</Label>
+            <Textarea
+              id="erasure-note"
+              placeholder="z.B. Kundendatensätze in DB gelöscht, Backups werden nach 30 Tagen überschrieben."
+              value={erasureNote}
+              onChange={(e) => setErasureNote(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setErasureId(null)}>Abbrechen</Button>
+            <Button onClick={handleErasureConfirm} className="bg-green-600 hover:bg-green-700 text-white">
+              <ShieldCheck className="w-4 h-4 mr-1.5" />
+              Löschung bestätigen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={deleteId !== null} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
@@ -361,7 +422,7 @@ export default function DSRPage() {
       <Dialog open={dialogMode === 'create'} onOpenChange={(open) => !open && setDialogMode(null)}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Datenschutzanfrage anlegen</DialogTitle>
+            <DialogTitle><ComplianceTooltip term="dsr">Datenschutzanfrage anlegen</ComplianceTooltip></DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="p-3 rounded-lg bg-blue-500/10 text-blue-400 text-xs">

@@ -91,7 +91,7 @@ Die vollständige Referenz aller Variablen findest du in der [Konfigurationsrefe
 | `VAKT_SMTP_PORT` | `1025` | SMTP-Port |
 | `VAKT_SMTP_USER` | — | Benutzername (erforderlich für Port 587/465) |
 | `VAKT_SMTP_PASS` | — | Passwort (erforderlich für Port 587/465) |
-| `VAKT_SMTP_FROM` | `secreflex@sechealth.local` | Absenderadresse |
+| `VAKT_SMTP_FROM` | `secreflex@vakt.local` | Absenderadresse |
 
 ---
 
@@ -211,7 +211,7 @@ docker compose up -d
 
 Vakt prüft nicht automatisch auf neue Versionen. Wenn du informiert werden möchtest, wenn eine neue Version verfügbar ist, gibt es zwei Möglichkeiten:
 
-**Option 1 — In-App-Banner:** Setze `VAKT_UPDATE_CHECK=true` in deiner `.env`. Vakt prüft dann einmal täglich die [GitHub Releases API](https://github.com/norvik-ops/vakt/releases) und zeigt Administratoren einen Hinweis-Banner in der Oberfläche. Es werden dabei keine Daten gesendet.
+**Option 1 — In-App-Banner:** Setze `VAKT_UPDATE_CHECK=true` in deiner `.env`. Vakt prüft dann einmal täglich die [GitHub Releases API](https://github.com/norvik-ops/vatk/releases) und zeigt Administratoren einen Hinweis-Banner in der Oberfläche. Es werden dabei keine Daten gesendet.
 
 **Option 2 — Watchtower:** Für automatische Container-Updates siehe die [Deployment-Dokumentation](../setup.md).
 
@@ -229,10 +229,10 @@ docker compose up -d
 
 ## Kubernetes (Helm)
 
-Ein Helm Chart liegt unter `helm/sechealth/`. Grundlegender Aufruf:
+Ein Helm Chart liegt unter `helm/vakt/`. Grundlegender Aufruf:
 
 ```bash
-helm install vakt ./helm/sechealth \
+helm install vakt ./helm/vakt \
   --set secret.key=$(openssl rand -hex 32) \
   --set postgresql.postgresqlPassword=sicher \
   --set ingress.enabled=true \
@@ -272,7 +272,7 @@ Beide Endpunkte antworten mit HTTP 200 wenn alles läuft.
 Vakt speichert alle Daten in PostgreSQL. Eine einfache Backup-Strategie:
 
 ```bash
-docker compose exec postgres pg_dump -U sechealth sechealth > backup-$(date +%Y%m%d).sql
+docker compose exec postgres pg_dump -U vakt vakt > backup-$(date +%Y%m%d).sql
 ```
 
 Hochgeladene Dateien (Evidence-Anhänge) liegen im Volume `./data/uploads` und müssen separat gesichert werden.

@@ -150,20 +150,22 @@ export default function TISAXMappingPage() {
             Alle TISAX-Maßnahmen sind durch ISO 27001 abgedeckt.
           </p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-1/3">TISAX Control</TableHead>
-                <TableHead className="w-1/3">ISO 27001 Control</TableHead>
-                <TableHead className="w-32">Abgedeckt</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((result) => (
-                <MappingRow key={result.tisax_control_id} result={result} />
-              ))}
-            </TableBody>
-          </Table>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-1/3">TISAX Control</TableHead>
+                  <TableHead className="w-1/3">ISO 27001 Control</TableHead>
+                  <TableHead className="w-32">Abgedeckt</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((result) => (
+                  <MappingRow key={result.tisax_control_id} result={result} />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </div>
     </div>

@@ -7,6 +7,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/notify"
 )
 
 // Notification type constants — must match the CHECK / UNIQUE key in notification_log.
@@ -315,6 +317,97 @@ Diese E-Mail wurde automatisch von Vakt generiert.`,
 		log.Info().Str("ccm_check_id", id).Str("to", dpoEmail).Msg("CheckCCMFailures: alert sent")
 	}
 	return rows.Err()
+}
+
+// CheckCertificationDeadlines finds upcoming audit milestones in ck_audit_milestones
+// within the next 30 days and sends in-app notifications to the relevant orgs.
+// If the ck_audit_milestones table does not exist the function is a no-op.
+func CheckCertificationDeadlines(ctx context.Context, db *pgxpool.Pool, _ *Mailer) error {
+	// Guard: skip gracefully if the table does not exist yet.
+	var tableExists bool
+	if err := db.QueryRow(ctx, `
+		SELECT EXISTS (
+		    SELECT 1 FROM information_schema.tables
+		    WHERE table_schema = 'public' AND table_name = 'ck_audit_milestones'
+		)
+	`).Scan(&tableExists); err != nil || !tableExists {
+		if err != nil {
+			log.Debug().Err(err).Msg("CheckCertificationDeadlines: table-existence check failed, skipping")
+		} else {
+			log.Debug().Msg("CheckCertificationDeadlines: ck_audit_milestones does not exist, skipping")
+		}
+		return nil
+	}
+
+	// Step 1: find distinct orgs with approaching milestones.
+	orgRows, err := db.Query(ctx, `
+		SELECT DISTINCT org_id::text FROM ck_audit_milestones
+		WHERE target_date BETWEEN NOW() AND NOW() + INTERVAL '30 days'
+		  AND status != 'completed'
+	`)
+	if err != nil {
+		return fmt.Errorf("CheckCertificationDeadlines: org query: %w", err)
+	}
+	defer orgRows.Close()
+
+	var orgIDs []string
+	for orgRows.Next() {
+		var id string
+		if err := orgRows.Scan(&id); err != nil {
+			log.Error().Err(err).Msg("CheckCertificationDeadlines: scan org_id")
+			continue
+		}
+		orgIDs = append(orgIDs, id)
+	}
+	if err := orgRows.Err(); err != nil {
+		return fmt.Errorf("CheckCertificationDeadlines: org rows: %w", err)
+	}
+
+	// Step 2: for each org, load upcoming milestones and send in-app notifications.
+	for _, orgID := range orgIDs {
+		milestoneRows, err := db.Query(ctx, `
+			SELECT title, target_date, (target_date - NOW()::date)::int AS days_until
+			FROM ck_audit_milestones
+			WHERE org_id = $1::uuid
+			  AND target_date BETWEEN NOW() AND NOW() + INTERVAL '30 days'
+			  AND status != 'completed'
+			ORDER BY target_date
+		`, orgID)
+		if err != nil {
+			log.Error().Err(err).Str("org_id", orgID).Msg("CheckCertificationDeadlines: milestone query")
+			continue
+		}
+
+		for milestoneRows.Next() {
+			var (
+				title      string
+				targetDate time.Time
+				daysUntil  int
+			)
+			if err := milestoneRows.Scan(&title, &targetDate, &daysUntil); err != nil {
+				log.Error().Err(err).Msg("CheckCertificationDeadlines: scan milestone")
+				continue
+			}
+
+			notifType := "info"
+			if daysUntil <= 14 {
+				notifType = "warning"
+			}
+
+			notifyTitle := fmt.Sprintf("Zertifizierungs-Deadline in %d Tagen", daysUntil)
+			notifyBody := fmt.Sprintf("Milestone \"%s\" ist am %s fällig.",
+				title, targetDate.Format("02.01.2006"))
+
+			notify.Send(ctx, db, orgID, notifyTitle, notifyBody, notifType, "secvitals")
+			log.Info().Str("org_id", orgID).Str("milestone", title).Int("days_until", daysUntil).
+				Msg("CheckCertificationDeadlines: in-app notification sent")
+		}
+		milestoneRows.Close()
+		if err := milestoneRows.Err(); err != nil {
+			log.Error().Err(err).Str("org_id", orgID).Msg("CheckCertificationDeadlines: milestone rows error")
+		}
+	}
+	return nil
 }
 
 // alreadySent returns true if a notification for the given (org, type, resource, email)

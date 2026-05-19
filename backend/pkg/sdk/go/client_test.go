@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	shieldsdk "github.com/sechealth-app/sechealth/pkg/sdk/go"
+	shieldsdk "github.com/matharnica/vakt/pkg/sdk/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

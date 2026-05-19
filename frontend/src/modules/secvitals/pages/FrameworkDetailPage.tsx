@@ -48,11 +48,13 @@ import {
   useDownloadFrameworkPDF,
 } from '../hooks/useFrameworks'
 import { useAuditorLinks, useRevokeAuditorLink, useCreateAuditorLink } from '../hooks/useAuditorLinks'
-import { useUpdateControl } from '../hooks/useControls'
+import { useUpdateControl, useBulkUpdateControls } from '../hooks/useControls'
 import { toast } from '../../../shared/hooks/useToast'
 import { Skeleton } from '../../../components/ui/skeleton'
 import { ErrorState } from '../../../shared/components/ErrorState'
 import { exportAsRTF } from '../../../shared/utils/exportRtf'
+import { useMilestoneToast } from '../../../shared/components/MilestoneToast'
+import { ComplianceTooltip } from '../../../shared/components/ComplianceTooltip'
 
 // ── DORA → ISO 27001 mapping info block ──────────────────────────────────────
 
@@ -75,22 +77,24 @@ function DORAISOMapping() {
         Organisationen, die bereits ISO 27001 umgesetzt haben, können DORA-Anforderungen
         erheblich effizienter erfüllen.
       </p>
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="border-b border-border">
-            <th className="text-left py-1.5 pr-4 font-medium text-secondary">DORA-Bereich</th>
-            <th className="text-left py-1.5 font-medium text-secondary">ISO 27001:2022 Klauseln</th>
-          </tr>
-        </thead>
-        <tbody>
-          {DORA_ISO_DOMAIN_TABLE.map(({ domain, iso }) => (
-            <tr key={domain} className="border-b border-border last:border-0">
-              <td className="py-1.5 pr-4 text-primary">{domain}</td>
-              <td className="py-1.5 font-mono text-secondary">{iso}</td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left py-1.5 pr-4 font-medium text-secondary">DORA-Bereich</th>
+              <th className="text-left py-1.5 font-medium text-secondary">ISO 27001:2022 Klauseln</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {DORA_ISO_DOMAIN_TABLE.map(({ domain, iso }) => (
+              <tr key={domain} className="border-b border-border last:border-0">
+                <td className="py-1.5 pr-4 text-primary">{domain}</td>
+                <td className="py-1.5 font-mono text-secondary">{iso}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -185,56 +189,64 @@ function AuditorLinksTab({ frameworkId }: { frameworkId: string }) {
         <EmptyState
           icon={ShieldAlert}
           title="Keine Auditor-Links"
-          description="Erstelle einen Link, um einem Auditor Lesezugriff zu geben."
+          description="Erstelle einen Link, um einem Auditor schreibgeschützten Zugriff auf dieses Framework zu geben."
+          action={
+            <Button size="sm" onClick={() => { setCreateOpen(true); setCreatedUrl(null) }}>
+              <Plus className="w-4 h-4 mr-1" />
+              Auditor-Link erstellen
+            </Button>
+          }
         />
       )}
 
       {!isLoading && frameworkLinks.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Bezeichnung</TableHead>
-              <TableHead>Läuft ab</TableHead>
-              <TableHead>Zugriffe</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {frameworkLinks.map((link: AuditorLink) => (
-              <TableRow key={link.id}>
-                <TableCell className="font-medium">{link.label ?? '—'}</TableCell>
-                <TableCell>
-                  {new Date(link.expires_at).toLocaleDateString('de-DE')}
-                </TableCell>
-                <TableCell>{link.access_count}</TableCell>
-                <TableCell>
-                  {link.revoked_at ? (
-                    <Badge variant="destructive">Widerrufen</Badge>
-                  ) : new Date(link.expires_at) < new Date() ? (
-                    <Badge variant="secondary">Abgelaufen</Badge>
-                  ) : (
-                    <Badge variant="success">Aktiv</Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {!link.revoked_at && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-600 hover:text-red-700"
-                      onClick={() => revokeLink.mutate(link.id)}
-                      disabled={revokeLink.isPending}
-                      aria-label={`Auditor-Link ${link.label ?? link.id} widerrufen`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  )}
-                </TableCell>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Bezeichnung</TableHead>
+                <TableHead>Läuft ab</TableHead>
+                <TableHead>Zugriffe</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead></TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {frameworkLinks.map((link: AuditorLink) => (
+                <TableRow key={link.id}>
+                  <TableCell className="font-medium">{link.label ?? '—'}</TableCell>
+                  <TableCell>
+                    {new Date(link.expires_at).toLocaleDateString('de-DE')}
+                  </TableCell>
+                  <TableCell>{link.access_count}</TableCell>
+                  <TableCell>
+                    {link.revoked_at ? (
+                      <Badge variant="destructive">Widerrufen</Badge>
+                    ) : new Date(link.expires_at) < new Date() ? (
+                      <Badge variant="secondary">Abgelaufen</Badge>
+                    ) : (
+                      <Badge variant="success">Aktiv</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {!link.revoked_at && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700"
+                        onClick={() => revokeLink.mutate(link.id)}
+                        disabled={revokeLink.isPending}
+                        aria-label={`Auditor-Link ${link.label ?? link.id} widerrufen`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -594,11 +606,11 @@ function ControlsTab({
   controlsLoading: boolean
 }) {
   const updateControl = useUpdateControl(frameworkId)
+  const bulkUpdateControls = useBulkUpdateControls()
   const [naDialog, setNaDialog] = useState<Control | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
   const [pendingStatus, setPendingStatus] = useState<ControlStatusChoice>('implemented')
-  const [isApplying, setIsApplying] = useState(false)
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -621,37 +633,20 @@ function ControlsTab({
   }
 
   async function handleBulkStatusApply() {
-    if (!controls) return
-    setIsApplying(true)
-    const selectedControls = controls.filter((c) => selected.has(c.id))
-    const manualStatus =
-      pendingStatus === 'missing' ? '' :
-      pendingStatus === 'not_applicable' ? '' :
-      pendingStatus as '' | 'in_progress' | 'implemented'
-
+    if (selected.size === 0) return
+    const ids = Array.from(selected)
+    // Map UI choice to API status value
+    const apiStatus = pendingStatus === 'missing' ? 'not_implemented' : pendingStatus
     try {
-      await Promise.allSettled(
-        selectedControls.map((c) =>
-          new Promise<void>((resolve, reject) => {
-            updateControl.mutate(
-              {
-                controlId: c.id,
-                not_applicable: pendingStatus === 'not_applicable',
-                reason: '',
-                manual_status: manualStatus,
-              },
-              { onSuccess: () => resolve(), onError: (e) => reject(e) },
-            )
-          }),
-        ),
-      )
+      await bulkUpdateControls.mutateAsync({
+        ids,
+        status: apiStatus as 'implemented' | 'in_progress' | 'not_implemented' | 'not_applicable',
+      })
       setSelected(new Set())
       setStatusDialogOpen(false)
       toast('Status aktualisiert', 'success')
     } catch {
-      toast('Status teilweise fehlgeschlagen', 'error')
-    } finally {
-      setIsApplying(false)
+      toast('Bulk-Update fehlgeschlagen', 'error')
     }
   }
 
@@ -732,8 +727,8 @@ function ControlsTab({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>Abbrechen</Button>
-            <Button onClick={() => { void handleBulkStatusApply() }} disabled={isApplying}>
-              {isApplying ? 'Wird gespeichert…' : 'Anwenden'}
+            <Button onClick={() => { void handleBulkStatusApply() }} disabled={bulkUpdateControls.isPending}>
+              {bulkUpdateControls.isPending ? 'Wird gespeichert…' : 'Anwenden'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -758,7 +753,7 @@ function ControlsTab({
         {/* Progress bar */}
         <div className="space-y-1">
           <div className="flex justify-between text-xs text-secondary">
-            <span>{covered} von {total} Controls umgesetzt</span>
+            <span>{covered} von {total} <ComplianceTooltip term="control">Controls</ComplianceTooltip> umgesetzt</span>
             <span>{Math.round((covered / total) * 100)}%</span>
           </div>
           <div className="h-2 bg-surface2 rounded-full overflow-hidden">
@@ -824,6 +819,8 @@ export default function FrameworkDetailPage() {
   const { data: gaps, isLoading: gapsLoading } = useGapAnalysis(frameworkId)
   const { data: controls, isLoading: controlsLoading, isError: controlsError, refetch: refetchControls } = useFrameworkControls(frameworkId)
   const downloadPDF = useDownloadFrameworkPDF()
+
+  useMilestoneToast(report?.readiness_score)
 
   const frameworkTitle = frameworkLoading
     ? '…'

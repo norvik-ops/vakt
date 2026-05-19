@@ -18,10 +18,10 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 
-	"github.com/sechealth-app/sechealth/internal/shared/dashboard"
-	"github.com/sechealth-app/sechealth/internal/shared/evidence_auto"
-	"github.com/sechealth-app/sechealth/internal/shared/notify"
-	"github.com/sechealth-app/sechealth/internal/shared/webhooks"
+	"github.com/matharnica/vakt/internal/shared/dashboard"
+	"github.com/matharnica/vakt/internal/shared/evidence_auto"
+	"github.com/matharnica/vakt/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/webhooks"
 )
 
 // webhookTrigger abstracts the webhook delivery dependency for testability.
@@ -337,6 +337,29 @@ func (s *Service) UpsertFinding(ctx context.Context, orgID string, f Finding) (*
 		"severity": result.Severity,
 		"org_id":   orgID,
 	})
+	// Notify org on critical/high severity findings.
+	if result.Severity == "critical" || result.Severity == "high" {
+		capturedOrgID := orgID
+		capturedTitle := result.Title
+		capturedSev := result.Severity
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Error().Interface("panic", r).Msg("finding notification: goroutine panic")
+				}
+			}()
+			notifyCtx, notifyCancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer notifyCancel()
+			sev := "Kritisch"
+			if capturedSev == "high" {
+				sev = "Hoch"
+			}
+			notify.Send(notifyCtx, s.db, capturedOrgID,
+				"Neues "+sev+"-Finding",
+				"Das Finding \""+capturedTitle+"\" wurde als "+sev+" eingestuft.",
+				"warning", "secpulse")
+		}()
+	}
 	return result, nil
 }
 
@@ -494,7 +517,7 @@ func (s *Service) GetRiskTrend(ctx context.Context, orgID string, days int) ([]R
 }
 
 // GenerateReport creates a report record and enqueues the Asynq generation job.
-func (s *Service) GenerateReport(ctx context.Context, orgID, userID string, scope map[string]interface{}) (*Report, error) {
+func (s *Service) GenerateReport(ctx context.Context, orgID, userID string, scope ReportScope) (*Report, error) {
 	rpt, err := s.repo.CreateReport(ctx, orgID, userID, scope)
 	if err != nil {
 		return nil, fmt.Errorf("create report record: %w", err)

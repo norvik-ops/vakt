@@ -46,8 +46,8 @@ Manuelle QA auf Staging (interne Testumgebung)
 **Was im Hintergrund passiert:**
 - `POST /api/v1/admin/staging/promote` triggert einen lokalen Webhook auf dem Server
 - Der Webhook führt `/usr/local/bin/vakt-do-promote` aus:
-  - `docker pull ghcr.io/matharnica/sechealth-api:staging`
-  - `docker pull ghcr.io/matharnica/sechealth-frontend:staging`
+  - `docker pull ghcr.io/matharnica/vakt-api:staging`
+  - `docker pull ghcr.io/matharnica/vakt-frontend:staging`
   - Re-Tag beider Images als `:latest`
   - Push zu GHCR
   - `docker compose up -d` für Demo-Container

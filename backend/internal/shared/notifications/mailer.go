@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/smtp"
 
-	"github.com/sechealth-app/sechealth/internal/config"
+	"github.com/matharnica/vakt/internal/config"
 )
 
 // Mailer sends transactional notification emails using stdlib net/smtp.

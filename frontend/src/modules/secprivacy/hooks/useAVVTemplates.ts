@@ -40,10 +40,8 @@ export function useCreateAVVFromTemplate() {
 
 export function useDownloadAVVPDF() {
   return async function downloadAVVPDF(avvId: string, filename?: string): Promise<void> {
-    const { getAuthToken } = await import('../../../api/client')
-    const token = getAuthToken()
     const res = await fetch(`/api/v1/secprivacy/avvs/${avvId}/pdf`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'include',
     })
     if (res.status === 402) {
       const body = (await res.json().catch(() => ({}))) as { feature?: string }
@@ -78,10 +76,8 @@ export function useUpdateAVVSCC() {
 
 export function useDownloadSCCPDF() {
   return async function downloadSCCPDF(avvId: string, filename?: string): Promise<void> {
-    const { getAuthToken } = await import('../../../api/client')
-    const token = getAuthToken()
     const res = await fetch(`/api/v1/secprivacy/avvs/${avvId}/scc.pdf`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'include',
     })
     if (res.status === 402) {
       const body = (await res.json().catch(() => ({}))) as { feature?: string }

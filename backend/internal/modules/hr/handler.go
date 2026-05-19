@@ -7,7 +7,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/sechealth-app/sechealth/internal/shared/pagination"
+	"github.com/matharnica/vakt/internal/shared/auditlog"
+	"github.com/matharnica/vakt/internal/shared/pagination"
 )
 
 // Handler handles HTTP requests for the HR module.
@@ -22,6 +23,23 @@ func NewHandler(svc *Service) *Handler {
 		Service:  svc,
 		validate: validator.New(),
 	}
+}
+
+func (h *Handler) audit(c echo.Context, action, resourceType, resourceID, resourceName string) {
+	auditlog.Log(c.Request().Context(), h.Service.db, auditlog.Entry{
+		OrgID:        orgID(c),
+		UserID:       userID(c),
+		Action:       action,
+		ResourceType: resourceType,
+		ResourceID:   resourceID,
+		ResourceName: resourceName,
+		IPAddress:    c.RealIP(),
+	})
+}
+
+func userID(c echo.Context) string {
+	v, _ := c.Get("user_id").(string)
+	return v
 }
 
 // orgID extracts the authenticated organisation ID from the Echo context.
@@ -72,6 +90,7 @@ func (h *Handler) CreateEmployee(c echo.Context) error {
 		log.Error().Err(err).Msg("create employee")
 		return errResp(c, http.StatusInternalServerError, "failed to create employee", "HR_CREATE_EMPLOYEE_FAILED")
 	}
+	h.audit(c, "create", "hr/employee", employee.ID, employee.FirstName + " " + employee.LastName)
 	return c.JSON(http.StatusCreated, employee)
 }
 
@@ -89,15 +108,18 @@ func (h *Handler) UpdateEmployee(c echo.Context) error {
 		log.Error().Err(err).Msg("update employee")
 		return errResp(c, http.StatusInternalServerError, "failed to update employee", "HR_UPDATE_EMPLOYEE_FAILED")
 	}
+	h.audit(c, "update", "hr/employee", employee.ID, employee.FirstName + " " + employee.LastName)
 	return c.JSON(http.StatusOK, employee)
 }
 
 // DeleteEmployee handles DELETE /api/v1/hr/employees/:id.
 func (h *Handler) DeleteEmployee(c echo.Context) error {
-	if err := h.Service.DeleteEmployee(c.Request().Context(), orgID(c), c.Param("id")); err != nil {
+	id := c.Param("id")
+	if err := h.Service.DeleteEmployee(c.Request().Context(), orgID(c), id); err != nil {
 		log.Error().Err(err).Msg("delete employee")
 		return errResp(c, http.StatusInternalServerError, "failed to delete employee", "HR_DELETE_EMPLOYEE_FAILED")
 	}
+	h.audit(c, "delete", "hr/employee", id, "")
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -155,6 +177,7 @@ func (h *Handler) StartChecklistRun(c echo.Context) error {
 		log.Error().Err(err).Msg("start checklist run")
 		return errResp(c, http.StatusInternalServerError, "failed to start checklist run", "HR_START_RUN_FAILED")
 	}
+	h.audit(c, "create", "hr/checklist_run", run.ID, run.EmployeeID)
 	return c.JSON(http.StatusCreated, run)
 }
 

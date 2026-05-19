@@ -20,6 +20,9 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+// Focus trap: Radix UI DialogPrimitive.Content automatically traps focus within
+// the dialog when open and restores focus to the trigger element on close.
+// No custom useFocusTrap hook is needed (WCAG 2.4.3 / ARIA authoring practices).
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>

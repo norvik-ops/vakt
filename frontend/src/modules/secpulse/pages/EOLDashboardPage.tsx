@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { PackageX, RefreshCw } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
@@ -45,6 +46,7 @@ const eolLabel: Record<ComponentSummary['eol_status'], string> = {
  * to the component level in AssetDetailPage; here we refresh all data).
  */
 export default function EOLDashboardPage() {
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   // Trigger SBOM is asset-scoped; we expose a global refresh here that re-fetches
   // the EOL dashboard query. For per-asset triggering, use the asset detail page.
@@ -144,6 +146,13 @@ export default function EOLDashboardPage() {
                 activeTab === 'all'
                   ? 'Noch keine SBOM-Scans durchgeführt. Starte einen SBOM-Scan auf der Asset-Detailseite.'
                   : 'Keine Komponenten in diesem Filter.'
+              }
+              action={
+                activeTab === 'all' ? (
+                  <Button size="sm" onClick={() => navigate('/secpulse/assets')}>
+                    Assets konfigurieren
+                  </Button>
+                ) : undefined
               }
             />
           )}

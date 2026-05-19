@@ -4,9 +4,11 @@
 package audit
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -17,14 +19,15 @@ import (
 
 // Entry describes a single audit event.
 type Entry struct {
-	OrgID        string `json:"org_id"`
-	UserID       string `json:"user_id,omitempty"`
-	Action       string `json:"action"`
-	ResourceType string `json:"resource_type"`
-	ResourceID   string `json:"resource_id,omitempty"`
-	IPAddress    string `json:"ip_address,omitempty"`
-	UserAgent    string `json:"user_agent,omitempty"`
-	StatusCode   int    `json:"status_code"`
+	OrgID        string          `json:"org_id"`
+	UserID       string          `json:"user_id,omitempty"`
+	Action       string          `json:"action"`
+	ResourceType string          `json:"resource_type"`
+	ResourceID   string          `json:"resource_id,omitempty"`
+	IPAddress    string          `json:"ip_address,omitempty"`
+	UserAgent    string          `json:"user_agent,omitempty"`
+	StatusCode   int             `json:"status_code"`
+	Details      json.RawMessage `json:"details,omitempty"` // redacted request body (M10)
 }
 
 // Logger writes audit entries to PostgreSQL.
@@ -53,12 +56,17 @@ func (l *Logger) Log(ctx context.Context, e Entry) error {
 		ip = &e.IPAddress
 	}
 
+	var details *json.RawMessage
+	if len(e.Details) > 0 {
+		details = &e.Details
+	}
+
 	_, err := l.db.Exec(ctx, `
 		INSERT INTO audit_log
-			(org_id, user_id, action, resource_type, resource_id, ip_address)
+			(org_id, user_id, action, resource_type, resource_id, ip_address, details)
 		VALUES
-			($1::uuid, $2::uuid, $3, $4, $5, $6)`,
-		e.OrgID, userID, e.Action, e.ResourceType, resourceID, ip,
+			($1::uuid, $2::uuid, $3, $4, $5, $6, $7)`,
+		e.OrgID, userID, e.Action, e.ResourceType, resourceID, ip, details,
 	)
 	if err != nil {
 		return fmt.Errorf("audit log insert: %w", err)
@@ -107,10 +115,26 @@ func redactBody(raw []byte) json.RawMessage {
 func AuditMiddleware(logger *Logger) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			// Run the actual handler first so we can capture the status code.
+			method := c.Request().Method
+
+			// Capture and redact the request body for mutating requests before
+			// the handler consumes it (M10 fix: redactBody was never called).
+			var redactedBody json.RawMessage
+			if method == "POST" || method == "PUT" || method == "PATCH" {
+				bodyBytes, readErr := io.ReadAll(c.Request().Body)
+				if readErr == nil && len(bodyBytes) > 0 {
+					// Restore the body so the handler can still read it.
+					c.Request().Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+					redactedBody = redactBody(bodyBytes)
+				} else if readErr == nil {
+					// Empty body — restore a no-op reader.
+					c.Request().Body = io.NopCloser(bytes.NewBuffer(nil))
+				}
+			}
+
+			// Run the actual handler so we can capture the status code.
 			err := next(c)
 
-			method := c.Request().Method
 			if method != "POST" && method != "PUT" && method != "PATCH" && method != "DELETE" {
 				return err
 			}
@@ -119,7 +143,16 @@ func AuditMiddleware(logger *Logger) echo.MiddlewareFunc {
 			userID, _ := c.Get("user_id").(string)
 
 			if orgID == "" {
-				// Anonymous mutating request — skip audit (no org context).
+				// Anonymous mutating request (e.g. setup, DSR portal).
+				// The audit_log table requires a valid org UUID, so we cannot
+				// persist these to the DB.  Log via structured logger instead so
+				// mutations are never silently dropped (M9 fix).
+				log.Warn().
+					Str("method", method).
+					Str("path", c.Path()).
+					Str("ip", c.RealIP()).
+					Int("status", c.Response().Status).
+					Msg("anonymous mutating request — no org context for DB audit")
 				return err
 			}
 
@@ -133,6 +166,7 @@ func AuditMiddleware(logger *Logger) echo.MiddlewareFunc {
 				IPAddress:    c.RealIP(),
 				UserAgent:    c.Request().UserAgent(),
 				StatusCode:   statusCode,
+				Details:      redactedBody,
 			}
 
 			// Fire-and-forget: audit failures must not affect the response.

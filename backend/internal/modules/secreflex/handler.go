@@ -1,12 +1,16 @@
 package secreflex
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/auditlog"
 )
 
 // Handler handles HTTP requests for PhishGuard.
@@ -22,6 +26,20 @@ func NewHandler(service *Service) *Handler {
 
 func errJSON(c echo.Context, code int, msg, errCode string) error {
 	return c.JSON(code, map[string]string{"error": msg, "code": errCode})
+}
+
+func (h *Handler) audit(c echo.Context, action, resourceType, resourceID, resourceName string) {
+	orgID, _ := c.Get("org_id").(string)
+	userID, _ := c.Get("user_id").(string)
+	auditlog.Log(c.Request().Context(), h.service.db, auditlog.Entry{
+		OrgID:        orgID,
+		UserID:       userID,
+		Action:       action,
+		ResourceType: resourceType,
+		ResourceID:   resourceID,
+		ResourceName: resourceName,
+		IPAddress:    c.RealIP(),
+	})
 }
 
 // ── Templates ─────────────────────────────────────────────────────────────────
@@ -57,6 +75,7 @@ func (h *Handler) CreateTemplate(c echo.Context) error {
 		log.Error().Err(err).Str("org_id", orgID).Msg("create template failed")
 		return errJSON(c, http.StatusBadRequest, "Vorlage konnte nicht erstellt werden", "PG_TEMPLATE_ERROR")
 	}
+	h.audit(c, "create", "secreflex/template", t.ID, t.Name)
 	return c.JSON(http.StatusCreated, t)
 }
 
@@ -93,6 +112,7 @@ func (h *Handler) CreateTargetGroup(c echo.Context) error {
 	if err != nil {
 		return errJSON(c, http.StatusInternalServerError, "failed to create group", "PG_ERROR")
 	}
+	h.audit(c, "create", "secreflex/target-group", g.ID, g.Name)
 	return c.JSON(http.StatusCreated, g)
 }
 
@@ -150,6 +170,7 @@ func (h *Handler) CreateLandingPage(c echo.Context) error {
 	if err != nil {
 		return errJSON(c, http.StatusInternalServerError, "failed to create landing page", "PG_ERROR")
 	}
+	h.audit(c, "create", "secreflex/landing-page", lp.ID, lp.Name)
 	return c.JSON(http.StatusCreated, lp)
 }
 
@@ -181,6 +202,7 @@ func (h *Handler) CreateCampaign(c echo.Context) error {
 	if err != nil {
 		return errJSON(c, http.StatusInternalServerError, "failed to create campaign", "PG_ERROR")
 	}
+	h.audit(c, "create", "secreflex/campaign", campaign.ID, campaign.Name)
 	return c.JSON(http.StatusCreated, campaign)
 }
 
@@ -195,18 +217,22 @@ func (h *Handler) GetCampaign(c echo.Context) error {
 
 func (h *Handler) LaunchCampaign(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
-	if err := h.service.LaunchCampaign(c.Request().Context(), orgID, c.Param("id")); err != nil {
-		log.Error().Err(err).Str("org_id", orgID).Str("campaign_id", c.Param("id")).Msg("launch campaign failed")
+	campaignID := c.Param("id")
+	if err := h.service.LaunchCampaign(c.Request().Context(), orgID, campaignID); err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Str("campaign_id", campaignID).Msg("launch campaign failed")
 		return errJSON(c, http.StatusBadRequest, "Kampagne konnte nicht gestartet werden", "PG_LAUNCH_ERROR")
 	}
+	h.audit(c, "action", "secreflex/campaign", campaignID, "launch")
 	return c.JSON(http.StatusOK, map[string]string{"status": "running"})
 }
 
 func (h *Handler) AbortCampaign(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
-	if err := h.service.AbortCampaign(c.Request().Context(), orgID, c.Param("id")); err != nil {
+	campaignID := c.Param("id")
+	if err := h.service.AbortCampaign(c.Request().Context(), orgID, campaignID); err != nil {
 		return errJSON(c, http.StatusNotFound, "campaign not found", "PG_NOT_FOUND")
 	}
+	h.audit(c, "action", "secreflex/campaign", campaignID, "abort")
 	return c.JSON(http.StatusOK, map[string]string{"status": "aborted"})
 }
 
@@ -248,6 +274,30 @@ func (h *Handler) TrackFormSubmission(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"status": "recorded"})
 }
 
+// TrackOpen handles the open-tracking pixel request embedded in campaign emails.
+// It records an "open" event and returns a 1×1 transparent GIF so that email
+// clients that load the image trigger the event silently.
+func (h *Handler) TrackOpen(c echo.Context) error {
+	// Fire-and-forget: record the open event but never fail the response.
+	h.service.RecordOpen(c.Request().Context(), c.Param("token"), c.RealIP(), c.Request().UserAgent())
+
+	// 1×1 transparent GIF (43 bytes, GIF89a spec).
+	c.Response().Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	c.Response().Header().Set("Pragma", "no-cache")
+	return c.Blob(http.StatusOK, "image/gif", transparentGIF)
+}
+
+// transparentGIF is a minimal 1×1 transparent GIF89a image (43 bytes).
+var transparentGIF = []byte{
+	0x47, 0x49, 0x46, 0x38, 0x39, 0x61, // GIF89a header
+	0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 0x00, // 1×1, GCT flag
+	0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, // palette: white, black
+	0x21, 0xF9, 0x04, 0x01, 0x00, 0x00, 0x01, 0x00, // graphic control (transparent idx 1)
+	0x2C, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, // image descriptor
+	0x02, 0x02, 0x4C, 0x01, 0x00, // LZW min code 2, compressed pixel, EOI
+	0x3B, // GIF trailer
+}
+
 // ── Training modules ──────────────────────────────────────────────────────────
 
 func (h *Handler) ListModules(c echo.Context) error {
@@ -276,6 +326,7 @@ func (h *Handler) CreateModule(c echo.Context) error {
 	if err != nil {
 		return errJSON(c, http.StatusInternalServerError, "failed to create module", "PG_ERROR")
 	}
+	h.audit(c, "create", "secreflex/training-module", m.ID, m.Title)
 	return c.JSON(http.StatusCreated, m)
 }
 
@@ -302,6 +353,21 @@ func (h *Handler) CompleteAssignment(c echo.Context) error {
 		return errJSON(c, http.StatusNotFound, "assignment not found", "PG_NOT_FOUND")
 	}
 	return c.JSON(http.StatusOK, completion)
+}
+
+func (h *Handler) GetAssignmentCertificate(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	id := c.Param("id")
+	pdfBytes, filename, err := h.service.GetAssignmentCertificate(c.Request().Context(), orgID, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errJSON(c, http.StatusNotFound, "certificate not found", "SR_NOT_FOUND")
+		}
+		log.Error().Err(err).Str("assignment_id", id).Msg("generate certificate failed")
+		return errJSON(c, http.StatusInternalServerError, "failed to generate certificate", "SR_CERT_FAILED")
+	}
+	c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, filename))
+	return c.Blob(http.StatusOK, "application/pdf", pdfBytes)
 }
 
 // ── Phish-Button (Feature 5) ──────────────────────────────────────────────────

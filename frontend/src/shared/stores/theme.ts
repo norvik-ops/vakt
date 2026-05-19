@@ -13,7 +13,7 @@ interface ThemeStore {
 export const useThemeStore = create<ThemeStore>()(
   persist(
     (set, get) => ({
-      theme: 'dark',
+      theme: 'system',
       toggle: () => {
         // Cycle: dark → light → system → dark
         const cycle: Theme[] = ['dark', 'light', 'system']
@@ -39,3 +39,9 @@ function applyTheme(theme: Theme) {
     (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
   root.classList.toggle('dark', isDark)
 }
+
+// Re-apply when the OS color scheme changes (e.g. user toggles system dark mode while app is open).
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  const theme = useThemeStore.getState().theme
+  if (theme === 'system') applyTheme('system')
+})

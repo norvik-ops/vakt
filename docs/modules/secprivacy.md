@@ -2,7 +2,7 @@
 
 ## Übersicht
 
-SecPrivacy ist die zentrale DSGVO-Dokumentationsplattform innerhalb von SecHealth. Es deckt alle praxisrelevanten Pflichten der DSGVO ab: Verzeichnis der Verarbeitungstätigkeiten (Art. 30), Datenschutz-Folgeabschätzungen (Art. 35), Auftragsverarbeiterverträge (Art. 28) sowie Datenpannenmeldungen (Art. 33/34) und Betroffenenrechts-Anfragen (Art. 15–21). Pannenmeldungen werden automatisch mit dem SecVitals-Vorfallsregister verknüpft; abgeschlossene Betroffenenanfragen erzeugen automatisch einen Compliance-Nachweis in SecVitals.
+SecPrivacy ist die zentrale DSGVO-Dokumentationsplattform innerhalb von Vakt. Es deckt alle praxisrelevanten Pflichten der DSGVO ab: Verzeichnis der Verarbeitungstätigkeiten (Art. 30), Datenschutz-Folgeabschätzungen (Art. 35), Auftragsverarbeiterverträge (Art. 28) sowie Datenpannenmeldungen (Art. 33/34) und Betroffenenrechts-Anfragen (Art. 15–21). Pannenmeldungen werden automatisch mit dem SecVitals-Vorfallsregister verknüpft; abgeschlossene Betroffenenanfragen erzeugen automatisch einen Compliance-Nachweis in SecVitals.
 
 ## Aktivierung
 

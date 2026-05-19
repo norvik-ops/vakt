@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Download, FileText, ChevronRight, RefreshCw, Info,
   Circle, Clock, CheckCircle2, MinusCircle, Trash2, ListChecks, History,
+  Pencil, X, ShieldAlert,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../../../api/client'
@@ -35,11 +36,19 @@ import type { Evidence, Control } from '../types'
 import { maturityLabel, maturityColor } from '../utils/tisax'
 import { ControlMappingsBadge } from '../components/ControlMappingsBadge'
 import { useTranslation } from 'react-i18next'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 import { toast } from '../../../shared/hooks/useToast'
+import { handleApiError } from '../../../shared/utils/errorMessages'
 import { useAuthStore } from '../../../shared/stores/auth'
 import { ErrorState } from '../../../shared/components/ErrorState'
 import { useApprovalSetting, useRequestControlApproval } from '../hooks/useApprovals'
 import { Textarea } from '../../../components/ui/textarea'
+import {
+  useControlExceptions, useCreateControlException, useDeleteControlException,
+} from '../hooks/useExceptions'
+import type { ControlException, CreateControlExceptionInput } from '../hooks/useExceptions'
+import { useEvidenceHistory } from '../hooks/useEvidenceHistory'
+import type { EvidenceHistoryEntry } from '../hooks/useEvidenceHistory'
 
 // ── Status config ────────────────────────────────────────────────────────────
 
@@ -135,6 +144,84 @@ function ChangeLogTab({ controlId }: { controlId: string }) {
         <p className="text-sm text-secondary py-4 text-center">Noch keine Änderungen aufgezeichnet</p>
       )}
     </div>
+  )
+}
+
+// ── Evidence history dialog ──────────────────────────────────────────────────
+
+const STATUS_LABEL_MAP: Record<string, string> = {
+  pending_review: 'Ausstehende Prüfung',
+  approved: 'Genehmigt',
+  rejected: 'Abgelehnt',
+  expired: 'Abgelaufen',
+}
+
+function EvidenceHistoryDialog({
+  evidenceId,
+  evidenceTitle,
+  open,
+  onClose,
+}: {
+  evidenceId: string
+  evidenceTitle: string
+  open: boolean
+  onClose: () => void
+}) {
+  const { data: history, isLoading } = useEvidenceHistory(evidenceId)
+
+  function formatDateTime(iso: string): string {
+    return new Date(iso).toLocaleString('de-DE', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit',
+    })
+  }
+
+  function describeEntry(entry: EvidenceHistoryEntry): string {
+    if (entry.change_note) return entry.change_note
+    if (entry.status) return `Status gesetzt: ${STATUS_LABEL_MAP[entry.status] ?? entry.status}`
+    return 'Aktualisiert'
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <History className="w-4 h-4 text-secondary" aria-hidden="true" />
+            Verlauf — {evidenceTitle}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="py-2 space-y-3 max-h-96 overflow-y-auto">
+          {isLoading && (
+            <div className="flex justify-center py-8">
+              <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+          {!isLoading && (!history || history.length === 0) && (
+            <p className="text-sm text-secondary py-4 text-center">Kein Verlauf vorhanden</p>
+          )}
+          {!isLoading && history && history.length > 0 && history.map((entry) => (
+            <div key={entry.id} className="flex gap-3 text-sm">
+              <div className="w-7 h-7 rounded-full bg-surface2 flex items-center justify-center shrink-0 mt-0.5">
+                <History className="w-3.5 h-3.5 text-secondary" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-primary font-medium">{describeEntry(entry)}</p>
+                {entry.status && (
+                  <p className="text-xs text-secondary mt-0.5">
+                    Status: <span className="font-medium text-primary">{STATUS_LABEL_MAP[entry.status] ?? entry.status}</span>
+                  </p>
+                )}
+                <p className="text-xs text-secondary mt-0.5">{formatDateTime(entry.changed_at)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Schließen</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -248,10 +335,68 @@ export default function ControlDetailPage() {
   const { data: approvalSetting } = useApprovalSetting()
   const approvalRequired = approvalSetting?.approval_required ?? false
 
+  // Exceptions
+  const { data: exceptions } = useControlExceptions(controlId)
+  const createException = useCreateControlException(controlId)
+  const deleteException = useDeleteControlException()
+
   // 4-Augen approval request dialog
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false)
   const [pendingStatus, setPendingStatus] = useState('')
   const [approvalComment, setApprovalComment] = useState('')
+
+  // Owner inline edit
+  const [ownerEditing, setOwnerEditing] = useState(false)
+  const [ownerDraft, setOwnerDraft] = useState('')
+
+  function handleOwnerEditStart() {
+    setOwnerDraft(control?.owner ?? '')
+    setOwnerEditing(true)
+  }
+
+  function handleOwnerSave() {
+    if (!control) return
+    updateControl.mutate(
+      {
+        controlId: control.id,
+        not_applicable: control.not_applicable,
+        reason: control.not_applicable_reason ?? '',
+        manual_status: (['in_progress', 'implemented'] as const).includes(control.status as 'in_progress' | 'implemented')
+          ? control.status as 'in_progress' | 'implemented'
+          : '',
+        owner: ownerDraft,
+      },
+      {
+        onSuccess: () => {
+          setOwnerEditing(false)
+          toast('Verantwortlicher gespeichert', 'success')
+        },
+        onError: (err) => toast(handleApiError(err), 'error'),
+      },
+    )
+  }
+
+  // Exception dialog
+  const [exceptionOpen, setExceptionOpen] = useState(false)
+  const [exForm, setExForm] = useState<CreateControlExceptionInput>({
+    title: '', reason: '', risk_accepted: '', approved_by: '', expires_at: null,
+  })
+
+  function resetExForm() {
+    setExForm({ title: '', reason: '', risk_accepted: '', approved_by: '', expires_at: null })
+    setExceptionOpen(false)
+  }
+
+  function handleExceptionSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    createException.mutate(
+      { ...exForm, expires_at: exForm.expires_at || null },
+      {
+        onSuccess: () => { resetExForm(); toast('Ausnahme gespeichert', 'success') },
+        onError: (err) => toast(handleApiError(err), 'error'),
+      },
+    )
+  }
 
   useEffect(() => {
     if (control) trackPage(window.location.pathname + window.location.search, control.title, '🛡️')
@@ -285,6 +430,17 @@ export default function ControlDetailPage() {
   const [reviewNotes, setReviewNotes] = useState('')
   const review = useReviewEvidence(reviewingId, controlId)
 
+  // Evidence history dialog
+  const [historyEvidenceId, setHistoryEvidenceId] = useState('')
+  const [historyEvidenceTitle, setHistoryEvidenceTitle] = useState('')
+  const [historyOpen, setHistoryOpen] = useState(false)
+
+  function openHistory(evidenceId: string, evidenceTitle: string) {
+    setHistoryEvidenceId(evidenceId)
+    setHistoryEvidenceTitle(evidenceTitle)
+    setHistoryOpen(true)
+  }
+
   // NA dialog
   const [naOpen, setNaOpen] = useState(false)
 
@@ -308,7 +464,7 @@ export default function ControlDetailPage() {
       },
       {
         onSuccess: () => toast(t('secvitals.controlDetailPage.toastSaved'), 'success'),
-        onError: (err) => toast(`Fehler: ${err.message}`, 'error'),
+        onError: (err) => toast(handleApiError(err), 'error'),
       },
     )
   }
@@ -323,7 +479,7 @@ export default function ControlDetailPage() {
           setApprovalComment('')
           setPendingStatus('')
         },
-        onError: (err) => toast(`Fehler: ${err.message}`, 'error'),
+        onError: (err) => toast(handleApiError(err), 'error'),
       },
     )
   }
@@ -361,14 +517,14 @@ export default function ControlDetailPage() {
       if (expiresAt) fd.append('expires_at', expiresAtISO ?? '')
       uploadEvidence.mutate(fd, {
         onSuccess: () => { resetAddForm(); toast(t('secvitals.controlDetailPage.toastEvidenceUploaded'), 'success') },
-        onError: (err) => toast(`Fehler: ${err.message}`, 'error'),
+        onError: (err) => toast(handleApiError(err), 'error'),
       })
     } else {
       addEvidence.mutate(
         { title, type, notes: notes || undefined, expires_at: expiresAtISO },
         {
           onSuccess: () => { resetAddForm(); toast(t('secvitals.controlDetailPage.toastEvidenceAdded'), 'success') },
-          onError: (err) => toast(`Fehler: ${err.message}`, 'error'),
+          onError: (err) => toast(handleApiError(err), 'error'),
         },
       )
     }
@@ -390,7 +546,7 @@ export default function ControlDetailPage() {
           setReviewOpen(false)
           toast(t('secvitals.controlDetailPage.toastReviewDone'), 'success')
         },
-        onError: (err) => toast(`Fehler: ${err.message}`, 'error'),
+        onError: (err) => toast(handleApiError(err), 'error'),
       },
     )
   }
@@ -462,6 +618,12 @@ export default function ControlDetailPage() {
               {/* Status selector: maturity radio buttons for TISAX, status toggle for others */}
               {isTISAX ? (
                 <div data-testid="maturity-radio-group" className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-secondary mr-1">
+                    <TermTooltip
+                      term="Reifegrad"
+                      explanation="Bewertung 0–5 nach CMMI: 0 = nicht vorhanden, 1 = ad-hoc, 3 = definiert, 5 = optimiert"
+                    />
+                  </span>
                   {([0, 1, 2, 3] as const).map((score) => (
                     <button
                       key={score}
@@ -481,6 +643,13 @@ export default function ControlDetailPage() {
                   ))}
                 </div>
               ) : (
+                <div className="flex flex-col items-end gap-1">
+                  <span className="text-xs text-secondary">
+                    <TermTooltip
+                      term="Status"
+                      explanation="Implementierungsstand dieser Kontrolle: Geplant / In Umsetzung / Implementiert / Nicht zutreffend"
+                    />
+                  </span>
                 <Select
                   value={currentStatus}
                   onValueChange={handleStatusChange}
@@ -503,6 +672,7 @@ export default function ControlDetailPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                </div>
               )}
             </div>
 
@@ -518,6 +688,52 @@ export default function ControlDetailPage() {
               <p className="text-sm text-secondary italic">{t('secvitals.controlDetailPage.noDescription')}</p>
             )}
 
+            {/* Owner inline edit */}
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-secondary font-medium w-28 shrink-0">Verantwortlicher</span>
+              {ownerEditing ? (
+                <div className="flex items-center gap-2 flex-1">
+                  <Input
+                    value={ownerDraft}
+                    onChange={(e) => setOwnerDraft(e.target.value)}
+                    placeholder="E-Mail oder Name"
+                    className="h-7 text-sm flex-1"
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={handleOwnerSave}
+                    disabled={updateControl.isPending}
+                  >
+                    Speichern
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setOwnerEditing(false)}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 flex-1">
+                  <span className={cn('text-primary', !control.owner && 'text-secondary italic')}>
+                    {control.owner || '-'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleOwnerEditStart}
+                    className="text-secondary hover:text-primary transition-colors"
+                    title="Verantwortlichen bearbeiten"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
             <ControlMappingsBadge controlId={control.id} />
           </div>
         ) : null}
@@ -529,6 +745,7 @@ export default function ControlDetailPage() {
               <CardTitle className="text-sm">{t('secvitals.controlDetailPage.subControls')}</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -567,6 +784,7 @@ export default function ControlDetailPage() {
                   })}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -648,6 +866,70 @@ export default function ControlDetailPage() {
           />
         )}
 
+        {/* Exceptions / Waivers */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4" />
+                Ausnahmen / Ausnahmegenehmigungen
+              </CardTitle>
+              <Button size="sm" variant="outline" onClick={() => setExceptionOpen(true)}>
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Neue Ausnahme
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {!exceptions || exceptions.length === 0 ? (
+              <div className="py-8 text-center text-sm text-secondary">
+                Keine Ausnahmen für diesen Control
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {exceptions.map((ex: ControlException) => (
+                  <div key={ex.id} className="p-4 space-y-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-primary">{ex.title}</span>
+                        <Badge
+                          variant={
+                            ex.status === 'active' ? 'warning'
+                            : ex.status === 'revoked' ? 'destructive'
+                            : 'secondary'
+                          }
+                          className="text-xs"
+                        >
+                          {ex.status === 'active' ? 'Aktiv' : ex.status === 'expired' ? 'Abgelaufen' : 'Widerrufen'}
+                        </Badge>
+                      </div>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          className="text-secondary hover:text-destructive transition-colors shrink-0"
+                          title="Ausnahme löschen"
+                          onClick={() => deleteException.mutate({ id: ex.id, controlId: controlId })}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-xs text-secondary">{ex.reason}</p>
+                    <div className="flex flex-wrap gap-4 text-xs text-secondary">
+                      {ex.approved_by && (
+                        <span>Genehmigt von: <span className="text-primary">{ex.approved_by}</span></span>
+                      )}
+                      {ex.expires_at && (
+                        <span>Gültig bis: <span className="text-primary">{new Date(ex.expires_at).toLocaleDateString('de-DE')}</span></span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Evidence */}
         <Card>
           <CardHeader>
@@ -665,6 +947,7 @@ export default function ControlDetailPage() {
                 <p className="text-xs text-secondary mt-1">{t('secvitals.controlDetailPage.noEvidenceDesc')}</p>
               </div>
             ) : (
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -693,20 +976,32 @@ export default function ControlDetailPage() {
                         {new Date(ev.created_at).toLocaleDateString('de-DE')}
                       </TableCell>
                       <TableCell>
-                        {ev.status === 'pending_review' && (
+                        <div className="flex items-center gap-2">
+                          {ev.status === 'pending_review' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openReview(ev.id)}
+                            >
+                              {t('secvitals.controlDetailPage.review')}
+                            </Button>
+                          )}
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            onClick={() => openReview(ev.id)}
+                            className="text-secondary hover:text-primary"
+                            title="Verlauf anzeigen"
+                            onClick={() => openHistory(ev.id, ev.title)}
                           >
-                            {t('secvitals.controlDetailPage.review')}
+                            <History className="w-3.5 h-3.5" aria-hidden="true" />
                           </Button>
-                        )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -750,6 +1045,14 @@ export default function ControlDetailPage() {
           onClose={() => setNaOpen(false)}
         />
       )}
+
+      {/* Evidence History Dialog */}
+      <EvidenceHistoryDialog
+        evidenceId={historyEvidenceId}
+        evidenceTitle={historyEvidenceTitle}
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+      />
 
       {/* 4-Augen: Approval Request Dialog */}
       <Dialog open={approvalDialogOpen} onOpenChange={(v) => { if (!v) { setApprovalDialogOpen(false); setApprovalComment(''); setPendingStatus('') } }}>
@@ -942,6 +1245,92 @@ export default function ControlDetailPage() {
               <Button type="button" variant="outline" onClick={() => setReviewOpen(false)}>{t('common.cancel')}</Button>
               <Button type="submit" disabled={review.isPending}>
                 {review.isPending ? t('secvitals.controlDetailPage.reviewSaving') : t('secvitals.controlDetailPage.reviewComplete')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Exception (Waiver) Dialog */}
+      <Dialog open={exceptionOpen} onOpenChange={(v) => { if (!v) resetExForm() }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Neue Ausnahme anlegen</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={(e) => { void handleExceptionSubmit(e) }}>
+            <div className="py-4 space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="ex-title">Titel <span className="text-red-500">*</span></Label>
+                <Input
+                  id="ex-title"
+                  value={exForm.title}
+                  onChange={(e) => setExForm((f) => ({ ...f, title: e.target.value }))}
+                  placeholder="Kurze Beschreibung der Ausnahme"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ex-reason">Begründung <span className="text-red-500">*</span></Label>
+                <textarea
+                  id="ex-reason"
+                  rows={3}
+                  className="w-full rounded-md border border-border bg-surface2 text-primary px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
+                  value={exForm.reason}
+                  onChange={(e) => setExForm((f) => ({ ...f, reason: e.target.value }))}
+                  placeholder="Warum wird diese Ausnahme beantragt?"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ex-risk">
+                  <TermTooltip
+                    term="Akzeptiertes Risiko"
+                    explanation="Formale Risikoakzeptanz: Das verbleibende Risiko nach Maßnahmen wird bewusst in Kauf genommen"
+                  />{' '}
+                  <span className="text-red-500">*</span>
+                </Label>
+                <textarea
+                  id="ex-risk"
+                  rows={2}
+                  className="w-full rounded-md border border-border bg-surface2 text-primary px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
+                  value={exForm.risk_accepted}
+                  onChange={(e) => setExForm((f) => ({ ...f, risk_accepted: e.target.value }))}
+                  placeholder="Welches Risiko wird bewusst akzeptiert?"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ex-approved-by">Genehmigt von</Label>
+                <Input
+                  id="ex-approved-by"
+                  value={exForm.approved_by ?? ''}
+                  onChange={(e) => setExForm((f) => ({ ...f, approved_by: e.target.value }))}
+                  placeholder="E-Mail oder Name des Genehmigenden"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ex-expires-at">Gültig bis</Label>
+                <Input
+                  id="ex-expires-at"
+                  type="date"
+                  value={typeof exForm.expires_at === 'string' ? exForm.expires_at : ''}
+                  onChange={(e) => setExForm((f) => ({ ...f, expires_at: e.target.value || null }))}
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={resetExForm}>Abbrechen</Button>
+              <Button
+                type="submit"
+                disabled={
+                  createException.isPending ||
+                  !exForm.title.trim() ||
+                  !exForm.reason.trim() ||
+                  !exForm.risk_accepted.trim()
+                }
+              >
+                {createException.isPending ? 'Wird gespeichert…' : 'Ausnahme speichern'}
               </Button>
             </DialogFooter>
           </form>

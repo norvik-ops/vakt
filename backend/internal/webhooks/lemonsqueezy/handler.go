@@ -21,7 +21,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 
-	"github.com/sechealth-app/sechealth/internal/license"
+	"github.com/matharnica/vakt/internal/license"
 )
 
 // SMTPConfig holds mail delivery settings (reuses values from the main config).

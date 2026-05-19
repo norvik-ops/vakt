@@ -107,3 +107,22 @@ export function useDeleteCAPA() {
     },
   })
 }
+
+export interface BulkUpdateCAPAsInput {
+  ids: string[]
+  status: 'open' | 'in_progress' | 'implemented' | 'verified' | 'closed'
+}
+
+export function useBulkUpdateCAPAs() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, BulkUpdateCAPAsInput>({
+    mutationFn: (data) =>
+      apiFetch<void>('/secvitals/capas/bulk', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['secvitals', 'capas'] })
+    },
+  })
+}

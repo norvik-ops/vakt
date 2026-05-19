@@ -191,8 +191,14 @@ export default function ChecklistsPage() {
       {!isLoading && checklists.length === 0 && (
         <EmptyState
           icon={ClipboardList}
-          title="Keine Checklisten"
-          description="Erstellen Sie die erste Onboarding- oder Offboarding-Checkliste."
+          title="Noch keine Checklisten"
+          description="Erstellen Sie die erste Onboarding- oder Offboarding-Checkliste, um Mitarbeiter-Lifecycle strukturiert zu dokumentieren."
+          action={
+            <Button onClick={openCreate} size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Checkliste erstellen
+            </Button>
+          }
         />
       )}
 

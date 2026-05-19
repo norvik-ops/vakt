@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/sechealth-app/sechealth/internal/auth"
-	"github.com/sechealth-app/sechealth/internal/config"
+	"github.com/matharnica/vakt/internal/auth"
+	"github.com/matharnica/vakt/internal/config"
 )
 
 // TestOIDCLogin_CasdoorNotConfigured checks that the sentinel error is returned

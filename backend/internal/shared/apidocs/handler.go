@@ -1,4 +1,8 @@
 // Package apidocs provides Swagger UI and OpenAPI spec endpoints.
+// All static assets (swagger-ui CSS and JS) are embedded at compile time
+// from the dist/ subdirectory so that no external CDN is required. This
+// satisfies the Vakt self-hosted principle: nothing leaves the customer's
+// own infrastructure, and the UI works fully offline.
 package apidocs
 
 import (
@@ -7,29 +11,57 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// ServeSwaggerUI delivers a Swagger UI HTML page that loads the OpenAPI spec.
+// ServeSwaggerUI delivers a Swagger UI HTML page. All CSS and JS are served
+// from self-hosted paths (/api/docs/swagger-ui.css and
+// /api/docs/swagger-ui-bundle.js) that are backed by the embedded dist/ files.
+// No unpkg.com or other CDN is referenced.
 func ServeSwaggerUI(c echo.Context) error {
 	html := `<!DOCTYPE html>
 <html>
 <head>
-  <title>SecHealth API Docs</title>
+  <title>Vakt API Docs</title>
   <meta charset="utf-8"/>
-  <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" type="text/css" href="/api/docs/swagger-ui.css">
 </head>
 <body>
 <div id="swagger-ui"></div>
-<script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+<script src="/api/docs/swagger-ui-bundle.js"></script>
 <script>
-SwaggerUIBundle({
-  url: "/api/v1/openapi.yaml",
-  dom_id: '#swagger-ui',
-  presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.presets.standalone],
-  layout: "BaseLayout"
-})
+window.onload = function() {
+  SwaggerUIBundle({
+    url: "/api/v1/openapi.yaml",
+    dom_id: '#swagger-ui',
+    presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.presets.standalone],
+    layout: "BaseLayout",
+    deepLinking: true,
+    displayRequestDuration: true
+  });
+};
 </script>
 </body>
 </html>`
 	return c.HTML(http.StatusOK, html)
+}
+
+// ServeSwaggerCSS serves the vendored swagger-ui CSS from the embedded dist/ directory.
+func ServeSwaggerCSS(c echo.Context) error {
+	data, err := staticFiles.ReadFile("dist/swagger-ui.css")
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "swagger-ui.css not found")
+	}
+	c.Response().Header().Set("Content-Type", "text/css; charset=utf-8")
+	c.Response().Header().Set("Cache-Control", "public, max-age=86400")
+	return c.Blob(http.StatusOK, "text/css; charset=utf-8", data)
+}
+
+// ServeSwaggerJS serves the vendored swagger-ui-bundle JS from the embedded dist/ directory.
+func ServeSwaggerJS(c echo.Context) error {
+	data, err := staticFiles.ReadFile("dist/swagger-ui-bundle.js")
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "swagger-ui-bundle.js not found")
+	}
+	return c.Blob(http.StatusOK, "application/javascript; charset=utf-8", data)
 }
 
 // ServeOpenAPISpec delivers a minimal OpenAPI 3.0 YAML specification.

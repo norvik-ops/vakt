@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, getAuthToken } from '../../../api/client'
+import { apiFetch } from '../../../api/client'
 import type { Asset, SLAEntry } from '../types'
 import type { PaginatedResponse } from '../../../shared/types/pagination'
 
@@ -59,10 +59,9 @@ export function useImportAssets() {
   const queryClient = useQueryClient()
   return useMutation<ImportAssetsResult, Error, FormData>({
     mutationFn: (formData) => {
-      const token = getAuthToken()
       return fetch('/api/v1/secpulse/assets/import', {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
         body: formData,
       }).then(async (res) => {
         if (!res.ok) {

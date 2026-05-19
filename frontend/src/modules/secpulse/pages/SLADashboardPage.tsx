@@ -4,6 +4,7 @@ import { Clock, AlertTriangle } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Badge } from '../../../components/ui/badge'
+import { Button } from '../../../components/ui/button'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/ui/table'
 import { useSLADashboard } from '../hooks/useAssets'
 import type { SLAEntry } from '../types'
@@ -137,10 +138,17 @@ export default function SLADashboardPage() {
             title={activeTab === 'overdue' ? 'Keine überfälligen Findings' : 'Keine Findings in diesem Filter'}
             description={
               activeTab === 'all'
-                ? 'Alle Findings liegen im SLA-Rahmen oder es gibt keine offenen Findings.'
+                ? 'Noch keine offenen Findings. Starte einen Scan, um SLA-Tracking zu aktivieren.'
                 : activeTab === 'overdue'
                   ? 'Alle offenen Findings befinden sich noch im SLA-Zeitfenster.'
                   : 'Keine Findings haben mehr als 50% ihrer SLA-Zeit verbraucht.'
+            }
+            action={
+              activeTab === 'all' ? (
+                <Button size="sm" onClick={() => navigate('/secpulse/assets')}>
+                  Assets anzeigen
+                </Button>
+              ) : undefined
             }
           />
         )}

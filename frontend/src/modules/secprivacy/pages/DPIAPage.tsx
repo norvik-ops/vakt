@@ -12,6 +12,9 @@ import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { InfoBanner } from '../../../shared/components/InfoBanner'
 import { ProGate } from '../../../shared/components/ProGate'
+import { FieldError } from '../../../shared/components/FieldError'
+import { useFormValidation } from '../../../shared/hooks/useFormValidation'
+import { toast } from '../../../shared/hooks/useToast'
 import { useDPIAs, useCreateDPIA, useUpdateDPIA, useApproveDPIA, useDeleteDPIA, useExportDPIA } from '../hooks/useDPIAs'
 import { useVVT } from '../hooks/useVVT'
 import type { DPIA, CreateDPIAInput, UpdateDPIAInput } from '../types'
@@ -134,23 +137,28 @@ function DPIAForm({
   onChange,
   showVvtSelector,
   vvtEntries,
+  errors,
+  onClearError,
 }: {
   form: DPIAFormState
   onChange: (f: DPIAFormState) => void
   showVvtSelector: boolean
   vvtEntries?: { id: string; name: string }[]
+  errors?: Partial<Record<string, string>>
+  onClearError?: (field: string) => void
 }) {
   const set = (patch: Partial<DPIAFormState>) => onChange({ ...form, ...patch })
 
   return (
     <div className="space-y-4 py-2">
       <div className="space-y-1.5">
-        <Label>Titel *</Label>
+        <Label>Titel <span className="text-red-400 text-xs">*</span></Label>
         <Input
           placeholder="z.B. DSFA für KI-gestützte Videoüberwachung"
           value={form.title}
-          onChange={(e) => set({ title: e.target.value })}
+          onChange={(e) => { set({ title: e.target.value }); onClearError?.('title') }}
         />
+        <FieldError error={errors?.title ?? null} />
       </div>
       {showVvtSelector && vvtEntries && vvtEntries.length > 0 && (
         <div className="space-y-1.5">
@@ -240,6 +248,9 @@ export default function DPIAPage() {
   const approveDPIA = useApproveDPIA()
   const deleteDPIA = useDeleteDPIA()
   const exportDPIA = useExportDPIA()
+  const { errors: dpiaErrors, validate: validateDPIA, clearError: clearDPIAError, clearAll: clearDPIAErrors } = useFormValidation<Record<string, unknown>>({
+    title: { required: true },
+  })
 
   async function handleExport() {
     try {
@@ -253,12 +264,14 @@ export default function DPIAPage() {
   function openCreate() {
     setForm(emptyForm())
     setEditId(null)
+    clearDPIAErrors()
     setDialogMode('create')
   }
 
   function openEdit(dpia: DPIA) {
     setForm(formFromEntry(dpia))
     setEditId(dpia.id)
+    clearDPIAErrors()
     setDialogMode('edit')
   }
 
@@ -276,6 +289,7 @@ export default function DPIAPage() {
   }
 
   function handleSubmit() {
+    if (!validateDPIA({ title: form.title })) return
     if (dialogMode === 'create') {
       const payload: CreateDPIAInput = {
         title: form.title,
@@ -287,7 +301,12 @@ export default function DPIAPage() {
         dpo_consultation: form.dpo_consultation,
         vvt_entry_id: form.vvt_entry_id,
       }
-      createDPIA.mutate(payload, { onSuccess: () => setDialogMode(null) })
+      createDPIA.mutate(payload, {
+        onSuccess: () => {
+          setDialogMode(null)
+          toast(`DSFA erstellt: "${form.title}"`, 'success')
+        },
+      })
     } else if (dialogMode === 'edit' && editId) {
       const payload: UpdateDPIAInput = {
         title: form.title,
@@ -345,8 +364,8 @@ export default function DPIAPage() {
         {!isLoading && !isError && dpias?.length === 0 && (
           <EmptyState
             icon={FileSearch}
-            title="Keine DSFAs"
-            description="Erstelle deine erste Datenschutz-Folgenabschätzung."
+            title="Noch keine Datenschutz-Folgenabschätzungen"
+            description="DSFAs sind nach Art. 35 DSGVO verpflichtend bei hochriskanten Verarbeitungen (z.B. Profiling, Biometrie, Videoüberwachung). Erstelle die erste DSFA, um die Pflicht zu erfüllen."
             action={
               <Button onClick={openCreate}>
                 <Plus className="w-4 h-4 mr-1" />
@@ -398,12 +417,14 @@ export default function DPIAPage() {
             onChange={setForm}
             showVvtSelector={dialogMode === 'create'}
             vvtEntries={vvtEntries}
+            errors={dpiaErrors}
+            onClearError={clearDPIAError}
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogMode(null)}>
               Abbrechen
             </Button>
-            <Button onClick={handleSubmit} disabled={!form.title || isPending}>
+            <Button onClick={handleSubmit} disabled={isPending}>
               {isPending ? 'Speichern …' : dialogMode === 'create' ? 'DSFA erstellen' : 'Speichern'}
             </Button>
           </DialogFooter>

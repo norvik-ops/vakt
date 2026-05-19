@@ -52,3 +52,59 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--color-border2); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-text3); }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Table density: compact mode tightens row padding and font size */
+:root[data-density="compact"] table tbody tr td,
+:root[data-density="compact"] table tbody tr th {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+  font-size: 0.8125rem;
+}
+:root[data-density="compact"] table tbody tr {
+  height: auto;
+}
+
+@media print {
+  /* Hide navigation, sidebar, buttons */
+  [data-sidebar], nav, aside, header,
+  .no-print, button:not(.print-show),
+  [role="navigation"] {
+    display: none !important;
+  }
+
+  /* Page setup */
+  body { background: white !important; color: black !important; font-size: 11pt; }
+
+  /* Full width content */
+  main, [role="main"], .content-area {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Keep charts/tables visible */
+  table { break-inside: avoid; }
+  .recharts-wrapper { break-inside: avoid; }
+
+  /* Page break helpers */
+  .print-break-before { break-before: page; }
+  .print-break-avoid { break-inside: avoid; }
+
+  /* Links show URL */
+  a[href]:after { content: " (" attr(href) ")"; font-size: 9pt; color: #666; }
+  a[href^="/"]:after { content: none; }
+
+  /* Brand colors on print */
+  .text-brand { color: #2563eb !important; }
+}

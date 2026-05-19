@@ -15,8 +15,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
-
-	"github.com/sechealth-app/sechealth/internal/modules/secvitals"
 )
 
 const azureSource = "azure-collector"
@@ -24,15 +22,15 @@ const azureSource = "azure-collector"
 // AzureCollector collects compliance evidence from an Azure subscription via REST API.
 type AzureCollector struct {
 	db         *pgxpool.Pool
-	svRepo     *secvitals.Repository
+	evidence   EvidenceWriter
 	httpClient *http.Client
 }
 
 // NewAzureCollector creates a new AzureCollector.
-func NewAzureCollector(db *pgxpool.Pool) *AzureCollector {
+func NewAzureCollector(db *pgxpool.Pool, evidence EvidenceWriter) *AzureCollector {
 	return &AzureCollector{
-		db:     db,
-		svRepo: secvitals.NewRepository(db),
+		db:       db,
+		evidence: evidence,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -47,12 +45,12 @@ func (c *AzureCollector) Collect(ctx context.Context, orgID string, cfg AzureCon
 		return 0, fmt.Errorf("azure auth: %w", err)
 	}
 
-	securityControls, err := c.svRepo.FindControlsByKeywords(ctx, orgID, []string{"security", "cloud", "monitoring", "azure"})
+	securityControls, err := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"security", "cloud", "monitoring", "azure"})
 	if err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("azure_collector: no security controls found")
 	}
 
-	policyControls, err := c.svRepo.FindControlsByKeywords(ctx, orgID, []string{"policy", "compliance", "configuration"})
+	policyControls, err := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"policy", "compliance", "configuration"})
 	if err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("azure_collector: no policy controls found")
 	}
@@ -162,12 +160,11 @@ func (c *AzureCollector) addEvidence(ctx context.Context, orgID, controlID, titl
 		log.Debug().Str("org_id", orgID).Str("title", title).Msg("azure_collector: no matching control, skipping evidence")
 		return nil
 	}
-	_, err := c.svRepo.AddCollectorEvidence(ctx, orgID, controlID, "", azureSource, title, data)
-	return err
+	return c.evidence.AddCollectorEvidence(ctx, orgID, controlID, "", azureSource, title, data)
 }
 
 // collectSecureScore collects the Azure Secure Score.
-func (c *AzureCollector) collectSecureScore(ctx context.Context, orgID, subID, token string, controls []secvitals.Control) (int, error) {
+func (c *AzureCollector) collectSecureScore(ctx context.Context, orgID, subID, token string, controls []ControlMatch) (int, error) {
 	apiURL := fmt.Sprintf(
 		"https://management.azure.com/subscriptions/%s/providers/Microsoft.Security/secureScores?api-version=2020-01-01",
 		subID,
@@ -202,7 +199,7 @@ func (c *AzureCollector) collectSecureScore(ctx context.Context, orgID, subID, t
 }
 
 // collectSecurityAssessments collects Azure Security Center findings.
-func (c *AzureCollector) collectSecurityAssessments(ctx context.Context, orgID, subID, token string, controls []secvitals.Control) (int, error) {
+func (c *AzureCollector) collectSecurityAssessments(ctx context.Context, orgID, subID, token string, controls []ControlMatch) (int, error) {
 	apiURL := fmt.Sprintf(
 		"https://management.azure.com/subscriptions/%s/providers/Microsoft.Security/assessments?api-version=2021-06-01",
 		subID,
@@ -248,7 +245,7 @@ func (c *AzureCollector) collectSecurityAssessments(ctx context.Context, orgID, 
 }
 
 // collectPolicyCompliance collects Azure Policy compliance summary.
-func (c *AzureCollector) collectPolicyCompliance(ctx context.Context, orgID, subID, token string, controls []secvitals.Control) (int, error) {
+func (c *AzureCollector) collectPolicyCompliance(ctx context.Context, orgID, subID, token string, controls []ControlMatch) (int, error) {
 	apiURL := fmt.Sprintf(
 		"https://management.azure.com/subscriptions/%s/providers/Microsoft.Authorization/policyStates/latest/summarize?api-version=2019-10-01",
 		subID,

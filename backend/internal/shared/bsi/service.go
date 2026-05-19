@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
-	"github.com/sechealth-app/sechealth/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/notify"
 )
 
 // assetKeywords is a set of lower-case product names that are matched against

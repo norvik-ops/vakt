@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/sechealth-app/sechealth/internal/config"
+	"github.com/matharnica/vakt/internal/config"
 )
 
 func testConfig() *config.Config {
@@ -16,7 +16,7 @@ func testConfig() *config.Config {
 		cfg = &config.Config{
 			Version:        "0.1.0",
 			APIPort:        "8080",
-			ModulesEnabled: "vulnboard,complykit,secretops,phishguard",
+			ModulesEnabled: "secpulse,secvitals,secvault,secreflex,secprivacy",
 		}
 	}
 	return cfg
@@ -28,5 +28,5 @@ func TestHealthEndpoint(t *testing.T) {
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"status":"ok","version":"0.1.0","demo":false,"sso_enabled":false}`, rec.Body.String())
+	assert.JSONEq(t, `{"status":"ok"}`, rec.Body.String())
 }

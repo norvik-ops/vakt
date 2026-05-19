@@ -48,7 +48,7 @@ type ScheduledReport struct {
 // CreateScheduledReportInput is the validated input for creating a report schedule.
 type CreateScheduledReportInput struct {
 	Name       string   `json:"name"        validate:"required,min=1,max=255"`
-	ReportType string   `json:"report_type" validate:"required,oneof=compliance findings risk"`
+	ReportType string   `json:"report_type" validate:"required,oneof=compliance findings risk board_report"`
 	Schedule   string   `json:"schedule"    validate:"required,oneof=weekly monthly quarterly"`
 	Recipients []string `json:"recipients"  validate:"required,min=1"`
 	Format     string   `json:"format"      validate:"omitempty,oneof=pdf csv"`
@@ -58,22 +58,37 @@ type CreateScheduledReportInput struct {
 // UpdateScheduledReportInput is the validated input for updating a report schedule.
 type UpdateScheduledReportInput struct {
 	Name       *string  `json:"name"        validate:"omitempty,min=1,max=255"`
-	ReportType *string  `json:"report_type" validate:"omitempty,oneof=compliance findings risk"`
+	ReportType *string  `json:"report_type" validate:"omitempty,oneof=compliance findings risk board_report"`
 	Schedule   *string  `json:"schedule"    validate:"omitempty,oneof=weekly monthly quarterly"`
 	Recipients []string `json:"recipients"`
 	Format     *string  `json:"format"      validate:"omitempty,oneof=pdf csv"`
 	Active     *bool    `json:"active"`
 }
 
+// BoardReportProvider is implemented by the secvitals Service to generate board
+// report PDFs. Using an interface avoids a circular import between scheduledreports
+// and secvitals.
+type BoardReportProvider interface {
+	GetBoardReportPDF(ctx context.Context, orgID string) ([]byte, error)
+}
+
 // Service manages scheduled report CRUD and delivery.
 type Service struct {
-	db   *pgxpool.Pool
-	smtp SMTPConfig
+	db          *pgxpool.Pool
+	smtp        SMTPConfig
+	boardReport BoardReportProvider
 }
 
 // NewService creates a new scheduled reports service.
 func NewService(db *pgxpool.Pool, smtpCfg SMTPConfig) *Service {
 	return &Service{db: db, smtp: smtpCfg}
+}
+
+// WithBoardReportProvider attaches a board report provider to the service.
+// Call this after NewService when the secvitals service is available.
+func (s *Service) WithBoardReportProvider(p BoardReportProvider) *Service {
+	s.boardReport = p
+	return s
 }
 
 // List returns all scheduled reports for the given org.
@@ -319,7 +334,8 @@ func (s *Service) RunReport(ctx context.Context, r ScheduledReport) error {
 		attachFn func() ([]byte, string, error) // returns data, filename, error
 	)
 
-	if r.ReportType == "findings" && r.Format == "csv" {
+	switch {
+	case r.ReportType == "findings" && r.Format == "csv":
 		csvData, err := s.buildFindingsCSV(ctx, r.OrgID)
 		if err != nil {
 			log.Error().Err(err).Str("report_id", r.ID).Msg("scheduled_reports: build findings CSV failed")
@@ -334,7 +350,26 @@ func (s *Service) RunReport(ctx context.Context, r ScheduledReport) error {
 		attachFn = func() ([]byte, string, error) {
 			return csvBytes, "findings.csv", nil
 		}
-	} else {
+	case r.ReportType == "board_report":
+		body = fmt.Sprintf(
+			"<p>Ihr geplanter Management-Board-Bericht <strong>%s</strong> ist beigefügt.</p>"+
+				"<p>Zeitplan: %s</p>",
+			r.Name, r.Schedule,
+		)
+		if s.boardReport != nil {
+			orgID := r.OrgID
+			attachFn = func() ([]byte, string, error) {
+				pdfBytes, err := s.boardReport.GetBoardReportPDF(ctx, orgID)
+				if err != nil {
+					return nil, "", fmt.Errorf("board report PDF: %w", err)
+				}
+				filename := fmt.Sprintf("vakt-board-report-%s.pdf", time.Now().UTC().Format("2006-01-02"))
+				return pdfBytes, filename, nil
+			}
+		} else {
+			log.Warn().Str("report_id", r.ID).Msg("scheduled_reports: board report provider not configured")
+		}
+	default:
 		body = fmt.Sprintf(
 			"<p>Ihr geplanter Bericht <strong>%s</strong> (Typ: %s) wird demnächst angehängt.</p>"+
 				"<p>Format: %s | Zeitplan: %s</p>",

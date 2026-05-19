@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Download } from 'lucide-react'
 import { Button } from '../../components/ui/button'
-import { getAuthToken } from '../../api/client'
 import { toast } from '../hooks/useToast'
 
 interface ExportButtonProps {
@@ -22,11 +21,8 @@ export function ExportButton({
   async function handleClick() {
     setIsLoading(true)
     try {
-      const token = getAuthToken() ?? ''
       const res = await fetch(endpoint, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',
       })
 
       if (!res.ok) {

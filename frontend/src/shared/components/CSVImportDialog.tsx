@@ -9,7 +9,6 @@ import {
   DialogFooter,
 } from '../../components/ui/dialog'
 import { Progress } from '../../components/ui/progress'
-import { getAuthToken } from '../../api/client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -176,8 +175,6 @@ export function CSVImportDialog({
     const formData = new FormData()
     formData.append('file', file)
 
-    const token = getAuthToken()
-
     try {
       // Simulate progress since fetch doesn't support upload progress natively
       const timer = setInterval(() => {
@@ -186,7 +183,7 @@ export function CSVImportDialog({
 
       const res = await fetch(endpoint, {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
         body: formData,
       })
 

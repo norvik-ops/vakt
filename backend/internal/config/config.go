@@ -60,6 +60,12 @@ type Config struct {
 	PromoteURL string
 	// PromoteSecret is the shared secret sent in X-Promote-Secret header.
 	PromoteSecret string
+	// CORSOrigins is the list of allowed CORS origins loaded from VAKT_CORS_ORIGINS
+	// (comma-separated). Defaults to ["*"] when not set, preserving dev behaviour.
+	CORSOrigins []string
+	// MetricsEnabled controls whether the /metrics endpoint is registered.
+	// Set VAKT_METRICS_ENABLED=true to expose Prometheus metrics (still IP-allowlisted).
+	MetricsEnabled bool
 }
 
 // IsModuleEnabled reports whether the named module (e.g. "secpulse") appears in
@@ -115,10 +121,27 @@ func Load() (*Config, error) {
 		LicenseKey:        getEnv("VAKT_LICENSE_KEY", ""),
 		LSWebhookSecret:   getEnv("VAKT_LS_WEBHOOK_SECRET", ""),
 		LicensePrivateKey: getEnv("VAKT_LICENSE_PRIVATE_KEY", ""),
-		UpdateCheck:   getEnv("VAKT_UPDATE_CHECK", "false") == "true",
-		Staging:       getEnv("VAKT_STAGING", "false") == "true",
-		PromoteURL:    getEnv("VAKT_PROMOTE_URL", "http://host.docker.internal:9099/promote"),
-		PromoteSecret: getEnv("VAKT_PROMOTE_SECRET", ""),
+		UpdateCheck:    getEnv("VAKT_UPDATE_CHECK", "false") == "true",
+		Staging:        getEnv("VAKT_STAGING", "false") == "true",
+		PromoteURL:     getEnv("VAKT_PROMOTE_URL", "http://host.docker.internal:9099/promote"),
+		PromoteSecret:  getEnv("VAKT_PROMOTE_SECRET", ""),
+		MetricsEnabled: getEnv("VAKT_METRICS_ENABLED", "false") == "true",
+	}
+
+	// CORS origins — default to wildcard to preserve dev behaviour.
+	if raw := os.Getenv("VAKT_CORS_ORIGINS"); raw != "" {
+		var origins []string
+		for _, o := range strings.Split(raw, ",") {
+			if trimmed := strings.TrimSpace(o); trimmed != "" {
+				origins = append(origins, trimmed)
+			}
+		}
+		if len(origins) > 0 {
+			cfg.CORSOrigins = origins
+		}
+	}
+	if len(cfg.CORSOrigins) == 0 {
+		cfg.CORSOrigins = []string{"*"}
 	}
 
 	if cfg.APIPort == "" {

@@ -1,5 +1,5 @@
 ---
-# SecHealth — Ansible Update Playbook
+# Vakt — Ansible Update Playbook
 #
 # Usage:
 #   ansible-playbook scripts/update.yml -i inventory.yml
@@ -11,34 +11,34 @@
 #       customer-a:
 #         ansible_host: 10.0.1.10
 #         ansible_user: deploy
-#         sechealth_dir: /opt/sechealth
+#         vakt_dir: /opt/vakt
 #       customer-b:
 #         ansible_host: 10.0.1.11
 #         ansible_user: deploy
-#         sechealth_dir: /opt/sechealth
+#         vakt_dir: /opt/vakt
 #
 # Requirements on target hosts:
 #   - docker, docker compose plugin
 #   - deploy user in the `docker` group
-#   - sechealth_dir contains docker-compose.yml and .env
+#   - vakt_dir contains docker-compose.yml and .env
 
-- name: Update SecHealth instances
+- name: Update Vakt instances
   hosts: all
   become: false
   gather_facts: true
 
   vars:
-    sechealth_dir: /opt/sechealth
+    vakt_dir: /opt/vakt
     compose_file: docker-compose.yml
-    backup_dir: "{{ sechealth_dir }}/backups"
+    backup_dir: "{{ vakt_dir }}/backups"
     force_update: false
-    github_repo: sechealth-app/sechealth
-    update_script: "{{ sechealth_dir }}/scripts/update.sh"
+    github_repo: norvik-ops/vatk
+    update_script: "{{ vakt_dir }}/scripts/update.sh"
 
   tasks:
-    - name: Check that sechealth_dir exists
+    - name: Check that vakt_dir exists
       ansible.builtin.stat:
-        path: "{{ sechealth_dir }}/{{ compose_file }}"
+        path: "{{ vakt_dir }}/{{ compose_file }}"
       register: compose_stat
       failed_when: not compose_stat.stat.exists
 
@@ -68,11 +68,11 @@
 
     - name: Create pre-update database backup
       ansible.builtin.shell: |
-        docker compose -f {{ sechealth_dir }}/{{ compose_file }} exec -T postgres \
-          pg_dump -U sechealth sechealth | \
+        docker compose -f {{ vakt_dir }}/{{ compose_file }} exec -T postgres \
+          pg_dump -U vakt vakt | \
           gzip > {{ backup_dir }}/pre-update-$(date +%Y%m%d_%H%M%S).sql.gz
       args:
-        chdir: "{{ sechealth_dir }}"
+        chdir: "{{ vakt_dir }}"
       register: backup_result
       failed_when: false
 
@@ -85,26 +85,26 @@
       ansible.builtin.shell: |
         docker compose -f {{ compose_file }} pull api worker
       args:
-        chdir: "{{ sechealth_dir }}"
+        chdir: "{{ vakt_dir }}"
 
     - name: Restart worker service
       ansible.builtin.shell: |
         docker compose -f {{ compose_file }} up -d --no-deps worker
       args:
-        chdir: "{{ sechealth_dir }}"
+        chdir: "{{ vakt_dir }}"
 
     - name: Restart API service (runs migrations automatically)
       ansible.builtin.shell: |
         docker compose -f {{ compose_file }} up -d --no-deps api
       args:
-        chdir: "{{ sechealth_dir }}"
+        chdir: "{{ vakt_dir }}"
 
     - name: Wait for API to become healthy
       ansible.builtin.shell: |
         docker compose -f {{ compose_file }} exec -T api \
           wget -qO- http://localhost:8080/health/ready 2>/dev/null | grep -q ready
       args:
-        chdir: "{{ sechealth_dir }}"
+        chdir: "{{ vakt_dir }}"
       retries: 15
       delay: 4
       register: health_check
@@ -114,13 +114,13 @@
       ansible.builtin.shell: |
         docker compose -f {{ compose_file }} up -d --no-deps --build frontend
       args:
-        chdir: "{{ sechealth_dir }}"
+        chdir: "{{ vakt_dir }}"
 
     - name: Reload nginx to pick up new frontend assets
       ansible.builtin.shell: |
         docker compose -f {{ compose_file }} exec -T nginx nginx -s reload
       args:
-        chdir: "{{ sechealth_dir }}"
+        chdir: "{{ vakt_dir }}"
       failed_when: false
 
     - name: Verify deployment health
@@ -128,13 +128,13 @@
         docker compose -f {{ compose_file }} exec -T api \
           wget -qO- http://localhost:8080/health/ready 2>/dev/null
       args:
-        chdir: "{{ sechealth_dir }}"
+        chdir: "{{ vakt_dir }}"
       register: final_health
       failed_when: "'ready' not in final_health.stdout"
 
     - name: Update complete
       ansible.builtin.debug:
         msg: >
-          SecHealth updated successfully on {{ inventory_hostname }}.
+          Vakt updated successfully on {{ inventory_hostname }}.
           Latest available: {{ latest_version }}.
           Backups in {{ backup_dir }}.

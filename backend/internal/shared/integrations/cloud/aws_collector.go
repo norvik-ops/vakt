@@ -18,23 +18,21 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
-
-	"github.com/sechealth-app/sechealth/internal/modules/secvitals"
 )
 
 const awsSource = "aws-collector"
 
 // AWSCollector collects compliance evidence from an AWS account.
 type AWSCollector struct {
-	db    *pgxpool.Pool
-	svRepo *secvitals.Repository
+	db       *pgxpool.Pool
+	evidence EvidenceWriter
 }
 
 // NewAWSCollector creates a new AWSCollector.
-func NewAWSCollector(db *pgxpool.Pool) *AWSCollector {
+func NewAWSCollector(db *pgxpool.Pool, evidence EvidenceWriter) *AWSCollector {
 	return &AWSCollector{
-		db:     db,
-		svRepo: secvitals.NewRepository(db),
+		db:       db,
+		evidence: evidence,
 	}
 }
 
@@ -52,17 +50,17 @@ func (c *AWSCollector) Collect(ctx context.Context, orgID string, cfg AWSConfig)
 	}
 
 	// Find IAM controls to attach evidence to (best-effort; nil = no control link)
-	iamControls, err := c.svRepo.FindControlsByKeywords(ctx, orgID, []string{"iam", "access", "identity", "password", "mfa"})
+	iamControls, err := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"iam", "access", "identity", "password", "mfa"})
 	if err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("aws_collector: no iam controls found")
 	}
 
-	cloudtrailControls, err := c.svRepo.FindControlsByKeywords(ctx, orgID, []string{"audit", "log", "trail", "monitoring"})
+	cloudtrailControls, err := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"audit", "log", "trail", "monitoring"})
 	if err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("aws_collector: no cloudtrail controls found")
 	}
 
-	storageControls, err := c.svRepo.FindControlsByKeywords(ctx, orgID, []string{"encryption", "storage", "s3", "backup"})
+	storageControls, err := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"encryption", "storage", "s3", "backup"})
 	if err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("aws_collector: no storage controls found")
 	}
@@ -108,7 +106,7 @@ func (c *AWSCollector) Collect(ctx context.Context, orgID string, cfg AWSConfig)
 }
 
 // firstControlID returns the ID of the first control or "" if empty.
-func firstControlID(controls []secvitals.Control) string {
+func firstControlID(controls []ControlMatch) string {
 	if len(controls) > 0 {
 		return controls[0].ID
 	}
@@ -123,12 +121,11 @@ func (c *AWSCollector) addEvidence(ctx context.Context, orgID, controlID, title 
 		log.Debug().Str("org_id", orgID).Str("title", title).Msg("aws_collector: no matching control, skipping evidence")
 		return nil
 	}
-	_, err := c.svRepo.AddCollectorEvidence(ctx, orgID, controlID, "", awsSource, title, data)
-	return err
+	return c.evidence.AddCollectorEvidence(ctx, orgID, controlID, "", awsSource, title, data)
 }
 
 // collectPasswordPolicy collects IAM account password policy evidence.
-func (c *AWSCollector) collectPasswordPolicy(ctx context.Context, orgID string, awsCfg aws.Config, controls []secvitals.Control) (int, error) {
+func (c *AWSCollector) collectPasswordPolicy(ctx context.Context, orgID string, awsCfg aws.Config, controls []ControlMatch) (int, error) {
 	iamClient := iam.NewFromConfig(awsCfg)
 
 	out, err := iamClient.GetAccountPasswordPolicy(ctx, &iam.GetAccountPasswordPolicyInput{})
@@ -158,7 +155,7 @@ func (c *AWSCollector) collectPasswordPolicy(ctx context.Context, orgID string, 
 }
 
 // collectMFAStatus lists all IAM users and checks which have MFA devices enabled.
-func (c *AWSCollector) collectMFAStatus(ctx context.Context, orgID string, awsCfg aws.Config, controls []secvitals.Control) (int, error) {
+func (c *AWSCollector) collectMFAStatus(ctx context.Context, orgID string, awsCfg aws.Config, controls []ControlMatch) (int, error) {
 	iamClient := iam.NewFromConfig(awsCfg)
 
 	usersOut, err := iamClient.ListUsers(ctx, &iam.ListUsersInput{})
@@ -206,7 +203,7 @@ func (c *AWSCollector) collectMFAStatus(ctx context.Context, orgID string, awsCf
 }
 
 // collectCredentialReport generates and downloads the IAM credential report.
-func (c *AWSCollector) collectCredentialReport(ctx context.Context, orgID string, awsCfg aws.Config, controls []secvitals.Control) (int, error) {
+func (c *AWSCollector) collectCredentialReport(ctx context.Context, orgID string, awsCfg aws.Config, controls []ControlMatch) (int, error) {
 	iamClient := iam.NewFromConfig(awsCfg)
 
 	// Generate report (may take a few seconds)
@@ -253,7 +250,7 @@ func (c *AWSCollector) collectCredentialReport(ctx context.Context, orgID string
 }
 
 // collectCloudTrail collects CloudTrail trail configuration evidence.
-func (c *AWSCollector) collectCloudTrail(ctx context.Context, orgID string, awsCfg aws.Config, controls []secvitals.Control) (int, error) {
+func (c *AWSCollector) collectCloudTrail(ctx context.Context, orgID string, awsCfg aws.Config, controls []ControlMatch) (int, error) {
 	ctClient := cloudtrail.NewFromConfig(awsCfg)
 
 	out, err := ctClient.DescribeTrails(ctx, &cloudtrail.DescribeTrailsInput{
@@ -289,7 +286,7 @@ func (c *AWSCollector) collectCloudTrail(ctx context.Context, orgID string, awsC
 }
 
 // collectS3 checks encryption and versioning for each S3 bucket.
-func (c *AWSCollector) collectS3(ctx context.Context, orgID string, awsCfg aws.Config, controls []secvitals.Control) (int, error) {
+func (c *AWSCollector) collectS3(ctx context.Context, orgID string, awsCfg aws.Config, controls []ControlMatch) (int, error) {
 	s3Client := s3.NewFromConfig(awsCfg)
 
 	bucketsOut, err := s3Client.ListBuckets(ctx, &s3.ListBucketsInput{})

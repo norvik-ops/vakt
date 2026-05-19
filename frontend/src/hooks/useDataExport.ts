@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { getAuthToken } from '../api/client'
 
 /**
  * useExportData returns a function that triggers a full-data ZIP download
@@ -13,9 +12,8 @@ export function useExportData() {
     setIsLoading(true)
     setError(null)
     try {
-      const token = getAuthToken() ?? ''
       const res = await fetch('/api/v1/export/full', {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       })
       if (!res.ok) {
         throw new Error(`Export fehlgeschlagen (${res.status})`)

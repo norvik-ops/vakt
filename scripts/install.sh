@@ -43,7 +43,7 @@ if grep -qE '^VAKT_SECRET_KEY=($|changeme)' .env; then
 fi
 
 # Generate POSTGRES_PASSWORD if placeholder or empty
-if grep -qE '^POSTGRES_PASSWORD=($|changeme|sechealth)' .env; then
+if grep -qE '^POSTGRES_PASSWORD=($|changeme|vakt)' .env; then
   POSTGRES_PASSWORD=$(openssl rand -hex 16)
   sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$POSTGRES_PASSWORD/" .env
   echo "Generated POSTGRES_PASSWORD"

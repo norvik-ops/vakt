@@ -106,12 +106,15 @@ function computeTooltipPosition(
   return { top, left }
 }
 
+const SIDEBAR_COLLAPSED_KEY = 'vakt_sidebar_collapsed'
+
 export function AppTour() {
   const [active, setActive] = useState(false)
   const [step, setStep] = useState(0)
   const [rect, setRect] = useState<HighlightRect | null>(null)
   const [tooltipPos, setTooltipPos] = useState<TooltipPosition>({ top: 0, left: 0 })
   const tooltipRef = useRef<HTMLDivElement>(null)
+  const sidebarWasCollapsed = useRef(false)
 
   // Check if tour should be shown
   useEffect(() => {
@@ -122,6 +125,23 @@ export function AppTour() {
       return () => clearTimeout(t)
     }
   }, [])
+
+  // Expand sidebar at tour start; restore on end
+  useEffect(() => {
+    if (!active) return
+    const collapsed = localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
+    sidebarWasCollapsed.current = collapsed
+    if (collapsed) {
+      const btn = document.querySelector<HTMLElement>('[data-sidebar-toggle]')
+      btn?.click()
+    }
+    return () => {
+      if (sidebarWasCollapsed.current) {
+        const btn = document.querySelector<HTMLElement>('[data-sidebar-toggle]')
+        btn?.click()
+      }
+    }
+  }, [active])
 
   const updatePosition = useCallback(() => {
     if (!active) return

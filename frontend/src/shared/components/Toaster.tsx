@@ -26,7 +26,7 @@ export function Toaster() {
 
   return (
     <RadixToast.Provider swipeDirection="right">
-      {toasts.map(({ id, message, variant }, i) => {
+      {toasts.map(({ id, message, variant, action }, i) => {
         const cfg = VARIANT_CONFIG[variant]
         const Icon = cfg.icon
         return (
@@ -52,7 +52,25 @@ export function Toaster() {
           >
             {/* WCAG 1.1.1: icon is decorative — the text message conveys meaning */}
             <Icon className={cn('w-4 h-4 shrink-0 mt-0.5', cfg.iconClass)} aria-hidden="true" />
-            <RadixToast.Title className="flex-1 leading-snug">{message}</RadixToast.Title>
+            <div className="flex-1 min-w-0">
+              <RadixToast.Title className="leading-snug">{message}</RadixToast.Title>
+              {action && (
+                <RadixToast.Action
+                  altText={action.label}
+                  asChild
+                >
+                  <button
+                    className="mt-1.5 text-xs font-semibold underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded"
+                    onClick={() => {
+                      action.onClick()
+                      dismiss(id)
+                    }}
+                  >
+                    {action.label}
+                  </button>
+                </RadixToast.Action>
+              )}
+            </div>
             <RadixToast.Close
               className="text-secondary hover:text-primary transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded"
               aria-label="Schließen"
@@ -67,6 +85,8 @@ export function Toaster() {
       <RadixToast.Viewport
         className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 w-[360px] max-w-[calc(100vw-2rem)] pointer-events-none"
         aria-label="Benachrichtigungen"
+        aria-live="polite"
+        aria-atomic="true"
       />
     </RadixToast.Provider>
   )

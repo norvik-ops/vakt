@@ -84,7 +84,7 @@ Was nicht erlaubt ist: Eine zentrale Vakt-Installation betreiben und mehreren Ku
 
 ### Wie erfahre ich, wenn eine neue Version verfügbar ist?
 
-Setze `VAKT_UPDATE_CHECK=true` in deiner `.env`. Vakt prüft dann einmal täglich ob eine neue Version auf GitHub verfügbar ist und zeigt Administratoren ein Banner in der Benutzeroberfläche. Alternativ kannst du [Watchtower](https://containrrr.dev/watchtower/) für automatische Updates verwenden oder das [GitHub-Repository](https://github.com/norvik-ops/vakt) beobachten (Watch → Releases only).
+Setze `VAKT_UPDATE_CHECK=true` in deiner `.env`. Vakt prüft dann einmal täglich ob eine neue Version auf GitHub verfügbar ist und zeigt Administratoren ein Banner in der Benutzeroberfläche. Alternativ kannst du [Watchtower](https://containrrr.dev/watchtower/) für automatische Updates verwenden oder das [GitHub-Repository](https://github.com/norvik-ops/vatk) beobachten (Watch → Releases only).
 
 ---
 
@@ -142,7 +142,7 @@ Vakt speichert alle Daten in PostgreSQL. Backup-Strategie:
 
 ```bash
 # Datenbankdump
-docker compose exec postgres pg_dump -U sechealth sechealth > backup-$(date +%Y%m%d).sql
+docker compose exec postgres pg_dump -U vakt vakt > backup-$(date +%Y%m%d).sql
 
 # Evidence-Anhänge (hochgeladene Dateien)
 tar -czf uploads-$(date +%Y%m%d).tar.gz ./data/uploads

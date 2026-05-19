@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/sechealth-app/sechealth/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/notify"
 )
 
 // TestCreateChannelInput_Validation verifies the validate tags on CreateChannelInput

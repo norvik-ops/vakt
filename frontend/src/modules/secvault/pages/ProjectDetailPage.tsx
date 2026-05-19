@@ -318,6 +318,7 @@ export default function ProjectDetailPage() {
               <p className="text-sm text-secondary text-center py-6">Noch keine Zugriffe protokolliert.</p>
             ) : (
               <>
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -347,6 +348,7 @@ export default function ProjectDetailPage() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
                 {accessLogData.total > LOG_LIMIT && (
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
                     <Button

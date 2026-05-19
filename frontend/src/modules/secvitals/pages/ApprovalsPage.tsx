@@ -11,6 +11,7 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table'
 import { useAuthStore } from '../../../shared/stores/auth'
 import { toast } from '../../../shared/hooks/useToast'
+import { handleApiError } from '../../../shared/utils/errorMessages'
 import {
   usePendingApprovals, useApproveApproval, useRejectApproval,
   type ApprovalWithDetails,
@@ -58,7 +59,7 @@ function ReviewDialog({ approval, mode, onClose }: ReviewDialogProps) {
           setComment('')
           onClose()
         },
-        onError: (err) => toast(`Fehler: ${err.message}`, 'error'),
+        onError: (err) => toast(handleApiError(err), 'error'),
       },
     )
   }
@@ -160,6 +161,7 @@ export default function ApprovalsPage() {
         />
       ) : (
         <Card>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -230,6 +232,7 @@ export default function ApprovalsPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         </Card>
       )}
 

@@ -2,10 +2,27 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Search, Shield, AlertTriangle, FileText, Siren, ClipboardCheck,
-  Server, Bug, Users, Clock, Loader2,
+  Server, Bug, Users, Clock, Loader2, LayoutDashboard, ShieldAlert,
+  BookOpen, Eye,
 } from 'lucide-react'
 import { useSearch, SearchResult } from '../../hooks/useSearch'
 import { useDebounce } from '../../hooks/useDebounce'
+
+interface QuickNavItem {
+  label: string
+  path: string
+  icon: React.ReactNode
+}
+
+const QUICK_NAV: QuickNavItem[] = [
+  { label: 'Dashboard',     path: '/',                       icon: <LayoutDashboard className="w-3.5 h-3.5 text-secondary shrink-0" /> },
+  { label: 'Controls',      path: '/secvitals/controls',     icon: <Shield className="w-3.5 h-3.5 text-brand shrink-0" /> },
+  { label: 'Risiken',       path: '/secvitals/risks',        icon: <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" /> },
+  { label: 'Vorfälle',      path: '/secvitals/incidents',    icon: <Siren className="w-3.5 h-3.5 text-red-500 shrink-0" /> },
+  { label: 'Richtlinien',   path: '/secvitals/policies',     icon: <BookOpen className="w-3.5 h-3.5 text-blue-500 shrink-0" /> },
+  { label: 'Findings',      path: '/secpulse/findings',      icon: <Bug className="w-3.5 h-3.5 text-orange-500 shrink-0" /> },
+  { label: 'Board-Bericht', path: '/secvitals/board-report', icon: <Eye className="w-3.5 h-3.5 text-purple-500 shrink-0" /> },
+]
 
 const ENTITY_ICONS: Record<string, React.ReactNode> = {
   control:  <Shield        className="w-3.5 h-3.5 text-brand shrink-0" />,
@@ -217,8 +234,20 @@ export function GlobalSearch() {
         )}
 
         {debouncedQuery.length < 2 && !showRecent && (
-          <div className="px-4 py-4 text-xs text-secondary text-center">
-            Mindestens 2 Zeichen eingeben
+          <div className="px-4 pt-3 pb-1">
+            <p className="text-xs text-secondary font-medium mb-2">Schnellnavigation</p>
+            <div className="grid grid-cols-2 gap-1">
+              {QUICK_NAV.map((item) => (
+                <button
+                  key={item.path}
+                  onClick={() => { navigate(item.path); setOpen(false) }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-md text-left text-sm text-primary hover:bg-muted/50 transition-colors"
+                >
+                  {item.icon}
+                  <span className="truncate">{item.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

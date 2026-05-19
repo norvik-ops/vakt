@@ -11,10 +11,10 @@ import (
 
 // securityTXT is the static content returned at /.well-known/security.txt
 // per RFC 9116.
-const securityTXT = `Contact: mailto:security@norvik.de
-Expires: 2027-01-01T00:00:00.000Z
+const securityTXT = `Contact: mailto:security@vakt.io
+Expires: 2028-01-01T00:00:00.000Z
 Preferred-Languages: de, en
-Policy: https://github.com/norvik-ops/vatk/blob/main/SECURITY.md
+Policy: https://github.com/matharnica/vakt/blob/main/SECURITY.md
 `
 
 // HandleSecurityTXT serves the static security.txt file at

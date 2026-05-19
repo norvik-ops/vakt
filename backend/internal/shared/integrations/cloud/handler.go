@@ -26,8 +26,8 @@ func NewHandler(svc *Service) *Handler {
 
 // RegisterRoutes wires cloud integration routes under the provided echo group.
 // Expected group prefix: /integrations/cloud
-func RegisterRoutes(g *echo.Group, db *pgxpool.Pool, masterKey []byte) {
-	svc := NewService(db, masterKey)
+func RegisterRoutes(g *echo.Group, db *pgxpool.Pool, masterKey []byte, evidence EvidenceWriter) {
+	svc := NewService(db, masterKey, evidence)
 	h := NewHandler(svc)
 
 	// AWS

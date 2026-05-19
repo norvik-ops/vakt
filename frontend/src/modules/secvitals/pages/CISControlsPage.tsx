@@ -15,7 +15,6 @@ import {
 } from '../../../components/ui/table'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { cn } from '../../../lib/utils'
-import { getAuthToken } from '../../../api/client'
 import { useFrameworks, useFrameworkControls } from '../hooks/useFrameworks'
 import type { Control } from '../types'
 
@@ -149,34 +148,36 @@ function ControlGroupCard({
       </button>
 
       {open && controls.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-28">ID</TableHead>
-              <TableHead>Safeguard</TableHead>
-              <TableHead className="w-36">Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {controls.map((ctrl) => (
-              <TableRow
-                key={ctrl.id}
-                className="cursor-pointer hover:bg-surface2"
-                onClick={() =>
-                  navigate(`/secvitals/controls/${ctrl.id}?frameworkId=${frameworkId}`)
-                }
-              >
-                <TableCell className="font-mono text-xs">{ctrl.control_id}</TableCell>
-                <TableCell className="text-sm">{ctrl.title}</TableCell>
-                <TableCell>
-                  <Badge variant={statusVariant(ctrl.status)} className="text-xs">
-                    {statusLabel(ctrl.status)}
-                  </Badge>
-                </TableCell>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-28">ID</TableHead>
+                <TableHead>Safeguard</TableHead>
+                <TableHead className="w-36">Status</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {controls.map((ctrl) => (
+                <TableRow
+                  key={ctrl.id}
+                  className="cursor-pointer hover:bg-surface2"
+                  onClick={() =>
+                    navigate(`/secvitals/controls/${ctrl.id}?frameworkId=${frameworkId}`)
+                  }
+                >
+                  <TableCell className="font-mono text-xs">{ctrl.control_id}</TableCell>
+                  <TableCell className="text-sm">{ctrl.title}</TableCell>
+                  <TableCell>
+                    <Badge variant={statusVariant(ctrl.status)} className="text-xs">
+                      {statusLabel(ctrl.status)}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       {open && controls.length === 0 && (
@@ -197,36 +198,38 @@ function ISOMapping() {
         CIS Controls v8 und ISO 27001:2022 decken viele der gleichen Sicherheitsziele ab.
         Die folgende Tabelle zeigt, welche CIS-Kontrollgruppen welchen ISO 27001 Annex-A-Kontrollen entsprechen.
       </p>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-24">CIS</TableHead>
-            <TableHead>CIS-Kontrollgruppe</TableHead>
-            <TableHead>ISO 27001 Kontrollen</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {CIS_ISO_MAPPING.map((row) => (
-            <TableRow key={row.cisId}>
-              <TableCell>
-                <Badge variant="secondary" className="font-mono text-xs">
-                  {row.cisId}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-sm">{row.cisTitle}</TableCell>
-              <TableCell>
-                <div className="flex flex-wrap gap-1">
-                  {row.isoIds.map((iso) => (
-                    <Badge key={iso} variant="outline" className="font-mono text-xs">
-                      {iso}
-                    </Badge>
-                  ))}
-                </div>
-              </TableCell>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-24">CIS</TableHead>
+              <TableHead>CIS-Kontrollgruppe</TableHead>
+              <TableHead>ISO 27001 Kontrollen</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {CIS_ISO_MAPPING.map((row) => (
+              <TableRow key={row.cisId}>
+                <TableCell>
+                  <Badge variant="secondary" className="font-mono text-xs">
+                    {row.cisId}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-sm">{row.cisTitle}</TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {row.isoIds.map((iso) => (
+                      <Badge key={iso} variant="outline" className="font-mono text-xs">
+                        {iso}
+                      </Badge>
+                    ))}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   )
 }
@@ -286,9 +289,8 @@ export default function CISControlsPage() {
 
   function handleExportPDF() {
     if (!frameworkId) return
-    const token = getAuthToken() ?? ''
     const url = `/api/v1/secvitals/frameworks/${frameworkId}/export-pdf`
-    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(url, { credentials: 'include' })
       .then((r) => r.blob())
       .then((blob) => {
         const objectUrl = URL.createObjectURL(blob)

@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query'
-import { getAuthToken } from '../../../api/client'
 import { AlertTriangle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -19,9 +18,8 @@ export function ExpiringEvidenceWidget() {
   const { data: items = [], isLoading } = useQuery<EvidenceItem[]>({
     queryKey: ['evidence-expiring'],
     queryFn: async () => {
-      const token = getAuthToken()
       const res = await fetch('/api/v1/secvitals/evidence/expiring?days=30', {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       })
       if (!res.ok) return []
       return res.json()

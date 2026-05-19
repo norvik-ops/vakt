@@ -13,8 +13,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/sechealth-app/sechealth/internal/shared/auditlog"
-	"github.com/sechealth-app/sechealth/internal/shared/pagination"
+	"github.com/matharnica/vakt/internal/shared/auditlog"
+	"github.com/matharnica/vakt/internal/shared/pagination"
 )
 
 // AlertFunc is a callback used to fire external alert events without importing
@@ -99,7 +99,7 @@ func (h *Handler) CreateVVT(c echo.Context) error {
 		OrgID:        orgID(c),
 		UserID:       func() string { v, _ := c.Get("user_id").(string); return v }(),
 		Action:       "create",
-		ResourceType: "vvt",
+		ResourceType: "vakt-privacy/vvt",
 		ResourceID:   entry.ID,
 		ResourceName: entry.Name,
 		IPAddress:    c.RealIP(),
@@ -125,7 +125,7 @@ func (h *Handler) UpdateVVT(c echo.Context) error {
 		OrgID:        orgID(c),
 		UserID:       func() string { v, _ := c.Get("user_id").(string); return v }(),
 		Action:       "update",
-		ResourceType: "vvt",
+		ResourceType: "vakt-privacy/vvt",
 		ResourceID:   entry.ID,
 		ResourceName: entry.Name,
 		IPAddress:    c.RealIP(),
@@ -144,7 +144,7 @@ func (h *Handler) DeleteVVT(c echo.Context) error {
 		OrgID:        orgID(c),
 		UserID:       func() string { v, _ := c.Get("user_id").(string); return v }(),
 		Action:       "delete",
-		ResourceType: "vvt",
+		ResourceType: "vakt-privacy/vvt",
 		ResourceID:   id,
 		IPAddress:    c.RealIP(),
 	})
@@ -190,7 +190,7 @@ func (h *Handler) CreateDPIA(c echo.Context) error {
 		OrgID:        orgID(c),
 		UserID:       func() string { v, _ := c.Get("user_id").(string); return v }(),
 		Action:       "create",
-		ResourceType: "dpia",
+		ResourceType: "vakt-privacy/dpia",
 		ResourceID:   dpia.ID,
 		ResourceName: dpia.Title,
 		IPAddress:    c.RealIP(),
@@ -227,7 +227,7 @@ func (h *Handler) ApproveDPIA(c echo.Context) error {
 		OrgID:        orgID(c),
 		UserID:       uid,
 		Action:       "approve",
-		ResourceType: "dpia",
+		ResourceType: "vakt-privacy/dpia",
 		ResourceID:   dpia.ID,
 		ResourceName: dpia.Title,
 		IPAddress:    c.RealIP(),
@@ -370,7 +370,7 @@ func (h *Handler) CreateBreach(c echo.Context) error {
 		OrgID:        orgID(c),
 		UserID:       func() string { v, _ := c.Get("user_id").(string); return v }(),
 		Action:       "create",
-		ResourceType: "breach",
+		ResourceType: "vakt-privacy/breach",
 		ResourceID:   breach.ID,
 		ResourceName: breach.Title,
 		IPAddress:    c.RealIP(),
@@ -417,7 +417,7 @@ func (h *Handler) MarkAuthorityNotified(c echo.Context) error {
 		OrgID:        orgID(c),
 		UserID:       func() string { v, _ := c.Get("user_id").(string); return v }(),
 		Action:       "update",
-		ResourceType: "breach",
+		ResourceType: "vakt-privacy/breach",
 		ResourceID:   id,
 		Details:      map[string]string{"event": "authority_notified"},
 		IPAddress:    c.RealIP(),
@@ -490,7 +490,7 @@ func (h *Handler) CreateDSR(c echo.Context) error {
 		OrgID:        orgID(c),
 		UserID:       func() string { v, _ := c.Get("user_id").(string); return v }(),
 		Action:       "create",
-		ResourceType: "dsr",
+		ResourceType: "vakt-privacy/dsr",
 		ResourceID:   dsr.ID,
 		ResourceName: dsr.RequesterName,
 		IPAddress:    c.RealIP(),
@@ -624,12 +624,23 @@ func (h *Handler) PortalSubmitDSR(c echo.Context) error {
 
 // PortalGetDSRStatus handles GET /api/v1/dsr-portal/status/:token.
 // Looks up a DSR by the raw status token returned at submission time.
+// Only public fields are returned — internal fields (org_id, notes, requester
+// details) are stripped to prevent information disclosure to unauthenticated
+// callers (H6/H7 security fix).
 func (h *Handler) PortalGetDSRStatus(c echo.Context) error {
 	dsr, err := h.service.GetPortalDSR(c.Request().Context(), c.Param("token"))
 	if err != nil {
 		return errResp(c, http.StatusNotFound, "DSR not found", "PO_DSR_NOT_FOUND")
 	}
-	return c.JSON(http.StatusOK, dsr)
+	public := DSRPublicStatus{
+		ID:          dsr.ID,
+		Status:      dsr.Status,
+		Type:        dsr.Type,
+		CreatedAt:   dsr.CreatedAt,
+		UpdatedAt:   dsr.UpdatedAt,
+		CompletedAt: dsr.CompletedAt,
+	}
+	return c.JSON(http.StatusOK, public)
 }
 
 // --- DSR Portal Settings (authenticated) ---

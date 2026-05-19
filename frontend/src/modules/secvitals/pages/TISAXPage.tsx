@@ -22,7 +22,7 @@ import {
 } from '../../../components/ui/select'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { cn } from '../../../lib/utils'
-import { apiFetch, getAuthToken } from '../../../api/client'
+import { apiFetch } from '../../../api/client'
 import { ProGate } from '../../../shared/components/ProGate'
 import type { Control } from '../types'
 import { maturityLabel, maturityColor } from '../utils/tisax'
@@ -117,10 +117,9 @@ export default function TISAXPage() {
   const [assessmentLevel, setAssessmentLevel] = useState<AssessmentLevel>('AL2')
 
   function handleExportReport() {
-    const token = getAuthToken() ?? ''
     const url = `/api/v1/secvitals/frameworks/${frameworkId}/tisax-report-pdf?protection_level=${protectionLevel}&assessment_level=${assessmentLevel}`
-    // Use fetch with auth header and trigger browser download
-    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    // Use fetch with credentials cookie and trigger browser download
+    fetch(url, { credentials: 'include' })
       .then((r) => r.blob())
       .then((blob) => {
         const objectUrl = URL.createObjectURL(blob)

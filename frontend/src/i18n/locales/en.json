@@ -857,7 +857,15 @@
     "selected": "{{count}} selected",
     "clearSelection": "Clear selection",
     "saving": "Saving…",
-    "sort": "Sort"
+    "sort": "Sort",
+    "noData": "No data available",
+    "statusLabels": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "pending": "Pending",
+      "completed": "Completed",
+      "draft": "Draft"
+    }
   },
   "actions": {
     "save": "Save",
@@ -909,7 +917,7 @@
     "orSeparator": "or",
     "demoCredentials": "Demo Credentials",
     "demoHint": "Click on an account to auto-fill the form.",
-    "demoDisclaimer": "This is a public demo instance. Please do not enter real or sensitive data. NorvikOps accepts no liability for data entered.",
+    "demoDisclaimer": "This is a public demo instance. Please do not enter real or sensitive data. Vakt accepts no liability for data entered.",
     "forgotPasswordTitle": "Reset Password",
     "forgotPasswordDesc": "Enter your email address. We will send you a link to reset your password.",
     "forgotPasswordEmailLabel": "Email Address",
@@ -1113,11 +1121,14 @@
   },
   "onboarding": {
     "title": "Getting Started",
+    "intro": "Your first step is done. Follow this guide for a quick introduction to compliance documentation.",
     "completed": "{{count}} of {{total}} completed",
     "dismiss": "Hide Guide",
     "steps": {
-      "org": "Set up organization",
-      "framework": "Activate first framework",
+      "vvt": "Create GDPR Record of Processing (Vakt Privacy)",
+      "framework": "Activate a framework",
+      "control": "Assess your first control",
+      "org": "Complete organisation profile",
       "asset": "Add first asset",
       "team": "Invite team member",
       "evidence": "Upload evidence",

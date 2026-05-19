@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# SecHealth restore script.
+# Vakt restore script.
 # Usage: ./scripts/restore.sh <backup-file.tar.gz> [--dry-run]
 #   --dry-run  Validates the archive and decrypts the key without touching the database.
 

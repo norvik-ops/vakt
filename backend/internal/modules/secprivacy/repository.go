@@ -789,6 +789,37 @@ func (r *Repository) DeleteDSR(ctx context.Context, orgID, id string) error {
 	return err
 }
 
+// ExecuteErasure marks an erasure-type DSR as completed, stamps completed_at,
+// and appends an evidence note documenting the deletion actions taken.
+// Only affects DSRs of type "erasure" that are not yet completed, providing a
+// guard against double-execution.
+func (r *Repository) ExecuteErasure(ctx context.Context, orgID, id, evidenceNote string) (*DSR, error) {
+	var d DSR
+	err := r.db.QueryRow(ctx, `
+		UPDATE po_dsr SET
+		  status='completed', completed_at=now(),
+		  notes=CASE WHEN notes IS NULL OR notes='' THEN $3 ELSE notes || E'\n\n' || $3 END,
+		  updated_at=now()
+		WHERE id=$1::uuid AND org_id=$2::uuid
+		  AND type='erasure' AND status != 'completed'
+		RETURNING id::text, org_id::text, requester_name, requester_email, type,
+		          COALESCE(description,''), status,
+		          to_char(due_date, 'YYYY-MM-DD'),
+		          received_at, completed_at,
+		          COALESCE(notes,''), created_at, updated_at`,
+		id, orgID, evidenceNote,
+	).Scan(
+		&d.ID, &d.OrgID, &d.RequesterName, &d.RequesterEmail, &d.Type,
+		&d.Description, &d.Status, &d.DueDate,
+		&d.ReceivedAt, &d.CompletedAt,
+		&d.Notes, &d.CreatedAt, &d.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("execute erasure dsr %s: %w", id, err)
+	}
+	return &d, nil
+}
+
 // --- DSR Portal ---
 
 // CreatePortalDSR inserts a DSR submitted through the public self-service portal.

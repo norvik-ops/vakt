@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, getAuthToken } from '../../../api/client'
+import { apiFetch } from '../../../api/client'
 import type { Breach, CreateBreachInput, UpdateBreachInput } from '../types'
 import type { PaginatedResponse } from '../../../shared/types/pagination'
 
@@ -61,24 +61,18 @@ export function useMarkAuthorityNotified() {
 
 export function useExportBreachNotification() {
   return (id: string) => {
-    const token = getAuthToken()
     const url = `/api/v1/secprivacy/breaches/${id}/notification-pdf`
     const a = document.createElement('a')
-    a.href = url
-    if (token) {
-      void fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-        .then((res) => res.blob())
-        .then((blob) => {
-          const objectUrl = URL.createObjectURL(blob)
-          a.href = objectUrl
-          a.download = `breach-notification-${new Date().toISOString().slice(0, 10)}.pdf`
-          document.body.appendChild(a)
-          a.click()
-          a.remove()
-          URL.revokeObjectURL(objectUrl)
-        })
-    } else {
-      window.open(url, '_blank')
-    }
+    void fetch(url, { credentials: 'include' })
+      .then((res) => res.blob())
+      .then((blob) => {
+        const objectUrl = URL.createObjectURL(blob)
+        a.href = objectUrl
+        a.download = `breach-notification-${new Date().toISOString().slice(0, 10)}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(objectUrl)
+      })
   }
 }

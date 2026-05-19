@@ -3,11 +3,16 @@ import { initReactI18next } from 'react-i18next'
 
 import de from './locales/de.json'
 import en from './locales/en.json'
+import fr from './locales/fr.json'
+import nl from './locales/nl.json'
 
 const LANG_STORAGE_KEY = 'vakt_lang'
 
 const savedLang = localStorage.getItem(LANG_STORAGE_KEY)
-const defaultLanguage = savedLang === 'en' || savedLang === 'de' ? savedLang : 'de'
+const defaultLanguage =
+  savedLang === 'en' || savedLang === 'de' || savedLang === 'fr' || savedLang === 'nl'
+    ? savedLang
+    : 'de'
 
 i18n
   .use(initReactI18next)
@@ -15,10 +20,12 @@ i18n
     resources: {
       de: { translation: de },
       en: { translation: en },
+      fr: { translation: fr },
+      nl: { translation: nl },
     },
     lng: defaultLanguage,
     fallbackLng: 'de',
-    supportedLngs: ['de', 'en'],
+    supportedLngs: ['de', 'en', 'fr', 'nl'],
     interpolation: {
       escapeValue: false, // React already escapes values
     },

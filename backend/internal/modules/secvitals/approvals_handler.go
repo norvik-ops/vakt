@@ -9,7 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/sechealth-app/sechealth/internal/shared/auditlog"
+	"github.com/matharnica/vakt/internal/shared/auditlog"
 )
 
 // isOrgAdmin returns true when the authenticated user has the Admin role in the organisation.
@@ -88,7 +88,7 @@ func (h *Handler) RequestControlApproval(c echo.Context) error {
 		OrgID:        orgID(c),
 		UserID:       userID(c),
 		Action:       "request_approval",
-		ResourceType: "control",
+		ResourceType: "vakt-comply/control",
 		ResourceID:   controlID,
 		ResourceName: ctrl.Title,
 		IPAddress:    c.RealIP(),
@@ -174,7 +174,7 @@ func (h *Handler) reviewApproval(c echo.Context, approve bool) error {
 		OrgID:        orgID(c),
 		UserID:       userID(c),
 		Action:       action,
-		ResourceType: "control_approval",
+		ResourceType: "vakt-comply/control-approval",
 		ResourceID:   approvalID,
 		IPAddress:    c.RealIP(),
 	})

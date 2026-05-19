@@ -30,7 +30,7 @@ func NewHandler(db *pgxpool.Pool) *Handler {
 type SetupInput struct {
 	OrgName        string   `json:"org_name"        validate:"required,min=2,max=120"`
 	AdminEmail     string   `json:"admin_email"     validate:"required,email"`
-	AdminPassword  string   `json:"admin_password"  validate:"required,min=8,max=72"`
+	AdminPassword  string   `json:"admin_password"  validate:"required,min=10,max=72"`
 	ModulesEnabled []string `json:"modules_enabled"`
 	SMTPHost       string   `json:"smtp_host"`
 	SMTPPort       string   `json:"smtp_port"`
@@ -95,6 +95,13 @@ func (h *Handler) PostSetup(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
 			"error": err.Error(),
 			"code":  "SETUP_VALIDATION_ERROR",
+		})
+	}
+
+	if err := validateSetupPassword(input.AdminPassword); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": err.Error(),
+			"code":  "AUTH_WEAK_PASSWORD",
 		})
 	}
 
@@ -204,6 +211,36 @@ func (h *Handler) PostSetup(c echo.Context) error {
 func Register(g *echo.Group, h *Handler) {
 	g.GET("/status", h.GetStatus)
 	g.POST("", h.PostSetup)
+}
+
+// validateSetupPassword enforces the same password complexity policy as the auth
+// service (auth.validatePasswordStrength), which is unexported and cannot be
+// called cross-package. Minimum: 10 chars, one uppercase, one digit, one special char.
+func validateSetupPassword(pw string) error {
+	if len(pw) < 10 {
+		return fmt.Errorf("password must be at least 10 characters")
+	}
+	var hasUpper, hasDigit, hasSpecial bool
+	for _, r := range pw {
+		switch {
+		case r >= 'A' && r <= 'Z':
+			hasUpper = true
+		case r >= '0' && r <= '9':
+			hasDigit = true
+		case strings.ContainsRune("!@#$%^&*()_+-=[]{}|;':\",./<>?", r):
+			hasSpecial = true
+		}
+	}
+	if !hasUpper {
+		return fmt.Errorf("password must contain at least one uppercase letter")
+	}
+	if !hasDigit {
+		return fmt.Errorf("password must contain at least one digit")
+	}
+	if !hasSpecial {
+		return fmt.Errorf("password must contain at least one special character")
+	}
+	return nil
 }
 
 // slugify converts a display name to a URL-safe slug.

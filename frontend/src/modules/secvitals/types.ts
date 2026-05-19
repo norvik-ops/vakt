@@ -40,6 +40,7 @@ export interface Control {
   evidence_count?: number
   iso27001_mapping?: string
   maturity_score?: number // 0–3 (TISAX VDA ISA maturity level)
+  owner?: string // Migration 106
   // Review tracking (Migration 075)
   last_reviewed_at?: string
   review_interval_days?: number
@@ -54,6 +55,7 @@ export interface UpdateControlInput {
   reason: string
   manual_status: '' | 'in_progress' | 'implemented'
   maturity_score?: number
+  owner?: string
 }
 
 // --- TISAX types (Story 28.1 + 28.3) ---
@@ -689,6 +691,63 @@ export interface IncidentReport {
 
 export interface GenerateReportInput {
   report_type: '24h' | '72h' | '30d'
+}
+
+// --- Access Review Campaigns ---
+
+export interface AccessReviewCampaign {
+  id: string
+  org_id: string
+  title: string
+  description?: string
+  status: 'draft' | 'active' | 'completed' | 'cancelled'
+  reviewer_email: string
+  scope?: string
+  due_date?: string
+  completed_at?: string
+  created_by?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface AccessReviewItem {
+  id: string
+  campaign_id: string
+  org_id: string
+  user_email: string
+  access_level: string
+  decision: 'pending' | 'approved' | 'revoked'
+  reviewer_comment?: string
+  decided_at?: string
+  created_at: string
+}
+
+export interface CreateAccessReviewCampaignInput {
+  title: string
+  description?: string
+  reviewer_email: string
+  scope?: string
+  due_date?: string
+}
+
+export interface UpdateAccessReviewCampaignInput {
+  title?: string
+  description?: string
+  reviewer_email?: string
+  scope?: string
+  due_date?: string
+  status?: AccessReviewCampaign['status']
+}
+
+export interface CreateAccessReviewItemInput {
+  campaign_id: string
+  user_email: string
+  access_level: string
+}
+
+export interface UpdateAccessReviewItemInput {
+  decision?: AccessReviewItem['decision']
+  reviewer_comment?: string
 }
 
 // --- Story 31.1: Reportability Assessment ---

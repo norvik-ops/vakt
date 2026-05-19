@@ -65,7 +65,8 @@ func runTrivyNoCriticalCheck(ctx context.Context, db *pgxpool.Pool, check CCMChe
 		check.OrgID,
 	).Scan(&count)
 	if err != nil {
-		return "unknown", fmt.Sprintf("query failed: %s", err.Error()), nil
+		// vb_findings may not exist if the SecPulse module is disabled.
+		return "unknown", "SecPulse module required for this check type", nil
 	}
 
 	if count == 0 {

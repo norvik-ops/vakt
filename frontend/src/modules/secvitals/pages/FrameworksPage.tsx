@@ -10,7 +10,7 @@ import { PageHeader } from '../../../shared/components/PageHeader'
 import { ExportButton } from '../../../shared/components/ExportButton'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { useFrameworks, useEnableFramework, useDeleteFramework } from '../hooks/useFrameworks'
-import { getAuthToken } from '../../../api/client'
+import { FrameworkSetupWizard } from '../components/FrameworkSetupWizard'
 import type { Framework } from '../types'
 
 // Pre-defined compliance frameworks users can enable with one click
@@ -146,10 +146,21 @@ function EnabledFrameworkCard({ framework, onDelete }: { framework: Framework; o
   )
 }
 
+// Wizard localStorage key per framework
+function wizardSeenKey(frameworkId: string) {
+  return `vakt_wizard_seen_${frameworkId}`
+}
+
 export default function FrameworksPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [deleteTarget, setDeleteTarget] = useState<Framework | null>(null)
+  const [wizardFramework, setWizardFramework] = useState<{
+    id: string
+    name: string
+    description?: string
+    controlCount?: number
+  } | null>(null)
   const { data: frameworks, isLoading, isError } = useFrameworks()
   const enableFramework = useEnableFramework()
   const deleteFramework = useDeleteFramework()
@@ -157,9 +168,8 @@ export default function FrameworksPage() {
   const enabledKeys = new Set((frameworks ?? []).map((f) => f.name.split(' ')[0].toUpperCase()))
 
   function handleExport() {
-    const token = getAuthToken() ?? ''
     fetch('/api/v1/secvitals/export/audit-package', {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
     })
       .then((r) => r.blob())
       .then((blob) => {
@@ -175,7 +185,20 @@ export default function FrameworksPage() {
   }
 
   function handleEnable(key: string) {
-    enableFramework.mutate(key)
+    const catalogueEntry = FRAMEWORK_CATALOGUE.find((fw) => fw.key === key)
+    enableFramework.mutate(key, {
+      onSuccess: (activatedFramework) => {
+        // Only show wizard if it hasn't been shown for this framework before
+        if (localStorage.getItem(wizardSeenKey(activatedFramework.id)) !== '1') {
+          setWizardFramework({
+            id: activatedFramework.id,
+            name: activatedFramework.name,
+            description: catalogueEntry?.description,
+            controlCount: activatedFramework.control_count ?? undefined,
+          })
+        }
+      },
+    })
   }
 
   function handleConfirmDelete() {
@@ -328,6 +351,17 @@ export default function FrameworksPage() {
           </p>
         </section>
       </div>
+
+      {/* Framework Setup Wizard — shown once per framework after activation */}
+      {wizardFramework && (
+        <FrameworkSetupWizard
+          framework={wizardFramework}
+          onClose={() => {
+            localStorage.setItem(wizardSeenKey(wizardFramework.id), '1')
+            setWizardFramework(null)
+          }}
+        />
+      )}
 
       {/* Delete confirmation */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>

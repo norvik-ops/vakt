@@ -1046,7 +1046,7 @@ func (r *Repository) GetRiskTrend(ctx context.Context, orgID string, days int) (
 // ---------------------------------------------------------------------------
 
 // CreateReport inserts a new report record.
-func (r *Repository) CreateReport(ctx context.Context, orgID, userID string, scope map[string]interface{}) (*Report, error) {
+func (r *Repository) CreateReport(ctx context.Context, orgID, userID string, scope ReportScope) (*Report, error) {
 	scopeJSON, err := json.Marshal(scope)
 	if err != nil {
 		return nil, fmt.Errorf("marshal report scope: %w", err)
@@ -1066,7 +1066,7 @@ func (r *Repository) CreateReport(ctx context.Context, orgID, userID string, sco
 	if err != nil {
 		return nil, fmt.Errorf("insert report: %w", err)
 	}
-	extractReportTitle(&rpt)
+	rpt.Title = rpt.Scope.Title
 	return &rpt, nil
 }
 
@@ -1086,7 +1086,7 @@ func (r *Repository) GetReport(ctx context.Context, orgID, reportID string) (*Re
 	if err != nil {
 		return nil, fmt.Errorf("get report: %w", err)
 	}
-	extractReportTitle(&rpt)
+	rpt.Title = rpt.Scope.Title
 	return &rpt, nil
 }
 
@@ -1115,7 +1115,7 @@ func (r *Repository) ListReports(ctx context.Context, orgID string) ([]Report, e
 		); err != nil {
 			return nil, fmt.Errorf("scan report row: %w", err)
 		}
-		extractReportTitle(&rpt)
+		rpt.Title = rpt.Scope.Title
 		reports = append(reports, rpt)
 	}
 	if err := rows.Err(); err != nil {
@@ -1208,7 +1208,7 @@ func (r *Repository) StoreReportContent(ctx context.Context, reportID string, co
 // GetReportContent returns the raw PDF bytes and title for a completed report.
 func (r *Repository) GetReportContent(ctx context.Context, orgID, reportID string) ([]byte, string, error) {
 	var content []byte
-	var scope map[string]interface{}
+	var scope ReportScope
 	err := r.db.QueryRow(ctx, `
 		SELECT content, scope FROM vb_reports
 		WHERE id = $1::uuid AND org_id = $2::uuid AND status = 'completed'`,
@@ -1217,18 +1217,11 @@ func (r *Repository) GetReportContent(ctx context.Context, orgID, reportID strin
 	if err != nil {
 		return nil, "", fmt.Errorf("get report content: %w", err)
 	}
-	title := "report"
-	if t, ok := scope["title"].(string); ok && t != "" {
-		title = t
+	title := scope.Title
+	if title == "" {
+		title = "report"
 	}
 	return content, title, nil
-}
-
-// extractReportTitle populates Report.Title from the scope["title"] key.
-func extractReportTitle(r *Report) {
-	if t, ok := r.Scope["title"].(string); ok {
-		r.Title = t
-	}
 }
 
 // ---------------------------------------------------------------------------
@@ -1318,9 +1311,9 @@ func (r *Repository) ListComponentsWithEOL(ctx context.Context, orgID string, eo
 	if eolOnly {
 		query += " AND c.eol_status = 'eol'"
 	}
-	query += fmt.Sprintf(" ORDER BY c.name, c.version LIMIT %d OFFSET %d", limit, offset)
+	query += " ORDER BY c.name, c.version LIMIT $2 OFFSET $3"
 
-	rows, err := r.db.Query(ctx, query, orgID)
+	rows, err := r.db.Query(ctx, query, orgID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("list components: %w", err)
 	}

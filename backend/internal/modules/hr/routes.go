@@ -3,7 +3,7 @@ package hr
 import (
 	"github.com/labstack/echo/v4"
 
-	"github.com/sechealth-app/sechealth/internal/auth"
+	"github.com/matharnica/vakt/internal/auth"
 )
 
 // Register mounts all HR routes on the given Echo group.

@@ -14,7 +14,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/sechealth-app/sechealth/internal/shared/pagination"
+	"github.com/matharnica/vakt/internal/shared/auditlog"
+	"github.com/matharnica/vakt/internal/shared/pagination"
 )
 
 // Handler handles HTTP requests for VulnBoard.
@@ -29,6 +30,20 @@ func NewHandler(service *Service) *Handler {
 		service:  service,
 		validate: validator.New(),
 	}
+}
+
+func (h *Handler) audit(c echo.Context, action, resourceType, resourceID, resourceName string) {
+	orgID, _ := c.Get("org_id").(string)
+	userID, _ := c.Get("user_id").(string)
+	auditlog.Log(c.Request().Context(), h.service.db, auditlog.Entry{
+		OrgID:        orgID,
+		UserID:       userID,
+		Action:       action,
+		ResourceType: resourceType,
+		ResourceID:   resourceID,
+		ResourceName: resourceName,
+		IPAddress:    c.RealIP(),
+	})
 }
 
 // CreateAsset handles POST /api/v1/secpulse/assets.
@@ -58,6 +73,7 @@ func (h *Handler) CreateAsset(c echo.Context) error {
 			"code":  "VB_CREATE_ASSET_ERROR",
 		})
 	}
+	h.audit(c, "create", "secpulse/asset", asset.ID, asset.Name)
 	return c.JSON(http.StatusCreated, asset)
 }
 
@@ -124,6 +140,7 @@ func (h *Handler) UpdateAsset(c echo.Context) error {
 			"code":  "VB_ASSET_NOT_FOUND",
 		})
 	}
+	h.audit(c, "update", "secpulse/asset", assetID, asset.Name)
 	return c.JSON(http.StatusOK, asset)
 }
 
@@ -139,6 +156,7 @@ func (h *Handler) DeleteAsset(c echo.Context) error {
 			"code":  "VB_ASSET_NOT_FOUND",
 		})
 	}
+	h.audit(c, "delete", "secpulse/asset", assetID, "")
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -257,6 +275,7 @@ func (h *Handler) TriggerScan(c echo.Context) error {
 		log.Error().Err(err).Str("asset_id", assetID).Msg("trigger scan failed")
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to trigger scan", "code": "VB_SCAN_ERROR"})
 	}
+	h.audit(c, "action", "secpulse/scan", scan.ID, assetID)
 	return c.JSON(http.StatusAccepted, scan)
 }
 
@@ -315,7 +334,8 @@ func (h *Handler) UpdateFinding(c echo.Context) error {
 	if err := c.Bind(&input); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body", "code": "VB_BAD_REQUEST"})
 	}
-	finding, err := h.service.UpdateFinding(c.Request().Context(), orgID, c.Param("id"), input)
+	findingID := c.Param("id")
+	finding, err := h.service.UpdateFinding(c.Request().Context(), orgID, findingID, input)
 	if err != nil {
 		log.Error().Err(err).Msg("update finding failed")
 		if err.Error() == "justification is required when setting status to accepted_risk" {
@@ -323,6 +343,7 @@ func (h *Handler) UpdateFinding(c echo.Context) error {
 		}
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "finding not found", "code": "VB_FINDING_NOT_FOUND"})
 	}
+	h.audit(c, "update", "secpulse/finding", findingID, finding.Title)
 	return c.JSON(http.StatusOK, finding)
 }
 
@@ -340,6 +361,7 @@ func (h *Handler) BulkUpdateFindings(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "bulk update failed", "code": "VB_BULK_UPDATE_ERROR"})
 	}
+	h.audit(c, "update", "secpulse/finding", "", "bulk")
 	return c.JSON(http.StatusOK, map[string]int{"updated": n})
 }
 
@@ -371,15 +393,22 @@ func (h *Handler) CreateSuppression(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create suppression", "code": "VB_ERROR"})
 	}
+	cveID := ""
+	if rule.CVEID != nil {
+		cveID = *rule.CVEID
+	}
+	h.audit(c, "create", "secpulse/suppression", rule.ID, cveID)
 	return c.JSON(http.StatusCreated, rule)
 }
 
 // DeleteSuppression handles DELETE /api/v1/secpulse/suppressions/:id
 func (h *Handler) DeleteSuppression(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
-	if err := h.service.DeleteSuppressionRule(c.Request().Context(), orgID, c.Param("id")); err != nil {
+	suppressionID := c.Param("id")
+	if err := h.service.DeleteSuppressionRule(c.Request().Context(), orgID, suppressionID); err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "suppression not found", "code": "VB_NOT_FOUND"})
 	}
+	h.audit(c, "delete", "secpulse/suppression", suppressionID, "")
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -406,19 +435,23 @@ func (h *Handler) CreateScanSchedule(c echo.Context) error {
 	if err := h.validate.Struct(input); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	schedule, err := h.service.CreateScanSchedule(c.Request().Context(), orgID, c.Param("id"), input)
+	assetID := c.Param("id")
+	schedule, err := h.service.CreateScanSchedule(c.Request().Context(), orgID, assetID, input)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create schedule", "code": "VB_ERROR"})
 	}
+	h.audit(c, "create", "secpulse/scan-schedule", schedule.ID, assetID)
 	return c.JSON(http.StatusCreated, schedule)
 }
 
 // DeleteScanSchedule handles DELETE /api/v1/secpulse/assets/:id/schedules/:schedule_id
 func (h *Handler) DeleteScanSchedule(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
-	if err := h.service.DeleteScanSchedule(c.Request().Context(), orgID, c.Param("schedule_id")); err != nil {
+	scheduleID := c.Param("schedule_id")
+	if err := h.service.DeleteScanSchedule(c.Request().Context(), orgID, scheduleID); err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "schedule not found", "code": "VB_NOT_FOUND"})
 	}
+	h.audit(c, "delete", "secpulse/scan-schedule", scheduleID, "")
 	return c.NoContent(http.StatusNoContent)
 }
 

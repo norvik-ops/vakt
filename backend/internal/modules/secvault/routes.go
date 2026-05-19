@@ -6,8 +6,8 @@ package secvault
 import (
 	"github.com/labstack/echo/v4"
 
-	"github.com/sechealth-app/sechealth/internal/auth"
-	"github.com/sechealth-app/sechealth/internal/license"
+	"github.com/matharnica/vakt/internal/auth"
+	"github.com/matharnica/vakt/internal/license"
 )
 
 // Register wires SecretOps routes under the provided group.

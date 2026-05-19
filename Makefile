@@ -14,13 +14,13 @@ stop:
 #   sudo -u postgres psql -c "CREATE USER sechealth WITH PASSWORD 'sechealth';;"
 #   sudo -u postgres psql -c "CREATE DATABASE sechealth OWNER sechealth;"
 LOCAL_DB  := postgres://sechealth:sechealth@localhost:5432/sechealth?sslmode=disable
-LOCAL_ENV := SHIELDSTACK_DB_URL="$(LOCAL_DB)" \
-             SHIELDSTACK_REDIS_URL="redis://localhost:6379" \
-             SHIELDSTACK_SECRET_KEY="d7463ee089bc65fac0efe91ee13b88413e256de2151228eeebee4787e5d276f7" \
-             SHIELDSTACK_MODULES_ENABLED="secpulse,secvitals,secvault,secreflex,secprivacy" \
+LOCAL_ENV := VAKT_DB_URL="$(LOCAL_DB)" \
+             VAKT_REDIS_URL="redis://localhost:6379" \
+             VAKT_SECRET_KEY="d7463ee089bc65fac0efe91ee13b88413e256de2151228eeebee4787e5d276f7" \
+             VAKT_MODULES_ENABLED="secpulse,secvitals,secvault,secreflex,secprivacy" \
              AUTO_MIGRATE=true \
              APP_VERSION=0.1.0 \
-             SHIELDSTACK_API_PORT=8080
+             VAKT_API_PORT=8080
 
 api-local:
 	cd backend && $(LOCAL_ENV) go run ./cmd/api
@@ -34,10 +34,10 @@ stop-local:
 	@echo "stopped"
 
 migrate-local:
-	cd backend && SHIELDSTACK_DB_URL="$(LOCAL_DB)" go run ./cmd/migrate
+	cd backend && VAKT_DB_URL="$(LOCAL_DB)" go run ./cmd/migrate
 
 seed-local:
-	cd backend && SEED_ENV=development SHIELDSTACK_DB_URL="$(LOCAL_DB)" go run ./cmd/seed
+	cd backend && SEED_ENV=development VAKT_DB_URL="$(LOCAL_DB)" go run ./cmd/seed
 
 test:
 	cd backend && go test ./...

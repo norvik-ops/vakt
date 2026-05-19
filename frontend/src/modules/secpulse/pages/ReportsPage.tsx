@@ -90,44 +90,46 @@ export default function ReportsPage() {
             ) : !reports || reports.length === 0 ? (
               <p className="text-sm text-secondary py-8 text-center">{t('secpulse.reportsPage.noReports')}</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('secpulse.reportsPage.colTitle')}</TableHead>
-                    <TableHead>{t('secpulse.reportsPage.colStatus')}</TableHead>
-                    <TableHead>{t('secpulse.reportsPage.colCreated')}</TableHead>
-                    <TableHead>{t('secpulse.reportsPage.colExpires')}</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reports.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="font-medium">{r.title || '—'}</TableCell>
-                      <TableCell>
-                        <Badge variant={statusVariant[r.status]} className="capitalize">{r.status}</Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-secondary">
-                        {new Date(r.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-sm text-secondary">
-                        {r.expires_at ? new Date(r.expires_at).toLocaleDateString() : '—'}
-                      </TableCell>
-                      <TableCell>
-                        {r.status === 'completed' && (
-                          <button
-                            onClick={() => downloadReport(r.id, r.title)}
-                            className="flex items-center gap-1 text-xs text-brand hover:underline"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            PDF
-                          </button>
-                        )}
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('secpulse.reportsPage.colTitle')}</TableHead>
+                      <TableHead>{t('secpulse.reportsPage.colStatus')}</TableHead>
+                      <TableHead>{t('secpulse.reportsPage.colCreated')}</TableHead>
+                      <TableHead>{t('secpulse.reportsPage.colExpires')}</TableHead>
+                      <TableHead></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {reports.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="font-medium">{r.title || '—'}</TableCell>
+                        <TableCell>
+                          <Badge variant={statusVariant[r.status]} className="capitalize">{r.status}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-secondary">
+                          {new Date(r.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-sm text-secondary">
+                          {r.expires_at ? new Date(r.expires_at).toLocaleDateString() : '—'}
+                        </TableCell>
+                        <TableCell>
+                          {r.status === 'completed' && (
+                            <button
+                              onClick={() => downloadReport(r.id, r.title)}
+                              className="flex items-center gap-1 text-xs text-brand hover:underline"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              PDF
+                            </button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>

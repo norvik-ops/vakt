@@ -39,7 +39,7 @@ import { toast } from '../shared/hooks/useToast'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ReportType = 'compliance' | 'findings' | 'risk'
+type ReportType = 'compliance' | 'findings' | 'risk' | 'board_report'
 type Schedule = 'weekly' | 'monthly' | 'quarterly'
 type Format = 'pdf' | 'csv'
 
@@ -112,9 +112,10 @@ function useRunReport() {
 // ─── Labels ───────────────────────────────────────────────────────────────────
 
 const REPORT_TYPE_LABELS: Record<ReportType, string> = {
-  compliance: 'Compliance-Übersicht',
-  findings:   'Findings-Report',
-  risk:       'Risk-Report',
+  compliance:   'Compliance-Übersicht',
+  findings:     'Findings-Report',
+  risk:         'Risk-Report',
+  board_report: 'Management Board-Bericht (PDF)',
 }
 
 const SCHEDULE_LABELS: Record<Schedule, string> = {

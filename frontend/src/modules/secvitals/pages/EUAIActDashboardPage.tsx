@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { apiFetch } from '../../../api/client'
 import { ProGate } from '../../../shared/components/ProGate'
 import { RISK_CLASS_CSS, RISK_CLASS_LABELS } from '../components/aiRiskClassConfig'
-import { useAuthStore } from '../../../shared/stores/auth'
 
 interface EUAIActISOMappingEntry {
   eu_ai_act_article: string
@@ -42,13 +41,12 @@ export default function EUAIActDashboardPage() {
     queryFn: () => apiFetch<EUAIActDashboard>('/secvitals/eu-ai-act/dashboard'),
     staleTime: 5 * 60 * 1000,
   })
-  const token = useAuthStore((s) => s.token)
   const [downloadError, setDownloadError] = useState<string | null>(null)
 
   async function handleDownloadPDF() {
     try {
       const res = await fetch('/api/v1/secvitals/eu-ai-act/report-pdf', {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       })
       if (!res.ok) {
         setDownloadError('PDF konnte nicht erstellt werden. Bitte erneut versuchen.')

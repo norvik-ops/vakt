@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# SecHealth backup script — exports PostgreSQL dump + encryption key.
+# Vakt backup script — exports PostgreSQL dump + encryption key.
 # Usage: ./scripts/backup.sh [output-dir]
 # Requires: pg_dump, openssl, docker (if using compose)
 
 OUTPUT_DIR="${1:-.}"
 DATE=$(date +%Y-%m-%d_%H-%M-%S)
-BACKUP_NAME="sechealth-backup-${DATE}"
+BACKUP_NAME="vakt-backup-${DATE}"
 WORK_DIR=$(mktemp -d)
 trap 'rm -rf "$WORK_DIR"' EXIT
 
@@ -52,7 +52,7 @@ cat > "$WORK_DIR/manifest.json" <<EOF
 {
   "backup_date": "${DATE}",
   "schema_version": "$(date +%Y%m%d)",
-  "tool": "sechealth-backup"
+  "tool": "vakt-backup"
 }
 EOF
 

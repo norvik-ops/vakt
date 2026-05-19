@@ -6,7 +6,7 @@
 // the shared package by a different path.
 package secvault
 
-import sharedcrypto "github.com/sechealth-app/sechealth/internal/shared/crypto"
+import sharedcrypto "github.com/matharnica/vakt/internal/shared/crypto"
 
 // Re-exports from shared/crypto — keeps the secvault-internal API stable
 // while the canonical implementation lives in shared/crypto.

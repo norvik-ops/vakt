@@ -1,5 +1,17 @@
+import { motion, AnimatePresence } from 'framer-motion'
 import { useLocation } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+
+const pageVariants = {
+  initial: { opacity: 0, y: 6 },
+  in: { opacity: 1, y: 0 },
+  out: { opacity: 0, y: -6 },
+}
+
+const pageTransition = {
+  type: 'tween',
+  ease: 'easeInOut',
+  duration: 0.18,
+}
 
 interface PageTransitionProps {
   children: React.ReactNode
@@ -7,19 +19,19 @@ interface PageTransitionProps {
 
 export function PageTransition({ children }: PageTransitionProps) {
   const location = useLocation()
-  const [visible, setVisible] = useState(true)
-
-  useEffect(() => {
-    setVisible(false)
-    const t = setTimeout(() => setVisible(true), 50)
-    return () => clearTimeout(t)
-  }, [location.pathname])
-
   return (
-    <div
-      className={`transition-opacity duration-150 ${visible ? 'opacity-100' : 'opacity-0'}`}
-    >
-      {children}
-    </div>
+    <AnimatePresence mode="sync">
+      <motion.div
+        key={location.pathname}
+        initial="initial"
+        animate="in"
+        exit="out"
+        variants={pageVariants}
+        transition={pageTransition}
+        className="h-full"
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
   )
 }

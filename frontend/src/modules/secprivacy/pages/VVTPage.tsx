@@ -14,8 +14,12 @@ import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { InfoBanner } from '../../../shared/components/InfoBanner'
 import { Pagination } from '../../../shared/components/Pagination'
+import { FieldError } from '../../../shared/components/FieldError'
 import { Skeleton } from '../../../components/ui/skeleton'
+import { useFormValidation } from '../../../shared/hooks/useFormValidation'
+import { toast } from '../../../shared/hooks/useToast'
 import { useVVT, useCreateVVT, useUpdateVVT, useDeleteVVT, useExportVVT } from '../hooks/useVVT'
+import { ComplianceTooltip } from '../../../shared/components/ComplianceTooltip'
 import type { VVTEntry, CreateVVTInput, UpdateVVTInput } from '../types'
 
 const LEGAL_BASIS_OPTIONS = [
@@ -156,9 +160,13 @@ function VVTCard({
 function VVTForm({
   form,
   onChange,
+  errors,
+  onClearError,
 }: {
   form: VVTFormState
   onChange: (f: VVTFormState) => void
+  errors?: Partial<Record<string, string>>
+  onClearError?: (field: string) => void
 }) {
   const { t } = useTranslation()
   const set = (patch: Partial<VVTFormState>) => onChange({ ...form, ...patch })
@@ -166,21 +174,23 @@ function VVTForm({
   return (
     <div className="space-y-4 py-2">
       <div className="space-y-1.5">
-        <Label>{t('secprivacy.vvtPage.labelName')} *</Label>
+        <Label>{t('secprivacy.vvtPage.labelName')} <span className="text-red-400 text-xs">*</span></Label>
         <Input
           placeholder={t('secprivacy.vvtPage.placeholderName')}
           value={form.name}
-          onChange={(e) => set({ name: e.target.value })}
+          onChange={(e) => { set({ name: e.target.value }); onClearError?.('name') }}
         />
+        <FieldError error={errors?.name ?? null} />
       </div>
       <div className="space-y-1.5">
-        <Label>{t('secprivacy.vvtPage.labelPurpose')} *</Label>
+        <Label>{t('secprivacy.vvtPage.labelPurpose')} <span className="text-red-400 text-xs">*</span></Label>
         <Textarea
           placeholder={t('secprivacy.vvtPage.placeholderPurpose')}
           rows={2}
           value={form.purpose}
-          onChange={(e) => set({ purpose: e.target.value })}
+          onChange={(e) => { set({ purpose: e.target.value }); onClearError?.('purpose') }}
         />
+        <FieldError error={errors?.purpose ?? null} />
       </div>
       <div className="space-y-1.5">
         <Label>{t('secprivacy.vvtPage.labelLegalBasis')} *</Label>
@@ -287,16 +297,22 @@ export default function VVTPage() {
   const updateVVT = useUpdateVVT()
   const deleteVVT = useDeleteVVT()
   const exportVVT = useExportVVT()
+  const { errors: vvtErrors, validate: validateVVT, clearError: clearVVTError, clearAll: clearVVTErrors } = useFormValidation<Record<string, unknown>>({
+    name: { required: true },
+    purpose: { required: true },
+  })
 
   function openCreate() {
     setForm(emptyForm())
     setEditId(null)
+    clearVVTErrors()
     setDialogMode('create')
   }
 
   function openEdit(entry: VVTEntry) {
     setForm(formFromEntry(entry))
     setEditId(entry.id)
+    clearVVTErrors()
     setDialogMode('edit')
   }
 
@@ -325,8 +341,14 @@ export default function VVTPage() {
   }
 
   function handleSubmit() {
+    if (!validateVVT({ name: form.name, purpose: form.purpose })) return
     if (dialogMode === 'create') {
-      createVVT.mutate(buildPayload(), { onSuccess: () => setDialogMode(null) })
+      createVVT.mutate(buildPayload(), {
+        onSuccess: () => {
+          setDialogMode(null)
+          toast(`VVT-Eintrag erstellt: "${form.name}" wurde zum Verarbeitungsverzeichnis hinzugefügt.`, 'success')
+        },
+      })
     } else if (dialogMode === 'edit' && editId) {
       const payload: UpdateVVTInput = { ...buildPayload(), status: form.status }
       updateVVT.mutate({ id: editId, input: payload }, { onSuccess: () => setDialogMode(null) })
@@ -334,7 +356,6 @@ export default function VVTPage() {
   }
 
   const isPending = createVVT.isPending || updateVVT.isPending
-  const canSubmit = form.name && form.purpose && form.legal_basis && !isPending
 
   return (
     <div className="flex flex-col h-full">
@@ -418,15 +439,17 @@ export default function VVTPage() {
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {dialogMode === 'create' ? t('secprivacy.vvtPage.createDialogTitle') : t('secprivacy.vvtPage.editDialogTitle')}
+              <ComplianceTooltip term="vvt">
+                {dialogMode === 'create' ? t('secprivacy.vvtPage.createDialogTitle') : t('secprivacy.vvtPage.editDialogTitle')}
+              </ComplianceTooltip>
             </DialogTitle>
           </DialogHeader>
-          <VVTForm form={form} onChange={setForm} />
+          <VVTForm form={form} onChange={setForm} errors={vvtErrors} onClearError={clearVVTError} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogMode(null)}>
               {t('common.cancel')}
             </Button>
-            <Button onClick={handleSubmit} disabled={!canSubmit}>
+            <Button onClick={handleSubmit} disabled={isPending}>
               {isPending ? t('secprivacy.vvtPage.saving') : dialogMode === 'create' ? t('secprivacy.vvtPage.createEntry') : t('common.save')}
             </Button>
           </DialogFooter>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GraduationCap, ChevronDown, ChevronUp, UserPlus } from 'lucide-react'
+import { GraduationCap, ChevronDown, ChevronUp, UserPlus, Download } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
@@ -9,6 +9,20 @@ import { Label } from '../../../components/ui/label'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/ui/table'
 import { useTrainingModules, useAssignments, useAssignModule } from '../hooks/useTraining'
 import type { TrainingModule, Assignment } from '../types'
+
+async function downloadCertificate(assignmentId: string) {
+  const response = await fetch(`/api/v1/secreflex/assignments/${assignmentId}/certificate`, {
+    credentials: 'include',
+  })
+  if (!response.ok) return
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `certificate-${assignmentId}.pdf`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 const assignmentStatusVariant: Record<Assignment['status'], React.ComponentProps<typeof Badge>['variant']> = {
   assigned: 'secondary',
@@ -76,6 +90,7 @@ function ModuleRow({ module }: { module: TrainingModule }) {
                   <TableHead>Punktzahl</TableHead>
                   <TableHead>Zugewiesen</TableHead>
                   <TableHead>Abgeschlossen</TableHead>
+                  <TableHead>Zertifikat</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -93,6 +108,20 @@ function ModuleRow({ module }: { module: TrainingModule }) {
                     </TableCell>
                     <TableCell className="text-sm text-secondary">
                       {a.completed_at ? new Date(a.completed_at).toLocaleDateString() : '—'}
+                    </TableCell>
+                    <TableCell>
+                      {a.status === 'completed' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1"
+                          onClick={() => { void downloadCertificate(a.id) }}
+                          title="Zertifikat herunterladen"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          PDF
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

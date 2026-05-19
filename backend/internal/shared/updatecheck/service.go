@@ -64,7 +64,7 @@ func (s *Service) GetUpdateInfo(ctx context.Context) UpdateInfo {
 	}
 	if latest != "" {
 		info.UpdateAvailable = isNewer(latest, s.currentVersion)
-		info.ReleaseURL = "https://github.com/norvik-ops/vakt/releases/tag/" + latest
+		info.ReleaseURL = "https://github.com/norvik-ops/vatk/releases/tag/" + latest
 	}
 	return info
 }

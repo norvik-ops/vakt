@@ -4,7 +4,7 @@ import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { ProGate } from '../../../shared/components/ProGate'
-import { getAuthToken, FeatureLockedError } from '../../../api/client'
+import { FeatureLockedError } from '../../../api/client'
 
 const REPORT_TYPES = [
   {
@@ -39,9 +39,8 @@ export default function AIReportPage() {
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        const token = getAuthToken() ?? ''
         const res = await fetch('/api/v1/secvitals/ai/status', {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
         })
         if (res.ok) {
           const data = await res.json()
@@ -63,10 +62,10 @@ export default function AIReportPage() {
     setError(null)
     setReport(null)
     try {
-      const token = getAuthToken() ?? ''
       const res = await fetch('/api/v1/secvitals/ai/report', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: selected }),
       })
       if (res.status === 402) throw new FeatureLockedError('ai-report')

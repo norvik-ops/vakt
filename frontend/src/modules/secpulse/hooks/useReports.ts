@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, getAuthToken } from '../../../api/client'
+import { apiFetch } from '../../../api/client'
 import type { Report, RiskTrendResponse } from '../types'
 
 export interface CreateReportInput {
@@ -31,9 +31,8 @@ export function useReports() {
 
 export function useDownloadReport() {
   return (reportId: string, title?: string) => {
-    const token = getAuthToken() ?? ''
     fetch(`/api/v1/secpulse/reports/${reportId}/download`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
     })
       .then((r) => r.blob())
       .then((blob) => {

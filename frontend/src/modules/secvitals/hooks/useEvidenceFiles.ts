@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, getAuthToken } from '../../../api/client'
+import { apiFetch } from '../../../api/client'
 
 export interface EvidenceFile {
   id: string
@@ -35,12 +35,11 @@ export function useUploadEvidenceFile(controlId: string) {
   const queryClient = useQueryClient()
   return useMutation<EvidenceFile, Error, File>({
     mutationFn: (file: File) => {
-      const token = getAuthToken()
       const formData = new FormData()
       formData.append('file', file)
       return fetch(`/api/v1/secvitals/controls/${controlId}/evidence-files`, {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
         body: formData,
       }).then(async (res) => {
         if (!res.ok) {

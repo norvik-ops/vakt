@@ -21,8 +21,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
-	"github.com/sechealth-app/sechealth/internal/shared/crossevidence"
-	"github.com/sechealth-app/sechealth/internal/shared/evidence_auto"
+	"github.com/matharnica/vakt/internal/shared/crossevidence"
+	"github.com/matharnica/vakt/internal/shared/evidence_auto"
 )
 
 // Service handles SecReflex business logic.
@@ -227,6 +227,18 @@ func (s *Service) RecordEvent(ctx context.Context, token, eventType, ip, ua stri
 	return lp.HTMLContent, nil
 }
 
+// RecordOpen records an email-open event for the given tracking token.
+// Unlike RecordEvent it returns nothing — the caller serves the pixel directly.
+func (s *Service) RecordOpen(ctx context.Context, token, ip, ua string) {
+	campaign, err := s.repo.GetCampaignByTrackingToken(ctx, token)
+	if err != nil {
+		return
+	}
+	if err := s.repo.CreateTrackingEvent(ctx, campaign.OrgID, campaign.ID, nil, "", token, "open", ip, ua); err != nil {
+		log.Warn().Err(err).Msg("failed to record open event")
+	}
+}
+
 // ── Training modules ──────────────────────────────────────────────────────────
 
 func (s *Service) CreateModule(ctx context.Context, orgID, userID string, input CreateModuleInput) (*TrainingModule, error) {
@@ -290,7 +302,7 @@ func (s *Service) CompleteAssignment(ctx context.Context, orgID, assignmentID st
 		p := crossevidence.EvidencePayload{
 			OrgID:        orgID,
 			Source:       "secreflex",
-			ResourceType: "training_completion",
+			ResourceType: "vakt-aware/training-completion",
 			ResourceID:   assignmentID,
 			Title:        "Security Awareness Training abgeschlossen",
 			Description:  "Ein Mitarbeiter hat ein Security Awareness Training erfolgreich absolviert.",
@@ -575,6 +587,50 @@ Bitte melde dich in der Vakt-Plattform an und schließe dein zugewiesenes Traini
 
 	msg := buildMIMEMessage("Security Awareness", s.smtpCfg.from(), email, subject, htmlBody, "", s.smtpCfg.AppURL, false)
 	return s.sendSMTP(s.smtpCfg.from(), email, msg)
+}
+
+// GetAssignmentCertificate generates a PDF training certificate for a completed assignment.
+// Returns (pdfBytes, filename, error). Returns an error if the assignment has no completion record.
+func (s *Service) GetAssignmentCertificate(ctx context.Context, orgID, assignmentID string) ([]byte, string, error) {
+	assignment, err := s.repo.GetAssignment(ctx, orgID, assignmentID)
+	if err != nil {
+		return nil, "", fmt.Errorf("get assignment: %w", err)
+	}
+
+	completion, err := s.repo.GetCompletionByAssignment(ctx, orgID, assignmentID)
+	if err != nil {
+		return nil, "", fmt.Errorf("no completion found: %w", err)
+	}
+
+	module, err := s.repo.GetModuleByID(ctx, orgID, assignment.ModuleID)
+	if err != nil {
+		return nil, "", fmt.Errorf("get module: %w", err)
+	}
+
+	var orgName string
+	_ = s.db.QueryRow(ctx, `SELECT name FROM organizations WHERE id=$1::uuid`, orgID).Scan(&orgName)
+	if orgName == "" {
+		orgName = "Ihre Organisation"
+	}
+
+	// Determine user email from the assignment's target.
+	userEmail := "Unbekannt"
+	if assignment.TargetID != nil {
+		var email string
+		if err := s.db.QueryRow(ctx, `SELECT email FROM pg_targets WHERE id=$1`, *assignment.TargetID).Scan(&email); err == nil {
+			userEmail = email
+		}
+	} else if assignment.Department != "" {
+		userEmail = assignment.Department
+	}
+
+	pdfBytes, err := GenerateTrainingCertificatePDF(module.Title, userEmail, completion.Score, completion.Passed, completion.CompletedAt, orgName)
+	if err != nil {
+		return nil, "", fmt.Errorf("generate certificate pdf: %w", err)
+	}
+
+	filename := "certificate-" + assignmentID + ".pdf"
+	return pdfBytes, filename, nil
 }
 
 // ExportCampaignReport generates a PDF report for the given campaign.

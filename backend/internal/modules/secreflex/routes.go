@@ -1,9 +1,13 @@
 package secreflex
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/labstack/echo/v4"
-	"github.com/sechealth-app/sechealth/internal/auth"
-	"github.com/sechealth-app/sechealth/internal/license"
+	echomiddleware "github.com/labstack/echo/v4/middleware"
+	"github.com/matharnica/vakt/internal/auth"
+	"github.com/matharnica/vakt/internal/license"
 )
 
 // Register wires PhishGuard routes under the provided group.
@@ -49,10 +53,39 @@ func Register(g *echo.Group, h *Handler) {
 	// --- Community: Basic assignment tracking ---
 	p.GET("/assignments", h.ListAssignments)
 	p.POST("/assignments/:id/complete", h.CompleteAssignment)
+	p.GET("/assignments/:id/certificate", h.GetAssignmentCertificate)
 
-	// Public tracking (no auth required)
-	g.GET("/t/:token", h.TrackClick)
-	g.POST("/t/:token/submit", h.TrackFormSubmission)
+	// Public tracking (no auth required) — rate-limited to 10 req/min per IP
+	// to prevent token enumeration attacks.
+	trackingRL := echomiddleware.RateLimiterWithConfig(echomiddleware.RateLimiterConfig{
+		Skipper: echomiddleware.DefaultSkipper,
+		Store: echomiddleware.NewRateLimiterMemoryStoreWithConfig(
+			echomiddleware.RateLimiterMemoryStoreConfig{
+				Rate:      10,
+				Burst:     10,
+				ExpiresIn: time.Minute,
+			},
+		),
+		IdentifierExtractor: func(c echo.Context) (string, error) {
+			return c.RealIP(), nil
+		},
+		ErrorHandler: func(c echo.Context, err error) error {
+			return c.JSON(http.StatusTooManyRequests, map[string]string{
+				"error": "too many requests",
+				"code":  "RATE_LIMIT_EXCEEDED",
+			})
+		},
+		DenyHandler: func(c echo.Context, identifier string, err error) error {
+			return c.JSON(http.StatusTooManyRequests, map[string]string{
+				"error": "too many requests",
+				"code":  "RATE_LIMIT_EXCEEDED",
+			})
+		},
+	})
+	tracking := g.Group("", trackingRL)
+	tracking.GET("/t/:token", h.TrackClick)
+	tracking.POST("/t/:token/submit", h.TrackFormSubmission)
+	tracking.GET("/track/:token", h.TrackOpen) // open-tracking pixel (1×1 GIF)
 
 	// Public phish-report webhook (no auth — validated via org_token in body)
 	g.POST("/phish-report", h.ReceivePhishReport)
