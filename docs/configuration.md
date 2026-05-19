@@ -45,7 +45,7 @@ VAKT_REDIS_URL=redis://redis:6379
 **Beispiel:**
 
 ```env
-VAKT_SECRET_KEY=a3f8c2e1d4b7a9f0e2c5d8b1a4f7e0c3d6b9a2f5e8c1d4b7a0f3e6c9d2b5a8f1
+VAKT_SECRET_KEY=$(openssl rand -hex 32)   # Beispiel — echten Wert generieren!
 ```
 
 ---
