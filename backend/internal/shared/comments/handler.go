@@ -4,23 +4,29 @@
 package comments
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/notify"
 )
 
 // Handler handles HTTP requests for the shared comments endpoint.
 type Handler struct {
 	repo     *Repository
+	db       *pgxpool.Pool
 	validate *validator.Validate
 }
 
 // NewHandler creates a new comments handler.
-func NewHandler(repo *Repository) *Handler {
+func NewHandler(repo *Repository, db *pgxpool.Pool) *Handler {
 	return &Handler{
 		repo:     repo,
+		db:       db,
 		validate: validator.New(),
 	}
 }
@@ -117,6 +123,26 @@ func (h *Handler) CreateComment(c echo.Context) error {
 			"code":  "COMMENTS_CREATE_ERROR",
 		})
 	}
+
+	// Send in-app notification — non-fatal, comment was already persisted.
+	module := "secpulse"
+	if in.EntityType == "control" {
+		module = "secvitals"
+	}
+	userName := cmt.AuthorName
+	if userName == "" {
+		userName = userID
+	}
+	notify.Send(
+		c.Request().Context(),
+		h.db,
+		orgID,
+		"Neuer Kommentar",
+		fmt.Sprintf("%s hat einen Kommentar hinterlassen", userName),
+		"comment_added",
+		module,
+	)
+
 	return c.JSON(http.StatusCreated, cmt)
 }
 

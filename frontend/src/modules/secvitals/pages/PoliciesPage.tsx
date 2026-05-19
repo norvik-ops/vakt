@@ -27,6 +27,7 @@ import type { SortDir } from '../../../shared/hooks/useSortableTable'
 import { toast } from '../../../shared/hooks/useToast'
 import { handleApiError } from '../../../shared/utils/errorMessages'
 import { SkeletonCardGrid } from '../../../shared/components/SkeletonLoaders'
+import { UserPicker } from '../../../shared/components/UserPicker'
 
 const POLICY_TYPES = [
   'Informationssicherheitsrichtlinie (ISO 27001 A.5.1)',
@@ -513,9 +514,11 @@ export default function PoliciesPage() {
                   onChange={(e) => setForm((f) => ({ ...f, version: e.target.value }))} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="pol-owner">{t('secvitals.policiesPage.labelOwner')}</Label>
-                <Input id="pol-owner" placeholder={t('secvitals.policiesPage.placeholderOwner')} value={form.owner ?? ''}
-                  onChange={(e) => setForm((f) => ({ ...f, owner: e.target.value }))} />
+                <Label>{t('secvitals.policiesPage.labelOwner')}</Label>
+                <UserPicker
+                  value={form.owner ?? undefined}
+                  onChange={(name) => setForm((f) => ({ ...f, owner: name ?? '' }))}
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">

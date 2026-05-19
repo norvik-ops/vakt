@@ -21,6 +21,7 @@ import { useRisks, useCreateRisk } from '../hooks/useRisks'
 import { apiFetch } from '../../../api/client'
 import RiskHeatmap from '../components/RiskHeatmap'
 import { Skeleton } from '../../../components/ui/skeleton'
+import { UserPicker } from '../../../shared/components/UserPicker'
 import type { Risk, CreateRiskInput } from '../types'
 
 // ---- Risk Matrix Heatmap (inline, list-view summary) -------------------------
@@ -516,9 +517,11 @@ export default function RisksPage() {
                 onChange={(e) => setForm((f) => ({ ...f, treatment_notes: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="risk-owner">{t('secvitals.risksPage.labelOwner')}</Label>
-              <Input id="risk-owner" placeholder={t('secvitals.risksPage.placeholderOwner')} value={form.owner ?? ''}
-                onChange={(e) => setForm((f) => ({ ...f, owner: e.target.value }))} />
+              <Label>{t('secvitals.risksPage.labelOwner')}</Label>
+              <UserPicker
+                value={form.owner ?? undefined}
+                onChange={(name) => setForm((f) => ({ ...f, owner: name ?? '' }))}
+              />
             </div>
           </div>
           <DialogFooter>

@@ -16,7 +16,7 @@ import (
 //	POST   /comments
 //	DELETE /comments/:id
 func Register(g *echo.Group, db *pgxpool.Pool) {
-	h := NewHandler(NewRepository(db))
+	h := NewHandler(NewRepository(db), db)
 	g.GET("/comments", h.ListComments)
 	g.POST("/comments", h.CreateComment)
 	g.DELETE("/comments/:id", h.DeleteComment)
