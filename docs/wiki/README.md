@@ -26,6 +26,7 @@ Vakt ist eine selbst gehostete Security- & Compliance-Plattform für KMU im DACH
 | [Vakt Vault](modules/vault.md) | Secrets Management: AES-256-GCM-Verschlüsselung, Git-Repo-Scanning, automatische Rotation |
 | [Vakt Aware](modules/aware.md) | Security Awareness: Phishing-Simulationen, Micro-Trainings, Betriebsrat-konformes Reporting |
 | [Vakt Privacy](modules/privacy.md) | DSGVO-Hub: VVT (Art. 30), DPIA (Art. 35), AVV (Art. 28), DSR-Workflows, Meldungsregister |
+| [Vakt HR](modules/hr.md) | Mitarbeiter-Lifecycle: Onboarding/Offboarding-Checklisten, Mitarbeiterverzeichnis, Compliance-Evidenz |
 
 ---
 

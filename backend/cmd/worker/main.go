@@ -24,26 +24,27 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/sechealth-app/sechealth/internal/admin"
-	"github.com/sechealth-app/sechealth/internal/auth"
-	"github.com/sechealth-app/sechealth/internal/shared/demo"
-	"github.com/sechealth-app/sechealth/internal/config"
-	cloudintegration "github.com/sechealth-app/sechealth/internal/shared/integrations/cloud"
-	ghintegration "github.com/sechealth-app/sechealth/internal/shared/integrations/github"
-	"github.com/sechealth-app/sechealth/internal/modules/secprivacy"
-	"github.com/sechealth-app/sechealth/internal/modules/secreflex"
-	"github.com/sechealth-app/sechealth/internal/modules/secpulse"
-	"github.com/sechealth-app/sechealth/internal/modules/secvault"
-	"github.com/sechealth-app/sechealth/internal/modules/secvitals"
-	"github.com/sechealth-app/sechealth/internal/shared/alerting"
-	"github.com/sechealth-app/sechealth/internal/shared/bsi"
-	"github.com/sechealth-app/sechealth/internal/shared/crossevidence"
-	"github.com/sechealth-app/sechealth/internal/shared/db"
-	"github.com/sechealth-app/sechealth/internal/shared/emaildigest"
-	"github.com/sechealth-app/sechealth/internal/shared/notifications"
-	"github.com/sechealth-app/sechealth/internal/shared/notify"
-	"github.com/sechealth-app/sechealth/internal/shared/retention"
-	"github.com/sechealth-app/sechealth/internal/shared/scheduledreports"
+	"github.com/matharnica/vakt/internal/auth"
+	"github.com/matharnica/vakt/internal/shared/demo"
+	"github.com/matharnica/vakt/internal/config"
+	cloudintegration "github.com/matharnica/vakt/internal/shared/integrations/cloud"
+	ghintegration "github.com/matharnica/vakt/internal/shared/integrations/github"
+	"github.com/matharnica/vakt/internal/modules/secprivacy"
+	"github.com/matharnica/vakt/internal/modules/secreflex"
+	"github.com/matharnica/vakt/internal/modules/secpulse"
+	"github.com/matharnica/vakt/internal/modules/secvault"
+	"github.com/matharnica/vakt/internal/modules/secvitals"
+	"github.com/matharnica/vakt/internal/shared/alerting"
+	"github.com/matharnica/vakt/internal/shared/bsi"
+	"github.com/matharnica/vakt/internal/shared/controltests"
+	"github.com/matharnica/vakt/internal/shared/crossevidence"
+	"github.com/matharnica/vakt/internal/shared/db"
+	"github.com/matharnica/vakt/internal/shared/emaildigest"
+	"github.com/matharnica/vakt/internal/shared/errorbudget"
+	"github.com/matharnica/vakt/internal/shared/notifications"
+	"github.com/matharnica/vakt/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/retention"
+	"github.com/matharnica/vakt/internal/shared/scheduledreports"
 )
 
 // workerConcurrency returns the Asynq concurrency from env (VAKT_WORKER_CONCURRENCY),
@@ -105,9 +106,6 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	// ── SecVault git scanning ─────────────────────────────────────────────────
 	mux.HandleFunc(secvault.TaskGitScan, handleGitScan(cfg, pool))
 
-	// ── MSP org deletion ──────────────────────────────────────────────────────
-	mux.HandleFunc(admin.TaskDeleteOrg, handleDeleteOrg(cfg, pool))
-
 	// ── SecPrivacy: AVV expiry check ──────────────────────────────────────────
 	mux.HandleFunc(secprivacy.TaskAVVExpiryCheck, handleAVVExpiryCheck(cfg, pool))
 
@@ -150,6 +148,12 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 
 	// SecVitals: daily supplier certificate expiry check
 	mux.HandleFunc(secvitals.TaskCertExpiryCheck, handleCertExpiryCheck(pool))
+
+	// SecVitals: daily overdue control test CAPA creation
+	mux.HandleFunc(taskControlTestCheck, handleControlTestCheck(pool))
+
+	// Error budget: weekly SLO compliance report
+	mux.HandleFunc(taskErrorBudgetReport, handleErrorBudgetReport(pool))
 
 	// SecVitals: CCM — run all due automated control checks
 	mux.HandleFunc(secvitals.TaskCCMRunDue, handleCCMRunDue(pool))
@@ -285,10 +289,7 @@ func handleGenerateReport(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerF
 			return fmt.Errorf("mark report processing: %w", err)
 		}
 
-		title := ""
-		if t, ok := payload.Scope["title"].(string); ok {
-			title = t
-		}
+		title := payload.Scope.Title
 
 		log.Info().Str("report_id", payload.ReportID).Str("org_id", payload.OrgID).Msg("generating PDF report")
 
@@ -502,45 +503,6 @@ func handleGitScan(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	}
 }
 
-// handleDeleteOrg handles admin:org:delete jobs. It verifies that the
-// scheduled_deletion_at has passed before hard-deleting the org.
-func handleDeleteOrg(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
-	return func(ctx context.Context, t *asynq.Task) error {
-		var payload struct {
-			OrgID       string `json:"org_id"`
-			ScheduledAt string `json:"scheduled_at"`
-		}
-		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
-			return fmt.Errorf("parse delete_org payload: %w", err)
-		}
-
-		repo := admin.NewRepository(pool)
-
-		org, err := repo.GetOrg(ctx, payload.OrgID)
-		if err != nil {
-			// Org already deleted or does not exist — not an error.
-			log.Warn().Str("org_id", payload.OrgID).Msg("delete_org: org not found, skipping")
-			return nil
-		}
-
-		if org.ScheduledDeletionAt == nil || org.ScheduledDeletionAt.After(time.Now().UTC()) {
-			log.Info().
-				Str("org_id", payload.OrgID).
-				Msg("delete_org: grace period not yet elapsed, skipping")
-			return nil
-		}
-
-		// Hard-delete the org and all its data via CASCADE constraints.
-		if _, err := pool.Exec(ctx,
-			`DELETE FROM organizations WHERE id = $1::uuid`, payload.OrgID,
-		); err != nil {
-			return fmt.Errorf("hard delete org %s: %w", payload.OrgID, err)
-		}
-
-		log.Info().Str("org_id", payload.OrgID).Msg("org hard-deleted")
-		return nil
-	}
-}
 
 // handleAVVExpiryCheck handles secprivacy:avv_expiry_check jobs.
 // Marks overdue AVVs as expired and fires avv.expired alerts per org.
@@ -1153,6 +1115,9 @@ func handleNotifyDeadlines(cfg *config.Config, pool *pgxpool.Pool) asynq.Handler
 		if err := notifications.CheckCCMFailures(ctx, pool, m); err != nil {
 			log.Error().Err(err).Msg("ccm failure check failed")
 		}
+		if err := notifications.CheckCertificationDeadlines(ctx, pool, m); err != nil {
+			log.Error().Err(err).Msg("certification deadline check failed")
+		}
 		return nil
 	}
 }
@@ -1169,6 +1134,9 @@ func handleProcessScheduledReports(cfg *config.Config, pool *pgxpool.Pool) asynq
 			smtpCfg.From = cfg.SMTPFrom
 		}
 		svc := scheduledreports.NewService(pool, smtpCfg)
+		// Wire the secvitals service as the board report provider so that
+		// scheduled reports of type "board_report" can generate a PDF attachment.
+		svc.WithBoardReportProvider(secvitals.NewService(pool))
 		if err := svc.ProcessDue(ctx); err != nil {
 			log.Error().Err(err).Msg("scheduled_reports: process_due failed")
 			return err
@@ -1362,7 +1330,7 @@ func handleCloudSync(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 			log.Error().Err(err).Msg("cloud_sync: invalid master key")
 			return err
 		}
-		svc := cloudintegration.NewService(pool, masterKey)
+		svc := cloudintegration.NewService(pool, masterKey, cloudintegration.NoopEvidenceWriter())
 		if err := svc.SyncAllEnabled(ctx); err != nil {
 			log.Error().Err(err).Msg("cloud_sync: failed")
 			return err
@@ -1539,10 +1507,53 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		log.Error().Err(err).Msg("failed to register queue health check cron")
 	}
 
+	// Daily at 06:30 UTC: create CAPAs for controls whose test interval has elapsed.
+	if _, err := scheduler.Register("30 6 * * *",
+		asynq.NewTask(taskControlTestCheck, nil),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register control test check cron")
+	}
+
+	// Every Monday at 09:00 UTC: compute and log the weekly SLO error budget report.
+	if _, err := scheduler.Register("0 9 * * 1",
+		asynq.NewTask(taskErrorBudgetReport, nil),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register error budget report cron")
+	}
+
 	return scheduler
 }
 
 const taskQueueHealthCheck = "queue:health:check"
+
+// taskControlTestCheck is the Asynq task name for the daily overdue control test CAPA check.
+const taskControlTestCheck = "secvitals:control_test_check"
+
+// taskErrorBudgetReport is the Asynq task name for the weekly SLO error budget report.
+const taskErrorBudgetReport = "errorbudget:weekly_report"
+
+// handleControlTestCheck creates CAPAs for controls whose test_interval_days has elapsed.
+func handleControlTestCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
+	return func(ctx context.Context, _ *asynq.Task) error {
+		if err := controltests.CheckOverdueControlTests(ctx, pool); err != nil {
+			log.Error().Err(err).Msg("control_test_check: failed")
+			return err
+		}
+		return nil
+	}
+}
+
+// handleErrorBudgetReport runs the weekly SLO compliance report against audit_log.
+func handleErrorBudgetReport(pool *pgxpool.Pool) asynq.HandlerFunc {
+	return func(ctx context.Context, _ *asynq.Task) error {
+		cfg := errorbudget.LoadConfig()
+		if err := errorbudget.WeeklyReport(ctx, pool, cfg); err != nil {
+			log.Error().Err(err).Msg("errorbudget: weekly report failed")
+			return err
+		}
+		return nil
+	}
+}
 
 // handleQueueHealthCheck inspects Asynq queues and logs warnings when failed or
 // archived job counts exceed thresholds. No DB required — reads directly from Redis.

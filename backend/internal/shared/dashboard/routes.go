@@ -18,7 +18,8 @@ import (
 // protecting each endpoint with the supplied auth middleware. The caller is
 // responsible for passing a group already rooted at /api/v1/dashboard.
 func Register(g *echo.Group, db *pgxpool.Pool, rdb *redis.Client, auth echo.MiddlewareFunc) {
-	h := NewHandler(db, rdb)
+	svc := NewService(db)
+	h := NewHandler(svc, rdb)
 	g.GET("/score", h.GetScore, auth)
 	g.GET("/score/config", h.GetScoreConfig, auth)
 	g.PUT("/score/config", h.UpdateScoreConfig, auth)

@@ -179,15 +179,16 @@ func (r *Repository) BulkInsertControls(ctx context.Context, controls []Control)
 }
 
 // UpdateControl sets not_applicable, reason, manual_status, and optionally maturity_score on a control.
-func (r *Repository) UpdateControl(ctx context.Context, orgID, controlID string, notApplicable bool, reason, manualStatus string, maturityScore *int) error {
+func (r *Repository) UpdateControl(ctx context.Context, orgID, controlID string, notApplicable bool, reason, manualStatus, owner string, maturityScore *int) error {
 	tag, err := r.db.Exec(ctx, `
 		UPDATE ck_controls
 		SET not_applicable        = $3,
 		    not_applicable_reason = NULLIF($4, ''),
 		    manual_status         = NULLIF($5, ''),
-		    maturity_score        = COALESCE($6, maturity_score)
+		    owner                 = NULLIF($6, ''),
+		    maturity_score        = COALESCE($7, maturity_score)
 		WHERE id = $1::uuid AND org_id = $2::uuid`,
-		controlID, orgID, notApplicable, reason, manualStatus, maturityScore,
+		controlID, orgID, notApplicable, reason, manualStatus, owner, maturityScore,
 	)
 	if err != nil {
 		return fmt.Errorf("update control: %w", err)
@@ -204,7 +205,7 @@ func (r *Repository) ListControls(ctx context.Context, orgID, frameworkID string
 		SELECT id::text, framework_id::text, org_id::text, control_id, title,
 		       COALESCE(description, ''), domain, evidence_type, weight,
 		       not_applicable, COALESCE(not_applicable_reason, ''),
-		       COALESCE(manual_status, ''), maturity_score,
+		       COALESCE(manual_status, ''), maturity_score, COALESCE(owner, ''),
 		       last_reviewed_at, review_interval_days, next_review_due,
 		       last_reviewed_by, review_note
 		FROM ck_controls
@@ -223,7 +224,7 @@ func (r *Repository) ListControls(ctx context.Context, orgID, frameworkID string
 		var nextReviewDue *time.Time
 		if err := rows.Scan(&c.ID, &c.FrameworkID, &c.OrgID, &c.ControlID, &c.Title,
 			&c.Description, &c.Domain, &c.EvidenceType, &c.Weight,
-			&c.NotApplicable, &c.NotApplicableReason, &c.ManualStatus, &c.MaturityScore,
+			&c.NotApplicable, &c.NotApplicableReason, &c.ManualStatus, &c.MaturityScore, &c.Owner,
 			&c.LastReviewedAt, &c.ReviewIntervalDays, &nextReviewDue,
 			&c.LastReviewedBy, &c.ReviewNote); err != nil {
 			return nil, fmt.Errorf("scan control: %w", err)
@@ -243,7 +244,7 @@ func (r *Repository) GetControl(ctx context.Context, orgID, controlID string) (*
 		SELECT id::text, framework_id::text, org_id::text, control_id, title,
 		       COALESCE(description, ''), domain, evidence_type, weight,
 		       not_applicable, COALESCE(not_applicable_reason, ''),
-		       COALESCE(manual_status, ''), maturity_score,
+		       COALESCE(manual_status, ''), maturity_score, COALESCE(owner, ''),
 		       last_reviewed_at, review_interval_days, next_review_due,
 		       last_reviewed_by, review_note
 		FROM ck_controls
@@ -251,7 +252,7 @@ func (r *Repository) GetControl(ctx context.Context, orgID, controlID string) (*
 		controlID, orgID,
 	).Scan(&c.ID, &c.FrameworkID, &c.OrgID, &c.ControlID, &c.Title,
 		&c.Description, &c.Domain, &c.EvidenceType, &c.Weight,
-		&c.NotApplicable, &c.NotApplicableReason, &c.ManualStatus, &c.MaturityScore,
+		&c.NotApplicable, &c.NotApplicableReason, &c.ManualStatus, &c.MaturityScore, &c.Owner,
 		&c.LastReviewedAt, &c.ReviewIntervalDays, &nextReviewDue,
 		&c.LastReviewedBy, &c.ReviewNote)
 	if err != nil {
@@ -560,6 +561,61 @@ func (r *Repository) ListEvidenceByControls(ctx context.Context, orgID string, c
 	return result, rows.Err()
 }
 
+// GetEvidence returns a single evidence item by ID within an organisation.
+func (r *Repository) GetEvidence(ctx context.Context, orgID, evidenceID string) (*Evidence, error) {
+	var ev Evidence
+	err := r.db.QueryRow(ctx, `
+		SELECT id::text, control_id::text, org_id::text, title, COALESCE(description,''),
+		       source, COALESCE(file_path,''), COALESCE(file_size,0),
+		       status, version, expires_at, expiry_notified_at, created_at, updated_at
+		FROM ck_evidence
+		WHERE id = $1::uuid AND org_id = $2::uuid`,
+		evidenceID, orgID,
+	).Scan(
+		&ev.ID, &ev.ControlID, &ev.OrgID, &ev.Title, &ev.Description,
+		&ev.Source, &ev.FilePath, &ev.FileSize,
+		&ev.Status, &ev.Version, &ev.ExpiresAt, &ev.ExpiryNotifiedAt, &ev.CreatedAt, &ev.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get evidence: %w", err)
+	}
+	return &ev, nil
+}
+
+// ListEvidenceHistory returns the audit history for an evidence item, newest first.
+func (r *Repository) ListEvidenceHistory(ctx context.Context, orgID, evidenceID string) ([]EvidenceHistoryEntry, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT id::text, evidence_id::text,
+		       CASE WHEN changed_by IS NULL THEN NULL ELSE changed_by::text END,
+		       changed_at,
+		       COALESCE(title,''), COALESCE(status,''), COALESCE(change_note,'')
+		FROM ck_evidence_history
+		WHERE evidence_id = $1::uuid AND org_id = $2::uuid
+		ORDER BY changed_at DESC`,
+		evidenceID, orgID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list evidence history: %w", err)
+	}
+	defer rows.Close()
+
+	var items []EvidenceHistoryEntry
+	for rows.Next() {
+		var e EvidenceHistoryEntry
+		if err := rows.Scan(
+			&e.ID, &e.EvidenceID, &e.ChangedBy, &e.ChangedAt,
+			&e.Title, &e.Status, &e.ChangeNote,
+		); err != nil {
+			return nil, fmt.Errorf("scan evidence history: %w", err)
+		}
+		items = append(items, e)
+	}
+	if items == nil {
+		items = []EvidenceHistoryEntry{}
+	}
+	return items, rows.Err()
+}
+
 // ReviewEvidence updates the status and reviewer information on an evidence item.
 func (r *Repository) ReviewEvidence(ctx context.Context, orgID, evidenceID, reviewerID, status string) error {
 	tag, err := r.db.Exec(ctx, `
@@ -604,14 +660,14 @@ func (r *Repository) AddCollectorEvidence(ctx context.Context, orgID, controlID,
 // --- Auditor links ---
 
 // CreateAuditorLink inserts a new auditor link record.
-func (r *Repository) CreateAuditorLink(ctx context.Context, orgID, frameworkID, userID, tokenHash string, expiresAt time.Time) (*AuditorLink, error) {
+func (r *Repository) CreateAuditorLink(ctx context.Context, orgID, frameworkID, userID, tokenHash string, expiresAt time.Time, maxUses *int) (*AuditorLink, error) {
 	var al AuditorLink
 	err := r.db.QueryRow(ctx, `
-		INSERT INTO ck_auditor_links (org_id, framework_id, token_hash, created_by, expires_at)
-		VALUES ($1::uuid, $2::uuid, $3, $4::uuid, $5)
-		RETURNING id::text, org_id::text, framework_id::text, created_by::text, expires_at, used_count, created_at`,
-		orgID, frameworkID, tokenHash, userID, expiresAt,
-	).Scan(&al.ID, &al.OrgID, &al.FrameworkID, &al.CreatedBy, &al.ExpiresAt, &al.UsedCount, &al.CreatedAt)
+		INSERT INTO ck_auditor_links (org_id, framework_id, token_hash, created_by, expires_at, max_uses)
+		VALUES ($1::uuid, $2::uuid, $3, $4::uuid, $5, $6)
+		RETURNING id::text, org_id::text, framework_id::text, created_by::text, expires_at, used_count, max_uses, created_at`,
+		orgID, frameworkID, tokenHash, userID, expiresAt, maxUses,
+	).Scan(&al.ID, &al.OrgID, &al.FrameworkID, &al.CreatedBy, &al.ExpiresAt, &al.UsedCount, &al.MaxUses, &al.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("create auditor link: %w", err)
 	}
@@ -625,11 +681,11 @@ func (r *Repository) GetAuditorLinkByHash(ctx context.Context, tokenHash string)
 	var revokedAt *time.Time
 	err := r.db.QueryRow(ctx, `
 		SELECT id::text, org_id::text, COALESCE(framework_id::text,''), created_by::text,
-		       expires_at, used_count, created_at, revoked_at
+		       expires_at, used_count, max_uses, created_at, revoked_at
 		FROM ck_auditor_links
 		WHERE token_hash = $1`,
 		tokenHash,
-	).Scan(&al.ID, &al.OrgID, &al.FrameworkID, &al.CreatedBy, &al.ExpiresAt, &al.UsedCount, &al.CreatedAt, &revokedAt)
+	).Scan(&al.ID, &al.OrgID, &al.FrameworkID, &al.CreatedBy, &al.ExpiresAt, &al.UsedCount, &al.MaxUses, &al.CreatedAt, &revokedAt)
 	if err != nil {
 		return nil, fmt.Errorf("get auditor link: %w", err)
 	}
@@ -907,6 +963,9 @@ func (r *Repository) UpdateRiskTreatment(ctx context.Context, orgID, id string, 
 	var args []interface{}
 	args = append(args, id, orgID, in.TreatmentOption, in.TreatmentPlan, in.TreatmentOwner, in.TreatmentStatus, in.ResidualLikelihood, in.ResidualImpact)
 
+	// dueDateExpr is a hardcoded SQL expression — never user input.
+	// Three possible values: a positional param "$9", the column reference "treatment_due_date",
+	// or the SQL literal "NULL". No injection risk.
 	if in.TreatmentDueDate != nil && *in.TreatmentDueDate != "" {
 		dueDateExpr = "$9"
 		args = append(args, *in.TreatmentDueDate)
@@ -1130,6 +1189,7 @@ func (r *Repository) ListIncidentsByType(ctx context.Context, orgID, incidentTyp
 }
 
 func (r *Repository) MarkDeadlineReported(ctx context.Context, orgID, id, deadline string) (*Incident, error) {
+	// col is selected from a hardcoded allowlist — never user input reaches the query.
 	col := map[string]string{
 		"4h":  "reported_4h_at",
 		"24h": "reported_24h_at",
@@ -1232,6 +1292,7 @@ func (r *Repository) GetIncidentReportPDF(ctx context.Context, orgID, reportID s
 // MarkIncidentWarnNotified sets the notified_warn_* flag for a given deadline
 // so the 12h-before warning is only sent once per incident + deadline pair.
 func (r *Repository) MarkIncidentWarnNotified(ctx context.Context, orgID, incidentID, deadline string) error {
+	// col is selected from a hardcoded allowlist — never user input reaches the query.
 	col := map[string]string{
 		"24h": "notified_warn_24h",
 		"72h": "notified_warn_72h",
@@ -4313,4 +4374,30 @@ func (r *Repository) GetScoreHistory(ctx context.Context, orgID string, days int
 		entries = append(entries, e)
 	}
 	return entries, rows.Err()
+}
+
+// BulkUpdateControlStatus sets manual_status for all controls in ids that belong to the org.
+func (r *Repository) BulkUpdateControlStatus(ctx context.Context, orgID string, ids []string, status string) error {
+	_, err := r.db.Exec(ctx, `
+		UPDATE ck_controls SET manual_status = $3, updated_at = NOW()
+		WHERE id = ANY($2::uuid[]) AND org_id = $1::uuid`,
+		orgID, ids, status,
+	)
+	if err != nil {
+		return fmt.Errorf("bulk update control status: %w", err)
+	}
+	return nil
+}
+
+// BulkUpdateCAPAStatus sets status for all CAPAs in ids that belong to the org.
+func (r *Repository) BulkUpdateCAPAStatus(ctx context.Context, orgID string, ids []string, status string) error {
+	_, err := r.db.Exec(ctx, `
+		UPDATE ck_capas SET status = $3, updated_at = NOW()
+		WHERE id = ANY($2::uuid[]) AND org_id = $1::uuid`,
+		orgID, ids, status,
+	)
+	if err != nil {
+		return fmt.Errorf("bulk update capa status: %w", err)
+	}
+	return nil
 }

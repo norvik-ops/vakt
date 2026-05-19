@@ -2,11 +2,9 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { apiFetch } from './api/client'
 import { useAuthStore } from './shared/stores/auth'
-import { useDemoMode } from './shared/hooks/useDemoMode'
 import Layout from './shared/components/Layout'
 import Setup from './pages/Setup'
 import Login from './pages/Login'
-import DemoLanding from './pages/DemoLanding'
 import Dashboard from './pages/Dashboard'
 import Settings from './pages/Settings'
 import ScoreConfigPage from './pages/ScoreConfigPage'
@@ -36,6 +34,7 @@ import AdminSecurityPage from './pages/AdminSecurityPage'
 import WebhooksPage from './pages/WebhooksPage'
 import ScheduledReportsPage from './pages/ScheduledReportsPage'
 import NotificationPreferencesPage from './pages/NotificationPreferencesPage'
+import NotFoundPage from './pages/NotFoundPage'
 
 // Lazy module pages — filled in by module agents
 import { lazy, Suspense } from 'react'
@@ -93,10 +92,8 @@ function SetupPageGuard() {
 
 function AuthGuard() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated())
-  const demoMode = useDemoMode()
   if (!isAuthenticated) {
-    if (demoMode === null) return <LoadingSpinner />
-    return <Navigate to={demoMode ? '/demo' : '/login'} replace />
+    return <Navigate to="/login" replace />
   }
   return <Outlet />
 }
@@ -110,10 +107,6 @@ function ModuleShell({ children, moduleKey }: { children: React.ReactNode; modul
 }
 
 export const router = createBrowserRouter([
-  {
-    path: '/demo',
-    element: <DemoLanding />,
-  },
   {
     path: '/setup',
     element: <SetupPageGuard />,
@@ -216,7 +209,7 @@ export const router = createBrowserRouter([
             element: <ModuleShell moduleKey="hr"><HR /></ModuleShell>,
           },
           { path: '/integrations', element: <IntegrationsPage /> },
-          { path: '*', element: <Navigate to="/" replace /> },
+          { path: '*', element: <NotFoundPage /> },
         ],
       },
     ],

@@ -1,0 +1,1 @@
+ALTER TABLE ck_controls ADD COLUMN IF NOT EXISTS owner TEXT;

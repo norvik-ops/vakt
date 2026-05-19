@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/sechealth-app/sechealth/internal/shared/notify"
@@ -55,19 +54,17 @@ type ModuleStatus struct {
 // Service implements admin business logic.
 type Service struct {
 	db             *pgxpool.Pool
-	modulesEnabled string // comma-separated list from config
-	MSP            *MSPService
+	repo           *Repository
+	modulesEnabled string
 	notifySvc      *notify.Service
 }
 
 // NewService constructs an admin Service.
-// asynqClient may be nil when Redis is not available; MSP deletion degrades gracefully.
-func NewService(db *pgxpool.Pool, modulesEnabled string, asynqClient *asynq.Client) *Service {
-	repo := NewRepository(db)
+func NewService(db *pgxpool.Pool, modulesEnabled string) *Service {
 	return &Service{
 		db:             db,
+		repo:           NewRepository(db),
 		modulesEnabled: modulesEnabled,
-		MSP:            newMSPService(repo, asynqClient),
 	}
 }
 

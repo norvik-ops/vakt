@@ -45,9 +45,9 @@ type ScanPayload struct {
 
 // GenerateReportPayload is the Asynq task payload for a report generation job.
 type GenerateReportPayload struct {
-	ReportID string                 `json:"report_id"`
-	OrgID    string                 `json:"org_id"`
-	Scope    map[string]interface{} `json:"scope"`
+	ReportID string      `json:"report_id"`
+	OrgID    string      `json:"org_id"`
+	Scope    ReportScope `json:"scope"`
 }
 
 // SBOMGeneratePayload is the Asynq task payload for a syft SBOM generation job.

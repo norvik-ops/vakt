@@ -6,7 +6,7 @@ package secvitals
 import (
 	"github.com/labstack/echo/v4"
 
-	"github.com/sechealth-app/sechealth/internal/license"
+	"github.com/matharnica/vakt/internal/license"
 )
 
 // Register wires ComplyKit routes under the provided group.
@@ -74,6 +74,12 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/frameworks/:id/audit-package.zip", h.ExportAuditPackage, license.Require(license.FeatureAuditPDF))
 	g.GET("/frameworks/:id/controls", h.ListControls)
 	g.POST("/frameworks/:id/auditor-link", h.CreateAuditorLink)
+
+	// SoA (Statement of Applicability) — cross-framework view
+	// CRITICAL: /soa.csv must be registered BEFORE /soa/:control_id to avoid route conflict.
+	g.GET("/soa", h.GetSoA)
+	g.GET("/soa.csv", h.GetSoACSV)
+	g.PATCH("/soa/:control_id", h.UpdateSoAApplicability)
 
 	// DSGVO Art. 32 TOM coverage
 	g.GET("/dsgvo/tom-coverage", h.GetDSGVOTOMCoverage)
@@ -320,6 +326,9 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	// Org approval setting (admin-only toggle)
 	g.GET("/org/approval-setting", h.GetApprovalSetting)
 	g.PUT("/org/approval-setting", h.UpdateApprovalSetting)
+
+	registerAccessReviewRoutes(g, h)
+	registerExceptionRoutes(g, h)
 }
 
 // RegisterAuditor registers read-only routes for external auditors.

@@ -9,6 +9,8 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/sechealth-app/sechealth/internal/auth"
 )
 
 // Handler holds HTTP handler methods for outgoing webhook endpoints.
@@ -25,11 +27,14 @@ func NewHandler(svc *WebhookService) *Handler {
 // Register mounts webhook CRUD routes under g.
 // All routes expect an authenticated echo.Context (org_id set by AuthMiddleware).
 func Register(g *echo.Group, h *Handler) {
-	g.GET("", h.List)
-	g.POST("", h.Create)
-	g.PUT("/:id", h.Update)
-	g.DELETE("/:id", h.Delete)
-	g.POST("/:id/test", h.Test)
+	rw := auth.RequireRole("Admin", "SecurityAnalyst")
+	admin := auth.RequireRole("Admin")
+
+	g.GET("", h.List, rw)
+	g.POST("", h.Create, admin)
+	g.PUT("/:id", h.Update, admin)
+	g.DELETE("/:id", h.Delete, admin)
+	g.POST("/:id/test", h.Test, rw)
 }
 
 // List handles GET /api/v1/webhooks.

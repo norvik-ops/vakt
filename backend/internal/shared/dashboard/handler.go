@@ -9,41 +9,39 @@
 package dashboard
 
 import (
-	"errors"
+	"context"
+	"encoding/json"
 	"net/http"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 )
 
-// Handler holds the database connection pool and optional Redis client shared
-// across all dashboard endpoint implementations.
+// Handler holds the service and optional Redis client used for aggregate caching.
 type Handler struct {
-	db  *pgxpool.Pool
+	svc *Service
 	rdb *redis.Client // may be nil — caching is skipped when absent
 }
 
-// NewHandler wires up a Handler backed by the provided connection pool and
-// optional Redis client. Pass nil for rdb to disable aggregate caching.
-func NewHandler(db *pgxpool.Pool, rdb *redis.Client) *Handler {
-	return &Handler{db: db, rdb: rdb}
+// NewHandler wires up a Handler backed by the provided service and optional Redis client.
+// Pass nil for rdb to disable aggregate caching.
+func NewHandler(svc *Service, rdb *redis.Client) *Handler {
+	return &Handler{svc: svc, rdb: rdb}
 }
 
 // ScoreConfig holds the configurable weights and caps for the security score formula.
 type ScoreConfig struct {
-	BaseScore       int `json:"base_score"`
-	CritPenalty     int `json:"crit_penalty"`
-	CritPenaltyCap  int `json:"crit_penalty_cap"`
-	HighPenalty     int `json:"high_penalty"`
-	HighPenaltyCap  int `json:"high_penalty_cap"`
-	BreachPenalty   int `json:"breach_penalty"`
+	BaseScore        int `json:"base_score"`
+	CritPenalty      int `json:"crit_penalty"`
+	CritPenaltyCap   int `json:"crit_penalty_cap"`
+	HighPenalty      int `json:"high_penalty"`
+	HighPenaltyCap   int `json:"high_penalty_cap"`
+	BreachPenalty    int `json:"breach_penalty"`
 	BreachPenaltyCap int `json:"breach_penalty_cap"`
-	FwBonus         int `json:"fw_bonus"`
-	FwBonusCap      int `json:"fw_bonus_cap"`
+	FwBonus          int `json:"fw_bonus"`
+	FwBonusCap       int `json:"fw_bonus_cap"`
 }
 
 // defaultScoreConfig returns the hardcoded defaults used when no row exists in score_config.
@@ -62,17 +60,7 @@ func defaultScoreConfig() ScoreConfig {
 }
 
 // GetScore returns the organisation's composite security health score along
-// with the raw component counts used to derive it. The score formula is:
-//
-//	base_score
-//	  − crit_penalty   (per critical finding, capped at crit_penalty_cap)
-//	  − high_penalty   (per high finding,     capped at high_penalty_cap)
-//	  − breach_penalty (per open breach,      capped at breach_penalty_cap)
-//	  + fw_bonus       (per active framework, capped at fw_bonus_cap)
-//
-// Weights are loaded from the score_config table; hardcoded defaults are used
-// when no row is present. The result is clamped to [0, 100]. Query failures for
-// individual components are logged but do not abort the request.
+// with the raw component counts used to derive it.
 func (h *Handler) GetScore(c echo.Context) error {
 	orgID, ok := c.Get("org_id").(string)
 	if !ok || orgID == "" {
@@ -80,85 +68,17 @@ func (h *Handler) GetScore(c echo.Context) error {
 	}
 	ctx := c.Request().Context()
 
-	// Load configurable weights (falls back to defaults if no row).
-	var cfg ScoreConfig
-	err := h.db.QueryRow(ctx,
-		`SELECT base_score, crit_penalty, crit_penalty_cap, high_penalty, high_penalty_cap,
-		        breach_penalty, breach_penalty_cap, fw_bonus, fw_bonus_cap
-		   FROM score_config WHERE org_id=$1::uuid`, orgID).Scan(
-		&cfg.BaseScore,
-		&cfg.CritPenalty,
-		&cfg.CritPenaltyCap,
-		&cfg.HighPenalty,
-		&cfg.HighPenaltyCap,
-		&cfg.BreachPenalty,
-		&cfg.BreachPenaltyCap,
-		&cfg.FwBonus,
-		&cfg.FwBonusCap,
-	)
+	cfg, err := h.svc.LoadScoreConfig(ctx, orgID)
 	if err != nil {
-		if !errors.Is(err, pgx.ErrNoRows) {
-			log.Error().Err(err).Msg("dashboard: load score config")
-		}
-		cfg = defaultScoreConfig()
+		log.Error().Err(err).Msg("dashboard: load score config")
 	}
 
-	var critCount, highCount, breachCount, fwCount int64
-
-	if err := h.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM vb_findings WHERE org_id=$1::uuid AND severity='critical' AND status NOT IN ('resolved','false_positive')`,
-		orgID).Scan(&critCount); err != nil {
-		log.Error().Err(err).Msg("dashboard: count critical findings")
-	}
-	if err := h.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM vb_findings WHERE org_id=$1::uuid AND severity='high' AND status NOT IN ('resolved','false_positive')`,
-		orgID).Scan(&highCount); err != nil {
-		log.Error().Err(err).Msg("dashboard: count high findings")
-	}
-	if err := h.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM po_breaches WHERE org_id=$1::uuid AND status='open'`,
-		orgID).Scan(&breachCount); err != nil {
-		log.Error().Err(err).Msg("dashboard: count breaches")
-	}
-	if err := h.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM ck_frameworks WHERE org_id=$1::uuid`,
-		orgID).Scan(&fwCount); err != nil {
-		log.Error().Err(err).Msg("dashboard: count frameworks")
-	}
-
-	critPenalty := int(critCount) * cfg.CritPenalty
-	if critPenalty > cfg.CritPenaltyCap {
-		critPenalty = cfg.CritPenaltyCap
-	}
-	highPenalty := int(highCount) * cfg.HighPenalty
-	if highPenalty > cfg.HighPenaltyCap {
-		highPenalty = cfg.HighPenaltyCap
-	}
-	breachPenalty := int(breachCount) * cfg.BreachPenalty
-	if breachPenalty > cfg.BreachPenaltyCap {
-		breachPenalty = cfg.BreachPenaltyCap
-	}
-	fwBonus := int(fwCount) * cfg.FwBonus
-	if fwBonus > cfg.FwBonusCap {
-		fwBonus = cfg.FwBonusCap
-	}
-
-	score := cfg.BaseScore - critPenalty - highPenalty - breachPenalty + fwBonus
-	if score < 0 {
-		score = 0
-	}
-	if score > 100 {
-		score = 100
-	}
+	inp := h.svc.LoadScoreInputs(ctx, orgID, cfg)
+	score, components := ComputeScore(inp)
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"score": score,
-		"components": map[string]int64{
-			"critical_findings": critCount,
-			"high_findings":     highCount,
-			"open_breaches":     breachCount,
-			"active_frameworks": fwCount,
-		},
+		"score":      score,
+		"components": components,
 	})
 }
 
@@ -169,12 +89,12 @@ func (h *Handler) GetBackupStatus(c echo.Context) error {
 	if !ok || orgID == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
-	var lastBackup *time.Time
-	err := h.db.QueryRow(c.Request().Context(),
-		`SELECT backed_up_at FROM backup_log WHERE org_id=$1::uuid ORDER BY backed_up_at DESC LIMIT 1`,
-		orgID).Scan(&lastBackup)
+	lastBackup, err := h.svc.LastBackupAt(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Msg("dashboard: backup status")
+	}
 	stale := true
-	if err == nil && lastBackup != nil {
+	if lastBackup != nil {
 		stale = time.Since(*lastBackup) > 7*24*time.Hour
 	}
 	return c.JSON(http.StatusOK, map[string]any{
@@ -190,29 +110,10 @@ func (h *Handler) GetScoreConfig(c echo.Context) error {
 	if !ok || orgID == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
-	ctx := c.Request().Context()
-
-	var cfg ScoreConfig
-	err := h.db.QueryRow(ctx,
-		`SELECT base_score, crit_penalty, crit_penalty_cap, high_penalty, high_penalty_cap,
-		        breach_penalty, breach_penalty_cap, fw_bonus, fw_bonus_cap
-		   FROM score_config WHERE org_id=$1::uuid`, orgID).Scan(
-		&cfg.BaseScore,
-		&cfg.CritPenalty,
-		&cfg.CritPenaltyCap,
-		&cfg.HighPenalty,
-		&cfg.HighPenaltyCap,
-		&cfg.BreachPenalty,
-		&cfg.BreachPenaltyCap,
-		&cfg.FwBonus,
-		&cfg.FwBonusCap,
-	)
+	cfg, err := h.svc.LoadScoreConfig(c.Request().Context(), orgID)
 	if err != nil {
-		if !errors.Is(err, pgx.ErrNoRows) {
-			log.Error().Err(err).Msg("dashboard: get score config")
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to load score config"})
-		}
-		cfg = defaultScoreConfig()
+		log.Error().Err(err).Msg("dashboard: get score config")
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to load score config"})
 	}
 	return c.JSON(http.StatusOK, cfg)
 }
@@ -224,7 +125,6 @@ func (h *Handler) UpdateScoreConfig(c echo.Context) error {
 	if !ok || orgID == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
-	ctx := c.Request().Context()
 
 	var in ScoreConfig
 	if err := c.Bind(&in); err != nil {
@@ -246,31 +146,83 @@ func (h *Handler) UpdateScoreConfig(c echo.Context) error {
 		}
 	}
 
-	_, err := h.db.Exec(ctx,
-		`INSERT INTO score_config
-		   (org_id, base_score, crit_penalty, crit_penalty_cap, high_penalty, high_penalty_cap,
-		    breach_penalty, breach_penalty_cap, fw_bonus, fw_bonus_cap, updated_at)
-		 VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
-		 ON CONFLICT (org_id) DO UPDATE SET
-		   base_score        = EXCLUDED.base_score,
-		   crit_penalty      = EXCLUDED.crit_penalty,
-		   crit_penalty_cap  = EXCLUDED.crit_penalty_cap,
-		   high_penalty      = EXCLUDED.high_penalty,
-		   high_penalty_cap  = EXCLUDED.high_penalty_cap,
-		   breach_penalty    = EXCLUDED.breach_penalty,
-		   breach_penalty_cap = EXCLUDED.breach_penalty_cap,
-		   fw_bonus          = EXCLUDED.fw_bonus,
-		   fw_bonus_cap      = EXCLUDED.fw_bonus_cap,
-		   updated_at        = now()`,
-		orgID,
-		in.BaseScore, in.CritPenalty, in.CritPenaltyCap,
-		in.HighPenalty, in.HighPenaltyCap,
-		in.BreachPenalty, in.BreachPenaltyCap,
-		in.FwBonus, in.FwBonusCap,
-	)
-	if err != nil {
+	if err := h.svc.UpsertScoreConfig(c.Request().Context(), orgID, in); err != nil {
 		log.Error().Err(err).Msg("dashboard: upsert score config")
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to save score config"})
 	}
 	return c.JSON(http.StatusOK, in)
+}
+
+// GetAggregate handles GET /api/v1/dashboard/aggregate.
+// Results are cached in Redis for 60 seconds to avoid hammering the DB.
+func (h *Handler) GetAggregate(c echo.Context) error {
+	orgID, ok := c.Get("org_id").(string)
+	if !ok || orgID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+	}
+	ctx := c.Request().Context()
+
+	if h.rdb != nil {
+		if cached, err := h.rdb.Get(ctx, aggregateCacheKey(orgID)).Bytes(); err == nil {
+			return c.JSONBlob(http.StatusOK, cached)
+		} else if err != redis.Nil {
+			log.Warn().Err(err).Str("org_id", orgID).Msg("dashboard aggregate: redis get failed")
+		}
+	}
+
+	resp, err := h.svc.LoadAggregate(ctx, orgID)
+	if err != nil {
+		log.Error().Err(err).Msg("dashboard: load aggregate")
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to load aggregate"})
+	}
+
+	if h.rdb != nil {
+		if blob, err := json.Marshal(resp); err == nil {
+			cacheCtx, cacheCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cacheCancel()
+			if err := h.rdb.Set(cacheCtx, aggregateCacheKey(orgID), blob, aggregateCacheTTL).Err(); err != nil {
+				log.Warn().Err(err).Str("org_id", orgID).Msg("dashboard aggregate: redis set failed")
+			}
+		}
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
+// ListNotifications returns the 50 most recent notifications for the authenticated organisation.
+func (h *Handler) ListNotifications(c echo.Context) error {
+	orgID, ok := c.Get("org_id").(string)
+	if !ok || orgID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+	}
+	result, err := h.svc.LoadNotifications(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Msg("list notifications")
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "db error"})
+	}
+	return c.JSON(http.StatusOK, result)
+}
+
+// MarkNotificationRead marks a single notification as read. Responds 204 on success.
+func (h *Handler) MarkNotificationRead(c echo.Context) error {
+	orgID, ok := c.Get("org_id").(string)
+	if !ok || orgID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+	}
+	if err := h.svc.MarkNotificationRead(c.Request().Context(), orgID, c.Param("id")); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "db error"})
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+// MarkAllRead marks every unread notification for the organisation as read. Responds 204 on success.
+func (h *Handler) MarkAllRead(c echo.Context) error {
+	orgID, ok := c.Get("org_id").(string)
+	if !ok || orgID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+	}
+	if err := h.svc.MarkAllNotificationsRead(c.Request().Context(), orgID); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "db error"})
+	}
+	return c.NoContent(http.StatusNoContent)
 }

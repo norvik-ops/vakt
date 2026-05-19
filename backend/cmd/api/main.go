@@ -22,49 +22,49 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/time/rate"
 
-	"github.com/sechealth-app/sechealth/internal/admin"
-	"github.com/sechealth-app/sechealth/internal/auth"
-	"github.com/sechealth-app/sechealth/internal/config"
-	"github.com/sechealth-app/sechealth/internal/license"
-	"github.com/sechealth-app/sechealth/internal/shared/demo"
-	sharedmw "github.com/sechealth-app/sechealth/internal/shared/middleware"
-	sharedwebhooks "github.com/sechealth-app/sechealth/internal/shared/webhooks"
-	"github.com/sechealth-app/sechealth/internal/shared/updatecheck"
-	"github.com/sechealth-app/sechealth/internal/modules/hr"
-	"github.com/sechealth-app/sechealth/internal/modules/secvitals"
-	"github.com/sechealth-app/sechealth/internal/modules/secreflex"
-	"github.com/sechealth-app/sechealth/internal/modules/secprivacy"
-	"github.com/sechealth-app/sechealth/internal/modules/secvault"
-	"github.com/sechealth-app/sechealth/internal/modules/secpulse"
-	"github.com/sechealth-app/sechealth/internal/shared/ai"
-	"github.com/sechealth-app/sechealth/internal/shared/alerting"
-	"github.com/sechealth-app/sechealth/internal/shared/evidence_auto"
-	"github.com/sechealth-app/sechealth/internal/shared/apidocs"
-	"github.com/sechealth-app/sechealth/internal/shared/auditexport"
-	"github.com/sechealth-app/sechealth/internal/shared/auditlog"
-	"github.com/sechealth-app/sechealth/internal/shared/auditreport"
-	"github.com/sechealth-app/sechealth/internal/shared/dashboard"
-	shareddb "github.com/sechealth-app/sechealth/internal/shared/db"
-	"github.com/sechealth-app/sechealth/internal/shared/auditor"
-	"github.com/sechealth-app/sechealth/internal/shared/demoseed"
-	ghintegration "github.com/sechealth-app/sechealth/internal/shared/integrations/github"
-	cloudintegration "github.com/sechealth-app/sechealth/internal/shared/integrations/cloud"
-	"github.com/sechealth-app/sechealth/internal/shared/metrics"
-	"github.com/sechealth-app/sechealth/internal/shared/notifications"
-	"github.com/sechealth-app/sechealth/internal/shared/notify"
-	"github.com/sechealth-app/sechealth/internal/shared/retention"
-	"github.com/sechealth-app/sechealth/internal/shared/search"
-	"github.com/sechealth-app/sechealth/internal/shared/setup"
-	"github.com/sechealth-app/sechealth/internal/shared/feedback"
-	"github.com/sechealth-app/sechealth/internal/shared/ldap"
-	"github.com/sechealth-app/sechealth/internal/shared/dataexport"
-	"github.com/sechealth-app/sechealth/internal/shared/onboarding"
-	"github.com/sechealth-app/sechealth/internal/shared/trustcenter"
-	lswebhook "github.com/sechealth-app/sechealth/internal/webhooks/lemonsqueezy"
-	"github.com/sechealth-app/sechealth/internal/shared/usermgmt"
-	"github.com/sechealth-app/sechealth/internal/shared/apikeys"
-	"github.com/sechealth-app/sechealth/internal/shared/comments"
-	"github.com/sechealth-app/sechealth/internal/shared/scheduledreports"
+	"github.com/matharnica/vakt/internal/admin"
+	"github.com/matharnica/vakt/internal/auth"
+	"github.com/matharnica/vakt/internal/config"
+	"github.com/matharnica/vakt/internal/license"
+	"github.com/matharnica/vakt/internal/shared/demo"
+	sharedmw "github.com/matharnica/vakt/internal/shared/middleware"
+	sharedwebhooks "github.com/matharnica/vakt/internal/shared/webhooks"
+	"github.com/matharnica/vakt/internal/shared/updatecheck"
+	"github.com/matharnica/vakt/internal/modules/hr"
+	"github.com/matharnica/vakt/internal/modules/secvitals"
+	"github.com/matharnica/vakt/internal/modules/secreflex"
+	"github.com/matharnica/vakt/internal/modules/secprivacy"
+	"github.com/matharnica/vakt/internal/modules/secvault"
+	"github.com/matharnica/vakt/internal/modules/secpulse"
+	"github.com/matharnica/vakt/internal/shared/ai"
+	"github.com/matharnica/vakt/internal/shared/alerting"
+	"github.com/matharnica/vakt/internal/shared/evidence_auto"
+	"github.com/matharnica/vakt/internal/shared/apidocs"
+	"github.com/matharnica/vakt/internal/shared/auditexport"
+	"github.com/matharnica/vakt/internal/shared/auditlog"
+	"github.com/matharnica/vakt/internal/shared/auditreport"
+	"github.com/matharnica/vakt/internal/shared/dashboard"
+	shareddb "github.com/matharnica/vakt/internal/shared/db"
+	"github.com/matharnica/vakt/internal/shared/auditor"
+	"github.com/matharnica/vakt/internal/shared/demoseed"
+	ghintegration "github.com/matharnica/vakt/internal/shared/integrations/github"
+	cloudintegration "github.com/matharnica/vakt/internal/shared/integrations/cloud"
+	"github.com/matharnica/vakt/internal/shared/metrics"
+	"github.com/matharnica/vakt/internal/shared/notifications"
+	"github.com/matharnica/vakt/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/retention"
+	"github.com/matharnica/vakt/internal/shared/search"
+	"github.com/matharnica/vakt/internal/shared/setup"
+	"github.com/matharnica/vakt/internal/shared/feedback"
+	"github.com/matharnica/vakt/internal/shared/ldap"
+	"github.com/matharnica/vakt/internal/shared/dataexport"
+	"github.com/matharnica/vakt/internal/shared/onboarding"
+	"github.com/matharnica/vakt/internal/shared/trustcenter"
+	lswebhook "github.com/matharnica/vakt/internal/webhooks/lemonsqueezy"
+	"github.com/matharnica/vakt/internal/shared/usermgmt"
+	"github.com/matharnica/vakt/internal/shared/apikeys"
+	"github.com/matharnica/vakt/internal/shared/comments"
+	"github.com/matharnica/vakt/internal/shared/scheduledreports"
 )
 
 // version is injected at build time via -ldflags "-X main.version=..."
@@ -80,13 +80,25 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	// X-Request-ID — applied first so every subsequent log entry can reference it.
 	e.Use(sharedmw.RequestID())
 
+	// Trace ID — unique per request, emitted as X-Trace-ID response header and
+	// enriched into the zerolog context for structured log correlation.
+	e.Use(auth.TraceMiddleware())
+
 	e.Use(middleware.SecureWithConfig(middleware.SecureConfig{
 		XSSProtection:         "0",
 		ContentTypeNosniff:    "nosniff",
 		XFrameOptions:         "DENY",
 		HSTSMaxAge:            31536000,
-		ContentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+		ContentSecurityPolicy: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
 	}))
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Response().Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+			c.Response().Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()")
+			c.Response().Header().Set("Cross-Origin-Opener-Policy", "same-origin")
+			return next(c)
+		}
+	})
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogMethod:  true,
 		LogURI:     true,
@@ -104,11 +116,12 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	}))
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:  []string{"*"},
-		AllowMethods:  []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodOptions},
-		AllowHeaders:  []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, "X-Request-ID"},
-		ExposeHeaders: []string{"X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset", "X-Request-ID"},
-		MaxAge:        86400,
+		AllowOrigins:     cfg.CORSOrigins,
+		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodOptions},
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, "X-Request-ID"},
+		ExposeHeaders:    []string{"X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset", "X-Request-ID"},
+		AllowCredentials: true,
+		MaxAge:           86400,
 	}))
 	e.Use(middleware.BodyLimit("10MB"))
 	e.Use(middleware.TimeoutWithConfig(middleware.TimeoutConfig{
@@ -127,12 +140,7 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 
 	// Liveness — always responds while the process is up.
 	e.GET("/health", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]interface{}{
-			"status":      "ok",
-			"version":     cfg.Version,
-			"demo":        cfg.DemoSeed,
-			"sso_enabled": cfg.CasdoorURL != "",
-		})
+		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 	})
 
 	// security.txt — public, no auth, RFC 9116.
@@ -198,19 +206,28 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	// Extend readiness check to include Redis now that rdb is available.
 	e.GET("/health/ready", func(c echo.Context) error {
 		ctx := c.Request().Context()
+		dbStart := time.Now()
 		if err := pool.Ping(ctx); err != nil {
 			log.Error().Err(err).Msg("health/ready: database ping failed")
 			return c.JSON(http.StatusServiceUnavailable, map[string]string{
-				"status": "unavailable", "component": "database", "error": "database unavailable",
+				"status": "unavailable", "component": "database", "error": err.Error(),
 			})
 		}
+		dbLatencyMs := time.Since(dbStart).Milliseconds()
+		redisStart := time.Now()
 		if err := rdb.Ping(ctx).Err(); err != nil {
 			log.Error().Err(err).Msg("health/ready: redis ping failed")
 			return c.JSON(http.StatusServiceUnavailable, map[string]string{
-				"status": "unavailable", "component": "redis", "error": "cache unavailable",
+				"status": "unavailable", "component": "redis", "error": err.Error(),
 			})
 		}
-		return c.JSON(http.StatusOK, map[string]string{"status": "ready"})
+		redisLatencyMs := time.Since(redisStart).Milliseconds()
+		return c.JSON(http.StatusOK, map[string]any{
+			"status":           "ready",
+			"db_latency_ms":    dbLatencyMs,
+			"redis_latency_ms": redisLatencyMs,
+			"version":          version,
+		})
 	})
 
 	// Auth routes — Redis-backed IP rate limit (10 req/min) on the four
@@ -259,11 +276,16 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 
 	// Admin routes (also require Admin role)
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisOpt.Addr})
-	adminSvc := admin.NewService(pool, cfg.ModulesEnabled, asynqClient)
+	adminSvc := admin.NewService(pool, cfg.ModulesEnabled)
 	adminSvc.WithNotifyService(notify.NewService(pool, cfg))
 	adminHealth := admin.NewHealthHandler(pool, rdb, cfg)
-	adminHandler := admin.NewHandler(adminSvc).WithPasetoKey(pasetoKey)
+	adminHandler := admin.NewHandler(adminSvc)
 	admin.Register(protected, adminHandler, adminHealth, pool, rdb)
+	// Job queue stats — admin-only, same auth guard as other admin routes.
+	jobsHandler := admin.NewJobsHandler(redisOpt.Addr)
+	protected.GET("/admin/jobs", jobsHandler.GetQueueStats, auth.RequireRole("Admin"), sharedmw.IPAllowlist())
+	// Admin-scoped auth management routes (password reset token generation without SMTP).
+	auth.RegisterAdminRoutes(protected, authHandler)
 	log.Info().Msg("admin routes registered")
 
 	if cfg.Staging {
@@ -291,6 +313,10 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 		middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(10.0 / 60.0), Burst: 10, ExpiresIn: 5 * time.Minute},
 	))
 
+	// cloudEvidence bridges secvitals → cloud integration without a direct import.
+	// It is set inside the secvitals block and falls back to a no-op when secvitals is disabled.
+	var cloudEvidence = cloudintegration.NoopEvidenceWriter()
+
 	if cfg.IsModuleEnabled("secvitals") {
 		ckSvc := secvitals.NewService(pool)
 		ckSvc.WithRedis(rdb)
@@ -299,10 +325,14 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 		if cfg.AIProvider != "disabled" && cfg.AIProvider != "" && cfg.AIBaseURL != "" {
 			ckSvc.WithAIClient(ai.NewAIClient(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel))
 		}
+		cloudEvidence = secvitals.NewCloudEvidenceWriter(ckSvc.Repo())
 		ckSvc.ReseedBuiltinControls(ctx)
 		ckSvc.SeedBuiltinMeasures(ctx)
 		if err := ckSvc.SeedFrameworkMappings(ctx); err != nil {
 			log.Warn().Err(err).Msg("seed framework mappings failed (non-critical)")
+		}
+		if err := secvitals.SeedPolicyTemplates(ctx, pool); err != nil {
+			log.Warn().Err(err).Msg("seed policy templates failed (non-critical)")
 		}
 		ckHandler := secvitals.NewHandler(ckSvc).WithDB(pool)
 		ckHandler.WithPolicyAcceptanceConfig(secvitals.PolicyAcceptanceHandlerConfig{
@@ -377,7 +407,7 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 			alerting.Register(api, pool, alertMasterKey, alerting.SMTPConfig{
 				Host: cfg.SMTPHost, Port: cfg.SMTPPort,
 				User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
-			}, auth.AuthMiddleware(pasetoKey, pool))
+			}, auth.AuthMiddleware(pasetoKey, pool, rdb))
 			log.Info().Msg("alerting routes registered")
 		}
 	}
@@ -419,7 +449,7 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 		if err != nil {
 			log.Warn().Err(err).Msg("invalid secret key (hex decode) — cloud integration routes disabled")
 		} else {
-			cloudintegration.RegisterRoutes(protected.Group("/integrations/cloud"), pool, cloudMasterKey)
+			cloudintegration.RegisterRoutes(protected.Group("/integrations/cloud"), pool, cloudMasterKey, cloudEvidence)
 			log.Info().Msg("cloud integration routes registered")
 		}
 	}
@@ -490,20 +520,23 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	log.Info().Msg("trust center admin routes registered")
 
 	// Dashboard — shared cross-module score endpoint (aggregate cached in Redis for 60 s)
-	dashboard.Register(api.Group("/dashboard"), pool, rdb, auth.AuthMiddleware(pasetoKey, pool))
+	dashboard.Register(api.Group("/dashboard"), pool, rdb, auth.AuthMiddleware(pasetoKey, pool, rdb))
 	log.Info().Msg("dashboard routes registered")
 
 	// Global search — cross-module text search
-	search.Register(api, pool, auth.AuthMiddleware(pasetoKey, pool))
+	search.Register(api, pool, auth.AuthMiddleware(pasetoKey, pool, rdb))
 
 	// Retention config API — data-pruning settings per org
-	retention.Register(api, pool, auth.AuthMiddleware(pasetoKey, pool))
+	retention.Register(api, pool, auth.AuthMiddleware(pasetoKey, pool, rdb))
 	log.Info().Msg("retention routes registered")
 
 	// 2FA/TOTP — local account second factor
 	if cfg.SecretKey != "" {
 		if totpKey, err := hex.DecodeString(cfg.SecretKey); err == nil {
-			auth.RegisterTOTP(api.Group("/auth"), pool, totpKey, auth.AuthMiddleware(pasetoKey, pool), authSvc)
+			totpRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
+				middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(5.0 / 60.0), Burst: 5, ExpiresIn: 5 * time.Minute},
+			))
+			auth.RegisterTOTP(api.Group("/auth"), pool, totpKey, auth.AuthMiddleware(pasetoKey, pool, rdb), authSvc, totpRateLimiter)
 			log.Info().Msg("2FA/TOTP routes registered")
 		}
 	}
@@ -522,12 +555,12 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 		GroupFilter: cfg.LDAPGroupFilter,
 		TLS:         cfg.LDAPTLS,
 	}
-	ldap.Register(protected.Group(""), ldapCfg, auth.AuthMiddleware(pasetoKey, pool))
+	ldap.Register(protected.Group(""), ldapCfg, auth.AuthMiddleware(pasetoKey, pool, rdb))
 	log.Info().Msg("ldap routes registered")
 
 	// Demo routes — only active in demo mode
 	if cfg.DemoSeed {
-		feedback.Register(api, pool, auth.AuthMiddleware(pasetoKey, pool))
+		feedback.Register(api, pool, auth.AuthMiddleware(pasetoKey, pool, rdb))
 		log.Info().Msg("demo feedback routes registered")
 
 		// Rate-limit POST /demo/start to 5 req/min per IP to prevent DB flood.
@@ -549,15 +582,77 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 		log.Info().Msg("lemonsqueezy webhook registered")
 	}
 
-	// Prometheus metrics — no auth, scraped directly
-	metrics.Register(e, pool)
-	log.Info().Msg("metrics endpoint registered")
+	// Prometheus metrics — IP-allowlisted (loopback + Docker-internal only), gated by config flag.
+	if cfg.MetricsEnabled {
+		metrics.Register(e, pool)
+		log.Info().Msg("metrics endpoint registered")
+	}
 
 	// API documentation — Swagger UI + OpenAPI spec
 	apidocs.Register(e)
 	log.Info().Msg("api docs registered")
 
+	// Client-side error reporting — unauthenticated, rate-limited, best-effort.
+	// Receives structured errors from the React ErrorBoundary for ops visibility.
+	clientErrRL := middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
+		Store: middleware.NewRateLimiterMemoryStoreWithConfig(
+			middleware.RateLimiterMemoryStoreConfig{Rate: 5, Burst: 10, ExpiresIn: time.Minute},
+		),
+		IdentifierExtractor: func(c echo.Context) (string, error) { return c.RealIP(), nil },
+		DenyHandler: func(c echo.Context, _ string, _ error) error {
+			return c.NoContent(http.StatusTooManyRequests)
+		},
+	})
+	api.POST("/errors", func(c echo.Context) error {
+		var payload struct {
+			Message        string `json:"message"`
+			Stack          string `json:"stack"`
+			ComponentStack string `json:"component_stack"`
+			URL            string `json:"url"`
+			TraceID        string `json:"trace_id"`
+		}
+		if err := c.Bind(&payload); err != nil {
+			return c.NoContent(http.StatusBadRequest)
+		}
+		log.Error().
+			Str("source", "client").
+			Str("url", sanitizeLogField(payload.URL, 512)).
+			Str("trace_id", sanitizeLogField(payload.TraceID, 64)).
+			Str("message", sanitizeLogField(payload.Message, 500)).
+			Str("stack", sanitizeLogField(payload.Stack, 2000)).
+			Msg("client-side error boundary triggered")
+		return c.NoContent(http.StatusNoContent)
+	}, clientErrRL)
+	log.Info().Msg("client error endpoint registered")
+
 	return e
+}
+
+// sanitizeLogField strips ANSI escape codes and non-printable control characters
+// from untrusted strings before writing them to structured logs, preventing log injection.
+func sanitizeLogField(s string, maxLen int) string {
+	if len(s) > maxLen {
+		s = s[:maxLen]
+	}
+	out := make([]byte, 0, len(s))
+	i := 0
+	for i < len(s) {
+		b := s[i]
+		if b == 0x1b && i+1 < len(s) && s[i+1] == '[' {
+			// Skip ANSI CSI sequence: ESC [ ... <final byte 0x40–0x7E>
+			i += 2
+			for i < len(s) && (s[i] < 0x40 || s[i] > 0x7e) {
+				i++
+			}
+			i++ // consume final byte
+			continue
+		}
+		if b >= 0x20 || b == '\n' || b == '\r' || b == '\t' {
+			out = append(out, b)
+		}
+		i++
+	}
+	return string(out)
 }
 
 func migrationsDir() string {

@@ -32,6 +32,7 @@ import { PageTransition } from './PageTransition'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal'
 import { AppTour } from './AppTour'
+import { ChangelogPopover } from './ChangelogPopover'
 
 interface NavItem {
   path: string
@@ -64,6 +65,7 @@ const MODULES_NAV: NavItem[] = [
       { path: '/secvitals/risks',      label: 'Risiken',         icon: ShieldAlert },
       { path: '/secvitals/incidents',  label: 'Vorfälle',        icon: Siren },
       { path: '/secvitals/policies',   label: 'Richtlinien',     icon: BookOpen },
+      { path: '/secvitals/soa',        label: 'Statement of Applicability', icon: FileCheck },
       { path: '/secvitals/audits',     label: 'Audits',          icon: ClipboardList },
       { path: '/secvitals/suppliers',       label: 'Lieferanten',       icon: Building2 },
       { path: '/secvitals/ai-systems',        label: 'KI-Systeme',           icon: Bot },
@@ -469,8 +471,9 @@ export default function Layout() {
             {!sidebarCollapsed && 'Tastaturkürzel'}
           </button>
 
-          <div className={cn('flex items-center py-[9px]', sidebarCollapsed ? 'justify-center' : 'px-3')}>
+          <div className={cn('flex items-center gap-1 py-[9px]', sidebarCollapsed ? 'justify-center' : 'px-3')}>
             <NotificationBell />
+            <ChangelogPopover />
           </div>
 
           {!sidebarCollapsed && (
@@ -546,7 +549,7 @@ export default function Layout() {
       </aside>
 
       {/* Main */}
-      <main id="main-content" role="main" className="flex-1 overflow-auto bg-bg flex flex-col min-w-0">
+      <main id="main-content" role="main" className="flex-1 overflow-auto bg-bg flex flex-col min-w-0 pb-16 md:pb-0">
         {/* Mobile top bar with hamburger */}
         <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-border bg-surface shrink-0">
           <button
@@ -561,6 +564,8 @@ export default function Layout() {
             <img src="/logo.svg" alt="Vakt" className="w-5 h-5 shrink-0" />
             <span className="font-bold text-[15px] text-brand leading-none">Vakt</span>
           </div>
+          {/* Changelog — mobile only */}
+          <ChangelogPopover />
           {/* Theme toggle — mobile only */}
           <button
             onClick={toggle}
@@ -590,6 +595,33 @@ export default function Layout() {
         </div>
       </main>
       </div>
+      {/* Mobile bottom navigation */}
+      <nav
+        aria-label="Mobile Navigation"
+        className="md:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-border z-30 flex"
+      >
+        {[
+          { label: 'Comply', path: '/secvitals', icon: ShieldCheck },
+          { label: 'Scan', path: '/secpulse', icon: Bug },
+          { label: 'Privacy', path: '/secprivacy', icon: Eye },
+          { label: 'HR', path: '/hr', icon: Users },
+        ].map(({ label, path, icon: Icon }) => {
+          const active = isActive(path)
+          return (
+            <Link
+              key={path}
+              to={path}
+              aria-current={active ? 'page' : undefined}
+              className={`flex-1 flex flex-col items-center py-2 text-xs transition-colors ${
+                active ? 'text-brand' : 'text-secondary hover:text-brand'
+              }`}
+            >
+              <Icon className="h-5 w-5 mb-1" aria-hidden="true" />
+              {label}
+            </Link>
+          )
+        })}
+      </nav>
       <GlobalSearch />
       <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       {demoMode && <FeedbackWidget />}

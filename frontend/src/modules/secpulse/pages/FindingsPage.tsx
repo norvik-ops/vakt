@@ -27,6 +27,7 @@ import type { Finding } from '../types'
 import { cn } from '../../../lib/utils'
 import { ImportFindingsDialog } from '../components/ImportFindingsDialog'
 import { CSVImportDialog } from '../../../shared/components/CSVImportDialog'
+import { MobileCard } from '../../../shared/components/MobileCard'
 import { useKeyboardNav } from '../../../shared/hooks/useKeyboardNav'
 import { useTableKeyboard } from '../../../shared/hooks/useTableKeyboard'
 import { toast } from '../../../shared/hooks/useToast'
@@ -553,7 +554,30 @@ export default function FindingsPage() {
         )}
 
         {!isLoading && !isError && findings.length > 0 && (
-          <div className="rounded-md border border-border bg-surface overflow-x-auto">
+          <>
+          {/* Mobile card list — shown below md breakpoint */}
+          <div className="md:hidden space-y-3">
+            {findings.map((f) => (
+              <MobileCard
+                key={f.id}
+                title={f.title}
+                subtitle={f.asset_name ?? undefined}
+                badge={{
+                  label: f.severity,
+                  color: severityClass[f.severity],
+                }}
+                meta={[
+                  { label: 'Status', value: f.status.replace(/_/g, ' ') },
+                  { label: 'Erstellt', value: new Date(f.created_at).toLocaleDateString('de-DE') },
+                  ...(f.cve_id ? [{ label: 'CVE', value: f.cve_id }] : []),
+                  ...(f.cvss_score != null ? [{ label: 'CVSS', value: f.cvss_score.toFixed(1) }] : []),
+                ]}
+                onClick={() => navigate(`/secpulse/findings/${f.id}`)}
+              />
+            ))}
+          </div>
+          {/* Desktop table — hidden on mobile */}
+          <div className="hidden md:block rounded-md border border-border bg-surface overflow-x-auto">
             {/* WCAG 1.3.1: aria-label names the table for screen readers */}
             <Table aria-label="Sicherheitsbefunde"
               role="grid"
@@ -681,6 +705,7 @@ export default function FindingsPage() {
               </TableBody>
             </Table>
           </div>
+          </>
         )}
         <Pagination
           page={page}

@@ -1,23 +1,32 @@
 package hr
 
-import "github.com/labstack/echo/v4"
+import (
+	"github.com/labstack/echo/v4"
+
+	"github.com/sechealth-app/sechealth/internal/auth"
+)
 
 // Register mounts all HR routes on the given Echo group.
 // The group is expected to be /api/v1/hr and should already have the auth middleware applied.
 func Register(g *echo.Group, h *Handler) {
-	// Employees
-	g.GET("/employees", h.ListEmployees)
-	g.POST("/employees", h.CreateEmployee)
-	g.GET("/employees/:id", h.GetEmployee)
-	g.PUT("/employees/:id", h.UpdateEmployee)
-	g.DELETE("/employees/:id", h.DeleteEmployee)
-	// Checklists
-	g.GET("/checklists", h.ListChecklists)
-	g.POST("/checklists", h.CreateChecklist)
-	g.DELETE("/checklists/:id", h.DeleteChecklist)
-	// Checklist runs
-	g.POST("/checklist-runs", h.StartChecklistRun)
-	g.GET("/checklist-runs/:id", h.GetChecklistRun)
-	g.GET("/employees/:id/checklist-runs", h.ListChecklistRuns)
-	g.PUT("/checklist-runs/:id", h.UpdateChecklistRun)
+	rw := auth.RequireRole("Admin", "SecurityAnalyst")
+	admin := auth.RequireRole("Admin")
+
+	// Employees — PII; read: analyst+; write/delete: admin only
+	g.GET("/employees", h.ListEmployees, rw)
+	g.POST("/employees", h.CreateEmployee, admin)
+	g.GET("/employees/:id", h.GetEmployee, rw)
+	g.PUT("/employees/:id", h.UpdateEmployee, admin)
+	g.DELETE("/employees/:id", h.DeleteEmployee, admin)
+
+	// Checklists — templates; admin only
+	g.GET("/checklists", h.ListChecklists, rw)
+	g.POST("/checklists", h.CreateChecklist, admin)
+	g.DELETE("/checklists/:id", h.DeleteChecklist, admin)
+
+	// Checklist runs — admin manages; analyst can view/update progress
+	g.POST("/checklist-runs", h.StartChecklistRun, admin)
+	g.GET("/checklist-runs/:id", h.GetChecklistRun, rw)
+	g.GET("/employees/:id/checklist-runs", h.ListChecklistRuns, rw)
+	g.PUT("/checklist-runs/:id", h.UpdateChecklistRun, rw)
 }

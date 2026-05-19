@@ -37,6 +37,8 @@ func (h *Handler) ImportFindings(c echo.Context) error {
 		})
 	}
 
+	c.Request().Body = http.MaxBytesReader(c.Response().Writer, c.Request().Body, 5*1024*1024)
+
 	file, err := c.FormFile("file")
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{

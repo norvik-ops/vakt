@@ -22,10 +22,10 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 
-	"github.com/sechealth-app/sechealth/internal/shared/ai"
-	"github.com/sechealth-app/sechealth/internal/shared/dashboard"
-	"github.com/sechealth-app/sechealth/internal/shared/notify"
-	"github.com/sechealth-app/sechealth/internal/shared/webhooks"
+	"github.com/matharnica/vakt/internal/shared/ai"
+	"github.com/matharnica/vakt/internal/shared/dashboard"
+	"github.com/matharnica/vakt/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/webhooks"
 )
 
 // ErrDORANotEnabled is returned when DORA framework is not enabled for the organisation.
@@ -540,7 +540,7 @@ func (s *Service) UpdateControl(ctx context.Context, orgID, controlID string, in
 	if input.MaturityScore != nil && (*input.MaturityScore < 0 || *input.MaturityScore > 3) {
 		return nil, fmt.Errorf("maturity_score must be between 0 and 3")
 	}
-	if err := s.repo.UpdateControl(ctx, orgID, controlID, input.NotApplicable, input.Reason, input.ManualStatus, input.MaturityScore); err != nil {
+	if err := s.repo.UpdateControl(ctx, orgID, controlID, input.NotApplicable, input.Reason, input.ManualStatus, input.Owner, input.MaturityScore); err != nil {
 		return nil, fmt.Errorf("update control: %w", err)
 	}
 	s.invalidateDashboardCache(ctx, orgID)
@@ -936,14 +936,14 @@ func (s *Service) CollectEvidence(ctx context.Context, orgID, controlID, userID 
 
 // CreateAuditorLink generates a time-limited read-only access token for an external auditor.
 // Returns the raw (unhashed) token that should be delivered to the auditor.
-func (s *Service) CreateAuditorLink(ctx context.Context, orgID, frameworkID, userID string, expiresIn time.Duration) (string, error) {
+func (s *Service) CreateAuditorLink(ctx context.Context, orgID, frameworkID, userID string, expiresIn time.Duration, maxUses *int) (string, error) {
 	rawToken, tokenHash, err := generateToken()
 	if err != nil {
 		return "", fmt.Errorf("generate auditor token: %w", err)
 	}
 
 	expiresAt := time.Now().UTC().Add(expiresIn)
-	_, err = s.repo.CreateAuditorLink(ctx, orgID, frameworkID, userID, tokenHash, expiresAt)
+	_, err = s.repo.CreateAuditorLink(ctx, orgID, frameworkID, userID, tokenHash, expiresAt, maxUses)
 	if err != nil {
 		return "", fmt.Errorf("create auditor link: %w", err)
 	}
@@ -965,6 +965,9 @@ func (s *Service) ValidateAuditorLink(ctx context.Context, rawToken string) (*Fr
 	if time.Now().UTC().After(al.ExpiresAt) {
 		return nil, fmt.Errorf("auditor link expired")
 	}
+	if al.MaxUses != nil && al.UsedCount >= *al.MaxUses {
+		return nil, fmt.Errorf("auditor link usage limit reached")
+	}
 
 	if err := s.repo.IncrementAuditorLinkUsage(ctx, al.ID); err != nil {
 		log.Warn().Err(err).Str("link_id", al.ID).Msg("failed to increment auditor link usage")
@@ -985,6 +988,9 @@ func (s *Service) validateAuditorToken(ctx context.Context, rawToken string) (*A
 	}
 	if time.Now().UTC().After(al.ExpiresAt) {
 		return nil, fmt.Errorf("auditor link expired")
+	}
+	if al.MaxUses != nil && al.UsedCount >= *al.MaxUses {
+		return nil, fmt.Errorf("auditor link usage limit reached")
 	}
 	// Update access tracking (best-effort).
 	if err := s.repo.UpdateAuditorLinkAccess(ctx, al.ID); err != nil {
@@ -1281,6 +1287,16 @@ func (s *Service) UpdateRisk(ctx context.Context, orgID, id string, in UpdateRis
 		return nil, err
 	}
 	s.invalidateDashboardCache(ctx, orgID)
+	if in.Owner != "" && risk != nil {
+		go func() {
+			notifyCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			notify.Send(notifyCtx, s.db, orgID,
+				"Risiko zugewiesen",
+				fmt.Sprintf("Das Risiko '%s' wurde Ihnen zugewiesen.", risk.Title),
+				"info", "secvitals")
+		}()
+	}
 	return risk, nil
 }
 

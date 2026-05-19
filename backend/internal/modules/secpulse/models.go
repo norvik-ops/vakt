@@ -231,15 +231,22 @@ type RiskTrendPoint struct {
 	CriticalCount  int     `json:"critical_count"`
 }
 
+// ReportScope holds the typed parameters that define what a report covers.
+// Only Title is used today; the struct is the extension point for future
+// per-asset or per-severity scoped reports.
+type ReportScope struct {
+	Title string `json:"title"`
+}
+
 // Report holds metadata for a generated executive report.
 type Report struct {
-	ID          string                 `json:"id"`
-	OrgID       string                 `json:"org_id"`
-	GeneratedBy *string                `json:"generated_by,omitempty"`
-	Title       string                 `json:"title"`
-	Scope       map[string]interface{} `json:"scope"`
-	FilePath    string                 `json:"file_path,omitempty"`
-	Status      string                 `json:"status"`
-	ExpiresAt   *time.Time             `json:"expires_at,omitempty"`
-	CreatedAt   time.Time              `json:"created_at"`
+	ID          string      `json:"id"`
+	OrgID       string      `json:"org_id"`
+	GeneratedBy *string     `json:"generated_by,omitempty"`
+	Title       string      `json:"title"`
+	Scope       ReportScope `json:"scope"`
+	FilePath    string      `json:"file_path,omitempty"`
+	Status      string      `json:"status"`
+	ExpiresAt   *time.Time  `json:"expires_at,omitempty"`
+	CreatedAt   time.Time   `json:"created_at"`
 }

@@ -889,7 +889,7 @@ export default function FrameworkDetailPage() {
               }}
             >
               <FileDown className="w-4 h-4 mr-1" />
-              Word Export
+              RTF Export
             </Button>
             <Button variant="outline" size="sm" onClick={() => downloadPDF(frameworkId, framework?.name)}>
               <FileDown className="w-4 h-4 mr-1" />

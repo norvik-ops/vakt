@@ -15,7 +15,6 @@ import { EmptyState } from '../../../shared/components/EmptyState'
 import { Pagination } from '../../../shared/components/Pagination'
 import { useSortableTable } from '../../../shared/hooks/useSortableTable'
 import { useIncidents, useCreateIncident } from '../hooks/useIncidents'
-import { useBreaches } from '../../secprivacy/hooks/useBreaches'
 import { useCAPAsForSource } from '../hooks/useCAPAs'
 import type { Incident, CreateIncidentInput } from '../types'
 import { toast } from '../../../shared/hooks/useToast'
@@ -143,7 +142,6 @@ export default function IncidentsPage() {
   const [page, setPage] = useState(1)
 
   const { data: incidents, isLoading, isError, pagination } = useIncidents(page)
-  const { data: breaches } = useBreaches()
   const createIncident = useCreateIncident()
 
   const INCIDENT_SORT_OPTIONS: { key: keyof SortableIncident; label: string }[] = [
@@ -384,22 +382,16 @@ export default function IncidentsPage() {
               <Input id="inc-systems" placeholder={t('secvitals.incidentsPage.placeholderSystems')} value={rawSystems}
                 onChange={(e) => setRawSystems(e.target.value)} />
             </div>
-            {breaches && breaches.length > 0 && (
-              <div className="space-y-1.5">
-                <Label htmlFor="inc-breach">{t('secvitals.incidentsPage.labelLinkedBreach')}</Label>
-                <select
-                  id="inc-breach"
-                  className="flex w-full rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-primary focus:outline-none focus:border-brand"
-                  value={form.breach_id ?? ''}
-                  onChange={(e) => setForm((f) => ({ ...f, breach_id: e.target.value || undefined }))}
-                >
-                  <option value="">{t('secvitals.incidentsPage.noLinkedBreach')}</option>
-                  {breaches.map((b) => (
-                    <option key={b.id} value={b.id}>{b.title}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div className="space-y-1.5">
+              <Label htmlFor="inc-breach">{t('secvitals.incidentsPage.labelBreachId', 'Datenpannen-ID (optional)')}</Label>
+              <Input
+                id="inc-breach"
+                placeholder="breach-uuid (aus SecPrivacy)"
+                value={form.breach_id ?? ''}
+                onChange={(e) => setForm((f) => ({ ...f, breach_id: e.target.value || undefined }))}
+                data-testid="create-breach-id-input"
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>

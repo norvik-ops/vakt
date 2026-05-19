@@ -37,6 +37,10 @@ import EvidenceAutoPage from './pages/EvidenceAutoPage'
 import ApprovalsPage from './pages/ApprovalsPage'
 import CertificationTimelinePage from './pages/CertificationTimelinePage'
 import CISControlsPage from './pages/CISControlsPage'
+import SoAPage from './pages/SoAPage'
+import AccessReviewsPage from './pages/AccessReviewsPage'
+import ExceptionsPage from './pages/ExceptionsPage'
+import PolicyTemplatesPage from './pages/PolicyTemplatesPage'
 
 export default function SecVitalsRoutes() {
   return (
@@ -83,6 +87,10 @@ export default function SecVitalsRoutes() {
       <Route path="capas" element={<CAPAsPage />} />
       <Route path="approvals" element={<ApprovalsPage />} />
       <Route path="certification-timeline" element={<CertificationTimelinePage />} />
+      <Route path="soa" element={<SoAPage />} />
+      <Route path="access-reviews" element={<AccessReviewsPage />} />
+      <Route path="exceptions" element={<ExceptionsPage />} />
+      <Route path="policy-templates" element={<PolicyTemplatesPage />} />
       <Route path="*" element={<Navigate to="/secvitals" replace />} />
     </Routes>
   )

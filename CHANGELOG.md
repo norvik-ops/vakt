@@ -9,6 +9,90 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.5.5] — 2026-05-18
+
+### Hinzugefügt
+
+**Security**
+- **CORS** — `CORSWithConfig` mit expliziten Methoden und exponierten Rate-Limit-Headern (statt Allow-All)
+- **EPSS-Enrichment** — tägliche CVE-Exploit-Wahrscheinlichkeit via FIRST.org API (Batch 100 CVEs, Cron 01:00 UTC)
+- **Control-Changelog** — jede Status-, Owner- und Fälligkeitsänderung an Controls wird mit Zeitstempel und User-E-Mail in `ck_control_changelog` gespeichert; API: `GET /secvitals/controls/:id/changelog`
+
+**UX & Interface**
+- **Skeleton Loading** — alle Listenseiten (Incidents, Policies, Risks, Breaches, VVT) zeigen Skeleton-Platzhalter statt leere Fläche
+- **Responsive Tables** — Desktop zeigt Tabellen, Mobile zeigt Cards (`useMediaQuery`-Hook)
+- **Inline-Edit** — Finding-Status und Severity direkt in der Tabelle ändern (optimistisches Update + Rollback)
+- **Empty States** — kontextspezifische Leerseiten mit direktem CTA (Frameworks, Assets, Risiken, Incidents)
+- **Bulk-Aktionen Risiken** — mehrere Risks gleichzeitig auf einen Status setzen (`Promise.allSettled`)
+- **`ConfirmDeleteDialog`** — Name-Eingabe-Bestätigung vor dem Löschen kritischer Objekte
+- **`CopyButton`** — Kopieren-Button mit 2s-Feedback auf API Keys und Webhook Secrets
+- **@-Mentions im Kommentarfeld** — Dropdown mit Teammitgliedern, Tab/Enter zum Einfügen, Escape schließt
+- **Dark/Light/System-Toggle** — Drei-Stufen-Umschalter mit OS-Listener im Layout
+- **Page Transitions** — 150ms Fade-Animation bei Navigation zwischen Seiten
+- **Dashboard Drag & Drop** — Widget-Reihenfolge per HTML5 DnD anpassen, localStorage-persistiert
+- **RTF-Export (Word)** — Framework-Controls als RTF-Dokument exportieren (Word-kompatibel, ohne npm-Dependency)
+- **Vorfälle ↔ Datenpannen-Link** — `breach_id` wird in der Incident-Detailansicht als Link zu SecPrivacy angezeigt; Breach-ID optional im Erstell-Dialog
+
+**Platform**
+- **Helm Chart** (K8s) — produktionsreifes Chart mit bitnami postgresql+redis Subcharts, HPA, Ingress, computed DSN helpers, liveness/readiness Probes
+- **Queue Health Check** — Worker prüft alle 5 Minuten Redis-Queue-Tiefe und loggt Warnung bei >100 pending Jobs
+- **EPSS Worker** — täglicher Cron-Job zur automatischen CVE-Anreicherung
+- **Control-Owner-Reminder** — täglicher 09:00-Cron erinnert Verantwortliche an offene Controls
+- **GitHub CI Evidence** — Worker sammelt GitHub Actions-Runs als Compliance-Evidenz (`ck_evidence`)
+- **Playwright E2E** — 9 Spec-Dateien: Auth, Dashboard, Assets, Compliance, Navigation, SecPulse, SecPrivacy, SecHR, SecReflex
+
+**Dokumentation & API**
+- **OpenAPI 3.0.3 v0.5.5** — 70 dokumentierte Pfade (+48 gegenüber v0.5.4): vollständige HR- und SecReflex-Endpunkte mit Schemas
+- **SecHR Wiki** (`docs/wiki/modules/hr.md`) — vollständige Modul-Dokumentation mit API-Übersicht, curl-Beispielen und Compliance-Integration
+- **api-reference.md** — Endpoint-Tabellen für SecHR und SecReflex (Aware) ergänzt
+
+### Entfernt
+- **MSP-Layer** — `admin/organizations`-Endpunkte, MSPService, ImpersonateManagedOrg, Org-Branding-API vollständig entfernt. Vakt ist single-tenant self-hosted; MSPs deployen pro Kunde eine eigene Instanz.
+
+### Datenbank
+- Migration `102`: `ck_control_changelog` — Audit-Trail für Control-Änderungen
+- Migration `103`: Entfernt MSP-Spalten aus `organizations` (`parent_org_id`, `msp_brand_logo`, `msp_brand_colors`, `scheduled_deletion_at`, Index)
+
+### Upgrade
+```bash
+docker compose pull && docker compose down && docker compose run --rm migrate && docker compose up -d
+```
+
+---
+
+## [v0.5.4] — 2026-05-18
+
+### Hinzugefügt
+- **Helm Chart** — `helm/sechealth/` mit bitnami postgresql+redis Subcharts, HPA, Ingress, NOTES.txt
+- **OpenAPI 3.0.3** — vollständige Spec mit 45+ Endpunkten, BearerAuth, paginierten Responses, reuse-Schemas
+- **Playwright E2E** — 5 Spec-Dateien (Auth, Dashboard, Assets, Compliance, Navigation) mit gemockter API
+- **Queue Health Alert** — Worker loggt Warning wenn >100 pending Jobs in der Asynq-Queue
+
+### Technisch
+- EscalationChainSection (totes UI) entfernt
+- CI: Node 24, FORCE_JAVASCRIPT_ACTIONS_TO_NODE24
+- CI: E2E-Job mit chromium + Playwright-Report-Artifact
+
+---
+
+## [v0.5.3] — 2026-05-17
+
+### Hinzugefügt
+- **Notification Preferences** — Nutzer steuern welche E-Mails und In-App-Benachrichtigungen sie erhalten (`GET/PUT /notifications/preferences`)
+- **Dependabot** — wöchentliche Dependency-Updates für Go, npm und GitHub Actions
+- **Graceful Shutdown** — API und Worker beenden laufende Requests sauber (SIGTERM-Handler, 10s Timeout)
+
+### Tests
+- Webhook-Service: 5 Tests (HMAC-Berechnung, Event-Trigger mit und ohne Secret)
+- Scheduled-Reports-Service: 13 Sub-Tests für Next-Run-Berechnung (wöchentlich/monatlich/vierteljährlich)
+- Worker-Startup-Test
+
+### CI
+- GitHub Actions: Node 24 im Frontend- und E2E-Job
+- `build-push-action@v6` in Staging-Deploy
+
+---
+
 ## [v0.5.2] — 2026-05-17
 
 ### Entfernt

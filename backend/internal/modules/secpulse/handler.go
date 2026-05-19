@@ -204,6 +204,8 @@ func (h *Handler) ImportAssets(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
 	userID, _ := c.Get("user_id").(string)
 
+	c.Request().Body = http.MaxBytesReader(c.Response().Writer, c.Request().Body, 5*1024*1024)
+
 	file, err := c.FormFile("file")
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
@@ -442,12 +444,15 @@ func (h *Handler) GenerateReport(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
 	userID, _ := c.Get("user_id").(string)
 	var body struct {
-		Title string `json:"title"`
+		Title string `json:"title" validate:"required,min=1,max=200"`
 	}
 	if err := c.Bind(&body); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body", "code": "VB_BAD_REQUEST"})
 	}
-	scope := map[string]interface{}{"title": body.Title}
+	if err := h.validate.Struct(body); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error(), "code": "VB_VALIDATION_ERROR"})
+	}
+	scope := ReportScope{Title: body.Title}
 	report, err := h.service.GenerateReport(c.Request().Context(), orgID, userID, scope)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to generate report", "code": "VB_ERROR"})

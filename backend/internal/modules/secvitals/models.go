@@ -32,6 +32,7 @@ type Control struct {
 	ManualStatus        string `json:"manual_status,omitempty"` // "" | "in_progress" | "implemented"
 	ISO27001Mapping     string `json:"iso27001_mapping,omitempty"`
 	MaturityScore       int    `json:"maturity_score"` // 0–3 (TISAX VDA ISA maturity level)
+	Owner               string `json:"owner,omitempty"`
 	// Review tracking (Migration 075)
 	LastReviewedAt     *time.Time `json:"last_reviewed_at"`
 	ReviewIntervalDays int        `json:"review_interval_days"`
@@ -65,6 +66,19 @@ type UpdateControlInput struct {
 	Reason        string `json:"reason"`
 	ManualStatus  string `json:"manual_status" validate:"omitempty,oneof=in_progress implemented"`
 	MaturityScore *int   `json:"maturity_score" validate:"omitempty,min=0,max=3"`
+	Owner         string `json:"owner"          validate:"omitempty,max=200"`
+}
+
+// BulkUpdateControlsInput holds input for PATCH /secvitals/controls/bulk.
+type BulkUpdateControlsInput struct {
+	IDs    []string `json:"ids"    validate:"required,min=1,max=100"`
+	Status string   `json:"status" validate:"required,oneof=implemented in_progress not_implemented not_applicable"`
+}
+
+// BulkUpdateCAPAsInput holds input for PATCH /secvitals/capas/bulk.
+type BulkUpdateCAPAsInput struct {
+	IDs    []string `json:"ids"    validate:"required,min=1,max=100"`
+	Status string   `json:"status" validate:"required,oneof=open in_progress implemented verified closed"`
 }
 
 // UpdateSoAMetadataInput holds SoA-specific fields for PATCH /secvitals/controls/:id/soa.
@@ -147,6 +161,7 @@ type AuditorLink struct {
 	CreatedBy   string    `json:"created_by"`
 	ExpiresAt   time.Time `json:"expires_at"`
 	UsedCount   int       `json:"used_count"`
+	MaxUses     *int      `json:"max_uses,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	// ShareURL is populated on creation with the raw token embedded.
 	ShareURL string `json:"share_url,omitempty"`
@@ -233,6 +248,17 @@ type ControlGap struct {
 	Control   Control    `json:"control"`
 	Reason    string     `json:"reason"` // "no_evidence", "evidence_expiring", "review_pending"
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+}
+
+// EvidenceHistoryEntry represents a single audit history record for an evidence item.
+type EvidenceHistoryEntry struct {
+	ID         string    `json:"id"`
+	EvidenceID string    `json:"evidence_id"`
+	ChangedBy  *string   `json:"changed_by_id,omitempty"`
+	ChangedAt  time.Time `json:"changed_at"`
+	Title      string    `json:"title,omitempty"`
+	Status     string    `json:"status,omitempty"`
+	ChangeNote string    `json:"change_note,omitempty"`
 }
 
 // AddEvidenceInput holds validated input for adding evidence to a control.

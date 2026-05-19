@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { formatDate, formatDateTime } from '../../../shared/utils/date'
-import { ArrowLeft, Save, Link2, Clock, CheckCircle2, AlertTriangle, FileDown, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, Save, Clock, CheckCircle2, AlertTriangle, FileDown, ShieldAlert } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Breadcrumbs } from '../../../shared/components/Breadcrumbs'
 import { trackPage } from '../../../shared/hooks/useRecentPages'
@@ -15,7 +15,6 @@ import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { useIncident, useUpdateIncident, useMarkDeadlineReported, useIncidentReports, useGenerateIncidentReport } from '../hooks/useIncidents'
-import { useBreaches } from '../../secprivacy/hooks/useBreaches'
 import { useAuthStore } from '../../../shared/stores/auth'
 import { ReportabilityWizard } from '../components/ReportabilityWizard'
 import type { Incident, UpdateIncidentInput, DeadlineInfo, IncidentReport } from '../types'
@@ -129,7 +128,6 @@ export default function IncidentDetailPage() {
   const navigate = useNavigate()
   const { data: incident, isLoading, isError } = useIncident(id ?? '')
   const update = useUpdateIncident(id ?? '')
-  const { data: breaches } = useBreaches()
   const token = useAuthStore((s) => s.token)
 
   const { data: incidentReports } = useIncidentReports(id ?? '')
@@ -198,7 +196,6 @@ export default function IncidentDetailPage() {
     update.mutate(payload, { onSuccess: () => setDirty(false) })
   }
 
-  const linkedBreach = breaches?.find((b) => b.id === incident?.breach_id)
   const ds = incident?.deadline_status
 
   if (isLoading) return (
@@ -409,21 +406,21 @@ export default function IncidentDetailPage() {
               </Card>
             )}
 
-            {linkedBreach && (
-              <Card className="border-amber-500/30">
-                <CardHeader>
+            {incident?.breach_id && (
+              <Card className="border-amber-500/30 bg-amber-500/5">
+                <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <Link2 className="w-4 h-4 text-amber-400" />
-                    Verknüpfte Datenpanne (Vakt Privacy)
+                    <ShieldAlert className="w-4 h-4 text-amber-400" />
+                    Verknüpfte Datenpanne
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-1 text-sm">
-                  <p className="font-medium">{linkedBreach.title}</p>
-                  <p className="text-xs text-muted-foreground">{linkedBreach.description}</p>
-                  <div className="flex gap-3 text-xs text-muted-foreground mt-1">
-                    <span>Entdeckt: {new Date(linkedBreach.discovered_at).toLocaleDateString('de-DE')}</span>
-                    <span>Meldefrist: {new Date(linkedBreach.authority_deadline_at).toLocaleDateString('de-DE')}</span>
-                  </div>
+                <CardContent>
+                  <a
+                    href={`/secprivacy/breaches/${incident.breach_id}`}
+                    className="text-sm text-amber-400 hover:underline"
+                  >
+                    Datenpanne öffnen →
+                  </a>
                 </CardContent>
               </Card>
             )}

@@ -25,6 +25,7 @@ It is a free-to-self-host alternative to commercial tools like Vanta or Drata (~
 | 🔐 **Vakt Vault** | Secrets management: AES-256-GCM storage, Git repo scanning (gitleaks), automatic rotation, CI/CD integration |
 | 📧 **Vakt Aware** | Security awareness: internal phishing simulations, micro-trainings, SMTP campaigns, anonymised reporting (Betriebsrats-konform), automatic evidence on training completion |
 | 📋 **Vakt Privacy** | GDPR documentation hub: VVT (Art. 30), DPIA (Art. 35), AVV management (Art. 28), DSR workflows, breach notification records (Art. 33/34) |
+| 👥 **Vakt HR** | Employee lifecycle management: onboarding and offboarding checklists, checklist runs per employee, employee directory with status tracking. Audit-ready evidence that access provisioning and revocation steps were completed. |
 
 **Shared features across all modules:**
 
@@ -45,14 +46,11 @@ It is a free-to-self-host alternative to commercial tools like Vanta or Drata (~
 ## Quick Start
 
 ```bash
-# Quick install (recommended)
-curl -fsSL https://get.vakt.dev/install.sh | bash
-# Or manually:
-git clone https://github.com/norvik-ops/vakt
-cd vakt
+git clone https://github.com/norvik-ops/vatk
+cd vatk
 cp .env.example .env
 
-# Set your secret key:
+# Generate a secure secret key (required):
 sed -i 's/VAKT_SECRET_KEY=.*/VAKT_SECRET_KEY='"$(openssl rand -hex 32)"'/' .env
 
 docker compose up -d

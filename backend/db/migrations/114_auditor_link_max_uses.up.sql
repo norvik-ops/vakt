@@ -1,0 +1,1 @@
+ALTER TABLE ck_auditor_links ADD COLUMN IF NOT EXISTS max_uses INT DEFAULT NULL;

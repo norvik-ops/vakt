@@ -1,0 +1,31 @@
+[
+  {
+    "version": "0.6.0",
+    "date": "2026-05-18",
+    "entries": [
+      { "type": "feat", "text": "Statement of Applicability (SoA) Generator für ISO 27001" },
+      { "type": "feat", "text": "Risikomatrix-Heatmap mit 5×5-Visualisierung" },
+      { "type": "feat", "text": "Wöchentlicher E-Mail-Digest in Deutsch, Englisch, Französisch und Niederländisch" },
+      { "type": "feat", "text": "Mehrsprachige Oberfläche: Französisch und Niederländisch neu verfügbar" },
+      { "type": "feat", "text": "Bulk-Aktionen für Controls und CAPAs" },
+      { "type": "feat", "text": "Evidence-Versionshistorie" },
+      { "type": "feat", "text": "iCal-Feed für Deadlines und Meilensteine" },
+      { "type": "feat", "text": "Compliance-Score-Benchmark gegenüber Branchendurchschnitt" },
+      { "type": "feat", "text": "Gantt-Chart für Audit-Zeitplan" },
+      { "type": "improvement", "text": "Print-CSS für alle Compliance-Seiten optimiert" },
+      { "type": "improvement", "text": "Prometheus-Metriken-Endpoint für Monitoring" },
+      { "type": "improvement", "text": "Automatische CAPA-Erstellung bei überfälligen Control-Tests" }
+    ]
+  },
+  {
+    "version": "0.5.0",
+    "date": "2026-04-01",
+    "entries": [
+      { "type": "feat", "text": "DSGVO Art. 32 TOM-Mapping für secvitals" },
+      { "type": "feat", "text": "TISAX und EU AI Act Compliance-Module" },
+      { "type": "feat", "text": "NIS2-Meldungsassistent" },
+      { "type": "feat", "text": "DORA-Dashboard und Resilienztest-Tracking" },
+      { "type": "improvement", "text": "Verbesserte Sicherheit: OIDC CSRF-Schutz, TOTP-Deny-List" }
+    ]
+  }
+]

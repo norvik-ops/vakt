@@ -10,7 +10,7 @@ import { useTeamMembers } from '../../hooks/useTeam'
 
 const DISMISS_KEY = 'vakt_onboarding_dismissed'
 
-function useTOTPStatus() {
+export function useTOTPStatus() {
   return useQuery<{ enabled: boolean }>({
     queryKey: ['auth', '2fa', 'status'],
     queryFn: () => apiFetch<{ enabled: boolean }>('/auth/2fa/status'),
@@ -19,7 +19,7 @@ function useTOTPStatus() {
   })
 }
 
-function useHasEvidence() {
+export function useHasEvidence() {
   return useQuery<boolean>({
     queryKey: ['checklist', 'evidence'],
     queryFn: async () => {
@@ -34,9 +34,22 @@ function useHasEvidence() {
   })
 }
 
+export function useHasVvt() {
+  return useQuery<boolean>({
+    queryKey: ['checklist', 'vvt'],
+    queryFn: async () => {
+      const data = await apiFetch<{ count?: number; data?: unknown[] }>('/secprivacy/vvt?limit=1')
+      const count = data?.count ?? (Array.isArray((data as { data?: unknown[] })?.data) ? (data as { data: unknown[] }).data.length : 0)
+      return count > 0
+    },
+    staleTime: 30_000,
+    retry: false,
+  })
+}
+
 interface Step {
   id: string
-  labelKey: keyof { org: string; framework: string; asset: string; team: string; evidence: string; mfa: string }
+  labelKey: keyof { vvt: string; framework: string; control: string; org: string; mfa: string }
   done: boolean
   to: string
 }
@@ -48,18 +61,12 @@ export function GettingStartedChecklist() {
   )
 
   const { data: frameworks } = useFrameworks()
-  const { pagination: assetPagination } = useAssets(1, 1)
   const { data: members } = useTeamMembers()
   const { data: totpStatus } = useTOTPStatus()
   const { data: hasEvidence } = useHasEvidence()
+  const { data: hasVvt } = useHasVvt()
 
   const steps: Step[] = [
-    {
-      id: 'org',
-      labelKey: 'org',
-      done: true,
-      to: '/settings',
-    },
     {
       id: 'framework',
       labelKey: 'framework',
@@ -67,22 +74,22 @@ export function GettingStartedChecklist() {
       to: '/secvitals/frameworks',
     },
     {
-      id: 'asset',
-      labelKey: 'asset',
-      done: (assetPagination?.total ?? 0) > 0,
-      to: '/secpulse/assets',
-    },
-    {
-      id: 'team',
-      labelKey: 'team',
-      done: (members?.length ?? 0) > 1,
-      to: '/settings/team',
-    },
-    {
-      id: 'evidence',
-      labelKey: 'evidence',
+      id: 'control',
+      labelKey: 'control',
       done: hasEvidence ?? false,
-      to: '/secvitals/frameworks',
+      to: '/secvitals/controls',
+    },
+    {
+      id: 'vvt',
+      labelKey: 'vvt',
+      done: hasVvt ?? false,
+      to: '/secprivacy/vvt',
+    },
+    {
+      id: 'org',
+      labelKey: 'org',
+      done: (members?.length ?? 0) > 1,
+      to: '/settings',
     },
     {
       id: '2fa',

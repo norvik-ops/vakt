@@ -6,27 +6,19 @@ import (
 	"encoding/csv"
 	"net/http"
 	"strconv"
-	"time"
 
-	"aidanwoods.dev/go-paseto"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/sechealth-app/sechealth/internal/auth"
 	"github.com/sechealth-app/sechealth/internal/shared/notify"
 )
-
-// ImpersonateTokenTTL is the lifetime of tokens generated for MSP impersonation.
-// Short-lived to limit blast radius if leaked.
-const ImpersonateTokenTTL = 1 * time.Hour
 
 // Handler holds HTTP handler methods for admin endpoints.
 type Handler struct {
 	service     *Service
 	validate    *validator.Validate
 	Permissions *PermissionsHandler
-	pasetoKey   *paseto.V4SymmetricKey // optional; nil = impersonation disabled
 }
 
 // NewHandler constructs an admin Handler.
@@ -36,89 +28,6 @@ func NewHandler(service *Service) *Handler {
 		validate:    validator.New(),
 		Permissions: NewPermissionsHandler(service.db),
 	}
-}
-
-// WithPasetoKey attaches the Paseto symmetric key to the handler, enabling
-// the MSP impersonation endpoint to mint short-lived cross-org tokens.
-func (h *Handler) WithPasetoKey(key paseto.V4SymmetricKey) *Handler {
-	h.pasetoKey = &key
-	return h
-}
-
-// ImpersonateManagedOrg handles POST /api/v1/admin/organizations/:id/impersonate.
-// It mints a short-lived Paseto token scoped to the target managed org's first Admin user,
-// so that an MSP operator can log into the tenant UI without knowing the password.
-func (h *Handler) ImpersonateManagedOrg(c echo.Context) error {
-	if h.pasetoKey == nil {
-		return c.JSON(http.StatusNotImplemented, map[string]string{
-			"error": "impersonation not configured",
-			"code":  "MSP_IMPERSONATE_UNAVAILABLE",
-		})
-	}
-
-	mspOrgID, _ := c.Get("org_id").(string)
-	targetOrgID := c.Param("id")
-
-	// Verify the target org is managed by this MSP.
-	if err := h.service.MSP.SwitchContext(c.Request().Context(), mspOrgID, targetOrgID); err != nil {
-		if isNotManagedByError(err) {
-			return c.JSON(http.StatusForbidden, map[string]string{
-				"error": "organization is not managed by your MSP account",
-				"code":  "MSP_FORBIDDEN",
-			})
-		}
-		log.Error().Err(err).Str("target_org_id", targetOrgID).Msg("impersonate: switch context check failed")
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "failed to verify organization ownership",
-			"code":  "MSP_IMPERSONATE_ERROR",
-		})
-	}
-
-	// Find the first Admin user in the target org.
-	var adminUserID string
-	err := h.service.db.QueryRow(c.Request().Context(), `
-		SELECT u.id::text
-		FROM org_members om
-		JOIN users u ON u.id = om.user_id
-		JOIN roles r ON r.id = om.role_id
-		WHERE om.org_id = $1::uuid
-		  AND r.name = 'Admin'
-		  AND u.is_active = TRUE
-		ORDER BY om.joined_at ASC
-		LIMIT 1`, targetOrgID,
-	).Scan(&adminUserID)
-	if err != nil {
-		log.Error().Err(err).Str("target_org_id", targetOrgID).Msg("impersonate: no admin user found")
-		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": "no active admin user found in target organization",
-			"code":  "MSP_IMPERSONATE_NO_ADMIN",
-		})
-	}
-
-	claims := auth.Claims{
-		UserID: adminUserID,
-		OrgID:  targetOrgID,
-		Roles:  []string{"Admin"},
-	}
-	token, err := auth.IssueAccessTokenWithTTL(*h.pasetoKey, claims, ImpersonateTokenTTL)
-	if err != nil {
-		log.Error().Err(err).Msg("impersonate: token minting failed")
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "failed to generate impersonation token",
-			"code":  "MSP_IMPERSONATE_ERROR",
-		})
-	}
-
-	log.Info().
-		Str("msp_org_id", mspOrgID).
-		Str("target_org_id", targetOrgID).
-		Str("admin_user_id", adminUserID).
-		Msg("MSP impersonation token issued")
-
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"access_token": token,
-		"expires_in":   int(ImpersonateTokenTTL / time.Second),
-	})
 }
 
 // ListAuditLogs handles GET /api/v1/admin/audit-logs.
@@ -348,142 +257,12 @@ func (h *Handler) DeleteNotificationChannel(c echo.Context) error {
 }
 
 // CreateManagedOrg handles POST /api/v1/admin/organizations.
-func (h *Handler) CreateManagedOrg(c echo.Context) error {
-	mspOrgID, _ := c.Get("org_id").(string)
-	userID, _ := c.Get("user_id").(string)
-
-	var input CreateManagedOrgInput
-	if err := c.Bind(&input); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "invalid request body",
-			"code":  "ADMIN_BAD_REQUEST",
-		})
-	}
-	if err := h.validate.Struct(input); err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
-			"code":  "ADMIN_VALIDATION_ERROR",
-		})
-	}
-
-	org, err := h.service.MSP.CreateManagedOrg(c.Request().Context(), mspOrgID, userID, input)
-	if err != nil {
-		log.Error().Err(err).Str("msp_org_id", mspOrgID).Msg("create managed org failed")
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "failed to create managed organization",
-			"code":  "MSP_CREATE_ORG_ERROR",
-		})
-	}
-
-	return c.JSON(http.StatusCreated, map[string]interface{}{
-		"data": org,
-	})
-}
-
-// ListManagedOrgs handles GET /api/v1/admin/organizations.
-func (h *Handler) ListManagedOrgs(c echo.Context) error {
-	mspOrgID, _ := c.Get("org_id").(string)
-
-	orgs, err := h.service.MSP.ListManagedOrgs(c.Request().Context(), mspOrgID)
-	if err != nil {
-		log.Error().Err(err).Str("msp_org_id", mspOrgID).Msg("list managed orgs failed")
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "failed to list managed organizations",
-			"code":  "MSP_LIST_ORGS_ERROR",
-		})
-	}
-
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"data": orgs,
-	})
-}
-
-// DeleteManagedOrg handles DELETE /api/v1/admin/organizations/:id.
-func (h *Handler) DeleteManagedOrg(c echo.Context) error {
-	mspOrgID, _ := c.Get("org_id").(string)
-	targetOrgID := c.Param("id")
-
-	if err := h.service.MSP.DeleteManagedOrg(c.Request().Context(), mspOrgID, targetOrgID); err != nil {
-		if isNotManagedByError(err) {
-			return c.JSON(http.StatusForbidden, map[string]string{
-				"error": "organization is not managed by your MSP account",
-				"code":  "MSP_FORBIDDEN",
-			})
-		}
-		log.Error().Err(err).
-			Str("msp_org_id", mspOrgID).
-			Str("target_org_id", targetOrgID).
-			Msg("delete managed org failed")
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "failed to schedule organization deletion",
-			"code":  "MSP_DELETE_ORG_ERROR",
-		})
-	}
-
-	return c.JSON(http.StatusAccepted, map[string]string{
-		"message": "organization deletion scheduled",
-	})
-}
-
-// GetOrgBranding handles GET /api/v1/admin/organizations/:id/branding.
-func (h *Handler) GetOrgBranding(c echo.Context) error {
-	orgID := c.Param("id")
-
-	branding, err := h.service.MSP.GetOrgBranding(c.Request().Context(), orgID)
-	if err != nil {
-		log.Error().Err(err).Str("org_id", orgID).Msg("get org branding failed")
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "failed to retrieve organization branding",
-			"code":  "MSP_GET_BRANDING_ERROR",
-		})
-	}
-
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"data": branding,
-	})
-}
-
-// UpdateOrgBranding handles PUT /api/v1/admin/organizations/:id/branding.
-func (h *Handler) UpdateOrgBranding(c echo.Context) error {
-	mspOrgID, _ := c.Get("org_id").(string)
-	targetOrgID := c.Param("id")
-
-	var input BrandingInput
-	if err := c.Bind(&input); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "invalid request body",
-			"code":  "ADMIN_BAD_REQUEST",
-		})
-	}
-
-	if err := h.service.MSP.UpdateOrgBranding(c.Request().Context(), mspOrgID, targetOrgID, input); err != nil {
-		if isNotManagedByError(err) {
-			return c.JSON(http.StatusForbidden, map[string]string{
-				"error": "organization is not managed by your MSP account",
-				"code":  "MSP_FORBIDDEN",
-			})
-		}
-		log.Error().Err(err).
-			Str("msp_org_id", mspOrgID).
-			Str("target_org_id", targetOrgID).
-			Msg("update org branding failed")
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "failed to update organization branding",
-			"code":  "MSP_UPDATE_BRANDING_ERROR",
-		})
-	}
-
-	return c.JSON(http.StatusOK, map[string]string{
-		"message": "branding updated",
-	})
-}
-
 // GetCurrentOrg handles GET /api/v1/admin/org.
 // Returns the caller's own organisation record, including trust center settings.
 func (h *Handler) GetCurrentOrg(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
 
-	org, err := h.service.MSP.repo.GetCurrentOrg(c.Request().Context(), orgID)
+	org, err := h.service.repo.GetCurrentOrg(c.Request().Context(), orgID)
 	if err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Msg("get current org failed")
 		return c.JSON(http.StatusInternalServerError, map[string]string{
@@ -510,7 +289,7 @@ func (h *Handler) UpdateTrustCenter(c echo.Context) error {
 			"code":  "ADMIN_BAD_REQUEST",
 		})
 	}
-	if err := h.service.MSP.repo.UpdateOrgTrustCenter(c.Request().Context(), orgID, in.Enabled, in.Description, in.Contact); err != nil {
+	if err := h.service.repo.UpdateOrgTrustCenter(c.Request().Context(), orgID, in.Enabled, in.Description, in.Contact); err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Msg("update trust center failed")
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),
@@ -525,7 +304,7 @@ func (h *Handler) UpdateTrustCenter(c echo.Context) error {
 func (h *Handler) GetOrgSecurity(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
 
-	sec, err := h.service.MSP.repo.GetOrgSecurity(c.Request().Context(), orgID)
+	sec, err := h.service.repo.GetOrgSecurity(c.Request().Context(), orgID)
 	if err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Msg("get org security failed")
 		return c.JSON(http.StatusInternalServerError, map[string]string{
@@ -554,7 +333,7 @@ func (h *Handler) UpdateOrgSecurity(c echo.Context) error {
 		})
 	}
 
-	if err := h.service.MSP.repo.SetOrgRequireMFA(c.Request().Context(), orgID, in.RequireMFA); err != nil {
+	if err := h.service.repo.SetOrgRequireMFA(c.Request().Context(), orgID, in.RequireMFA); err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Msg("update org security failed")
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "failed to update org security settings",
@@ -562,21 +341,6 @@ func (h *Handler) UpdateOrgSecurity(c echo.Context) error {
 		})
 	}
 	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
-}
-
-// isNotManagedByError returns true when the service error signals an MSP ownership violation.
-func isNotManagedByError(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := err.Error()
-	needle := "is not managed by"
-	for i := 0; i+len(needle) <= len(msg); i++ {
-		if msg[i:i+len(needle)] == needle {
-			return true
-		}
-	}
-	return false
 }
 
 // derefString safely dereferences a string pointer for CSV output.

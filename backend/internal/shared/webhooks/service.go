@@ -12,7 +12,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -109,7 +111,51 @@ func (s *WebhookService) ListWebhooks(ctx context.Context, orgID string) ([]Webh
 }
 
 // CreateWebhook inserts a new webhook for the org.
+// validateWebhookURL rejects non-HTTPS URLs and SSRF targets (loopback, RFC1918, link-local).
+func validateWebhookURL(rawURL string) error {
+	u, err := url.ParseRequestURI(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid webhook URL: %w", err)
+	}
+	if u.Scheme != "https" {
+		return fmt.Errorf("webhook URL must use HTTPS")
+	}
+	host := u.Hostname()
+	ips, err := net.LookupHost(host)
+	if err != nil {
+		// DNS failure is non-fatal at save time — block only on confirmed private IPs.
+		return nil
+	}
+	privateRanges := []string{
+		"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
+		"127.0.0.0/8", "::1/128", "169.254.0.0/16", "fc00::/7",
+	}
+	var privNets []*net.IPNet
+	for _, cidr := range privateRanges {
+		_, n, _ := net.ParseCIDR(cidr)
+		if n != nil {
+			privNets = append(privNets, n)
+		}
+	}
+	for _, ipStr := range ips {
+		ip := net.ParseIP(ipStr)
+		if ip == nil {
+			continue
+		}
+		for _, n := range privNets {
+			if n.Contains(ip) {
+				return fmt.Errorf("webhook URL must not resolve to a private or loopback address")
+			}
+		}
+	}
+	return nil
+}
+
 func (s *WebhookService) CreateWebhook(ctx context.Context, orgID string, input CreateWebhookInput) (*Webhook, error) {
+	if err := validateWebhookURL(input.URL); err != nil {
+		return nil, err
+	}
+
 	if input.Events == nil {
 		input.Events = []string{}
 	}
@@ -138,6 +184,12 @@ func (s *WebhookService) CreateWebhook(ctx context.Context, orgID string, input 
 
 // UpdateWebhook applies a partial update to a webhook owned by orgID.
 func (s *WebhookService) UpdateWebhook(ctx context.Context, id, orgID string, input UpdateWebhookInput) (*Webhook, error) {
+	if input.URL != nil {
+		if err := validateWebhookURL(*input.URL); err != nil {
+			return nil, err
+		}
+	}
+
 	var w Webhook
 	err := s.db.QueryRow(ctx, `
 		UPDATE webhooks

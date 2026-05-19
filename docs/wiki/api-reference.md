@@ -166,6 +166,51 @@ Payloads are HMAC-SHA256 signed with the `X-Vakt-Signature` header when a secret
 | `GET` | `/notifications/preferences` | Get current user's preferences |
 | `PUT` | `/notifications/preferences` | Update preferences |
 
+### Vakt HR (SecHR)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/hr/employees` | List employees (paginated) |
+| `POST` | `/hr/employees` | Create employee |
+| `GET` | `/hr/employees/:id` | Get employee |
+| `PUT` | `/hr/employees/:id` | Update employee (status, role, end date) |
+| `DELETE` | `/hr/employees/:id` | Delete employee |
+| `GET` | `/hr/employees/:id/checklist-runs` | List checklist runs for employee |
+| `GET` | `/hr/checklists` | List checklist templates |
+| `POST` | `/hr/checklists` | Create checklist template |
+| `DELETE` | `/hr/checklists/:id` | Delete checklist template |
+| `POST` | `/hr/checklist-runs` | Start checklist run |
+| `GET` | `/hr/checklist-runs/:id` | Get checklist run |
+| `PUT` | `/hr/checklist-runs/:id` | Update run progress / mark completed |
+
+### Vakt Aware (SecReflex) — Pro
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/secreflex/templates` | List phishing email templates |
+| `GET` | `/secreflex/templates/presets` | List built-in preset templates |
+| `POST` | `/secreflex/templates` | Create template |
+| `GET` | `/secreflex/groups` | List target groups |
+| `POST` | `/secreflex/groups` | Create target group |
+| `GET` | `/secreflex/groups/:id/targets` | List targets in group |
+| `POST` | `/secreflex/groups/:id/targets/import` | Import targets from CSV |
+| `GET` | `/secreflex/landing-pages` | List landing pages |
+| `POST` | `/secreflex/landing-pages` | Create landing page |
+| `GET` | `/secreflex/campaigns` | List campaigns |
+| `POST` | `/secreflex/campaigns` | Create campaign |
+| `GET` | `/secreflex/campaigns/:id` | Get campaign |
+| `POST` | `/secreflex/campaigns/:id/launch` | Launch campaign (sends emails) |
+| `POST` | `/secreflex/campaigns/:id/abort` | Abort running campaign |
+| `GET` | `/secreflex/campaigns/:id/stats` | Campaign statistics |
+| `GET` | `/secreflex/campaigns/:id/report` | Export PDF report |
+| `GET` | `/secreflex/training-modules` | List training modules |
+| `POST` | `/secreflex/training-modules` | Create training module |
+| `GET` | `/secreflex/assignments` | List assignments for current user |
+| `POST` | `/secreflex/assignments/:id/complete` | Mark assignment completed |
+| `GET` | `/secreflex/phish-reports` | List phish reports |
+| `GET` | `/secreflex/phish-reports/stats` | Aggregate phish-report stats |
+| `POST` | `/secreflex/phish-report-token/regenerate` | Regenerate webhook token |
+
 ---
 
 ## Example: create an asset

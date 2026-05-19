@@ -5,15 +5,22 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/sechealth-app/sechealth/internal/auth"
-	"github.com/sechealth-app/sechealth/internal/license"
+	"github.com/matharnica/vakt/internal/auth"
+	"github.com/matharnica/vakt/internal/license"
+	sharedmw "github.com/matharnica/vakt/internal/shared/middleware"
 )
 
 // Register mounts admin routes under g.  All routes require the "Admin" role.
 func Register(g *echo.Group, h *Handler, health *HealthHandler, db *pgxpool.Pool, rdb *redis.Client) {
-	admin := g.Group("/admin", auth.RequireRole("Admin"))
+	admin := g.Group("/admin", auth.RequireRole("Admin"), sharedmw.IPAllowlist())
 	admin.GET("/health", health.HandleHealth)
 	admin.GET("/audit-logs", h.ListAuditLogs)
+
+	// SIEM export endpoints
+	siem := NewSIEMHandler(db)
+	admin.GET("/audit-log/export.cef", siem.ExportCEF)
+	admin.GET("/audit-log/export.syslog", siem.ExportSyslog)
+
 	admin.GET("/users", h.ListUsers)
 	admin.POST("/users/invite", h.InviteUser)
 	admin.PATCH("/users/:id/role", h.UpdateUserRole)
@@ -41,14 +48,7 @@ func Register(g *echo.Group, h *Handler, health *HealthHandler, db *pgxpool.Pool
 	admin.GET("/security-events", sec.GetSecurityEvents)
 	admin.DELETE("/accounts/:email/unlock", sec.UnlockAccount)
 
-	// MSP management (caller must be Admin of the parent MSP org)
-	msp := admin.Group("/organizations")
-	msp.POST("", h.CreateManagedOrg)
-	msp.GET("", h.ListManagedOrgs)
-	msp.DELETE("/:id", h.DeleteManagedOrg)
-	msp.GET("/:id/branding", h.GetOrgBranding)
-	msp.PUT("/:id/branding", h.UpdateOrgBranding)
-	msp.POST("/:id/impersonate", h.ImpersonateManagedOrg)
+
 }
 
 // RegisterStaging mounts staging-only routes. Call only when VAKT_STAGING=true.

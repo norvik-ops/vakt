@@ -6,21 +6,23 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog/log"
 )
 
 // Service handles HR business logic.
 type Service struct {
 	repo *Repository
+	db   *pgxpool.Pool
 }
 
 // NewService creates a new HR service backed by the given DB pool.
 func NewService(repo *Repository) *Service {
-	return &Service{repo: repo}
+	return &Service{repo: repo, db: repo.db}
 }
 
 // NewServiceFromPool is a convenience constructor that creates the repository internally.
 func NewServiceFromPool(db *pgxpool.Pool) *Service {
-	return &Service{repo: NewRepository(db)}
+	return &Service{repo: NewRepository(db), db: db}
 }
 
 // --- Employees ---
@@ -49,8 +51,53 @@ func (s *Service) CreateEmployee(ctx context.Context, orgID string, in CreateEmp
 }
 
 // UpdateEmployee updates an existing employee record.
+// When status transitions to "terminated", the corresponding platform user's
+// sessions and API keys are revoked immediately to fulfil the SecHR compliance promise.
 func (s *Service) UpdateEmployee(ctx context.Context, orgID, id string, in UpdateEmployeeInput) (*Employee, error) {
-	return s.repo.UpdateEmployee(ctx, orgID, id, in)
+	emp, err := s.repo.UpdateEmployee(ctx, orgID, id, in)
+	if err != nil {
+		return nil, err
+	}
+	if in.Status == "terminated" {
+		s.revokeUserAccess(ctx, orgID, emp.Email)
+	}
+	return emp, nil
+}
+
+// revokeUserAccess revokes all active sessions and API keys for the platform user
+// matching the given email within the org. Errors are logged but do not fail the call —
+// the HR record update is already committed and must not be rolled back due to a
+// transient auth-DB issue.
+func (s *Service) revokeUserAccess(ctx context.Context, orgID, email string) {
+	if _, err := s.db.Exec(ctx,
+		`UPDATE sessions SET revoked_at = NOW()
+		 FROM users
+		 WHERE sessions.user_id = users.id
+		   AND users.org_id    = $1::uuid
+		   AND users.email     = $2
+		   AND sessions.revoked_at IS NULL`,
+		orgID, email,
+	); err != nil {
+		log.Error().Err(err).Str("email", email).Msg("hr: revoke sessions on termination")
+	}
+	if _, err := s.db.Exec(ctx,
+		`UPDATE users SET status = 'disabled'
+		 WHERE org_id = $1::uuid AND email = $2`,
+		orgID, email,
+	); err != nil {
+		log.Error().Err(err).Str("email", email).Msg("hr: disable user on termination")
+	}
+	if _, err := s.db.Exec(ctx,
+		`UPDATE api_keys SET revoked_at = NOW()
+		 FROM users
+		 WHERE api_keys.created_by = users.id
+		   AND users.org_id        = $1::uuid
+		   AND users.email         = $2
+		   AND api_keys.revoked_at IS NULL`,
+		orgID, email,
+	); err != nil {
+		log.Error().Err(err).Str("email", email).Msg("hr: revoke api keys on termination")
+	}
 }
 
 // DeleteEmployee removes an employee record.

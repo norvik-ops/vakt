@@ -58,12 +58,56 @@ func (s *Service) RequestPasswordReset(ctx context.Context, email, frontendURL, 
 		return fmt.Errorf("insert reset token: %w", err)
 	}
 
+	// Look up the user's preferred language for the email.
+	var lang string
+	_ = s.db.QueryRow(ctx, `SELECT preferred_language FROM users WHERE id = $1::uuid`, userID).Scan(&lang)
+	if lang == "" {
+		lang = "de"
+	}
+
 	// Send email — non-fatal if SMTP fails (log and return nil).
 	resetLink := frontendURL + "/auth/reset-password?token=" + rawHex
-	if err := sendPasswordResetEmail(smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom, email, resetLink); err != nil {
+	if err := sendPasswordResetEmail(smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom, email, resetLink, lang); err != nil {
 		log.Error().Err(err).Str("email", email).Msg("password reset: send email failed")
 	}
 	return nil
+}
+
+// GeneratePasswordResetLink creates a reset token for the given email and returns the full reset link.
+// Unlike RequestPasswordReset it does not send email — the caller is responsible for delivery.
+// Returns ("", nil) if the email address is not found.
+func (s *Service) GeneratePasswordResetLink(ctx context.Context, email, frontendURL string) (string, error) {
+	var userID string
+	err := s.db.QueryRow(ctx,
+		`SELECT id::text FROM users WHERE email = $1 AND is_active = TRUE`, email,
+	).Scan(&userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("lookup user: %w", err)
+	}
+
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", fmt.Errorf("generate reset token: %w", err)
+	}
+	rawHex := hex.EncodeToString(raw)
+
+	hash := sha256.Sum256([]byte(rawHex))
+	tokenHash := hex.EncodeToString(hash[:])
+
+	_, err = s.db.Exec(ctx, `
+		INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+		VALUES ($1::uuid, $2, now() + interval '1 hour')`,
+		userID, tokenHash,
+	)
+	if err != nil {
+		return "", fmt.Errorf("insert reset token: %w", err)
+	}
+
+	resetLink := frontendURL + "/auth/reset-password?token=" + rawHex
+	return resetLink, nil
 }
 
 // ResetPassword validates the raw token, updates the user's password, and marks
@@ -151,8 +195,51 @@ func (s *Service) ResetPassword(ctx context.Context, rawToken, newPassword strin
 	return nil
 }
 
+// resetEmailContent returns the localised subject and body (with %s for the reset link) for a
+// password-reset email. Falls back to German for unknown language codes.
+func resetEmailContent(lang string) (subject, bodyTemplate string) {
+	switch lang {
+	case "en":
+		return "Reset your password — Vakt",
+			"Hello,\r\n\r\n" +
+				"You requested a password reset.\r\n\r\n" +
+				"Click the link below to set a new password:\r\n\r\n" +
+				"%s\r\n\r\n" +
+				"This link is valid for 1 hour.\r\n\r\n" +
+				"If you did not request this, you can ignore this email.\r\n\r\n" +
+				"Your Vakt Team\r\n"
+	case "fr":
+		return "Réinitialiser votre mot de passe — Vakt",
+			"Bonjour,\r\n\r\n" +
+				"Vous avez demandé une réinitialisation de mot de passe.\r\n\r\n" +
+				"Cliquez sur le lien ci-dessous pour définir un nouveau mot de passe :\r\n\r\n" +
+				"%s\r\n\r\n" +
+				"Ce lien est valable 1 heure.\r\n\r\n" +
+				"Si vous n'avez pas effectué cette demande, ignorez cet e-mail.\r\n\r\n" +
+				"Votre équipe Vakt\r\n"
+	case "nl":
+		return "Wachtwoord opnieuw instellen — Vakt",
+			"Hallo,\r\n\r\n" +
+				"U heeft een wachtwoordreset aangevraagd.\r\n\r\n" +
+				"Klik op de onderstaande link om een nieuw wachtwoord in te stellen:\r\n\r\n" +
+				"%s\r\n\r\n" +
+				"Deze link is 1 uur geldig.\r\n\r\n" +
+				"Als u dit niet heeft aangevraagd, kunt u deze e-mail negeren.\r\n\r\n" +
+				"Uw Vakt-team\r\n"
+	default: // "de"
+		return "Passwort zurücksetzen — Vakt",
+			"Hallo,\r\n\r\n" +
+				"Sie haben das Zurücksetzen Ihres Passworts angefordert.\r\n\r\n" +
+				"Klicken Sie auf den folgenden Link, um ein neues Passwort festzulegen:\r\n\r\n" +
+				"%s\r\n\r\n" +
+				"Dieser Link ist 1 Stunde lang gültig.\r\n\r\n" +
+				"Falls Sie diese Anfrage nicht gestellt haben, können Sie diese E-Mail ignorieren.\r\n\r\n" +
+				"Ihr Vakt-Team\r\n"
+	}
+}
+
 // sendPasswordResetEmail delivers a plain-text reset email via stdlib net/smtp.
-func sendPasswordResetEmail(host, port, user, pass, from, to, resetLink string) error {
+func sendPasswordResetEmail(host, port, user, pass, from, to, resetLink, lang string) error {
 	if host == "" {
 		return fmt.Errorf("SMTP host not configured")
 	}
@@ -163,14 +250,8 @@ func sendPasswordResetEmail(host, port, user, pass, from, to, resetLink string) 
 		port = "25"
 	}
 
-	subject := "Passwort zurücksetzen — Vakt"
-	body := "Hallo,\r\n\r\n" +
-		"Sie haben das Zurücksetzen Ihres Passworts angefordert.\r\n\r\n" +
-		"Klicken Sie auf den folgenden Link, um ein neues Passwort festzulegen:\r\n\r\n" +
-		resetLink + "\r\n\r\n" +
-		"Dieser Link ist 1 Stunde lang gültig.\r\n\r\n" +
-		"Falls Sie diese Anfrage nicht gestellt haben, können Sie diese E-Mail ignorieren.\r\n\r\n" +
-		"Ihr Vakt-Team\r\n"
+	subject, bodyTpl := resetEmailContent(lang)
+	body := fmt.Sprintf(bodyTpl, resetLink)
 
 	headers := fmt.Sprintf(
 		"From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n",

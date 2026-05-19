@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,7 +39,7 @@ var allowedEvidenceExt = map[string]bool{
 	".zip":  true,
 }
 
-const maxEvidenceFileSizeBytes = 50 * 1024 * 1024 // 50 MB
+const maxEvidenceFileSizeBytes int64 = 50 * 1024 * 1024 // 50 MB
 
 // EvidenceFileService handles storage and retrieval of evidence file attachments.
 type EvidenceFileService struct {
@@ -73,14 +74,20 @@ func (s *EvidenceFileService) Upload(
 		return EvidenceFile{}, fmt.Errorf("file type not allowed: %s", ext)
 	}
 
-	// MIME check (use header value; browsers set this based on OS type detection)
-	mime := header.Header.Get("Content-Type")
+	// MIME sniff from actual content — never trust the client-supplied Content-Type header.
+	sniffBuf := make([]byte, 512)
+	n, _ := file.Read(sniffBuf)
+	detected := http.DetectContentType(sniffBuf[:n])
 	// Strip parameters (e.g. "text/plain; charset=utf-8" → "text/plain")
-	if idx := strings.Index(mime, ";"); idx != -1 {
-		mime = strings.TrimSpace(mime[:idx])
+	if idx := strings.Index(detected, ";"); idx != -1 {
+		detected = strings.TrimSpace(detected[:idx])
 	}
-	if mime != "" && !allowedEvidenceMIME[mime] {
-		return EvidenceFile{}, fmt.Errorf("MIME type not allowed: %s", mime)
+	if !allowedEvidenceMIME[detected] {
+		return EvidenceFile{}, fmt.Errorf("MIME type not allowed: %s", detected)
+	}
+	// Seek back so io.Copy writes the full file, not just bytes after the sniff window.
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return EvidenceFile{}, fmt.Errorf("seek file: %w", err)
 	}
 
 	// Build destination path
@@ -96,7 +103,7 @@ func (s *EvidenceFileService) Upload(
 	if err != nil {
 		return EvidenceFile{}, fmt.Errorf("create file: %w", err)
 	}
-	defer dst.Close()
+	defer func() { _ = dst.Close() }()
 
 	if _, err := io.Copy(dst, file); err != nil {
 		_ = os.Remove(destPath)
@@ -110,7 +117,7 @@ func (s *EvidenceFileService) Upload(
 		ControlID:    controlID,
 		OriginalName: header.Filename,
 		StoredName:   storedName,
-		MimeType:     mime,
+		MimeType:     detected,
 		SizeBytes:    header.Size,
 		UploadedBy:   uploaderID,
 	}
