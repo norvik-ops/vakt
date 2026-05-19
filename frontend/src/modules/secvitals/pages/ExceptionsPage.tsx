@@ -99,7 +99,7 @@ export default function ExceptionsPage() {
 
       {!isLoading && !error && visibleExceptions.length === 0 && (
         <EmptyState
-          icon={<ShieldAlert className="w-8 h-8" />}
+          icon={ShieldAlert}
           title="Keine Ausnahmen"
           description="Ausnahmen werden direkt am Control erstellt, wenn eine Anforderung formal nicht erfüllbar ist."
           action={
