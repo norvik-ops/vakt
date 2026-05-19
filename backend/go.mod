@@ -1,4 +1,4 @@
-module github.com/sechealth-app/sechealth
+module github.com/matharnica/vakt
 
 go 1.25.0
 
