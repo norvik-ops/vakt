@@ -29,10 +29,12 @@ interface HealthResponse {
   sso_enabled: boolean
 }
 
-const DEMO_USERS = [
-  { label: 'Admin', email: 'admin@vakt.local', password: 'admin1234' },
-  { label: 'Analyst', email: 'analyst@vakt.local', password: 'analyst1234' },
-]
+interface DemoStartResponse {
+  admin_email: string
+  analyst_email: string
+}
+
+type DemoUser = { label: string; email: string; password: string }
 
 export default function Login() {
   const { t } = useTranslation()
@@ -42,6 +44,8 @@ export default function Login() {
   const isDemo = useDemoMode()
   const [email, setEmail] = useState('')
   const [ssoEnabled, setSsoEnabled] = useState(false)
+  const [demoUsers, setDemoUsers] = useState<DemoUser[] | null>(null)
+  const [demoStarting, setDemoStarting] = useState(false)
 
   useEffect(() => {
     document.title = isDemo ? 'Vakt Demo' : 'Vakt'
@@ -53,6 +57,35 @@ export default function Login() {
       .then((data) => { setSsoEnabled(data.sso_enabled === true) })
       .catch(() => { /* SSO-Button bleibt ausgeblendet wenn Health-Check fehlschlägt */ })
   }, [])
+
+  // Auto-start ephemeral demo session when in demo mode
+  useEffect(() => {
+    if (!isDemo) return
+    const passed = (location.state as { demoEmails?: { admin: string; analyst: string } } | null)?.demoEmails
+    if (passed) {
+      setDemoUsers([
+        { label: 'Admin', email: passed.admin, password: 'admin1234' },
+        { label: 'Analyst', email: passed.analyst, password: 'analyst1234' },
+      ])
+      return
+    }
+    setDemoStarting(true)
+    fetch('/api/v1/demo/start', { method: 'POST' })
+      .then((r) => r.json() as Promise<DemoStartResponse>)
+      .then((d) => {
+        setDemoUsers([
+          { label: 'Admin', email: d.admin_email, password: 'admin1234' },
+          { label: 'Analyst', email: d.analyst_email, password: 'analyst1234' },
+        ])
+      })
+      .catch(() => {
+        setDemoUsers([
+          { label: 'Admin', email: 'admin@vakt.local', password: 'admin1234' },
+          { label: 'Analyst', email: 'analyst@vakt.local', password: 'analyst1234' },
+        ])
+      })
+      .finally(() => setDemoStarting(false))
+  }, [isDemo])
 
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -163,19 +196,24 @@ export default function Login() {
 
         {isDemo && (
           <>
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-center">
+              <p className="text-xs font-semibold text-amber-400 uppercase tracking-wide">Demo-Umgebung</p>
+              <p className="text-[11px] text-amber-300/80 mt-0.5">
+                Alle Daten werden nach 4 Stunden automatisch zurückgesetzt.
+              </p>
+            </div>
+
             <Card className="border-brand/30 bg-brand/5">
               <CardContent className="pt-4 pb-4 space-y-3">
                 <p className="text-xs font-semibold text-brand uppercase tracking-wide">{t('auth.demoCredentials')}</p>
                 <p className="text-xs text-secondary">{t('auth.demoHint')}</p>
-                {((): { label: string; email: string; password: string }[] => {
-                  const passed = (location.state as { demoEmails?: { admin: string; analyst: string } } | null)?.demoEmails
-                  return passed
-                    ? [
-                        { label: 'Admin', email: passed.admin, password: 'admin1234' },
-                        { label: 'Analyst', email: passed.analyst, password: 'analyst1234' },
-                      ]
-                    : DEMO_USERS
-                })().map((u) => (
+                {demoStarting && (
+                  <div className="flex items-center gap-2 py-2">
+                    <span className="w-3.5 h-3.5 border-2 border-brand border-t-transparent rounded-full animate-spin inline-block shrink-0" />
+                    <span className="text-xs text-secondary">Demo wird vorbereitet…</span>
+                  </div>
+                )}
+                {!demoStarting && demoUsers && demoUsers.map((u) => (
                   <button
                     key={u.email}
                     type="button"
