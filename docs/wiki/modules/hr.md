@@ -1,129 +1,81 @@
-# Vakt HR — SecHR
+# Vakt HR
 
-**Modul:** SecHR  
-**API-Prefix:** `/api/v1/hr`  
-**Aktivierung:** `VAKT_MODULES_ENABLED=...,sechr`
-
-SecHR ist das HR-Modul für strukturiertes Onboarding und Offboarding. Es dokumentiert Mitarbeiterlebenszyklen und erzeugt auditfähige Evidenz, dass Zugriffsberechtigungen korrekt vergeben und entzogen wurden.
+Vakt HR verwaltet den Mitarbeiter-Lebenszyklus aus Security-Perspektive: Onboarding und Offboarding mit strukturierten Checklisten, ein Mitarbeiterverzeichnis mit Statusverfolgung und automatische Compliance-Evidenz für Audits. Abgeschlossene Checklisten-Runs fließen direkt als Nachweis in Vakt Comply ein.
 
 ---
 
-## Features
+## Aktivierung
 
-- **Mitarbeiterverzeichnis** — Anlegen, Bearbeiten und Statusverfolgung (aktiv / offboarding / ausgeschieden)
-- **Checklisten-Templates** — Onboarding- und Offboarding-Vorlagen mit beliebig vielen Schritten
-- **Checklist Runs** — Ausführungen pro Mitarbeiter mit Fortschrittserfassung (abgeschlossene Schritte, Status)
-- **Compliance-Evidenz** — Abgeschlossene Runs fließen automatisch als Evidenz in SecVitals
+Das Modul ist standardmäßig aktiv. Zum Deaktivieren:
+
+```env
+VAKT_MODULES_ENABLED=secvitals,secpulse,secvault,secreflex,secprivacy
+```
 
 ---
 
-## Mitarbeiter verwalten
+## Mitarbeiterverzeichnis
 
-### Status-Werte
+Vakt HR führt ein internes Verzeichnis aller Mitarbeitenden mit Security-relevantem Status:
 
 | Status | Bedeutung |
 |--------|-----------|
-| `active` | Aktiver Mitarbeiter |
-| `offboarding` | Offboarding läuft |
-| `terminated` | Ausgeschieden |
+| `active` | Aktives Beschäftigungsverhältnis |
+| `offboarding` | Offboarding läuft — Zugänge werden entzogen |
+| `terminated` | Beschäftigung beendet, alle Zugänge widerrufen |
 
-### Mitarbeiter anlegen
-
-```bash
-curl -X POST /api/v1/hr/employees \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "first_name": "Anna",
-    "last_name": "Müller",
-    "email": "a.mueller@example.com",
-    "department": "Engineering",
-    "role": "Backend-Entwicklerin",
-    "start_date": "2026-06-01"
-  }'
-```
+Das Verzeichnis ist nicht als vollständiges HR-System gedacht, sondern als Nachweis gegenüber Auditoren, dass Zugangsprovisioning und -entzug systematisch verwaltet werden.
 
 ---
 
-## Checklisten
+## Checklisten-Vorlagen
 
-Checklisten sind Templates vom Typ `onboarding` oder `offboarding`. Jeder Schritt hat ein Label und ein optionales `required`-Flag.
+Checklisten definieren die Schritte, die beim Onboarding oder Offboarding eines Mitarbeitenden durchgeführt werden müssen — z. B. Account-Erstellung, Gerätezuweisung, Datenschutzunterweisung oder Zugangsentzug zu kritischen Systemen.
 
-### Checklist anlegen
+| Typ | Einsatz |
+|-----|---------|
+| `onboarding` | Neue Mitarbeitende — Schritte bis zur vollständigen Zugangsprovisionierung |
+| `offboarding` | Ausscheidende Mitarbeitende — Zugangsentzug, Geräterückgabe, Datenlöschung |
 
-```bash
-curl -X POST /api/v1/hr/checklists \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "onboarding",
-    "name": "Standard Onboarding",
-    "items": [
-      { "label": "GitHub-Zugang einrichten", "required": true },
-      { "label": "Laptop übergeben", "required": true },
-      { "label": "Datenschutz-Schulung absolvieren", "required": true },
-      { "label": "Einführungsgespräch HR", "required": false }
-    ]
-  }'
-```
+Vorlagen können beliebig oft wiederverwendet werden. Schritte lassen sich als verpflichtend (`required`) markieren — ein Run kann erst abgeschlossen werden, wenn alle Pflichtschritte erledigt sind.
 
 ---
 
-## Checklist Runs
+## Checklisten-Runs
 
-Ein Run verknüpft einen Mitarbeiter mit einem Checklist-Template und trackt den Fortschritt.
+Ein Checklisten-Run ist eine konkrete Ausführung einer Vorlage für einen bestimmten Mitarbeitenden. Jeder Schritt wird einzeln abgehakt und mit Timestamp protokolliert — so ist nachvollziehbar, wer wann welchen Schritt abgeschlossen hat.
 
 ### Run starten
 
-```bash
-curl -X POST /api/v1/hr/checklist-runs \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "employee_id": "emp-uuid",
-    "checklist_id": "checklist-uuid"
-  }'
-```
+1. Mitarbeitenden im Verzeichnis auswählen
+2. „Neuer Run" → Vorlage wählen
+3. Schritte der Reihe nach abhaken
+4. Run abschließen — Status wechselt auf `completed`
 
-### Fortschritt aktualisieren
-
-```bash
-curl -X PUT /api/v1/hr/checklist-runs/$RUN_ID \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "completed_items": ["item-uuid-1", "item-uuid-2"],
-    "status": "in_progress"
-  }'
-```
-
-`status` kann `in_progress` oder `completed` sein.
+Abgeschlossene Runs sind unveränderlich und dienen als Audit-Nachweis.
 
 ---
 
-## API-Übersicht
+## Typischer Offboarding-Ablauf
 
-| Methode | Pfad | Beschreibung |
-|---------|------|--------------|
-| `GET` | `/hr/employees` | Mitarbeiterliste (paginiert) |
-| `POST` | `/hr/employees` | Mitarbeiter anlegen |
-| `GET` | `/hr/employees/:id` | Mitarbeiter abrufen |
-| `PUT` | `/hr/employees/:id` | Mitarbeiter aktualisieren |
-| `DELETE` | `/hr/employees/:id` | Mitarbeiter löschen |
-| `GET` | `/hr/checklists` | Checklist-Templates auflisten |
-| `POST` | `/hr/checklists` | Checklist-Template anlegen |
-| `DELETE` | `/hr/checklists/:id` | Checklist-Template löschen |
-| `POST` | `/hr/checklist-runs` | Run starten |
-| `GET` | `/hr/checklist-runs/:id` | Run abrufen |
-| `GET` | `/hr/employees/:id/checklist-runs` | Runs eines Mitarbeiters |
-| `PUT` | `/hr/checklist-runs/:id` | Fortschritt aktualisieren |
+1. Mitarbeiterstatus auf `offboarding` setzen
+2. Offboarding-Checkliste starten
+3. Schritte abarbeiten: Zugänge entziehen, Gerät zurückfordern, Konten sperren
+4. Run abschließen → Status wechselt auf `terminated`
+5. Compliance-Evidenz wird automatisch in Vakt Comply angelegt
 
 ---
 
 ## Compliance-Integration
 
-Abgeschlossene Checklist Runs (Status `completed`) werden als Evidenz in SecVitals gespeichert:
-- **Typ:** `hr_checklist_completed`
-- **Enthält:** Mitarbeitername, Checklist-Name, Abschlusszeitpunkt, abgeschlossene Schritte
+Abgeschlossene Checklisten-Runs erzeugen automatisch einen Nachweis in Vakt Comply (Evidenz-Typ `hr_checklist_completed`) mit Mitarbeitername, Checklisten-Name, Abschlusszeitpunkt und durchgeführten Schritten.
 
-Diese Evidenz kann in ISO-27001- und BSI-Grundschutz-Controls verknüpft werden (z.B. A.7 Personalsicherheit).
+Diese Evidenz lässt sich direkt mit Controls verknüpfen, die Personalsicherheit verlangen — typischerweise:
+
+| Framework | Control |
+|-----------|---------|
+| ISO 27001:2022 | A.6 Personalsicherheit |
+| BSI IT-Grundschutz | ORP.2 Personal |
+| NIS2 | Art. 21 Abs. 2 (i) — Personalsicherheit |
+
+Auditoren sehen auf einen Blick, dass für jeden Mitarbeitenden ein vollständig dokumentierter Onboarding- und Offboarding-Prozess durchgeführt wurde.
