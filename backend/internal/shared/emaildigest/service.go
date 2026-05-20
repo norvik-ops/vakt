@@ -305,10 +305,10 @@ func (s *DigestService) buildEmail(orgID string, severityCounts []findingSeverit
 	buf.WriteString(`<!DOCTYPE html><html><body style="font-family:sans-serif;color:#1a202c;">`)
 	fmt.Fprintf(&buf, `<h2 style="color:#2b6cb0;">Vakt — %s</h2>`, i18n.Findings)
 	fmt.Fprintf(&buf, `<p>Generated: %s UTC</p>`, time.Now().UTC().Format("2006-01-02 15:04"))
-	buf.WriteString(fmt.Sprintf(`<p style="color:#718096;font-size:0.85em;">Org: %s</p>`, orgID))
+	fmt.Fprintf(&buf, `<p style="color:#718096;font-size:0.85em;">Org: %s</p>`, orgID)
 
 	// Findings section
-	buf.WriteString(fmt.Sprintf(`<h3>%s</h3>`, i18n.Findings))
+	fmt.Fprintf(&buf, `<h3>%s</h3>`, i18n.Findings)
 	if len(severityCounts) == 0 {
 		buf.WriteString(`<p style="color:#38a169;">&#10003;</p>`)
 	} else {
@@ -326,27 +326,27 @@ func (s *DigestService) buildEmail(orgID string, severityCounts []findingSeverit
 			case "low":
 				color = "#2f855a"
 			}
-			buf.WriteString(fmt.Sprintf(
+			fmt.Fprintf(&buf,
 				`<tr><td style="color:%s;font-weight:bold;">%s</td><td>%d</td></tr>`,
 				color, fc.Severity, fc.Count,
-			))
+			)
 		}
 		buf.WriteString(`</table>`)
 	}
 
 	// DSR section
-	buf.WriteString(fmt.Sprintf(`<h3>%s</h3>`, i18n.DSR))
+	fmt.Fprintf(&buf, `<h3>%s</h3>`, i18n.DSR)
 	buf.WriteString(`<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;">`)
 	buf.WriteString(`<tr style="background:#ebf8ff;"><th>Category</th><th>Count</th></tr>`)
-	buf.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%d</td></tr>`, i18n.DueSoon, dsr.DueSoon))
+	fmt.Fprintf(&buf, `<tr><td>%s</td><td>%d</td></tr>`, i18n.DueSoon, dsr.DueSoon)
 	overdueColor := "#1a202c"
 	if dsr.Overdue > 0 {
 		overdueColor = "#c53030"
 	}
-	buf.WriteString(fmt.Sprintf(
+	fmt.Fprintf(&buf,
 		`<tr><td style="color:%s;">%s</td><td style="color:%s;font-weight:bold;">%d</td></tr>`,
 		overdueColor, i18n.Overdue, overdueColor, dsr.Overdue,
-	))
+	)
 	buf.WriteString(`</table>`)
 
 	buf.WriteString(`<hr style="margin-top:24px;"/><p style="font-size:0.75em;color:#a0aec0;">`)

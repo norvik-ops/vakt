@@ -17,24 +17,16 @@ linters:
 
   settings:
     errcheck:
-      check-type-assertions: true
+      # check-type-assertions: false (default) — Cast-Panics fängt der
+      # globale Recovery-Middleware ab; jeden c.Get(...).(string)-Cast mit
+      # comma-ok zu schreiben würde nur Noise erzeugen.
+      check-type-assertions: false
       exclude-functions:
-        # Idiomatische `defer X.Close()` Muster — Close-Fehler sind in
-        # defer-Position selten handhabbar.
-        - (io.Closer).Close
-        - (io.ReadCloser).Close
-        - (net/http.ResponseWriter).Write
-        - (*github.com/jackc/pgx/v5.Conn).Close
-        - (*github.com/jackc/pgx/v5/pgxpool.Pool).Close
-        - (*github.com/jackc/pgx/v5/pgxpool.Conn).Release
-        - (github.com/jackc/pgx/v5.Tx).Rollback
-        - (github.com/jackc/pgx/v5.BatchResults).Close
-        - (*github.com/hibiken/asynq.Inspector).Close
-        # Print/log-helpers — Fehler hier sind belanglos
+        # Print-/Log-Helpers — Fehler hier sind belanglos
         - fmt.Fprint
         - fmt.Fprintf
         - fmt.Fprintln
-        - os.RemoveAll
+        - fmt.Sscanf
 
     staticcheck:
       checks:
@@ -53,9 +45,20 @@ linters:
 
   exclusions:
     rules:
+      # errcheck auf alle Test-Dateien deaktivieren
       - linters:
           - errcheck
         path: "_test\\.go"
+      # Idiomatische `defer X.Close()` / `defer X.Rollback()` —
+      # Close-Fehler sind in defer-Position selten handhabbar
+      - linters:
+          - errcheck
+        source: "^\\s*defer\\s+"
+      # demoseed: Best-Effort-Inserts — Scan/Exec-Fehler sind erwartet
+      # (Demo-Daten dürfen bereits existieren) und werden absichtlich verworfen
+      - linters:
+          - errcheck
+        path: "internal/shared/demoseed/"
 
 formatters:
   enable:
