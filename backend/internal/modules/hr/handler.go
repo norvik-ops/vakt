@@ -7,7 +7,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/shared/auditlog"
 	"github.com/matharnica/vakt/internal/shared/pagination"
 )
 
@@ -25,20 +24,25 @@ func NewHandler(svc *Service) *Handler {
 	}
 }
 
-func (h *Handler) audit(c echo.Context, action, resourceType, resourceID, resourceName string) {
-	auditlog.Log(c.Request().Context(), h.Service.db, auditlog.Entry{
-		OrgID:        orgID(c),
-		UserID:       userID(c),
-		Action:       action,
-		ResourceType: resourceType,
-		ResourceID:   resourceID,
-		ResourceName: resourceName,
-		IPAddress:    c.RealIP(),
-	})
+// actorFrom assembles the Actor record the service uses to attribute audit-log
+// entries. Audit-write now lives in the service (P2-19 / ADR pattern) so that
+// non-HTTP callers (workers, CLI, SDK) get the same audit trail.
+func actorFrom(c echo.Context) Actor {
+	return Actor{
+		OrgID:     orgID(c),
+		UserID:    userID(c),
+		UserEmail: userEmail(c),
+		IPAddress: c.RealIP(),
+	}
 }
 
 func userID(c echo.Context) string {
 	v, _ := c.Get("user_id").(string)
+	return v
+}
+
+func userEmail(c echo.Context) string {
+	v, _ := c.Get("user_email").(string)
 	return v
 }
 
@@ -85,12 +89,11 @@ func (h *Handler) CreateEmployee(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return errResp(c, http.StatusUnprocessableEntity, "Ungültige Eingabe", "VALIDATION_ERROR")
 	}
-	employee, err := h.Service.CreateEmployee(c.Request().Context(), orgID(c), in)
+	employee, err := h.Service.CreateEmployee(c.Request().Context(), actorFrom(c), in)
 	if err != nil {
 		log.Error().Err(err).Msg("create employee")
 		return errResp(c, http.StatusInternalServerError, "failed to create employee", "HR_CREATE_EMPLOYEE_FAILED")
 	}
-	h.audit(c, "create", "hr/employee", employee.ID, employee.FirstName + " " + employee.LastName)
 	return c.JSON(http.StatusCreated, employee)
 }
 
@@ -103,23 +106,21 @@ func (h *Handler) UpdateEmployee(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return errResp(c, http.StatusUnprocessableEntity, "Ungültige Eingabe", "VALIDATION_ERROR")
 	}
-	employee, err := h.Service.UpdateEmployee(c.Request().Context(), orgID(c), c.Param("id"), in)
+	employee, err := h.Service.UpdateEmployee(c.Request().Context(), actorFrom(c), c.Param("id"), in)
 	if err != nil {
 		log.Error().Err(err).Msg("update employee")
 		return errResp(c, http.StatusInternalServerError, "failed to update employee", "HR_UPDATE_EMPLOYEE_FAILED")
 	}
-	h.audit(c, "update", "hr/employee", employee.ID, employee.FirstName + " " + employee.LastName)
 	return c.JSON(http.StatusOK, employee)
 }
 
 // DeleteEmployee handles DELETE /api/v1/hr/employees/:id.
 func (h *Handler) DeleteEmployee(c echo.Context) error {
 	id := c.Param("id")
-	if err := h.Service.DeleteEmployee(c.Request().Context(), orgID(c), id); err != nil {
+	if err := h.Service.DeleteEmployee(c.Request().Context(), actorFrom(c), id); err != nil {
 		log.Error().Err(err).Msg("delete employee")
 		return errResp(c, http.StatusInternalServerError, "failed to delete employee", "HR_DELETE_EMPLOYEE_FAILED")
 	}
-	h.audit(c, "delete", "hr/employee", id, "")
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -144,7 +145,7 @@ func (h *Handler) CreateChecklist(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return errResp(c, http.StatusUnprocessableEntity, "Ungültige Eingabe", "VALIDATION_ERROR")
 	}
-	checklist, err := h.Service.CreateChecklist(c.Request().Context(), orgID(c), in)
+	checklist, err := h.Service.CreateChecklist(c.Request().Context(), actorFrom(c), in)
 	if err != nil {
 		log.Error().Err(err).Msg("create checklist")
 		return errResp(c, http.StatusInternalServerError, "failed to create checklist", "HR_CREATE_CHECKLIST_FAILED")
@@ -154,7 +155,7 @@ func (h *Handler) CreateChecklist(c echo.Context) error {
 
 // DeleteChecklist handles DELETE /api/v1/hr/checklists/:id.
 func (h *Handler) DeleteChecklist(c echo.Context) error {
-	if err := h.Service.DeleteChecklist(c.Request().Context(), orgID(c), c.Param("id")); err != nil {
+	if err := h.Service.DeleteChecklist(c.Request().Context(), actorFrom(c), c.Param("id")); err != nil {
 		log.Error().Err(err).Msg("delete checklist")
 		return errResp(c, http.StatusInternalServerError, "failed to delete checklist", "HR_DELETE_CHECKLIST_FAILED")
 	}
@@ -172,12 +173,11 @@ func (h *Handler) StartChecklistRun(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return errResp(c, http.StatusUnprocessableEntity, "Ungültige Eingabe", "VALIDATION_ERROR")
 	}
-	run, err := h.Service.StartChecklistRun(c.Request().Context(), orgID(c), in)
+	run, err := h.Service.StartChecklistRun(c.Request().Context(), actorFrom(c), in)
 	if err != nil {
 		log.Error().Err(err).Msg("start checklist run")
 		return errResp(c, http.StatusInternalServerError, "failed to start checklist run", "HR_START_RUN_FAILED")
 	}
-	h.audit(c, "create", "hr/checklist_run", run.ID, run.EmployeeID)
 	return c.JSON(http.StatusCreated, run)
 }
 
@@ -209,10 +209,62 @@ func (h *Handler) UpdateChecklistRun(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return errResp(c, http.StatusUnprocessableEntity, "Ungültige Eingabe", "VALIDATION_ERROR")
 	}
-	run, err := h.Service.UpdateChecklistRun(c.Request().Context(), orgID(c), c.Param("id"), in)
+	run, err := h.Service.UpdateChecklistRun(c.Request().Context(), actorFrom(c), c.Param("id"), in)
 	if err != nil {
 		log.Error().Err(err).Msg("update checklist run")
 		return errResp(c, http.StatusInternalServerError, "failed to update checklist run", "HR_UPDATE_RUN_FAILED")
 	}
 	return c.JSON(http.StatusOK, run)
+}
+
+// CompleteStep handles POST /api/v1/hr/checklist-runs/:id/steps/:step_id.
+// Marks a single step as completed by the calling user. Idempotent.
+func (h *Handler) CompleteStep(c echo.Context) error {
+	runID := c.Param("id")
+	stepID := c.Param("step_id")
+	completedBy := userEmail(c)
+	if completedBy == "" {
+		completedBy = userID(c)
+	}
+	run, err := h.Service.CompleteStep(c.Request().Context(), actorFrom(c), runID, stepID, completedBy)
+	if err != nil {
+		log.Error().Err(err).Str("run_id", runID).Str("step_id", stepID).Msg("complete step")
+		return errResp(c, http.StatusBadRequest, err.Error(), "HR_COMPLETE_STEP_FAILED")
+	}
+	return c.JSON(http.StatusOK, run)
+}
+
+// ListRunEvents handles GET /api/v1/hr/checklist-runs/:id/events.
+// Returns the step-completion audit trail for a run.
+func (h *Handler) ListRunEvents(c echo.Context) error {
+	events, err := h.Service.ListRunEvents(c.Request().Context(), orgID(c), c.Param("id"))
+	if err != nil {
+		log.Error().Err(err).Msg("list run events")
+		return errResp(c, http.StatusInternalServerError, "failed to list run events", "HR_LIST_RUN_EVENTS_FAILED")
+	}
+	return c.JSON(http.StatusOK, events)
+}
+
+// StartOnboarding handles POST /api/v1/hr/employees/:id/onboard.
+// Finds the first onboarding checklist for the org and starts a run for the employee.
+func (h *Handler) StartOnboarding(c echo.Context) error {
+	employeeID := c.Param("id")
+	run, err := h.Service.StartOnboarding(c.Request().Context(), actorFrom(c), employeeID)
+	if err != nil {
+		log.Error().Err(err).Str("employee_id", employeeID).Msg("start onboarding")
+		return errResp(c, http.StatusBadRequest, err.Error(), "HR_START_ONBOARDING_FAILED")
+	}
+	return c.JSON(http.StatusCreated, run)
+}
+
+// StartOffboarding handles POST /api/v1/hr/employees/:id/offboard.
+// Sets the employee's status to "offboarding" and starts an offboarding checklist run.
+func (h *Handler) StartOffboarding(c echo.Context) error {
+	employeeID := c.Param("id")
+	run, err := h.Service.StartOffboarding(c.Request().Context(), actorFrom(c), employeeID)
+	if err != nil {
+		log.Error().Err(err).Str("employee_id", employeeID).Msg("start offboarding")
+		return errResp(c, http.StatusBadRequest, err.Error(), "HR_START_OFFBOARDING_FAILED")
+	}
+	return c.JSON(http.StatusCreated, run)
 }

@@ -8,8 +8,11 @@ import {
   DialogTitle,
 } from './ui/dialog'
 import { type OnboardingStatus, useOnboardingStatus, useDismissOnboarding } from '../hooks/useOnboarding'
+import { useAuthStore } from '../shared/stores/auth'
 
 // ── Step definition ──────────────────────────────────────────────────────────
+
+type Role = 'Admin' | 'SecurityAnalyst' | 'Viewer' | 'AuditorReadOnly'
 
 interface WizardStep {
   key: keyof OnboardingStatus['steps']
@@ -18,6 +21,12 @@ interface WizardStep {
   actionLabel: string
   actionPath: string
   icon: React.ComponentType<{ className?: string }>
+  /**
+   * Roles for which this step is relevant. Viewers and Auditors never see
+   * configuration tasks (they cannot perform them); SecurityAnalyst sees the
+   * day-to-day work but not org-level setup.
+   */
+  roles: Role[]
 }
 
 const STEPS: WizardStep[] = [
@@ -28,6 +37,7 @@ const STEPS: WizardStep[] = [
     actionLabel: 'Zu den Einstellungen',
     actionPath: '/settings',
     icon: Settings,
+    roles: ['Admin'],
   },
   {
     key: 'framework_selected',
@@ -36,6 +46,7 @@ const STEPS: WizardStep[] = [
     actionLabel: 'Framework hinzufügen',
     actionPath: '/secvitals',
     icon: Shield,
+    roles: ['Admin'],
   },
   {
     key: 'first_control_reviewed',
@@ -44,6 +55,7 @@ const STEPS: WizardStep[] = [
     actionLabel: 'Controls ansehen',
     actionPath: '/secvitals',
     icon: ClipboardList,
+    roles: ['Admin', 'SecurityAnalyst'],
   },
   {
     key: 'first_risk_created',
@@ -52,8 +64,21 @@ const STEPS: WizardStep[] = [
     actionLabel: 'Risiko erstellen',
     actionPath: '/secvitals/risks',
     icon: AlertTriangle,
+    roles: ['Admin', 'SecurityAnalyst'],
   },
 ]
+
+function highestRole(roles: string[] | undefined): Role {
+  if (!roles || roles.length === 0) return 'Viewer'
+  if (roles.includes('Admin')) return 'Admin'
+  if (roles.includes('SecurityAnalyst')) return 'SecurityAnalyst'
+  if (roles.includes('AuditorReadOnly')) return 'AuditorReadOnly'
+  return 'Viewer'
+}
+
+function filterStepsForRole(role: Role): WizardStep[] {
+  return STEPS.filter((step) => step.roles.includes(role))
+}
 
 // ── Framework cards (step 2 detail) ─────────────────────────────────────────
 
@@ -78,7 +103,16 @@ export function OnboardingWizard({ open, onClose, status }: OnboardingWizardProp
   const { refetch } = useOnboardingStatus()
   const [activeStep, setActiveStep] = useState<number | null>(null)
 
-  const completedCount = STEPS.filter((s) => status.steps[s.key]).length
+  const user = useAuthStore((s) => s.user)
+  const role = highestRole(user?.roles)
+  const visibleSteps = filterStepsForRole(role)
+
+  // Viewer / AuditorReadOnly have nothing to set up — don't show the wizard.
+  if (visibleSteps.length === 0) {
+    return null
+  }
+
+  const completedCount = visibleSteps.filter((s) => status.steps[s.key]).length
 
   function handleDismiss() {
     dismiss.mutate(undefined, { onSuccess: onClose })
@@ -99,7 +133,7 @@ export function OnboardingWizard({ open, onClose, status }: OnboardingWizardProp
 
         {/* Steps */}
         <div className="px-6 py-4 space-y-3">
-          {STEPS.map((step, idx) => {
+          {visibleSteps.map((step, idx) => {
             const done = status.steps[step.key]
             const Icon = step.icon
             const isExpanded = activeStep === idx
@@ -175,7 +209,7 @@ export function OnboardingWizard({ open, onClose, status }: OnboardingWizardProp
         <div className="px-6 py-4 border-t border-border flex items-center justify-between gap-3 bg-surface2">
           <p className="text-[12px] text-secondary">
             <span className="font-semibold text-primary">{completedCount}</span> von{' '}
-            <span className="font-semibold text-primary">{STEPS.length}</span> Schritten abgeschlossen
+            <span className="font-semibold text-primary">{visibleSteps.length}</span> Schritten abgeschlossen
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -209,14 +243,22 @@ interface OnboardingBannerProps {
 
 export function OnboardingBanner({ status, onOpen }: OnboardingBannerProps) {
   const dismiss = useDismissOnboarding()
-  const completedCount = STEPS.filter((s) => status.steps[s.key]).length
+  const user = useAuthStore((s) => s.user)
+  const role = highestRole(user?.roles)
+  const visibleSteps = filterStepsForRole(role)
+  const completedCount = visibleSteps.filter((s) => status.steps[s.key]).length
+
+  // No setup work for this role — don't show the banner.
+  if (visibleSteps.length === 0) {
+    return null
+  }
 
   return (
     <div className="flex items-center justify-between gap-4 px-4 py-2.5 rounded-lg border border-[#f59e0b]/40 bg-[#f59e0b]/8 mb-4">
       <div className="flex items-center gap-2.5 min-w-0">
         <span className="text-[15px] shrink-0">🎯</span>
         <p className="text-[12px] text-primary font-medium truncate">
-          <span className="font-bold">{completedCount} von {STEPS.length}</span> Einrichtungsschritten abgeschlossen
+          <span className="font-bold">{completedCount} von {visibleSteps.length}</span> Einrichtungsschritten abgeschlossen
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">

@@ -1,0 +1,4162 @@
+openapi: 3.0.3
+info:
+  title: Vakt API
+  version: "0.5.5"
+  description: |
+    Self-hosted Security & Compliance Platform API.
+    All data stays within your infrastructure — no phone-home, no cloud dependency.
+
+    **Authentication:** Paseto v2 bearer tokens. Obtain a token via `POST /auth/login`.
+    Include it as `Authorization: Bearer <token>` on all protected endpoints.
+
+    **Base URL:** `/api/v1`
+
+    **Pagination:** `?page=1&limit=25` on list endpoints.
+
+    **Error format:**
+    ```json
+    { "error": "message", "code": "ERROR_CODE", "details": {} }
+    ```
+
+servers:
+  - url: /api/v1
+    description: Vakt API v1
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Paseto
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+    LimitParam:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 25
+        maximum: 100
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
+
+    # ── Auth ──────────────────────────────────────────────────────────────────
+
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+
+    RefreshResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: New Paseto v2 access token
+        refresh_token:
+          type: string
+          description: New refresh token
+
+    SessionInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_agent:
+          type: string
+        ip_address:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+
+    TOTPStatusResponse:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+
+    TOTPSetupResponse:
+      type: object
+      properties:
+        secret:
+          type: string
+          description: Base32-encoded TOTP secret (display to user for manual entry)
+        uri:
+          type: string
+          description: otpauth:// URI for QR code generation
+
+    TOTPConfirmRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          description: 6-digit TOTP code from authenticator app
+
+    TOTPConfirmResponse:
+      type: object
+      properties:
+        backup_codes:
+          type: array
+          items:
+            type: string
+          description: Single-use backup codes (store securely)
+        recovery_codes:
+          type: array
+          items:
+            type: string
+          description: Recovery codes for account recovery
+
+    TOTPCodeRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          description: 6-digit TOTP code
+
+    TOTPVerifyRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          description: 6-digit TOTP code
+        backup_code:
+          type: string
+          description: Single-use backup code (alternative to code)
+
+    TOTPRecoveryRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          description: Recovery code
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Paseto v2 bearer token
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, member, viewer]
+        org_id:
+          type: string
+          format: uuid
+        mfa_enabled:
+          type: boolean
+
+    # ── SecPulse ──────────────────────────────────────────────────────────────
+
+    Asset:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum: [web_app, server, database, container, repo]
+        target:
+          type: string
+        criticality:
+          type: string
+          enum: [low, medium, high, critical]
+        tags:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CreateAssetRequest:
+      type: object
+      required: [name, type, target, criticality]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [web_app, server, database, container, repo]
+        target:
+          type: string
+        criticality:
+          type: string
+          enum: [low, medium, high, critical]
+        tags:
+          type: array
+          items:
+            type: string
+
+    Finding:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        asset_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          enum: [info, low, medium, high, critical]
+        status:
+          type: string
+          enum: [open, in_progress, resolved, accepted]
+        cve:
+          type: string
+        cvss_score:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+
+    # ── SecVitals ─────────────────────────────────────────────────────────────
+
+    Framework:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        total_controls:
+          type: integer
+        implemented_controls:
+          type: integer
+        score:
+          type: number
+
+    Control:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        framework_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [not_started, in_progress, implemented, not_applicable]
+        responsible:
+          type: string
+        due_date:
+          type: string
+          format: date
+
+    Risk:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        likelihood:
+          type: integer
+          minimum: 1
+          maximum: 5
+        impact:
+          type: integer
+          minimum: 1
+          maximum: 5
+        risk_score:
+          type: integer
+        status:
+          type: string
+          enum: [open, mitigated, accepted, closed]
+        owner:
+          type: string
+
+    Incident:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+        status:
+          type: string
+          enum: [open, investigating, contained, resolved]
+        type:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    # ── SecPrivacy ────────────────────────────────────────────────────────────
+
+    VVTEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        purpose:
+          type: string
+        legal_basis:
+          type: string
+        data_categories:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Breach:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+        status:
+          type: string
+        discovered_at:
+          type: string
+          format: date-time
+        notified_authority_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    # ── Webhooks ──────────────────────────────────────────────────────────────
+
+    Webhook:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+        last_triggered_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_status_code:
+          type: integer
+          nullable: true
+
+    # ── Notifications ─────────────────────────────────────────────────────────
+
+    NotificationPreferences:
+      type: object
+      properties:
+        email_findings:
+          type: boolean
+        email_incidents:
+          type: boolean
+        email_control_due:
+          type: boolean
+        email_weekly_digest:
+          type: boolean
+        inapp_findings:
+          type: boolean
+        inapp_incidents:
+          type: boolean
+        inapp_control_due:
+          type: boolean
+
+    # ── HR ────────────────────────────────────────────────────────────────────
+
+    Employee:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        org_id:
+          type: string
+          format: uuid
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+          format: email
+        department:
+          type: string
+        role:
+          type: string
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [active, offboarding, terminated]
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateEmployeeInput:
+      type: object
+      required: [first_name, last_name, email]
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+          format: email
+        department:
+          type: string
+        role:
+          type: string
+        start_date:
+          type: string
+          format: date
+        notes:
+          type: string
+
+    UpdateEmployeeInput:
+      type: object
+      required: [first_name, last_name, status]
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        department:
+          type: string
+        role:
+          type: string
+        end_date:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [active, offboarding, terminated]
+        notes:
+          type: string
+
+    ChecklistItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        required:
+          type: boolean
+
+    Checklist:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        org_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [onboarding, offboarding]
+        name:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChecklistItem'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateChecklistInput:
+      type: object
+      required: [type, name]
+      properties:
+        type:
+          type: string
+          enum: [onboarding, offboarding]
+        name:
+          type: string
+          maxLength: 255
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChecklistItem'
+
+    ChecklistRun:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        org_id:
+          type: string
+          format: uuid
+        employee_id:
+          type: string
+          format: uuid
+        checklist_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [in_progress, completed]
+        completed_items:
+          type: array
+          items:
+            type: string
+            format: uuid
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    StartChecklistRunInput:
+      type: object
+      required: [employee_id, checklist_id]
+      properties:
+        employee_id:
+          type: string
+          format: uuid
+        checklist_id:
+          type: string
+          format: uuid
+
+    UpdateChecklistRunInput:
+      type: object
+      required: [status]
+      properties:
+        completed_items:
+          type: array
+          items:
+            type: string
+            format: uuid
+        status:
+          type: string
+          enum: [in_progress, completed]
+
+    # ── SecReflex ─────────────────────────────────────────────────────────────
+
+    PhishingTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+          description: HTML body of the phishing email
+        preset:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    CreateTemplateInput:
+      type: object
+      required: [name, subject, body]
+      properties:
+        name:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+
+    TargetGroup:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        source:
+          type: string
+        target_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    Target:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        group_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+        last_name:
+          type: string
+
+    LandingPage:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        html:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Campaign:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          type: string
+          enum: [draft, running, completed, aborted]
+        template_id:
+          type: string
+          format: uuid
+        group_id:
+          type: string
+          format: uuid
+        landing_page_id:
+          type: string
+          format: uuid
+        track_opens:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateCampaignInput:
+      type: object
+      required: [name, template_id, group_id]
+      properties:
+        name:
+          type: string
+        template_id:
+          type: string
+          format: uuid
+        group_id:
+          type: string
+          format: uuid
+        landing_page_id:
+          type: string
+          format: uuid
+        track_opens:
+          type: boolean
+          default: true
+
+    CampaignStats:
+      type: object
+      properties:
+        campaign_id:
+          type: string
+          format: uuid
+        sent:
+          type: integer
+        opened:
+          type: integer
+        clicked:
+          type: integer
+        submitted:
+          type: integer
+        reported:
+          type: integer
+        open_rate:
+          type: number
+          format: float
+        click_rate:
+          type: number
+          format: float
+
+    TrainingModule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        duration_minutes:
+          type: integer
+        assigned_count:
+          type: integer
+        completed_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    TrainingAssignment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        module_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [assigned, completed]
+        assigned_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+
+tags:
+  - name: auth
+    description: Authentication
+  - name: secpulse
+    description: Vakt Scan — asset and vulnerability management
+  - name: secvitals
+    description: Vakt Comply — compliance frameworks and controls
+  - name: secprivacy
+    description: Vakt Privacy — GDPR documentation
+  - name: secreflex
+    description: Vakt Aware — phishing simulations
+  - name: secvault
+    description: Vakt Vault — secrets management
+  - name: webhooks
+    description: Outgoing webhook configuration
+  - name: notifications
+    description: Notification preferences
+  - name: hr
+    description: Vakt HR — employee lifecycle and onboarding/offboarding checklists
+  - name: admin
+    description: Administration endpoints
+
+paths:
+  # ── Health ────────────────────────────────────────────────────────────────
+  /health:
+    get:
+      summary: Liveness check
+      tags: [admin]
+      security: []
+      responses:
+        '200':
+          description: OK
+
+  /health/ready:
+    get:
+      summary: Readiness check (DB + Redis)
+      tags: [admin]
+      security: []
+      responses:
+        '200':
+          description: Ready
+        '503':
+          description: Not ready
+
+  # ── Auth ──────────────────────────────────────────────────────────────────
+  /auth/login:
+    post:
+      summary: Log in and obtain a Paseto token
+      tags: [auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too many requests
+
+  /auth/register:
+    post:
+      summary: Register a new account
+      tags: [auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, name]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 10
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Account created
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/password-reset/request:
+    post:
+      summary: Request a password-reset e-mail
+      tags: [auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Reset e-mail sent (always 200 to prevent user enumeration)
+
+  /auth/password-reset/confirm:
+    post:
+      summary: Set a new password using a reset token
+      tags: [auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token:
+                  type: string
+                password:
+                  type: string
+                  minLength: 10
+      responses:
+        '200':
+          description: Password updated
+        '400':
+          description: Invalid or expired token
+
+  /auth/refresh:
+    post:
+      summary: Refresh an access token using a refresh token
+      tags: [auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: New token pair
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      summary: Invalidate the current access token
+      tags: [auth]
+      responses:
+        '200':
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: logged out
+
+  # ── Auth — Sessions ───────────────────────────────────────────────────────
+  /auth/sessions:
+    get:
+      summary: List active sessions for the current user
+      tags: [auth]
+      responses:
+        '200':
+          description: Active sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SessionInfo'
+    delete:
+      summary: Revoke all other sessions (keep current)
+      tags: [auth]
+      responses:
+        '200':
+          description: Other sessions revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: other sessions revoked
+
+  /auth/sessions/{id}:
+    delete:
+      summary: Revoke a specific session
+      tags: [auth]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+        '404':
+          description: Session not found
+
+  # ── Auth — TOTP / 2FA ─────────────────────────────────────────────────────
+  /auth/2fa/status:
+    get:
+      summary: Check whether 2FA is enabled for the current user
+      tags: [auth]
+      responses:
+        '200':
+          description: 2FA status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TOTPStatusResponse'
+
+  /auth/2fa/setup:
+    post:
+      summary: Begin TOTP setup — returns secret and QR URI
+      tags: [auth]
+      responses:
+        '200':
+          description: TOTP secret and URI
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TOTPSetupResponse'
+        '409':
+          description: 2FA already enabled
+
+  /auth/2fa/confirm:
+    post:
+      summary: Confirm TOTP setup with first code — activates 2FA and returns backup/recovery codes
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TOTPConfirmRequest'
+      responses:
+        '200':
+          description: 2FA activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TOTPConfirmResponse'
+        '409':
+          description: 2FA already enabled
+        '422':
+          description: Invalid TOTP code
+
+  /auth/2fa/disable:
+    post:
+      summary: Disable 2FA (requires valid TOTP code)
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TOTPCodeRequest'
+      responses:
+        '200':
+          description: 2FA disabled
+        '422':
+          description: Invalid TOTP code
+
+  /auth/2fa/verify:
+    post:
+      summary: Verify a TOTP code or backup code (second-factor step after login)
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TOTPVerifyRequest'
+      responses:
+        '200':
+          description: Verified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: verified
+        '422':
+          description: Invalid code
+
+  /auth/2fa/recovery:
+    post:
+      summary: Use a recovery code to obtain a new token pair (bypasses TOTP)
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TOTPRecoveryRequest'
+      responses:
+        '200':
+          description: New token pair issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+        '422':
+          description: Invalid or already-used recovery code
+
+  /auth/2fa/recovery-codes/regenerate:
+    post:
+      summary: Invalidate existing recovery codes and issue 8 new ones
+      tags: [auth]
+      responses:
+        '200':
+          description: New recovery codes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recovery_codes:
+                    type: array
+                    items:
+                      type: string
+        '400':
+          description: 2FA not enabled
+
+  /auth/oidc/initiate:
+    get:
+      summary: Initiate OIDC/OAuth2 login flow via Casdoor (SSO Pro feature)
+      tags: [auth]
+      parameters:
+        - name: provider
+          in: query
+          required: true
+          schema:
+            type: string
+          description: OIDC provider name as configured in Casdoor
+      responses:
+        '200':
+          description: State and Casdoor redirect URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    type: string
+                  redirect_url:
+                    type: string
+                    format: uri
+        '501':
+          description: OIDC not configured
+
+  # ── SecPulse — Assets ─────────────────────────────────────────────────────
+  /secpulse/assets:
+    get:
+      summary: List assets
+      tags: [secpulse]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated asset list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Asset'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+    post:
+      summary: Create an asset
+      tags: [secpulse]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAssetRequest'
+      responses:
+        '201':
+          description: Asset created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+        '400':
+          description: Validation error
+
+  /secpulse/assets/{id}:
+    get:
+      summary: Get an asset
+      tags: [secpulse]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Asset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+        '404':
+          description: Not found
+    put:
+      summary: Update an asset
+      tags: [secpulse]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAssetRequest'
+      responses:
+        '200':
+          description: Updated asset
+    delete:
+      summary: Delete an asset
+      tags: [secpulse]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted
+
+  /secpulse/assets/import/csv:
+    post:
+      summary: Bulk-import assets from CSV
+      tags: [secpulse]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Import result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  inserted:
+                    type: integer
+                  errored:
+                    type: integer
+                  errors:
+                    type: array
+                    items:
+                      type: string
+
+  # ── SecPulse — Findings ───────────────────────────────────────────────────
+  /secpulse/findings:
+    get:
+      summary: List findings
+      tags: [secpulse]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: asset_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: severity
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated findings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Finding'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /secpulse/findings/{id}:
+    get:
+      summary: Get a finding
+      tags: [secpulse]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Finding
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Finding'
+    put:
+      summary: Update a finding (status, severity, assignee)
+      tags: [secpulse]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                severity:
+                  type: string
+                assignee:
+                  type: string
+      responses:
+        '200':
+          description: Updated finding
+
+  # ── SecVitals — Frameworks ────────────────────────────────────────────────
+  /secvitals/frameworks:
+    get:
+      summary: List installed frameworks
+      tags: [secvitals]
+      responses:
+        '200':
+          description: Framework list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Framework'
+
+  /secvitals/frameworks/{id}:
+    get:
+      summary: Get a framework with score
+      tags: [secvitals]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Framework detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Framework'
+    delete:
+      summary: Remove a framework
+      tags: [secvitals]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Removed
+
+  /secvitals/frameworks/{name}/enable:
+    post:
+      summary: Enable a framework by slug (e.g. ISO27001, NIS2, DORA, TISAX)
+      tags: [secvitals]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Framework enabled
+
+  /secvitals/frameworks/{id}/controls:
+    get:
+      summary: List controls for a framework
+      tags: [secvitals]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Controls
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Control'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /secvitals/frameworks/{id}/report:
+    get:
+      summary: Get readiness report for a framework
+      tags: [secvitals]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Readiness report
+
+  /secvitals/frameworks/{id}/export-pdf:
+    get:
+      summary: Export framework readiness PDF (Pro)
+      tags: [secvitals]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /secvitals/controls/{id}:
+    get:
+      summary: Get a single control
+      tags: [secvitals]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Control
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Control'
+
+  /secvitals/controls/export/xlsx:
+    get:
+      summary: Export all controls as XLSX
+      tags: [secvitals]
+      responses:
+        '200':
+          description: XLSX file
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+
+  # ── SecVitals — Risks ─────────────────────────────────────────────────────
+  /secvitals/risks:
+    get:
+      summary: List risks
+      tags: [secvitals]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Risk list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Risk'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+    post:
+      summary: Create a risk
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Risk'
+      responses:
+        '201':
+          description: Risk created
+
+  /secvitals/risks/export/xlsx:
+    get:
+      summary: Export risks as XLSX
+      tags: [secvitals]
+      responses:
+        '200':
+          description: XLSX file
+
+  # ── SecVitals — Incidents ─────────────────────────────────────────────────
+  /secvitals/incidents:
+    get:
+      summary: List incidents
+      tags: [secvitals]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Incident list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Incident'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+    post:
+      summary: Create an incident
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Incident'
+      responses:
+        '201':
+          description: Incident created
+
+  /secvitals/incidents/{id}:
+    get:
+      summary: Get an incident
+      tags: [secvitals]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Incident
+    put:
+      summary: Update an incident
+      tags: [secvitals]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Incident'
+      responses:
+        '200':
+          description: Updated
+
+  # ── SecPrivacy — VVT ──────────────────────────────────────────────────────
+  /secprivacy/vvt:
+    get:
+      summary: List processing activities (VVT)
+      tags: [secprivacy]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: VVT entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VVTEntry'
+    post:
+      summary: Create a VVT entry
+      tags: [secprivacy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VVTEntry'
+      responses:
+        '201':
+          description: Created
+
+  /secprivacy/vvt/{id}:
+    get:
+      summary: Get VVT entry
+      tags: [secprivacy]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: VVT entry
+    put:
+      summary: Update VVT entry
+      tags: [secprivacy]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VVTEntry'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      summary: Delete VVT entry
+      tags: [secprivacy]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted
+
+  # ── SecPrivacy — Breaches ─────────────────────────────────────────────────
+  /secprivacy/breaches:
+    get:
+      summary: List breach records
+      tags: [secprivacy]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Breach records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Breach'
+    post:
+      summary: Create a breach record
+      tags: [secprivacy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Breach'
+      responses:
+        '201':
+          description: Created
+
+  /secprivacy/breaches/{id}/notify-authority:
+    post:
+      summary: Mark supervisory authority as notified
+      tags: [secprivacy]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Updated
+
+  # ── SecVault ──────────────────────────────────────────────────────────────
+  /secvault/projects:
+    get:
+      summary: List secret projects
+      tags: [secvault]
+      responses:
+        '200':
+          description: Project list
+    post:
+      summary: Create a project
+      tags: [secvault]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Created
+
+  /secvault/projects/{project_id}/envs/{env_id}/secrets/{key}:
+    get:
+      summary: Retrieve a secret value (decrypted)
+      tags: [secvault]
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: env_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Secret value
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    type: string
+                  value:
+                    type: string
+    put:
+      summary: Create or update a secret
+      tags: [secvault]
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: env_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [value]
+              properties:
+                value:
+                  type: string
+      responses:
+        '200':
+          description: Stored
+    delete:
+      summary: Delete a secret
+      tags: [secvault]
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: env_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+
+  # ── Webhooks ──────────────────────────────────────────────────────────────
+  /webhooks:
+    get:
+      summary: List webhooks
+      tags: [webhooks]
+      responses:
+        '200':
+          description: Webhook list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Webhook'
+    post:
+      summary: Create a webhook
+      tags: [webhooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, url, events]
+              properties:
+                name:
+                  type: string
+                url:
+                  type: string
+                  format: uri
+                secret:
+                  type: string
+                  description: Optional HMAC-SHA256 signing secret
+                events:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - finding.created
+                      - finding.severity_changed
+                      - incident.created
+                      - incident.status_changed
+                      - control.status_changed
+      responses:
+        '201':
+          description: Webhook created
+
+  /webhooks/{id}:
+    put:
+      summary: Update a webhook
+      tags: [webhooks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Webhook'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      summary: Delete a webhook
+      tags: [webhooks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted
+
+  /webhooks/{id}/test:
+    post:
+      summary: Send a test ping to a webhook
+      tags: [webhooks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ping result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  status_code:
+                    type: integer
+
+  # ── Notifications ─────────────────────────────────────────────────────────
+  /notifications/preferences:
+    get:
+      summary: Get notification preferences for the current user
+      tags: [notifications]
+      responses:
+        '200':
+          description: Preferences
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
+    put:
+      summary: Update notification preferences
+      tags: [notifications]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationPreferences'
+      responses:
+        '200':
+          description: Updated preferences
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
+
+  # ── HR — Employees ────────────────────────────────────────────────────────
+  /hr/employees:
+    get:
+      summary: List employees (paginated)
+      tags: [hr]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated employee list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Employee'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+    post:
+      summary: Create employee
+      tags: [hr]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEmployeeInput'
+      responses:
+        '201':
+          description: Created employee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Employee'
+
+  /hr/employees/{id}:
+    get:
+      summary: Get employee
+      tags: [hr]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Employee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Employee'
+        '404':
+          description: Not found
+    put:
+      summary: Update employee
+      tags: [hr]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEmployeeInput'
+      responses:
+        '200':
+          description: Updated employee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Employee'
+    delete:
+      summary: Delete employee
+      tags: [hr]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted
+
+  /hr/employees/{id}/checklist-runs:
+    get:
+      summary: List checklist runs for an employee
+      tags: [hr]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Checklist runs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ChecklistRun'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  # ── HR — Checklists ───────────────────────────────────────────────────────
+  /hr/checklists:
+    get:
+      summary: List checklist templates
+      tags: [hr]
+      responses:
+        '200':
+          description: Checklist templates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Checklist'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+    post:
+      summary: Create checklist template
+      tags: [hr]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChecklistInput'
+      responses:
+        '201':
+          description: Created checklist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Checklist'
+
+  /hr/checklists/{id}:
+    delete:
+      summary: Delete checklist template
+      tags: [hr]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted
+
+  # ── HR — Checklist Runs ───────────────────────────────────────────────────
+  /hr/checklist-runs:
+    post:
+      summary: Start a checklist run for an employee
+      tags: [hr]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartChecklistRunInput'
+      responses:
+        '201':
+          description: Started run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChecklistRun'
+
+  /hr/checklist-runs/{id}:
+    get:
+      summary: Get checklist run
+      tags: [hr]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Checklist run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChecklistRun'
+    put:
+      summary: Update checklist run progress
+      tags: [hr]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateChecklistRunInput'
+      responses:
+        '200':
+          description: Updated run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChecklistRun'
+
+  # ── SecReflex — Templates ─────────────────────────────────────────────────
+  /secreflex/templates:
+    get:
+      summary: List phishing email templates (Pro)
+      tags: [secreflex]
+      responses:
+        '200':
+          description: Templates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PhishingTemplate'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+    post:
+      summary: Create phishing template (Pro)
+      tags: [secreflex]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTemplateInput'
+      responses:
+        '201':
+          description: Created template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhishingTemplate'
+
+  /secreflex/templates/presets:
+    get:
+      summary: List built-in preset templates (Pro)
+      tags: [secreflex]
+      responses:
+        '200':
+          description: Preset templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PhishingTemplate'
+
+  # ── SecReflex — Target Groups ─────────────────────────────────────────────
+  /secreflex/groups:
+    get:
+      summary: List target groups (Pro)
+      tags: [secreflex]
+      responses:
+        '200':
+          description: Target groups
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TargetGroup'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+    post:
+      summary: Create target group (Pro)
+      tags: [secreflex]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                source:
+                  type: string
+      responses:
+        '201':
+          description: Created group
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TargetGroup'
+
+  /secreflex/groups/{id}/targets:
+    get:
+      summary: List targets in a group (Pro)
+      tags: [secreflex]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Targets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Target'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /secreflex/groups/{id}/targets/import:
+    post:
+      summary: Import targets from CSV (Pro)
+      tags: [secreflex]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [csv]
+              properties:
+                csv:
+                  type: string
+                  description: CSV content (email,first_name,last_name)
+      responses:
+        '200':
+          description: Import result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  imported:
+                    type: integer
+                  errors:
+                    type: array
+                    items:
+                      type: string
+
+  # ── SecReflex — Landing Pages ─────────────────────────────────────────────
+  /secreflex/landing-pages:
+    get:
+      summary: List landing pages (Pro)
+      tags: [secreflex]
+      responses:
+        '200':
+          description: Landing pages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LandingPage'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+    post:
+      summary: Create landing page (Pro)
+      tags: [secreflex]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, html]
+              properties:
+                name:
+                  type: string
+                html:
+                  type: string
+      responses:
+        '201':
+          description: Created landing page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LandingPage'
+
+  # ── SecReflex — Campaigns ─────────────────────────────────────────────────
+  /secreflex/campaigns:
+    get:
+      summary: List campaigns (Pro)
+      tags: [secreflex]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Campaigns
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Campaign'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+    post:
+      summary: Create campaign (Pro)
+      tags: [secreflex]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCampaignInput'
+      responses:
+        '201':
+          description: Created campaign
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campaign'
+
+  /secreflex/campaigns/{id}:
+    get:
+      summary: Get campaign (Pro)
+      tags: [secreflex]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Campaign
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campaign'
+
+  /secreflex/campaigns/{id}/launch:
+    post:
+      summary: Launch campaign — sends phishing emails to target group (Pro)
+      tags: [secreflex]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Campaign launched
+
+  /secreflex/campaigns/{id}/abort:
+    post:
+      summary: Abort a running campaign (Pro)
+      tags: [secreflex]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Campaign aborted
+
+  /secreflex/campaigns/{id}/stats:
+    get:
+      summary: Get campaign statistics (Pro)
+      tags: [secreflex]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Campaign stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignStats'
+
+  /secreflex/campaigns/{id}/report:
+    get:
+      summary: Export campaign report as PDF (Pro)
+      tags: [secreflex]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: PDF report
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  # ── SecReflex — Training ──────────────────────────────────────────────────
+  /secreflex/training-modules:
+    get:
+      summary: List training modules
+      tags: [secreflex]
+      responses:
+        '200':
+          description: Training modules
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TrainingModule'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+    post:
+      summary: Create training module
+      tags: [secreflex]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                duration_minutes:
+                  type: integer
+      responses:
+        '201':
+          description: Created module
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingModule'
+
+  /secreflex/assignments:
+    get:
+      summary: List training assignments for current user
+      tags: [secreflex]
+      responses:
+        '200':
+          description: Assignments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TrainingAssignment'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /secreflex/assignments/{id}/complete:
+    post:
+      summary: Mark training assignment as completed
+      tags: [secreflex]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Assignment completed
+
+  # ── SecReflex — Phish Reports ─────────────────────────────────────────────
+  /secreflex/phish-reports:
+    get:
+      summary: List phish reports (Pro)
+      tags: [secreflex]
+      responses:
+        '200':
+          description: Phish reports
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /secreflex/phish-reports/stats:
+    get:
+      summary: Phish report aggregate statistics (Pro)
+      tags: [secreflex]
+      responses:
+        '200':
+          description: Stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_reports:
+                    type: integer
+                  by_campaign:
+                    type: object
+
+  /secreflex/phish-report-token/regenerate:
+    post:
+      summary: Regenerate phish-report webhook token (Pro)
+      tags: [secreflex]
+      responses:
+        '200':
+          description: New token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+
+  # ── SecVitals — Policies ──────────────────────────────────────────────────
+
+  /secvitals/policies:
+    get:
+      summary: List policies
+      tags: [secvitals]
+      responses:
+        '200':
+          description: List of policies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    title: { type: string }
+                    status: { type: string, enum: [draft, active, archived] }
+                    version: { type: integer }
+                    owner: { type: string }
+                    review_date: { type: string, format: date }
+                    created_at: { type: string, format: date-time }
+    post:
+      summary: Create policy
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, content]
+              properties:
+                title: { type: string }
+                content: { type: string }
+                owner: { type: string }
+                review_interval_days: { type: integer }
+      responses:
+        '201':
+          description: Created policy
+
+  /secvitals/policies/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get policy
+      tags: [secvitals]
+      responses:
+        '200':
+          description: Policy
+    put:
+      summary: Update policy
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                content: { type: string }
+                status: { type: string, enum: [draft, active, archived] }
+                owner: { type: string }
+      responses:
+        '200':
+          description: Updated policy
+    delete:
+      summary: Delete policy
+      tags: [secvitals]
+      responses:
+        '204':
+          description: Deleted
+
+  # ── SecVitals — Audits ────────────────────────────────────────────────────
+
+  /secvitals/audits:
+    get:
+      summary: List internal audits
+      tags: [secvitals]
+      responses:
+        '200':
+          description: List of audits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    title: { type: string }
+                    status: { type: string }
+                    audit_type: { type: string }
+                    planned_date: { type: string, format: date }
+                    lead_auditor: { type: string }
+    post:
+      summary: Create internal audit
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, audit_type]
+              properties:
+                title: { type: string }
+                audit_type: { type: string }
+                planned_date: { type: string, format: date }
+                lead_auditor: { type: string }
+                scope: { type: string }
+      responses:
+        '201':
+          description: Created audit
+
+  /secvitals/audits/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get audit
+      tags: [secvitals]
+      responses:
+        '200':
+          description: Audit
+    put:
+      summary: Update audit
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string }
+                findings_summary: { type: string }
+                conclusion: { type: string }
+      responses:
+        '200':
+          description: Updated audit
+
+  # ── SecVitals — CAPAs ────────────────────────────────────────────────────
+
+  /secvitals/capas:
+    get:
+      summary: List corrective/preventive actions (CAPAs)
+      tags: [secvitals]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [open, in_progress, closed, verified] }
+      responses:
+        '200':
+          description: List of CAPAs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    title: { type: string }
+                    status: { type: string }
+                    priority: { type: string, enum: [low, medium, high, critical] }
+                    due_date: { type: string, format: date }
+                    assignee: { type: string }
+                    source_type: { type: string }
+    post:
+      summary: Create CAPA
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, priority]
+              properties:
+                title: { type: string }
+                description: { type: string }
+                priority: { type: string, enum: [low, medium, high, critical] }
+                due_date: { type: string, format: date }
+                assignee_id: { type: string, format: uuid }
+                source_type: { type: string }
+                source_id: { type: string }
+      responses:
+        '201':
+          description: Created CAPA
+
+  /secvitals/capas/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get CAPA
+      tags: [secvitals]
+      responses:
+        '200':
+          description: CAPA
+    put:
+      summary: Update CAPA
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [open, in_progress, closed, verified] }
+                resolution_notes: { type: string }
+                due_date: { type: string, format: date }
+      responses:
+        '200':
+          description: Updated CAPA
+    delete:
+      summary: Delete CAPA
+      tags: [secvitals]
+      responses:
+        '204':
+          description: Deleted
+
+  # ── SecVitals — Approvals ─────────────────────────────────────────────────
+
+  /secvitals/approvals:
+    get:
+      summary: List pending approvals
+      tags: [secvitals]
+      responses:
+        '200':
+          description: List of approval requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    resource_type: { type: string }
+                    resource_id: { type: string }
+                    resource_name: { type: string }
+                    status: { type: string, enum: [pending, approved, rejected] }
+                    requested_by: { type: string }
+                    created_at: { type: string, format: date-time }
+
+  /secvitals/approvals/{id}/approve:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Approve a pending approval request
+      tags: [secvitals]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comment: { type: string }
+      responses:
+        '200':
+          description: Approved
+        '404':
+          description: Not found
+
+  /secvitals/approvals/{id}/reject:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Reject a pending approval request
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string }
+      responses:
+        '200':
+          description: Rejected
+
+  # ── SecVitals — Access Reviews ────────────────────────────────────────────
+
+  /secvitals/access-reviews:
+    get:
+      summary: List access review campaigns
+      tags: [secvitals]
+      responses:
+        '200':
+          description: List of access review campaigns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    name: { type: string }
+                    status: { type: string, enum: [draft, active, completed] }
+                    due_date: { type: string, format: date }
+                    item_count: { type: integer }
+                    reviewed_count: { type: integer }
+    post:
+      summary: Create access review campaign
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                due_date: { type: string, format: date }
+      responses:
+        '201':
+          description: Created campaign
+
+  /secvitals/access-reviews/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get access review campaign
+      tags: [secvitals]
+      responses:
+        '200':
+          description: Campaign
+    put:
+      summary: Update access review campaign
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string }
+                due_date: { type: string, format: date }
+      responses:
+        '200':
+          description: Updated
+    delete:
+      summary: Delete access review campaign
+      tags: [secvitals]
+      responses:
+        '204':
+          description: Deleted
+
+  /secvitals/access-reviews/{id}/items:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: List items in access review campaign
+      tags: [secvitals]
+      responses:
+        '200':
+          description: List of items
+    post:
+      summary: Add item to access review campaign
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_name, access_level, system]
+              properties:
+                user_name: { type: string }
+                access_level: { type: string }
+                system: { type: string }
+      responses:
+        '201':
+          description: Created item
+
+  # ── SecVitals — Control Exceptions ───────────────────────────────────────
+
+  /secvitals/exceptions:
+    get:
+      summary: List control exceptions
+      tags: [secvitals]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [pending, approved, rejected, expired] }
+      responses:
+        '200':
+          description: List of exceptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    control_id: { type: string, format: uuid }
+                    control_name: { type: string }
+                    reason: { type: string }
+                    status: { type: string }
+                    expires_at: { type: string, format: date }
+                    approved_by: { type: string }
+
+  /secvitals/controls/{controlId}/exceptions:
+    parameters:
+      - name: controlId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Create exception for a control
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string }
+                compensating_control: { type: string }
+                expires_at: { type: string, format: date }
+                risk_accepted: { type: boolean }
+      responses:
+        '201':
+          description: Created exception
+
+  /secvitals/exceptions/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Update exception (approve/reject/extend)
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [approved, rejected] }
+                reviewer_comment: { type: string }
+                expires_at: { type: string, format: date }
+      responses:
+        '200':
+          description: Updated exception
+    delete:
+      summary: Delete exception
+      tags: [secvitals]
+      responses:
+        '204':
+          description: Deleted
+
+  # ── SecVitals — Board Report & Score History ──────────────────────────────
+
+  /secvitals/board-report:
+    get:
+      summary: Generate management board report PDF
+      description: |
+        Returns a PDF containing the compliance score, risk summary, CAPA status,
+        and recent incident count. Intended for management review and audit trail.
+      tags: [secvitals]
+      responses:
+        '200':
+          description: Board report PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '500':
+          description: Report generation failed
+
+  /secvitals/score-history:
+    get:
+      summary: Get compliance score history
+      description: Returns daily compliance score snapshots for trend charts.
+      tags: [secvitals]
+      parameters:
+        - name: days
+          in: query
+          schema: { type: integer, default: 90 }
+          description: Number of days to look back
+      responses:
+        '200':
+          description: Score history entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    recorded_at: { type: string, format: date }
+                    score: { type: integer, minimum: 0, maximum: 100 }
+
+  # ── SecVitals — Suppliers ─────────────────────────────────────────────────
+
+  /secvitals/suppliers:
+    get:
+      summary: List suppliers
+      tags: [secvitals]
+      responses:
+        '200':
+          description: List of suppliers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    name: { type: string }
+                    status: { type: string, enum: [active, under_review, terminated] }
+                    risk_level: { type: string, enum: [low, medium, high, critical] }
+                    contact_email: { type: string }
+                    last_assessment: { type: string, format: date }
+    post:
+      summary: Create supplier
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                contact_email: { type: string, format: email }
+                risk_level: { type: string, enum: [low, medium, high, critical] }
+                services_provided: { type: string }
+      responses:
+        '201':
+          description: Created supplier
+
+  /secvitals/suppliers/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get supplier
+      tags: [secvitals]
+      responses:
+        '200':
+          description: Supplier
+    put:
+      summary: Update supplier
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [active, under_review, terminated] }
+                risk_level: { type: string, enum: [low, medium, high, critical] }
+                contact_email: { type: string }
+      responses:
+        '200':
+          description: Updated supplier
+    delete:
+      summary: Delete supplier
+      tags: [secvitals]
+      responses:
+        '204':
+          description: Deleted
+
+  # ── SecPrivacy — DPIA ────────────────────────────────────────────────────
+
+  /secprivacy/dpias:
+    get:
+      summary: List Data Protection Impact Assessments (DPIA, Art. 35 DSGVO)
+      tags: [secprivacy]
+      responses:
+        '200':
+          description: List of DPIAs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    title: { type: string }
+                    status: { type: string, enum: [draft, under_review, approved, rejected] }
+                    processing_purpose: { type: string }
+                    necessity_score: { type: integer }
+                    risk_level: { type: string }
+                    created_at: { type: string, format: date-time }
+    post:
+      summary: Create DPIA
+      tags: [secprivacy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, processing_purpose]
+              properties:
+                title: { type: string }
+                processing_purpose: { type: string }
+                data_categories: { type: array, items: { type: string } }
+                data_subjects: { type: string }
+                legal_basis: { type: string }
+      responses:
+        '201':
+          description: Created DPIA
+
+  /secprivacy/dpias/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get DPIA
+      tags: [secprivacy]
+      responses:
+        '200':
+          description: DPIA
+    put:
+      summary: Update DPIA
+      tags: [secprivacy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string }
+                measures: { type: string }
+                risk_assessment: { type: string }
+      responses:
+        '200':
+          description: Updated DPIA
+    delete:
+      summary: Delete DPIA
+      tags: [secprivacy]
+      responses:
+        '204':
+          description: Deleted
+
+  # ── SecPrivacy — AVV ─────────────────────────────────────────────────────
+
+  /secprivacy/avvs:
+    get:
+      summary: List Data Processing Agreements (AVV, Art. 28 DSGVO)
+      tags: [secprivacy]
+      responses:
+        '200':
+          description: List of AVVs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    processor_name: { type: string }
+                    status: { type: string, enum: [draft, active, terminated] }
+                    signed_at: { type: string, format: date }
+                    review_date: { type: string, format: date }
+                    data_categories: { type: array, items: { type: string } }
+    post:
+      summary: Create AVV
+      tags: [secprivacy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [processor_name]
+              properties:
+                processor_name: { type: string }
+                processor_address: { type: string }
+                data_categories: { type: array, items: { type: string } }
+                processing_purposes: { type: string }
+                technical_measures: { type: string }
+      responses:
+        '201':
+          description: Created AVV
+
+  /secprivacy/avvs/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get AVV
+      tags: [secprivacy]
+      responses:
+        '200':
+          description: AVV
+    put:
+      summary: Update AVV
+      tags: [secprivacy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [draft, active, terminated] }
+                signed_at: { type: string, format: date }
+      responses:
+        '200':
+          description: Updated AVV
+
+  /secprivacy/avvs/{id}/pdf:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Export AVV as PDF
+      tags: [secprivacy]
+      responses:
+        '200':
+          description: AVV PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  # ── SecPrivacy — DSR ─────────────────────────────────────────────────────
+
+  /secprivacy/dsr:
+    get:
+      summary: List data subject requests (Art. 15–22 DSGVO)
+      tags: [secprivacy]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [open, in_progress, completed, rejected] }
+        - name: type
+          in: query
+          schema: { type: string, enum: [access, erasure, rectification, portability, restriction, objection] }
+      responses:
+        '200':
+          description: List of DSRs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    type: { type: string }
+                    status: { type: string }
+                    subject_name: { type: string }
+                    subject_email: { type: string }
+                    received_at: { type: string, format: date-time }
+                    deadline: { type: string, format: date }
+    post:
+      summary: Create DSR record
+      tags: [secprivacy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, subject_email]
+              properties:
+                type: { type: string, enum: [access, erasure, rectification, portability, restriction, objection] }
+                subject_name: { type: string }
+                subject_email: { type: string, format: email }
+                description: { type: string }
+      responses:
+        '201':
+          description: Created DSR
+
+  /secprivacy/dsr/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get DSR
+      tags: [secprivacy]
+      responses:
+        '200':
+          description: DSR
+    put:
+      summary: Update DSR status
+      tags: [secprivacy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [open, in_progress, completed, rejected] }
+                notes: { type: string }
+                rejection_reason: { type: string }
+      responses:
+        '200':
+          description: Updated DSR
+
+  # --- CCM (Continuous Control Monitoring) ---
+
+  /secvitals/ccm/checks:
+    get:
+      summary: List CCM checks
+      tags: [secvitals]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, inactive] }
+      responses:
+        '200':
+          description: Paginated list of CCM checks
+    post:
+      summary: Create CCM check
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, query_type]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                query_type: { type: string, enum: [sql, api, manual] }
+                schedule: { type: string, description: "Cron expression" }
+                threshold: { type: number }
+                control_id: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Created CCM check
+
+  /secvitals/ccm/checks/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get CCM check
+      tags: [secvitals]
+      responses:
+        '200':
+          description: CCM check
+    put:
+      summary: Update CCM check
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                schedule: { type: string }
+                threshold: { type: number }
+                status: { type: string, enum: [active, inactive] }
+      responses:
+        '200':
+          description: Updated CCM check
+    delete:
+      summary: Delete CCM check
+      tags: [secvitals]
+      responses:
+        '204':
+          description: Deleted
+
+  /secvitals/ccm/checks/{id}/run:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Trigger manual CCM check run
+      tags: [secvitals]
+      responses:
+        '202':
+          description: Check run queued
+
+  /secvitals/ccm/checks/{id}/results:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get CCM check run results
+      tags: [secvitals]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated list of check results
+
+  # --- DORA ---
+
+  /secvitals/dora/dashboard:
+    get:
+      summary: DORA compliance dashboard
+      tags: [secvitals]
+      responses:
+        '200':
+          description: DORA dashboard data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  overall_score: { type: number }
+                  articles: { type: array, items: { type: object } }
+                  gaps: { type: array, items: { type: object } }
+
+  /secvitals/dora/report-pdf:
+    get:
+      summary: Download DORA readiness report PDF
+      tags: [secvitals]
+      responses:
+        '200':
+          description: PDF report
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  # --- EU AI Act ---
+
+  /secvitals/eu-ai-act/dashboard:
+    get:
+      summary: EU AI Act compliance dashboard
+      tags: [secvitals]
+      responses:
+        '200':
+          description: EU AI Act dashboard data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  risk_classification: { type: string, enum: [minimal, limited, high, unacceptable] }
+                  overall_score: { type: number }
+                  requirements: { type: array, items: { type: object } }
+
+  /secvitals/eu-ai-act/report-pdf:
+    get:
+      summary: Download EU AI Act readiness report PDF
+      tags: [secvitals]
+      responses:
+        '200':
+          description: PDF report
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  # --- TISAX ---
+
+  /secvitals/frameworks/tisax/iso-mapping:
+    get:
+      summary: TISAX ↔ ISO 27001 control mapping
+      tags: [secvitals]
+      parameters:
+        - name: framework_id
+          in: query
+          schema: { type: string, format: uuid }
+          description: Optional; resolved by name if omitted
+      responses:
+        '200':
+          description: Mapping results
+
+  /secvitals/frameworks/tisax/coverage-after-iso:
+    get:
+      summary: TISAX controls not covered by mapped ISO 27001 controls
+      tags: [secvitals]
+      parameters:
+        - name: framework_id
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: List of uncovered TISAX controls
+
+  # --- Controls sub-routes ---
+
+  /secvitals/controls/{controlId}/evidence:
+    parameters:
+      - name: controlId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: List evidence for a control
+      tags: [secvitals]
+      responses:
+        '200':
+          description: List of evidence items
+    post:
+      summary: Add evidence to a control (URL or text)
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type: { type: string, enum: [url, text, file] }
+                title: { type: string }
+                url: { type: string, format: uri }
+                text: { type: string }
+      responses:
+        '201':
+          description: Evidence created
+
+  /secvitals/controls/{controlId}/evidence/upload:
+    parameters:
+      - name: controlId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Upload a file as evidence for a control
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                title: { type: string }
+      responses:
+        '201':
+          description: Evidence uploaded
+
+  /secvitals/controls/{controlId}/measures:
+    parameters:
+      - name: controlId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: List measures for a control
+      tags: [secvitals]
+      responses:
+        '200':
+          description: List of measures
+    post:
+      summary: Add a measure to a control
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                description: { type: string }
+                due_date: { type: string, format: date }
+                assignee_id: { type: string, format: uuid }
+                status: { type: string, enum: [planned, in_progress, done] }
+      responses:
+        '201':
+          description: Measure created
+
+  /secvitals/controls/{controlId}/measures/{mid}:
+    parameters:
+      - name: controlId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: mid
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Update a measure
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                description: { type: string }
+                due_date: { type: string, format: date }
+                assignee_id: { type: string, format: uuid }
+                status: { type: string, enum: [planned, in_progress, done] }
+      responses:
+        '200':
+          description: Updated measure
+    delete:
+      summary: Delete a measure
+      tags: [secvitals]
+      responses:
+        '204':
+          description: Deleted
+
+  # --- Suppliers sub-routes ---
+
+  /secvitals/suppliers/{id}/assessments:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: List assessments for a supplier
+      tags: [secvitals]
+      responses:
+        '200':
+          description: List of supplier assessments
+    post:
+      summary: Create a supplier assessment
+      tags: [secvitals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type: { type: string, enum: [questionnaire, onsite, document_review] }
+                title: { type: string }
+                due_date: { type: string, format: date }
+                notes: { type: string }
+      responses:
+        '201':
+          description: Assessment created
+
+  # --- Global search ---
+
+  /search:
+    get:
+      summary: Global full-text search across all modules
+      description: Searches assets, findings, controls, incidents, policies, suppliers, VVT entries.
+      tags: [search]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    type: { type: string }
+                    id: { type: string }
+                    title: { type: string }
+                    url: { type: string }
+
+  # --- Dashboard ---
+
+  /dashboard/score:
+    get:
+      summary: Get overall compliance and risk score
+      tags: [dashboard]
+      responses:
+        '200':
+          description: Dashboard score
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  overall_score: { type: number }
+                  nis2_score: { type: number }
+                  iso27001_score: { type: number }
+                  open_findings: { type: integer }
+                  critical_findings: { type: integer }
+
+  /dashboard/aggregate:
+    get:
+      summary: Get aggregated dashboard data (counts per module)
+      tags: [dashboard]
+      responses:
+        '200':
+          description: Aggregate metrics
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /dashboard/notifications:
+    get:
+      summary: List user notifications
+      tags: [dashboard]
+      responses:
+        '200':
+          description: Notifications list
+
+  # --- HR step-completion (Sprint 1) ---
+
+  /hr/employees/{id}/onboard:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Start the first onboarding checklist run for an employee
+      tags: [hr]
+      responses:
+        '201':
+          description: Onboarding run started
+        '400':
+          description: No onboarding checklist available
+
+  /hr/employees/{id}/offboard:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Start an offboarding run — also sets employee.status to "offboarding"
+      tags: [hr]
+      responses:
+        '201':
+          description: Offboarding run started
+        '400':
+          description: No offboarding checklist available
+
+  /hr/checklist-runs/{id}/steps/{step_id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: step_id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      summary: Mark a single step in a checklist run as completed
+      description: Idempotent — re-completing an already-done step is a no-op. When all required steps are done, the run automatically transitions to "completed" and a compliance-evidence record is written to ck_evidence.
+      tags: [hr]
+      responses:
+        '200':
+          description: Updated run
+        '400':
+          description: Step not found in checklist
+
+  /hr/checklist-runs/{id}/events:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: List the step-completion audit trail for a run
+      tags: [hr]
+      responses:
+        '200':
+          description: List of run events
+
+  # --- SecReflex content library (Sprint 4) ---
+
+  /secreflex/training-modules/presets:
+    get:
+      summary: List bundled training-module presets (DACH-specific curriculum)
+      tags: [secreflex]
+      responses:
+        '200':
+          description: List of presets
+
+  # --- Client error tracking (Sprint 3) ---
+
+  /errors:
+    post:
+      summary: Record a frontend ErrorBoundary error (unauthenticated, rate-limited)
+      security: []
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message: { type: string }
+                stack: { type: string }
+                component_stack: { type: string }
+                url: { type: string }
+                trace_id: { type: string }
+      responses:
+        '204':
+          description: Error recorded
+        '429':
+          description: Rate limit exceeded
+
+  /admin/client-errors:
+    get:
+      summary: List recent frontend errors (Admin only)
+      description: Returns the 200 most recent client-side errors for this org. Errors are persisted in the client_errors table; no external telemetry is collected.
+      tags: [admin]
+      responses:
+        '200':
+          description: List of client errors
+
+  # --- Sessions: /auth/sessions already documented earlier in this file ---

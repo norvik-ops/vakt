@@ -43,6 +43,44 @@ func (h *Handler) ComplianceAdvice(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"advice": advice})
 }
 
+// DraftPolicy handles POST /secvitals/ai/draft-policy.
+// Body: { topic: string, framework?: string }
+// Returns: { draft: string } — Markdown policy draft for the admin to review.
+func (h *Handler) DraftPolicy(c echo.Context) error {
+	var input struct {
+		Topic     string `json:"topic"`
+		Framework string `json:"framework"`
+	}
+	if err := c.Bind(&input); err != nil || input.Topic == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "topic required"})
+	}
+	draft, err := h.svc.DraftPolicy(c.Request().Context(), input.Topic, input.Framework)
+	if err != nil {
+		log.Error().Err(err).Msg("DraftPolicy failed")
+		return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "KI temporär nicht verfügbar"})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"draft": draft})
+}
+
+// IncidentResponseGuide handles POST /secvitals/ai/incident-guide.
+// Body: { summary: string, type?: string }
+// Returns: { guide: string } — numbered checklist with response steps + deadline hints.
+func (h *Handler) IncidentResponseGuide(c echo.Context) error {
+	var input struct {
+		Summary string `json:"summary"`
+		Type    string `json:"type"`
+	}
+	if err := c.Bind(&input); err != nil || input.Summary == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "summary required"})
+	}
+	guide, err := h.svc.IncidentResponseGuide(c.Request().Context(), input.Summary, input.Type)
+	if err != nil {
+		log.Error().Err(err).Msg("IncidentResponseGuide failed")
+		return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "KI temporär nicht verfügbar"})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"guide": guide})
+}
+
 // GenerateReport creates an AI-generated report for the org.
 func (h *Handler) GenerateReport(c echo.Context) error {
 	orgID, ok := c.Get("org_id").(string)

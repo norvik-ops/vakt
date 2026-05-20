@@ -223,7 +223,8 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/policies", h.ListPolicies)
 	g.POST("/policies", h.CreatePolicy, rw)
 	// CRITICAL: /policies/generate-draft must be registered BEFORE /policies/:id to avoid route conflict.
-	g.POST("/policies/generate-draft", h.GeneratePolicyDraft, rw, license.Require(license.FeatureAIAdvisor))
+	// /policies/generate-draft nutzt AI Copilot — Community-Feature seit v0.6.x.
+	g.POST("/policies/generate-draft", h.GeneratePolicyDraft, rw)
 	// CRITICAL: static sub-paths before bare :id to avoid route conflicts
 	// CRITICAL: acceptance-campaigns/:cid/stats and /requests must be before /acceptance-campaigns
 	g.GET("/policies/acceptance-campaigns/:cid/stats", h.GetCampaignStats)

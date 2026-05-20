@@ -110,7 +110,7 @@ describe('TISAXPage', () => {
 
     expect(fetchSpy).toHaveBeenCalledWith(
       expect.stringContaining('/api/v1/secvitals/frameworks/fw-tisax/tisax-report-pdf'),
-      expect.objectContaining({ headers: expect.anything() }),
+      expect.objectContaining({ credentials: 'include' }),
     )
   })
 })

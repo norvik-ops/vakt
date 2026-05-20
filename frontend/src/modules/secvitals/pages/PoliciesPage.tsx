@@ -20,6 +20,7 @@ import { FieldError } from '../../../shared/components/FieldError'
 import { useSavedFilters } from '../../../shared/hooks/useSavedFilters'
 import { useFormValidation } from '../../../shared/hooks/useFormValidation'
 import { usePolicies, useCreatePolicy, useGeneratePolicyDraft } from '../hooks/usePolicies'
+import { useFirstAction } from '../../../shared/hooks/useFirstAction'
 import { apiFetch } from '../../../api/client'
 import type { Policy, CreatePolicyInput, Framework } from '../types'
 import type { SortDir } from '../../../shared/hooks/useSortableTable'
@@ -123,6 +124,7 @@ export default function PoliciesPage() {
 
   const { data: policies, isLoading, isError, pagination } = usePolicies(page)
   const createPolicy = useCreatePolicy()
+  useFirstAction('policy:first-created', (policies?.length ?? 0) > 0)
   const generateDraft = useGeneratePolicyDraft()
   const { errors: polErrors, validate: validatePol, clearError: clearPolError, clearAll: clearPolErrors } = useFormValidation<Record<string, unknown>>({
     title: { required: true },

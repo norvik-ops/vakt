@@ -10,103 +10,92 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/matharnica/vakt/internal/db"
 )
 
 // --- Access Review Campaigns ---
 
+func campaignFromCk(r db.CkAccessReviewCampaigns) AccessReviewCampaign {
+	return AccessReviewCampaign{
+		ID:            r.ID,
+		OrgID:         r.OrgID,
+		Title:         r.Title,
+		Description:   r.Description.String,
+		Status:        r.Status,
+		ReviewerEmail: r.ReviewerEmail,
+		Scope:         r.Scope.String,
+		DueDate:       ckTsToTimePtr(r.DueDate),
+		CompletedAt:   ckTsToTimePtr(r.CompletedAt),
+		CreatedBy:     r.CreatedBy.String,
+		CreatedAt:     ckTsToTime(r.CreatedAt),
+		UpdatedAt:     ckTsToTime(r.UpdatedAt),
+	}
+}
+
+// parseAccessReviewDueDate accepts RFC3339 or YYYY-MM-DD.
+func parseAccessReviewDueDate(s string) (*time.Time, error) {
+	if s == "" {
+		return nil, nil
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return &t, nil
+	}
+	if t, err := time.Parse("2006-01-02", s); err == nil {
+		return &t, nil
+	}
+	return nil, fmt.Errorf("invalid due_date format: %s", s)
+}
+
 // ListAccessReviewCampaigns returns all campaigns for an organisation ordered by created_at DESC.
 func (r *Repository) ListAccessReviewCampaigns(ctx context.Context, orgID string) ([]AccessReviewCampaign, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT id::text, org_id::text, title, COALESCE(description,''),
-		       status, reviewer_email, COALESCE(scope,''),
-		       due_date, completed_at, COALESCE(created_by,''),
-		       created_at, updated_at
-		FROM ck_access_review_campaigns
-		WHERE org_id = $1::uuid
-		ORDER BY created_at DESC`,
-		orgID,
-	)
+	rows, err := r.q.ListCKAccessReviewCampaigns(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("list access review campaigns: %w", err)
 	}
-	defer rows.Close()
-
-	var campaigns []AccessReviewCampaign
-	for rows.Next() {
-		var c AccessReviewCampaign
-		if err := rows.Scan(
-			&c.ID, &c.OrgID, &c.Title, &c.Description,
-			&c.Status, &c.ReviewerEmail, &c.Scope,
-			&c.DueDate, &c.CompletedAt, &c.CreatedBy,
-			&c.CreatedAt, &c.UpdatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("scan access review campaign: %w", err)
-		}
-		campaigns = append(campaigns, c)
+	out := make([]AccessReviewCampaign, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, campaignFromCk(db.CkAccessReviewCampaigns(row)))
 	}
-	return campaigns, rows.Err()
+	return out, nil
 }
 
 // GetAccessReviewCampaign returns a single campaign by ID. Returns ErrNotFound if absent.
 func (r *Repository) GetAccessReviewCampaign(ctx context.Context, orgID, id string) (*AccessReviewCampaign, error) {
-	var c AccessReviewCampaign
-	err := r.db.QueryRow(ctx, `
-		SELECT id::text, org_id::text, title, COALESCE(description,''),
-		       status, reviewer_email, COALESCE(scope,''),
-		       due_date, completed_at, COALESCE(created_by,''),
-		       created_at, updated_at
-		FROM ck_access_review_campaigns
-		WHERE id = $1::uuid AND org_id = $2::uuid`,
-		id, orgID,
-	).Scan(
-		&c.ID, &c.OrgID, &c.Title, &c.Description,
-		&c.Status, &c.ReviewerEmail, &c.Scope,
-		&c.DueDate, &c.CompletedAt, &c.CreatedBy,
-		&c.CreatedAt, &c.UpdatedAt,
-	)
+	row, err := r.q.GetCKAccessReviewCampaign(ctx, db.GetCKAccessReviewCampaignParams{ID: id, OrgID: orgID})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("get access review campaign: %w", err)
 	}
+	c := campaignFromCk(db.CkAccessReviewCampaigns(row))
 	return &c, nil
 }
 
 // CreateAccessReviewCampaign inserts a new campaign and returns the created record.
 func (r *Repository) CreateAccessReviewCampaign(ctx context.Context, orgID string, in CreateAccessReviewCampaignInput) (*AccessReviewCampaign, error) {
 	var dueDate *time.Time
-	if in.DueDate != nil && *in.DueDate != "" {
-		t, err := time.Parse(time.RFC3339, *in.DueDate)
+	if in.DueDate != nil {
+		t, err := parseAccessReviewDueDate(*in.DueDate)
 		if err != nil {
-			// Try date-only format
-			t, err = time.Parse("2006-01-02", *in.DueDate)
-			if err != nil {
-				return nil, fmt.Errorf("invalid due_date format: %w", err)
-			}
+			return nil, err
 		}
-		dueDate = &t
+		dueDate = t
 	}
-
-	var c AccessReviewCampaign
-	err := r.db.QueryRow(ctx, `
-		INSERT INTO ck_access_review_campaigns
-		  (org_id, title, description, reviewer_email, scope, due_date)
-		VALUES ($1::uuid, $2, $3, $4, $5, $6)
-		RETURNING id::text, org_id::text, title, COALESCE(description,''),
-		          status, reviewer_email, COALESCE(scope,''),
-		          due_date, completed_at, COALESCE(created_by,''),
-		          created_at, updated_at`,
-		orgID, in.Title, in.Description, in.ReviewerEmail, in.Scope, dueDate,
-	).Scan(
-		&c.ID, &c.OrgID, &c.Title, &c.Description,
-		&c.Status, &c.ReviewerEmail, &c.Scope,
-		&c.DueDate, &c.CompletedAt, &c.CreatedBy,
-		&c.CreatedAt, &c.UpdatedAt,
-	)
+	row, err := r.q.CreateCKAccessReviewCampaign(ctx, db.CreateCKAccessReviewCampaignParams{
+		OrgID:         orgID,
+		Title:         in.Title,
+		Description:   ckOptText(in.Description),
+		ReviewerEmail: in.ReviewerEmail,
+		Scope:         ckOptText(in.Scope),
+		DueDate:       ckOptTsPtr(dueDate),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("create access review campaign: %w", err)
 	}
+	c := campaignFromCk(db.CkAccessReviewCampaigns(row))
 	return &c, nil
 }
 
@@ -116,16 +105,12 @@ func (r *Repository) UpdateAccessReviewCampaign(ctx context.Context, orgID, id s
 	if err != nil {
 		return nil, err
 	}
-
 	title := cur.Title
 	description := cur.Description
 	reviewerEmail := cur.ReviewerEmail
 	scope := cur.Scope
 	status := cur.Status
-	var dueDate *time.Time
-
-	// Carry over existing due_date
-	dueDate = cur.DueDate
+	dueDate := cur.DueDate
 
 	if in.Title != "" {
 		title = in.Title
@@ -146,14 +131,11 @@ func (r *Repository) UpdateAccessReviewCampaign(ctx context.Context, orgID, id s
 		if *in.DueDate == "" {
 			dueDate = nil
 		} else {
-			t, err := time.Parse(time.RFC3339, *in.DueDate)
+			t, err := parseAccessReviewDueDate(*in.DueDate)
 			if err != nil {
-				t, err = time.Parse("2006-01-02", *in.DueDate)
-				if err != nil {
-					return nil, fmt.Errorf("invalid due_date format: %w", err)
-				}
+				return nil, err
 			}
-			dueDate = &t
+			dueDate = t
 		}
 	}
 
@@ -166,44 +148,34 @@ func (r *Repository) UpdateAccessReviewCampaign(ctx context.Context, orgID, id s
 		completedAt = cur.CompletedAt
 	}
 
-	var c AccessReviewCampaign
-	err = r.db.QueryRow(ctx, `
-		UPDATE ck_access_review_campaigns
-		SET title = $1, description = $2, reviewer_email = $3, scope = $4,
-		    status = $5, due_date = $6, completed_at = $7, updated_at = NOW()
-		WHERE id = $8::uuid AND org_id = $9::uuid
-		RETURNING id::text, org_id::text, title, COALESCE(description,''),
-		          status, reviewer_email, COALESCE(scope,''),
-		          due_date, completed_at, COALESCE(created_by,''),
-		          created_at, updated_at`,
-		title, description, reviewerEmail, scope,
-		status, dueDate, completedAt,
-		id, orgID,
-	).Scan(
-		&c.ID, &c.OrgID, &c.Title, &c.Description,
-		&c.Status, &c.ReviewerEmail, &c.Scope,
-		&c.DueDate, &c.CompletedAt, &c.CreatedBy,
-		&c.CreatedAt, &c.UpdatedAt,
-	)
+	row, err := r.q.UpdateCKAccessReviewCampaign(ctx, db.UpdateCKAccessReviewCampaignParams{
+		Title:         title,
+		Description:   ckOptText(description),
+		ReviewerEmail: reviewerEmail,
+		Scope:         ckOptText(scope),
+		Status:        status,
+		DueDate:       ckOptTsPtr(dueDate),
+		CompletedAt:   ckOptTsPtr(completedAt),
+		ID:            id,
+		OrgID:         orgID,
+	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("update access review campaign: %w", err)
 	}
+	c := campaignFromCk(db.CkAccessReviewCampaigns(row))
 	return &c, nil
 }
 
 // DeleteAccessReviewCampaign removes a campaign (cascades to items).
 func (r *Repository) DeleteAccessReviewCampaign(ctx context.Context, orgID, id string) error {
-	tag, err := r.db.Exec(ctx, `
-		DELETE FROM ck_access_review_campaigns WHERE id = $1::uuid AND org_id = $2::uuid`,
-		id, orgID,
-	)
+	n, err := r.q.DeleteCKAccessReviewCampaign(ctx, db.DeleteCKAccessReviewCampaignParams{ID: id, OrgID: orgID})
 	if err != nil {
 		return fmt.Errorf("delete access review campaign: %w", err)
 	}
-	if tag.RowsAffected() == 0 {
+	if n == 0 {
 		return ErrNotFound
 	}
 	return nil
@@ -211,88 +183,70 @@ func (r *Repository) DeleteAccessReviewCampaign(ctx context.Context, orgID, id s
 
 // --- Access Review Items ---
 
+func itemFromCk(r db.CkAccessReviewItems) AccessReviewItem {
+	return AccessReviewItem{
+		ID:              r.ID,
+		CampaignID:      r.CampaignID,
+		OrgID:           r.OrgID,
+		UserEmail:       r.UserEmail,
+		AccessLevel:     r.AccessLevel,
+		Decision:        r.Decision,
+		ReviewerComment: r.ReviewerComment.String,
+		DecidedAt:       ckTsToTimePtr(r.DecidedAt),
+		CreatedAt:       ckTsToTime(r.CreatedAt),
+	}
+}
+
 // ListAccessReviewItems returns all items for a campaign.
 func (r *Repository) ListAccessReviewItems(ctx context.Context, orgID, campaignID string) ([]AccessReviewItem, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT id::text, campaign_id::text, org_id::text,
-		       user_email, access_level, decision,
-		       COALESCE(reviewer_comment,''), decided_at, created_at
-		FROM ck_access_review_items
-		WHERE campaign_id = $1::uuid AND org_id = $2::uuid
-		ORDER BY created_at ASC`,
-		campaignID, orgID,
-	)
+	rows, err := r.q.ListCKAccessReviewItems(ctx, db.ListCKAccessReviewItemsParams{
+		CampaignID: campaignID,
+		OrgID:      orgID,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("list access review items: %w", err)
 	}
-	defer rows.Close()
-
-	var items []AccessReviewItem
-	for rows.Next() {
-		var it AccessReviewItem
-		if err := rows.Scan(
-			&it.ID, &it.CampaignID, &it.OrgID,
-			&it.UserEmail, &it.AccessLevel, &it.Decision,
-			&it.ReviewerComment, &it.DecidedAt, &it.CreatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("scan access review item: %w", err)
-		}
-		items = append(items, it)
+	out := make([]AccessReviewItem, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, itemFromCk(db.CkAccessReviewItems(row)))
 	}
-	return items, rows.Err()
+	return out, nil
 }
 
 // CreateAccessReviewItem inserts a new review item and returns the created record.
 func (r *Repository) CreateAccessReviewItem(ctx context.Context, orgID string, in CreateAccessReviewItemInput) (*AccessReviewItem, error) {
-	var it AccessReviewItem
-	err := r.db.QueryRow(ctx, `
-		INSERT INTO ck_access_review_items
-		  (campaign_id, org_id, user_email, access_level)
-		VALUES ($1::uuid, $2::uuid, $3, $4)
-		RETURNING id::text, campaign_id::text, org_id::text,
-		          user_email, access_level, decision,
-		          COALESCE(reviewer_comment,''), decided_at, created_at`,
-		in.CampaignID, orgID, in.UserEmail, in.AccessLevel,
-	).Scan(
-		&it.ID, &it.CampaignID, &it.OrgID,
-		&it.UserEmail, &it.AccessLevel, &it.Decision,
-		&it.ReviewerComment, &it.DecidedAt, &it.CreatedAt,
-	)
+	row, err := r.q.CreateCKAccessReviewItem(ctx, db.CreateCKAccessReviewItemParams{
+		CampaignID:  in.CampaignID,
+		OrgID:       orgID,
+		UserEmail:   in.UserEmail,
+		AccessLevel: in.AccessLevel,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("create access review item: %w", err)
 	}
+	it := itemFromCk(db.CkAccessReviewItems(row))
 	return &it, nil
 }
 
 // UpdateAccessReviewItem applies a decision to a review item.
 func (r *Repository) UpdateAccessReviewItem(ctx context.Context, orgID, id string, in UpdateAccessReviewItemInput) (*AccessReviewItem, error) {
-	var decidedAt *time.Time
+	var decidedAt pgtype.Timestamptz
 	if in.Decision == "approved" || in.Decision == "revoked" {
-		now := time.Now().UTC()
-		decidedAt = &now
+		decidedAt = pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true}
 	}
-
-	var it AccessReviewItem
-	err := r.db.QueryRow(ctx, `
-		UPDATE ck_access_review_items
-		SET decision = COALESCE(NULLIF($1,''), decision),
-		    reviewer_comment = $2,
-		    decided_at = CASE WHEN $1 IN ('approved','revoked') THEN $3 ELSE decided_at END
-		WHERE id = $4::uuid AND org_id = $5::uuid
-		RETURNING id::text, campaign_id::text, org_id::text,
-		          user_email, access_level, decision,
-		          COALESCE(reviewer_comment,''), decided_at, created_at`,
-		in.Decision, in.ReviewerComment, decidedAt, id, orgID,
-	).Scan(
-		&it.ID, &it.CampaignID, &it.OrgID,
-		&it.UserEmail, &it.AccessLevel, &it.Decision,
-		&it.ReviewerComment, &it.DecidedAt, &it.CreatedAt,
-	)
+	row, err := r.q.UpdateCKAccessReviewItem(ctx, db.UpdateCKAccessReviewItemParams{
+		Decision:        in.Decision,
+		ReviewerComment: in.ReviewerComment,
+		DecidedAt:       decidedAt,
+		ID:              id,
+		OrgID:           orgID,
+	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("update access review item: %w", err)
 	}
+	it := itemFromCk(db.CkAccessReviewItems(row))
 	return &it, nil
 }

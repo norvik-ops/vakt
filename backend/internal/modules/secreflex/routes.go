@@ -48,6 +48,7 @@ func Register(g *echo.Group, h *Handler) {
 
 	// --- Community: Training modules (create/list) ---
 	p.GET("/training-modules", h.ListModules)
+	p.GET("/training-modules/presets", h.ListTrainingPresets)
 	p.POST("/training-modules", h.CreateModule, rw)
 
 	// --- Community: Basic assignment tracking ---

@@ -12,7 +12,7 @@
 
 Vakt is a self-hosted, source-available security and compliance platform built for SMEs in the DACH region. It helps IT teams implement and document NIS2, ISO 27001, and BSI-Grundschutz requirements — without sending any data outside your own infrastructure.
 
-It is a free-to-self-host alternative to commercial tools like Vanta or Drata (~€10,000/year), licensed under the Elastic License 2.0. Deploy it with a single `docker compose up` command — under 5 minutes on a typical server connection, under 3 minutes with cached images.
+It is a free-to-self-host alternative to commercial tools like Vanta or Drata (~€10,000/year), licensed under the Elastic License 2.0. Deploy it with a single `docker compose up` command — the platform is **ready in under 5 minutes**. The bundled local AI advisor takes a bit longer on first start because it downloads the ~1.9 GB `qwen2.5:3b` model — depending on your bandwidth, expect an extra **3–30 minutes** until AI features are available. The platform itself works without waiting for the model.
 
 ---
 
@@ -73,20 +73,21 @@ Demo login (requires `VAKT_DEMO=true`): `admin@vakt.local` / `admin1234`
 | **Disk** | 20 GB SSD | 40 GB SSD | 40 GB SSD (+3 GB for model) |
 | **Docker Engine** | 24+ | 24+ | 24+ |
 
-The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key required. Pull the model once after first start: `docker compose --profile ai exec ollama ollama pull llama3.2:3b`. To disable: set `VAKT_AI_PROVIDER=disabled`.
+The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key required, and **Community since v0.6.x** (no Pro license needed). Ollama starts automatically with `docker compose up`; an `ollama-init` container pulls the default model (`qwen2.5:3b`, Apache 2.0, ~1.9 GB RAM) on first launch — no manual `ollama pull` step. Other options: `llama3.2:1b` (smaller), `phi3.5:mini` (Microsoft, MIT), or Mistral EU API. To disable on small VMs: set `VAKT_AI_PROVIDER=disabled` and remove the `ollama`/`ollama-init` services via compose-override.
 
 ---
 
 ## Pro License
 
-Vakt Community is free for self-hosting. Pro unlocks additional features:
+Vakt Community is free for self-hosting and includes the **AI advisor** out-of-the-box (since v0.6.x). Pro unlocks additional Premium-Compliance features:
 - TISAX, DORA, EU AI Act, CRA compliance frameworks
 - PDF audit exports and audit packages
-- AI-powered compliance advisor
+- NIS2 reporting assistant
 - SSO (OIDC/SAML) integration
 - API access tokens
 - Advanced scanner features (SBOM, EOL tracking)
 - Advanced phishing simulation campaigns
+- Supplier portal and granular module permissions
 
 Purchase at [vakt.dev/pricing](https://vakt.dev/pricing). After purchase, enter your
 license key in **Settings → License**.
@@ -123,13 +124,27 @@ See `docs/configuration.md` for the full reference.
 
 Vakt includes a built-in AI advisor that analyses your organisation's real compliance gaps and answers "What should I do this week?" — specific to your data, running entirely on your server.
 
-**Enabled by default** via a local Ollama container (CPU-only, no GPU, no API key). Pull the model once after first start:
+**Enabled by default** via a local Ollama container (CPU-only, no GPU, no API key, no Pro license). Default model is `qwen2.5:3b` (Apache 2.0, ~1.9 GB RAM, good German performance). The model is pulled automatically by the `ollama-init` container on first `docker compose up` — no manual step.
+
+To switch to a different model:
 
 ```bash
-docker compose --profile ai exec ollama ollama pull llama3.2:3b
+docker compose exec ollama ollama pull phi3.5:mini
+echo 'VAKT_AI_MODEL=phi3.5:mini' >> .env
+docker compose restart api worker
 ```
 
-To use a cloud provider instead (e.g. Mistral AI, OpenAI):
+**Model alternatives** (all CPU-only, choose based on your RAM budget):
+
+| Model | RAM | License | Note |
+|-------|-----|---------|------|
+| `qwen2.5:3b` | 1.9 GB | Apache 2.0 | Default — fast, good DE |
+| `llama3.2:1b` | 1.3 GB | Llama Comm. | Most economical |
+| `llama3.2:3b` | 2.0 GB | Llama Comm. | Meta, balanced |
+| `phi3.5:mini` | 2.3 GB | MIT | Microsoft, structured outputs |
+| `gemma2:2b` | 1.6 GB | Gemma Terms | Google, more restrictive license |
+
+To use a cloud provider instead (e.g. Mistral AI EU, OpenAI):
 
 ```env
 VAKT_AI_BASE_URL=https://api.mistral.ai/v1

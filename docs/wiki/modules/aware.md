@@ -49,21 +49,53 @@ Für lokale Entwicklung und Tests ist [Mailpit](https://github.com/axllent/mailp
 | `usb` | USB-Drop-Angriffssimulation |
 | `smishing` | SMS-basierter Angriff |
 
-15 vorgefertigte Vorlagen sind eingebaut (z. B. gefälschte IT-Abteilungs-E-Mail, CEO-Fraud, Paketbenachrichtigung).
+10+ vorgefertigte DACH-spezifische Vorlagen sind eingebaut — alle in Deutsch, mit realistischen Mustern aus BSI-/CERT-Bund-Phishing-Reports. Abrufbar über `GET /api/v1/secreflex/templates/presets`. Beispiele: CEO-Fraud (deutsche Anrede), IT-Helpdesk Passwort-Reset, DHL-Paket-Zustellung, Microsoft-365-MFA-Warnung, Mahnung-PDF, OneDrive-Share, Sparkasse-SMS, USB-Köder-Szenario.
+
+Zusätzlich verfügbar: 5+ vorgefertigte **Trainings-Module** (`GET /api/v1/secreflex/training-modules/presets`) — Phishing-Grundlagen, MFA-Aufklärung, Smishing, USB-Köder, Vishing.
 
 ---
 
-## Betriebsrat-Modus
+## Betriebsrat-Modus — Anonymisierungs-Garantie
 
-Ein zentrales Feature von Vakt Aware: Das Tracking ist datenschutzkonform.
+Ein zentrales Feature von Vakt Aware: Das Tracking ist DSGVO- und §87-BetrVG-konform.
 
-Im **Betriebsrat-Modus** (Standard) werden Klick-Events nur auf Abteilungsebene aggregiert — nicht für einzelne Personen. Das bedeutet:
+### Was im Betriebsrat-Modus passiert
 
-- Die Reporting-Ansicht zeigt "Marketing: 3 von 10 haben geklickt" — aber nicht, *wer* geklickt hat
-- Einzelne Klickdaten werden nicht gespeichert
-- Kein Unterlaufen von Betriebsvereinbarungen
+Wenn eine Kampagne mit `betriebsrat_mode = true` läuft, garantiert Vakt Aware **technisch erzwungen** (nicht nur per Display-Filter):
 
-Den Modus kann man pro Kampagne ein- oder ausschalten. Wenn ausgeschaltet: Individuelle Tracking-Daten werden gespeichert (nur mit entsprechender Betriebsvereinbarung).
+| Datentyp | Bei `betriebsrat_mode=true` |
+|----------|------------------------------|
+| IP-Adresse des Klicks | **Wird nicht gespeichert** (leer in der DB) |
+| User-Agent / Browser | **Wird nicht gespeichert** (leer in der DB) |
+| `target_id` (Person) | **Nicht im Event gespeichert** |
+| Department-Aggregat | Wird gespeichert (für Abteilungsstatistiken) |
+| Klick / Open / Submission | Wird als Vorgang gezählt (ohne Personenbezug) |
+| Trainings-Completions | Werden auf Department-Ebene gezählt |
+
+Die Anonymisierung greift **beim Schreiben** in die DB — eine spätere Modus-Umstellung kann keine Daten zurückholen, die nie gespeichert wurden. Das ist datenschutzrechtlich belastbarer als reine Display-Filter, weil keine "Schattenhistorie" existiert.
+
+### Was die Reporting-Ansicht zeigt
+
+- ✅ "Marketing: 3 von 10 haben geklickt"
+- ✅ "Klickrate über alle Abteilungen: 17 %"
+- ❌ Welcher Mitarbeiter geklickt hat
+- ❌ Welche IP / welcher Browser
+
+### Wann sollte der Modus ausgeschaltet werden?
+
+Nur mit ausdrücklicher **Betriebsvereinbarung** und schriftlicher Zustimmung des Betriebsrats. Häufige Anwendungsfälle:
+- Kleine Unternehmen ohne Betriebsrat (Geschäftsführer-Entscheidung)
+- Konzerne mit konzernweiter "Security-Awareness-Vereinbarung", die personenbezogenes Tracking explizit erlaubt
+- Pilotphase mit Freiwilligen, die schriftlich eingewilligt haben
+
+### Compliance-Begründung
+
+| Rechtsgrundlage | Begründung |
+|-----------------|-----------|
+| DSGVO Art. 5 (1c) — Datenminimierung | Es werden nur Daten erhoben, die zur Statistik nötig sind |
+| DSGVO Art. 32 — TOM | Anonymisierung als technisch-organisatorische Maßnahme |
+| §87 BetrVG Abs. 1 Nr. 6 | Mitbestimmung bei technischen Überwachungseinrichtungen — kein Personenbezug = keine Überwachung |
+| ISO 27001 A.6.3 | Information Security Awareness, Education and Training — DSGVO-konform umsetzbar |
 
 ---
 

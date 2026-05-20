@@ -1,8 +1,8 @@
-# SecReflex — Security Awareness & Phishing-Simulation
+# Vakt Aware (`secreflex`) — Security Awareness & Phishing-Simulation
 
 ## Übersicht
 
-SecReflex ermöglicht interne Phishing-Simulationen und ordnet Mitarbeitern nach einer Simulation automatisch passende Trainingsmodule zu. Das Reporting ist standardmäßig anonymisiert (Betriebsrat-Modus), sodass keine individuellen Klickdaten an die Unternehmensleitung weitergegeben werden. Abgeschlossene Trainings fließen automatisch als Compliance-Nachweis in SecVitals ein.
+Vakt Aware ermöglicht interne Phishing-Simulationen und ordnet Mitarbeitern nach einer Simulation automatisch passende Trainingsmodule zu. Das Reporting ist standardmäßig anonymisiert (Betriebsrat-Modus), sodass keine individuellen Klickdaten an die Unternehmensleitung weitergegeben werden. Abgeschlossene Trainings fließen automatisch als Compliance-Nachweis in Vakt Comply ein.
 
 ## Aktivierung
 
@@ -34,7 +34,7 @@ VAKT_MODULES_ENABLED=secvitals,secpulse,secvault,secprivacy  # secreflex weglass
 - **Kampagnen-Statistiken** — Aggregierte Rates (open_rate, click_rate, submission_rate) pro Kampagne
 - **Trainingsmodule** — Video- oder Quiz-Module pro Angriffstyp; konfigurierbare Bestehensgrenze (1–100 %)
 - **Zuweisungen** — Training einem Einzelziel oder einer Abteilung mit Fälligkeitsdatum zuweisen; Überfälligkeitsstatus automatisch berechnet
-- **Trainingsabschluss** — Quiz-Antworten einreichen und Bestanden/Nicht-Bestanden ermitteln; Asynq-Job erzeugt automatisch einen SecVitals-Nachweis
+- **Trainingsabschluss** — Quiz-Antworten einreichen und Bestanden/Nicht-Bestanden ermitteln; Asynq-Job erzeugt automatisch einen Vakt Comply-Nachweis
 - **Training-Reminder** — Asynq-Job erinnert an überfällige Zuweisungen
 
 ## Rollen

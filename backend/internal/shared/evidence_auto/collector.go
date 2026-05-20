@@ -88,8 +88,8 @@ func CollectSecReflexEvidence(ctx context.Context, db *pgxpool.Pool, orgID, camp
 	var participantCount int
 	err := db.QueryRow(ctx, `
 		SELECT c.name, COUNT(DISTINCT e.id)
-		FROM pg_campaigns c
-		LEFT JOIN pg_events e ON e.campaign_id = c.id
+		FROM sr_campaigns c
+		LEFT JOIN sr_events e ON e.campaign_id = c.id
 		WHERE c.id = $1 AND c.org_id = $2
 		GROUP BY c.name`,
 		campaignID, orgID,

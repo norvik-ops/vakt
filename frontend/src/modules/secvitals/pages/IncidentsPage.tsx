@@ -17,6 +17,7 @@ import { FieldError } from '../../../shared/components/FieldError'
 import { useSavedFilters } from '../../../shared/hooks/useSavedFilters'
 import { useFormValidation } from '../../../shared/hooks/useFormValidation'
 import { useIncidents, useCreateIncident } from '../hooks/useIncidents'
+import { useFirstAction } from '../../../shared/hooks/useFirstAction'
 import { useCAPAsForSource } from '../hooks/useCAPAs'
 import type { Incident, CreateIncidentInput } from '../types'
 import { toast } from '../../../shared/hooks/useToast'
@@ -148,6 +149,7 @@ export default function IncidentsPage() {
 
   const { data: incidents, isLoading, isError, pagination } = useIncidents(page)
   const createIncident = useCreateIncident()
+  useFirstAction('incident:first-created', (incidents?.length ?? 0) > 0)
   const { errors: incErrors, validate: validateInc, clearError: clearIncError, clearAll: clearIncErrors } = useFormValidation<Record<string, unknown>>({
     title: { required: true, maxLength: 255 },
   })

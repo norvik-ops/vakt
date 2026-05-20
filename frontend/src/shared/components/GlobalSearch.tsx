@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useSearch, SearchResult } from '../../hooks/useSearch'
 import { useDebounce } from '../../hooks/useDebounce'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 interface QuickNavItem {
   label: string
@@ -145,6 +146,8 @@ export function GlobalSearch() {
     item?.scrollIntoView({ block: 'nearest' })
   }, [activeIdx])
 
+  const trapRef = useFocusTrap<HTMLDivElement>(open, () => setOpen(false))
+
   if (!open) return null
 
   return (
@@ -153,6 +156,7 @@ export function GlobalSearch() {
       onClick={() => setOpen(false)}
     >
       <div
+        ref={trapRef}
         role="dialog"
         aria-label="Suche"
         aria-modal="true"

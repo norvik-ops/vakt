@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { apiFetch } from '../api/client'
 import { ProGate } from '../shared/components/ProGate'
 import { toast } from '../shared/hooks/useToast'
+import { SkeletonTable } from '../shared/components/SkeletonLoaders'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -338,8 +339,8 @@ function ApiKeysContent() {
 
           {/* Loading */}
           {isLoading && (
-            <div className="px-4 py-8 text-center text-sm text-secondary">
-              {t('settings.apiKeysPage.loading')}
+            <div className="px-4 py-4">
+              <SkeletonTable rows={3} cols={5} />
             </div>
           )}
 

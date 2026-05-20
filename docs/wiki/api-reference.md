@@ -73,7 +73,7 @@ Rate-limit headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-R
 | `POST` | `/auth/password-reset/request` | Send reset e-mail |
 | `POST` | `/auth/password-reset/confirm` | Set new password |
 
-### Vakt Scan (SecPulse)
+### Vakt Scan (`secpulse`)
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -89,7 +89,7 @@ Rate-limit headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-R
 | `GET` | `/secpulse/scans` | List scans |
 | `POST` | `/secpulse/scans` | Trigger scan |
 
-### Vakt Comply (SecVitals)
+### Vakt Comply (`secvitals`)
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -111,7 +111,7 @@ Rate-limit headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-R
 | `GET` | `/secvitals/incidents/:id` | Get incident |
 | `PUT` | `/secvitals/incidents/:id` | Update incident |
 
-### Vakt Privacy (SecPrivacy)
+### Vakt Privacy (`secprivacy`)
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -130,7 +130,7 @@ Rate-limit headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-R
 | `GET` | `/secprivacy/dsr` | List data subject requests |
 | `POST` | `/secprivacy/dsr` | Create DSR |
 
-### Vakt Vault (SecVault)
+### Vakt Vault (`secvault`)
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -166,7 +166,7 @@ Payloads are HMAC-SHA256 signed with the `X-Vakt-Signature` header when a secret
 | `GET` | `/notifications/preferences` | Get current user's preferences |
 | `PUT` | `/notifications/preferences` | Update preferences |
 
-### Vakt HR (SecHR)
+### Vakt HR (`hr`)
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -183,7 +183,7 @@ Payloads are HMAC-SHA256 signed with the `X-Vakt-Signature` header when a secret
 | `GET` | `/hr/checklist-runs/:id` | Get checklist run |
 | `PUT` | `/hr/checklist-runs/:id` | Update run progress / mark completed |
 
-### Vakt Aware (SecReflex) — Pro
+### Vakt Aware (`secreflex`) — Pro
 
 | Method | Path | Description |
 |--------|------|-------------|

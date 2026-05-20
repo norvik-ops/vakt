@@ -36,6 +36,7 @@ import {
 } from '../components/ui/select'
 import { apiFetch } from '../api/client'
 import { toast } from '../shared/hooks/useToast'
+import { SkeletonTable } from '../shared/components/SkeletonLoaders'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -532,11 +533,7 @@ export default function ScheduledReportsPage() {
       />
 
       <div className="flex-1 p-6 overflow-auto">
-        {isLoading && (
-          <div className="flex items-center justify-center h-32">
-            <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
-          </div>
-        )}
+        {isLoading && <SkeletonTable rows={4} cols={5} />}
 
         {isError && (
           <p className="text-sm text-red-500">

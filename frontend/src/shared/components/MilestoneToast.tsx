@@ -10,10 +10,14 @@ const MILESTONES = [
 ]
 
 const STORAGE_KEY = 'vakt_milestone_seen'
+const JUMP_KEY = 'vakt_milestone_last_jump_score'
+const JUMP_THRESHOLD = 10
 
 /**
  * Hook that fires a one-time toast whenever `score` crosses a milestone
  * threshold for the first time (persisted in localStorage per browser).
+ * Also fires a one-time celebratory toast whenever the score jumps by
+ * 10 percentage points or more compared to the previous baseline.
  *
  * Usage: call at the top of any component that has a numeric compliance score.
  *
@@ -26,10 +30,12 @@ export function useMilestoneToast(score: number | undefined) {
   useEffect(() => {
     if (score == null) return
 
+    // Threshold crossings (one-time per browser, persisted).
     const seen = new Set<number>(
       JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as number[],
     )
 
+    let firedThreshold = false
     for (const m of MILESTONES) {
       if (
         score >= m.threshold &&
@@ -42,8 +48,34 @@ export function useMilestoneToast(score: number | undefined) {
           variant: 'success',
           duration: 6000,
         })
+        firedThreshold = true
         break // only one toast at a time
       }
+    }
+
+    // Score-jump detection: notify on +10 percentage points since last baseline,
+    // suppressed if a threshold toast already fired this tick to avoid double-toast.
+    if (!firedThreshold) {
+      const lastJump = parseFloat(localStorage.getItem(JUMP_KEY) ?? '')
+      const baseline = !isNaN(lastJump) ? lastJump : prevScore.current
+      if (baseline != null && score - baseline >= JUMP_THRESHOLD) {
+        const delta = Math.round(score - baseline)
+        localStorage.setItem(JUMP_KEY, String(score))
+        toast(`📈 Score +${delta.toString()}% — du bist auf einem guten Weg!`, {
+          variant: 'success',
+          duration: 5000,
+        })
+      } else if (baseline == null) {
+        // First observation in this browser — set baseline silently.
+        localStorage.setItem(JUMP_KEY, String(score))
+      }
+    } else {
+      // A threshold toast fired this tick. We must still advance the jump
+      // baseline — otherwise a long-running session where every score change
+      // happens to cross a threshold leaves JUMP_KEY frozen at the first
+      // observed value, and a later remount with the same score then triggers
+      // a phantom "+N%" toast (the very bug this branch was added to fix).
+      localStorage.setItem(JUMP_KEY, String(score))
     }
 
     prevScore.current = score

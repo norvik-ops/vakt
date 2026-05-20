@@ -1,8 +1,8 @@
-# SecPulse — Schwachstellenmanagement
+# Vakt Scan (`secpulse`) — Schwachstellenmanagement
 
 ## Übersicht
 
-SecPulse orchestriert bestehende Open-Source-Scanner (Trivy, Nuclei, OpenVAS) und normalisiert deren Ergebnisse in einem einheitlichen Finding-Modell. Duplikate werden konsolidiert, Findings nach CVSS- und EPSS-Score priorisiert und per SLA-Fristen verfolgt. Sobald ein Finding geschlossen wird, erzeugt ein Asynq-Job automatisch einen Compliance-Nachweis in SecVitals.
+Vakt Scan orchestriert bestehende Open-Source-Scanner (Trivy, Nuclei, OpenVAS) und normalisiert deren Ergebnisse in einem einheitlichen Finding-Modell. Duplikate werden konsolidiert, Findings nach CVSS- und EPSS-Score priorisiert und per SLA-Fristen verfolgt. Sobald ein Finding geschlossen wird, erzeugt ein Asynq-Job automatisch einen Compliance-Nachweis in Vakt Comply.
 
 ## Aktivierung
 
@@ -27,7 +27,7 @@ VAKT_MODULES_ENABLED=secvitals,secvault,secreflex,secprivacy  # secpulse weglass
 - **Scan-Reports** — Asynchron generierte Executive-Reports (PDF/JSON) mit konfigurierbarem Scope
 - **Findings-Export** — CSV- oder JSON-Export mit Filter nach Severity und Status
 - **Findings-Import** — Bulk-Import von Findings aus externen Quellen
-- **Automatische SecVitals-Evidence** — Asynq-Job `secpulse:auto_evidence` erstellt bei Finding-Schließung einen Nachweis im Patch-Management-Control
+- **Automatische Vakt Comply-Evidence** — Asynq-Job `secpulse:auto_evidence` erstellt bei Finding-Schließung einen Nachweis im Patch-Management-Control
 
 ## Rollen
 
@@ -146,7 +146,7 @@ Alle Endpunkte erfordern `Authorization: Bearer <token>`.
 | `secpulse:scan:nuclei` | API-Aufruf / Schedule | Nuclei-Scan ausführen |
 | `secpulse:scan:openvas` | API-Aufruf / Schedule | OpenVAS-Scan ausführen |
 | `secpulse:epss_enrich` | Nach Scan | EPSS-Scores für neue Findings nachladen |
-| `secpulse:auto_evidence` | Finding-Schließung | Compliance-Nachweis in SecVitals erstellen |
+| `secpulse:auto_evidence` | Finding-Schließung | Compliance-Nachweis in Vakt Comply erstellen |
 | `secpulse:generate_report` | API-Aufruf | Report asynchron generieren |
 
 ## Compliance-Mapping

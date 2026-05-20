@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/db"
 )
 
 // ChangeLogEntry represents one field change on a control.
@@ -25,17 +27,15 @@ type ChangeLogEntry struct {
 // Errors are logged but not returned — a changelog write failure must never
 // abort the primary update operation.
 func (r *Repository) AppendControlChange(ctx context.Context, orgID, controlID, userID, userEmail, field, oldVal, newVal string) {
-	var userIDParam interface{}
-	if userID != "" {
-		userIDParam = userID
-	}
-
-	_, err := r.db.Exec(ctx, `
-		INSERT INTO ck_control_changelog
-			(control_id, org_id, user_id, user_email, field, old_value, new_value, changed_at)
-		VALUES
-			($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, NOW())
-	`, controlID, orgID, userIDParam, userEmail, field, oldVal, newVal)
+	err := r.q.AppendCKControlChange(ctx, db.AppendCKControlChangeParams{
+		ControlID: controlID,
+		OrgID:     orgID,
+		UserID:    ckOptUUIDFromStr(userID),
+		UserEmail: ckOptText(userEmail),
+		Field:     field,
+		OldValue:  ckOptText(oldVal),
+		NewValue:  ckOptText(newVal),
+	})
 	if err != nil {
 		log.Error().
 			Err(err).
@@ -48,27 +48,22 @@ func (r *Repository) AppendControlChange(ctx context.Context, orgID, controlID, 
 // ListControlChanges returns the last 50 field-level changes for a control,
 // ordered newest first.
 func (r *Repository) ListControlChanges(ctx context.Context, orgID, controlID string) ([]ChangeLogEntry, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT id::text, control_id::text, COALESCE(user_email,''),
-		       field, COALESCE(old_value,''), COALESCE(new_value,''), changed_at
-		FROM ck_control_changelog
-		WHERE org_id = $1::uuid
-		  AND control_id = $2::uuid
-		ORDER BY changed_at DESC
-		LIMIT 50
-	`, orgID, controlID)
+	rows, err := r.q.ListCKControlChanges(ctx, db.ListCKControlChangesParams{OrgID: orgID, ControlID: controlID})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
-	var entries []ChangeLogEntry
-	for rows.Next() {
-		var e ChangeLogEntry
-		if err := rows.Scan(&e.ID, &e.ControlID, &e.UserEmail, &e.Field, &e.OldValue, &e.NewValue, &e.ChangedAt); err != nil {
-			return nil, err
-		}
-		entries = append(entries, e)
+	out := make([]ChangeLogEntry, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, ChangeLogEntry{
+			ID:        row.ID,
+			ControlID: row.ControlID,
+			UserEmail: row.UserEmail.String,
+			Field:     row.Field,
+			OldValue:  row.OldValue.String,
+			NewValue:  row.NewValue.String,
+			ChangedAt: ckTsToTime(row.ChangedAt),
+		})
 	}
-	return entries, rows.Err()
+	return out, nil
 }
+

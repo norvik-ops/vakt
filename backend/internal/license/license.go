@@ -20,6 +20,11 @@ const (
 	FeatureDORA      = "dora"
 	FeatureEUAIAct   = "eu_ai_act"
 	FeatureCRA       = "cra"
+	// FeatureAIAdvisor war vor v0.6.x ein Pro-Gate für die AI-Copilot-Endpunkte.
+	// Seit v0.6.x ist AI Community: qwen2.5:3b läuft CPU-lokal in jeder Instanz,
+	// das frühere Gate war Marketing-Limitierung ohne echten Schutz. Die Konstante
+	// bleibt erhalten, weil ausgegebene Lizenzen sie noch im features-Array führen
+	// — Lizenz-Validierung soll weiterhin erfolgreich sein.
 	FeatureAIAdvisor = "ai_advisor"
 	FeatureAuditPDF  = "audit_pdf"
 	FeatureSSO       = "sso"

@@ -16,6 +16,7 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '../../../components/ui/select'
 import { useAssets, useCreateAsset, useImportAssets } from '../hooks/useAssets'
+import { useFirstAction } from '../../../shared/hooks/useFirstAction'
 import type { Asset } from '../types'
 import type { CreateAssetInput, ImportAssetsResult } from '../hooks/useAssets'
 import { toast } from '../../../shared/hooks/useToast'
@@ -121,6 +122,7 @@ export default function AssetsPage() {
   const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const { data: rawAssets, isLoading, isError, error, pagination, refetch } = useAssets(page)
+  useFirstAction('asset:first-created', (rawAssets?.length ?? 0) > 0)
   const assetsWithOrder: SortableAsset[] = (rawAssets ?? []).map((a) => ({
     ...a,
     criticality_order: CRITICALITY_ORDER[a.criticality] ?? 0,

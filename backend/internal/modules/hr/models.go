@@ -92,3 +92,14 @@ type UpdateChecklistRunInput struct {
 	CompletedItems []string `json:"completed_items"`
 	Status         string   `json:"status" validate:"required,oneof=in_progress completed"`
 }
+
+// RunEvent records a single step completion within a checklist run. Used as the
+// audit trail (who completed which step, when) for compliance evidence.
+type RunEvent struct {
+	ID          string    `json:"id"`
+	RunID       string    `json:"run_id"`
+	OrgID       string    `json:"org_id"`
+	StepID      string    `json:"step_id"`
+	CompletedBy string    `json:"completed_by"`
+	CompletedAt time.Time `json:"completed_at"`
+}

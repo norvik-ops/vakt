@@ -5,6 +5,7 @@ import { PageHeader } from '../shared/components/PageHeader'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import { apiFetch } from '../api/client'
+import { SkeletonTable } from '../shared/components/SkeletonLoaders'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -94,8 +95,8 @@ export default function SessionsPage() {
 
         {/* Loading */}
         {isLoading && (
-          <div className="px-4 py-8 text-center text-sm text-secondary">
-            {t('settings.sessionsPage.loading')}
+          <div className="px-4 py-4">
+            <SkeletonTable rows={3} cols={4} />
           </div>
         )}
 

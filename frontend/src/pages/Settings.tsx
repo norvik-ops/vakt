@@ -164,7 +164,7 @@ const FEATURE_LABELS: Record<string, string> = {
   dora: 'DORA',
   eu_ai_act: 'EU AI Act',
   cra: 'CRA',
-  ai_advisor: 'KI-Berater',
+  ai_advisor: 'KI-Berater (legacy — seit v0.6.x Community)',
   audit_pdf: 'Audit-PDF Export',
   sso: 'SSO (OIDC/SAML)',
   api_access: 'API-Zugang',

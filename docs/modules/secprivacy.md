@@ -1,8 +1,8 @@
-# SecPrivacy — DSGVO-Dokumentation
+# Vakt Privacy (`secprivacy`) — DSGVO-Dokumentation
 
 ## Übersicht
 
-SecPrivacy ist die zentrale DSGVO-Dokumentationsplattform innerhalb von Vakt. Es deckt alle praxisrelevanten Pflichten der DSGVO ab: Verzeichnis der Verarbeitungstätigkeiten (Art. 30), Datenschutz-Folgeabschätzungen (Art. 35), Auftragsverarbeiterverträge (Art. 28) sowie Datenpannenmeldungen (Art. 33/34) und Betroffenenrechts-Anfragen (Art. 15–21). Pannenmeldungen werden automatisch mit dem SecVitals-Vorfallsregister verknüpft; abgeschlossene Betroffenenanfragen erzeugen automatisch einen Compliance-Nachweis in SecVitals.
+Vakt Privacy ist die zentrale DSGVO-Dokumentationsplattform innerhalb von Vakt. Es deckt alle praxisrelevanten Pflichten der DSGVO ab: Verzeichnis der Verarbeitungstätigkeiten (Art. 30), Datenschutz-Folgeabschätzungen (Art. 35), Auftragsverarbeiterverträge (Art. 28) sowie Datenpannenmeldungen (Art. 33/34) und Betroffenenrechts-Anfragen (Art. 15–21). Pannenmeldungen werden automatisch mit dem Vakt Comply-Vorfallsregister verknüpft; abgeschlossene Betroffenenanfragen erzeugen automatisch einen Compliance-Nachweis in Vakt Comply.
 
 ## Aktivierung
 
@@ -17,8 +17,8 @@ VAKT_MODULES_ENABLED=secvitals,secpulse,secvault,secreflex  # secprivacy weglass
 - **VVT** — Verzeichnis von Verarbeitungstätigkeiten nach Art. 30 DSGVO; Felder für Zweck, Rechtsgrundlage, Datenkategorien, Betroffene, Empfänger, Aufbewahrung, Drittlandtransfer; CSV-Export; Status active/archived
 - **DPIA** — Datenschutz-Folgeabschätzungen nach Art. 35 DSGVO; Verknüpfung mit VVT-Einträgen; Notwendigkeits- und Risikobeurteilung, Minderungsmaßnahmen, Restrisiko, DSB-Konsultation; Genehmigungs-Workflow; Export
 - **AVV** — Auftragsverarbeitungsverträge nach Art. 28 DSGVO; Ablaufdatum und Review-Datum pro Vertrag; automatische Statusänderung auf "expired"; täglicher Asynq-Job für Ablauf-Alerts
-- **Datenpannenmeldungen** — Breach-Records nach Art. 33/34 DSGVO; 72-Stunden-Deadline automatisch berechnet; Behördenbenachrichtigung dokumentieren; PDF-Export der Meldung; automatische Verknüpfung mit SecVitals-Vorfallsregister via Asynq
-- **DSR** — Betroffenenrechts-Anfragen nach Art. 15–21 DSGVO; 30-Tage-Frist automatisch berechnet (Art. 12 Abs. 3); Typen: access / erasure / portability / objection / rectification; CSV-Export; Asynq-Job für Überfälligkeits-Alerts; Abschluss erzeugt SecVitals-Evidence
+- **Datenpannenmeldungen** — Breach-Records nach Art. 33/34 DSGVO; 72-Stunden-Deadline automatisch berechnet; Behördenbenachrichtigung dokumentieren; PDF-Export der Meldung; automatische Verknüpfung mit Vakt Comply-Vorfallsregister via Asynq
+- **DSR** — Betroffenenrechts-Anfragen nach Art. 15–21 DSGVO; 30-Tage-Frist automatisch berechnet (Art. 12 Abs. 3); Typen: access / erasure / portability / objection / rectification; CSV-Export; Asynq-Job für Überfälligkeits-Alerts; Abschluss erzeugt Vakt Comply-Evidence
 
 ## API-Endpunkte
 
@@ -62,7 +62,7 @@ Alle Endpunkte erfordern `Authorization: Bearer <token>`.
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
 | GET | `/api/v1/secprivacy/breaches` | Alle Breach-Records auflisten |
-| POST | `/api/v1/secprivacy/breaches` | Breach anlegen (startet automatisch Vorfallseintrag in SecVitals) |
+| POST | `/api/v1/secprivacy/breaches` | Breach anlegen (startet automatisch Vorfallseintrag in Vakt Comply) |
 | GET | `/api/v1/secprivacy/breaches/:id` | Einzelnen Breach abrufen |
 | PUT | `/api/v1/secprivacy/breaches/:id` | Breach aktualisieren |
 | DELETE | `/api/v1/secprivacy/breaches/:id` | Breach löschen |
@@ -140,7 +140,7 @@ Alle Endpunkte erfordern `Authorization: Bearer <token>`.
 | Job | Zeitplan | Beschreibung |
 |-----|----------|--------------|
 | `secprivacy:avv_expiry_check` | Täglich | Abgelaufene AVVs als "expired" markieren und Alerts versenden |
-| `secprivacy:breach_incident_create` | Bei Breach-Erstellung | Verknüpften Vorfall im SecVitals-Vorfallsregister anlegen |
+| `secprivacy:breach_incident_create` | Bei Breach-Erstellung | Verknüpften Vorfall im Vakt Comply-Vorfallsregister anlegen |
 
 ## Compliance-Mapping
 

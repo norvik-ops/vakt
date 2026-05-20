@@ -18,6 +18,7 @@ import { BulkActionBar } from '../../../shared/components/BulkActionBar'
 import { useSortableTable } from '../../../shared/hooks/useSortableTable'
 import { toast } from '../../../shared/hooks/useToast'
 import { useRisks, useCreateRisk } from '../hooks/useRisks'
+import { useFirstAction } from '../../../shared/hooks/useFirstAction'
 import { apiFetch } from '../../../api/client'
 import RiskHeatmap from '../components/RiskHeatmap'
 import { Skeleton } from '../../../components/ui/skeleton'
@@ -199,6 +200,7 @@ export default function RisksPage() {
   const [isApplyingBulk, setIsApplyingBulk] = useState(false)
   const { data: risks, isLoading, isError, pagination } = useRisks(page)
   const createRisk = useCreateRisk()
+  useFirstAction('risk:first-created', (risks?.length ?? 0) > 0)
 
   function toggleSelect(id: string) {
     setSelected((prev) => {

@@ -42,38 +42,192 @@ func NewService(db *pgxpool.Pool, smtpCfg SMTPConfig, asynqOpt ...asynq.RedisCli
 	return svc
 }
 
-// presetTemplates returns hardcoded preset phishing templates.
+// presetTemplates returns the curated DACH-specific phishing-simulation template
+// library. Each template is in German, uses realistic Absender/Betreff patterns
+// observed in BSI / CERT-Bund phishing reports, and rotates the social-engineering
+// angle (Authority, Urgency, Reward, Fear, Curiosity).
+//
+// Templates use mustache-style placeholders that the campaign sender resolves:
+//
+//	{{first_name}}   — Vorname des Empfängers
+//	{{last_name}}    — Nachname
+//	{{company}}      — Unternehmensname (aus Org-Settings)
+//	{{tracking_url}} — Tracking-Link mit eindeutigem Token
+//	{{open_pixel}}   — 1×1 transparentes Pixel zur Open-Erkennung
 func presetTemplates() []Template {
 	return []Template{
 		{
-			ID:         "preset-ceo-fraud",
-			Name:       "CEO Fraud",
-			Subject:    "Urgent: Wire Transfer Required",
-			FromName:   "{{company}} CEO",
-			FromEmail:  "ceo@{{company}}.com",
-			HTMLBody:   `<p>Hi {{first_name}}, I need you to process a wire transfer urgently...</p>`,
+			ID:         "preset-ceo-fraud-de",
+			Name:       "CEO Fraud (Deutsch)",
+			Subject:    "Vertraulich – kurze Rückmeldung erforderlich",
+			FromName:   "{{company}} Geschäftsführung",
+			FromEmail:  "geschaeftsfuehrung@{{company}}.de",
+			HTMLBody:   `<p>Hallo {{first_name}},</p><p>ich bin gerade in einem Meeting und brauche bitte kurz Ihre Hilfe. Können Sie mir die Bankverbindung für die ausstehende Überweisung kurz bestätigen? Bitte <a href="{{tracking_url}}">hier klicken</a> und die Daten gegenchecken — es ist eilig.</p><p>Danke und beste Grüße</p>{{open_pixel}}`,
 			AttackType: "phishing",
 			IsPreset:   true,
 		},
 		{
-			ID:         "preset-it-helpdesk",
-			Name:       "IT Helpdesk",
-			Subject:    "Your password expires today",
-			FromName:   "IT Helpdesk",
-			FromEmail:  "helpdesk@{{company}}.com",
-			HTMLBody:   `<p>Hi {{first_name}}, your password expires today. Click <a href="{{tracking_url}}">here</a> to reset it.</p>`,
+			ID:         "preset-it-passwort-de",
+			Name:       "IT-Helpdesk Passwort-Reset",
+			Subject:    "Ihr Passwort läuft heute ab",
+			FromName:   "IT-Helpdesk {{company}}",
+			FromEmail:  "helpdesk@{{company}}-it.de",
+			HTMLBody:   `<p>Sehr geehrte/r {{first_name}} {{last_name}},</p><p>Ihr Microsoft-365-Passwort läuft <b>heute um 17:00 Uhr</b> ab. Um eine Sperrung Ihres Kontos zu vermeiden, bitte <a href="{{tracking_url}}">jetzt neues Passwort setzen</a>.</p><p>Bei Fragen wenden Sie sich an Ihren IT-Helpdesk.</p>{{open_pixel}}`,
 			AttackType: "phishing",
 			IsPreset:   true,
 		},
 		{
-			ID:         "preset-package-delivery",
-			Name:       "Package Delivery",
-			Subject:    "Your package could not be delivered",
-			FromName:   "DHL Express",
-			FromEmail:  "noreply@dhl-delivery.com",
-			HTMLBody:   `<p>Dear {{first_name}}, your package could not be delivered. <a href="{{tracking_url}}">Track here</a></p>`,
+			ID:         "preset-dhl-paket-de",
+			Name:       "DHL Paketzustellung",
+			Subject:    "Ihr Paket konnte nicht zugestellt werden",
+			FromName:   "DHL Paket",
+			FromEmail:  "noreply@dhl-paket-tracking.de",
+			HTMLBody:   `<p>Hallo {{first_name}},</p><p>Ihr Paket mit der Sendungsnummer DHL-2026-{{first_name}}-08471 konnte heute nicht zugestellt werden. Bitte <a href="{{tracking_url}}">hier den neuen Zustelltermin auswählen</a>.</p><p>Mit freundlichen Grüßen<br/>Ihr DHL-Team</p>{{open_pixel}}`,
 			AttackType: "phishing",
 			IsPreset:   true,
+		},
+		{
+			ID:         "preset-microsoft-mfa-de",
+			Name:       "Microsoft 365 MFA-Warnung",
+			Subject:    "Ungewöhnliche Anmeldung in Ihrem Microsoft-Konto",
+			FromName:   "Microsoft Sicherheit",
+			FromEmail:  "account-security@microsoft-365-de.com",
+			HTMLBody:   `<p>Hallo {{first_name}},</p><p>wir haben eine ungewöhnliche Anmeldung in Ihrem Microsoft-365-Konto bemerkt:</p><p><b>Standort:</b> Moskau, Russland<br/><b>IP:</b> 185.220.101.47<br/><b>Zeit:</b> vor 12 Minuten</p><p>Falls das nicht Sie waren: <a href="{{tracking_url}}">Konto jetzt sperren</a></p>{{open_pixel}}`,
+			AttackType: "phishing",
+			IsPreset:   true,
+		},
+		{
+			ID:         "preset-rechnung-de",
+			Name:       "Offene Rechnung Mahnung",
+			Subject:    "Letzte Mahnung – Rechnung {{first_name}}-2026-3471",
+			FromName:   "Buchhaltung",
+			FromEmail:  "mahnung@inkasso-services-de.com",
+			HTMLBody:   `<p>Sehr geehrte/r Herr/Frau {{last_name}},</p><p>trotz mehrfacher Mahnung ist die Rechnung Nr. {{first_name}}-2026-3471 über <b>847,32 €</b> bis heute nicht beglichen worden. Sie finden die Rechnung als PDF: <a href="{{tracking_url}}">Rechnung_3471.pdf öffnen</a></p><p>Bei Nichtzahlung leiten wir den Vorgang an unser Inkasso weiter.</p>{{open_pixel}}`,
+			AttackType: "phishing",
+			IsPreset:   true,
+		},
+		{
+			ID:         "preset-personalabteilung-de",
+			Name:       "Personalabteilung Gehaltsabrechnung",
+			Subject:    "Ihre Gehaltsabrechnung Dezember 2025 (überarbeitet)",
+			FromName:   "Personalabteilung {{company}}",
+			FromEmail:  "personal@{{company}}-hr.com",
+			HTMLBody:   `<p>Hallo {{first_name}},</p><p>aufgrund einer Korrektur der Sondervergütung haben wir Ihre Gehaltsabrechnung für Dezember 2025 angepasst. Bitte <a href="{{tracking_url}}">die neue Version hier ansehen</a> und bestätigen.</p><p>Viele Grüße<br/>Personalabteilung</p>{{open_pixel}}`,
+			AttackType: "phishing",
+			IsPreset:   true,
+		},
+		{
+			ID:         "preset-shared-drive-de",
+			Name:       "Shared Drive Einladung",
+			Subject:    "{{first_name}}, ein Dokument wurde mit Ihnen geteilt",
+			FromName:   "OneDrive",
+			FromEmail:  "no-reply@onedrive-share.de",
+			HTMLBody:   `<p>Hallo {{first_name}},</p><p>ein Kollege hat das Dokument <b>"Strategie_2026_VERTRAULICH.xlsx"</b> mit Ihnen geteilt.</p><p><a href="{{tracking_url}}">Dokument öffnen</a></p><p>Dieser Link läuft in 48 Stunden ab.</p>{{open_pixel}}`,
+			AttackType: "phishing",
+			IsPreset:   true,
+		},
+		{
+			ID:         "preset-betriebsrat-umfrage-de",
+			Name:       "Betriebsrats-Umfrage (Mitarbeiterzufriedenheit)",
+			Subject:    "Anonyme Umfrage: Ihre Meinung zählt",
+			FromName:   "Betriebsrat {{company}}",
+			FromEmail:  "betriebsrat@{{company}}-survey.de",
+			HTMLBody:   `<p>Liebe/r {{first_name}},</p><p>wir möchten Ihre Meinung zur Arbeitssituation hören. Die Teilnahme dauert nur 3 Minuten und ist <b>vollständig anonym</b>.</p><p><a href="{{tracking_url}}">Zur Umfrage</a></p><p>Vielen Dank für Ihre Mithilfe<br/>Ihr Betriebsrat</p>{{open_pixel}}`,
+			AttackType: "phishing",
+			IsPreset:   true,
+		},
+		{
+			ID:         "preset-smishing-bank-de",
+			Name:       "SMS Sparkasse TAN",
+			Subject:    "[SMS-Vorlage] Sparkasse Sicherheits-TAN",
+			FromName:   "Sparkasse",
+			FromEmail:  "sms@sparkasse-tan.de",
+			HTMLBody:   `<p>Sparkasse: Ungewöhnliche Aktivität auf Ihrem Konto. Bitte verifizieren: {{tracking_url}}</p>{{open_pixel}}`,
+			AttackType: "smishing",
+			IsPreset:   true,
+		},
+		{
+			ID:         "preset-usb-fund-de",
+			Name:       "USB-Stick auf Parkplatz (Köder)",
+			Subject:    "[USB-Köder-Szenario] Bonus-Liste 2026",
+			FromName:   "(USB-Stick)",
+			FromEmail:  "(physical)",
+			HTMLBody:   `<p>Dies ist ein USB-Drop-Szenario. Auf dem präparierten USB-Stick liegt eine Datei <code>Bonus_Liste_2026.pdf.lnk</code>, die beim Öffnen <a href="{{tracking_url}}">eine Awareness-Seite öffnet</a>.</p>{{open_pixel}}`,
+			AttackType: "usb",
+			IsPreset:   true,
+		},
+	}
+}
+
+// presetTrainingModules returns the bundled awareness-training curriculum.
+// Modules cover the four attack types and serve as starting templates that an
+// admin can clone and customize. content_url points to in-app Markdown lessons
+// served via the secreflex/training-content asset bundle.
+func presetTrainingModules() []TrainingModule {
+	return []TrainingModule{
+		{
+			ID:              "preset-train-phishing-basics",
+			Title:           "Phishing-Grundlagen: Die 5 Warnsignale",
+			Type:            "quiz",
+			AttackType:      "phishing",
+			ContentURL:      "/training/de/phishing-basics.md",
+			DurationSeconds: 360,
+			PassingScore:    80,
+			Questions: []Question{
+				{Text: "Welches dieser Merkmale ist KEIN typisches Phishing-Warnsignal?", Options: []string{"Dringlichkeit / Zeitdruck", "Persönliche Anrede mit korrektem Namen", "Generische Anrede ('Sehr geehrter Kunde')", "Rechtschreibfehler"}, Answer: 1},
+				{Text: "Sie erhalten eine E-Mail vom 'CEO' mit einer dringenden Überweisungsbitte. Was tun?", Options: []string{"Sofort überweisen", "Telefonisch beim CEO rückfragen über die bekannte Nummer", "An IT weiterleiten ohne Rückfrage", "Ignorieren"}, Answer: 1},
+				{Text: "Ein Link führt zu 'mircosoft-login.com'. Ist das verdächtig?", Options: []string{"Ja — Tippfehler in der Domain ist ein klassisches Phishing-Indiz", "Nein — leichter Tippfehler ist normal"}, Answer: 0},
+			},
+		},
+		{
+			ID:              "preset-train-mfa-erklaert",
+			Title:           "Multi-Faktor-Authentifizierung verstehen",
+			Type:            "video",
+			AttackType:      "phishing",
+			ContentURL:      "/training/de/mfa-erklaert.md",
+			DurationSeconds: 420,
+			PassingScore:    80,
+			Questions: []Question{
+				{Text: "Warum schützt MFA auch, wenn das Passwort gestohlen wird?", Options: []string{"Das Passwort wird länger", "Ein zweiter Faktor (Gerät/Token) ist erforderlich", "Der Login wird verzögert"}, Answer: 1},
+				{Text: "Sind SMS-TAN sicher als zweiter Faktor?", Options: []string{"Ja, immer", "Nein, SIM-Swapping möglich — TOTP-App oder Hardware-Token besser"}, Answer: 1},
+			},
+		},
+		{
+			ID:              "preset-train-smishing-de",
+			Title:           "Smishing — Phishing per SMS",
+			Type:            "quiz",
+			AttackType:      "smishing",
+			ContentURL:      "/training/de/smishing.md",
+			DurationSeconds: 300,
+			PassingScore:    75,
+			Questions: []Question{
+				{Text: "Eine SMS Ihrer Bank fordert Sie auf, eine TAN per Link zu verifizieren. Was ist richtig?", Options: []string{"TAN per Link verifizieren", "SMS ignorieren — Banken senden niemals TAN-Links", "Bei der Bank zurückrufen über die offizielle Hotline auf der Rückseite Ihrer EC-Karte"}, Answer: 2},
+			},
+		},
+		{
+			ID:              "preset-train-usb-koder-de",
+			Title:           "USB-Köder am Arbeitsplatz",
+			Type:            "quiz",
+			AttackType:      "usb",
+			ContentURL:      "/training/de/usb-koder.md",
+			DurationSeconds: 240,
+			PassingScore:    75,
+			Questions: []Question{
+				{Text: "Sie finden einen USB-Stick auf dem Parkplatz. Korrektes Vorgehen?", Options: []string{"Anstecken, schauen wem er gehört", "An die IT-Abteilung abgeben — niemals an einen Firmen-Rechner anschließen", "Wegwerfen"}, Answer: 1},
+				{Text: "Welches Risiko ist bei einem präparierten USB-Stick am gefährlichsten?", Options: []string{"BadUSB-Tastatur-Emulation: Stick gibt sich als Tastatur aus und tippt Schadcode", "Optisch defektes Gehäuse", "Speichergröße"}, Answer: 0},
+			},
+		},
+		{
+			ID:              "preset-train-vishing-de",
+			Title:           "Vishing — Phishing per Telefon",
+			Type:            "quiz",
+			AttackType:      "vishing",
+			ContentURL:      "/training/de/vishing.md",
+			DurationSeconds: 360,
+			PassingScore:    80,
+			Questions: []Question{
+				{Text: "Ein angeblicher 'Microsoft-Support' ruft Sie wegen eines Computer-Problems an. Was tun?", Options: []string{"Helfen lassen, Remote-Zugriff geben", "Auflegen — Microsoft ruft niemals unaufgefordert an", "Nach Mitarbeiter-Nummer fragen und dann mitmachen"}, Answer: 1},
+			},
 		},
 	}
 }
@@ -102,6 +256,10 @@ func (s *Service) ListTemplates(ctx context.Context, orgID string) ([]Template, 
 }
 
 func (s *Service) GetPresetTemplates() []Template { return presetTemplates() }
+
+// GetPresetTrainingModules returns the bundled awareness-training curriculum
+// (read-only — admins clone these as a starting point for their own modules).
+func (s *Service) GetPresetTrainingModules() []TrainingModule { return presetTrainingModules() }
 
 // ── Target groups ─────────────────────────────────────────────────────────────
 
@@ -210,6 +368,22 @@ func (s *Service) GetCampaignStats(ctx context.Context, orgID, campaignID string
 	return s.repo.GetCampaignStats(ctx, orgID, campaignID)
 }
 
+// anonymizeForBetriebsrat redacts PII (IP, User-Agent) from tracking-event input
+// when the campaign was configured with betriebsrat_mode=true. Department info
+// is kept (aggregate statistics) but only if department buckets stay above a
+// minimum size — that aggregation is enforced at report-rendering time.
+//
+// Why: §87 BetrVG and DSGVO Art. 22 require that phishing-simulation results
+// cannot be attributed to individual employees by management. Storing PII
+// "just in case the Betriebsrat agrees later" violates the principle of data
+// minimisation. The toggle is binding from event-write time onward.
+func anonymizeForBetriebsrat(betriebsratMode bool, ip, ua string) (string, string) {
+	if betriebsratMode {
+		return "", ""
+	}
+	return ip, ua
+}
+
 // RecordEvent records a tracking event (click or form_submission) for the given
 // token and returns the landing page HTML to render (or a default awareness message).
 func (s *Service) RecordEvent(ctx context.Context, token, eventType, ip, ua string) (string, error) {
@@ -217,7 +391,8 @@ func (s *Service) RecordEvent(ctx context.Context, token, eventType, ip, ua stri
 	if err != nil {
 		return "", fmt.Errorf("invalid tracking token")
 	}
-	if err := s.repo.CreateTrackingEvent(ctx, campaign.OrgID, campaign.ID, nil, "", token, eventType, ip, ua); err != nil {
+	storeIP, storeUA := anonymizeForBetriebsrat(campaign.BetriebsratMode, ip, ua)
+	if err := s.repo.CreateTrackingEvent(ctx, campaign.OrgID, campaign.ID, nil, "", token, eventType, storeIP, storeUA); err != nil {
 		log.Warn().Err(err).Msg("failed to record tracking event")
 	}
 	lp, err := s.repo.GetLandingPageForCampaign(ctx, campaign.ID)
@@ -234,7 +409,8 @@ func (s *Service) RecordOpen(ctx context.Context, token, ip, ua string) {
 	if err != nil {
 		return
 	}
-	if err := s.repo.CreateTrackingEvent(ctx, campaign.OrgID, campaign.ID, nil, "", token, "open", ip, ua); err != nil {
+	storeIP, storeUA := anonymizeForBetriebsrat(campaign.BetriebsratMode, ip, ua)
+	if err := s.repo.CreateTrackingEvent(ctx, campaign.OrgID, campaign.ID, nil, "", token, "open", storeIP, storeUA); err != nil {
 		log.Warn().Err(err).Msg("failed to record open event")
 	}
 }
@@ -359,10 +535,10 @@ func (s *Service) SendCampaignEmails(ctx context.Context, orgID, campaignID stri
 
 		var bodyBuf bytes.Buffer
 		data := map[string]string{
-			"FirstName":    target.FirstName,
-			"LastName":     target.LastName,
-			"Email":        target.Email,
-			"TrackingURL":  s.smtpCfg.trackingURL(trackingToken),
+			"FirstName":   target.FirstName,
+			"LastName":    target.LastName,
+			"Email":       target.Email,
+			"TrackingURL": s.smtpCfg.trackingURL(trackingToken),
 		}
 		if err := bodyTmpl.Execute(&bodyBuf, data); err != nil {
 			log.Warn().Err(err).Str("target", target.Email).Msg("template render failed, skipping target")
@@ -617,7 +793,7 @@ func (s *Service) GetAssignmentCertificate(ctx context.Context, orgID, assignmen
 	userEmail := "Unbekannt"
 	if assignment.TargetID != nil {
 		var email string
-		if err := s.db.QueryRow(ctx, `SELECT email FROM pg_targets WHERE id=$1`, *assignment.TargetID).Scan(&email); err == nil {
+		if err := s.db.QueryRow(ctx, `SELECT email FROM sr_targets WHERE id=$1`, *assignment.TargetID).Scan(&email); err == nil {
 			userEmail = email
 		}
 	} else if assignment.Department != "" {

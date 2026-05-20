@@ -43,6 +43,14 @@ vi.mock('../hooks/useAuditorLinks', () => ({
 
 vi.mock('../hooks/useControls', () => ({
   useUpdateControl: () => ({ mutate: vi.fn(), isPending: false }),
+  // Bulk-Action hook used by ControlsTab. Returns a thenable mutateAsync so the
+  // page can `await` it without exploding when no real network exists in tests.
+  useBulkUpdateControls: () => ({
+    mutate: vi.fn(),
+    mutateAsync: vi.fn().mockResolvedValue({ updated: 0 }),
+    isPending: false,
+  }),
+  useExportControl: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 function renderFrameworkDetailPage(id = 'fw-dora') {

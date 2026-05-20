@@ -85,6 +85,7 @@ func (h *Handler) Logout(c echo.Context) error {
 		Path:     "/api/v1",
 		MaxAge:   -1,
 	})
+	ClearCSRFCookie(c)
 
 	return c.JSON(http.StatusOK, map[string]string{"status": "logged out"})
 }
@@ -176,7 +177,7 @@ func (h *Handler) Login(c echo.Context) error {
 	h.service.clearLoginFailures(c.Request().Context(), body.Email)
 
 	// Set access token as httpOnly cookie (XSS protection).
-	// SameSite=Strict prevents CSRF. Vite proxy + Nginx ensure same-origin in all envs.
+	// SameSite=Strict + double-submit CSRF token cookie prevent CSRF.
 	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
 	c.SetCookie(&http.Cookie{
 		Name:     "access_token",
@@ -187,6 +188,7 @@ func (h *Handler) Login(c echo.Context) error {
 		Path:     "/api/v1",
 		MaxAge:   3600, // 1 hour, matches access token TTL
 	})
+	SetCSRFCookie(c, GenerateCSRFToken())
 
 	return c.JSON(http.StatusOK, resp)
 }
@@ -218,7 +220,7 @@ func (h *Handler) Refresh(c echo.Context) error {
 		})
 	}
 
-	// Rotate the httpOnly access token cookie on every refresh.
+	// Rotate the httpOnly access token cookie and CSRF token on every refresh.
 	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
 	c.SetCookie(&http.Cookie{
 		Name:     "access_token",
@@ -229,6 +231,7 @@ func (h *Handler) Refresh(c echo.Context) error {
 		Path:     "/api/v1",
 		MaxAge:   3600, // 1 hour, matches access token TTL
 	})
+	SetCSRFCookie(c, GenerateCSRFToken())
 
 	return c.JSON(http.StatusOK, resp)
 }
@@ -337,6 +340,7 @@ func (h *Handler) OIDCCallback(c echo.Context) error {
 		Path:     "/api/v1",
 		MaxAge:   3600,
 	})
+	SetCSRFCookie(c, GenerateCSRFToken())
 
 	return c.JSON(http.StatusOK, resp)
 }
@@ -387,6 +391,7 @@ func (h *Handler) SAMLCallback(c echo.Context) error {
 		Path:     "/api/v1",
 		MaxAge:   3600,
 	})
+	SetCSRFCookie(c, GenerateCSRFToken())
 
 	return c.JSON(http.StatusOK, resp)
 }

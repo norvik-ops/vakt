@@ -15,6 +15,9 @@ import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { useIncident, useUpdateIncident, useMarkDeadlineReported, useIncidentReports, useGenerateIncidentReport } from '../hooks/useIncidents'
+import { useAICopilot } from '../../../shared/hooks/useAICopilot'
+import { toast } from '../../../shared/hooks/useToast'
+import { Sparkles } from 'lucide-react'
 import { ReportabilityWizard } from '../components/ReportabilityWizard'
 import type { Incident, UpdateIncidentInput, DeadlineInfo, IncidentReport } from '../types'
 
@@ -259,7 +262,14 @@ export default function IncidentDetailPage() {
                   <Input value={form.title} onChange={(e) => set('title', e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Beschreibung</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Beschreibung</Label>
+                    <AISuggestActionsButton
+                      summary={form.description}
+                      type={incident.incident_type}
+                      onAppend={(guide) => set('description', `${form.description}\n\n--- KI-Sofortmaßnahmen ---\n${guide}`)}
+                    />
+                  </div>
                   <Textarea rows={4} value={form.description} onChange={(e) => set('description', e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
@@ -516,5 +526,45 @@ export default function IncidentDetailPage() {
       )}
       <ProGate error={pdfError}>{null}</ProGate>
     </div>
+  )
+}
+
+interface AISuggestActionsProps {
+  summary: string
+  type: string | undefined
+  onAppend: (guide: string) => void
+}
+
+// AISuggestActionsButton calls the AI copilot (POST /secvitals/ai/incident-guide)
+// and appends the returned numbered checklist to the incident description.
+// Disabled while the description is empty — the LLM needs context to work with.
+function AISuggestActionsButton({ summary, type, onAppend }: AISuggestActionsProps) {
+  const { incidentGuide } = useAICopilot()
+  const handleClick = () => {
+    if (!summary.trim()) return
+    incidentGuide.mutate(
+      { summary, type: type ?? '' },
+      {
+        onSuccess: (resp) => {
+          onAppend(resp.guide)
+          toast('KI-Sofortmaßnahmen angehängt', { variant: 'success' })
+        },
+        onError: () => {
+          toast('KI temporär nicht verfügbar', { variant: 'error' })
+        },
+      },
+    )
+  }
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={!summary.trim() || incidentGuide.isPending}
+      className="text-[11px] text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
+      title="KI-Vorschlag für Sofortmaßnahmen anhängen (lokales LLM)"
+    >
+      <Sparkles className="w-3 h-3" aria-hidden="true" />
+      {incidentGuide.isPending ? 'KI denkt…' : 'KI-Sofortmaßnahmen'}
+    </button>
   )
 }

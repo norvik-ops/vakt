@@ -126,33 +126,61 @@ services:
     volumes:
       - redis_data:/data
     restart: unless-stopped
+    # Redis-Auth: requirepass schützt vor unauthentifiziertem Zugriff aus dem Docker-Netzwerk.
+    # REDIS_PASSWORD muss in .env gesetzt sein (siehe .env.example).
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}"]
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 5s
       timeout: 5s
       retries: 5
       start_period: 5s
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
     deploy:
       resources:
         limits:
           memory: 128m
           cpus: '0.25'
 
-  # Nur mit: docker compose --profile ai up
+  # AI Copilot via lokales LLM — seit v0.6.x default-on (Community-Feature).
+  # Default-Modell qwen2.5:3b wird beim ersten Start automatisch von ollama-init
+  # gezogen (~1.9 GB Disk; läuft nur einmal, danach idle).
+  # Zum Deaktivieren: VAKT_AI_PROVIDER=disabled in .env setzen.
+  # Auf 4-GB-Gesamt-RAM-VMs ebenfalls deaktivieren — der 4g-Limit unten
+  # würde sonst die anderen Container ausquetschen.
   ollama:
-    profiles: ["ai"]
     image: ollama/ollama:latest
     volumes:
       - ollama_models:/root/.ollama
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     deploy:
       resources:
         limits:
           memory: 4g
           cpus: '2.0'
-    # Pull the default model once after first start:
-    #   docker compose --profile ai exec ollama ollama pull llama3.2:3b
-    # To disable AI: set VAKT_AI_PROVIDER=disabled in .env
+
+  # Pre-pull des Default-Modells beim ersten Start. Läuft genau einmal pro
+  # Volume — wenn das Modell schon da ist, ist `ollama pull` ein No-Op.
+  # Restart=no damit der Container nach erfolgreichem Pull beendet bleibt.
+  ollama-init:
+    image: ollama/ollama:latest
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        echo 'Pre-pulling default model ${VAKT_AI_MODEL:-qwen2.5:3b} (one-time)...';
+        OLLAMA_HOST=http://ollama:11434 ollama pull ${VAKT_AI_MODEL:-qwen2.5:3b};
+        echo 'Model ready.'
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
 
   # Watchtower — automatic container updates (opt-in).
   # Uncomment to enable automatic nightly pulls of new Vakt images.

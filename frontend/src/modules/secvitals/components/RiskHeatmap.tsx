@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
+import { useFocusTrap } from '../../../shared/hooks/useFocusTrap'
 
 export interface HeatmapRisk {
   id: string
@@ -56,6 +57,7 @@ interface CellPanelProps {
 
 function CellPanel({ likelihood, impact, risks, onClose }: CellPanelProps) {
   const navigate = useNavigate()
+  const trapRef = useFocusTrap<HTMLDivElement>(true, onClose)
 
   return (
     <>
@@ -67,6 +69,7 @@ function CellPanel({ likelihood, impact, risks, onClose }: CellPanelProps) {
       />
       {/* Slide-over panel */}
       <div
+        ref={trapRef}
         role="dialog"
         aria-modal="true"
         aria-label={`Risiken: Wahrscheinlichkeit ${likelihood} / Auswirkung ${impact}`}

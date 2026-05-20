@@ -8,22 +8,290 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/db"
 )
 
-// Repository handles VulnBoard data access via pgx.
+// Repository handles VulnBoard data access. Assets use sqlc; remaining tables
+// (findings, components, sboms, scans, reports, sla_config) stay on embedded
+// SQL until follow-up sessions migrate them (see docs/sqlc-migration-plan.md).
 type Repository struct {
 	db *pgxpool.Pool
+	q  *db.Queries
 }
 
 // NewRepository creates a new VulnBoard repository.
-func NewRepository(db *pgxpool.Pool) *Repository {
-	return &Repository{db: db}
+func NewRepository(pool *pgxpool.Pool) *Repository {
+	return &Repository{db: pool, q: db.New(pool)}
+}
+
+// optStringText is the secpulse-local nullable-text helper.
+func spOptText(s string) pgtype.Text {
+	if s == "" {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: s, Valid: true}
+}
+
+func spTextPtr(t pgtype.Text) *string {
+	if !t.Valid {
+		return nil
+	}
+	s := t.String
+	return &s
+}
+
+func spUUIDPtr(u pgtype.UUID) *string {
+	if !u.Valid {
+		return nil
+	}
+	s := u.String()
+	return &s
+}
+
+func spOptUUID(s *string) pgtype.UUID {
+	if s == nil || *s == "" {
+		return pgtype.UUID{}
+	}
+	var u pgtype.UUID
+	_ = u.Scan(*s)
+	return u
+}
+
+func spTsToTime(t pgtype.Timestamptz) time.Time {
+	if !t.Valid {
+		return time.Time{}
+	}
+	return t.Time
+}
+
+func spTsToTimePtr(t pgtype.Timestamptz) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	tm := t.Time
+	return &tm
+}
+
+func spInt8ToInt64Ptr(i pgtype.Int8) *int64 {
+	if !i.Valid {
+		return nil
+	}
+	v := i.Int64
+	return &v
+}
+
+func spOptInt8(v *int64) pgtype.Int8 {
+	if v == nil {
+		return pgtype.Int8{}
+	}
+	return pgtype.Int8{Int64: *v, Valid: true}
+}
+
+func spOptInt4(v *int) pgtype.Int4 {
+	if v == nil {
+		return pgtype.Int4{}
+	}
+	return pgtype.Int4{Int32: int32(*v), Valid: true}
+}
+
+func spOptTs(t *time.Time) pgtype.Timestamptz {
+	if t == nil {
+		return pgtype.Timestamptz{}
+	}
+	return pgtype.Timestamptz{Time: *t, Valid: true}
+}
+
+// numericToFloat64Ptr converts a nullable pgtype.Numeric (PostgreSQL NUMERIC)
+// to a *float64; returns nil when the source value is NULL.
+func numericToFloat64Ptr(n pgtype.Numeric) *float64 {
+	if !n.Valid {
+		return nil
+	}
+	f8, err := n.Float64Value()
+	if err != nil || !f8.Valid {
+		return nil
+	}
+	v := f8.Float64
+	return &v
+}
+
+// float64PtrToNumeric converts a *float64 to pgtype.Numeric; nil → invalid.
+// Uses string-based Scan because pgtype.Numeric has no direct float64 setter.
+func float64PtrToNumeric(f *float64) pgtype.Numeric {
+	if f == nil {
+		return pgtype.Numeric{}
+	}
+	var n pgtype.Numeric
+	if err := n.Scan(strconv.FormatFloat(*f, 'f', -1, 64)); err != nil {
+		return pgtype.Numeric{}
+	}
+	return n
+}
+
+// dateToStringPtr converts pgtype.Date to *string (YYYY-MM-DD); nil if invalid.
+func dateToStringPtr(d pgtype.Date) *string {
+	if !d.Valid {
+		return nil
+	}
+	s := d.Time.Format("2006-01-02")
+	return &s
+}
+
+// dateFromStringPtr parses a *string (YYYY-MM-DD) into pgtype.Date; nil → invalid.
+func dateFromStringPtr(s *string) pgtype.Date {
+	if s == nil || *s == "" {
+		return pgtype.Date{}
+	}
+	t, err := time.Parse("2006-01-02", *s)
+	if err != nil {
+		return pgtype.Date{}
+	}
+	return pgtype.Date{Time: t, Valid: true}
+}
+
+// suppressionFromVbSuppression maps a generated row to the SuppressionRule domain type.
+func suppressionFromVbSuppression(r db.VbFindingSuppressions) SuppressionRule {
+	return SuppressionRule{
+		ID:         r.ID,
+		OrgID:      r.OrgID,
+		CVEID:      spTextPtr(r.CveID),
+		AssetTag:   spTextPtr(r.AssetTag),
+		Reason:     r.Reason,
+		CreatedBy:  spUUIDPtr(r.CreatedBy),
+		MatchCount: int(r.MatchCount),
+		CreatedAt:  spTsToTime(r.CreatedAt),
+	}
+}
+
+// scheduleFromVbScanSchedule maps a generated row to the ScanSchedule domain type.
+func scheduleFromVbScanSchedule(r db.VbScanSchedules) ScanSchedule {
+	return ScanSchedule{
+		ID:        r.ID,
+		OrgID:     r.OrgID,
+		AssetID:   r.AssetID,
+		Scanner:   r.Scanner,
+		CronExpr:  r.CronExpr,
+		IsActive:  r.IsActive,
+		LastRun:   spTsToTimePtr(r.LastRun),
+		NextRun:   spTsToTimePtr(r.NextRun),
+		CreatedAt: spTsToTime(r.CreatedAt),
+	}
+}
+
+// reportFields is the union of fields returned by every Report-returning sqlc
+// query (Create, Get, List). All currently match — keep them in one container
+// in case future RETURNING-clauses diverge (ADR-0013).
+type reportFields struct {
+	ID, OrgID    string
+	GeneratedBy  pgtype.UUID
+	Scope        json.RawMessage
+	FilePath     pgtype.Text
+	Status       string
+	ExpiresAt    pgtype.Timestamptz
+	CreatedAt    pgtype.Timestamptz
+}
+
+func reportFromFields(f reportFields) Report {
+	var scope ReportScope
+	if len(f.Scope) > 0 {
+		_ = json.Unmarshal(f.Scope, &scope)
+	}
+	return Report{
+		ID:          f.ID,
+		OrgID:       f.OrgID,
+		GeneratedBy: spUUIDPtr(f.GeneratedBy),
+		Title:       scope.Title,
+		Scope:       scope,
+		FilePath:    f.FilePath.String,
+		Status:      f.Status,
+		ExpiresAt:   spTsToTimePtr(f.ExpiresAt),
+		CreatedAt:   spTsToTime(f.CreatedAt),
+	}
+}
+
+// findingFromVbFindings maps the generated sqlc row to the Finding domain type.
+func findingFromVbFindings(r db.VbFindings) Finding {
+	return Finding{
+		ID:              r.ID,
+		OrgID:           r.OrgID,
+		AssetID:         r.AssetID,
+		ScanID:          spUUIDPtr(r.ScanID),
+		CVEID:           spTextPtr(r.CveID),
+		Title:           r.Title,
+		Description:     r.Description.String,
+		Severity:        r.Severity,
+		CVSSScore:       numericToFloat64Ptr(r.CvssScore),
+		EPSSScore:       numericToFloat64Ptr(r.EpssScore),
+		EPSSPercentile:  numericToFloat64Ptr(r.EpssPercentile),
+		RiskScore:       numericToFloat64Ptr(r.RiskScore),
+		Status:          r.Status,
+		Scanner:         r.Scanner,
+		RawID:           r.RawID.String,
+		Sources:         r.Sources,
+		TemplateID:      r.TemplateID.String,
+		AssignedTo:      spUUIDPtr(r.AssignedTo),
+		Justification:   r.Justification.String,
+		ReopenCount:     int(r.ReopenCount),
+		OccurrenceCount: int(r.OccurrenceCount),
+		LastSeenAt:      spTsToTime(r.LastSeenAt),
+		SLADueAt:        spTsToTimePtr(r.SlaDueAt),
+		CreatedAt:       spTsToTime(r.CreatedAt),
+		UpdatedAt:       spTsToTime(r.UpdatedAt),
+	}
+}
+
+// scanFromVbScans maps the generated sqlc row to the Scan domain type.
+func scanFromVbScans(r db.VbScans) Scan {
+	return Scan{
+		ID:           r.ID,
+		OrgID:        r.OrgID,
+		AssetID:      r.AssetID,
+		Scanner:      r.Scanner,
+		Status:       r.Status,
+		TargetURL:    r.TargetUrl.String,
+		TargetIP:     r.TargetIp.String,
+		ErrorMessage: r.ErrorMessage.String,
+		FindingCount: int(r.FindingCount),
+		DurationMs:   spInt8ToInt64Ptr(r.DurationMs),
+		StartedAt:    spTsToTimePtr(r.StartedAt),
+		CompletedAt:  spTsToTimePtr(r.CompletedAt),
+		CreatedAt:    spTsToTime(r.CreatedAt),
+	}
+}
+
+// assetFields is the union of fields returned by every Asset-returning sqlc
+// query. The Row-types diverge in column order (ADR-0013), so we centralise
+// the mapping here.
+type assetFields struct {
+	ID, OrgID, Name, Type, Criticality string
+	Tags                               []string
+	OwnerID                            pgtype.UUID
+	ExternalUrl                        pgtype.Text
+	CreatedAt, UpdatedAt               pgtype.Timestamptz
+}
+
+func assetFromFields(f assetFields) Asset {
+	return Asset{
+		ID:          f.ID,
+		OrgID:       f.OrgID,
+		Name:        f.Name,
+		Type:        f.Type,
+		Criticality: f.Criticality,
+		Tags:        f.Tags,
+		OwnerID:     spUUIDPtr(f.OwnerID),
+		ExternalURL: spTextPtr(f.ExternalUrl),
+		CreatedAt:   spTsToTime(f.CreatedAt),
+		UpdatedAt:   spTsToTime(f.UpdatedAt),
+	}
 }
 
 // CreateAsset inserts a new asset row and returns the created record.
@@ -32,115 +300,97 @@ func (r *Repository) CreateAsset(ctx context.Context, orgID string, input Create
 	if tags == nil {
 		tags = []string{}
 	}
-
-	var a Asset
-	err := r.db.QueryRow(ctx, `
-		INSERT INTO vb_assets (org_id, name, type, criticality, tags, owner_id, external_url)
-		VALUES ($1::uuid, $2, $3, $4, $5, $6::uuid, $7)
-		RETURNING id::text, org_id::text, name, type, criticality, tags,
-		          owner_id::text, external_url, created_at, updated_at`,
-		orgID, input.Name, input.Type, input.Criticality, tags, input.OwnerID, input.ExternalURL,
-	).Scan(
-		&a.ID, &a.OrgID, &a.Name, &a.Type, &a.Criticality, &a.Tags,
-		&a.OwnerID, &a.ExternalURL, &a.CreatedAt, &a.UpdatedAt,
-	)
+	row, err := r.q.CreateSPAsset(ctx, db.CreateSPAssetParams{
+		OrgID:       orgID,
+		Name:        input.Name,
+		Type:        input.Type,
+		Criticality: input.Criticality,
+		Tags:        tags,
+		OwnerID:     spOptUUID(input.OwnerID),
+		ExternalUrl: spOptText(input.ExternalURL),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("insert asset: %w", err)
 	}
+	a := assetFromFields(assetFields{
+		ID: row.ID, OrgID: row.OrgID, Name: row.Name, Type: row.Type,
+		Criticality: row.Criticality, Tags: row.Tags,
+		OwnerID: row.OwnerID, ExternalUrl: row.ExternalUrl,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	})
 	return &a, nil
 }
 
 // ListAssets returns a paginated list of non-deleted assets for an org.
 // An optional tag filter restricts results to assets containing that tag.
 func (r *Repository) ListAssets(ctx context.Context, orgID string, page, limit int, tag string) ([]Asset, int, error) {
-	args := []interface{}{orgID}
-	where := "org_id = $1::uuid AND is_deleted = FALSE"
-	argN := 2
-
+	var tagParam pgtype.Text
 	if tag != "" {
-		where += fmt.Sprintf(" AND $%d = ANY(tags)", argN)
-		args = append(args, tag)
-		argN++
+		tagParam = pgtype.Text{String: tag, Valid: true}
 	}
-
-	var total int
-	if err := r.db.QueryRow(ctx,
-		fmt.Sprintf("SELECT COUNT(*) FROM vb_assets WHERE %s", where), args...,
-	).Scan(&total); err != nil {
+	total, err := r.q.CountSPAssets(ctx, db.CountSPAssetsParams{
+		OrgID: orgID,
+		Tag:   tagParam,
+	})
+	if err != nil {
 		return nil, 0, fmt.Errorf("count assets: %w", err)
 	}
-
 	offset := (page - 1) * limit
-	dataArgs := append(args, limit, offset)
-	rows, err := r.db.Query(ctx, fmt.Sprintf(`
-		SELECT id::text, org_id::text, name, type, criticality, tags,
-		       owner_id::text, external_url, created_at, updated_at
-		FROM vb_assets
-		WHERE %s
-		ORDER BY created_at DESC
-		LIMIT $%d OFFSET $%d`, where, argN, argN+1), dataArgs...)
+	rows, err := r.q.ListSPAssets(ctx, db.ListSPAssetsParams{
+		OrgID:  orgID,
+		Tag:    tagParam,
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
 	if err != nil {
 		return nil, 0, fmt.Errorf("query assets: %w", err)
 	}
-	defer rows.Close()
-
-	var assets []Asset
-	for rows.Next() {
-		var a Asset
-		if err := rows.Scan(
-			&a.ID, &a.OrgID, &a.Name, &a.Type, &a.Criticality, &a.Tags,
-			&a.OwnerID, &a.ExternalURL, &a.CreatedAt, &a.UpdatedAt,
-		); err != nil {
-			return nil, 0, fmt.Errorf("scan asset row: %w", err)
-		}
-		assets = append(assets, a)
+	out := make([]Asset, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, assetFromFields(assetFields{
+			ID: row.ID, OrgID: row.OrgID, Name: row.Name, Type: row.Type,
+			Criticality: row.Criticality, Tags: row.Tags,
+			OwnerID: row.OwnerID, ExternalUrl: row.ExternalUrl,
+			CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		}))
 	}
-	if err := rows.Err(); err != nil {
-		return nil, 0, fmt.Errorf("iterate asset rows: %w", err)
-	}
-	return assets, total, nil
+	return out, int(total), nil
 }
 
 // GetAsset fetches a single non-deleted asset by ID within the org.
 func (r *Repository) GetAsset(ctx context.Context, orgID, assetID string) (*Asset, error) {
-	var a Asset
-	err := r.db.QueryRow(ctx, `
-		SELECT id::text, org_id::text, name, type, criticality, tags,
-		       owner_id::text, external_url, created_at, updated_at
-		FROM vb_assets
-		WHERE id = $1::uuid AND org_id = $2::uuid AND is_deleted = FALSE`,
-		assetID, orgID,
-	).Scan(
-		&a.ID, &a.OrgID, &a.Name, &a.Type, &a.Criticality, &a.Tags,
-		&a.OwnerID, &a.ExternalURL, &a.CreatedAt, &a.UpdatedAt,
-	)
+	row, err := r.q.GetSPAsset(ctx, db.GetSPAssetParams{ID: assetID, OrgID: orgID})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("asset not found: %w", err)
+		}
 		return nil, fmt.Errorf("get asset: %w", err)
 	}
+	a := assetFromFields(assetFields{
+		ID: row.ID, OrgID: row.OrgID, Name: row.Name, Type: row.Type,
+		Criticality: row.Criticality, Tags: row.Tags,
+		OwnerID: row.OwnerID, ExternalUrl: row.ExternalUrl,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	})
 	return &a, nil
 }
 
 // GetAssetByName fetches the first non-deleted asset matching name (case-insensitive) within the org.
 // Returns nil, nil when no asset matches.
 func (r *Repository) GetAssetByName(ctx context.Context, orgID, name string) (*Asset, error) {
-	var a Asset
-	err := r.db.QueryRow(ctx, `
-		SELECT id::text, org_id::text, name, type, criticality, tags,
-		       owner_id::text, external_url, created_at, updated_at
-		FROM vb_assets
-		WHERE org_id = $1::uuid AND LOWER(name) = LOWER($2) AND is_deleted = FALSE
-		LIMIT 1`,
-		orgID, name,
-	).Scan(
-		&a.ID, &a.OrgID, &a.Name, &a.Type, &a.Criticality, &a.Tags,
-		&a.OwnerID, &a.ExternalURL, &a.CreatedAt, &a.UpdatedAt,
-	)
+	row, err := r.q.GetSPAssetByName(ctx, db.GetSPAssetByNameParams{OrgID: orgID, Column2: name})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("get asset by name: %w", err)
 	}
+	a := assetFromFields(assetFields{
+		ID: row.ID, OrgID: row.OrgID, Name: row.Name, Type: row.Type,
+		Criticality: row.Criticality, Tags: row.Tags,
+		OwnerID: row.OwnerID, ExternalUrl: row.ExternalUrl,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	})
 	return &a, nil
 }
 
@@ -171,87 +421,78 @@ func (r *Repository) ResolveAssetRef(ctx context.Context, orgID, ref string) (st
 }
 
 // UpdateAsset applies a partial update to an asset.  Only non-nil fields are changed.
+// Read-merge-write because sqlc cannot generate dynamic SET clauses (ADR-0005).
 func (r *Repository) UpdateAsset(ctx context.Context, orgID, assetID string, input UpdateAssetInput) (*Asset, error) {
-	// Build SET clause dynamically.
-	setClauses := []string{"updated_at = NOW()"}
-	args := []interface{}{}
-	argN := 1
+	cur, err := r.GetAsset(ctx, orgID, assetID)
+	if err != nil {
+		return nil, err
+	}
 
+	params := db.UpdateSPAssetParams{
+		ID:          assetID,
+		OrgID:       orgID,
+		Name:        cur.Name,
+		Type:        cur.Type,
+		Criticality: cur.Criticality,
+		Tags:        cur.Tags,
+		OwnerID:     spOptUUID(cur.OwnerID),
+		ExternalUrl: spOptText(derefStrPtr(cur.ExternalURL)),
+	}
 	if input.Name != nil {
-		setClauses = append(setClauses, fmt.Sprintf("name = $%d", argN))
-		args = append(args, *input.Name)
-		argN++
+		params.Name = *input.Name
 	}
 	if input.Type != nil {
-		setClauses = append(setClauses, fmt.Sprintf("type = $%d", argN))
-		args = append(args, *input.Type)
-		argN++
+		params.Type = *input.Type
 	}
 	if input.Criticality != nil {
-		setClauses = append(setClauses, fmt.Sprintf("criticality = $%d", argN))
-		args = append(args, *input.Criticality)
-		argN++
+		params.Criticality = *input.Criticality
 	}
 	if input.Tags != nil {
-		setClauses = append(setClauses, fmt.Sprintf("tags = $%d", argN))
-		args = append(args, input.Tags)
-		argN++
+		params.Tags = input.Tags
 	}
 	if input.OwnerID != nil {
-		setClauses = append(setClauses, fmt.Sprintf("owner_id = $%d::uuid", argN))
-		args = append(args, *input.OwnerID)
-		argN++
+		params.OwnerID = spOptUUID(input.OwnerID)
 	}
 	if input.ExternalURL != nil {
-		setClauses = append(setClauses, fmt.Sprintf("external_url = $%d", argN))
-		args = append(args, *input.ExternalURL)
-		argN++
+		params.ExternalUrl = spOptText(*input.ExternalURL)
 	}
 
-	args = append(args, assetID, orgID)
-	query := fmt.Sprintf(`
-		UPDATE vb_assets
-		SET %s
-		WHERE id = $%d::uuid AND org_id = $%d::uuid AND is_deleted = FALSE
-		RETURNING id::text, org_id::text, name, type, criticality, tags,
-		          owner_id::text, external_url, created_at, updated_at`,
-		strings.Join(setClauses, ", "), argN, argN+1)
-
-	var a Asset
-	err := r.db.QueryRow(ctx, query, args...).Scan(
-		&a.ID, &a.OrgID, &a.Name, &a.Type, &a.Criticality, &a.Tags,
-		&a.OwnerID, &a.ExternalURL, &a.CreatedAt, &a.UpdatedAt,
-	)
+	row, err := r.q.UpdateSPAsset(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("update asset: %w", err)
 	}
+	a := assetFromFields(assetFields{
+		ID: row.ID, OrgID: row.OrgID, Name: row.Name, Type: row.Type,
+		Criticality: row.Criticality, Tags: row.Tags,
+		OwnerID: row.OwnerID, ExternalUrl: row.ExternalUrl,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	})
 	return &a, nil
 }
 
 // SoftDeleteAsset marks an asset as deleted (is_deleted = TRUE).
 func (r *Repository) SoftDeleteAsset(ctx context.Context, orgID, assetID string) error {
-	tag, err := r.db.Exec(ctx, `
-		UPDATE vb_assets SET is_deleted = TRUE, updated_at = NOW()
-		WHERE id = $1::uuid AND org_id = $2::uuid AND is_deleted = FALSE`,
-		assetID, orgID)
+	n, err := r.q.SoftDeleteSPAsset(ctx, db.SoftDeleteSPAssetParams{ID: assetID, OrgID: orgID})
 	if err != nil {
 		return fmt.Errorf("soft delete asset: %w", err)
 	}
-	if tag.RowsAffected() == 0 {
+	if n == 0 {
 		return fmt.Errorf("asset not found")
 	}
 	return nil
 }
 
+// derefStrPtr returns "" for a nil *string.
+func derefStrPtr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
 // GetSLAConfig fetches the SLA configuration for an org; returns defaults if absent.
 func (r *Repository) GetSLAConfig(ctx context.Context, orgID string) (*SLAConfig, error) {
-	var cfg SLAConfig
-	err := r.db.QueryRow(ctx, `
-		SELECT org_id::text, critical_days, high_days, medium_days, low_days
-		FROM vb_sla_config
-		WHERE org_id = $1::uuid`, orgID).Scan(
-		&cfg.OrgID, &cfg.CriticalDays, &cfg.HighDays, &cfg.MediumDays, &cfg.LowDays,
-	)
+	row, err := r.q.GetSPSLAConfig(ctx, orgID)
 	if err != nil {
 		// No row → return defaults
 		return &SLAConfig{
@@ -262,22 +503,24 @@ func (r *Repository) GetSLAConfig(ctx context.Context, orgID string) (*SLAConfig
 			LowDays:      180,
 		}, nil
 	}
-	return &cfg, nil
+	return &SLAConfig{
+		OrgID:        row.OrgID,
+		CriticalDays: int(row.CriticalDays),
+		HighDays:     int(row.HighDays),
+		MediumDays:   int(row.MediumDays),
+		LowDays:      int(row.LowDays),
+	}, nil
 }
 
 // UpsertSLAConfig inserts or updates the SLA config for an org.
 func (r *Repository) UpsertSLAConfig(ctx context.Context, orgID string, input SLAConfig) error {
-	_, err := r.db.Exec(ctx, `
-		INSERT INTO vb_sla_config (org_id, critical_days, high_days, medium_days, low_days, updated_at)
-		VALUES ($1::uuid, $2, $3, $4, $5, NOW())
-		ON CONFLICT (org_id) DO UPDATE
-		  SET critical_days = EXCLUDED.critical_days,
-		      high_days     = EXCLUDED.high_days,
-		      medium_days   = EXCLUDED.medium_days,
-		      low_days      = EXCLUDED.low_days,
-		      updated_at    = NOW()`,
-		orgID, input.CriticalDays, input.HighDays, input.MediumDays, input.LowDays,
-	)
+	err := r.q.UpsertSPSLAConfig(ctx, db.UpsertSPSLAConfigParams{
+		OrgID:        orgID,
+		CriticalDays: int32(input.CriticalDays),
+		HighDays:     int32(input.HighDays),
+		MediumDays:   int32(input.MediumDays),
+		LowDays:      int32(input.LowDays),
+	})
 	if err != nil {
 		return fmt.Errorf("upsert sla config: %w", err)
 	}
@@ -297,37 +540,23 @@ type slaDashboardRow struct {
 
 // GetSLADashboard returns up to 100 open findings with their age in days for the given org.
 func (r *Repository) GetSLADashboard(ctx context.Context, orgID string) ([]slaDashboardRow, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT
-		    a.id::text,
-		    a.name,
-		    f.id::text,
-		    f.title,
-		    f.severity,
-		    f.status,
-		    EXTRACT(DAY FROM now() - f.created_at)::int AS days_open
-		FROM vb_findings f
-		JOIN vb_assets a ON a.id = f.asset_id
-		WHERE f.org_id = $1::uuid
-		  AND f.status NOT IN ('resolved', 'false_positive')
-		ORDER BY f.severity DESC, days_open DESC
-		LIMIT 100`,
-		orgID,
-	)
+	rows, err := r.q.GetSPSLADashboard(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("sla dashboard query: %w", err)
 	}
-	defer rows.Close()
-
-	var result []slaDashboardRow
-	for rows.Next() {
-		var row slaDashboardRow
-		if err := rows.Scan(&row.AssetID, &row.AssetName, &row.FindingID, &row.FindingTitle, &row.Severity, &row.Status, &row.DaysOpen); err != nil {
-			return nil, fmt.Errorf("scan sla dashboard row: %w", err)
-		}
-		result = append(result, row)
+	result := make([]slaDashboardRow, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, slaDashboardRow{
+			AssetID:      row.AssetID,
+			AssetName:    row.AssetName,
+			FindingID:    row.FindingID,
+			FindingTitle: row.FindingTitle,
+			Severity:     row.Severity,
+			Status:       row.Status,
+			DaysOpen:     int(row.DaysOpen),
+		})
 	}
-	return result, rows.Err()
+	return result, nil
 }
 
 // BulkCreateAssets inserts multiple assets in a single transaction and returns
@@ -341,24 +570,24 @@ func (r *Repository) BulkCreateAssets(ctx context.Context, orgID string, rows []
 		return 0, len(rows), []string{fmt.Sprintf("begin transaction: %s", err)}
 	}
 	defer func() {
-		if err != nil {
-			_ = tx.Rollback(ctx)
-		}
+		_ = tx.Rollback(ctx) // no-op when Commit succeeded
 	}()
+	qtx := r.q.WithTx(tx)
 
 	for i, row := range rows {
 		tags := row.Tags
 		if tags == nil {
 			tags = []string{}
 		}
-
-		var id string
-		scanErr := tx.QueryRow(ctx, `
-			INSERT INTO vb_assets (org_id, name, type, criticality, tags, external_url, updated_at)
-			VALUES ($1::uuid, $2, $3, $4, $5, $6, $7)
-			RETURNING id::text`,
-			orgID, row.Name, row.Type, row.Criticality, tags, row.ExternalURL, time.Now(),
-		).Scan(&id)
+		_, scanErr := qtx.CreateSPAsset(ctx, db.CreateSPAssetParams{
+			OrgID:       orgID,
+			Name:        row.Name,
+			Type:        row.Type,
+			Criticality: row.Criticality,
+			Tags:        tags,
+			OwnerID:     pgtype.UUID{}, // bulk import has no owner
+			ExternalUrl: spOptText(row.ExternalURL),
+		})
 		if scanErr != nil {
 			errored++
 			errs = append(errs, fmt.Sprintf("row %d (%q): %s", i+1, row.Name, scanErr))
@@ -379,45 +608,27 @@ func (r *Repository) BulkCreateAssets(ctx context.Context, orgID string, rows []
 
 // CreateScan inserts a new scan record and returns it.
 func (r *Repository) CreateScan(ctx context.Context, orgID string, input CreateScanInput, assetID string) (*Scan, error) {
-	var s Scan
-	err := r.db.QueryRow(ctx, `
-		INSERT INTO vb_scans (org_id, asset_id, scanner, status, target_url, target_ip)
-		VALUES ($1::uuid, $2::uuid, $3, 'pending', $4, $5)
-		RETURNING id::text, org_id::text, asset_id::text, scanner, status,
-		          COALESCE(target_url,''), COALESCE(target_ip,''),
-		          COALESCE(error_message,''), finding_count,
-		          duration_ms, started_at, completed_at, created_at`,
-		orgID, assetID, input.Scanner, input.TargetURL, input.TargetIP,
-	).Scan(
-		&s.ID, &s.OrgID, &s.AssetID, &s.Scanner, &s.Status,
-		&s.TargetURL, &s.TargetIP, &s.ErrorMessage, &s.FindingCount,
-		&s.DurationMs, &s.StartedAt, &s.CompletedAt, &s.CreatedAt,
-	)
+	row, err := r.q.CreateSPScan(ctx, db.CreateSPScanParams{
+		OrgID:     orgID,
+		AssetID:   assetID,
+		Scanner:   input.Scanner,
+		TargetUrl: spOptText(input.TargetURL),
+		TargetIp:  spOptText(input.TargetIP),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("insert scan: %w", err)
 	}
+	s := scanFromVbScans(row)
 	return &s, nil
 }
 
 // GetScan fetches a scan by ID within the org.
 func (r *Repository) GetScan(ctx context.Context, orgID, scanID string) (*Scan, error) {
-	var s Scan
-	err := r.db.QueryRow(ctx, `
-		SELECT id::text, org_id::text, asset_id::text, scanner, status,
-		       COALESCE(target_url,''), COALESCE(target_ip,''),
-		       COALESCE(error_message,''), finding_count,
-		       duration_ms, started_at, completed_at, created_at
-		FROM vb_scans
-		WHERE id = $1::uuid AND org_id = $2::uuid`,
-		scanID, orgID,
-	).Scan(
-		&s.ID, &s.OrgID, &s.AssetID, &s.Scanner, &s.Status,
-		&s.TargetURL, &s.TargetIP, &s.ErrorMessage, &s.FindingCount,
-		&s.DurationMs, &s.StartedAt, &s.CompletedAt, &s.CreatedAt,
-	)
+	row, err := r.q.GetSPScan(ctx, db.GetSPScanParams{ID: scanID, OrgID: orgID})
 	if err != nil {
 		return nil, fmt.Errorf("get scan: %w", err)
 	}
+	s := scanFromVbScans(row)
 	return &s, nil
 }
 
@@ -427,42 +638,15 @@ func (r *Repository) UpdateScanStatus(ctx context.Context, scanID, status string
 	for _, opt := range opts {
 		opt(o)
 	}
-
-	setClauses := []string{"status = $1"}
-	args := []interface{}{status}
-	argN := 2
-
-	if o.errorMessage != nil {
-		setClauses = append(setClauses, fmt.Sprintf("error_message = $%d", argN))
-		args = append(args, *o.errorMessage)
-		argN++
-	}
-	if o.findingCount != nil {
-		setClauses = append(setClauses, fmt.Sprintf("finding_count = $%d", argN))
-		args = append(args, *o.findingCount)
-		argN++
-	}
-	if o.durationMs != nil {
-		setClauses = append(setClauses, fmt.Sprintf("duration_ms = $%d", argN))
-		args = append(args, *o.durationMs)
-		argN++
-	}
-	if o.startedAt != nil {
-		setClauses = append(setClauses, fmt.Sprintf("started_at = $%d", argN))
-		args = append(args, *o.startedAt)
-		argN++
-	}
-	if o.completedAt != nil {
-		setClauses = append(setClauses, fmt.Sprintf("completed_at = $%d", argN))
-		args = append(args, *o.completedAt)
-		argN++
-	}
-
-	args = append(args, scanID)
-	query := fmt.Sprintf("UPDATE vb_scans SET %s WHERE id = $%d::uuid",
-		strings.Join(setClauses, ", "), argN)
-
-	_, err := r.db.Exec(ctx, query, args...)
+	err := r.q.UpdateSPScanStatus(ctx, db.UpdateSPScanStatusParams{
+		ID:           scanID,
+		Status:       status,
+		ErrorMessage: spOptText(derefStrPtr(o.errorMessage)),
+		FindingCount: spOptInt4(o.findingCount),
+		DurationMs:   spOptInt8(o.durationMs),
+		StartedAt:    spOptTs(o.startedAt),
+		CompletedAt:  spOptTs(o.completedAt),
+	})
 	if err != nil {
 		return fmt.Errorf("update scan status: %w", err)
 	}
@@ -608,31 +792,6 @@ func (r *Repository) UpsertFinding(ctx context.Context, orgID string, f Finding)
 
 // ListFindings returns findings for an org matching the given filter.
 func (r *Repository) ListFindings(ctx context.Context, orgID string, filter FindingFilter) ([]Finding, error) {
-	args := []interface{}{orgID}
-	where := "org_id = $1::uuid"
-	argN := 2
-
-	if filter.Severity != "" {
-		where += fmt.Sprintf(" AND severity = $%d", argN)
-		args = append(args, filter.Severity)
-		argN++
-	}
-	if filter.Status != "" {
-		where += fmt.Sprintf(" AND status = $%d", argN)
-		args = append(args, filter.Status)
-		argN++
-	}
-	if filter.AssetID != "" {
-		where += fmt.Sprintf(" AND asset_id = $%d::uuid", argN)
-		args = append(args, filter.AssetID)
-		argN++
-	}
-
-	orderBy := "risk_score DESC NULLS LAST"
-	if filter.SortBy == "created_at" {
-		orderBy = "created_at DESC"
-	}
-
 	page := filter.Page
 	if page < 1 {
 		page = 1
@@ -643,167 +802,79 @@ func (r *Repository) ListFindings(ctx context.Context, orgID string, filter Find
 	}
 	offset := (page - 1) * limit
 
-	args = append(args, limit, offset)
-	query := fmt.Sprintf(`
-		SELECT id::text, org_id::text, asset_id::text,
-		       scan_id::text, cve_id,
-		       title, COALESCE(description,''), severity,
-		       cvss_score, epss_score, epss_percentile, risk_score,
-		       status, scanner, COALESCE(raw_id,''), sources,
-		       COALESCE(template_id,''), assigned_to::text, COALESCE(justification,''),
-		       reopen_count, occurrence_count,
-		       last_seen_at, sla_due_at, created_at, updated_at
-		FROM vb_findings
-		WHERE %s
-		ORDER BY %s
-		LIMIT $%d OFFSET $%d`, where, orderBy, argN, argN+1)
+	severity := spOptText(filter.Severity)
+	status := spOptText(filter.Status)
+	assetID := spOptUUID(strPtrOrNil(filter.AssetID))
 
-	rows, err := r.db.Query(ctx, query, args...)
+	var rows []db.VbFindings
+	var err error
+	if filter.SortBy == "created_at" {
+		rows, err = r.q.ListSPFindingsByCreated(ctx, db.ListSPFindingsByCreatedParams{
+			OrgID:    orgID,
+			Limit:    int32(limit),
+			Offset:   int32(offset),
+			Severity: severity,
+			Status:   status,
+			AssetID:  assetID,
+		})
+	} else {
+		rows, err = r.q.ListSPFindingsByRisk(ctx, db.ListSPFindingsByRiskParams{
+			OrgID:    orgID,
+			Limit:    int32(limit),
+			Offset:   int32(offset),
+			Severity: severity,
+			Status:   status,
+			AssetID:  assetID,
+		})
+	}
 	if err != nil {
 		return nil, fmt.Errorf("list findings: %w", err)
 	}
-	defer rows.Close()
-
-	var findings []Finding
-	for rows.Next() {
-		var f Finding
-		if err := rows.Scan(
-			&f.ID, &f.OrgID, &f.AssetID,
-			&f.ScanID, &f.CVEID,
-			&f.Title, &f.Description, &f.Severity,
-			&f.CVSSScore, &f.EPSSScore, &f.EPSSPercentile, &f.RiskScore,
-			&f.Status, &f.Scanner, &f.RawID, &f.Sources,
-			&f.TemplateID, &f.AssignedTo, &f.Justification,
-			&f.ReopenCount, &f.OccurrenceCount,
-			&f.LastSeenAt, &f.SLADueAt, &f.CreatedAt, &f.UpdatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("scan finding row: %w", err)
-		}
-		findings = append(findings, f)
+	out := make([]Finding, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, findingFromVbFindings(row))
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate finding rows: %w", err)
-	}
-	return findings, nil
+	return out, nil
 }
 
 // CountFindings returns the total number of findings matching the filter (ignoring page/limit).
 func (r *Repository) CountFindings(ctx context.Context, orgID string, filter FindingFilter) (int, error) {
-	args := []interface{}{orgID}
-	where := "org_id = $1::uuid"
-	argN := 2
-
-	if filter.Severity != "" {
-		where += fmt.Sprintf(" AND severity = $%d", argN)
-		args = append(args, filter.Severity)
-		argN++
-	}
-	if filter.Status != "" {
-		where += fmt.Sprintf(" AND status = $%d", argN)
-		args = append(args, filter.Status)
-		argN++
-	}
-	if filter.AssetID != "" {
-		where += fmt.Sprintf(" AND asset_id = $%d::uuid", argN)
-		args = append(args, filter.AssetID)
-	}
-
-	var total int
-	if err := r.db.QueryRow(ctx,
-		fmt.Sprintf("SELECT COUNT(*) FROM vb_findings WHERE %s", where), args...,
-	).Scan(&total); err != nil {
+	total, err := r.q.CountSPFindings(ctx, db.CountSPFindingsParams{
+		OrgID:    orgID,
+		Severity: spOptText(filter.Severity),
+		Status:   spOptText(filter.Status),
+		AssetID:  spOptUUID(strPtrOrNil(filter.AssetID)),
+	})
+	if err != nil {
 		return 0, fmt.Errorf("count findings: %w", err)
 	}
-	return total, nil
+	return int(total), nil
 }
 
 // GetFinding fetches a single finding by ID within the org.
 func (r *Repository) GetFinding(ctx context.Context, orgID, findingID string) (*Finding, error) {
-	var f Finding
-	err := r.db.QueryRow(ctx, `
-		SELECT id::text, org_id::text, asset_id::text,
-		       scan_id::text, cve_id,
-		       title, COALESCE(description,''), severity,
-		       cvss_score, epss_score, epss_percentile, risk_score,
-		       status, scanner, COALESCE(raw_id,''), sources,
-		       COALESCE(template_id,''), assigned_to::text, COALESCE(justification,''),
-		       reopen_count, occurrence_count,
-		       last_seen_at, sla_due_at, created_at, updated_at
-		FROM vb_findings
-		WHERE id = $1::uuid AND org_id = $2::uuid`,
-		findingID, orgID,
-	).Scan(
-		&f.ID, &f.OrgID, &f.AssetID,
-		&f.ScanID, &f.CVEID,
-		&f.Title, &f.Description, &f.Severity,
-		&f.CVSSScore, &f.EPSSScore, &f.EPSSPercentile, &f.RiskScore,
-		&f.Status, &f.Scanner, &f.RawID, &f.Sources,
-		&f.TemplateID, &f.AssignedTo, &f.Justification,
-		&f.ReopenCount, &f.OccurrenceCount,
-		&f.LastSeenAt, &f.SLADueAt, &f.CreatedAt, &f.UpdatedAt,
-	)
+	row, err := r.q.GetSPFinding(ctx, db.GetSPFindingParams{ID: findingID, OrgID: orgID})
 	if err != nil {
 		return nil, fmt.Errorf("get finding: %w", err)
 	}
+	f := findingFromVbFindings(row)
 	return &f, nil
 }
 
 // UpdateFinding applies a partial update to a finding.
 func (r *Repository) UpdateFinding(ctx context.Context, orgID, findingID string, input UpdateFindingInput) (*Finding, error) {
-	setClauses := []string{"updated_at = NOW()"}
-	args := []interface{}{}
-	argN := 1
-
-	if input.Status != nil {
-		setClauses = append(setClauses, fmt.Sprintf("status = $%d", argN))
-		args = append(args, *input.Status)
-		argN++
-	}
-	if input.AssignedTo != nil {
-		setClauses = append(setClauses, fmt.Sprintf("assigned_to = $%d::uuid", argN))
-		args = append(args, *input.AssignedTo)
-		argN++
-	}
-	if input.Justification != nil {
-		setClauses = append(setClauses, fmt.Sprintf("justification = $%d", argN))
-		args = append(args, *input.Justification)
-		argN++
-	}
-	if input.Severity != nil {
-		setClauses = append(setClauses, fmt.Sprintf("severity = $%d", argN))
-		args = append(args, *input.Severity)
-		argN++
-	}
-
-	args = append(args, findingID, orgID)
-	query := fmt.Sprintf(`
-		UPDATE vb_findings
-		SET %s
-		WHERE id = $%d::uuid AND org_id = $%d::uuid
-		RETURNING id::text, org_id::text, asset_id::text,
-		          scan_id::text, cve_id,
-		          title, COALESCE(description,''), severity,
-		          cvss_score, epss_score, epss_percentile, risk_score,
-		          status, scanner, COALESCE(raw_id,''), sources,
-		          COALESCE(template_id,''), assigned_to::text, COALESCE(justification,''),
-		          reopen_count, occurrence_count,
-		          last_seen_at, sla_due_at, created_at, updated_at`,
-		strings.Join(setClauses, ", "), argN, argN+1)
-
-	var f Finding
-	err := r.db.QueryRow(ctx, query, args...).Scan(
-		&f.ID, &f.OrgID, &f.AssetID,
-		&f.ScanID, &f.CVEID,
-		&f.Title, &f.Description, &f.Severity,
-		&f.CVSSScore, &f.EPSSScore, &f.EPSSPercentile, &f.RiskScore,
-		&f.Status, &f.Scanner, &f.RawID, &f.Sources,
-		&f.TemplateID, &f.AssignedTo, &f.Justification,
-		&f.ReopenCount, &f.OccurrenceCount,
-		&f.LastSeenAt, &f.SLADueAt, &f.CreatedAt, &f.UpdatedAt,
-	)
+	row, err := r.q.UpdateSPFinding(ctx, db.UpdateSPFindingParams{
+		ID:            findingID,
+		OrgID:         orgID,
+		Status:        optTextPtr(input.Status),
+		AssignedTo:    spOptUUID(input.AssignedTo),
+		Justification: optTextPtr(input.Justification),
+		Severity:      optTextPtr(input.Severity),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("update finding: %w", err)
 	}
+	f := findingFromVbFindings(row)
 	return &f, nil
 }
 
@@ -812,44 +883,32 @@ func (r *Repository) BulkUpdateFindings(ctx context.Context, orgID string, input
 	if len(input.IDs) == 0 {
 		return 0, nil
 	}
-
-	setClauses := []string{"updated_at = NOW()"}
-	args := []interface{}{}
-	argN := 1
-
-	if input.Status != nil {
-		setClauses = append(setClauses, fmt.Sprintf("status = $%d", argN))
-		args = append(args, *input.Status)
-		argN++
-	}
-	if input.AssignedTo != nil {
-		setClauses = append(setClauses, fmt.Sprintf("assigned_to = $%d::uuid", argN))
-		args = append(args, *input.AssignedTo)
-		argN++
-	}
-
-	// Build UUID array placeholder.
-	idPlaceholders := make([]string, len(input.IDs))
-	for i, id := range input.IDs {
-		idPlaceholders[i] = fmt.Sprintf("$%d::uuid", argN)
-		args = append(args, id)
-		argN++
-	}
-
-	args = append(args, orgID)
-	query := fmt.Sprintf(`
-		UPDATE vb_findings
-		SET %s
-		WHERE id IN (%s) AND org_id = $%d::uuid`,
-		strings.Join(setClauses, ", "),
-		strings.Join(idPlaceholders, ", "),
-		argN)
-
-	tag, err := r.db.Exec(ctx, query, args...)
+	n, err := r.q.BulkUpdateSPFindings(ctx, db.BulkUpdateSPFindingsParams{
+		OrgID:      orgID,
+		Ids:        input.IDs,
+		Status:     optTextPtr(input.Status),
+		AssignedTo: spOptUUID(input.AssignedTo),
+	})
 	if err != nil {
 		return 0, fmt.Errorf("bulk update findings: %w", err)
 	}
-	return int(tag.RowsAffected()), nil
+	return int(n), nil
+}
+
+// strPtrOrNil returns a pointer to s when s != "", else nil.
+func strPtrOrNil(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+// optTextPtr converts a *string to a nullable pgtype.Text (nil → invalid).
+func optTextPtr(s *string) pgtype.Text {
+	if s == nil {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: *s, Valid: true}
 }
 
 // ---------------------------------------------------------------------------
@@ -858,66 +917,40 @@ func (r *Repository) BulkUpdateFindings(ctx context.Context, orgID string, input
 
 // CreateSuppressionRule inserts a new suppression rule.
 func (r *Repository) CreateSuppressionRule(ctx context.Context, orgID, userID string, input CreateSuppressionInput) (*SuppressionRule, error) {
-	var rule SuppressionRule
-	err := r.db.QueryRow(ctx, `
-		INSERT INTO vb_finding_suppressions (org_id, cve_id, asset_tag, reason, created_by)
-		VALUES ($1::uuid, $2, $3, $4, $5::uuid)
-		RETURNING id::text, org_id::text, cve_id, asset_tag, reason,
-		          created_by::text, match_count, created_at`,
-		orgID, input.CVEID, input.AssetTag, input.Reason, userID,
-	).Scan(
-		&rule.ID, &rule.OrgID, &rule.CVEID, &rule.AssetTag, &rule.Reason,
-		&rule.CreatedBy, &rule.MatchCount, &rule.CreatedAt,
-	)
+	row, err := r.q.CreateSPSuppression(ctx, db.CreateSPSuppressionParams{
+		OrgID:     orgID,
+		CveID:     optTextPtr(input.CVEID),
+		AssetTag:  optTextPtr(input.AssetTag),
+		Reason:    input.Reason,
+		CreatedBy: spOptUUID(&userID),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("insert suppression rule: %w", err)
 	}
+	rule := suppressionFromVbSuppression(row)
 	return &rule, nil
 }
 
 // ListSuppressionRules returns all suppression rules for an org.
 func (r *Repository) ListSuppressionRules(ctx context.Context, orgID string) ([]SuppressionRule, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT id::text, org_id::text, cve_id, asset_tag, reason,
-		       created_by::text, match_count, created_at
-		FROM vb_finding_suppressions
-		WHERE org_id = $1::uuid
-		ORDER BY created_at DESC`,
-		orgID,
-	)
+	rows, err := r.q.ListSPSuppressions(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("list suppression rules: %w", err)
 	}
-	defer rows.Close()
-
-	var rules []SuppressionRule
-	for rows.Next() {
-		var rule SuppressionRule
-		if err := rows.Scan(
-			&rule.ID, &rule.OrgID, &rule.CVEID, &rule.AssetTag, &rule.Reason,
-			&rule.CreatedBy, &rule.MatchCount, &rule.CreatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("scan suppression row: %w", err)
-		}
-		rules = append(rules, rule)
+	out := make([]SuppressionRule, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, suppressionFromVbSuppression(row))
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate suppression rows: %w", err)
-	}
-	return rules, nil
+	return out, nil
 }
 
 // DeleteSuppressionRule deletes a suppression rule by ID within the org.
 func (r *Repository) DeleteSuppressionRule(ctx context.Context, orgID, ruleID string) error {
-	tag, err := r.db.Exec(ctx, `
-		DELETE FROM vb_finding_suppressions
-		WHERE id = $1::uuid AND org_id = $2::uuid`,
-		ruleID, orgID,
-	)
+	n, err := r.q.DeleteSPSuppression(ctx, db.DeleteSPSuppressionParams{ID: ruleID, OrgID: orgID})
 	if err != nil {
 		return fmt.Errorf("delete suppression rule: %w", err)
 	}
-	if tag.RowsAffected() == 0 {
+	if n == 0 {
 		return fmt.Errorf("suppression rule not found")
 	}
 	return nil
@@ -929,66 +962,39 @@ func (r *Repository) DeleteSuppressionRule(ctx context.Context, orgID, ruleID st
 
 // CreateScanSchedule inserts a new scan schedule for an asset.
 func (r *Repository) CreateScanSchedule(ctx context.Context, orgID, assetID string, input CreateScanScheduleInput) (*ScanSchedule, error) {
-	var s ScanSchedule
-	err := r.db.QueryRow(ctx, `
-		INSERT INTO vb_scan_schedules (org_id, asset_id, scanner, cron_expr, is_active)
-		VALUES ($1::uuid, $2::uuid, $3, $4, TRUE)
-		RETURNING id::text, org_id::text, asset_id::text, scanner, cron_expr,
-		          is_active, last_run, next_run, created_at`,
-		orgID, assetID, input.Scanner, input.CronExpr,
-	).Scan(
-		&s.ID, &s.OrgID, &s.AssetID, &s.Scanner, &s.CronExpr,
-		&s.IsActive, &s.LastRun, &s.NextRun, &s.CreatedAt,
-	)
+	row, err := r.q.CreateSPScanSchedule(ctx, db.CreateSPScanScheduleParams{
+		OrgID:    orgID,
+		AssetID:  assetID,
+		Scanner:  input.Scanner,
+		CronExpr: input.CronExpr,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("insert scan schedule: %w", err)
 	}
+	s := scheduleFromVbScanSchedule(row)
 	return &s, nil
 }
 
 // ListScanSchedules returns all scan schedules for an asset.
 func (r *Repository) ListScanSchedules(ctx context.Context, orgID, assetID string) ([]ScanSchedule, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT id::text, org_id::text, asset_id::text, scanner, cron_expr,
-		       is_active, last_run, next_run, created_at
-		FROM vb_scan_schedules
-		WHERE org_id = $1::uuid AND asset_id = $2::uuid
-		ORDER BY created_at DESC`,
-		orgID, assetID,
-	)
+	rows, err := r.q.ListSPScanSchedules(ctx, db.ListSPScanSchedulesParams{OrgID: orgID, AssetID: assetID})
 	if err != nil {
 		return nil, fmt.Errorf("list scan schedules: %w", err)
 	}
-	defer rows.Close()
-
-	var schedules []ScanSchedule
-	for rows.Next() {
-		var s ScanSchedule
-		if err := rows.Scan(
-			&s.ID, &s.OrgID, &s.AssetID, &s.Scanner, &s.CronExpr,
-			&s.IsActive, &s.LastRun, &s.NextRun, &s.CreatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("scan schedule row: %w", err)
-		}
-		schedules = append(schedules, s)
+	out := make([]ScanSchedule, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, scheduleFromVbScanSchedule(row))
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate schedule rows: %w", err)
-	}
-	return schedules, nil
+	return out, nil
 }
 
 // DeleteScanSchedule removes a scan schedule by ID within the org.
 func (r *Repository) DeleteScanSchedule(ctx context.Context, orgID, scheduleID string) error {
-	tag, err := r.db.Exec(ctx, `
-		DELETE FROM vb_scan_schedules
-		WHERE id = $1::uuid AND org_id = $2::uuid`,
-		scheduleID, orgID,
-	)
+	n, err := r.q.DeleteSPScanSchedule(ctx, db.DeleteSPScanScheduleParams{ID: scheduleID, OrgID: orgID})
 	if err != nil {
 		return fmt.Errorf("delete scan schedule: %w", err)
 	}
-	if tag.RowsAffected() == 0 {
+	if n == 0 {
 		return fmt.Errorf("scan schedule not found")
 	}
 	return nil
@@ -1003,42 +1009,20 @@ func (r *Repository) GetRiskTrend(ctx context.Context, orgID string, days int) (
 	if days <= 0 {
 		days = 30
 	}
-	rows, err := r.db.Query(ctx, `
-		SELECT
-		    TO_CHAR(d::date, 'YYYY-MM-DD') AS date,
-		    COALESCE(SUM(f.risk_score), 0)::float8 AS total_risk_score,
-		    COUNT(f.id)                             AS open_count,
-		    COUNT(f.id) FILTER (WHERE f.severity = 'critical') AS critical_count
-		FROM generate_series(
-		    (NOW() - make_interval(days => $2::int))::date,
-		    NOW()::date,
-		    '1 day'::interval
-		) AS d
-		LEFT JOIN vb_findings f
-		    ON f.org_id = $1::uuid
-		   AND f.status = 'open'
-		   AND f.created_at < (d::date + INTERVAL '1 day')
-		GROUP BY d
-		ORDER BY d`,
-		orgID, days,
-	)
+	rows, err := r.q.GetSPRiskTrend(ctx, db.GetSPRiskTrendParams{OrgID: orgID, Column2: int32(days)})
 	if err != nil {
 		return nil, fmt.Errorf("get risk trend: %w", err)
 	}
-	defer rows.Close()
-
-	var points []RiskTrendPoint
-	for rows.Next() {
-		var p RiskTrendPoint
-		if err := rows.Scan(&p.Date, &p.TotalRiskScore, &p.OpenCount, &p.CriticalCount); err != nil {
-			return nil, fmt.Errorf("scan risk trend row: %w", err)
-		}
-		points = append(points, p)
+	out := make([]RiskTrendPoint, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, RiskTrendPoint{
+			Date:           row.Date,
+			TotalRiskScore: row.TotalRiskScore,
+			OpenCount:      int(row.OpenCount),
+			CriticalCount:  int(row.CriticalCount),
+		})
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate risk trend rows: %w", err)
-	}
-	return points, nil
+	return out, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -1051,77 +1035,51 @@ func (r *Repository) CreateReport(ctx context.Context, orgID, userID string, sco
 	if err != nil {
 		return nil, fmt.Errorf("marshal report scope: %w", err)
 	}
-
-	var rpt Report
-	err = r.db.QueryRow(ctx, `
-		INSERT INTO vb_reports (org_id, generated_by, scope, status)
-		VALUES ($1::uuid, $2::uuid, $3::jsonb, 'pending')
-		RETURNING id::text, org_id::text, generated_by::text, scope,
-		          COALESCE(file_path,''), status, expires_at, created_at`,
-		orgID, userID, scopeJSON,
-	).Scan(
-		&rpt.ID, &rpt.OrgID, &rpt.GeneratedBy, &rpt.Scope,
-		&rpt.FilePath, &rpt.Status, &rpt.ExpiresAt, &rpt.CreatedAt,
-	)
+	row, err := r.q.CreateSPReport(ctx, db.CreateSPReportParams{
+		OrgID:       orgID,
+		GeneratedBy: spOptUUID(&userID),
+		Scope:       scopeJSON,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("insert report: %w", err)
 	}
-	rpt.Title = rpt.Scope.Title
+	rpt := reportFromFields(reportFields{
+		ID: row.ID, OrgID: row.OrgID, GeneratedBy: row.GeneratedBy,
+		Scope: row.Scope, FilePath: row.FilePath, Status: row.Status,
+		ExpiresAt: row.ExpiresAt, CreatedAt: row.CreatedAt,
+	})
 	return &rpt, nil
 }
 
 // GetReport fetches a report by ID within the org.
 func (r *Repository) GetReport(ctx context.Context, orgID, reportID string) (*Report, error) {
-	var rpt Report
-	err := r.db.QueryRow(ctx, `
-		SELECT id::text, org_id::text, generated_by::text, scope,
-		       COALESCE(file_path,''), status, expires_at, created_at
-		FROM vb_reports
-		WHERE id = $1::uuid AND org_id = $2::uuid`,
-		reportID, orgID,
-	).Scan(
-		&rpt.ID, &rpt.OrgID, &rpt.GeneratedBy, &rpt.Scope,
-		&rpt.FilePath, &rpt.Status, &rpt.ExpiresAt, &rpt.CreatedAt,
-	)
+	row, err := r.q.GetSPReport(ctx, db.GetSPReportParams{ID: reportID, OrgID: orgID})
 	if err != nil {
 		return nil, fmt.Errorf("get report: %w", err)
 	}
-	rpt.Title = rpt.Scope.Title
+	rpt := reportFromFields(reportFields{
+		ID: row.ID, OrgID: row.OrgID, GeneratedBy: row.GeneratedBy,
+		Scope: row.Scope, FilePath: row.FilePath, Status: row.Status,
+		ExpiresAt: row.ExpiresAt, CreatedAt: row.CreatedAt,
+	})
 	return &rpt, nil
 }
 
 // ListReports returns reports for an org, newest first (metadata only — no PDF blob).
 func (r *Repository) ListReports(ctx context.Context, orgID string) ([]Report, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT id::text, org_id::text, generated_by::text, scope,
-		       COALESCE(file_path,''), status, expires_at, created_at
-		FROM vb_reports
-		WHERE org_id = $1::uuid
-		ORDER BY created_at DESC
-		LIMIT 100`,
-		orgID,
-	)
+	rows, err := r.q.ListSPReports(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("list reports: %w", err)
 	}
-	defer rows.Close()
-
-	var reports []Report
-	for rows.Next() {
-		var rpt Report
-		if err := rows.Scan(
-			&rpt.ID, &rpt.OrgID, &rpt.GeneratedBy, &rpt.Scope,
-			&rpt.FilePath, &rpt.Status, &rpt.ExpiresAt, &rpt.CreatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("scan report row: %w", err)
-		}
-		rpt.Title = rpt.Scope.Title
-		reports = append(reports, rpt)
+	out := make([]Report, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, reportFromFields(reportFields{
+			ID: row.ID, OrgID: row.OrgID, GeneratedBy: row.GeneratedBy,
+			Scope: row.Scope, FilePath: row.FilePath, Status: row.Status,
+			ExpiresAt: row.ExpiresAt, CreatedAt: row.CreatedAt,
+		}))
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate report rows: %w", err)
-	}
-	return reports, nil
+	return out, nil
 }
 
 // UpsertFindingByRawID inserts a finding or updates it on conflict of
@@ -1131,60 +1089,35 @@ func (r *Repository) UpsertFindingByRawID(ctx context.Context, orgID string, f F
 	if sources == nil {
 		sources = []string{}
 	}
-
-	var inserted Finding
-	err := r.db.QueryRow(ctx, `
-		INSERT INTO vb_findings
-		  (org_id, asset_id, cve_id, title, description, severity,
-		   cvss_score, status, scanner, raw_id, sources, sla_due_at,
-		   reopen_count, occurrence_count, last_seen_at)
-		VALUES
-		  ($1::uuid, $2::uuid, $3, $4, $5, $6,
-		   $7, $8, $9, $10, $11, $12,
-		   0, 1, NOW())
-		ON CONFLICT (org_id, raw_id, scanner) DO UPDATE
-		  SET title            = EXCLUDED.title,
-		      description      = EXCLUDED.description,
-		      severity         = EXCLUDED.severity,
-		      cvss_score       = EXCLUDED.cvss_score,
-		      sla_due_at       = EXCLUDED.sla_due_at,
-		      occurrence_count = vb_findings.occurrence_count + 1,
-		      last_seen_at     = NOW(),
-		      updated_at       = NOW()
-		RETURNING id::text, org_id::text, asset_id::text,
-		          scan_id::text, cve_id,
-		          title, COALESCE(description,''), severity,
-		          cvss_score, epss_score, epss_percentile, risk_score,
-		          status, scanner, COALESCE(raw_id,''), sources,
-		          COALESCE(template_id,''), assigned_to::text, COALESCE(justification,''),
-		          reopen_count, occurrence_count,
-		          last_seen_at, sla_due_at, created_at, updated_at`,
-		orgID, f.AssetID, f.CVEID, f.Title, f.Description, f.Severity,
-		f.CVSSScore, f.Status, f.Scanner, f.RawID, sources, f.SLADueAt,
-	).Scan(
-		&inserted.ID, &inserted.OrgID, &inserted.AssetID,
-		&inserted.ScanID, &inserted.CVEID,
-		&inserted.Title, &inserted.Description, &inserted.Severity,
-		&inserted.CVSSScore, &inserted.EPSSScore, &inserted.EPSSPercentile, &inserted.RiskScore,
-		&inserted.Status, &inserted.Scanner, &inserted.RawID, &inserted.Sources,
-		&inserted.TemplateID, &inserted.AssignedTo, &inserted.Justification,
-		&inserted.ReopenCount, &inserted.OccurrenceCount,
-		&inserted.LastSeenAt, &inserted.SLADueAt, &inserted.CreatedAt, &inserted.UpdatedAt,
-	)
+	row, err := r.q.UpsertSPFindingByRawID(ctx, db.UpsertSPFindingByRawIDParams{
+		OrgID:       orgID,
+		AssetID:     f.AssetID,
+		CveID:       optTextPtr(f.CVEID),
+		Title:       f.Title,
+		Description: spOptText(f.Description),
+		Severity:    f.Severity,
+		CvssScore:   float64PtrToNumeric(f.CVSSScore),
+		Status:      f.Status,
+		Scanner:     f.Scanner,
+		RawID:       spOptText(f.RawID),
+		Sources:     sources,
+		SlaDueAt:    spOptTs(f.SLADueAt),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("upsert finding by raw_id: %w", err)
 	}
-	return &inserted, nil
+	out := findingFromVbFindings(row)
+	return &out, nil
 }
 
 // UpdateReport updates a report's file path, status, and expiry.
 func (r *Repository) UpdateReport(ctx context.Context, reportID, filePath, status string, expiresAt *time.Time) error {
-	_, err := r.db.Exec(ctx, `
-		UPDATE vb_reports
-		SET file_path = $1, status = $2, expires_at = $3
-		WHERE id = $4::uuid`,
-		filePath, status, expiresAt, reportID,
-	)
+	err := r.q.UpdateSPReport(ctx, db.UpdateSPReportParams{
+		ID:        reportID,
+		FilePath:  spOptText(filePath),
+		Status:    status,
+		ExpiresAt: spOptTs(expiresAt),
+	})
 	if err != nil {
 		return fmt.Errorf("update report: %w", err)
 	}
@@ -1193,12 +1126,11 @@ func (r *Repository) UpdateReport(ctx context.Context, reportID, filePath, statu
 
 // StoreReportContent saves a generated PDF and marks the report completed.
 func (r *Repository) StoreReportContent(ctx context.Context, reportID string, content []byte, expiresAt time.Time) error {
-	_, err := r.db.Exec(ctx, `
-		UPDATE vb_reports
-		SET content = $1, status = 'completed', expires_at = $2, file_path = ''
-		WHERE id = $3::uuid`,
-		content, expiresAt, reportID,
-	)
+	err := r.q.StoreSPReportContent(ctx, db.StoreSPReportContentParams{
+		ID:        reportID,
+		Content:   content,
+		ExpiresAt: pgtype.Timestamptz{Time: expiresAt, Valid: true},
+	})
 	if err != nil {
 		return fmt.Errorf("store report content: %w", err)
 	}
@@ -1207,21 +1139,19 @@ func (r *Repository) StoreReportContent(ctx context.Context, reportID string, co
 
 // GetReportContent returns the raw PDF bytes and title for a completed report.
 func (r *Repository) GetReportContent(ctx context.Context, orgID, reportID string) ([]byte, string, error) {
-	var content []byte
-	var scope ReportScope
-	err := r.db.QueryRow(ctx, `
-		SELECT content, scope FROM vb_reports
-		WHERE id = $1::uuid AND org_id = $2::uuid AND status = 'completed'`,
-		reportID, orgID,
-	).Scan(&content, &scope)
+	row, err := r.q.GetSPReportContent(ctx, db.GetSPReportContentParams{ID: reportID, OrgID: orgID})
 	if err != nil {
 		return nil, "", fmt.Errorf("get report content: %w", err)
+	}
+	var scope ReportScope
+	if len(row.Scope) > 0 {
+		_ = json.Unmarshal(row.Scope, &scope)
 	}
 	title := scope.Title
 	if title == "" {
 		title = "report"
 	}
-	return content, title, nil
+	return row.Content, title, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -1240,30 +1170,29 @@ func (r *Repository) CreateSBOM(ctx context.Context, orgID, assetID string, doc 
 	if err != nil {
 		return "", fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
+	defer func() { _ = tx.Rollback(ctx) }() // no-op when Commit succeeded
+	qtx := r.q.WithTx(tx)
 
-	var sbomID string
-	err = tx.QueryRow(ctx, `
-		INSERT INTO vb_sboms (org_id, asset_id, format, spec_version, document, component_count)
-		VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6)
-		RETURNING id::text`,
-		orgID, assetID,
-		doc.BOMFormat, doc.SpecVersion,
-		docJSON, len(doc.Components),
-	).Scan(&sbomID)
+	sbomID, err := qtx.CreateSPSBOM(ctx, db.CreateSPSBOMParams{
+		OrgID:          orgID,
+		AssetID:        assetID,
+		Format:         doc.BOMFormat,
+		SpecVersion:    doc.SpecVersion,
+		Document:       docJSON,
+		ComponentCount: int32(len(doc.Components)),
+	})
 	if err != nil {
 		return "", fmt.Errorf("insert vb_sboms: %w", err)
 	}
 
 	for _, comp := range doc.Components {
-		purl := comp.PURL
-		_, err := tx.Exec(ctx, `
-			INSERT INTO vb_components (org_id, sbom_id, name, version, purl)
-			VALUES ($1::uuid, $2::uuid, $3, $4, $5)
-			ON CONFLICT (sbom_id, name, version) DO NOTHING`,
-			orgID, sbomID, comp.Name, comp.Version, purl,
-		)
-		if err != nil {
+		if err := qtx.InsertSPComponent(ctx, db.InsertSPComponentParams{
+			OrgID:   orgID,
+			SbomID:  sbomID,
+			Name:    comp.Name,
+			Version: comp.Version,
+			Purl:    spOptText(comp.PURL),
+		}); err != nil {
 			return "", fmt.Errorf("insert vb_components (%s %s): %w", comp.Name, comp.Version, err)
 		}
 	}
@@ -1276,19 +1205,17 @@ func (r *Repository) CreateSBOM(ctx context.Context, orgID, assetID string, doc 
 
 // GetLatestSBOM returns the most recently created SBOM summary for the given asset.
 func (r *Repository) GetLatestSBOM(ctx context.Context, orgID, assetID string) (*SBOMSummary, error) {
-	var s SBOMSummary
-	err := r.db.QueryRow(ctx, `
-		SELECT id::text, asset_id::text, format, component_count, created_at
-		FROM vb_sboms
-		WHERE org_id = $1::uuid AND asset_id = $2::uuid
-		ORDER BY created_at DESC
-		LIMIT 1`,
-		orgID, assetID,
-	).Scan(&s.ID, &s.AssetID, &s.Format, &s.ComponentCount, &s.CreatedAt)
+	row, err := r.q.GetLatestSPSBOM(ctx, db.GetLatestSPSBOMParams{OrgID: orgID, AssetID: assetID})
 	if err != nil {
 		return nil, fmt.Errorf("get latest SBOM: %w", err)
 	}
-	return &s, nil
+	return &SBOMSummary{
+		ID:             row.ID,
+		AssetID:        row.AssetID,
+		Format:         row.Format,
+		ComponentCount: int(row.ComponentCount),
+		CreatedAt:      spTsToTime(row.CreatedAt),
+	}, nil
 }
 
 // ListComponentsWithEOL returns paginated components for an org, optionally filtered to EOL-only.
@@ -1300,73 +1227,64 @@ func (r *Repository) ListComponentsWithEOL(ctx context.Context, orgID string, eo
 	const limit = 500
 	offset := (page - 1) * limit
 
-	query := `
-		SELECT c.id::text, c.name, c.version, COALESCE(c.purl,''),
-		       c.eol_status,
-		       CASE WHEN c.eol_date IS NOT NULL THEN c.eol_date::text ELSE NULL END,
-		       s.asset_id::text
-		FROM vb_components c
-		JOIN vb_sboms s ON s.id = c.sbom_id
-		WHERE c.org_id = $1::uuid`
 	if eolOnly {
-		query += " AND c.eol_status = 'eol'"
+		rows, err := r.q.ListSPComponentsEOL(ctx, db.ListSPComponentsEOLParams{
+			OrgID:  orgID,
+			Limit:  int32(limit),
+			Offset: int32(offset),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("list components: %w", err)
+		}
+		out := make([]ComponentSummary, 0, len(rows))
+		for _, c := range rows {
+			out = append(out, ComponentSummary{
+				ID: c.ID, Name: c.Name, Version: c.Version,
+				PURL: c.Purl.String, EOLStatus: c.EolStatus,
+				EOLDate: dateToStringPtr(c.EolDate), AssetID: c.AssetID,
+			})
+		}
+		return out, nil
 	}
-	query += " ORDER BY c.name, c.version LIMIT $2 OFFSET $3"
-
-	rows, err := r.db.Query(ctx, query, orgID, limit, offset)
+	rows, err := r.q.ListSPComponentsAll(ctx, db.ListSPComponentsAllParams{
+		OrgID:  orgID,
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("list components: %w", err)
 	}
-	defer rows.Close()
-
-	var result []ComponentSummary
-	for rows.Next() {
-		var comp ComponentSummary
-		if err := rows.Scan(
-			&comp.ID, &comp.Name, &comp.Version, &comp.PURL,
-			&comp.EOLStatus, &comp.EOLDate, &comp.AssetID,
-		); err != nil {
-			return nil, fmt.Errorf("scan component: %w", err)
-		}
-		result = append(result, comp)
+	out := make([]ComponentSummary, 0, len(rows))
+	for _, c := range rows {
+		out = append(out, ComponentSummary{
+			ID: c.ID, Name: c.Name, Version: c.Version,
+			PURL: c.Purl.String, EOLStatus: c.EolStatus,
+			EOLDate: dateToStringPtr(c.EolDate), AssetID: c.AssetID,
+		})
 	}
-	return result, rows.Err()
+	return out, nil
 }
 
 // listComponentsBySBOM returns the raw component rows for a given sbom_id (used by EOLChecker).
 func (r *Repository) listComponentsBySBOM(ctx context.Context, sbomID string) ([]componentRow, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT id::text, name, version
-		FROM vb_components
-		WHERE sbom_id = $1::uuid`,
-		sbomID,
-	)
+	rows, err := r.q.ListSPComponentsBySBOM(ctx, sbomID)
 	if err != nil {
 		return nil, fmt.Errorf("list components by SBOM: %w", err)
 	}
-	defer rows.Close()
-
-	var result []componentRow
-	for rows.Next() {
-		var c componentRow
-		if err := rows.Scan(&c.ID, &c.Name, &c.Version); err != nil {
-			return nil, fmt.Errorf("scan component row: %w", err)
-		}
-		result = append(result, c)
+	out := make([]componentRow, 0, len(rows))
+	for _, c := range rows {
+		out = append(out, componentRow{ID: c.ID, Name: c.Name, Version: c.Version})
 	}
-	return result, rows.Err()
+	return out, nil
 }
 
 // updateComponentEOL sets the eol_status and eol_date for a component.
 func (r *Repository) updateComponentEOL(ctx context.Context, componentID, eolStatus string, eolDate *string) error {
-	_, err := r.db.Exec(ctx, `
-		UPDATE vb_components
-		SET eol_status = $1,
-		    eol_date = $2::date,
-		    eol_checked_at = NOW()
-		WHERE id = $3::uuid`,
-		eolStatus, eolDate, componentID,
-	)
+	err := r.q.UpdateSPComponentEOL(ctx, db.UpdateSPComponentEOLParams{
+		ID:        componentID,
+		EolStatus: eolStatus,
+		EolDate:   dateFromStringPtr(eolDate),
+	})
 	if err != nil {
 		return fmt.Errorf("update component EOL: %w", err)
 	}
@@ -1375,30 +1293,20 @@ func (r *Repository) updateComponentEOL(ctx context.Context, componentID, eolSta
 
 // getEOLCache returns the cached payload for a (product, cycle) pair along with when it was fetched.
 func (r *Repository) getEOLCache(ctx context.Context, product, cycle string) ([]byte, time.Time, error) {
-	var payload []byte
-	var fetchedAt time.Time
-	err := r.db.QueryRow(ctx, `
-		SELECT payload, fetched_at
-		FROM vb_eol_cache
-		WHERE product = $1 AND cycle = $2`,
-		product, cycle,
-	).Scan(&payload, &fetchedAt)
+	row, err := r.q.GetSPEOLCache(ctx, db.GetSPEOLCacheParams{Product: product, Cycle: cycle})
 	if err != nil {
 		return nil, time.Time{}, fmt.Errorf("get EOL cache: %w", err)
 	}
-	return payload, fetchedAt, nil
+	return row.Payload, spTsToTime(row.FetchedAt), nil
 }
 
 // upsertEOLCache inserts or updates a cache row for the (product, cycle) pair.
 func (r *Repository) upsertEOLCache(ctx context.Context, product, cycle string, payload []byte) error {
-	_, err := r.db.Exec(ctx, `
-		INSERT INTO vb_eol_cache (product, cycle, payload, fetched_at)
-		VALUES ($1, $2, $3, NOW())
-		ON CONFLICT (product, cycle) DO UPDATE
-		  SET payload = EXCLUDED.payload,
-		      fetched_at = EXCLUDED.fetched_at`,
-		product, cycle, payload,
-	)
+	err := r.q.UpsertSPEOLCache(ctx, db.UpsertSPEOLCacheParams{
+		Product: product,
+		Cycle:   cycle,
+		Payload: payload,
+	})
 	if err != nil {
 		return fmt.Errorf("upsert EOL cache: %w", err)
 	}

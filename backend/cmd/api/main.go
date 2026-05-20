@@ -27,45 +27,47 @@ import (
 	"github.com/matharnica/vakt/internal/auth"
 	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/license"
-	"github.com/matharnica/vakt/internal/shared/demo"
-	sharedmw "github.com/matharnica/vakt/internal/shared/middleware"
-	sharedwebhooks "github.com/matharnica/vakt/internal/shared/webhooks"
-	"github.com/matharnica/vakt/internal/shared/updatecheck"
 	"github.com/matharnica/vakt/internal/modules/hr"
-	"github.com/matharnica/vakt/internal/modules/secvitals"
-	"github.com/matharnica/vakt/internal/modules/secreflex"
 	"github.com/matharnica/vakt/internal/modules/secprivacy"
-	"github.com/matharnica/vakt/internal/modules/secvault"
 	"github.com/matharnica/vakt/internal/modules/secpulse"
+	"github.com/matharnica/vakt/internal/modules/secreflex"
+	"github.com/matharnica/vakt/internal/modules/secvault"
+	"github.com/matharnica/vakt/internal/modules/secvitals"
+	"github.com/matharnica/vakt/internal/shared/account"
 	"github.com/matharnica/vakt/internal/shared/ai"
 	"github.com/matharnica/vakt/internal/shared/alerting"
-	"github.com/matharnica/vakt/internal/shared/evidence_auto"
 	"github.com/matharnica/vakt/internal/shared/apidocs"
+	"github.com/matharnica/vakt/internal/shared/apikeys"
 	"github.com/matharnica/vakt/internal/shared/auditexport"
 	"github.com/matharnica/vakt/internal/shared/auditlog"
-	"github.com/matharnica/vakt/internal/shared/auditreport"
-	"github.com/matharnica/vakt/internal/shared/dashboard"
-	shareddb "github.com/matharnica/vakt/internal/shared/db"
 	"github.com/matharnica/vakt/internal/shared/auditor"
+	"github.com/matharnica/vakt/internal/shared/auditreport"
+	"github.com/matharnica/vakt/internal/shared/comments"
+	"github.com/matharnica/vakt/internal/shared/dashboard"
+	"github.com/matharnica/vakt/internal/shared/dataexport"
+	shareddb "github.com/matharnica/vakt/internal/shared/db"
+	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/demoseed"
-	ghintegration "github.com/matharnica/vakt/internal/shared/integrations/github"
+	"github.com/matharnica/vakt/internal/shared/evidence_auto"
+	"github.com/matharnica/vakt/internal/shared/feedback"
 	cloudintegration "github.com/matharnica/vakt/internal/shared/integrations/cloud"
+	ghintegration "github.com/matharnica/vakt/internal/shared/integrations/github"
+	"github.com/matharnica/vakt/internal/shared/ldap"
 	"github.com/matharnica/vakt/internal/shared/metrics"
+	sharedmw "github.com/matharnica/vakt/internal/shared/middleware"
 	"github.com/matharnica/vakt/internal/shared/notifications"
 	"github.com/matharnica/vakt/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/onboarding"
 	"github.com/matharnica/vakt/internal/shared/retention"
+	"github.com/matharnica/vakt/internal/shared/scheduledreports"
 	"github.com/matharnica/vakt/internal/shared/search"
 	"github.com/matharnica/vakt/internal/shared/setup"
-	"github.com/matharnica/vakt/internal/shared/feedback"
-	"github.com/matharnica/vakt/internal/shared/ldap"
-	"github.com/matharnica/vakt/internal/shared/dataexport"
-	"github.com/matharnica/vakt/internal/shared/onboarding"
+	"github.com/matharnica/vakt/internal/shared/telemetry"
 	"github.com/matharnica/vakt/internal/shared/trustcenter"
-	lswebhook "github.com/matharnica/vakt/internal/webhooks/lemonsqueezy"
+	"github.com/matharnica/vakt/internal/shared/updatecheck"
 	"github.com/matharnica/vakt/internal/shared/usermgmt"
-	"github.com/matharnica/vakt/internal/shared/apikeys"
-	"github.com/matharnica/vakt/internal/shared/comments"
-	"github.com/matharnica/vakt/internal/shared/scheduledreports"
+	sharedwebhooks "github.com/matharnica/vakt/internal/shared/webhooks"
+	lswebhook "github.com/matharnica/vakt/internal/webhooks/lemonsqueezy"
 )
 
 // version is injected at build time via -ldflags "-X main.version=..."
@@ -271,6 +273,15 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	// All subsequent routes require a valid Paseto token
 	protected := api.Group("", auth.AuthMiddleware(pasetoKey, pool, rdb))
 
+	// CSRF protection: double-submit-cookie pattern on state-changing methods.
+	// API-key requests (Bearer sk_/vakt_) are exempt because they are not
+	// browser-driven. Webhook deliveries from external systems are also exempt
+	// (they authenticate via HMAC signature, not cookie). Auth routes that
+	// establish a session sit outside `protected` and therefore aren't gated.
+	protected.Use(auth.CSRFMiddleware(
+		"/api/v1/webhooks/receive",
+	))
+
 	// Org-wide MFA enforcement: if the org has require_mfa=true and the user has
 	// not completed TOTP setup, return 403 MFA_REQUIRED on all protected routes
 	// except the 2FA setup/confirm flow and logout.
@@ -282,7 +293,13 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 
 	// Global per-org rate limiting: 300 req/min, keyed by org_id from Paseto claims.
 	// Must be applied after auth middleware has populated org_id in the context.
-	protected.Use(sharedmw.OrgRateLimit())
+	// Redis-backed variant is multi-replica safe; in-memory fallback is only used
+	// when Redis is not configured (rare — auth itself requires Redis).
+	if rdb != nil {
+		protected.Use(sharedmw.OrgRateLimitRedis(rdb))
+	} else {
+		protected.Use(sharedmw.OrgRateLimit())
+	}
 
 	// License info — returns current tier and available features; activate endpoint persists key in DB
 	license.RegisterRoutes(api, lic, auth.AuthMiddleware(pasetoKey, pool, rdb), pool, rdb)
@@ -337,6 +354,10 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	// It is set inside the secvitals block and falls back to a no-op when secvitals is disabled.
 	var cloudEvidence = cloudintegration.NoopEvidenceWriter()
 
+	// hrEvidence bridges hr → secvitals without a direct import.
+	// Set inside the secvitals block; falls back to a no-op when secvitals is disabled.
+	var hrEvidence hr.EvidenceWriter = hr.NoopEvidenceWriter()
+
 	if cfg.IsModuleEnabled("secvitals") {
 		ckSvc := secvitals.NewService(pool)
 		ckSvc.WithRedis(rdb)
@@ -346,6 +367,7 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 			ckSvc.WithAIClient(ai.NewAIClient(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel))
 		}
 		cloudEvidence = secvitals.NewCloudEvidenceWriter(ckSvc.Repo())
+		hrEvidence = secvitals.NewHREvidenceWriter(pool)
 		ckSvc.ReseedBuiltinControls(ctx)
 		ckSvc.SeedBuiltinMeasures(ctx)
 		if err := ckSvc.SeedFrameworkMappings(ctx); err != nil {
@@ -448,9 +470,15 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	}
 
 	// HR module — onboarding and offboarding workflows
-	hrHandler := hr.NewHandler(hr.NewService(hr.NewRepository(pool)))
+	hrSvc := hr.NewService(hr.NewRepository(pool)).WithEvidenceWriter(hrEvidence)
+	hrHandler := hr.NewHandler(hrSvc)
 	hr.Register(protected.Group("/hr"), hrHandler)
 	log.Info().Msg("hr routes registered")
+
+	// Account self-service: DSGVO Art. 17 (delete) and Art. 20 (export).
+	accountHandler := account.NewHandler(account.NewService(pool))
+	account.Register(protected, accountHandler)
+	log.Info().Msg("account routes registered")
 
 	// GitHub integration — branch protection, PR review, dependency alert compliance checks
 	if cfg.SecretKey != "" {
@@ -634,16 +662,83 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 		if err := c.Bind(&payload); err != nil {
 			return c.NoContent(http.StatusBadRequest)
 		}
+		msg := sanitizeLogField(payload.Message, 500)
+		url := sanitizeLogField(payload.URL, 512)
+		trace := sanitizeLogField(payload.TraceID, 64)
+		stack := sanitizeLogField(payload.Stack, 4000)
+		compStack := sanitizeLogField(payload.ComponentStack, 4000)
+		ua := sanitizeLogField(c.Request().Header.Get("User-Agent"), 300)
+
 		log.Error().
 			Str("source", "client").
-			Str("url", sanitizeLogField(payload.URL, 512)).
-			Str("trace_id", sanitizeLogField(payload.TraceID, 64)).
-			Str("message", sanitizeLogField(payload.Message, 500)).
-			Str("stack", sanitizeLogField(payload.Stack, 2000)).
+			Str("url", url).
+			Str("trace_id", trace).
+			Str("message", msg).
+			Str("stack", stack).
 			Msg("client-side error boundary triggered")
+
+		// Persist for admin visibility. org_id/user_id are nullable — if the
+		// error occurred before login (or auth state was already lost), the
+		// entry is still recorded but unscoped.
+		var orgID, userID *string
+		if v, ok := c.Get("org_id").(string); ok && v != "" {
+			orgID = &v
+		}
+		if v, ok := c.Get("user_id").(string); ok && v != "" {
+			userID = &v
+		}
+		if _, err := pool.Exec(c.Request().Context(), `
+			INSERT INTO client_errors
+				(org_id, user_id, message, stack, component_stack, url, user_agent, trace_id)
+			VALUES
+				($1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8)
+		`, orgID, userID, msg, stack, compStack, url, ua, trace); err != nil {
+			log.Warn().Err(err).Msg("client error: persist failed (logged only)")
+		}
 		return c.NoContent(http.StatusNoContent)
 	}, clientErrRL)
 	log.Info().Msg("client error endpoint registered")
+
+	// Admin view of recent client errors (last 200, scoped to org for non-admins).
+	protected.GET("/admin/client-errors", func(c echo.Context) error {
+		orgID, _ := c.Get("org_id").(string)
+		rows, err := pool.Query(c.Request().Context(), `
+			SELECT id::text, COALESCE(org_id::text,''), COALESCE(user_id::text,''),
+			       message, COALESCE(stack,''), COALESCE(component_stack,''),
+			       COALESCE(url,''), COALESCE(user_agent,''), COALESCE(trace_id,''),
+			       occurred_at
+			FROM client_errors
+			WHERE org_id = $1::uuid OR org_id IS NULL
+			ORDER BY occurred_at DESC
+			LIMIT 200
+		`, orgID)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "query failed"})
+		}
+		defer rows.Close()
+		type errorEntry struct {
+			ID             string    `json:"id"`
+			OrgID          string    `json:"org_id"`
+			UserID         string    `json:"user_id"`
+			Message        string    `json:"message"`
+			Stack          string    `json:"stack"`
+			ComponentStack string    `json:"component_stack"`
+			URL            string    `json:"url"`
+			UserAgent      string    `json:"user_agent"`
+			TraceID        string    `json:"trace_id"`
+			OccurredAt     time.Time `json:"occurred_at"`
+		}
+		out := make([]errorEntry, 0, 50)
+		for rows.Next() {
+			var e errorEntry
+			if err := rows.Scan(&e.ID, &e.OrgID, &e.UserID, &e.Message, &e.Stack,
+				&e.ComponentStack, &e.URL, &e.UserAgent, &e.TraceID, &e.OccurredAt); err != nil {
+				continue
+			}
+			out = append(out, e)
+		}
+		return c.JSON(http.StatusOK, out)
+	}, auth.RequireRole("Admin"))
 
 	return e
 }
@@ -685,6 +780,14 @@ func migrationsDir() string {
 
 func main() {
 	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
+
+	// OpenTelemetry — opt-in. With no OTEL_EXPORTER_OTLP_ENDPOINT set, the
+	// returned shutdown is a no-op and the operator gets a clear "disabled"
+	// log line. See ADR-0011.
+	otelShutdown := telemetry.Init(telemetry.FromEnv())
+	defer func() {
+		_ = otelShutdown(context.Background())
+	}()
 
 	cfg, err := config.Load()
 	if err != nil {

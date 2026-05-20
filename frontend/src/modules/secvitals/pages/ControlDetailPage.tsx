@@ -41,6 +41,7 @@ import { toast } from '../../../shared/hooks/useToast'
 import { handleApiError } from '../../../shared/utils/errorMessages'
 import { useAuthStore } from '../../../shared/stores/auth'
 import { ErrorState } from '../../../shared/components/ErrorState'
+import { SkeletonDetailPage } from '../../../shared/components/SkeletonLoaders'
 import { useApprovalSetting, useRequestControlApproval } from '../hooks/useApprovals'
 import { Textarea } from '../../../components/ui/textarea'
 import {
@@ -631,9 +632,7 @@ export default function ControlDetailPage() {
 
         {/* Control info card */}
         {controlLoading ? (
-          <div className="flex justify-center py-8">
-            <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
-          </div>
+          <SkeletonDetailPage />
         ) : control ? (
           <div className="p-5 bg-surface border border-border rounded-lg space-y-4">
             <div className="flex items-start justify-between gap-4 flex-wrap">

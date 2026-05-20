@@ -1,8 +1,8 @@
-# SecVault — Secrets-Management
+# Vakt Vault (`secvault`) — Secrets-Management
 
 ## Übersicht
 
-SecVault speichert Secrets verschlüsselt mit AES-256-GCM (Master-Key aus Umgebungsvariable) und protokolliert jeden Zugriff in einem unveränderlichen Audit-Log. Zusätzlich scannt das Modul Git-Repositories auf versehentlich eingecheckte Credentials (via gitleaks) und unterstützt manuelle sowie geplante Secret-Rotation. CI/CD-Pipelines können per API-Token ohne Benutzer-Login auf Secrets zugreifen.
+Vakt Vault speichert Secrets verschlüsselt mit AES-256-GCM (Master-Key aus Umgebungsvariable) und protokolliert jeden Zugriff in einem unveränderlichen Audit-Log. Zusätzlich scannt das Modul Git-Repositories auf versehentlich eingecheckte Credentials (via gitleaks) und unterstützt manuelle sowie geplante Secret-Rotation. CI/CD-Pipelines können per API-Token ohne Benutzer-Login auf Secrets zugreifen.
 
 ## Aktivierung
 
@@ -23,7 +23,7 @@ VAKT_MODULES_ENABLED=secvitals,secpulse,secreflex,secprivacy  # secvault weglass
 - **Projekte und Umgebungen** — Secrets in Projekte (z. B. „backend-api") und Umgebungen (dev / staging / prod) strukturieren
 - **Secrets speichern und abrufen** — Key-Value-Paare AES-256-GCM-verschlüsselt ablegen; Value wird nur bei direktem Abruf entschlüsselt, nicht in Listen
 - **Audit-Log** — Jeder Lesezugriff auf ein Secret wird mit Benutzer, IP, User-Agent und Zeitstempel protokolliert; abrufbar pro Secret und pro Projekt
-- **Secret-Rotation** — Manuell ausgelöste Rotation mit drei Strategien (random_string, uuid, db_password); erzeugt automatisch einen Compliance-Nachweis in SecVitals
+- **Secret-Rotation** — Manuell ausgelöste Rotation mit drei Strategien (random_string, uuid, db_password); erzeugt automatisch einen Compliance-Nachweis in Vakt Comply
 - **Rotationsrichtlinie** — Automatische Rotation nach konfigurierbarem Intervall (Tage)
 - **Project Health** — Berechneter Health-Score (0–100) pro Projekt mit konkreten Issues (Alter, fehlende Rotation, hohe Zugriffszahl)
 - **Share-Links** — Einmalig verwendbarer, zeitlich begrenzter URL-Token zum sicheren Teilen eines Secrets (kein Login erforderlich)

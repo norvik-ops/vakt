@@ -3,204 +3,272 @@ package hr
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/matharnica/vakt/internal/db"
 )
 
-// Repository handles HR data access against PostgreSQL.
+// Repository handles HR data access via sqlc-generated queries.
 type Repository struct {
 	db *pgxpool.Pool
+	q  *db.Queries
 }
 
-// NewRepository creates a new HR repository.
-func NewRepository(db *pgxpool.Pool) *Repository {
-	return &Repository{db: db}
+// NewRepository creates a new HR repository backed by the given pool.
+func NewRepository(pool *pgxpool.Pool) *Repository {
+	return &Repository{db: pool, q: db.New(pool)}
+}
+
+// --- type conversion helpers ---
+
+func optText(s string) pgtype.Text {
+	if s == "" {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: s, Valid: true}
+}
+
+func textToString(t pgtype.Text) string {
+	if !t.Valid {
+		return ""
+	}
+	return t.String
+}
+
+func optDate(s string) (pgtype.Date, error) {
+	if s == "" {
+		return pgtype.Date{}, nil
+	}
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return pgtype.Date{}, fmt.Errorf("parse date %q: %w", s, err)
+	}
+	return pgtype.Date{Time: t, Valid: true}, nil
+}
+
+func dateToString(d pgtype.Date) *string {
+	if !d.Valid {
+		return nil
+	}
+	s := d.Time.Format("2006-01-02")
+	return &s
+}
+
+func tsToTime(t pgtype.Timestamptz) time.Time {
+	if !t.Valid {
+		return time.Time{}
+	}
+	return t.Time
+}
+
+func tsToTimePtr(t pgtype.Timestamptz) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	tt := t.Time
+	return &tt
+}
+
+func optTimestamptz(t *time.Time) pgtype.Timestamptz {
+	if t == nil {
+		return pgtype.Timestamptz{}
+	}
+	return pgtype.Timestamptz{Time: *t, Valid: true}
+}
+
+// --- mapping helpers (db row → domain model) ---
+
+func employeeFromRow(r db.HrEmployees) Employee {
+	return Employee{
+		ID:         r.ID,
+		OrgID:      r.OrgID,
+		FirstName:  r.FirstName,
+		LastName:   r.LastName,
+		Email:      r.Email,
+		Department: textToString(r.Department),
+		Role:       textToString(r.Role),
+		StartDate:  dateToString(r.StartDate),
+		EndDate:    dateToString(r.EndDate),
+		Status:     r.Status,
+		Notes:      textToString(r.Notes),
+		CreatedAt:  tsToTime(r.CreatedAt),
+		UpdatedAt:  tsToTime(r.UpdatedAt),
+	}
+}
+
+func checklistFromRow(r db.HrChecklists) Checklist {
+	items := []ChecklistItem{}
+	if len(r.Items) > 0 {
+		_ = json.Unmarshal(r.Items, &items)
+	}
+	return Checklist{
+		ID:        r.ID,
+		OrgID:     r.OrgID,
+		Type:      r.Type,
+		Name:      r.Name,
+		Items:     items,
+		CreatedAt: tsToTime(r.CreatedAt),
+		UpdatedAt: tsToTime(r.UpdatedAt),
+	}
+}
+
+func runFromRow(r db.HrChecklistRuns) ChecklistRun {
+	completed := []string{}
+	if len(r.CompletedItems) > 0 {
+		_ = json.Unmarshal(r.CompletedItems, &completed)
+	}
+	return ChecklistRun{
+		ID:             r.ID,
+		OrgID:          r.OrgID,
+		EmployeeID:     r.EmployeeID,
+		ChecklistID:    r.ChecklistID,
+		Status:         r.Status,
+		CompletedItems: completed,
+		StartedAt:      tsToTime(r.StartedAt),
+		CompletedAt:    tsToTimePtr(r.CompletedAt),
+		CreatedAt:      tsToTime(r.CreatedAt),
+		UpdatedAt:      tsToTime(r.UpdatedAt),
+	}
+}
+
+func runEventFromRow(r db.HrRunEvents) RunEvent {
+	return RunEvent{
+		ID:          r.ID,
+		RunID:       r.RunID,
+		OrgID:       r.OrgID,
+		StepID:      r.StepID,
+		CompletedBy: r.CompletedBy,
+		CompletedAt: tsToTime(r.CompletedAt),
+	}
 }
 
 // --- Employees ---
 
-// ListEmployees returns all employees for an organisation, ordered newest first.
 func (r *Repository) ListEmployees(ctx context.Context, orgID string) ([]Employee, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT id::text, org_id::text, first_name, last_name, email,
-		       COALESCE(department,''), COALESCE(role,''),
-		       to_char(start_date,'YYYY-MM-DD'), to_char(end_date,'YYYY-MM-DD'),
-		       status, COALESCE(notes,''), created_at, updated_at
-		FROM hr_employees
-		WHERE org_id = $1::uuid
-		ORDER BY created_at DESC`, orgID)
+	rows, err := r.q.ListHREmployees(ctx, db.ListHREmployeesParams{
+		OrgID: orgID, Limit: 1000, Offset: 0,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("list employees: %w", err)
 	}
-	defer rows.Close()
-
-	var employees []Employee
-	for rows.Next() {
-		var e Employee
-		var startDate, endDate *string
-		if err := rows.Scan(
-			&e.ID, &e.OrgID, &e.FirstName, &e.LastName, &e.Email,
-			&e.Department, &e.Role,
-			&startDate, &endDate,
-			&e.Status, &e.Notes, &e.CreatedAt, &e.UpdatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("scan employee: %w", err)
-		}
-		if startDate != nil && *startDate != "" {
-			e.StartDate = startDate
-		}
-		if endDate != nil && *endDate != "" {
-			e.EndDate = endDate
-		}
-		employees = append(employees, e)
+	out := make([]Employee, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, employeeFromRow(row))
 	}
-	return employees, rows.Err()
+	return out, nil
 }
 
-// GetEmployee returns a single employee by org and ID.
+func (r *Repository) ListEmployeesPaged(ctx context.Context, orgID string, offset, limit int) ([]Employee, int, error) {
+	total, err := r.q.CountHREmployees(ctx, orgID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count employees: %w", err)
+	}
+	rows, err := r.q.ListHREmployees(ctx, db.ListHREmployeesParams{
+		OrgID: orgID, Limit: int32(limit), Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("list employees paged: %w", err)
+	}
+	out := make([]Employee, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, employeeFromRow(row))
+	}
+	return out, int(total), nil
+}
+
 func (r *Repository) GetEmployee(ctx context.Context, orgID, id string) (*Employee, error) {
-	var e Employee
-	var startDate, endDate *string
-	err := r.db.QueryRow(ctx, `
-		SELECT id::text, org_id::text, first_name, last_name, email,
-		       COALESCE(department,''), COALESCE(role,''),
-		       to_char(start_date,'YYYY-MM-DD'), to_char(end_date,'YYYY-MM-DD'),
-		       status, COALESCE(notes,''), created_at, updated_at
-		FROM hr_employees
-		WHERE org_id = $1::uuid AND id = $2::uuid`, orgID, id,
-	).Scan(
-		&e.ID, &e.OrgID, &e.FirstName, &e.LastName, &e.Email,
-		&e.Department, &e.Role,
-		&startDate, &endDate,
-		&e.Status, &e.Notes, &e.CreatedAt, &e.UpdatedAt,
-	)
+	row, err := r.q.GetHREmployee(ctx, db.GetHREmployeeParams{OrgID: orgID, ID: id})
 	if err != nil {
 		return nil, fmt.Errorf("get employee: %w", err)
 	}
-	if startDate != nil && *startDate != "" {
-		e.StartDate = startDate
-	}
-	if endDate != nil && *endDate != "" {
-		e.EndDate = endDate
-	}
+	e := employeeFromRow(row)
 	return &e, nil
 }
 
-// CreateEmployee inserts a new employee and returns the persisted record.
 func (r *Repository) CreateEmployee(ctx context.Context, orgID string, in CreateEmployeeInput) (*Employee, error) {
-	var startDate *string
-	if in.StartDate != "" {
-		startDate = &in.StartDate
+	startDate, err := optDate(in.StartDate)
+	if err != nil {
+		return nil, err
 	}
-	var e Employee
-	var sd, ed *string
-	err := r.db.QueryRow(ctx, `
-		INSERT INTO hr_employees (org_id, first_name, last_name, email, department, role, start_date, notes)
-		VALUES ($1::uuid, $2, $3, $4, $5, $6, $7::date, $8)
-		RETURNING id::text, org_id::text, first_name, last_name, email,
-		          COALESCE(department,''), COALESCE(role,''),
-		          to_char(start_date,'YYYY-MM-DD'), to_char(end_date,'YYYY-MM-DD'),
-		          status, COALESCE(notes,''), created_at, updated_at`,
-		orgID, in.FirstName, in.LastName, in.Email,
-		in.Department, in.Role, startDate, in.Notes,
-	).Scan(
-		&e.ID, &e.OrgID, &e.FirstName, &e.LastName, &e.Email,
-		&e.Department, &e.Role,
-		&sd, &ed,
-		&e.Status, &e.Notes, &e.CreatedAt, &e.UpdatedAt,
-	)
+	row, err := r.q.CreateHREmployee(ctx, db.CreateHREmployeeParams{
+		OrgID:      orgID,
+		FirstName:  in.FirstName,
+		LastName:   in.LastName,
+		Email:      in.Email,
+		Department: optText(in.Department),
+		Role:       optText(in.Role),
+		StartDate:  startDate,
+		Notes:      optText(in.Notes),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("create employee: %w", err)
 	}
-	if sd != nil && *sd != "" {
-		e.StartDate = sd
-	}
-	if ed != nil && *ed != "" {
-		e.EndDate = ed
-	}
+	e := employeeFromRow(row)
 	return &e, nil
 }
 
-// UpdateEmployee updates an existing employee record.
 func (r *Repository) UpdateEmployee(ctx context.Context, orgID, id string, in UpdateEmployeeInput) (*Employee, error) {
-	var endDate *string
-	if in.EndDate != "" {
-		endDate = &in.EndDate
+	endDate, err := optDate(in.EndDate)
+	if err != nil {
+		return nil, err
 	}
-	var e Employee
-	var sd, ed *string
-	err := r.db.QueryRow(ctx, `
-		UPDATE hr_employees
-		SET first_name = $3, last_name = $4, department = $5, role = $6,
-		    end_date = $7::date, status = $8, notes = $9, updated_at = now()
-		WHERE org_id = $1::uuid AND id = $2::uuid
-		RETURNING id::text, org_id::text, first_name, last_name, email,
-		          COALESCE(department,''), COALESCE(role,''),
-		          to_char(start_date,'YYYY-MM-DD'), to_char(end_date,'YYYY-MM-DD'),
-		          status, COALESCE(notes,''), created_at, updated_at`,
-		orgID, id,
-		in.FirstName, in.LastName, in.Department, in.Role,
-		endDate, in.Status, in.Notes,
-	).Scan(
-		&e.ID, &e.OrgID, &e.FirstName, &e.LastName, &e.Email,
-		&e.Department, &e.Role,
-		&sd, &ed,
-		&e.Status, &e.Notes, &e.CreatedAt, &e.UpdatedAt,
-	)
+	row, err := r.q.UpdateHREmployee(ctx, db.UpdateHREmployeeParams{
+		OrgID:      orgID,
+		ID:         id,
+		FirstName:  in.FirstName,
+		LastName:   in.LastName,
+		Department: optText(in.Department),
+		Role:       optText(in.Role),
+		EndDate:    endDate,
+		Status:     in.Status,
+		Notes:      optText(in.Notes),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("update employee: %w", err)
 	}
-	if sd != nil && *sd != "" {
-		e.StartDate = sd
-	}
-	if ed != nil && *ed != "" {
-		e.EndDate = ed
-	}
+	e := employeeFromRow(row)
 	return &e, nil
 }
 
-// DeleteEmployee removes an employee record.
+func (r *Repository) SetEmployeeStatus(ctx context.Context, orgID, id, status string) error {
+	return r.q.SetHREmployeeStatus(ctx, db.SetHREmployeeStatusParams{
+		OrgID: orgID, ID: id, Status: status,
+	})
+}
+
 func (r *Repository) DeleteEmployee(ctx context.Context, orgID, id string) error {
-	_, err := r.db.Exec(ctx, `
-		DELETE FROM hr_employees WHERE org_id = $1::uuid AND id = $2::uuid`, orgID, id)
-	if err != nil {
-		return fmt.Errorf("delete employee: %w", err)
-	}
-	return nil
+	return r.q.DeleteHREmployee(ctx, db.DeleteHREmployeeParams{OrgID: orgID, ID: id})
 }
 
 // --- Checklists ---
 
-// ListChecklists returns all checklist templates for an organisation.
 func (r *Repository) ListChecklists(ctx context.Context, orgID string) ([]Checklist, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT id::text, org_id::text, type, name, items, created_at, updated_at
-		FROM hr_checklists
-		WHERE org_id = $1::uuid
-		ORDER BY created_at DESC`, orgID)
+	rows, err := r.q.ListHRChecklists(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("list checklists: %w", err)
 	}
-	defer rows.Close()
-
-	var checklists []Checklist
-	for rows.Next() {
-		var c Checklist
-		var itemsRaw []byte
-		if err := rows.Scan(&c.ID, &c.OrgID, &c.Type, &c.Name, &itemsRaw, &c.CreatedAt, &c.UpdatedAt); err != nil {
-			return nil, fmt.Errorf("scan checklist: %w", err)
-		}
-		if err := json.Unmarshal(itemsRaw, &c.Items); err != nil {
-			c.Items = []ChecklistItem{}
-		}
-		checklists = append(checklists, c)
+	out := make([]Checklist, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, checklistFromRow(row))
 	}
-	return checklists, rows.Err()
+	return out, nil
 }
 
-// CreateChecklist inserts a new checklist template and returns the persisted record.
+func (r *Repository) GetChecklist(ctx context.Context, orgID, id string) (*Checklist, error) {
+	row, err := r.q.GetHRChecklist(ctx, db.GetHRChecklistParams{OrgID: orgID, ID: id})
+	if err != nil {
+		return nil, fmt.Errorf("get checklist: %w", err)
+	}
+	c := checklistFromRow(row)
+	return &c, nil
+}
+
 func (r *Repository) CreateChecklist(ctx context.Context, orgID string, in CreateChecklistInput) (*Checklist, error) {
 	if in.Items == nil {
 		in.Items = []ChecklistItem{}
@@ -209,115 +277,82 @@ func (r *Repository) CreateChecklist(ctx context.Context, orgID string, in Creat
 	if err != nil {
 		return nil, fmt.Errorf("marshal checklist items: %w", err)
 	}
-	var c Checklist
-	var itemsRaw []byte
-	err = r.db.QueryRow(ctx, `
-		INSERT INTO hr_checklists (org_id, type, name, items)
-		VALUES ($1::uuid, $2, $3, $4)
-		RETURNING id::text, org_id::text, type, name, items, created_at, updated_at`,
-		orgID, in.Type, in.Name, itemsJSON,
-	).Scan(&c.ID, &c.OrgID, &c.Type, &c.Name, &itemsRaw, &c.CreatedAt, &c.UpdatedAt)
+	row, err := r.q.CreateHRChecklist(ctx, db.CreateHRChecklistParams{
+		OrgID: orgID, Type: in.Type, Name: in.Name, Items: itemsJSON,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("create checklist: %w", err)
 	}
-	if err := json.Unmarshal(itemsRaw, &c.Items); err != nil {
-		c.Items = []ChecklistItem{}
-	}
+	c := checklistFromRow(row)
 	return &c, nil
 }
 
-// DeleteChecklist removes a checklist template.
 func (r *Repository) DeleteChecklist(ctx context.Context, orgID, id string) error {
-	_, err := r.db.Exec(ctx, `
-		DELETE FROM hr_checklists WHERE org_id = $1::uuid AND id = $2::uuid`, orgID, id)
+	return r.q.DeleteHRChecklist(ctx, db.DeleteHRChecklistParams{OrgID: orgID, ID: id})
+}
+
+// FirstChecklistByType returns the oldest checklist of the given type ('onboarding'|'offboarding')
+// for an organisation. Returns nil, nil if none exists.
+func (r *Repository) FirstChecklistByType(ctx context.Context, orgID, checklistType string) (*Checklist, error) {
+	row, err := r.q.FirstHRChecklistByType(ctx, db.FirstHRChecklistByTypeParams{
+		OrgID: orgID, Type: checklistType,
+	})
 	if err != nil {
-		return fmt.Errorf("delete checklist: %w", err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("first checklist by type %s: %w", checklistType, err)
 	}
-	return nil
+	c := checklistFromRow(row)
+	return &c, nil
+}
+
+// FirstOnboardingChecklist returns the first onboarding checklist for an organisation, or nil.
+func (r *Repository) FirstOnboardingChecklist(ctx context.Context, orgID string) (*Checklist, error) {
+	return r.FirstChecklistByType(ctx, orgID, "onboarding")
+}
+
+// FirstOffboardingChecklist returns the first offboarding checklist for an organisation, or nil.
+func (r *Repository) FirstOffboardingChecklist(ctx context.Context, orgID string) (*Checklist, error) {
+	return r.FirstChecklistByType(ctx, orgID, "offboarding")
 }
 
 // --- Checklist Runs ---
 
-// StartChecklistRun creates a new checklist run for an employee.
 func (r *Repository) StartChecklistRun(ctx context.Context, orgID string, in StartChecklistRunInput) (*ChecklistRun, error) {
-	var run ChecklistRun
-	var completedRaw []byte
-	err := r.db.QueryRow(ctx, `
-		INSERT INTO hr_checklist_runs (org_id, employee_id, checklist_id)
-		VALUES ($1::uuid, $2::uuid, $3::uuid)
-		RETURNING id::text, org_id::text, employee_id::text, checklist_id::text,
-		          status, completed_items, started_at, completed_at, created_at, updated_at`,
-		orgID, in.EmployeeID, in.ChecklistID,
-	).Scan(
-		&run.ID, &run.OrgID, &run.EmployeeID, &run.ChecklistID,
-		&run.Status, &completedRaw, &run.StartedAt, &run.CompletedAt,
-		&run.CreatedAt, &run.UpdatedAt,
-	)
+	row, err := r.q.StartHRChecklistRun(ctx, db.StartHRChecklistRunParams{
+		OrgID: orgID, EmployeeID: in.EmployeeID, ChecklistID: in.ChecklistID,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("start checklist run: %w", err)
 	}
-	if err := json.Unmarshal(completedRaw, &run.CompletedItems); err != nil {
-		run.CompletedItems = []string{}
-	}
+	run := runFromRow(row)
 	return &run, nil
 }
 
-// GetChecklistRun returns a single checklist run by org and ID.
 func (r *Repository) GetChecklistRun(ctx context.Context, orgID, id string) (*ChecklistRun, error) {
-	var run ChecklistRun
-	var completedRaw []byte
-	err := r.db.QueryRow(ctx, `
-		SELECT id::text, org_id::text, employee_id::text, checklist_id::text,
-		       status, completed_items, started_at, completed_at, created_at, updated_at
-		FROM hr_checklist_runs
-		WHERE org_id = $1::uuid AND id = $2::uuid`, orgID, id,
-	).Scan(
-		&run.ID, &run.OrgID, &run.EmployeeID, &run.ChecklistID,
-		&run.Status, &completedRaw, &run.StartedAt, &run.CompletedAt,
-		&run.CreatedAt, &run.UpdatedAt,
-	)
+	row, err := r.q.GetHRChecklistRun(ctx, db.GetHRChecklistRunParams{OrgID: orgID, ID: id})
 	if err != nil {
 		return nil, fmt.Errorf("get checklist run: %w", err)
 	}
-	if err := json.Unmarshal(completedRaw, &run.CompletedItems); err != nil {
-		run.CompletedItems = []string{}
-	}
+	run := runFromRow(row)
 	return &run, nil
 }
 
-// ListChecklistRuns returns all checklist runs for a specific employee.
 func (r *Repository) ListChecklistRuns(ctx context.Context, orgID, employeeID string) ([]ChecklistRun, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT id::text, org_id::text, employee_id::text, checklist_id::text,
-		       status, completed_items, started_at, completed_at, created_at, updated_at
-		FROM hr_checklist_runs
-		WHERE org_id = $1::uuid AND employee_id = $2::uuid
-		ORDER BY started_at DESC`, orgID, employeeID)
+	rows, err := r.q.ListHRChecklistRuns(ctx, db.ListHRChecklistRunsParams{
+		OrgID: orgID, EmployeeID: employeeID,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("list checklist runs: %w", err)
 	}
-	defer rows.Close()
-
-	var runs []ChecklistRun
-	for rows.Next() {
-		var run ChecklistRun
-		var completedRaw []byte
-		if err := rows.Scan(
-			&run.ID, &run.OrgID, &run.EmployeeID, &run.ChecklistID,
-			&run.Status, &completedRaw, &run.StartedAt, &run.CompletedAt,
-			&run.CreatedAt, &run.UpdatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("scan checklist run: %w", err)
-		}
-		if err := json.Unmarshal(completedRaw, &run.CompletedItems); err != nil {
-			run.CompletedItems = []string{}
-		}
-		runs = append(runs, run)
+	out := make([]ChecklistRun, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, runFromRow(row))
 	}
-	return runs, rows.Err()
+	return out, nil
 }
 
-// UpdateChecklistRun updates the progress of a checklist run.
 func (r *Repository) UpdateChecklistRun(ctx context.Context, orgID, id string, in UpdateChecklistRunInput) (*ChecklistRun, error) {
 	if in.CompletedItems == nil {
 		in.CompletedItems = []string{}
@@ -333,92 +368,38 @@ func (r *Repository) UpdateChecklistRun(ctx context.Context, orgID, id string, i
 		completedAt = &now
 	}
 
-	var run ChecklistRun
-	var completedRaw []byte
-	err = r.db.QueryRow(ctx, `
-		UPDATE hr_checklist_runs
-		SET completed_items = $3, status = $4, completed_at = $5, updated_at = now()
-		WHERE org_id = $1::uuid AND id = $2::uuid
-		RETURNING id::text, org_id::text, employee_id::text, checklist_id::text,
-		          status, completed_items, started_at, completed_at, created_at, updated_at`,
-		orgID, id, completedJSON, in.Status, completedAt,
-	).Scan(
-		&run.ID, &run.OrgID, &run.EmployeeID, &run.ChecklistID,
-		&run.Status, &completedRaw, &run.StartedAt, &run.CompletedAt,
-		&run.CreatedAt, &run.UpdatedAt,
-	)
+	row, err := r.q.UpdateHRChecklistRun(ctx, db.UpdateHRChecklistRunParams{
+		OrgID:          orgID,
+		ID:             id,
+		CompletedItems: completedJSON,
+		Status:         in.Status,
+		CompletedAt:    optTimestamptz(completedAt),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("update checklist run: %w", err)
 	}
-	if err := json.Unmarshal(completedRaw, &run.CompletedItems); err != nil {
-		run.CompletedItems = []string{}
-	}
+	run := runFromRow(row)
 	return &run, nil
 }
 
-// FirstOnboardingChecklist returns the first onboarding checklist for an organisation.
-// Returns nil, nil if none exists.
-func (r *Repository) FirstOnboardingChecklist(ctx context.Context, orgID string) (*Checklist, error) {
-	var c Checklist
-	var itemsRaw []byte
-	err := r.db.QueryRow(ctx, `
-		SELECT id::text, org_id::text, type, name, items, created_at, updated_at
-		FROM hr_checklists
-		WHERE org_id = $1::uuid AND type = 'onboarding'
-		ORDER BY created_at ASC
-		LIMIT 1`, orgID,
-	).Scan(&c.ID, &c.OrgID, &c.Type, &c.Name, &itemsRaw, &c.CreatedAt, &c.UpdatedAt)
-	if err != nil {
-		return nil, nil //nolint:nilerr // no onboarding checklist is a valid state
-	}
-	if err := json.Unmarshal(itemsRaw, &c.Items); err != nil {
-		c.Items = []ChecklistItem{}
-	}
-	return &c, nil
+// --- Run Events ---
+
+func (r *Repository) InsertRunEvent(ctx context.Context, runID, orgID, stepID, completedBy string) error {
+	return r.q.InsertHRRunEvent(ctx, db.InsertHRRunEventParams{
+		RunID: runID, OrgID: orgID, StepID: stepID, CompletedBy: completedBy,
+	})
 }
 
-// ListEmployeesPaged returns a page of employees plus the total count.
-func (r *Repository) ListEmployeesPaged(ctx context.Context, orgID string, offset, limit int) ([]Employee, int, error) {
-	var total int
-	if err := r.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM hr_employees WHERE org_id = $1::uuid`, orgID,
-	).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count employees: %w", err)
-	}
-
-	rows, err := r.db.Query(ctx, `
-		SELECT id::text, org_id::text, first_name, last_name, email,
-		       COALESCE(department,''), COALESCE(role,''),
-		       to_char(start_date,'YYYY-MM-DD'), to_char(end_date,'YYYY-MM-DD'),
-		       status, COALESCE(notes,''), created_at, updated_at
-		FROM hr_employees
-		WHERE org_id = $1::uuid
-		ORDER BY created_at DESC
-		LIMIT $2 OFFSET $3`, orgID, limit, offset)
+func (r *Repository) ListRunEvents(ctx context.Context, orgID, runID string) ([]RunEvent, error) {
+	rows, err := r.q.ListHRRunEvents(ctx, db.ListHRRunEventsParams{
+		OrgID: orgID, RunID: runID,
+	})
 	if err != nil {
-		return nil, 0, fmt.Errorf("list employees paged: %w", err)
+		return nil, fmt.Errorf("list run events: %w", err)
 	}
-	defer rows.Close()
-
-	var employees []Employee
-	for rows.Next() {
-		var e Employee
-		var startDate, endDate *string
-		if err := rows.Scan(
-			&e.ID, &e.OrgID, &e.FirstName, &e.LastName, &e.Email,
-			&e.Department, &e.Role,
-			&startDate, &endDate,
-			&e.Status, &e.Notes, &e.CreatedAt, &e.UpdatedAt,
-		); err != nil {
-			return nil, 0, fmt.Errorf("scan employee paged: %w", err)
-		}
-		if startDate != nil && *startDate != "" {
-			e.StartDate = startDate
-		}
-		if endDate != nil && *endDate != "" {
-			e.EndDate = endDate
-		}
-		employees = append(employees, e)
+	out := make([]RunEvent, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, runEventFromRow(row))
 	}
-	return employees, total, rows.Err()
+	return out, nil
 }

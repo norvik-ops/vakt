@@ -43,10 +43,19 @@ if grep -qE '^VAKT_SECRET_KEY=($|changeme)' .env; then
 fi
 
 # Generate POSTGRES_PASSWORD if placeholder or empty
-if grep -qE '^POSTGRES_PASSWORD=($|changeme|vakt)' .env; then
+if grep -qE '^POSTGRES_PASSWORD=($|changeme|vakt|ERSETZEN_SIE_DIESEN_WERT)' .env; then
   POSTGRES_PASSWORD=$(openssl rand -hex 16)
   sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$POSTGRES_PASSWORD/" .env
   echo "Generated POSTGRES_PASSWORD"
+fi
+
+# Generate REDIS_PASSWORD if placeholder or empty, and inject into VAKT_REDIS_URL
+if grep -qE '^REDIS_PASSWORD=($|changeme|ERSETZEN_SIE_DIESEN_WERT)' .env; then
+  REDIS_PASSWORD=$(openssl rand -hex 16)
+  sed -i "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=$REDIS_PASSWORD/" .env
+  # Replace ERSETZEN_SIE_DIESEN_WERT in the VAKT_REDIS_URL with the generated password
+  sed -i "s|^VAKT_REDIS_URL=redis://:[^@]*@|VAKT_REDIS_URL=redis://:$REDIS_PASSWORD@|" .env
+  echo "Generated REDIS_PASSWORD"
 fi
 
 # ── Start stack ──────────────────────────────────────────────────────────────

@@ -6,58 +6,76 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/db"
 )
 
-// Repository handles SecretOps data access using pgx/v5 directly.
+// Repository handles SecretOps data access. Projects / Environments / AccessLog
+// use sqlc-generated queries (db.Queries); Secrets stay on embedded SQL because
+// the crypto round-trip plus dynamic column selection makes sqlc generation
+// brittle (see ADR-0005 / docs/sqlc-migration-plan.md).
 type Repository struct {
 	db *pgxpool.Pool
+	q  *db.Queries
 }
 
 // NewRepository creates a new SecretOps repository.
-func NewRepository(db *pgxpool.Pool) *Repository {
-	return &Repository{db: db}
+func NewRepository(pool *pgxpool.Pool) *Repository {
+	return &Repository{db: pool, q: db.New(pool)}
 }
 
-// --- Projects ---
+// optionalText collapses an empty string to a NULL pgtype.Text so the
+// generated NULLable column maps cleanly. Avoids storing literal "".
+func optionalText(s string) pgtype.Text {
+	if s == "" {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: s, Valid: true}
+}
+
+// --- Projects (sqlc) ---
 
 func (r *Repository) CreateProject(ctx context.Context, orgID, userID, name, slug, description string) (*Project, error) {
-	var p Project
-	err := r.db.QueryRow(ctx, `
-		INSERT INTO so_projects (org_id, name, slug, description, created_by)
-		VALUES ($1::uuid, $2, $3, $4, $5::uuid)
-		RETURNING id::text, org_id::text, name, slug, COALESCE(description,''), created_at`,
-		orgID, name, slug, description, userID,
-	).Scan(&p.ID, &p.OrgID, &p.Name, &p.Slug, &p.Description, &p.CreatedAt)
+	row, err := r.q.CreateSVProject(ctx, db.CreateSVProjectParams{
+		OrgID:       orgID,
+		Name:        name,
+		Slug:        slug,
+		Description: optionalText(description),
+		CreatedBy:   userID,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("create project: %w", err)
 	}
-	return &p, nil
+	return &Project{
+		ID:          row.ID,
+		OrgID:       row.OrgID,
+		Name:        row.Name,
+		Slug:        row.Slug,
+		Description: row.Description.String, // empty string when not Valid
+		CreatedAt:   row.CreatedAt.Time,
+	}, nil
 }
 
 func (r *Repository) ListProjects(ctx context.Context, orgID string) ([]Project, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT id::text, org_id::text, name, slug, COALESCE(description,''), created_at
-		FROM so_projects
-		WHERE org_id = $1::uuid
-		ORDER BY created_at DESC`,
-		orgID,
-	)
+	rows, err := r.q.ListSVProjects(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("list projects: %w", err)
 	}
-	defer rows.Close()
-
-	var projects []Project
-	for rows.Next() {
-		var p Project
-		if err := rows.Scan(&p.ID, &p.OrgID, &p.Name, &p.Slug, &p.Description, &p.CreatedAt); err != nil {
-			return nil, fmt.Errorf("scan project: %w", err)
-		}
-		projects = append(projects, p)
+	out := make([]Project, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, Project{
+			ID:          row.ID,
+			OrgID:       row.OrgID,
+			Name:        row.Name,
+			Slug:        row.Slug,
+			Description: row.Description.String,
+			CreatedAt:   row.CreatedAt.Time,
+		})
 	}
-	return projects, rows.Err()
+	return out, nil
 }
 
 func (r *Repository) GetProject(ctx context.Context, orgID, projectID string) (*Project, error) {

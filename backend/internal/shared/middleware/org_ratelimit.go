@@ -4,6 +4,8 @@
 package middleware
 
 import (
+	"context"
+	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -11,6 +13,8 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/time/rate"
 )
 
@@ -95,15 +99,14 @@ func (s *orgRateLimitStore) allow(orgID string) (bool, int, int64) {
 	return allowed, remaining, reset
 }
 
-// OrgRateLimit returns an Echo middleware that enforces a per-org_id rate limit
-// of 300 requests per minute on all protected routes.
+// OrgRateLimit returns an in-memory per-org_id rate limit middleware.
 //
-// The org_id is read from the echo.Context key "org_id" which is populated by
-// AuthMiddleware before any protected handler runs.  If org_id is not set the
-// middleware falls through without limiting (e.g. anonymous health checks).
+// USE OrgRateLimitRedis FOR PRODUCTION — the in-memory version is only suitable
+// for single-replica deployments. With multiple replicas each instance maintains
+// its own counter, so the effective limit becomes (300 × replica_count).
 //
-// On every allowed request the middleware sets X-RateLimit-* response headers.
-// On rejection it returns 429 with a JSON body and the same headers.
+// Behaviour: 300 req/min token-bucket per org_id, X-RateLimit-* headers on every
+// response, HTTP 429 on rejection.
 func OrgRateLimit() echo.MiddlewareFunc {
 	store := newOrgRateLimitStore(orgRateLimitPerMinute, orgRateLimitExpiresIn)
 	limitStr := strconv.Itoa(orgRateLimitPerMinute)
@@ -112,7 +115,6 @@ func OrgRateLimit() echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			orgID, _ := c.Get("org_id").(string)
 			if orgID == "" {
-				// No org_id in context — not an authenticated request; skip limiting.
 				return next(c)
 			}
 
@@ -123,6 +125,69 @@ func OrgRateLimit() echo.MiddlewareFunc {
 			c.Response().Header().Set("X-RateLimit-Reset", strconv.FormatInt(reset, 10))
 
 			if !allowed {
+				return c.JSON(http.StatusTooManyRequests, map[string]string{
+					"error": "rate limit exceeded",
+					"code":  "RATE_LIMIT_EXCEEDED",
+				})
+			}
+			return next(c)
+		}
+	}
+}
+
+// OrgRateLimitRedis returns a multi-replica-safe per-org_id rate limiter backed
+// by Redis. Uses a fixed-window counter (INCR + EXPIRE) keyed by org_id and the
+// current UTC minute. Simpler than a sliding window but adequate at this scale
+// and consistent across replicas.
+//
+// Falls back to allow-and-log on Redis errors so a transient cache outage does
+// not lock customers out of the application (rate limiting is a quality-of-
+// service measure, not an auth boundary).
+func OrgRateLimitRedis(client *redis.Client) echo.MiddlewareFunc {
+	const limit = orgRateLimitPerMinute
+	limitStr := strconv.Itoa(limit)
+
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			orgID, _ := c.Get("org_id").(string)
+			if orgID == "" || client == nil {
+				return next(c)
+			}
+
+			ctx, cancel := context.WithTimeout(c.Request().Context(), 100*time.Millisecond)
+			defer cancel()
+
+			// Fixed-window: bucket = current UTC minute.
+			now := time.Now().UTC()
+			bucket := now.Format("200601021504")
+			key := fmt.Sprintf("vakt:ratelimit:org:%s:%s", orgID, bucket)
+
+			pipe := client.Pipeline()
+			incrCmd := pipe.Incr(ctx, key)
+			pipe.Expire(ctx, key, 70*time.Second) // 60s window + small buffer
+			if _, err := pipe.Exec(ctx); err != nil {
+				log.Warn().Err(err).Str("org_id", orgID).Msg("rate limit: redis error, allowing")
+				return next(c)
+			}
+			count := incrCmd.Val()
+
+			// X-RateLimit-Reset: top of the next minute.
+			resetUnix := now.Truncate(time.Minute).Add(time.Minute).Unix()
+			remaining := limit - int(count)
+			if remaining < 0 {
+				remaining = 0
+			}
+
+			c.Response().Header().Set("X-RateLimit-Limit", limitStr)
+			c.Response().Header().Set("X-RateLimit-Remaining", strconv.Itoa(remaining))
+			c.Response().Header().Set("X-RateLimit-Reset", strconv.FormatInt(resetUnix, 10))
+
+			if count > int64(limit) {
+				retryAfter := resetUnix - now.Unix()
+				if retryAfter < 1 {
+					retryAfter = 1
+				}
+				c.Response().Header().Set("Retry-After", strconv.FormatInt(retryAfter, 10))
 				return c.JSON(http.StatusTooManyRequests, map[string]string{
 					"error": "rate limit exceeded",
 					"code":  "RATE_LIMIT_EXCEEDED",

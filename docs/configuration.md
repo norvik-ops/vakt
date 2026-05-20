@@ -59,7 +59,7 @@ VAKT_SECRET_KEY=$(openssl rand -hex 32)   # Beispiel — echten Wert generieren!
 | `VAKT_MODULES_ENABLED` | – | alle aktiv | Kommaseparierte Liste der aktivierten Module. Mögliche Werte: `secpulse`, `secvitals`, `secvault`, `secreflex`, `secprivacy`. |
 | `AUTO_MIGRATE` | – | `false` | Wenn `true`, führt der API-Container beim Start automatisch ausstehende Datenbankmigrationen aus. |
 | `VAKT_DEMO` | – | `false` | Wenn `true`, werden beim ersten Start Demo-Daten eingespielt. Aktiviert zwei Testbenutzer: `admin@vakt.local / admin1234` und `analyst@vakt.local / analyst1234`. |
-| `VAKT_FRONTEND_URL` | – | `http://localhost:5173` | Öffentlich erreichbare URL des Frontends. Wird von SecReflex für Tracking-Pixel und Klick-Links in Kampagnen-E-Mails verwendet. In Produktion auf die echte Domain setzen. |
+| `VAKT_FRONTEND_URL` | – | `http://localhost:5173` | Öffentlich erreichbare URL des Frontends. Wird von Vakt Aware für Tracking-Pixel und Klick-Links in Kampagnen-E-Mails verwendet. In Produktion auf die echte Domain setzen. |
 
 **Beispiel:**
 
@@ -82,9 +82,9 @@ VAKT_FRONTEND_URL=https://vakt.meine-firma.de
 
 ---
 
-## SMTP (SecReflex & Scheduled Reports)
+## SMTP (Vakt Aware & Scheduled Reports)
 
-SecReflex benötigt einen SMTP-Server, um Phishing-Simulations-E-Mails zu versenden. Auch **Scheduled Reports** (automatisch geplante Compliance-, Findings- und Risk-Berichte) verwenden dieselbe SMTP-Konfiguration. Für Entwicklung und Tests ist [Mailpit](https://github.com/axllent/mailpit) vorkonfiguriert (Port 1025, keine Authentifizierung).
+Vakt Aware benötigt einen SMTP-Server, um Phishing-Simulations-E-Mails zu versenden. Auch **Scheduled Reports** (automatisch geplante Compliance-, Findings- und Risk-Berichte) verwenden dieselbe SMTP-Konfiguration. Für Entwicklung und Tests ist [Mailpit](https://github.com/axllent/mailpit) vorkonfiguriert (Port 1025, keine Authentifizierung).
 
 | Variable | Pflicht | Standard | Beschreibung |
 |---|---|---|---|
@@ -177,7 +177,7 @@ Casdoor-Einrichtung: Siehe [Casdoor-Dokumentation](https://casdoor.org/docs/over
 
 ### `VAKT_SECRET_KEY` nie ändern
 
-Der Master-Key wird zur AES-256-GCM-Verschlüsselung aller Secrets in der Datenbank (SecVault-Einträge, SMTP-Passwörter, API-Keys) verwendet. Wird der Key nach dem ersten Deployment geändert, sind alle verschlüsselten Daten **dauerhaft unlesbar**.
+Der Master-Key wird zur AES-256-GCM-Verschlüsselung aller Secrets in der Datenbank (Vakt Vault-Einträge, SMTP-Passwörter, API-Keys) verwendet. Wird der Key nach dem ersten Deployment geändert, sind alle verschlüsselten Daten **dauerhaft unlesbar**.
 
 - Key vor dem ersten Start generieren: `openssl rand -hex 32`
 - Key sicher speichern (Passwortmanager, Vault)

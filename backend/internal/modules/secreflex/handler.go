@@ -60,6 +60,10 @@ func (h *Handler) ListPresets(c echo.Context) error {
 	return c.JSON(http.StatusOK, h.service.GetPresetTemplates())
 }
 
+func (h *Handler) ListTrainingPresets(c echo.Context) error {
+	return c.JSON(http.StatusOK, h.service.GetPresetTrainingModules())
+}
+
 func (h *Handler) CreateTemplate(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
 	userID, _ := c.Get("user_id").(string)

@@ -1,4 +1,4 @@
-# SecVitals (Vakt Comply) — Compliance-Hub
+# Vakt Comply (`secvitals`) — Compliance-Hub
 
 ## Übersicht
 

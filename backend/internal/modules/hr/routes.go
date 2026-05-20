@@ -19,6 +19,10 @@ func Register(g *echo.Group, h *Handler) {
 	g.PUT("/employees/:id", h.UpdateEmployee, admin)
 	g.DELETE("/employees/:id", h.DeleteEmployee, admin)
 
+	// Convenience: start onboarding/offboarding runs for a specific employee
+	g.POST("/employees/:id/onboard", h.StartOnboarding, admin)
+	g.POST("/employees/:id/offboard", h.StartOffboarding, admin)
+
 	// Checklists — templates; admin only
 	g.GET("/checklists", h.ListChecklists, rw)
 	g.POST("/checklists", h.CreateChecklist, admin)
@@ -29,4 +33,8 @@ func Register(g *echo.Group, h *Handler) {
 	g.GET("/checklist-runs/:id", h.GetChecklistRun, rw)
 	g.GET("/employees/:id/checklist-runs", h.ListChecklistRuns, rw)
 	g.PUT("/checklist-runs/:id", h.UpdateChecklistRun, rw)
+
+	// Step completion + audit trail
+	g.POST("/checklist-runs/:id/steps/:step_id", h.CompleteStep, rw)
+	g.GET("/checklist-runs/:id/events", h.ListRunEvents, rw)
 }

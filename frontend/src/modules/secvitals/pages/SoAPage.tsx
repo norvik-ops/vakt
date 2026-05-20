@@ -6,6 +6,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '../../../components/ui/table'
 import { apiFetch } from '../../../api/client'
+import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
 
 interface SoAEntry {
   control_id: string
@@ -101,7 +102,7 @@ export default function SoAPage() {
     })
   }
 
-  if (isLoading) return <div className="p-8 text-gray-500">Lade SoA...</div>
+  if (isLoading) return <div className="p-8"><SkeletonTable rows={8} cols={6} /></div>
 
   return (
     <div className="p-6 space-y-6">
