@@ -146,9 +146,14 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 		log.Warn().Msg("CORS is configured to allow all origins (*) with credentials — set VAKT_CORS_ORIGINS for production")
 	}
 	e.Use(middleware.BodyLimit("10MB"))
-	e.Use(middleware.TimeoutWithConfig(middleware.TimeoutConfig{
-		Timeout:      30 * time.Second,
-		ErrorMessage: `{"error":"request timeout","code":"REQUEST_TIMEOUT"}`,
+	e.Use(middleware.ContextTimeoutWithConfig(middleware.ContextTimeoutConfig{
+		Timeout: 30 * time.Second,
+		ErrorHandler: func(_ error, c echo.Context) error {
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{
+				"error": "request timeout",
+				"code":  "REQUEST_TIMEOUT",
+			})
+		},
 	}))
 	e.Use(demo.Guard(cfg.DemoSeed))
 
@@ -356,7 +361,7 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 
 	// hrEvidence bridges hr → secvitals without a direct import.
 	// Set inside the secvitals block; falls back to a no-op when secvitals is disabled.
-	var hrEvidence hr.EvidenceWriter = hr.NoopEvidenceWriter()
+	hrEvidence := hr.EvidenceWriter(hr.NoopEvidenceWriter())
 
 	if cfg.IsModuleEnabled("secvitals") {
 		ckSvc := secvitals.NewService(pool)

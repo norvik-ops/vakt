@@ -53,14 +53,6 @@ func tsToTime(t pgtype.Timestamptz) time.Time {
 // uuidPtr / dateOrNil / timestampOrNil / intOrNil — small helpers for the
 // pgtype <-> domain mapping. Centralised here so DPIA, AVV, Breach et al.
 // share the same conversion semantics.
-func uuidPtrFromText(t pgtype.Text) *string {
-	if !t.Valid || t.String == "" {
-		return nil
-	}
-	s := t.String
-	return &s
-}
-
 func uuidPtrFromUUID(u pgtype.UUID) *string {
 	if !u.Valid {
 		return nil

@@ -303,8 +303,8 @@ func (s *DigestService) buildEmail(orgID string, severityCounts []findingSeverit
 
 	var buf bytes.Buffer
 	buf.WriteString(`<!DOCTYPE html><html><body style="font-family:sans-serif;color:#1a202c;">`)
-	buf.WriteString(fmt.Sprintf(`<h2 style="color:#2b6cb0;">Vakt — %s</h2>`, i18n.Findings))
-	buf.WriteString(fmt.Sprintf(`<p>Generated: %s UTC</p>`, time.Now().UTC().Format("2006-01-02 15:04")))
+	fmt.Fprintf(&buf, `<h2 style="color:#2b6cb0;">Vakt — %s</h2>`, i18n.Findings)
+	fmt.Fprintf(&buf, `<p>Generated: %s UTC</p>`, time.Now().UTC().Format("2006-01-02 15:04"))
 	buf.WriteString(fmt.Sprintf(`<p style="color:#718096;font-size:0.85em;">Org: %s</p>`, orgID))
 
 	// Findings section

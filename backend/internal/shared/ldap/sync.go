@@ -94,9 +94,11 @@ func (s *Syncer) dial() (*ldaplib.Conn, error) {
 
 	// ldaps:// scheme implies implicit TLS regardless of the TLS flag.
 	if strings.HasPrefix(url, "ldaps://") || s.cfg.TLS {
-		addr := strings.TrimPrefix(url, "ldaps://")
-		addr = strings.TrimPrefix(addr, "ldap://")
-		conn, err := ldaplib.DialTLS("tcp", addr, &tls.Config{MinVersion: tls.VersionTLS12})
+		ldapsURL := url
+		if !strings.HasPrefix(ldapsURL, "ldaps://") {
+			ldapsURL = "ldaps://" + strings.TrimPrefix(ldapsURL, "ldap://")
+		}
+		conn, err := ldaplib.DialURL(ldapsURL, ldaplib.DialWithTLSConfig(&tls.Config{MinVersion: tls.VersionTLS12}))
 		if err != nil {
 			return nil, err
 		}

@@ -1247,8 +1247,8 @@ func handleControlOwnerReminder(cfg *config.Config, pool *pgxpool.Pool) asynq.Ha
 			var buf bytes.Buffer
 			buf.WriteString(`<!DOCTYPE html><html><body style="font-family:sans-serif;color:#1a202c;">`)
 			buf.WriteString(`<h2 style="color:#2b6cb0;">Vakt — Control-Erinnerung</h2>`)
-			buf.WriteString(fmt.Sprintf(`<p>Das folgende Control ist in <strong>7 Tagen</strong> fällig:</p>`))
-			buf.WriteString(fmt.Sprintf(`<table border="0" cellpadding="6"><tbody>`))
+			buf.WriteString(`<p>Das folgende Control ist in <strong>7 Tagen</strong> fällig:</p>`)
+			buf.WriteString(`<table border="0" cellpadding="6"><tbody>`)
 			buf.WriteString(fmt.Sprintf(`<tr><td><strong>Control:</strong></td><td>%s — %s</td></tr>`, r.ControlID, r.Title))
 			buf.WriteString(fmt.Sprintf(`<tr><td><strong>Fälligkeitsdatum:</strong></td><td>%s</td></tr>`, dueDateStr))
 			buf.WriteString(fmt.Sprintf(`<tr><td><strong>Link:</strong></td><td><a href="%s">Control öffnen</a></td></tr>`, link))

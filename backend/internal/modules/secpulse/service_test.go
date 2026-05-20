@@ -1,6 +1,7 @@
 package secpulse
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,7 +11,7 @@ func TestUpdateFinding_RequiresJustificationForAcceptedRisk(t *testing.T) {
 	// Service validates that status=accepted_risk requires a non-empty justification.
 	// We use a nil repo/client — the validation is pure logic before any DB call.
 	svc := &Service{}
-	_, err := svc.UpdateFinding(nil, "org1", "finding1", UpdateFindingInput{
+	_, err := svc.UpdateFinding(context.TODO(), "org1", "finding1", UpdateFindingInput{
 		Status: ptr("accepted_risk"),
 	})
 	assert.Error(t, err)

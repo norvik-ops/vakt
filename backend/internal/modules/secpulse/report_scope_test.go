@@ -59,7 +59,7 @@ func TestReportScope_UnknownFields(t *testing.T) {
 // TestReportScope_TitleIsString — compile-time assertion: Title is a typed string, not interface{}.
 func TestReportScope_TitleIsString(t *testing.T) {
 	s := ReportScope{Title: "Typed"}
-	var _ string = s.Title // won't compile if Title becomes interface{}
+	var _ string = s.Title //nolint:staticcheck // QF1011: explicit type is the compile-time assertion
 	assert.Equal(t, "Typed", s.Title)
 }
 
@@ -94,7 +94,7 @@ func TestReportScope_Title_SpecialChars_MarshalsSafely(t *testing.T) {
 		"<img src=x onerror=alert(1)>",
 		"{{ 7*7 }}",
 		"\x00\x01\x1f",
-		"​",
+		"\u200b",
 	}
 	for _, title := range adversarialTitles {
 		title := title

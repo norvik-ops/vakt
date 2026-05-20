@@ -31,8 +31,6 @@ type headerStore struct {
 type headerVisitor struct {
 	lim      *rate.Limiter
 	lastSeen time.Time
-	// reserved tracks whether Allow() consumed a token this request.
-	reserved bool
 }
 
 // newHeaderStore constructs a headerStore for a given rate (req/s) and burst.

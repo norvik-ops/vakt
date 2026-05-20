@@ -270,12 +270,13 @@ func (s *Service) Fire(ctx context.Context, orgID, event string, payload map[str
 				status := "sent"
 				var lastErr error
 				delays := []time.Duration{0, time.Second, 2 * time.Second, 4 * time.Second}
+			retry:
 				for attempt, delay := range delays {
 					if delay > 0 {
 						select {
 						case <-fireCtx.Done():
 							lastErr = fireCtx.Err()
-							break
+							break retry
 						case <-time.After(delay):
 						}
 					}

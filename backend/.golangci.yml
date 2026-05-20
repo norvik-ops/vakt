@@ -9,14 +9,48 @@ linters:
     - errcheck
     - govet
     - staticcheck
-    - misspell
     - ineffassign
     - unused
+    # Hinweis: misspell ist deaktiviert — dieses Repo enthält viele deutsche
+    # User-facing-Strings (Konfiguration, Identifikation, Koordination …),
+    # die der englische Wordlist-Linter fälschlich als Tippfehler markiert.
+
   settings:
     errcheck:
       check-type-assertions: true
+      exclude-functions:
+        # Idiomatische `defer X.Close()` Muster — Close-Fehler sind in
+        # defer-Position selten handhabbar.
+        - (io.Closer).Close
+        - (io.ReadCloser).Close
+        - (net/http.ResponseWriter).Write
+        - (*github.com/jackc/pgx/v5.Conn).Close
+        - (*github.com/jackc/pgx/v5/pgxpool.Pool).Close
+        - (*github.com/jackc/pgx/v5/pgxpool.Conn).Release
+        - (github.com/jackc/pgx/v5.Tx).Rollback
+        - (github.com/jackc/pgx/v5.BatchResults).Close
+        - (*github.com/hibiken/asynq.Inspector).Close
+        # Print/log-helpers — Fehler hier sind belanglos
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - os.RemoveAll
+
     staticcheck:
-      checks: ["all"]
+      checks:
+        - "all"
+        # ST1000: package-Kommentar — pragmatisch nicht erzwungen
+        - "-ST1000"
+        # ST1020/ST1021: erzwungenes Kommentar-Format auf Public APIs —
+        # in einem deutschsprachigen Codebase mit gemischten Kommentaren nervig
+        - "-ST1020"
+        - "-ST1021"
+        # ST1003: Naming-Konventionen (RedisUrl → RedisURL) — bestehende
+        # öffentliche Struct-Felder umzubenennen wäre ein Breaking Change
+        - "-ST1003"
+        # ST1005: Kapitalisierte Error-Strings — unkritisch
+        - "-ST1005"
+
   exclusions:
     rules:
       - linters:

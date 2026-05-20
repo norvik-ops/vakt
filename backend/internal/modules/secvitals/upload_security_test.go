@@ -5,6 +5,7 @@ package secvitals
 
 import (
 	"bytes"
+	"context"
 	"mime/multipart"
 	"net/textproto"
 	"strings"
@@ -72,7 +73,7 @@ func TestUpload_SizeLimit_Enforced(t *testing.T) {
 	overLimit := int64(maxEvidenceFileSizeBytes) + 1
 
 	header := makeHeader("report.pdf", "application/pdf", overLimit)
-	_, err := svc.Upload(nil, "org1", "ctrl1", "", "user1", emptyFile(), header) //nolint:staticcheck
+	_, err := svc.Upload(context.TODO(), "org1", "ctrl1", "", "user1", emptyFile(), header) //nolint:staticcheck
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "too large",
 		"error message must mention size so the caller can surface it to the user")
@@ -124,7 +125,7 @@ func TestUpload_SizeLimit_ZeroBytes(t *testing.T) {
 func TestUpload_BlockedExtension_EXE(t *testing.T) {
 	svc := newServiceNoRepo(t)
 	header := makeHeader("malware.exe", "application/octet-stream", 1024)
-	_, err := svc.Upload(nil, "org1", "ctrl1", "", "user1", emptyFile(), header) //nolint:staticcheck
+	_, err := svc.Upload(context.TODO(), "org1", "ctrl1", "", "user1", emptyFile(), header) //nolint:staticcheck
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not allowed",
 		".exe must be rejected by the extension allowlist")
@@ -135,7 +136,7 @@ func TestUpload_BlockedExtension_EXE(t *testing.T) {
 func TestUpload_BlockedExtension_PHP(t *testing.T) {
 	svc := newServiceNoRepo(t)
 	header := makeHeader("shell.php", "text/plain", 512)
-	_, err := svc.Upload(nil, "org1", "ctrl1", "", "user1", emptyFile(), header) //nolint:staticcheck
+	_, err := svc.Upload(context.TODO(), "org1", "ctrl1", "", "user1", emptyFile(), header) //nolint:staticcheck
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not allowed",
 		".php must be rejected even when sent with a text/plain MIME type")
@@ -145,7 +146,7 @@ func TestUpload_BlockedExtension_PHP(t *testing.T) {
 func TestUpload_BlockedExtension_SH(t *testing.T) {
 	svc := newServiceNoRepo(t)
 	header := makeHeader("setup.sh", "text/x-sh", 256)
-	_, err := svc.Upload(nil, "org1", "ctrl1", "", "user1", emptyFile(), header) //nolint:staticcheck
+	_, err := svc.Upload(context.TODO(), "org1", "ctrl1", "", "user1", emptyFile(), header) //nolint:staticcheck
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not allowed")
 }
@@ -154,7 +155,7 @@ func TestUpload_BlockedExtension_SH(t *testing.T) {
 func TestUpload_BlockedExtension_HTML(t *testing.T) {
 	svc := newServiceNoRepo(t)
 	header := makeHeader("xss.html", "text/html", 128)
-	_, err := svc.Upload(nil, "org1", "ctrl1", "", "user1", emptyFile(), header) //nolint:staticcheck
+	_, err := svc.Upload(context.TODO(), "org1", "ctrl1", "", "user1", emptyFile(), header) //nolint:staticcheck
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not allowed")
 }
@@ -189,7 +190,7 @@ func TestUpload_BlockedMIME_OctetStream(t *testing.T) {
 	// and returns "application/octet-stream", which is not in the allowlist.
 	peMagic := []byte{0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00}
 	header := makeHeader("document.pdf", "application/pdf", int64(len(peMagic)))
-	_, err := svc.Upload(nil, "org1", "ctrl1", "", "user1",
+	_, err := svc.Upload(context.TODO(), "org1", "ctrl1", "", "user1",
 		noopFile{bytes.NewReader(peMagic)}, header)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not allowed",
@@ -204,7 +205,7 @@ func TestUpload_BlockedMIME_TextHTML(t *testing.T) {
 	// http.DetectContentType returns "text/html; charset=utf-8" for this prefix.
 	htmlContent := []byte("<!DOCTYPE html><html><body>xss</body></html>")
 	header := makeHeader("page.txt", "text/plain", int64(len(htmlContent)))
-	_, err := svc.Upload(nil, "org1", "ctrl1", "", "user1",
+	_, err := svc.Upload(context.TODO(), "org1", "ctrl1", "", "user1",
 		noopFile{bytes.NewReader(htmlContent)}, header)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not allowed",

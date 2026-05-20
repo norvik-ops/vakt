@@ -146,18 +146,6 @@ func dateToStringPtr(d pgtype.Date) *string {
 	return &s
 }
 
-// dateFromStringPtr parses a *string (YYYY-MM-DD) into pgtype.Date; nil → invalid.
-func dateFromStringPtr(s *string) pgtype.Date {
-	if s == nil || *s == "" {
-		return pgtype.Date{}
-	}
-	t, err := time.Parse("2006-01-02", *s)
-	if err != nil {
-		return pgtype.Date{}
-	}
-	return pgtype.Date{Time: t, Valid: true}
-}
-
 // suppressionFromVbSuppression maps a generated row to the SuppressionRule domain type.
 func suppressionFromVbSuppression(r db.VbFindingSuppressions) SuppressionRule {
 	return SuppressionRule{
@@ -1276,28 +1264,6 @@ func (r *Repository) listComponentsBySBOM(ctx context.Context, sbomID string) ([
 		out = append(out, componentRow{ID: c.ID, Name: c.Name, Version: c.Version})
 	}
 	return out, nil
-}
-
-// updateComponentEOL sets the eol_status and eol_date for a component.
-func (r *Repository) updateComponentEOL(ctx context.Context, componentID, eolStatus string, eolDate *string) error {
-	err := r.q.UpdateSPComponentEOL(ctx, db.UpdateSPComponentEOLParams{
-		ID:        componentID,
-		EolStatus: eolStatus,
-		EolDate:   dateFromStringPtr(eolDate),
-	})
-	if err != nil {
-		return fmt.Errorf("update component EOL: %w", err)
-	}
-	return nil
-}
-
-// getEOLCache returns the cached payload for a (product, cycle) pair along with when it was fetched.
-func (r *Repository) getEOLCache(ctx context.Context, product, cycle string) ([]byte, time.Time, error) {
-	row, err := r.q.GetSPEOLCache(ctx, db.GetSPEOLCacheParams{Product: product, Cycle: cycle})
-	if err != nil {
-		return nil, time.Time{}, fmt.Errorf("get EOL cache: %w", err)
-	}
-	return row.Payload, spTsToTime(row.FetchedAt), nil
 }
 
 // upsertEOLCache inserts or updates a cache row for the (product, cycle) pair.

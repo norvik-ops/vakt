@@ -1474,10 +1474,6 @@ func GenerateSoAPDF(rows []SoARow, frameworkName, orgName string, generatedAt ti
 	pdf.SetY(pdf.GetY() + 3)
 
 	// Group rows by domain
-	type domainGroup struct {
-		name string
-		rows []SoARow
-	}
 	seen := make(map[string]bool)
 	var order []string
 	byDomain := make(map[string][]SoARow)
@@ -1594,7 +1590,10 @@ func GenerateSoAPDF(rows []SoARow, frameworkName, orgName string, generatedAt ti
 
 			renderCell(row.Justification, colW[3], rowH, "L")
 
-			impl := row.Implementation
+			impl := status
+			if row.Implementation != "" {
+				impl += "\n" + row.Implementation
+			}
 			if row.Responsible != "" {
 				impl += "\nVerantw.: " + row.Responsible
 			}

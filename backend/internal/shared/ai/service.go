@@ -252,7 +252,7 @@ func buildAdvicePrompt(ac *AdviceContext) string {
 
 	sb.WriteString("Offene Probleme:\n")
 	if len(ac.CriticalRisks) > 0 {
-		sb.WriteString(fmt.Sprintf("- %d kritische Risiken: ", len(ac.CriticalRisks)))
+		fmt.Fprintf(&sb, "- %d kritische Risiken: ", len(ac.CriticalRisks))
 		sb.WriteString(strings.Join(ac.CriticalRisks, ", "))
 		sb.WriteString("\n")
 	}

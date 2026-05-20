@@ -69,15 +69,7 @@ func (h *Handler) UpdateConfig(c echo.Context) error {
 
 	// Update the in-memory config for the lifetime of this request context.
 	// Durable persistence is handled via env vars / restart cycle.
-	h.cfg = Config{
-		URL:         input.URL,
-		BindDN:      input.BindDN,
-		BindPass:    input.BindPass,
-		BaseDN:      input.BaseDN,
-		UserFilter:  input.UserFilter,
-		GroupFilter: input.GroupFilter,
-		TLS:         input.TLS,
-	}
+	h.cfg = Config(input)
 
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "LDAP configuration updated. Restart the service to persist changes via environment variables.",

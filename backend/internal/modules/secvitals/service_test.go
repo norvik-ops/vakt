@@ -884,7 +884,7 @@ func TestSubmitAssessment_BlocksAfterSubmit(t *testing.T) {
 	// Verify that checking an assessment with status="submitted" triggers ErrAssessmentExpiredOrSubmitted.
 	// This exercises the guard logic directly without a DB connection.
 	status := "submitted"
-	var expiresAt time.Time = time.Now().UTC().Add(24 * time.Hour) // not yet expired
+	expiresAt := time.Now().UTC().Add(24 * time.Hour) // not yet expired
 
 	// Simulate the guard logic from SaveAnswers / SubmitAssessment.
 	isBlocked := time.Now().UTC().After(expiresAt) || status == "submitted" || status == "reviewed"
