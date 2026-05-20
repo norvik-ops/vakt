@@ -1211,8 +1211,8 @@
   },
   "demo": {
     "banner": "Demo Environment",
-    "description": "All data shown is sample data.",
-    "fullBanner": "Demo Environment — All data is sample data. Login: admin@vakt.local / admin1234",
+    "description": "Your own session with sample data — 4 h lifetime.",
+    "fullBanner": "Demo Environment — Your own session with sample data, 4 h lifetime. Login credentials are generated and shown on the sign-in page.",
     "close": "Close"
   },
   "backup": {

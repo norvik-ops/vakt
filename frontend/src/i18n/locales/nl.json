@@ -1211,8 +1211,8 @@
   },
   "demo": {
     "banner": "Demo-omgeving",
-    "description": "Alle weergegeven gegevens zijn voorbeeldgegevens.",
-    "fullBanner": "Demo-omgeving — Alle gegevens zijn voorbeeldgegevens. Inloggen: admin@vakt.local / admin1234",
+    "description": "Eigen sessie met voorbeeldgegevens — 4 u levensduur.",
+    "fullBanner": "Demo-omgeving — Eigen sessie met voorbeeldgegevens, 4 u levensduur. Inloggegevens worden gegenereerd en op de inlogpagina getoond.",
     "close": "Sluiten"
   },
   "backup": {

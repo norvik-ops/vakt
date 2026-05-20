@@ -187,7 +187,7 @@ export default function Layout() {
         <div className="bg-brand/10 border-b border-brand/30 px-4 py-2 flex items-center justify-between text-sm shrink-0">
           <span className="text-brand flex items-center gap-2">
             <FlaskConical className="w-4 h-4 shrink-0" />
-            <strong>{t('demo.banner')}</strong> — {t('demo.description')} Login: <code className="mx-1 bg-brand/10 px-1 rounded">admin@vakt.local</code> / <code className="mx-1 bg-brand/10 px-1 rounded">admin1234</code>
+            <strong>{t('demo.banner')}</strong> — {t('demo.description')}
           </span>
           <button onClick={() => setDemoBannerDismissed(true)} aria-label={t('common.close')} className="text-brand/60 hover:text-brand ml-4">✕</button>
         </div>

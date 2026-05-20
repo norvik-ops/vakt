@@ -1211,8 +1211,8 @@
   },
   "demo": {
     "banner": "Demo-Umgebung",
-    "description": "Alle Daten sind Beispieldaten.",
-    "fullBanner": "Demo-Umgebung — Alle Daten sind Beispieldaten. Login: admin@vakt.local / admin1234",
+    "description": "Eigene Session mit Beispieldaten — 4 h Lebensdauer.",
+    "fullBanner": "Demo-Umgebung — Eigene Session mit Beispieldaten, 4 h Lebensdauer. Login-Daten werden auf der Anmeldeseite generiert und angezeigt.",
     "close": "Schließen"
   },
   "backup": {

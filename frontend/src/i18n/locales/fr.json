@@ -1211,8 +1211,8 @@
   },
   "demo": {
     "banner": "Environnement de démo",
-    "description": "Toutes les données affichées sont des données d'exemple.",
-    "fullBanner": "Environnement de démo — Toutes les données sont des données d'exemple. Connexion : admin@vakt.local / admin1234",
+    "description": "Votre propre session avec données d'exemple — 4 h de durée de vie.",
+    "fullBanner": "Environnement de démo — Votre propre session avec données d'exemple, 4 h de durée de vie. Les identifiants sont générés et affichés sur la page de connexion.",
     "close": "Fermer"
   },
   "backup": {
