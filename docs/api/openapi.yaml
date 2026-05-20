@@ -180,31 +180,37 @@ components:
 
     LoginResponse:
       type: object
+      required: [access_token, refresh_token, expires_in, user]
       properties:
-        token:
+        access_token:
           type: string
-          description: Paseto v2 bearer token
+          description: Paseto v4 bearer token (lebt 1 Stunde)
+        refresh_token:
+          type: string
+          description: Opaque refresh token (lebt 30 Tage, in Redis hinterlegt)
+        expires_in:
+          type: integer
+          description: Access-Token-Lebenszeit in Sekunden
         user:
           $ref: '#/components/schemas/User'
 
     User:
       type: object
+      required: [id, email, display_name, roles]
       properties:
         id:
           type: string
           format: uuid
         email:
           type: string
-        name:
+          format: email
+        display_name:
           type: string
-        role:
-          type: string
-          enum: [admin, member, viewer]
-        org_id:
-          type: string
-          format: uuid
-        mfa_enabled:
-          type: boolean
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [Admin, SecurityAnalyst, Auditor, Viewer]
 
     # ── SecPulse ──────────────────────────────────────────────────────────────
 
@@ -874,12 +880,36 @@ paths:
   # ── Health ────────────────────────────────────────────────────────────────
   /health:
     get:
-      summary: Liveness check
+      summary: Liveness check + Frontend-Feature-Flags
+      description: |
+        Antwortet, solange der Prozess läuft. Frontend nutzt diesen Endpoint
+        (siehe useDemoMode, Login.tsx) zur Feature-Detection:
+        - `demo` schaltet die Login-Page in den Ephemeral-Demo-Flow
+        - `sso_enabled` blendet den SSO-Button ein
+        - `version` wird im Footer angezeigt
       tags: [admin]
       security: []
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, version, demo, sso_enabled]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  version:
+                    type: string
+                    example: "0.6.2"
+                  demo:
+                    type: boolean
+                    description: VAKT_DEMO=true → ephemerer Demo-Flow aktiv
+                  sso_enabled:
+                    type: boolean
+                    description: OIDC/SAML konfiguriert
 
   /health/ready:
     get:
