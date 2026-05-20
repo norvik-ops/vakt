@@ -7,17 +7,17 @@ import "time"
 
 // AuditMilestone represents a certification target, audit event, or deadline on the org calendar.
 type AuditMilestone struct {
-	ID            string     `json:"id"`
-	OrgID         string     `json:"org_id"`
-	FrameworkID   *string    `json:"framework_id,omitempty"`
-	Title         string     `json:"title"`
-	Description   string     `json:"description,omitempty"`
-	MilestoneDate string     `json:"milestone_date"` // DATE — stored as YYYY-MM-DD string
-	MilestoneType string     `json:"milestone_type"`
-	Status        string     `json:"status"`
-	CreatedBy     *string    `json:"created_by,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	ID            string    `json:"id"`
+	OrgID         string    `json:"org_id"`
+	FrameworkID   *string   `json:"framework_id,omitempty"`
+	Title         string    `json:"title"`
+	Description   string    `json:"description,omitempty"`
+	MilestoneDate string    `json:"milestone_date"` // DATE — stored as YYYY-MM-DD string
+	MilestoneType string    `json:"milestone_type"`
+	Status        string    `json:"status"`
+	CreatedBy     *string   `json:"created_by,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 	// DaysRemaining is computed server-side for convenience.
 	DaysRemaining *int `json:"days_remaining,omitempty"`
 }

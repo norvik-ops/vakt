@@ -132,10 +132,10 @@ func TestCalculateScore_Table(t *testing.T) {
 		wantScore int
 	}{
 		{"clean slate", 0, 0, 0, 0, 70},
-		{"single critical", 1, 0, 0, 0, 65},  // 70-5
-		{"single high", 0, 1, 0, 0, 68},       // 70-2
-		{"one open breach", 0, 0, 1, 0, 50},   // 70-20
-		{"one framework", 0, 0, 0, 1, 80},     // 70+10
+		{"single critical", 1, 0, 0, 0, 65}, // 70-5
+		{"single high", 0, 1, 0, 0, 68},     // 70-2
+		{"one open breach", 0, 0, 1, 0, 50}, // 70-20
+		{"one framework", 0, 0, 0, 1, 80},   // 70+10
 		{
 			// crit_pen=min(15,30)=15; high_pen=min(10,10)=10; breach_pen=min(20,20)=20; fw_bonus=min(20,30)=20
 			// 70-15-10-20+20 = 45

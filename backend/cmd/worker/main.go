@@ -25,13 +25,10 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/matharnica/vakt/internal/auth"
-	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/config"
-	cloudintegration "github.com/matharnica/vakt/internal/shared/integrations/cloud"
-	ghintegration "github.com/matharnica/vakt/internal/shared/integrations/github"
 	"github.com/matharnica/vakt/internal/modules/secprivacy"
-	"github.com/matharnica/vakt/internal/modules/secreflex"
 	"github.com/matharnica/vakt/internal/modules/secpulse"
+	"github.com/matharnica/vakt/internal/modules/secreflex"
 	"github.com/matharnica/vakt/internal/modules/secvault"
 	"github.com/matharnica/vakt/internal/modules/secvitals"
 	"github.com/matharnica/vakt/internal/shared/alerting"
@@ -39,8 +36,11 @@ import (
 	"github.com/matharnica/vakt/internal/shared/controltests"
 	"github.com/matharnica/vakt/internal/shared/crossevidence"
 	"github.com/matharnica/vakt/internal/shared/db"
+	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/emaildigest"
 	"github.com/matharnica/vakt/internal/shared/errorbudget"
+	cloudintegration "github.com/matharnica/vakt/internal/shared/integrations/cloud"
+	ghintegration "github.com/matharnica/vakt/internal/shared/integrations/github"
 	"github.com/matharnica/vakt/internal/shared/notifications"
 	"github.com/matharnica/vakt/internal/shared/notify"
 	"github.com/matharnica/vakt/internal/shared/retention"
@@ -502,7 +502,6 @@ func handleGitScan(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 		return nil
 	}
 }
-
 
 // handleAVVExpiryCheck handles secprivacy:avv_expiry_check jobs.
 // Marks overdue AVVs as expired and fires avv.expired alerts per org.

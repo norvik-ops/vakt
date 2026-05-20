@@ -231,10 +231,10 @@ func (c *AzureCollector) collectSecurityAssessments(ctx context.Context, orgID, 
 	}
 
 	details := map[string]any{
-		"collected_at":    time.Now().UTC().Format(time.RFC3339),
-		"healthy":         healthyCnt,
-		"unhealthy":       unhealthyCnt,
-		"not_applicable":  notApplicableCnt,
+		"collected_at":   time.Now().UTC().Format(time.RFC3339),
+		"healthy":        healthyCnt,
+		"unhealthy":      unhealthyCnt,
+		"not_applicable": notApplicableCnt,
 	}
 
 	controlID := firstControlID(controls)

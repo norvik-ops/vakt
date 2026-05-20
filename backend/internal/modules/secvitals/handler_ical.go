@@ -133,12 +133,12 @@ func (h *Handler) CalendarDeadlines(c echo.Context) error {
 
 	for _, ev := range events {
 		sb.WriteString("BEGIN:VEVENT\r\n")
-		sb.WriteString(fmt.Sprintf("UID:%s\r\n", icalEscape(ev.uid)))
-		sb.WriteString(fmt.Sprintf("DTSTAMP:%s\r\n", dtstamp))
-		sb.WriteString(fmt.Sprintf("DTSTART;VALUE=DATE:%s\r\n", ev.dtstart))
-		sb.WriteString(fmt.Sprintf("SUMMARY:%s\r\n", icalEscape(ev.summary)))
+		fmt.Fprintf(&sb, "UID:%s\r\n", icalEscape(ev.uid))
+		fmt.Fprintf(&sb, "DTSTAMP:%s\r\n", dtstamp)
+		fmt.Fprintf(&sb, "DTSTART;VALUE=DATE:%s\r\n", ev.dtstart)
+		fmt.Fprintf(&sb, "SUMMARY:%s\r\n", icalEscape(ev.summary))
 		if ev.description != "" {
-			sb.WriteString(fmt.Sprintf("DESCRIPTION:%s\r\n", icalEscape(ev.description)))
+			fmt.Fprintf(&sb, "DESCRIPTION:%s\r\n", icalEscape(ev.description))
 		}
 		sb.WriteString("END:VEVENT\r\n")
 	}

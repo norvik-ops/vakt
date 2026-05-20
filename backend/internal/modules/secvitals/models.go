@@ -63,11 +63,11 @@ type RecordReviewInput struct {
 // UpdateControlInput holds input for PATCH /secvitals/controls/:id.
 // not_applicable takes precedence over manual_status; set manual_status="" to reset to computed.
 type UpdateControlInput struct {
-	NotApplicable bool   `json:"not_applicable"`
-	Reason        string `json:"reason"`
-	ManualStatus  string `json:"manual_status" validate:"omitempty,oneof=in_progress implemented"`
-	MaturityScore *int   `json:"maturity_score" validate:"omitempty,min=0,max=3"`
-	Owner         string `json:"owner"          validate:"omitempty,max=200"`
+	NotApplicable bool    `json:"not_applicable"`
+	Reason        string  `json:"reason"`
+	ManualStatus  string  `json:"manual_status" validate:"omitempty,oneof=in_progress implemented"`
+	MaturityScore *int    `json:"maturity_score" validate:"omitempty,min=0,max=3"`
+	Owner         string  `json:"owner"          validate:"omitempty,max=200"`
 	DueDate       *string `json:"due_date"      validate:"omitempty,datetime=2006-01-02"`
 }
 
@@ -113,31 +113,31 @@ type TISAXControlGap struct {
 
 // TISAXGapAnalysis lists TISAX controls that have not yet reached full maturity.
 type TISAXGapAnalysis struct {
-	FrameworkID string          `json:"framework_id"`
-	TargetScore int             `json:"target_score"`
+	FrameworkID string            `json:"framework_id"`
+	TargetScore int               `json:"target_score"`
 	Gaps        []TISAXControlGap `json:"gaps"`
 }
 
 // Evidence represents a piece of compliance evidence attached to a control.
 type Evidence struct {
-	ID                string     `json:"id"`
-	ControlID         string     `json:"control_id"`
-	OrgID             string     `json:"org_id"`
-	Title             string     `json:"title"`
-	Description       string     `json:"description,omitempty"`
-	Source            string     `json:"source"`
-	FilePath          string     `json:"file_path,omitempty"`
-	FileSize          int64      `json:"file_size,omitempty"`
-	CollectorData     []byte     `json:"collector_data,omitempty"`
-	Status            string     `json:"status"`
-	Version           int        `json:"version"`
-	ExpiresAt         *time.Time `json:"expires_at,omitempty"`
-	ExpiryNotifiedAt  *time.Time `json:"expiry_notified_at,omitempty"`
-	UploadedBy        string     `json:"uploaded_by,omitempty"`
-	ReviewedBy        string     `json:"reviewed_by,omitempty"`
-	ReviewedAt        *time.Time `json:"reviewed_at,omitempty"`
-	CreatedAt         time.Time  `json:"created_at"`
-	UpdatedAt         time.Time  `json:"updated_at"`
+	ID               string     `json:"id"`
+	ControlID        string     `json:"control_id"`
+	OrgID            string     `json:"org_id"`
+	Title            string     `json:"title"`
+	Description      string     `json:"description,omitempty"`
+	Source           string     `json:"source"`
+	FilePath         string     `json:"file_path,omitempty"`
+	FileSize         int64      `json:"file_size,omitempty"`
+	CollectorData    []byte     `json:"collector_data,omitempty"`
+	Status           string     `json:"status"`
+	Version          int        `json:"version"`
+	ExpiresAt        *time.Time `json:"expires_at,omitempty"`
+	ExpiryNotifiedAt *time.Time `json:"expiry_notified_at,omitempty"`
+	UploadedBy       string     `json:"uploaded_by,omitempty"`
+	ReviewedBy       string     `json:"reviewed_by,omitempty"`
+	ReviewedAt       *time.Time `json:"reviewed_at,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
 // Review represents a control review assignment.
@@ -265,11 +265,11 @@ type EvidenceHistoryEntry struct {
 
 // AddEvidenceInput holds validated input for adding evidence to a control.
 type AddEvidenceInput struct {
-	Title       string `json:"title"       validate:"required,max=255"`
-	Description string `json:"description"`
-	Source      string `json:"source"      validate:"required,oneof=manual github aws azure ad"`
-	FilePath    string `json:"file_path"`
-	FileSize    int64  `json:"file_size"`
+	Title       string     `json:"title"       validate:"required,max=255"`
+	Description string     `json:"description"`
+	Source      string     `json:"source"      validate:"required,oneof=manual github aws azure ad"`
+	FilePath    string     `json:"file_path"`
+	FileSize    int64      `json:"file_size"`
 	ExpiresAt   *time.Time `json:"expires_at"`
 }
 
@@ -277,18 +277,18 @@ type AddEvidenceInput struct {
 
 // Risk represents a single entry in the organisation's risk register.
 type Risk struct {
-	ID             string    `json:"id"`
-	OrgID          string    `json:"org_id"`
-	Title          string    `json:"title"`
-	Description    string    `json:"description,omitempty"`
-	Category       string    `json:"category,omitempty"`
-	Likelihood     int       `json:"likelihood"`  // 1–5
-	Impact         int       `json:"impact"`      // 1–5
-	RiskScore      int       `json:"risk_score"`  // computed: likelihood * impact
-	Owner          string    `json:"owner,omitempty"`
-	Status         string    `json:"status"`    // open | mitigated | accepted | closed
-	Treatment      string    `json:"treatment"` // avoid | mitigate | transfer | accept
-	TreatmentNotes string    `json:"treatment_notes,omitempty"`
+	ID             string `json:"id"`
+	OrgID          string `json:"org_id"`
+	Title          string `json:"title"`
+	Description    string `json:"description,omitempty"`
+	Category       string `json:"category,omitempty"`
+	Likelihood     int    `json:"likelihood"` // 1–5
+	Impact         int    `json:"impact"`     // 1–5
+	RiskScore      int    `json:"risk_score"` // computed: likelihood * impact
+	Owner          string `json:"owner,omitempty"`
+	Status         string `json:"status"`    // open | mitigated | accepted | closed
+	Treatment      string `json:"treatment"` // avoid | mitigate | transfer | accept
+	TreatmentNotes string `json:"treatment_notes,omitempty"`
 	// Treatment workflow fields (Migration 071)
 	TreatmentOption    string     `json:"treatment_option"`
 	TreatmentPlan      string     `json:"treatment_plan"`
@@ -328,9 +328,9 @@ type Incident struct {
 	AffectedSystems []string   `json:"affected_systems"`
 	BreachID        *string    `json:"breach_id,omitempty"`
 	// Deadline tracking (NIS2 / DORA)
-	IncidentType          string     `json:"incident_type"`                     // general | nis2 | dora
-	ReportingObligation   string     `json:"reporting_obligation"`              // unknown | required | not_required
-	NotificationAuthority string     `json:"notification_authority,omitempty"`  // BSI | BaFin | BNetzA | ...
+	IncidentType          string     `json:"incident_type"`                    // general | nis2 | dora
+	ReportingObligation   string     `json:"reporting_obligation"`             // unknown | required | not_required
+	NotificationAuthority string     `json:"notification_authority,omitempty"` // BSI | BaFin | BNetzA | ...
 	Deadline4h            *time.Time `json:"deadline_4h,omitempty"`
 	Deadline24h           *time.Time `json:"deadline_24h,omitempty"`
 	Deadline72h           *time.Time `json:"deadline_72h,omitempty"`
@@ -371,21 +371,21 @@ type IncidentDeadlineStatus struct {
 type DeadlineInfo struct {
 	Deadline   *time.Time `json:"deadline"`
 	ReportedAt *time.Time `json:"reported_at,omitempty"`
-	Status     string     `json:"status"`    // green | yellow | red | done
+	Status     string     `json:"status"` // green | yellow | red | done
 	HoursLeft  float64    `json:"hours_left"`
 }
 
 // CreateIncidentInput holds validated input for creating an incident record.
 type CreateIncidentInput struct {
-	Title                   string    `json:"title"                    validate:"required,max=255"`
-	Description             string    `json:"description"              validate:"required"`
-	Severity                string    `json:"severity"                 validate:"required,oneof=low medium high critical"`
-	DiscoveredAt            time.Time `json:"discovered_at"`
-	AffectedSystems         []string  `json:"affected_systems"`
-	BreachID                *string   `json:"breach_id"`
-	IncidentType            string    `json:"incident_type"            validate:"omitempty,oneof=general nis2 dora"`
-	ReportingObligation     string    `json:"reporting_obligation"     validate:"omitempty,oneof=unknown required not_required"`
-	NotificationAuthority   string    `json:"notification_authority"`
+	Title                 string    `json:"title"                    validate:"required,max=255"`
+	Description           string    `json:"description"              validate:"required"`
+	Severity              string    `json:"severity"                 validate:"required,oneof=low medium high critical"`
+	DiscoveredAt          time.Time `json:"discovered_at"`
+	AffectedSystems       []string  `json:"affected_systems"`
+	BreachID              *string   `json:"breach_id"`
+	IncidentType          string    `json:"incident_type"            validate:"omitempty,oneof=general nis2 dora"`
+	ReportingObligation   string    `json:"reporting_obligation"     validate:"omitempty,oneof=unknown required not_required"`
+	NotificationAuthority string    `json:"notification_authority"`
 	// DORA-specific fields (Migration 041)
 	AffectedCustomers       *int    `json:"affected_customers"       validate:"omitempty,min=0"`
 	FinancialImpactEstimate *string `json:"financial_impact_estimate"`
@@ -406,10 +406,10 @@ type Policy struct {
 	Title         string     `json:"title"`
 	Description   string     `json:"description,omitempty"`
 	Category      string     `json:"category,omitempty"`
-	Status        string     `json:"status"`  // draft | active | archived
-	Version       string     `json:"version"` // user-editable version label, e.g. "1.0"
-	VersionNum    int        `json:"version_num"`             // auto-incremented integer version counter
-	VersionNote   string     `json:"version_note"`            // change summary for the latest version
+	Status        string     `json:"status"`       // draft | active | archived
+	Version       string     `json:"version"`      // user-editable version label, e.g. "1.0"
+	VersionNum    int        `json:"version_num"`  // auto-incremented integer version counter
+	VersionNote   string     `json:"version_note"` // change summary for the latest version
 	LastUpdatedBy string     `json:"last_updated_by"`
 	ReviewedAt    *time.Time `json:"reviewed_at,omitempty"`
 	NextReviewDue *string    `json:"next_review_due,omitempty"` // date string YYYY-MM-DD
@@ -498,14 +498,14 @@ type UpdateRiskTreatmentInput struct {
 }
 
 type UpdateIncidentInput struct {
-	Title                   string   `json:"title"                    validate:"required,max=255"`
-	Description             string   `json:"description"              validate:"required"`
-	Severity                string   `json:"severity"                 validate:"required,oneof=low medium high critical"`
-	Status                  string   `json:"status"                   validate:"required,oneof=open investigating resolved closed"`
-	AffectedSystems         []string `json:"affected_systems"`
-	IncidentType            string   `json:"incident_type"            validate:"omitempty,oneof=general nis2 dora"`
-	ReportingObligation     string   `json:"reporting_obligation"     validate:"omitempty,oneof=unknown required not_required"`
-	NotificationAuthority   string   `json:"notification_authority"`
+	Title                 string   `json:"title"                    validate:"required,max=255"`
+	Description           string   `json:"description"              validate:"required"`
+	Severity              string   `json:"severity"                 validate:"required,oneof=low medium high critical"`
+	Status                string   `json:"status"                   validate:"required,oneof=open investigating resolved closed"`
+	AffectedSystems       []string `json:"affected_systems"`
+	IncidentType          string   `json:"incident_type"            validate:"omitempty,oneof=general nis2 dora"`
+	ReportingObligation   string   `json:"reporting_obligation"     validate:"omitempty,oneof=unknown required not_required"`
+	NotificationAuthority string   `json:"notification_authority"`
 	// DORA-specific fields (Migration 041)
 	AffectedCustomers       *int    `json:"affected_customers"       validate:"omitempty,min=0"`
 	FinancialImpactEstimate *string `json:"financial_impact_estimate"`
@@ -528,11 +528,11 @@ type AssessReportabilityInput struct {
 
 // ReportabilityResult is returned after assessing an incident's reporting obligation.
 type ReportabilityResult struct {
-	Obligation            string               `json:"obligation"`             // required | not_required | unknown
-	GDPRRequired         bool                 `json:"gdpr_required"`
+	Obligation            string               `json:"obligation"` // required | not_required | unknown
+	GDPRRequired          bool                 `json:"gdpr_required"`
 	NotificationAuthority string               `json:"notification_authority"`
-	Explanation          string               `json:"explanation"`
-	Answers              ReportabilityAnswers `json:"answers"`
+	Explanation           string               `json:"explanation"`
+	Answers               ReportabilityAnswers `json:"answers"`
 }
 
 // --- Incident Report Archive (Story 31.3) ---
@@ -542,7 +542,7 @@ type IncidentReport struct {
 	ID          string    `json:"id"`
 	OrgID       string    `json:"org_id"`
 	IncidentID  string    `json:"incident_id"`
-	ReportType  string    `json:"report_type"`  // 24h | 72h | 30d
+	ReportType  string    `json:"report_type"` // 24h | 72h | 30d
 	Authority   string    `json:"authority"`
 	Metadata    any       `json:"metadata,omitempty"`
 	GeneratedAt time.Time `json:"generated_at"`
@@ -586,16 +586,16 @@ var incidentAuthorityDirectory = map[string]AuthorityInfo{
 
 // sectorAuthorityMap maps org sector codes to the relevant authority keys.
 var sectorAuthorityMap = map[string][]string{
-	"energy":      {"BNetzA", "BSI"},
-	"water":       {"BSI"},
-	"health":      {"BSI"},
-	"finance":     {"BaFin", "BSI"},
-	"transport":   {"BSI"},
-	"telecom":     {"BNetzA", "BSI"},
-	"waste":       {"BSI"},
-	"aerospace":   {"LBA", "BSI"},
+	"energy":       {"BNetzA", "BSI"},
+	"water":        {"BSI"},
+	"health":       {"BSI"},
+	"finance":      {"BaFin", "BSI"},
+	"transport":    {"BSI"},
+	"telecom":      {"BNetzA", "BSI"},
+	"waste":        {"BSI"},
+	"aerospace":    {"LBA", "BSI"},
 	"public_admin": {"BSI"},
-	"other":       {"BSI"},
+	"other":        {"BSI"},
 }
 
 // OrgSectorSettings holds the sector and federal state configured for an org.
@@ -662,68 +662,68 @@ type UpdateControlTaskInput struct {
 
 // Supplier represents a third-party supplier in the supplier register.
 type Supplier struct {
-	ID                 string     `json:"id"`
-	OrgID              string     `json:"org_id"`
-	Name               string     `json:"name"`
-	ContactName        string     `json:"contact_name,omitempty"`
-	ContactEmail       string     `json:"contact_email,omitempty"`
-	ServiceType        string     `json:"service_type,omitempty"`
-	Criticality        string     `json:"criticality"` // standard | important | critical
-	NIS2Relevant       bool       `json:"nis2_relevant"`
-	DORARelevant       bool       `json:"dora_relevant"`
-	ContractEnd        *time.Time `json:"contract_end,omitempty"`
-	Notes              string     `json:"notes,omitempty"`
+	ID           string     `json:"id"`
+	OrgID        string     `json:"org_id"`
+	Name         string     `json:"name"`
+	ContactName  string     `json:"contact_name,omitempty"`
+	ContactEmail string     `json:"contact_email,omitempty"`
+	ServiceType  string     `json:"service_type,omitempty"`
+	Criticality  string     `json:"criticality"` // standard | important | critical
+	NIS2Relevant bool       `json:"nis2_relevant"`
+	DORARelevant bool       `json:"dora_relevant"`
+	ContractEnd  *time.Time `json:"contract_end,omitempty"`
+	Notes        string     `json:"notes,omitempty"`
 	// DORA-specific fields (Migration 042)
-	SubSuppliers       []string   `json:"sub_suppliers,omitempty"`
-	DataLocation       string     `json:"data_location,omitempty"`
-	ExitStrategyExists bool       `json:"exit_strategy_exists"`
+	SubSuppliers       []string `json:"sub_suppliers,omitempty"`
+	DataLocation       string   `json:"data_location,omitempty"`
+	ExitStrategyExists bool     `json:"exit_strategy_exists"`
 	// Assessment fields (Migration 046)
-	AssessmentStatus   string     `json:"assessment_status"` // none | pending | completed
-	LastAssessmentAt   *time.Time `json:"last_assessment_at,omitempty"`
+	AssessmentStatus string     `json:"assessment_status"` // none | pending | completed
+	LastAssessmentAt *time.Time `json:"last_assessment_at,omitempty"`
 	// Computed — not stored in DB
-	ContractStatus     string     `json:"contract_status,omitempty"`
-	CreatedAt          time.Time  `json:"created_at"`
-	UpdatedAt          time.Time  `json:"updated_at"`
+	ContractStatus string    `json:"contract_status,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 // CreateSupplierInput holds validated input for creating a supplier.
 type CreateSupplierInput struct {
-	Name               string     `json:"name"                  validate:"required,max=255"`
-	ContactName        string     `json:"contact_name"`
-	ContactEmail       string     `json:"contact_email"         validate:"omitempty,email"`
-	ServiceType        string     `json:"service_type"`
-	Criticality        string     `json:"criticality"           validate:"omitempty,oneof=standard important critical"`
-	NIS2Relevant       bool       `json:"nis2_relevant"`
-	DORARelevant       bool       `json:"dora_relevant"`
-	ContractEnd        *time.Time `json:"contract_end"`
-	Notes              string     `json:"notes"`
+	Name         string     `json:"name"                  validate:"required,max=255"`
+	ContactName  string     `json:"contact_name"`
+	ContactEmail string     `json:"contact_email"         validate:"omitempty,email"`
+	ServiceType  string     `json:"service_type"`
+	Criticality  string     `json:"criticality"           validate:"omitempty,oneof=standard important critical"`
+	NIS2Relevant bool       `json:"nis2_relevant"`
+	DORARelevant bool       `json:"dora_relevant"`
+	ContractEnd  *time.Time `json:"contract_end"`
+	Notes        string     `json:"notes"`
 	// DORA-specific fields (Migration 042)
-	SubSuppliers       []string   `json:"sub_suppliers"`
-	DataLocation       string     `json:"data_location"         validate:"omitempty,oneof=EU NonEU Hybrid"`
-	ExitStrategyExists bool       `json:"exit_strategy_exists"`
+	SubSuppliers       []string `json:"sub_suppliers"`
+	DataLocation       string   `json:"data_location"         validate:"omitempty,oneof=EU NonEU Hybrid"`
+	ExitStrategyExists bool     `json:"exit_strategy_exists"`
 	// Assessment fields (Migration 046)
-	AssessmentStatus   string     `json:"assessment_status"     validate:"omitempty,oneof=none pending completed"`
-	LastAssessmentAt   *time.Time `json:"last_assessment_at"`
+	AssessmentStatus string     `json:"assessment_status"     validate:"omitempty,oneof=none pending completed"`
+	LastAssessmentAt *time.Time `json:"last_assessment_at"`
 }
 
 // UpdateSupplierInput holds validated input for updating a supplier.
 type UpdateSupplierInput struct {
-	Name               string     `json:"name"                  validate:"required,max=255"`
-	ContactName        string     `json:"contact_name"`
-	ContactEmail       string     `json:"contact_email"         validate:"omitempty,email"`
-	ServiceType        string     `json:"service_type"`
-	Criticality        string     `json:"criticality"           validate:"omitempty,oneof=standard important critical"`
-	NIS2Relevant       bool       `json:"nis2_relevant"`
-	DORARelevant       bool       `json:"dora_relevant"`
-	ContractEnd        *time.Time `json:"contract_end"`
-	Notes              string     `json:"notes"`
+	Name         string     `json:"name"                  validate:"required,max=255"`
+	ContactName  string     `json:"contact_name"`
+	ContactEmail string     `json:"contact_email"         validate:"omitempty,email"`
+	ServiceType  string     `json:"service_type"`
+	Criticality  string     `json:"criticality"           validate:"omitempty,oneof=standard important critical"`
+	NIS2Relevant bool       `json:"nis2_relevant"`
+	DORARelevant bool       `json:"dora_relevant"`
+	ContractEnd  *time.Time `json:"contract_end"`
+	Notes        string     `json:"notes"`
 	// DORA-specific fields (Migration 042)
-	SubSuppliers       []string   `json:"sub_suppliers"`
-	DataLocation       string     `json:"data_location"         validate:"omitempty,oneof=EU NonEU Hybrid"`
-	ExitStrategyExists bool       `json:"exit_strategy_exists"`
+	SubSuppliers       []string `json:"sub_suppliers"`
+	DataLocation       string   `json:"data_location"         validate:"omitempty,oneof=EU NonEU Hybrid"`
+	ExitStrategyExists bool     `json:"exit_strategy_exists"`
 	// Assessment fields (Migration 046)
-	AssessmentStatus   string     `json:"assessment_status"     validate:"omitempty,oneof=none pending completed"`
-	LastAssessmentAt   *time.Time `json:"last_assessment_at"`
+	AssessmentStatus string     `json:"assessment_status"     validate:"omitempty,oneof=none pending completed"`
+	LastAssessmentAt *time.Time `json:"last_assessment_at"`
 }
 
 // SupplierFilter holds optional filter parameters for listing suppliers.
@@ -797,12 +797,12 @@ type FrameworkMapping struct {
 // ControlMapping represents a row from the global ck_framework_control_mappings table
 // after JOIN-resolution to org-specific control UUIDs.
 type ControlMapping struct {
-	ID                  string `json:"id"`
-	SourceFramework     string `json:"source_framework"`
-	SourceControlCode   string `json:"source_control_code"`
-	TargetFramework     string `json:"target_framework"`
-	TargetControlCode   string `json:"target_control_code"`
-	MappingType         string `json:"mapping_type"`
+	ID                string `json:"id"`
+	SourceFramework   string `json:"source_framework"`
+	SourceControlCode string `json:"source_control_code"`
+	TargetFramework   string `json:"target_framework"`
+	TargetControlCode string `json:"target_control_code"`
+	MappingType       string `json:"mapping_type"`
 	// Resolved fields populated by JOIN at query time.
 	TargetControlID     string `json:"target_control_id"`
 	TargetControlTitle  string `json:"target_control_title"`
@@ -976,10 +976,10 @@ type AnswerWithReview struct {
 
 // SupplierStatus holds the computed traffic-light status for a supplier.
 type SupplierStatus struct {
-	SupplierID string                 `json:"supplier_id"`
-	Status     string                 `json:"status"` // green | yellow | red
-	Score      int                    `json:"score"`  // 0–100
-	Details    map[string]any         `json:"details"`
+	SupplierID string         `json:"supplier_id"`
+	Status     string         `json:"status"` // green | yellow | red
+	Score      int            `json:"score"`  // 0–100
+	Details    map[string]any `json:"details"`
 }
 
 // CertExpiryWarning describes a soon-expiring certificate answer.
@@ -1008,10 +1008,10 @@ type AISystem struct {
 	Provider                string     `json:"provider,omitempty"`
 	UseCase                 string     `json:"use_case,omitempty"`
 	AffectedGroups          string     `json:"affected_groups,omitempty"`
-	AutonomyLevel           string     `json:"autonomy_level"`           // assistive | partial | full
+	AutonomyLevel           string     `json:"autonomy_level"` // assistive | partial | full
 	InProductionSince       *time.Time `json:"in_production_since,omitempty"`
-	Status                  string     `json:"status"`                   // under_review | approved | prohibited | decommissioned
-	RiskClass               string     `json:"risk_class,omitempty"`     // minimal | limited | high | unacceptable
+	Status                  string     `json:"status"`               // under_review | approved | prohibited | decommissioned
+	RiskClass               string     `json:"risk_class,omitempty"` // minimal | limited | high | unacceptable
 	ClassificationRationale string     `json:"classification_rationale,omitempty"`
 	ClassifiedAt            *time.Time `json:"classified_at,omitempty"`
 	ClassifiedBy            string     `json:"classified_by,omitempty"`

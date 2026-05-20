@@ -942,4 +942,3 @@ func (s *Service) AttachResilienceTestFile(ctx context.Context, orgID, id, uploa
 	}
 	return s.GetResilienceTest(ctx, orgID, id)
 }
-

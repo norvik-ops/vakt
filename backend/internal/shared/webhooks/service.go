@@ -23,25 +23,25 @@ import (
 
 // Event type constants — callers use these when firing events.
 const (
-	EventFindingCreated        = "finding.created"
+	EventFindingCreated         = "finding.created"
 	EventFindingSeverityChanged = "finding.severity_changed"
-	EventIncidentCreated       = "incident.created"
-	EventIncidentStatusChanged = "incident.status_changed"
-	EventControlStatusChanged  = "control.status_changed"
+	EventIncidentCreated        = "incident.created"
+	EventIncidentStatusChanged  = "incident.status_changed"
+	EventControlStatusChanged   = "control.status_changed"
 )
 
 // Webhook is the stored configuration for a single outgoing webhook endpoint.
 type Webhook struct {
-	ID               string     `json:"id"`
-	OrgID            string     `json:"org_id"`
-	Name             string     `json:"name"`
-	URL              string     `json:"url"`
-	Secret           *string    `json:"secret,omitempty"`
-	Events           []string   `json:"events"`
-	Active           bool       `json:"active"`
-	CreatedAt        time.Time  `json:"created_at"`
-	LastTriggeredAt  *time.Time `json:"last_triggered_at,omitempty"`
-	LastStatusCode   *int       `json:"last_status_code,omitempty"`
+	ID              string     `json:"id"`
+	OrgID           string     `json:"org_id"`
+	Name            string     `json:"name"`
+	URL             string     `json:"url"`
+	Secret          *string    `json:"secret,omitempty"`
+	Events          []string   `json:"events"`
+	Active          bool       `json:"active"`
+	CreatedAt       time.Time  `json:"created_at"`
+	LastTriggeredAt *time.Time `json:"last_triggered_at,omitempty"`
+	LastStatusCode  *int       `json:"last_status_code,omitempty"`
 }
 
 // CreateWebhookInput is the validated input for creating a webhook.

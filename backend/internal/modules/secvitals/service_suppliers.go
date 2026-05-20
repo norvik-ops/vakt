@@ -327,7 +327,6 @@ func GenerateSupplierCSV(suppliers []Supplier) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-
 // --- Supplier Portal Assessments (Story 29.3) ---
 
 // ErrAssessmentExpiredOrSubmitted is returned when a token references an expired or already-submitted assessment.
@@ -708,4 +707,3 @@ func (s *Service) GenerateAssessmentReportPDF(ctx context.Context, orgID, assess
 	status := computeStatus(*supplier, assessments, answers, time.Now().UTC())
 	return GenerateAssessmentReportPDFBytes(asm, supplier, answers, status)
 }
-

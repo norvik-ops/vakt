@@ -405,8 +405,8 @@ func (h *Handler) UseShareLink(c echo.Context) error {
 // --- API tokens ---
 
 type createTokenRequest struct {
-	Name          string     `json:"name"           validate:"required,min=1,max=120"`
-	ExpiresAt     *time.Time `json:"expires_at"`
+	Name      string     `json:"name"           validate:"required,min=1,max=120"`
+	ExpiresAt *time.Time `json:"expires_at"`
 }
 
 func (h *Handler) CreateToken(c echo.Context) error {
@@ -612,8 +612,8 @@ func (h *Handler) DismissScanResult(c echo.Context) error {
 // --- Response helpers ---
 
 type apiError struct {
-	Error   string `json:"error"`
-	Code    string `json:"code"`
+	Error string `json:"error"`
+	Code  string `json:"code"`
 }
 
 func errorResponse(msg, code string) apiError {

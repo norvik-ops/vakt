@@ -116,10 +116,10 @@ func (s *Service) AssessReportability(ctx context.Context, orgID, incidentID str
 	}
 	return &ReportabilityResult{
 		Obligation:            obligation,
-		GDPRRequired:         in.PersonalDataCompromised,
+		GDPRRequired:          in.PersonalDataCompromised,
 		NotificationAuthority: authority,
-		Explanation:          explanation,
-		Answers:              in.ReportabilityAnswers,
+		Explanation:           explanation,
+		Answers:               in.ReportabilityAnswers,
 	}, nil
 }
 
@@ -405,4 +405,3 @@ func deadlineInfo(deadline, reportedAt *time.Time, now time.Time) *DeadlineInfo 
 	}
 	return info
 }
-

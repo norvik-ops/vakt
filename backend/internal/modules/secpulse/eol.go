@@ -40,9 +40,9 @@ var productMap = map[string]string{
 
 // eolCycle is one entry returned by the endoflife.date API.
 type eolCycle struct {
-	Cycle          string      `json:"cycle"`
-	EOL            interface{} `json:"eol"` // can be bool or "YYYY-MM-DD" string
-	LatestReleaseDate string   `json:"latestReleaseDate,omitempty"`
+	Cycle             string      `json:"cycle"`
+	EOL               interface{} `json:"eol"` // can be bool or "YYYY-MM-DD" string
+	LatestReleaseDate string      `json:"latestReleaseDate,omitempty"`
 }
 
 // EOLChecker checks components against the endoflife.date API and stores results.

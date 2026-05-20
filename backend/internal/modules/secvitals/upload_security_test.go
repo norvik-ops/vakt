@@ -91,7 +91,7 @@ func TestUpload_SizeLimit_AtBoundary(t *testing.T) {
 	// failure was NOT a size rejection.
 	var err error
 	func() {
-		defer func() { recover() }() //nolint:errcheck
+		defer func() { recover() }()                                                //nolint:errcheck
 		_, err = svc.Upload(nil, "org1", "ctrl1", "", "user1", emptyFile(), header) //nolint:staticcheck
 	}()
 	if err != nil {
@@ -108,7 +108,7 @@ func TestUpload_SizeLimit_ZeroBytes(t *testing.T) {
 	// text/plain + .txt pass all checks and reach the nil repo — recover the panic.
 	var err error
 	func() {
-		defer func() { recover() }() //nolint:errcheck
+		defer func() { recover() }()                                                //nolint:errcheck
 		_, err = svc.Upload(nil, "org1", "ctrl1", "", "user1", emptyFile(), header) //nolint:staticcheck
 	}()
 	if err != nil {
@@ -168,7 +168,7 @@ func TestUpload_AllowedExtension_PDF(t *testing.T) {
 	// PDF passes all checks and reaches the nil repo — recover the panic.
 	var err error
 	func() {
-		defer func() { recover() }() //nolint:errcheck
+		defer func() { recover() }()                                                //nolint:errcheck
 		_, err = svc.Upload(nil, "org1", "ctrl1", "", "user1", emptyFile(), header) //nolint:staticcheck
 	}()
 	if err != nil {
@@ -221,7 +221,7 @@ func TestUpload_AllowedMIME_WithCharsetParam(t *testing.T) {
 	// text/plain + .txt pass all checks and reach the nil repo — recover the panic.
 	var err error
 	func() {
-		defer func() { recover() }() //nolint:errcheck
+		defer func() { recover() }()                                                //nolint:errcheck
 		_, err = svc.Upload(nil, "org1", "ctrl1", "", "user1", emptyFile(), header) //nolint:staticcheck
 	}()
 	if err != nil {
@@ -239,7 +239,7 @@ func TestUpload_EmptyMIME_PassesMIMECheck(t *testing.T) {
 	// .csv passes all checks and reaches the nil repo — recover the panic.
 	var err error
 	func() {
-		defer func() { recover() }() //nolint:errcheck
+		defer func() { recover() }()                                                //nolint:errcheck
 		_, err = svc.Upload(nil, "org1", "ctrl1", "", "user1", emptyFile(), header) //nolint:staticcheck
 	}()
 	if err != nil {
@@ -280,7 +280,7 @@ func TestUpload_PathTraversal_DotDot(t *testing.T) {
 			// pass all validation checks and hit the nil repo — recover the panic.
 			var err error
 			func() {
-				defer func() { recover() }() //nolint:errcheck
+				defer func() { recover() }()                                                //nolint:errcheck
 				_, err = svc.Upload(nil, "org1", "ctrl1", "", "user1", emptyFile(), header) //nolint:staticcheck
 			}()
 
@@ -316,7 +316,7 @@ func TestUpload_PathTraversal_PDFExtensionWithTraversal(t *testing.T) {
 	// component is never used in the stored path.
 	var err error
 	func() {
-		defer func() { recover() }() //nolint:errcheck
+		defer func() { recover() }()                                                //nolint:errcheck
 		_, err = svc.Upload(nil, "org1", "ctrl1", "", "user1", emptyFile(), header) //nolint:staticcheck
 	}()
 

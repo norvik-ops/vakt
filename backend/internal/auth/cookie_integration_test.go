@@ -6,11 +6,11 @@
 // database or Redis instance so that they remain fast and self-contained.
 //
 // Covered scenarios:
-//   1. A login-style response sets the access_token cookie with HttpOnly flag.
-//   2. The same cookie carries SameSite=Strict.
-//   3. A logout-style response clears the cookie (MaxAge=-1).
-//   4. PasetoMiddleware accepts a valid token presented via cookie.
-//   5. A request with neither cookie nor Authorization header gets 401.
+//  1. A login-style response sets the access_token cookie with HttpOnly flag.
+//  2. The same cookie carries SameSite=Strict.
+//  3. A logout-style response clears the cookie (MaxAge=-1).
+//  4. PasetoMiddleware accepts a valid token presented via cookie.
+//  5. A request with neither cookie nor Authorization header gets 401.
 package auth_test
 
 import (

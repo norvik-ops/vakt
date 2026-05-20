@@ -13,9 +13,9 @@ type PolicyTemplate struct {
 func BuiltinPolicyTemplates() []PolicyTemplate {
 	return []PolicyTemplate{
 		{
-			ID:       "isms-policy",
-			Title:    "Informationssicherheitsrichtlinie",
-			Category: "ISMS",
+			ID:          "isms-policy",
+			Title:       "Informationssicherheitsrichtlinie",
+			Category:    "ISMS",
 			Description: "Grundlegende Richtlinie für das Informationssicherheitsmanagementsystem der Organisation.",
 			Content: `# Informationssicherheitsrichtlinie
 
@@ -37,9 +37,9 @@ Die Organisation identifiziert, bewertet und behandelt Informationssicherheitsri
 Diese Richtlinie wird jährlich oder bei wesentlichen Änderungen überprüft und bei Bedarf aktualisiert.`,
 		},
 		{
-			ID:       "password-policy",
-			Title:    "Passwort-Richtlinie",
-			Category: "Zugangskontrolle",
+			ID:          "password-policy",
+			Title:       "Passwort-Richtlinie",
+			Category:    "Zugangskontrolle",
 			Description: "Anforderungen an sichere Passwörter und Authentifizierung.",
 			Content: `# Passwort-Richtlinie
 
@@ -63,9 +63,9 @@ Diese Richtlinie wird jährlich oder bei wesentlichen Änderungen überprüft un
 Für alle administrativen Zugänge und Remote-Zugriffe ist eine Multi-Faktor-Authentifizierung (MFA) verpflichtend.`,
 		},
 		{
-			ID:       "acceptable-use-policy",
-			Title:    "Richtlinie zur akzeptablen Nutzung",
-			Category: "Nutzung",
+			ID:          "acceptable-use-policy",
+			Title:       "Richtlinie zur akzeptablen Nutzung",
+			Category:    "Nutzung",
 			Description: "Regelungen zur erlaubten Nutzung von IT-Systemen und Ressourcen.",
 			Content: `# Richtlinie zur akzeptablen Nutzung von IT-Ressourcen
 
@@ -88,9 +88,9 @@ IT-Ressourcen der Organisation dürfen ausschließlich für dienstliche Zwecke g
 Die Organisation behält sich vor, die Nutzung von IT-Ressourcen im gesetzlich zulässigen Rahmen zu überwachen.`,
 		},
 		{
-			ID:       "home-office-policy",
-			Title:    "Homeoffice- und Fernarbeitsrichtlinie",
-			Category: "Fernarbeit",
+			ID:          "home-office-policy",
+			Title:       "Homeoffice- und Fernarbeitsrichtlinie",
+			Category:    "Fernarbeit",
 			Description: "Sicherheitsanforderungen für das Arbeiten außerhalb der Unternehmensräume.",
 			Content: `# Homeoffice- und Fernarbeitsrichtlinie
 
@@ -112,9 +112,9 @@ Fernarbeit ist nur mit ausdrücklicher Genehmigung und über gesicherte Verbindu
 Die Nutzung privater Endgeräte (BYOD) für dienstliche Zwecke ist nur nach Genehmigung und Einhaltung der MDM-Anforderungen zulässig.`,
 		},
 		{
-			ID:       "data-classification-policy",
-			Title:    "Datenklassifizierungsrichtlinie",
-			Category: "Datenschutz",
+			ID:          "data-classification-policy",
+			Title:       "Datenklassifizierungsrichtlinie",
+			Category:    "Datenschutz",
 			Description: "Klassifizierung und Handhabung von Informationen nach Schutzbedarf.",
 			Content: `# Datenklassifizierungsrichtlinie
 
@@ -135,9 +135,9 @@ Die Nutzung privater Endgeräte (BYOD) für dienstliche Zwecke ist nur nach Gene
 Dokumente müssen ihrer Klassifizierungsstufe entsprechend gekennzeichnet werden (Kopf-/Fußzeile).`,
 		},
 		{
-			ID:       "incident-response-policy",
-			Title:    "Incident-Response-Richtlinie",
-			Category: "Vorfallsmanagement",
+			ID:          "incident-response-policy",
+			Title:       "Incident-Response-Richtlinie",
+			Category:    "Vorfallsmanagement",
 			Description: "Verfahren zur Erkennung, Meldung und Behandlung von Sicherheitsvorfällen.",
 			Content: `# Incident-Response-Richtlinie
 
@@ -160,9 +160,9 @@ Alle Mitarbeiter sind verpflichtet, erkannte oder vermutete Sicherheitsvorfälle
 Bei Datenpannen: Meldung an die Aufsichtsbehörde innerhalb von 72 Stunden (Art. 33 DSGVO).`,
 		},
 		{
-			ID:       "change-management-policy",
-			Title:    "Änderungsmanagement-Richtlinie",
-			Category: "Betrieb",
+			ID:          "change-management-policy",
+			Title:       "Änderungsmanagement-Richtlinie",
+			Category:    "Betrieb",
 			Description: "Kontrolle und Steuerung von Änderungen an IT-Systemen und Prozessen.",
 			Content: `# Änderungsmanagement-Richtlinie
 
@@ -185,9 +185,9 @@ Diese Richtlinie gilt für alle geplanten Änderungen an Produktivsystemen, Anwe
 Alle Änderungen werden im Change-Log dokumentiert und für mindestens 3 Jahre aufbewahrt.`,
 		},
 		{
-			ID:       "access-control-policy",
-			Title:    "Zugangs- und Zugriffskontrollrichtlinie",
-			Category: "Zugangskontrolle",
+			ID:          "access-control-policy",
+			Title:       "Zugangs- und Zugriffskontrollrichtlinie",
+			Category:    "Zugangskontrolle",
 			Description: "Regelungen für die Vergabe und Verwaltung von Zugriffsrechten.",
 			Content: `# Zugangs- und Zugriffskontrollrichtlinie
 
@@ -208,9 +208,9 @@ Jeder Mitarbeiter erhält nur die Zugriffsrechte, die für seine Aufgaben zwinge
 Fernzugriff auf interne Systeme ist nur über VPN mit MFA zulässig. Alle Fernzugriffe werden protokolliert.`,
 		},
 		{
-			ID:       "backup-policy",
-			Title:    "Datensicherungsrichtlinie",
-			Category: "Verfügbarkeit",
+			ID:          "backup-policy",
+			Title:       "Datensicherungsrichtlinie",
+			Category:    "Verfügbarkeit",
 			Description: "Anforderungen an Datensicherung und Wiederherstellung.",
 			Content: `# Datensicherungsrichtlinie
 
@@ -236,9 +236,9 @@ Backups werden mindestens quartalsweise auf Wiederherstellbarkeit getestet. Erge
 - Recovery Point Objective (RPO): max. 1 Stunde Datenverlust`,
 		},
 		{
-			ID:       "supplier-security-policy",
-			Title:    "Lieferanten- und Dienstleistersicherheit",
-			Category: "Lieferantenmanagement",
+			ID:          "supplier-security-policy",
+			Title:       "Lieferanten- und Dienstleistersicherheit",
+			Category:    "Lieferantenmanagement",
 			Description: "Sicherheitsanforderungen an externe Dienstleister und Lieferanten.",
 			Content: `# Richtlinie zur Lieferanten- und Dienstleistersicherheit
 

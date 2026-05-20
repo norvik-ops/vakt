@@ -248,7 +248,6 @@ func (s *Service) ExportDORAPDF(ctx context.Context, orgID string) ([]byte, erro
 	return GenerateDORAPDF(dashboard, orgName)
 }
 
-
 // dsgvoToISOMappings maps each DSGVO Art. 32 TOM control ID to its primary ISO 27001 control ID.
 var dsgvoToISOMappings = map[string]string{
 	"TOM-1":  "A.9.1.2",  // Zutrittskontrolle → Netzwerkzugänge
@@ -462,8 +461,8 @@ func (s *Service) GetScoreHistory(ctx context.Context, orgID string, days int) (
 
 // ExecutiveSummaryData holds all data gathered for the Executive Summary PDF.
 type ExecutiveSummaryData struct {
-	OrgName      string
-	GeneratedAt  time.Time
+	OrgName     string
+	GeneratedAt time.Time
 	// Section 1 — Overall compliance score
 	OverallScore float64 // 0–100, weighted average across all frameworks
 	// Section 2 — Framework overview

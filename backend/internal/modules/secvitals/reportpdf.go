@@ -559,8 +559,8 @@ func GenerateTISAXReportPDF(report *ReadinessReport, controls []Control, gaps *T
 	pdf.SetFont("Helvetica", "", 10)
 	pdf.SetTextColor(100, 100, 120)
 	plLabel := map[string]string{
-		"normal":   "Normal",
-		"high":     "Hoch",
+		"normal":    "Normal",
+		"high":      "Hoch",
 		"very_high": "Sehr hoch",
 	}
 	plText := plLabel[protectionLevel]

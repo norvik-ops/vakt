@@ -266,11 +266,11 @@ func buildExecutiveSummary(data BoardReportData) [3]string {
 // three executive-summary sentences.
 func drawExecutiveSummaryBox(pdf *fpdf.Fpdf, sentences [3]string) {
 	const (
-		boxX    = 15.0
-		boxW    = 180.0
-		padX    = 6.0
-		padY    = 5.0
-		lineH   = 5.5
+		boxX     = 15.0
+		boxW     = 180.0
+		padX     = 6.0
+		padY     = 5.0
+		lineH    = 5.5
 		fontSize = 8.0
 	)
 

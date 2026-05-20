@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/matharnica/vakt/internal/config"
+	"github.com/rs/zerolog/log"
 )
 
 // OIDCCallbackInput is sent by the frontend after Casdoor redirects back.

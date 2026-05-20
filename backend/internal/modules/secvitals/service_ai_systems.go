@@ -38,7 +38,6 @@ func (s *Service) DeleteAISystem(ctx context.Context, orgID, id string) error {
 	return s.repo.DeleteAISystem(ctx, orgID, id)
 }
 
-
 // ClassifyAISystem saves a classification from the wizard and updates the AI system record.
 func (s *Service) ClassifyAISystem(ctx context.Context, orgID, systemID string, in ClassifyAISystemInput) error {
 	validClasses := map[string]bool{"minimal": true, "limited": true, "high": true, "unacceptable": true}

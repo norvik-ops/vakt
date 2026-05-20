@@ -65,7 +65,7 @@ func TestAuthRateLimitThresholdLogic(t *testing.T) {
 	}{
 		{"count=0 — pass", 0, http.StatusOK},
 		{"count=1 — pass", 1, http.StatusOK},
-		{"count=10 — at limit, pass", 10, http.StatusOK},     // > not >=, so 10 passes
+		{"count=10 — at limit, pass", 10, http.StatusOK}, // > not >=, so 10 passes
 		{"count=11 — over limit, block", 11, http.StatusTooManyRequests},
 		{"count=100 — way over limit, block", 100, http.StatusTooManyRequests},
 	}

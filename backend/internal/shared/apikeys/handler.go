@@ -29,8 +29,8 @@ func NewHandler(svc *Service) *Handler {
 
 // createRequest is the JSON body accepted by POST /api-keys.
 type createRequest struct {
-	Name      string  `json:"name"       validate:"required,min=1,max=100"`
-	ExpiresAt *string `json:"expires_at"` // optional RFC3339
+	Name      string   `json:"name"       validate:"required,min=1,max=100"`
+	ExpiresAt *string  `json:"expires_at"` // optional RFC3339
 	Scopes    []string `json:"scopes"`
 }
 

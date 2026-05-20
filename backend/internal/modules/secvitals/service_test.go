@@ -93,10 +93,10 @@ func TestComputeReadinessReport_AllCovered(t *testing.T) {
 func TestComputeReadinessReport_Mixed(t *testing.T) {
 	fw := &Framework{ID: "fw-1", Name: "NIS2"}
 	controls := []Control{
-		{ID: "c-1", Domain: "Risk Management"},   // covered (2 evidence)
-		{ID: "c-2", Domain: "Risk Management"},   // partial (1 evidence)
-		{ID: "c-3", Domain: "Access Control"},    // missing (0 evidence)
-		{ID: "c-4", Domain: "Access Control"},    // covered (3 evidence)
+		{ID: "c-1", Domain: "Risk Management"}, // covered (2 evidence)
+		{ID: "c-2", Domain: "Risk Management"}, // partial (1 evidence)
+		{ID: "c-3", Domain: "Access Control"},  // missing (0 evidence)
+		{ID: "c-4", Domain: "Access Control"},  // covered (3 evidence)
 	}
 	counts := map[string]int{
 		"c-1": 2,
@@ -720,7 +720,7 @@ func TestCheckOverdueDeadlines_BehaviorCases(t *testing.T) {
 		inc := &Incident{
 			ID:           "inc-nis2",
 			IncidentType: "nis2",
-			Deadline4h:   deadlines["4h"],   // nil for NIS2
+			Deadline4h:   deadlines["4h"], // nil for NIS2
 			Deadline24h:  deadlines["24h"],
 			Deadline72h:  deadlines["72h"],
 			Deadline30d:  deadlines["30d"],
@@ -797,10 +797,10 @@ func TestGenerateSupplierCSV(t *testing.T) {
 			Notes:              "some note",
 		},
 		{
-			ID:          "s-2",
-			OrgID:       "org-1",
-			Name:        "Beta AG",
-			Criticality: "standard",
+			ID:           "s-2",
+			OrgID:        "org-1",
+			Name:         "Beta AG",
+			Criticality:  "standard",
 			SubSuppliers: []string{},
 		},
 	}
@@ -1013,9 +1013,9 @@ func TestComputeNextDeadline_SingleIncidentFutureDeadline(t *testing.T) {
 	now := time.Now().UTC()
 	future4h := now.Add(2 * time.Hour)
 	inc := Incident{
-		ID:          "inc-1",
-		Title:       "DORA Vorfall Alpha",
-		Deadline4h:  &future4h,
+		ID:           "inc-1",
+		Title:        "DORA Vorfall Alpha",
+		Deadline4h:   &future4h,
 		Reported4hAt: nil,
 	}
 
@@ -1039,9 +1039,9 @@ func TestComputeNextDeadline_TwoIncidentsReturnEarlier(t *testing.T) {
 		Deadline24h: &later,
 	}
 	inc2 := Incident{
-		ID:          "inc-2",
-		Title:       "Vorfall Gamma",
-		Deadline4h:  &earlier,
+		ID:         "inc-2",
+		Title:      "Vorfall Gamma",
+		Deadline4h: &earlier,
 	}
 
 	result := computeNextDeadline([]Incident{inc1, inc2}, now)
@@ -1070,9 +1070,9 @@ func TestComputeNextDeadline_PastDeadlineNotReturned(t *testing.T) {
 	now := time.Now().UTC()
 	past := now.Add(-2 * time.Hour)
 	inc := Incident{
-		ID:          "inc-1",
-		Title:       "Vorfall Epsilon",
-		Deadline4h:  &past,
+		ID:           "inc-1",
+		Title:        "Vorfall Epsilon",
+		Deadline4h:   &past,
 		Reported4hAt: nil,
 	}
 
@@ -1148,7 +1148,6 @@ func TestUpdateControl_MaturityScoreValidation(t *testing.T) {
 		})
 	}
 }
-
 
 // --- ListTISAXControls protection level filter (Story 28.1) ---
 
@@ -2137,11 +2136,11 @@ func TestGenerateNIS2ReportFormPDF_24h(t *testing.T) {
 
 func TestGenerateNIS2ReportFormPDF_30d(t *testing.T) {
 	inc := &Incident{
-		ID:          "inc-2",
-		Title:       "Datenpanne",
-		Description: "Personenbezogene Daten abgeflossen.",
-		Severity:    "high",
-		Status:      "resolved",
+		ID:           "inc-2",
+		Title:        "Datenpanne",
+		Description:  "Personenbezogene Daten abgeflossen.",
+		Severity:     "high",
+		Status:       "resolved",
 		DiscoveredAt: time.Now().UTC(),
 	}
 	pdfBytes, err := GenerateNIS2ReportFormPDF(inc, "30d", "TestOrg AG")
@@ -2254,9 +2253,9 @@ func TestAssessReportability_NoObligation(t *testing.T) {
 func TestReportabilityResult_GDPRFlag(t *testing.T) {
 	result := ReportabilityResult{
 		Obligation:            "required",
-		GDPRRequired:         true,
+		GDPRRequired:          true,
 		NotificationAuthority: "BSI",
-		Explanation:          "Essenzieller Dienst betroffen.",
+		Explanation:           "Essenzieller Dienst betroffen.",
 		Answers: ReportabilityAnswers{
 			AffectsEssentialService: true,
 			PersonalDataCompromised: true,

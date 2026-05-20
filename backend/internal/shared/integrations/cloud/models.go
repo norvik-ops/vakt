@@ -72,10 +72,10 @@ type AzureConfigResponse struct {
 
 // SyncStatus is returned from GET /status.
 type SyncStatus struct {
-	Provider      string     `json:"provider"`
-	Enabled       bool       `json:"enabled"`
-	LastSyncAt    *time.Time `json:"last_sync_at,omitempty"`
-	LastSyncStatus *string   `json:"last_sync_status,omitempty"`
-	LastSyncError *string    `json:"last_sync_error,omitempty"`
-	EvidenceCount int        `json:"evidence_count"`
+	Provider       string     `json:"provider"`
+	Enabled        bool       `json:"enabled"`
+	LastSyncAt     *time.Time `json:"last_sync_at,omitempty"`
+	LastSyncStatus *string    `json:"last_sync_status,omitempty"`
+	LastSyncError  *string    `json:"last_sync_error,omitempty"`
+	EvidenceCount  int        `json:"evidence_count"`
 }

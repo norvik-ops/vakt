@@ -169,7 +169,7 @@ type cdxBOM struct {
 }
 
 type cdxVuln struct {
-	ID      string      `json:"id"`      // CVE-ID
+	ID      string      `json:"id"` // CVE-ID
 	Source  cdxSource   `json:"source"`
 	Ratings []cdxRating `json:"ratings"`
 	Detail  string      `json:"detail"`

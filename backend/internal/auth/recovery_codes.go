@@ -14,6 +14,11 @@ const (
 	recoveryCodeCount = 8
 )
 
+// recoveryCodeBcryptCost is the bcrypt cost factor used for recovery-code hashes.
+// var (not const) so tests can override it to bcrypt.MinCost for fast runs —
+// the format/uniqueness/length assertions don't depend on cost.
+var recoveryCodeBcryptCost = 12
+
 // generateRecoveryCodes creates 8 single-use recovery codes in the format
 // XXXX-XXXX-XXXX (12 hex chars, grouped in threes).
 // Returns the plaintext codes (for display) and their bcrypt hashes (for storage).
@@ -30,7 +35,7 @@ func generateRecoveryCodes() (plainCodes []string, hashedCodes []string, err err
 		plain := encoded[0:4] + "-" + encoded[4:8] + "-" + encoded[8:12]
 		plainCodes[i] = plain
 
-		hash, e := bcrypt.GenerateFromPassword([]byte(plain), 12)
+		hash, e := bcrypt.GenerateFromPassword([]byte(plain), recoveryCodeBcryptCost)
 		if e != nil {
 			return nil, nil, fmt.Errorf("hash recovery code: %w", e)
 		}

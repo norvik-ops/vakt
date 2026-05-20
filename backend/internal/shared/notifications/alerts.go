@@ -21,13 +21,13 @@ const (
 
 // breachRow carries the data we need from the breach + org join.
 type breachRow struct {
-	ID          string
-	Title       string
-	DeadlineAt  time.Time
+	ID           string
+	Title        string
+	DeadlineAt   time.Time
 	DiscoveredAt time.Time
-	OrgID       string
-	OrgName     string
-	DPOEmail    string
+	OrgID        string
+	OrgName      string
+	DPOEmail     string
 }
 
 // dsrRow carries the data we need from po_dsr + org join.

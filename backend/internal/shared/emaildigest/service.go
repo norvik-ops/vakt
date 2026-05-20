@@ -30,8 +30,8 @@ type findingSeverityCount struct {
 
 // dsrSummary carries DSR counts for the digest body.
 type dsrSummary struct {
-	DueSoon  int // due_date within the next 7 days
-	Overdue  int // due_date already passed, not completed/rejected
+	DueSoon int // due_date within the next 7 days
+	Overdue int // due_date already passed, not completed/rejected
 }
 
 // adminEmail holds the e-mail address, user ID, and preferred language of an admin user.

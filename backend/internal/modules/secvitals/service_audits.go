@@ -242,7 +242,6 @@ func (s *Service) ExportAuditorBundle(ctx context.Context, rawToken string, w io
 	return fw.Name, nil
 }
 
-
 // --- Internal Audit Records (FR-CK15) ---
 
 func (s *Service) ListAuditRecords(ctx context.Context, orgID string) ([]AuditRecord, error) {
@@ -267,7 +266,6 @@ func (s *Service) CreateAuditRecord(ctx context.Context, orgID string, in Create
 func (s *Service) UpdateAuditRecord(ctx context.Context, orgID, id string, in UpdateAuditRecordInput) (*AuditRecord, error) {
 	return s.repo.UpdateAuditRecord(ctx, orgID, id, in)
 }
-
 
 // auditControlEntry groups evidence items under a single control for the audit export.
 type auditControlEntry struct {

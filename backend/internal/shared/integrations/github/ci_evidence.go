@@ -54,10 +54,10 @@ func CollectCIEvidence(ctx context.Context, db *pgxpool.Pool, orgID string) erro
 	defer rows.Close()
 
 	type integrationRow struct {
-		ID           string
-		RepoOwner    string
-		RepoName     string
-		AccessToken  string // hex-encoded encrypted token
+		ID          string
+		RepoOwner   string
+		RepoName    string
+		AccessToken string // hex-encoded encrypted token
 	}
 
 	var integrations []integrationRow

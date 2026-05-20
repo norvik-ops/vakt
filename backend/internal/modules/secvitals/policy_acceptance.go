@@ -84,9 +84,9 @@ func sendAcceptanceEmail(cfg policyAcceptanceSMTPConfig, to, subject, body strin
 	}
 
 	var msg strings.Builder
-	msg.WriteString(fmt.Sprintf("From: Vakt Compliance <%s>\r\n", from))
-	msg.WriteString(fmt.Sprintf("To: %s\r\n", to))
-	msg.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
+	fmt.Fprintf(&msg, "From: Vakt Compliance <%s>\r\n", from)
+	fmt.Fprintf(&msg, "To: %s\r\n", to)
+	fmt.Fprintf(&msg, "Subject: %s\r\n", subject)
 	msg.WriteString("MIME-Version: 1.0\r\n")
 	msg.WriteString("Content-Type: text/plain; charset=UTF-8\r\n")
 	msg.WriteString("\r\n")

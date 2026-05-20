@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/rs/zerolog"
 	shareddb "github.com/matharnica/vakt/internal/shared/db"
+	"github.com/rs/zerolog"
 )
 
 func main() {

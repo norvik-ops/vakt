@@ -1046,7 +1046,6 @@ func tisaxControls(frameworkID, orgID string) []Control {
 	}
 }
 
-
 func dsgvoTOMControls(frameworkID, orgID string) []Control {
 	c := func(id, title, desc string, w int) Control {
 		return Control{FrameworkID: frameworkID, OrgID: orgID, ControlID: id, Title: title, Description: desc, Domain: "Technische und organisatorische Maßnahmen", EvidenceType: "manual", Weight: w}

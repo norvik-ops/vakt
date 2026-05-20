@@ -72,9 +72,9 @@ func (h *Handler) Search(c echo.Context) error {
 	}
 
 	var (
-		mu      sync.Mutex
-		all     []SearchResult
-		wg      sync.WaitGroup
+		mu  sync.Mutex
+		all []SearchResult
+		wg  sync.WaitGroup
 	)
 
 	for _, fn := range sources {

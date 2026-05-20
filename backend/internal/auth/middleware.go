@@ -264,10 +264,10 @@ func MFAEnforceMiddleware(db *pgxpool.Pool) echo.MiddlewareFunc {
 // scopePathPrefixes maps an API key scope to the URL path prefixes it is
 // authorised to access. A scope of "admin" grants full access.
 var scopePathPrefixes = map[string][]string{
-	"secvault":  {"/api/v1/secvault/"},
-	"secpulse":  {"/api/v1/secpulse/"},
-	"secvitals": {"/api/v1/secvitals/"},
-	"secreflex": {"/api/v1/secreflex/"},
+	"secvault":   {"/api/v1/secvault/"},
+	"secpulse":   {"/api/v1/secpulse/"},
+	"secvitals":  {"/api/v1/secvitals/"},
+	"secreflex":  {"/api/v1/secreflex/"},
 	"secprivacy": {"/api/v1/secprivacy/"},
 }
 

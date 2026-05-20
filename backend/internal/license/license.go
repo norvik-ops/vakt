@@ -16,10 +16,10 @@ import (
 )
 
 const (
-	FeatureTISAX     = "tisax"
-	FeatureDORA      = "dora"
-	FeatureEUAIAct   = "eu_ai_act"
-	FeatureCRA       = "cra"
+	FeatureTISAX   = "tisax"
+	FeatureDORA    = "dora"
+	FeatureEUAIAct = "eu_ai_act"
+	FeatureCRA     = "cra"
 	// FeatureAIAdvisor war vor v0.6.x ein Pro-Gate für die AI-Copilot-Endpunkte.
 	// Seit v0.6.x ist AI Community: qwen2.5:3b läuft CPU-lokal in jeder Instanz,
 	// das frühere Gate war Marketing-Limitierung ohne echten Schutz. Die Konstante

@@ -419,7 +419,7 @@ func (s *Service) buildFindingsCSV(ctx context.Context, orgID string) ([]byte, e
 	for rows.Next() {
 		var (
 			id, title, severity, status, assetID string
-			createdAt                             time.Time
+			createdAt                            time.Time
 		)
 		if err := rows.Scan(&id, &title, &severity, &status, &assetID, &createdAt); err != nil {
 			continue

@@ -66,4 +66,3 @@ func (r *Repository) ListControlChanges(ctx context.Context, orgID, controlID st
 	}
 	return out, nil
 }
-

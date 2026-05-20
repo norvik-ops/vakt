@@ -856,11 +856,11 @@ func (r *Repository) GetOrgByDSRSlug(ctx context.Context, slug string) (orgID, o
 // UpdateDSRPortalSettings persists DSR portal configuration for an organisation.
 func (r *Repository) UpdateDSRPortalSettings(ctx context.Context, orgID string, in UpdateDSRPortalSettingsInput) error {
 	return r.q.UpdateDSRPortalSettings(ctx, db.UpdateDSRPortalSettingsParams{
-		ID:                orgID,
-		DsrPortalEnabled:  in.Enabled,
-		DsrPortalSlug:     optText(in.Slug),
-		DsrDpoEmail:       optText(in.DPOEmail),
-		DsrPortalIntro:    optText(in.Intro),
+		ID:               orgID,
+		DsrPortalEnabled: in.Enabled,
+		DsrPortalSlug:    optText(in.Slug),
+		DsrDpoEmail:      optText(in.DPOEmail),
+		DsrPortalIntro:   optText(in.Intro),
 	})
 }
 

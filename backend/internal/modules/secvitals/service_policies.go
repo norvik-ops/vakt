@@ -44,7 +44,6 @@ func (s *Service) GetPolicyVersion(ctx context.Context, orgID, policyID string, 
 	return s.repo.GetPolicyVersion(ctx, orgID, policyID, version)
 }
 
-
 // --- AI Policy Generator ---
 
 // GeneratePolicyDraft generates a policy draft in German using the configured AI provider.

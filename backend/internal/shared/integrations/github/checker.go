@@ -38,12 +38,12 @@ func RunAllChecks(ctx context.Context, client *Client, owner, repo string) ([]Ch
 			Type:   "branch_protection",
 			Status: status,
 			Details: map[string]any{
-				"enabled":             bp.Enabled,
-				"requires_pr_reviews": bp.RequiresPRReviews,
-				"required_approvals":  bp.RequiredApprovals,
+				"enabled":                bp.Enabled,
+				"requires_pr_reviews":    bp.RequiresPRReviews,
+				"required_approvals":     bp.RequiredApprovals,
 				"requires_status_checks": bp.RequiresStatusChecks,
-				"enforces_admins":     bp.EnforcesAdmins,
-				"default_branch":      branch,
+				"enforces_admins":        bp.EnforcesAdmins,
+				"default_branch":         branch,
 			},
 		})
 

@@ -57,11 +57,11 @@ type ControlRow struct {
 
 // RiskRow is a risk register entry.
 type RiskRow struct {
-	Title       string
-	Likelihood  int
-	Impact      int
-	Score       int
-	Status      string
+	Title      string
+	Likelihood int
+	Impact     int
+	Score      int
+	Status     string
 }
 
 // IncidentRow is an open incident entry.

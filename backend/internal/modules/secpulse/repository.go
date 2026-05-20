@@ -179,13 +179,13 @@ func scheduleFromVbScanSchedule(r db.VbScanSchedules) ScanSchedule {
 // query (Create, Get, List). All currently match — keep them in one container
 // in case future RETURNING-clauses diverge (ADR-0013).
 type reportFields struct {
-	ID, OrgID    string
-	GeneratedBy  pgtype.UUID
-	Scope        json.RawMessage
-	FilePath     pgtype.Text
-	Status       string
-	ExpiresAt    pgtype.Timestamptz
-	CreatedAt    pgtype.Timestamptz
+	ID, OrgID   string
+	GeneratedBy pgtype.UUID
+	Scope       json.RawMessage
+	FilePath    pgtype.Text
+	Status      string
+	ExpiresAt   pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
 }
 
 func reportFromFields(f reportFields) Report {

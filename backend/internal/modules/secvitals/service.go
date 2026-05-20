@@ -99,4 +99,3 @@ func (s *Service) triggerWebhook(orgID, eventType string, payload map[string]any
 func (s *Service) Repo() *Repository {
 	return s.repo
 }
-

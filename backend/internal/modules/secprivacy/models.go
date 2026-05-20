@@ -5,21 +5,21 @@ import "time"
 
 // VVTEntry represents one entry in the Verzeichnis von Verarbeitungstätigkeiten (Art. 30 DSGVO).
 type VVTEntry struct {
-	ID                    string    `json:"id"`
-	OrgID                 string    `json:"org_id"`
-	Name                  string    `json:"name"`
-	Purpose               string    `json:"purpose"`
-	LegalBasis            string    `json:"legal_basis"`
-	DataCategories        []string  `json:"data_categories"`
-	DataSubjects          []string  `json:"data_subjects"`
-	Recipients            []string  `json:"recipients"`
-	RetentionPeriod       string    `json:"retention_period,omitempty"`
-	ThirdCountryTransfer  bool      `json:"third_country_transfer"`
-	Safeguards            string    `json:"safeguards,omitempty"`
-	ResponsiblePerson     string    `json:"responsible_person,omitempty"`
-	Status                string    `json:"status"` // active | archived
-	CreatedAt             time.Time `json:"created_at"`
-	UpdatedAt             time.Time `json:"updated_at"`
+	ID                   string    `json:"id"`
+	OrgID                string    `json:"org_id"`
+	Name                 string    `json:"name"`
+	Purpose              string    `json:"purpose"`
+	LegalBasis           string    `json:"legal_basis"`
+	DataCategories       []string  `json:"data_categories"`
+	DataSubjects         []string  `json:"data_subjects"`
+	Recipients           []string  `json:"recipients"`
+	RetentionPeriod      string    `json:"retention_period,omitempty"`
+	ThirdCountryTransfer bool      `json:"third_country_transfer"`
+	Safeguards           string    `json:"safeguards,omitempty"`
+	ResponsiblePerson    string    `json:"responsible_person,omitempty"`
+	Status               string    `json:"status"` // active | archived
+	CreatedAt            time.Time `json:"created_at"`
+	UpdatedAt            time.Time `json:"updated_at"`
 }
 
 // CreateVVTInput holds validated input for creating a VVT entry.
@@ -38,21 +38,21 @@ type CreateVVTInput struct {
 
 // DPIA represents a Datenschutz-Folgenabschätzung (Art. 35 DSGVO).
 type DPIA struct {
-	ID                   string     `json:"id"`
-	OrgID                string     `json:"org_id"`
-	VVTEntryID           *string    `json:"vvt_entry_id,omitempty"`
-	Title                string     `json:"title"`
-	Description          string     `json:"description,omitempty"`
-	NecessityAssessment  string     `json:"necessity_assessment,omitempty"`
-	RiskAssessment       string     `json:"risk_assessment,omitempty"`
-	MitigationMeasures   string     `json:"mitigation_measures,omitempty"`
-	ResidualRisk         string     `json:"residual_risk,omitempty"`
-	DPOConsultation      bool       `json:"dpo_consultation"`
-	Status               string     `json:"status"` // draft | in_review | approved
-	ReviewedBy           *string    `json:"reviewed_by,omitempty"`
-	ReviewedAt           *time.Time `json:"reviewed_at,omitempty"`
-	CreatedAt            time.Time  `json:"created_at"`
-	UpdatedAt            time.Time  `json:"updated_at"`
+	ID                  string     `json:"id"`
+	OrgID               string     `json:"org_id"`
+	VVTEntryID          *string    `json:"vvt_entry_id,omitempty"`
+	Title               string     `json:"title"`
+	Description         string     `json:"description,omitempty"`
+	NecessityAssessment string     `json:"necessity_assessment,omitempty"`
+	RiskAssessment      string     `json:"risk_assessment,omitempty"`
+	MitigationMeasures  string     `json:"mitigation_measures,omitempty"`
+	ResidualRisk        string     `json:"residual_risk,omitempty"`
+	DPOConsultation     bool       `json:"dpo_consultation"`
+	Status              string     `json:"status"` // draft | in_review | approved
+	ReviewedBy          *string    `json:"reviewed_by,omitempty"`
+	ReviewedAt          *time.Time `json:"reviewed_at,omitempty"`
+	CreatedAt           time.Time  `json:"created_at"`
+	UpdatedAt           time.Time  `json:"updated_at"`
 }
 
 // CreateDPIAInput holds validated input for creating a DPIA.
@@ -98,30 +98,30 @@ type CreateAVVInput struct {
 
 // Breach represents a data breach notification record (Art. 33/34 DSGVO).
 type Breach struct {
-	ID                            string     `json:"id"`
-	OrgID                         string     `json:"org_id"`
-	Title                         string     `json:"title"`
-	Description                   string     `json:"description"`
-	DiscoveredAt                  time.Time  `json:"discovered_at"`
-	AuthorityDeadlineAt           time.Time  `json:"authority_deadline_at"`
-	AuthorityNotifiedAt           *time.Time `json:"authority_notified_at,omitempty"`
-	SubjectsNotificationRequired  bool       `json:"subjects_notification_required"`
-	SubjectsNotifiedAt            *time.Time `json:"subjects_notified_at,omitempty"`
-	AffectedCount                 *int       `json:"affected_count,omitempty"`
-	DataCategories                []string   `json:"data_categories"`
-	Status                        string     `json:"status"` // open | authority_notified | closed
-	CreatedAt                     time.Time  `json:"created_at"`
-	UpdatedAt                     time.Time  `json:"updated_at"`
+	ID                           string     `json:"id"`
+	OrgID                        string     `json:"org_id"`
+	Title                        string     `json:"title"`
+	Description                  string     `json:"description"`
+	DiscoveredAt                 time.Time  `json:"discovered_at"`
+	AuthorityDeadlineAt          time.Time  `json:"authority_deadline_at"`
+	AuthorityNotifiedAt          *time.Time `json:"authority_notified_at,omitempty"`
+	SubjectsNotificationRequired bool       `json:"subjects_notification_required"`
+	SubjectsNotifiedAt           *time.Time `json:"subjects_notified_at,omitempty"`
+	AffectedCount                *int       `json:"affected_count,omitempty"`
+	DataCategories               []string   `json:"data_categories"`
+	Status                       string     `json:"status"` // open | authority_notified | closed
+	CreatedAt                    time.Time  `json:"created_at"`
+	UpdatedAt                    time.Time  `json:"updated_at"`
 }
 
 // CreateBreachInput holds validated input for creating a breach record.
 type CreateBreachInput struct {
-	Title                        string     `json:"title"          validate:"required,max=255"`
-	Description                  string     `json:"description"    validate:"required,max=10000"`
-	DiscoveredAt                 time.Time  `json:"discovered_at"  validate:"required"`
-	SubjectsNotificationRequired bool       `json:"subjects_notification_required"`
-	AffectedCount                *int       `json:"affected_count"`
-	DataCategories               []string   `json:"data_categories"`
+	Title                        string    `json:"title"          validate:"required,max=255"`
+	Description                  string    `json:"description"    validate:"required,max=10000"`
+	DiscoveredAt                 time.Time `json:"discovered_at"  validate:"required"`
+	SubjectsNotificationRequired bool      `json:"subjects_notification_required"`
+	AffectedCount                *int      `json:"affected_count"`
+	DataCategories               []string  `json:"data_categories"`
 }
 
 // UpdateVVTInput holds validated input for updating a VVT entry.

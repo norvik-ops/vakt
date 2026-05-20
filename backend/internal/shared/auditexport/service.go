@@ -573,4 +573,3 @@ var gapHTMLTemplate = `<!DOCTYPE html>
 </body>
 </html>
 `
-

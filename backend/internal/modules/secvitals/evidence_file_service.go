@@ -15,15 +15,15 @@ import (
 
 // allowedEvidenceMIME lists permitted MIME types for evidence file uploads.
 var allowedEvidenceMIME = map[string]bool{
-	"application/pdf":                                                               true,
-	"image/png":                                                                     true,
-	"image/jpeg":                                                                    true,
-	"text/plain":                                                                    true,
-	"text/csv":                                                                      true,
-	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":             true, // xlsx
-	"application/vnd.openxmlformats-officedocument.wordprocessingml.document":       true, // docx
-	"application/zip":                                                               true,
-	"application/x-zip-compressed":                                                  true,
+	"application/pdf": true,
+	"image/png":       true,
+	"image/jpeg":      true,
+	"text/plain":      true,
+	"text/csv":        true,
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":       true, // xlsx
+	"application/vnd.openxmlformats-officedocument.wordprocessingml.document": true, // docx
+	"application/zip":              true,
+	"application/x-zip-compressed": true,
 }
 
 // allowedEvidenceExt lists permitted file extensions (lower-case, with dot).

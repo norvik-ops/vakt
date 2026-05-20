@@ -14,7 +14,7 @@ import (
 type MyTask struct {
 	ID          string `json:"id"`
 	Title       string `json:"title"`
-	Type        string `json:"type"`                    // "control" or "risk"
+	Type        string `json:"type"` // "control" or "risk"
 	Status      string `json:"status"`
 	FrameworkID string `json:"framework_id,omitempty"`
 	RiskID      string `json:"risk_id,omitempty"`

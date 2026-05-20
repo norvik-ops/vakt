@@ -103,13 +103,13 @@ type Finding struct {
 
 // FindingFilter holds filter parameters for listing findings.
 type FindingFilter struct {
-	Severity  string
-	Status    string
-	AssetID   string
-	SortBy    string // "risk_score" | "created_at"
-	Order     string // "asc" | "desc"
-	Page      int
-	Limit     int
+	Severity string
+	Status   string
+	AssetID  string
+	SortBy   string // "risk_score" | "created_at"
+	Order    string // "asc" | "desc"
+	Page     int
+	Limit    int
 }
 
 // CreateScanInput is the validated request body for triggering a scan.

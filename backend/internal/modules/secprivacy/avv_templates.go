@@ -5,7 +5,7 @@ type AVVTemplate struct {
 	ID          string   `json:"id"`
 	Title       string   `json:"title"`
 	Description string   `json:"description"`
-	Body        string   `json:"body"`     // Markdown with {{placeholders}}
+	Body        string   `json:"body"`      // Markdown with {{placeholders}}
 	Variables   []string `json:"variables"` // placeholder names without {{ }}
 }
 

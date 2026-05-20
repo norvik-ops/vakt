@@ -11,17 +11,17 @@ import (
 )
 
 type reportData struct {
-	OrgName    string
-	Title      string
+	OrgName     string
+	Title       string
 	GeneratedAt time.Time
-	Total      int
-	Critical   int
-	High       int
-	Medium     int
-	Low        int
-	Info       int
-	Open       int
-	Findings   []reportFinding
+	Total       int
+	Critical    int
+	High        int
+	Medium      int
+	Low         int
+	Info        int
+	Open        int
+	Findings    []reportFinding
 }
 
 type reportFinding struct {
@@ -118,8 +118,8 @@ func GenerateReportPDF(ctx context.Context, db *pgxpool.Pool, orgID, title strin
 	pdf.CellFormat(180, 8, "Zusammenfassung", "", 1, "L", false, 0, "")
 
 	summaries := []struct {
-		label string
-		value int
+		label   string
+		value   int
 		r, g, b int
 	}{
 		{"Gesamt", d.Total, 55, 65, 81},

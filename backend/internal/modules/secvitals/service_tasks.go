@@ -337,4 +337,3 @@ func (s *Service) ListPoliciesPaged(ctx context.Context, orgID string, offset, l
 func (s *Service) ListCAPAsPaged(ctx context.Context, orgID, statusFilter string, offset, limit int) ([]CAPA, int, error) {
 	return s.repo.ListCAPAsPaged(ctx, orgID, statusFilter, offset, limit)
 }
-

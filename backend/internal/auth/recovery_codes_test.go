@@ -9,7 +9,18 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 )
+
+// TestMain überschreibt den bcrypt-Cost-Faktor für alle Tests in diesem
+// Package — cost=12 in Production, cost=MinCost (4) in Tests. 8 Codes ×
+// bcrypt cost 12 dauern ~2.4s pro Aufruf; mit -race und vielen Tests
+// schlägt das gegen 2-Min-Test-Timeout. Format/Unique-Assertions hängen
+// nicht vom Cost ab.
+func TestMain(m *testing.M) {
+	recoveryCodeBcryptCost = bcrypt.MinCost
+	m.Run()
+}
 
 func TestGenerateRecoveryCodes_Count(t *testing.T) {
 	plain, hashed, err := generateRecoveryCodes()

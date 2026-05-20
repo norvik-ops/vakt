@@ -69,14 +69,14 @@ func (c *GitHubCollector) Name() string { return "github" }
 
 // githubResult is the JSON-serialisable output produced by GitHubCollector.Collect.
 type githubResult struct {
-	CollectedAt               time.Time `json:"collected_at"`
-	Owner                     string    `json:"owner"`
-	Repo                      string    `json:"repo"`
-	DefaultBranch             string    `json:"default_branch"`
-	BranchProtectionEnabled   bool      `json:"branch_protection_enabled"`
-	RequiredPRReviews         bool      `json:"required_pr_reviews"`
-	VulnerabilityAlertsEnabled bool     `json:"vulnerability_alerts_enabled"`
-	Error                     string    `json:"error,omitempty"`
+	CollectedAt                time.Time `json:"collected_at"`
+	Owner                      string    `json:"owner"`
+	Repo                       string    `json:"repo"`
+	DefaultBranch              string    `json:"default_branch"`
+	BranchProtectionEnabled    bool      `json:"branch_protection_enabled"`
+	RequiredPRReviews          bool      `json:"required_pr_reviews"`
+	VulnerabilityAlertsEnabled bool      `json:"vulnerability_alerts_enabled"`
+	Error                      string    `json:"error,omitempty"`
 }
 
 // Collect calls the GitHub REST API and returns a JSON summary of security controls.
@@ -335,8 +335,8 @@ func (c *AzureCollector) Collect(ctx context.Context, cfg CollectorConfig) ([]by
 			defer resp.Body.Close()
 			var body struct {
 				Value []struct {
-					State           string `json:"state"`
-					GrantControls   *struct {
+					State         string `json:"state"`
+					GrantControls *struct {
 						BuiltInControls []string `json:"builtInControls"`
 					} `json:"grantControls"`
 				} `json:"value"`

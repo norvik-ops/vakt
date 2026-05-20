@@ -9,23 +9,23 @@ import (
 )
 
 const (
-	pageW      = 210.0
-	pageH      = 297.0
-	marginL    = 15.0
-	marginR    = 15.0
-	marginT    = 15.0
-	marginB    = 15.0
-	contentW   = pageW - marginL - marginR
-	headerH    = 28.0
+	pageW    = 210.0
+	pageH    = 297.0
+	marginL  = 15.0
+	marginR  = 15.0
+	marginT  = 15.0
+	marginB  = 15.0
+	contentW = pageW - marginL - marginR
+	headerH  = 28.0
 )
 
 // brand colours (Vakt indigo)
 var (
-	brandR, brandG, brandB       = 37, 99, 235
-	lightR, lightG, lightB       = 238, 242, 255
-	darkR, darkG, darkB          = 30, 30, 40
-	subtleR, subtleG, subtleB    = 100, 100, 120
-	altRowR, altRowG, altRowB    = 245, 247, 255
+	brandR, brandG, brandB    = 37, 99, 235
+	lightR, lightG, lightB    = 238, 242, 255
+	darkR, darkG, darkB       = 30, 30, 40
+	subtleR, subtleG, subtleB = 100, 100, 120
+	altRowR, altRowG, altRowB = 245, 247, 255
 )
 
 // Render generates the audit report PDF bytes from ReportData.
@@ -80,8 +80,8 @@ func Render(d *ReportData) ([]byte, error) {
 	// Cover KPI summary boxes
 	pdf.Ln(10)
 	type kpiBox struct {
-		label string
-		value string
+		label   string
+		value   string
 		r, g, b int
 	}
 	kpis := []kpiBox{

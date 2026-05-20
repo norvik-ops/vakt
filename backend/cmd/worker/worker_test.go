@@ -13,16 +13,16 @@ import (
 	"github.com/matharnica/vakt/internal/modules/secpulse"
 	"github.com/matharnica/vakt/internal/modules/secreflex"
 	"github.com/matharnica/vakt/internal/modules/secvault"
+	"github.com/matharnica/vakt/internal/modules/secvitals"
 	"github.com/matharnica/vakt/internal/shared/alerting"
 	"github.com/matharnica/vakt/internal/shared/bsi"
 	"github.com/matharnica/vakt/internal/shared/crossevidence"
+	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/emaildigest"
+	cloudintegration "github.com/matharnica/vakt/internal/shared/integrations/cloud"
 	"github.com/matharnica/vakt/internal/shared/notifications"
 	"github.com/matharnica/vakt/internal/shared/retention"
 	"github.com/matharnica/vakt/internal/shared/scheduledreports"
-	cloudintegration "github.com/matharnica/vakt/internal/shared/integrations/cloud"
-	"github.com/matharnica/vakt/internal/modules/secvitals"
-	"github.com/matharnica/vakt/internal/shared/demo"
 )
 
 func TestBuildServer_ReturnsNonNil(t *testing.T) {

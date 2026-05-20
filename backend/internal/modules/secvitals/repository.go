@@ -138,13 +138,13 @@ type controlFields struct {
 // policyFields collects the columns shared by all Policy-returning sqlc rows.
 type policyFields struct {
 	ID, OrgID, Title, Description, Category, Status, Version string
-	EffectiveDate, ReviewDate                                 pgtype.Date
-	Owner                                                     string
-	CreatedAt, UpdatedAt                                      pgtype.Timestamptz
-	VersionNum                                                int32
-	VersionNote, LastUpdatedBy                                string
-	ReviewedAt                                                pgtype.Timestamptz
-	NextReviewDue                                             pgtype.Date
+	EffectiveDate, ReviewDate                                pgtype.Date
+	Owner                                                    string
+	CreatedAt, UpdatedAt                                     pgtype.Timestamptz
+	VersionNum                                               int32
+	VersionNote, LastUpdatedBy                               string
+	ReviewedAt                                               pgtype.Timestamptz
+	NextReviewDue                                            pgtype.Date
 }
 
 func policyFromFields(f policyFields) Policy {
@@ -181,20 +181,20 @@ func dateToStringPtrLocal(d pgtype.Date) *string {
 // incidentFields holds all columns shared between every Incident-returning
 // sqlc query. ADR-0013: one mapper handles all Row-types.
 type incidentFields struct {
-	ID, OrgID, Title, Description, Severity, Status string
-	DiscoveredAt, ResolvedAt                        pgtype.Timestamptz
-	AffectedSystems                                 []string
-	BreachID                                        pgtype.UUID
-	IncidentType, ReportingObligation               string
-	NotificationAuthority                           pgtype.Text
-	Deadline4h, Deadline24h, Deadline72h, Deadline30d pgtype.Timestamptz
+	ID, OrgID, Title, Description, Severity, Status           string
+	DiscoveredAt, ResolvedAt                                  pgtype.Timestamptz
+	AffectedSystems                                           []string
+	BreachID                                                  pgtype.UUID
+	IncidentType, ReportingObligation                         string
+	NotificationAuthority                                     pgtype.Text
+	Deadline4h, Deadline24h, Deadline72h, Deadline30d         pgtype.Timestamptz
 	Reported4hAt, Reported24hAt, Reported72hAt, Reported30dAt pgtype.Timestamptz
-	AffectedCustomers                               pgtype.Int4
-	FinancialImpactEstimate                         pgtype.Text
-	IsMajorIncident                                 bool
-	SupplierID                                      pgtype.UUID
-	NotifiedWarn24h, NotifiedWarn72h, NotifiedWarn30d bool
-	CreatedAt, UpdatedAt                            pgtype.Timestamptz
+	AffectedCustomers                                         pgtype.Int4
+	FinancialImpactEstimate                                   pgtype.Text
+	IsMajorIncident                                           bool
+	SupplierID                                                pgtype.UUID
+	NotifiedWarn24h, NotifiedWarn72h, NotifiedWarn30d         bool
+	CreatedAt, UpdatedAt                                      pgtype.Timestamptz
 }
 
 func uuidPtrFromPgtype(u pgtype.UUID) *string {
@@ -251,9 +251,9 @@ func textPtrOrNil(t pgtype.Text) *string {
 // riskFields collects all columns shared between every Risk-returning sqlc
 // query. ADR-0013: centralise mapping in one helper.
 type riskFields struct {
-	ID, OrgID, Title, Description, Category string
-	Likelihood, Impact                      int16
-	RiskScore                               pgtype.Int2
+	ID, OrgID, Title, Description, Category  string
+	Likelihood, Impact                       int16
+	RiskScore                                pgtype.Int2
 	Owner, Status, Treatment, TreatmentNotes string
 	TreatmentOption                          pgtype.Text
 	TreatmentPlan, TreatmentOwner            string
@@ -1044,10 +1044,10 @@ func (r *Repository) ListRisks(ctx context.Context, orgID string) ([]Risk, error
 			Description: row.Description, Category: row.Category,
 			Likelihood: row.Likelihood, Impact: row.Impact, RiskScore: row.RiskScore,
 			Owner: row.Owner, Status: row.Status, Treatment: row.Treatment,
-			TreatmentNotes: row.TreatmentNotes,
+			TreatmentNotes:  row.TreatmentNotes,
 			TreatmentOption: row.TreatmentOption, TreatmentPlan: row.TreatmentPlan,
 			TreatmentOwner: row.TreatmentOwner, TreatmentDueDate: row.TreatmentDueDate,
-			TreatmentStatus: row.TreatmentStatus,
+			TreatmentStatus:    row.TreatmentStatus,
 			ResidualLikelihood: row.ResidualLikelihood, ResidualImpact: row.ResidualImpact,
 			CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		}))
@@ -1065,10 +1065,10 @@ func (r *Repository) GetRisk(ctx context.Context, orgID, id string) (*Risk, erro
 		Description: row.Description, Category: row.Category,
 		Likelihood: row.Likelihood, Impact: row.Impact, RiskScore: row.RiskScore,
 		Owner: row.Owner, Status: row.Status, Treatment: row.Treatment,
-		TreatmentNotes: row.TreatmentNotes,
+		TreatmentNotes:  row.TreatmentNotes,
 		TreatmentOption: row.TreatmentOption, TreatmentPlan: row.TreatmentPlan,
 		TreatmentOwner: row.TreatmentOwner, TreatmentDueDate: row.TreatmentDueDate,
-		TreatmentStatus: row.TreatmentStatus,
+		TreatmentStatus:    row.TreatmentStatus,
 		ResidualLikelihood: row.ResidualLikelihood, ResidualImpact: row.ResidualImpact,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	})
@@ -1097,10 +1097,10 @@ func (r *Repository) UpdateRisk(ctx context.Context, orgID, id string, in Update
 		Description: row.Description, Category: row.Category,
 		Likelihood: row.Likelihood, Impact: row.Impact, RiskScore: row.RiskScore,
 		Owner: row.Owner, Status: row.Status, Treatment: row.Treatment,
-		TreatmentNotes: row.TreatmentNotes,
+		TreatmentNotes:  row.TreatmentNotes,
 		TreatmentOption: row.TreatmentOption, TreatmentPlan: row.TreatmentPlan,
 		TreatmentOwner: row.TreatmentOwner, TreatmentDueDate: row.TreatmentDueDate,
-		TreatmentStatus: row.TreatmentStatus,
+		TreatmentStatus:    row.TreatmentStatus,
 		ResidualLikelihood: row.ResidualLikelihood, ResidualImpact: row.ResidualImpact,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	})
@@ -1149,10 +1149,10 @@ func (r *Repository) UpdateRiskTreatment(ctx context.Context, orgID, id string, 
 		Description: row.Description, Category: row.Category,
 		Likelihood: row.Likelihood, Impact: row.Impact, RiskScore: row.RiskScore,
 		Owner: row.Owner, Status: row.Status, Treatment: row.Treatment,
-		TreatmentNotes: row.TreatmentNotes,
+		TreatmentNotes:  row.TreatmentNotes,
 		TreatmentOption: row.TreatmentOption, TreatmentPlan: row.TreatmentPlan,
 		TreatmentOwner: row.TreatmentOwner, TreatmentDueDate: row.TreatmentDueDate,
-		TreatmentStatus: row.TreatmentStatus,
+		TreatmentStatus:    row.TreatmentStatus,
 		ResidualLikelihood: row.ResidualLikelihood, ResidualImpact: row.ResidualImpact,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	})
@@ -1179,10 +1179,10 @@ func (r *Repository) CreateRisk(ctx context.Context, orgID string, in CreateRisk
 		Description: row.Description, Category: row.Category,
 		Likelihood: row.Likelihood, Impact: row.Impact, RiskScore: row.RiskScore,
 		Owner: row.Owner, Status: row.Status, Treatment: row.Treatment,
-		TreatmentNotes: row.TreatmentNotes,
+		TreatmentNotes:  row.TreatmentNotes,
 		TreatmentOption: row.TreatmentOption, TreatmentPlan: row.TreatmentPlan,
 		TreatmentOwner: row.TreatmentOwner, TreatmentDueDate: row.TreatmentDueDate,
-		TreatmentStatus: row.TreatmentStatus,
+		TreatmentStatus:    row.TreatmentStatus,
 		ResidualLikelihood: row.ResidualLikelihood, ResidualImpact: row.ResidualImpact,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	})
@@ -1200,7 +1200,7 @@ func incidentFromCreateRow(row db.CreateCKIncidentRow) Incident {
 		AffectedSystems: row.AffectedSystems, BreachID: row.BreachID,
 		IncidentType: row.IncidentType, ReportingObligation: row.ReportingObligation,
 		NotificationAuthority: row.NotificationAuthority,
-		Deadline4h: row.Deadline4h, Deadline24h: row.Deadline24h,
+		Deadline4h:            row.Deadline4h, Deadline24h: row.Deadline24h,
 		Deadline72h: row.Deadline72h, Deadline30d: row.Deadline30d,
 		Reported4hAt: row.Reported4hAt, Reported24hAt: row.Reported24hAt,
 		Reported72hAt: row.Reported72hAt, Reported30dAt: row.Reported30dAt,
@@ -1208,7 +1208,7 @@ func incidentFromCreateRow(row db.CreateCKIncidentRow) Incident {
 		IsMajorIncident: row.IsMajorIncident, SupplierID: row.SupplierID,
 		NotifiedWarn24h: row.NotifiedWarn24h, NotifiedWarn72h: row.NotifiedWarn72h,
 		NotifiedWarn30d: row.NotifiedWarn30d,
-		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		CreatedAt:       row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	})
 }
 
@@ -1220,7 +1220,7 @@ func incidentFromGetRow(row db.GetCKIncidentRow) Incident {
 		AffectedSystems: row.AffectedSystems, BreachID: row.BreachID,
 		IncidentType: row.IncidentType, ReportingObligation: row.ReportingObligation,
 		NotificationAuthority: row.NotificationAuthority,
-		Deadline4h: row.Deadline4h, Deadline24h: row.Deadline24h,
+		Deadline4h:            row.Deadline4h, Deadline24h: row.Deadline24h,
 		Deadline72h: row.Deadline72h, Deadline30d: row.Deadline30d,
 		Reported4hAt: row.Reported4hAt, Reported24hAt: row.Reported24hAt,
 		Reported72hAt: row.Reported72hAt, Reported30dAt: row.Reported30dAt,
@@ -1228,7 +1228,7 @@ func incidentFromGetRow(row db.GetCKIncidentRow) Incident {
 		IsMajorIncident: row.IsMajorIncident, SupplierID: row.SupplierID,
 		NotifiedWarn24h: row.NotifiedWarn24h, NotifiedWarn72h: row.NotifiedWarn72h,
 		NotifiedWarn30d: row.NotifiedWarn30d,
-		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		CreatedAt:       row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	})
 }
 
@@ -1246,7 +1246,7 @@ func (r *Repository) ListIncidents(ctx context.Context, orgID string) ([]Inciden
 			AffectedSystems: row.AffectedSystems, BreachID: row.BreachID,
 			IncidentType: row.IncidentType, ReportingObligation: row.ReportingObligation,
 			NotificationAuthority: row.NotificationAuthority,
-			Deadline4h: row.Deadline4h, Deadline24h: row.Deadline24h,
+			Deadline4h:            row.Deadline4h, Deadline24h: row.Deadline24h,
 			Deadline72h: row.Deadline72h, Deadline30d: row.Deadline30d,
 			Reported4hAt: row.Reported4hAt, Reported24hAt: row.Reported24hAt,
 			Reported72hAt: row.Reported72hAt, Reported30dAt: row.Reported30dAt,
@@ -1254,7 +1254,7 @@ func (r *Repository) ListIncidents(ctx context.Context, orgID string) ([]Inciden
 			IsMajorIncident: row.IsMajorIncident, SupplierID: row.SupplierID,
 			NotifiedWarn24h: row.NotifiedWarn24h, NotifiedWarn72h: row.NotifiedWarn72h,
 			NotifiedWarn30d: row.NotifiedWarn30d,
-			CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+			CreatedAt:       row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		}))
 	}
 	return out, nil
@@ -1303,7 +1303,7 @@ func (r *Repository) UpdateIncident(ctx context.Context, orgID, id string, in Up
 		AffectedSystems: row.AffectedSystems, BreachID: row.BreachID,
 		IncidentType: row.IncidentType, ReportingObligation: row.ReportingObligation,
 		NotificationAuthority: row.NotificationAuthority,
-		Deadline4h: row.Deadline4h, Deadline24h: row.Deadline24h,
+		Deadline4h:            row.Deadline4h, Deadline24h: row.Deadline24h,
 		Deadline72h: row.Deadline72h, Deadline30d: row.Deadline30d,
 		Reported4hAt: row.Reported4hAt, Reported24hAt: row.Reported24hAt,
 		Reported72hAt: row.Reported72hAt, Reported30dAt: row.Reported30dAt,
@@ -1311,7 +1311,7 @@ func (r *Repository) UpdateIncident(ctx context.Context, orgID, id string, in Up
 		IsMajorIncident: row.IsMajorIncident, SupplierID: row.SupplierID,
 		NotifiedWarn24h: row.NotifiedWarn24h, NotifiedWarn72h: row.NotifiedWarn72h,
 		NotifiedWarn30d: row.NotifiedWarn30d,
-		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		CreatedAt:       row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	})
 	return &inc, nil
 }
@@ -1389,7 +1389,7 @@ func (r *Repository) ListIncidentsByType(ctx context.Context, orgID, incidentTyp
 			AffectedSystems: row.AffectedSystems, BreachID: row.BreachID,
 			IncidentType: row.IncidentType, ReportingObligation: row.ReportingObligation,
 			NotificationAuthority: row.NotificationAuthority,
-			Deadline4h: row.Deadline4h, Deadline24h: row.Deadline24h,
+			Deadline4h:            row.Deadline4h, Deadline24h: row.Deadline24h,
 			Deadline72h: row.Deadline72h, Deadline30d: row.Deadline30d,
 			Reported4hAt: row.Reported4hAt, Reported24hAt: row.Reported24hAt,
 			Reported72hAt: row.Reported72hAt, Reported30dAt: row.Reported30dAt,
@@ -1397,7 +1397,7 @@ func (r *Repository) ListIncidentsByType(ctx context.Context, orgID, incidentTyp
 			IsMajorIncident: row.IsMajorIncident, SupplierID: row.SupplierID,
 			NotifiedWarn24h: row.NotifiedWarn24h, NotifiedWarn72h: row.NotifiedWarn72h,
 			NotifiedWarn30d: row.NotifiedWarn30d,
-			CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+			CreatedAt:       row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		}))
 	}
 	return out, nil
@@ -1422,7 +1422,7 @@ func (r *Repository) MarkDeadlineReported(ctx context.Context, orgID, id, deadli
 		AffectedSystems: row.AffectedSystems, BreachID: row.BreachID,
 		IncidentType: row.IncidentType, ReportingObligation: row.ReportingObligation,
 		NotificationAuthority: row.NotificationAuthority,
-		Deadline4h: row.Deadline4h, Deadline24h: row.Deadline24h,
+		Deadline4h:            row.Deadline4h, Deadline24h: row.Deadline24h,
 		Deadline72h: row.Deadline72h, Deadline30d: row.Deadline30d,
 		Reported4hAt: row.Reported4hAt, Reported24hAt: row.Reported24hAt,
 		Reported72hAt: row.Reported72hAt, Reported30dAt: row.Reported30dAt,
@@ -1430,7 +1430,7 @@ func (r *Repository) MarkDeadlineReported(ctx context.Context, orgID, id, deadli
 		IsMajorIncident: row.IsMajorIncident, SupplierID: row.SupplierID,
 		NotifiedWarn24h: row.NotifiedWarn24h, NotifiedWarn72h: row.NotifiedWarn72h,
 		NotifiedWarn30d: row.NotifiedWarn30d,
-		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		CreatedAt:       row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	})
 	return &inc, nil
 }
@@ -1555,7 +1555,7 @@ func (r *Repository) GetAdminEmails(ctx context.Context, orgID string) ([]string
 // supplierFields holds the shared columns of every Supplier-returning sqlc Row.
 // All Row-Types (Create/Get/List/Update) haben identische Shape.
 type supplierFields struct {
-	ID, OrgID, Name                       string
+	ID, OrgID, Name                        string
 	ContactName, ContactEmail, ServiceType pgtype.Text
 	Criticality                            string
 	Nis2Relevant, DoraRelevant             bool
@@ -1798,10 +1798,10 @@ func (r *Repository) ListSupplierRisks(ctx context.Context, orgID, supplierID st
 			Description: row.Description, Category: row.Category,
 			Likelihood: row.Likelihood, Impact: row.Impact, RiskScore: row.RiskScore,
 			Owner: row.Owner, Status: row.Status, Treatment: row.Treatment,
-			TreatmentNotes: row.TreatmentNotes,
+			TreatmentNotes:  row.TreatmentNotes,
 			TreatmentOption: row.TreatmentOption, TreatmentPlan: row.TreatmentPlan,
 			TreatmentOwner: row.TreatmentOwner, TreatmentDueDate: row.TreatmentDueDate,
-			TreatmentStatus: row.TreatmentStatus,
+			TreatmentStatus:    row.TreatmentStatus,
 			ResidualLikelihood: row.ResidualLikelihood, ResidualImpact: row.ResidualImpact,
 			CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		}))
@@ -1827,7 +1827,7 @@ func (r *Repository) ListIncidentsBySupplier(ctx context.Context, orgID, supplie
 			AffectedSystems: row.AffectedSystems, BreachID: row.BreachID,
 			IncidentType: row.IncidentType, ReportingObligation: row.ReportingObligation,
 			NotificationAuthority: row.NotificationAuthority,
-			Deadline4h: row.Deadline4h, Deadline24h: row.Deadline24h,
+			Deadline4h:            row.Deadline4h, Deadline24h: row.Deadline24h,
 			Deadline72h: row.Deadline72h, Deadline30d: row.Deadline30d,
 			Reported4hAt: row.Reported4hAt, Reported24hAt: row.Reported24hAt,
 			Reported72hAt: row.Reported72hAt, Reported30dAt: row.Reported30dAt,
@@ -1835,7 +1835,7 @@ func (r *Repository) ListIncidentsBySupplier(ctx context.Context, orgID, supplie
 			IsMajorIncident: row.IsMajorIncident, SupplierID: row.SupplierID,
 			NotifiedWarn24h: row.NotifiedWarn24h, NotifiedWarn72h: row.NotifiedWarn72h,
 			NotifiedWarn30d: row.NotifiedWarn30d,
-			CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+			CreatedAt:       row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		}))
 	}
 	return out, nil
@@ -1979,7 +1979,7 @@ func (r *Repository) ListPolicies(ctx context.Context, orgID string) ([]Policy, 
 			Owner: row.Owner, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 			VersionNum: row.VersionNum, VersionNote: row.VersionNote,
 			LastUpdatedBy: row.LastUpdatedBy,
-			ReviewedAt: row.ReviewedAt, NextReviewDue: row.NextReviewDue,
+			ReviewedAt:    row.ReviewedAt, NextReviewDue: row.NextReviewDue,
 		}))
 	}
 	return out, nil
@@ -1998,7 +1998,7 @@ func (r *Repository) GetPolicy(ctx context.Context, orgID, id string) (*Policy, 
 		Owner: row.Owner, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		VersionNum: row.VersionNum, VersionNote: row.VersionNote,
 		LastUpdatedBy: row.LastUpdatedBy,
-		ReviewedAt: row.ReviewedAt, NextReviewDue: row.NextReviewDue,
+		ReviewedAt:    row.ReviewedAt, NextReviewDue: row.NextReviewDue,
 	})
 	return &p, nil
 }
@@ -2032,20 +2032,20 @@ func (r *Repository) UpdatePolicy(ctx context.Context, orgID, id string, in Upda
 	}
 
 	row, err := qtx.UpdateCKPolicy(ctx, db.UpdateCKPolicyParams{
-		ID:             id,
-		OrgID:          orgID,
-		Title:          in.Title,
-		Description:    in.Description,
-		Category:       in.Category,
-		Status:         in.Status,
-		Version:        versionLabel,
-		EffectiveDate:  policyDateFromTimePtr(in.EffectiveDate),
-		ReviewDate:     policyDateFromTimePtr(in.ReviewDate),
-		Owner:          in.Owner,
-		VersionNote:    versionNote,
-		LastUpdatedBy:  updatedBy,
-		RefreshReview:  updatedBy != "",
-		NextReviewDue:  ckOptDatePtr(in.NextReviewDue),
+		ID:            id,
+		OrgID:         orgID,
+		Title:         in.Title,
+		Description:   in.Description,
+		Category:      in.Category,
+		Status:        in.Status,
+		Version:       versionLabel,
+		EffectiveDate: policyDateFromTimePtr(in.EffectiveDate),
+		ReviewDate:    policyDateFromTimePtr(in.ReviewDate),
+		Owner:         in.Owner,
+		VersionNote:   versionNote,
+		LastUpdatedBy: updatedBy,
+		RefreshReview: updatedBy != "",
+		NextReviewDue: ckOptDatePtr(in.NextReviewDue),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("update policy: %w", err)
@@ -2062,7 +2062,7 @@ func (r *Repository) UpdatePolicy(ctx context.Context, orgID, id string, in Upda
 		Owner: row.Owner, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		VersionNum: row.VersionNum, VersionNote: row.VersionNote,
 		LastUpdatedBy: row.LastUpdatedBy,
-		ReviewedAt: row.ReviewedAt, NextReviewDue: row.NextReviewDue,
+		ReviewedAt:    row.ReviewedAt, NextReviewDue: row.NextReviewDue,
 	})
 	return &p, nil
 }
@@ -2101,7 +2101,7 @@ func (r *Repository) CreatePolicy(ctx context.Context, orgID string, in CreatePo
 		Owner: row.Owner, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		VersionNum: row.VersionNum, VersionNote: row.VersionNote,
 		LastUpdatedBy: row.LastUpdatedBy,
-		ReviewedAt: row.ReviewedAt, NextReviewDue: row.NextReviewDue,
+		ReviewedAt:    row.ReviewedAt, NextReviewDue: row.NextReviewDue,
 	})
 	return &p, nil
 }
@@ -4119,10 +4119,10 @@ func (r *Repository) ListRisksPaged(ctx context.Context, orgID string, offset, l
 			Description: row.Description, Category: row.Category,
 			Likelihood: row.Likelihood, Impact: row.Impact, RiskScore: row.RiskScore,
 			Owner: row.Owner, Status: row.Status, Treatment: row.Treatment,
-			TreatmentNotes: row.TreatmentNotes,
+			TreatmentNotes:  row.TreatmentNotes,
 			TreatmentOption: row.TreatmentOption, TreatmentPlan: row.TreatmentPlan,
 			TreatmentOwner: row.TreatmentOwner, TreatmentDueDate: row.TreatmentDueDate,
-			TreatmentStatus: row.TreatmentStatus,
+			TreatmentStatus:    row.TreatmentStatus,
 			ResidualLikelihood: row.ResidualLikelihood, ResidualImpact: row.ResidualImpact,
 			CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		}))
@@ -4153,7 +4153,7 @@ func (r *Repository) ListIncidentsPaged(ctx context.Context, orgID string, offse
 			AffectedSystems: row.AffectedSystems, BreachID: row.BreachID,
 			IncidentType: row.IncidentType, ReportingObligation: row.ReportingObligation,
 			NotificationAuthority: row.NotificationAuthority,
-			Deadline4h: row.Deadline4h, Deadline24h: row.Deadline24h,
+			Deadline4h:            row.Deadline4h, Deadline24h: row.Deadline24h,
 			Deadline72h: row.Deadline72h, Deadline30d: row.Deadline30d,
 			Reported4hAt: row.Reported4hAt, Reported24hAt: row.Reported24hAt,
 			Reported72hAt: row.Reported72hAt, Reported30dAt: row.Reported30dAt,
@@ -4161,7 +4161,7 @@ func (r *Repository) ListIncidentsPaged(ctx context.Context, orgID string, offse
 			IsMajorIncident: row.IsMajorIncident, SupplierID: row.SupplierID,
 			NotifiedWarn24h: row.NotifiedWarn24h, NotifiedWarn72h: row.NotifiedWarn72h,
 			NotifiedWarn30d: row.NotifiedWarn30d,
-			CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+			CreatedAt:       row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		}))
 	}
 	return incidents, int(total), nil
@@ -4191,7 +4191,7 @@ func (r *Repository) ListPoliciesPaged(ctx context.Context, orgID string, offset
 			Owner: row.Owner, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 			VersionNum: row.VersionNum, VersionNote: row.VersionNote,
 			LastUpdatedBy: row.LastUpdatedBy,
-			ReviewedAt: row.ReviewedAt, NextReviewDue: row.NextReviewDue,
+			ReviewedAt:    row.ReviewedAt, NextReviewDue: row.NextReviewDue,
 		}))
 	}
 	return policies, int(total), nil
@@ -4252,10 +4252,10 @@ func float64PtrToNumericCK(f *float64) pgtype.Numeric {
 
 // ScoreHistoryEntry is a single data point for the score trend chart.
 type ScoreHistoryEntry struct {
-	Date              string  `json:"date"`
-	Score             float64 `json:"score"`
-	ControlsTotal     int     `json:"controls_total"`
-	ControlsImplemented int   `json:"controls_implemented"`
+	Date                string  `json:"date"`
+	Score               float64 `json:"score"`
+	ControlsTotal       int     `json:"controls_total"`
+	ControlsImplemented int     `json:"controls_implemented"`
 }
 
 // GetScoreHistory returns aggregated daily score history for an organisation.

@@ -676,9 +676,9 @@ func buildMIMEMessage(fromName, fromEmail, to, subject, htmlBody, trackingToken,
 	}
 
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("From: %s <%s>\r\n", fromName, fromEmail))
-	b.WriteString(fmt.Sprintf("To: %s\r\n", to))
-	b.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
+	fmt.Fprintf(&b, "From: %s <%s>\r\n", fromName, fromEmail)
+	fmt.Fprintf(&b, "To: %s\r\n", to)
+	fmt.Fprintf(&b, "Subject: %s\r\n", subject)
 	b.WriteString("MIME-Version: 1.0\r\n")
 	b.WriteString("Content-Type: text/html; charset=UTF-8\r\n")
 	b.WriteString("\r\n")

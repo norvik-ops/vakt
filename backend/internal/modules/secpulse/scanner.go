@@ -410,7 +410,7 @@ func (c *gvmClient) pollTask(ctx context.Context, taskID string) error {
 		}
 		var task gvmTask
 		_ = json.NewDecoder(resp.Body).Decode(&task)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		switch task.Status {
 		case "Done":
@@ -648,7 +648,7 @@ func UpdateEPSSScores(ctx context.Context, db *pgxpool.Pool, orgID string) error
 		}
 
 		body, readErr := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if readErr != nil {
 			log.Warn().Err(readErr).Msg("epss: read response body failed, skipping batch")
 			continue

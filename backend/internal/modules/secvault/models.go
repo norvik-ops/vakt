@@ -193,9 +193,9 @@ type ScanResult struct {
 // RepoURL is validated by ValidateRepoURL (HTTPS-only, no private/loopback IPs)
 // rather than the generic "url" validator tag to prevent SSRF.
 type TriggerGitScanInput struct {
-	RepoURL     string               `json:"repo_url" validate:"required"`
-	Branch      string               `json:"branch"   validate:"required"`
-	Credentials *GitScanCredentials  `json:"credentials,omitempty"`
+	RepoURL     string              `json:"repo_url" validate:"required"`
+	Branch      string              `json:"branch"   validate:"required"`
+	Credentials *GitScanCredentials `json:"credentials,omitempty"`
 }
 
 // GitScanCredentials holds optional authentication for cloning private repositories.
@@ -233,16 +233,16 @@ type Environment struct {
 // Secret represents an encrypted key-value pair stored in an environment.
 // Value is only populated on direct Get calls — list operations omit it.
 type Secret struct {
-	ID              string     `json:"id"`
-	Key             string     `json:"key"`
-	Value           string     `json:"value,omitempty"` // only populated on GetSecret
-	Version         int        `json:"version"`
-	RotationDueAt   *time.Time `json:"rotation_due_at,omitempty"`
-	LastRotatedAt   *time.Time `json:"last_rotated_at,omitempty"`
-	LastAccessedAt  *time.Time `json:"last_accessed_at,omitempty"`
-	AccessCount     int64      `json:"access_count"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
+	ID             string     `json:"id"`
+	Key            string     `json:"key"`
+	Value          string     `json:"value,omitempty"` // only populated on GetSecret
+	Version        int        `json:"version"`
+	RotationDueAt  *time.Time `json:"rotation_due_at,omitempty"`
+	LastRotatedAt  *time.Time `json:"last_rotated_at,omitempty"`
+	LastAccessedAt *time.Time `json:"last_accessed_at,omitempty"`
+	AccessCount    int64      `json:"access_count"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
 // AccessLogEntry is a single record from the secret access audit trail.
@@ -290,14 +290,14 @@ type SecretHealth struct {
 
 // APIToken represents a SecretOps-scoped API key.
 type APIToken struct {
-	ID          string     `json:"id"`
-	Name        string     `json:"name"`
-	KeyPrefix   string     `json:"key_prefix"`
-	Scopes      []string   `json:"scopes"`
-	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
-	LastUsedAt  *time.Time `json:"last_used_at,omitempty"`
-	RevokedAt   *time.Time `json:"revoked_at,omitempty"`
-	CreatedAt   time.Time  `json:"created_at"`
+	ID         string     `json:"id"`
+	Name       string     `json:"name"`
+	KeyPrefix  string     `json:"key_prefix"`
+	Scopes     []string   `json:"scopes"`
+	ExpiresAt  *time.Time `json:"expires_at,omitempty"`
+	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
+	RevokedAt  *time.Time `json:"revoked_at,omitempty"`
+	CreatedAt  time.Time  `json:"created_at"`
 	// RawKey is only returned once on creation and never stored.
 	RawKey string `json:"key,omitempty"`
 }
