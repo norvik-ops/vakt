@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, type RefObject } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Search, Shield, AlertTriangle, FileText, Siren, ClipboardCheck,
@@ -156,7 +156,7 @@ export function GlobalSearch() {
       onClick={() => setOpen(false)}
     >
       <div
-        ref={trapRef}
+        ref={trapRef as RefObject<HTMLDivElement>}
         role="dialog"
         aria-label="Suche"
         aria-modal="true"

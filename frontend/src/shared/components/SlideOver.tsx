@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, type RefObject } from 'react'
 import { X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useFocusTrap } from '../hooks/useFocusTrap'
@@ -72,7 +72,7 @@ export function SlideOver({
             aria-hidden="true"
           />
           <motion.div
-            ref={trapRef}
+            ref={trapRef as RefObject<HTMLDivElement>}
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}

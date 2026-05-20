@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, type RefObject } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -69,7 +69,7 @@ function CellPanel({ likelihood, impact, risks, onClose }: CellPanelProps) {
       />
       {/* Slide-over panel */}
       <div
-        ref={trapRef}
+        ref={trapRef as RefObject<HTMLDivElement>}
         role="dialog"
         aria-modal="true"
         aria-label={`Risiken: Wahrscheinlichkeit ${likelihood} / Auswirkung ${impact}`}
