@@ -71,10 +71,23 @@ type RegisterInput struct {
 }
 
 // AuthResponse is returned on successful authentication.
+//
+// Das Frontend (Login.tsx → useAuthStore.setAuth) erwartet das User-Objekt,
+// um es im Zustand abzulegen und Rolle/Anzeigenamen darzustellen — fehlt es,
+// crasht das Login mit "can't access property id".
 type AuthResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int    `json:"expires_in"` // seconds
+	AccessToken  string   `json:"access_token"`
+	RefreshToken string   `json:"refresh_token"`
+	ExpiresIn    int      `json:"expires_in"` // seconds
+	User         AuthUser `json:"user"`
+}
+
+// AuthUser ist die minimal nötige User-Repräsentation für Frontend-State.
+type AuthUser struct {
+	ID          string   `json:"id"`
+	Email       string   `json:"email"`
+	DisplayName string   `json:"display_name"`
+	Roles       []string `json:"roles"`
 }
 
 // refreshPayload is stored in Redis as JSON under key refresh:<sha256>.
@@ -184,13 +197,13 @@ func (s *Service) Register(ctx context.Context, input RegisterInput, deviceHint 
 // Login validates credentials and returns tokens on success.
 // deviceHint is the caller's User-Agent header (truncated to 120 chars).
 func (s *Service) Login(ctx context.Context, email, password, deviceHint string) (*AuthResponse, error) {
-	var userID, passwordHash string
+	var userID, passwordHash, displayName string
 	err := s.db.QueryRow(ctx, `
-		SELECT id::text, password_hash
+		SELECT id::text, password_hash, COALESCE(display_name, email)
 		FROM users
 		WHERE email = $1 AND is_active = TRUE`,
 		email,
-	).Scan(&userID, &passwordHash)
+	).Scan(&userID, &passwordHash, &displayName)
 	if err != nil {
 		// Return a generic error to avoid user-enumeration.
 		return nil, fmt.Errorf("invalid credentials")
@@ -222,7 +235,17 @@ func (s *Service) Login(ctx context.Context, email, password, deviceHint string)
 		log.Warn().Err(updateErr).Str("user_id", userID).Msg("failed to update last_login_at")
 	}
 
-	return s.issueTokenPair(ctx, userID, orgID, []string{roleName}, deviceHint)
+	resp, err := s.issueTokenPair(ctx, userID, orgID, []string{roleName}, deviceHint)
+	if err != nil {
+		return nil, err
+	}
+	resp.User = AuthUser{
+		ID:          userID,
+		Email:       email,
+		DisplayName: displayName,
+		Roles:       []string{roleName},
+	}
+	return resp, nil
 }
 
 // Refresh validates the given refresh token, rotates it, and returns a new token pair.
