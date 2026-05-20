@@ -67,14 +67,9 @@ Nach dem Start ist Vakt erreichbar unter:
 
 - **http://deine-server-ip** (nach HTTPS-Einrichtung: https://deine-domain.com)
 
-Wenn `VAKT_DEMO=true` gesetzt wurde, gibt es zwei vorkonfigurierte Benutzer:
+Wenn `VAKT_DEMO=true` gesetzt wurde, legt die Login-Seite beim ersten Aufruf automatisch eine eigene ephemere Demo-Organisation an und zeigt die generierten Zugangsdaten (Admin + Analyst) direkt im Login-Formular an. Die Passwörter sind 16-stellige Zufallswerte; jede Demo-Session lebt 4 Stunden und wird dann automatisch gelöscht. Details: [Demo-Modus](wiki/demo-mode.md).
 
-| Benutzer | Passwort | Rolle |
-|---|---|---|
-| admin@vakt.local | admin1234 | Administrator |
-| analyst@vakt.local | analyst1234 | Analyst |
-
-> **Hinweis:** Demo-Zugangsdaten **niemals** in Produktionsumgebungen mit echten Daten verwenden.
+> **Hinweis:** Demo-Modus **niemals** in Produktionsumgebungen mit echten Daten aktivieren.
 
 ---
 

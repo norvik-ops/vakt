@@ -58,7 +58,7 @@ VAKT_SECRET_KEY=$(openssl rand -hex 32)   # Beispiel — echten Wert generieren!
 | `VAKT_API_PORT` | – | `8080` | Port, auf dem der API-Server lauscht (innerhalb des Containers). |
 | `VAKT_MODULES_ENABLED` | – | alle aktiv | Kommaseparierte Liste der aktivierten Module. Mögliche Werte: `secpulse`, `secvitals`, `secvault`, `secreflex`, `secprivacy`. |
 | `AUTO_MIGRATE` | – | `false` | Wenn `true`, führt der API-Container beim Start automatisch ausstehende Datenbankmigrationen aus. |
-| `VAKT_DEMO` | – | `false` | Wenn `true`, werden beim ersten Start Demo-Daten eingespielt. Aktiviert zwei Testbenutzer: `admin@vakt.local / admin1234` und `analyst@vakt.local / analyst1234`. |
+| `VAKT_DEMO` | – | `false` | Wenn `true`, werden Beispieldaten eingespielt und der ephemere Demo-Flow aktiviert: jeder Login-Besucher bekommt eine eigene Demo-Org mit Random-Credentials, die für 4 Stunden gilt (siehe [Demo-Modus](wiki/demo-mode.md)). |
 | `VAKT_FRONTEND_URL` | – | `http://localhost:5173` | Öffentlich erreichbare URL des Frontends. Wird von Vakt Aware für Tracking-Pixel und Klick-Links in Kampagnen-E-Mails verwendet. In Produktion auf die echte Domain setzen. |
 
 **Beispiel:**
@@ -194,8 +194,8 @@ Der Master-Key wird zur AES-256-GCM-Verschlüsselung aller Secrets in der Datenb
 
 ### `VAKT_DEMO=true` nur für Test-Umgebungen
 
-Demo-Daten enthalten vorkonfigurierte Benutzer mit bekannten Passwörtern (`admin1234`). Diese Option **niemals** in Produktionsumgebungen mit echten Compliance-Daten aktivieren. Nach einer Demo-Installation für den produktiven Einsatz:
+Demo-Modus enthält Beispieldaten und einen öffentlich erreichbaren `/api/v1/demo/start`-Endpoint. Diese Option **niemals** in Produktionsumgebungen mit echten Compliance-Daten aktivieren. Nach einer Demo-Installation für den produktiven Einsatz:
 
 1. `VAKT_DEMO=false` setzen
-2. Demo-Benutzer löschen oder Passwörter ändern
+2. Ephemerale Demo-Orgs (Slug-Muster `demo-*`) löschen
 3. Anwendung neu starten

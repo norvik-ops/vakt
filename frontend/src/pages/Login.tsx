@@ -31,7 +31,10 @@ interface HealthResponse {
 
 interface DemoStartResponse {
   admin_email: string
+  admin_password: string
   analyst_email: string
+  analyst_password: string
+  expires_in: number
 }
 
 type DemoUser = { label: string; email: string; password: string }
@@ -58,14 +61,20 @@ export default function Login() {
       .catch(() => { /* SSO-Button bleibt ausgeblendet wenn Health-Check fehlschlägt */ })
   }, [])
 
-  // Auto-start ephemeral demo session when in demo mode
+  // Auto-start ephemeral demo session when in demo mode.
+  // Jeder Visitor bekommt eine eigene Demo-Org mit Random-Slug + Random-
+  // Passwörtern (16 hex chars). Die Klartext-Passwörter kommen einmalig
+  // aus /api/v1/demo/start zurück und werden hier zur Anzeige/Vorbelegung
+  // verwendet — keine hardcoded Defaults mehr (Min-Length-Validierung
+  // 10 Zeichen würde "admin1234" ohnehin ablehnen). Cleanup-Job löscht
+  // die Org nach 4 Stunden (siehe demo/cleanup.go).
   useEffect(() => {
     if (!isDemo) return
-    const passed = (location.state as { demoEmails?: { admin: string; analyst: string } } | null)?.demoEmails
+    const passed = (location.state as { demoCreds?: { admin: { email: string; password: string }; analyst: { email: string; password: string } } } | null)?.demoCreds
     if (passed) {
       setDemoUsers([
-        { label: 'Admin', email: passed.admin, password: 'admin1234' },
-        { label: 'Analyst', email: passed.analyst, password: 'analyst1234' },
+        { label: 'Admin', email: passed.admin.email, password: passed.admin.password },
+        { label: 'Analyst', email: passed.analyst.email, password: passed.analyst.password },
       ])
       return
     }
@@ -74,15 +83,14 @@ export default function Login() {
       .then((r) => r.json() as Promise<DemoStartResponse>)
       .then((d) => {
         setDemoUsers([
-          { label: 'Admin', email: d.admin_email, password: 'admin1234' },
-          { label: 'Analyst', email: d.analyst_email, password: 'analyst1234' },
+          { label: 'Admin', email: d.admin_email, password: d.admin_password },
+          { label: 'Analyst', email: d.analyst_email, password: d.analyst_password },
         ])
       })
       .catch(() => {
-        setDemoUsers([
-          { label: 'Admin', email: 'admin@vakt.local', password: 'admin1234' },
-          { label: 'Analyst', email: 'analyst@vakt.local', password: 'analyst1234' },
-        ])
+        // Demo-Start fehlgeschlagen — kein Fallback auf Pseudo-Credentials,
+        // weil die nirgends echt funktionieren würden. UI zeigt Fehler.
+        setDemoUsers(null)
       })
       .finally(() => setDemoStarting(false))
   }, [isDemo])

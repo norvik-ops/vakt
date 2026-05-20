@@ -71,13 +71,24 @@ Der Text wird oben in jeder Seite als Banner angezeigt.
 
 ---
 
-## Pro Visitor — Ephemere Demo
+## Pro Visitor — Ephemere Demo (Default-Verhalten)
 
-Ab Vakt v0.3.0 unterstützt der Demo-Modus **isolierte Demo-Instanzen pro Besucher**: jeder Login-Klick auf der Startseite legt eine eigene Organisation mit eigenen Credentials an, sodass mehrere Personen parallel testen können, ohne sich gegenseitig zu sehen.
+Im Demo-Modus (`VAKT_DEMO=true`) wird **bei jedem Aufruf der Login-Seite automatisch eine eigene Demo-Organisation** für den Besucher erzeugt. Mehrere Personen können parallel testen, ohne sich gegenseitig zu sehen.
 
-API-Endpoint: `POST /demo/start` (öffentlich, rate-limited). Response enthält Login-URL + temporäre Credentials.
+**Flow:**
+1. Frontend macht `POST /api/v1/demo/start` beim Mount der Login-Page.
+2. Backend legt eine Org mit Random-Slug (`demo-a3f2b1c9`) an, mit:
+   - Admin-User: `admin@demo-a3f2b1c9.demo`, **Random 16-hex-char Passwort**
+   - Analyst-User: `analyst@demo-a3f2b1c9.demo`, **Random 16-hex-char Passwort**
+3. Response: `{admin_email, admin_password, analyst_email, analyst_password, expires_in: 14400}`. Klartext-Passwörter kommen genau einmal über die Leitung — in der DB existieren nur Bcrypt-Hashes (Cost 12).
+4. Frontend befüllt die Login-Form damit, Visitor klickt sich rein.
+5. Cleanup-Job löscht die Org **nach 4 Stunden** (`internal/shared/demo/cleanup.go`).
 
-Diese Variante eignet sich für **vakt-Demos in Bewerbungs-/Vertriebsgesprächen** — der Interessent klickt, kriegt eine eigene Vakt-Instanz, kann zerstörungsfrei klicken, und nach 24h ist die Org weg.
+**Was Demo-Credentials NICHT sind:**
+- `admin@vakt.local / admin1234` — das war ein alter statischer Seed (9 Zeichen, < Mindestlänge 10)
+- Irgendein anderer hardcoded Default
+
+Die Credentials erscheinen **immer dynamisch** in der UI / im API-Response von `/demo/start`. Wer in Doku oder Tutorials feste Demo-Credentials nennt, dokumentiert einen Bug.
 
 ---
 
@@ -114,10 +125,11 @@ curl -X POST https://demo.deine-firma.de/api/v1/demo/start
 
 # Antwort:
 {
-  "org_id": "...",
-  "admin_email": "demo-7b3e@vakt.local",
-  "admin_password": "...",
-  "expires_at": "2026-05-21T12:00:00Z"
+  "admin_email":      "admin@demo-a3f2b1c9.demo",
+  "admin_password":   "<16 hex chars, einmalig>",
+  "analyst_email":    "analyst@demo-a3f2b1c9.demo",
+  "analyst_password": "<16 hex chars, einmalig>",
+  "expires_in":       14400
 }
 ```
 
