@@ -166,8 +166,17 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	})
 
 	// Liveness — always responds while the process is up.
+	// Enthält flags die das Frontend braucht (siehe useDemoMode, Login.tsx):
+	//   demo         — schaltet die Login-Page in den Ephemeral-Demo-Flow
+	//   sso_enabled  — blendet den SSO-Button ein/aus
+	//   version      — wird im Footer angezeigt
 	e.GET("/health", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"status":      "ok",
+			"version":     cfg.Version,
+			"demo":        cfg.DemoSeed,
+			"sso_enabled": cfg.CasdoorURL != "" && cfg.CasdoorClientID != "",
+		})
 	})
 
 	// security.txt — public, no auth, RFC 9116.
