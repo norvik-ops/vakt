@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 
 const EMPLOYEES = [
   { id: 'emp-1', first_name: 'Anna', last_name: 'Müller', email: 'a.mueller@example.com', department: 'Engineering', role: 'Backend-Entwicklerin', status: 'active', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' },

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 
 const FAKE_TOKEN = 'v2.local.testtoken'
 
