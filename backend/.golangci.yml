@@ -12,19 +12,17 @@ linters:
     - misspell
     - ineffassign
     - unused
+  settings:
+    errcheck:
+      check-type-assertions: true
+    staticcheck:
+      checks: ["all"]
+  exclusions:
+    rules:
+      - linters:
+          - errcheck
+        path: "_test\\.go"
 
 formatters:
   enable:
     - gofmt
-
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-  staticcheck:
-    checks: ["all"]
-
-issues:
-  rules:
-    - linters:
-        - errcheck
-      path: "_test\\.go"
