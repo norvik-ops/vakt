@@ -6,7 +6,7 @@ package dashboard
 import "time"
 
 // UserNotification is the JSON shape returned by the notifications endpoints.
-// The Module field identifies which SecHealth module originated the event so
+// The Module field identifies which Vakt module originated the event so
 // the frontend can route the user to the right detail view.
 type UserNotification struct {
 	ID        string    `json:"id"`

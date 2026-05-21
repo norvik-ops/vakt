@@ -74,8 +74,22 @@ func (l *Logger) Log(ctx context.Context, e Entry) error {
 	return nil
 }
 
-// sensitiveKeys lists key substrings that should be redacted from request bodies.
-var sensitiveKeys = []string{"password", "secret", "token", "key"}
+// sensitiveKeys lists key substrings (lowercased, substring-match) that
+// trigger redaction in JSON request bodies before they are persisted to the
+// audit log. S13-7 ergaenzte "recovery", "backup", "otp", "mfa" — alle MFA-
+// und Recovery-Code-Flows nutzen Body-Felder, die ohne diesen Eintrag im
+// Klartext im Audit-Log gelandet waeren (z.B. "recovery_code", "backup_code",
+// "otp", "totp_code", "mfa_token").
+var sensitiveKeys = []string{
+	"password",
+	"secret",
+	"token",
+	"key",
+	"recovery",
+	"backup",
+	"otp",
+	"mfa",
+}
 
 // redactBody removes sensitive fields from a raw JSON body and re-encodes it.
 // If the body is not valid JSON, a placeholder is returned.

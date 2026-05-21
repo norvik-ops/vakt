@@ -3,6 +3,8 @@ package config
 import (
 	"encoding/hex"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"strings"
 )
@@ -164,5 +166,83 @@ func Load() (*Config, error) {
 		}
 	}
 
+	// S13-1 SSRF-Guard fuer VAKT_AI_BASE_URL.
+	// Nur wenn AI aktiviert ist — disabled darf alles bleiben.
+	if cfg.AIProvider != "" && cfg.AIProvider != "disabled" {
+		if err := validateAIBaseURL(cfg.AIBaseURL); err != nil {
+			return nil, fmt.Errorf("VAKT_AI_BASE_URL rejected: %w", err)
+		}
+	}
+
 	return cfg, nil
+}
+
+// validateAIBaseURL lehnt URLs ab, die auf interne Cloud-Metadata-Endpunkte
+// (169.254.169.254 — AWS/GCP/Azure IMDS), Loopback-Adressen oder
+// link-local Bereiche zeigen, wenn AI-Provider aktiviert ist. Der Default
+// "http://ollama:11434/v1" bleibt erlaubt: der Hostname "ollama" wird
+// in einem Container-Netz von Docker/K8s zu einer RFC1918-Adresse
+// aufgeloest, das Allowlist-Exception erlaubt diese explizit.
+//
+// Eingaberegeln:
+//   - Schema muss http oder https sein.
+//   - Hostname darf KEIN bare IP aus 127.0.0.0/8, 169.254.0.0/16, ::1, fe80::/10 sein.
+//   - Hostname "localhost" wird abgelehnt.
+//   - Service-Discovery-Hostnames (ollama, ai-llm, llm-proxy) sind explizit
+//     erlaubt — sie loesen im Container-Netz typischerweise zu RFC1918 auf.
+//   - Andere Hostnamen + Public-IPs werden durchgelassen (Cloud-LLMs wie
+//     api.openai.com, api.mistral.ai etc.).
+func validateAIBaseURL(raw string) error {
+	if raw == "" {
+		return fmt.Errorf("empty when AI provider is enabled")
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("not a valid URL: %w", err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("scheme must be http or https (got %q)", u.Scheme)
+	}
+	host := u.Hostname()
+	if host == "" {
+		return fmt.Errorf("missing host")
+	}
+
+	// Allowlist: Service-Discovery-Namen, die in Container-Netzen zu
+	// internen Adressen aufloesen sollen. Bewusst eng gehalten.
+	allowedServiceNames := map[string]bool{
+		"ollama":    true,
+		"ai-llm":    true,
+		"llm-proxy": true,
+		"lm-studio": true,
+	}
+	if allowedServiceNames[strings.ToLower(host)] {
+		return nil
+	}
+
+	// localhost ist immer ein Konfig-Fehler: das API-Container-Image kann
+	// localhost nicht zum Host-Loopback aufloesen.
+	if strings.EqualFold(host, "localhost") {
+		return fmt.Errorf("hostname \"localhost\" not allowed — use the docker service name (e.g. \"ollama\") or a public DNS name")
+	}
+
+	// Wenn der Host eine bare IP ist, gegen Block-Liste pruefen.
+	if ip := net.ParseIP(host); ip != nil {
+		if isBlockedIP(ip) {
+			return fmt.Errorf("IP address %s is blocked (loopback, link-local, or cloud-metadata range) — set VAKT_AI_BASE_URL to a service name or public DNS instead", host)
+		}
+	}
+
+	return nil
+}
+
+// isBlockedIP gibt true zurueck wenn die IP zu einem Bereich gehoert, der
+// nie ein legitimes AI-Backend sein kann (IMDS, Loopback, Link-Local).
+func isBlockedIP(ip net.IP) bool {
+	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return true
+	}
+	// AWS/GCP/Azure Instance Metadata Service.
+	imds := net.IPv4(169, 254, 169, 254)
+	return ip.Equal(imds)
 }

@@ -7,6 +7,59 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Sprint 13 — Reife-Sanierung Welle 2 abgeschlossen (Tag-Kandidat v0.7.0)
+
+Befunde aus der zweiten Elite-Review (Mai 2026, archiviert unter `docs/reviews/2026-05-elite-review/`, Verify-Pass `docs/reviews/2026-05-bericht-verify.md`). 28/29 P0-Items erledigt; ein Bulk-Migration-Item (`useFormatDate`-Roll-out) verschoben in Sprint 16 (S16-10).
+
+#### Sicherheit
+
+- **SSRF-Guard für `VAKT_AI_BASE_URL`** — neue URL-Validierung beim Startup blockt IMDS (169.254.169.254), Loopback (127.0.0.0/8, ::1), Link-Local (169.254.x, fe80::/10) und `localhost` als Hostname, wenn `VAKT_AI_PROVIDER != "disabled"`. Allowlist für Container-Service-Discovery (`ollama`, `ai-llm`, `llm-proxy`, `lm-studio`) + alle Public-DNS-Hostnames. 22 Testfälle in `backend/internal/config/ai_base_url_test.go`.
+- **LemonSqueezy Webhook-Replay-Schutz** — neue Migration `123_lemonsqueezy_webhook_events.{up,down}.sql` deduped Webhooks auf sha256(body). Doppelter Body → 200 OK ohne erneute Verarbeitung. Vorher konnte ein wiederholter `subscription_created`-Event prinzipiell mehrfach E-Mails / License-Operationen triggern.
+- **LemonSqueezy Startup-Warning** — `NewHandler` logt `Warn` wenn `VAKT_LS_WEBHOOK_SECRET=""`; ohne Secret weist jede Signaturprüfung den Request ab.
+- **bcrypt Cost-Upgrade-on-Login** — Login-Pfad prüft `bcrypt.Cost(hash)` und re-hasht transparent auf cost 12, wenn ein Legacy-Wert kleiner war. Update ist Best-Effort (Fehler nur Warn-Log), Login bleibt funktional.
+- **Audit-Redaction erweitert** — `sensitiveKeys` in `audit/audit.go` enthält jetzt `recovery`, `backup`, `otp`, `mfa` zusätzlich zu `password`, `secret`, `token`, `key`. Felder wie `recovery_code` / `backup_code` / `totp_code` landen nicht mehr im Klartext im Audit-Log.
+- **Trivy `ignore-unfixed: false`** im CI-Workflow (`backend` + `frontend` Scans). Unfixed-Akzeptanzen wandern in `.trivyignore` mit Begründung + Re-Check-Datum (Template enthalten).
+- **gitleaks Per-Secret-Allowlist** — `.gitleaks.toml` nutzt jetzt `regexes` für konkrete Test-Konstanten (CI-Test-Hex, `admin1234demo`, `analyst1234demo`) statt pauschaler Pfad-Allowlist. Pfad-Liste auf wenige kontrollierte Dummy-Files reduziert (`.github/workflows/*.yml` und `docs/`, `Makefile` rausgeflogen).
+- **Helm-Defaults verschärft** — `postgresql.auth.password` darf nicht mehr `"changeme"` sein UND muss ≥ 16 Zeichen lang sein (Honeypot-Default `MUST_BE_OVERRIDDEN` + `fail`-Hook in `_helpers.tpl`). `redis.auth.enabled` default `true` (vorher `false`). Siehe [UPGRADE.md v0.7.0](docs/UPGRADE.md) für Migrations-Hinweise.
+
+#### Rebrand-Cleanup End-to-End
+
+- **`helm/sechealth/` → `helm/vakt/`** — Verzeichnis umbenannt; alle 70 template-namespace-Definitionen (`define "sechealth.fullname"`, …) zu `vakt.*` migriert. Externe Konsumenten von `helm install ./helm/sechealth` müssen den Pfad anpassen — siehe UPGRADE.md.
+- **`backend/cmd/sechealth/` entfernt** — legacy CLI-Binary, nicht in Makefile/Dockerfile referenziert, war Naming-Drift nach Rebrand.
+- **`website/README.md`, `integrations/github-action/action.yml`, `integrations/gitlab-template.yml`** rebranded SecHealth → Vakt.
+- **Frontend-Banner-Links** (`VersionBanner.tsx`, `TrustPage.tsx`) zeigen jetzt auf `github.com/norvik-ops/vatk` (Public Mirror).
+- **`CLAUDE.md` Repo-Tree** aktualisiert (`sechealth/` → `vakt-app/`, `helm/sechealth/` → `helm/vakt/`).
+- **`backend/cmd/admin/`** CLI `Use`-String + Beispiel-Outputs auf `vakt-admin` umgestellt.
+- **Codekommentare + Default-Werte** in `secpulse/handler.go` (PDF-Dateiname), `secvitals/policy_acceptance.go` (Default-From-Adresse), `secvault/git_scanner.go` (tmp-Dir-Prefix), `shared/notify`, `shared/dashboard/notifications.go`, `setup/handler_test.go`, `cmd/seed/main.go`, `frontend/src/hooks/useDashboard.ts`, `pkg/sdk/nodejs/{index.ts,package.json}` von `sechealth`/`SecHealth` auf `vakt`/`Vakt` umgestellt.
+- **`docker-compose.demo.yml`** Header rebranded; statische Demo-Credentials-Kommentare entfernt (irreführend nach v0.6.2-Ephemeral-Refactor, Memory-Violation).
+- **`.gitignore`** legacy-Patterns für gelöschtes Binary entfernt.
+
+Bewusst belassen (Memory `project_rebrand` + ADR-0004): DB-Schema-Präfixe (`vb_`, `ck_`, `so_`, …), Docker-Image-`LEGACY_PREFIX`-Aliase (`ghcr.io/matharnica/sechealth/*`) für Watchtower-Backward-Compat, ADR-Historien-Texte, Memory-Dateien, Operator-CRD-Name `SecHealthSecret` (Kubernetes-API-Breaking-Change, separate Welle).
+
+#### Stabilität
+
+- **Silent SQL-Errors in `secvitals`** — alle 14 Stellen mit `_ = s.db.QueryRow(...).Scan(...)` durch sichtbare `err`-Pfade ersetzt. Neuer Helper `fetchOrgName(ctx, db, orgID)` in `secvitals/orgname.go` mit Warn-Log statt stillem Drop. Composite-Queries (`service_frameworks` Milestone-Dedup, `service_reporting` 30-Tage-Counter, `handler_boardreport` Score-History + Incidents-30d) loggen jetzt explizit; Milestone-Dedup bricht bei DB-Fehler defensiv ab statt Doppelversand.
+
+#### PRD & Doku-Wahrheit
+
+- **PRD aktualisiert** (`docs/prd.md`): Jira-FR-VB06 entfernt (v0.5.2-Realität), Success-Metric "first paying managed-cloud customer" → ADR-0008-konform formuliert ("First 10 self-hosted Pro customers"), Setup-Zeit "< 3 min" → "≤ 5 min Plattform + 3–30 min Ollama-Pull". MSP-Tertiary-Audience neu beschrieben (per-customer-instance, kein zentrales Portal). Epic E16 "MSP Multi-tenancy" gestrichen.
+- **`CONTRIBUTING.md`** neu — Branch-/Commit-Stil, Test-Erwartung gemäß ADR-0012 (kein 80%-Quoten-Diktat), ADR-Prozess, PR-Workflow, Pre-Release-Smoke-Test gemäß ADR-0017, Security-Disclosure-Adresse, explizite "NICHT-Annahme"-Liste (MSP-Portal, Phone-Home, Cloud-SaaS-Integrationen).
+- **`.github/ISSUE_TEMPLATE/{bug,feature,security}.yml`** + **`.github/PULL_REQUEST_TEMPLATE.md`** + **`CODEOWNERS`** neu.
+- **`frontend/README.md`** komplett neu — Stack, Modul-Struktur, Dev-Befehle, wichtige Hooks/Patterns, Frontend↔Backend-Vertrag.
+- **CHANGELOG-Fragment-Konsolidierung** — `docs/CHANGELOG-{sprint3,sprint4,sprint5,launch-readiness,security-wave-may26,session-2026-05-20}.md` nach `docs/history/` verschoben mit Index-README. Root-`CHANGELOG.md` bleibt Single-Source-of-Truth.
+- **`CLAUDE.md`** 80%-Coverage-Satz zu ADR-0012 (risikobasiert statt Quote) konsistent gemacht.
+
+#### Frontend-Quick-Polish
+
+- **Demo-Login-Fail-Toast** (`Login.tsx`) — `/api/v1/demo/start`-Fehler → sichtbarer Error-Toast statt stillem UI-Zerfall. i18n-Schlüssel `auth.demoUnavailable` in allen 4 Locales.
+- **`useFormatDate`-Hook** (`shared/hooks/useFormatDate.ts`) liefert `formatDate`, `formatDateTime`, `formatTime`, `formatRelative` für aktive i18n-Locale (BCP47-Mapping `de/en/fr/nl`). Demo-Migration in `AdminSecurityPage` + `SecVitalsOverviewPage`. Bulk-Migration der verbleibenden ~60 Treffer in Sprint 16 (S16-10).
+- **Hardcoded deutsche Microcopy** `"Demo wird vorbereitet…"` → i18n-Schlüssel `auth.demoPreparing` in allen 4 Locales.
+- **`useErrorMessage`-Hook** (`shared/hooks/useErrorMessage.ts`) — i18n-bewusster Wrapper um `humanizeError`. Bevorzugt `errors.<CODE>`-Lookup über die Locales, fällt auf bestehende Substring-Map zurück. Locale-Keys für `AUTH_INVALID_CREDENTIALS`, `AUTH_BAD_REQUEST`, `AUTH_VALIDATION_ERROR`, `AUTH_INVALID_STATE`, `AUTH_TOKEN_REVOKED`, `AUTH_OIDC_NOT_CONFIGURED`, `AUTH_OIDC_FAILED`, `ACCOUNT_LOCKED`, `RATE_LIMITED`, `GENERIC` in `de/en/fr/nl`.
+
+### Geändert
+
+- **[ADR-0018](docs/adr/0018-goroutine-lifecycle-und-panic-eskalation.md)** (Accepted) — Goroutine-Lifecycle (Parent-Context-Pflicht) und Panic-Eskalation via `safego.Run`. Pflicht-Pattern für alle `backend/internal/`-Goroutinen ab Sprint-14-Migration; golangci-lint-Regel blockt neue Verstöße.
+
 ### Behoben
 
 - **`/health` enthält jetzt `demo`, `sso_enabled`, `version`** — Frontend (`useDemoMode`) las diese Felder, Backend lieferte sie nicht. Effekt: `isDemo` war auf `secdemo.norvikops.de` immer `false`, die Demo-Credentials-UI wurde nie eingeblendet.

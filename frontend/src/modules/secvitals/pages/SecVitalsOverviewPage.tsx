@@ -25,14 +25,17 @@ import { ProGate } from '../../../shared/components/ProGate'
 import { cn } from '../../../lib/utils'
 import { ExpiringEvidenceWidget } from '../components/ExpiringEvidenceWidget'
 import { AIAdvisor } from '../components/AIAdvisor'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 // ── Item 59: Score Trend Chart ────────────────────────────────────────────────
 function ScoreTrendChart({ data }: { data: Array<{ date: string; score: number }> }) {
+  // S13-27: nutzt aktive Locale statt hardcoded 'de-DE'.
+  const { formatDate } = useFormatDate()
   if (data.length < 2) return null
 
   const formatted = data.map((d) => ({
     ...d,
-    label: new Date(d.date).toLocaleDateString('de-DE', { month: 'short', day: 'numeric' }),
+    label: formatDate(d.date, { month: 'short', day: 'numeric' }),
   }))
 
   return (

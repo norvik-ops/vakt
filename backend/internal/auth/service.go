@@ -213,6 +213,31 @@ func (s *Service) Login(ctx context.Context, email, password, deviceHint string)
 		return nil, fmt.Errorf("invalid credentials")
 	}
 
+	// S13-6 Cost-Upgrade-on-Login: ueberprueft den Cost-Faktor des gespeicherten
+	// Hashes. Wenn er unter dem aktuellen Pflicht-Cost (12) liegt, re-hashen wir
+	// das gerade verifizierte Klartext-Passwort und schreiben den neuen Hash
+	// zurueck. So bekommen Legacy-User (z.B. aus Tests mit MinCost) ohne
+	// Passwort-Reset einen aktuellen Hash. Fehler beim Re-Hash brechen den
+	// Login NICHT ab — nur Warn-Log, der Cost-Upgrade-Versuch ist Best-Effort.
+	if cost, costErr := bcrypt.Cost([]byte(passwordHash)); costErr == nil && cost < 12 {
+		if newHash, rehashErr := bcrypt.GenerateFromPassword([]byte(password), 12); rehashErr == nil {
+			if _, updErr := s.db.Exec(ctx,
+				`UPDATE users SET password_hash = $1 WHERE id = $2::uuid`,
+				string(newHash), userID,
+			); updErr != nil {
+				log.Warn().Err(updErr).Str("user_id", userID).
+					Int("old_cost", cost).Msg("bcrypt cost-upgrade: DB update failed")
+			} else {
+				log.Info().Str("user_id", userID).
+					Int("old_cost", cost).Int("new_cost", 12).
+					Msg("bcrypt cost-upgrade applied on login")
+			}
+		} else {
+			log.Warn().Err(rehashErr).Str("user_id", userID).
+				Msg("bcrypt cost-upgrade: GenerateFromPassword failed")
+		}
+	}
+
 	// Fetch the user's role in their primary (first-joined) org.
 	var orgID, roleName string
 	err = s.db.QueryRow(ctx, `

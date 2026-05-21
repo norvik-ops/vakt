@@ -16,7 +16,7 @@ func TestSlugify(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"SecHealth Dev", "sechealth-dev"},
+		{"Vakt Dev", "vakt-dev"},
 		{"Acme Corp", "acme-corp"},
 		{"My--Company", "my-company"},
 		{"  leading ", "leading"},

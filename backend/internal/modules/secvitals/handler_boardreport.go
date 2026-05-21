@@ -5,11 +5,13 @@ package secvitals
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
@@ -57,7 +59,7 @@ func (s *Service) GetBoardReportData(ctx context.Context, orgID string) (*BoardR
 
 	// 1. Org name (soft-fail — never blocks the report).
 	g.Go(func() error {
-		_ = s.db.QueryRow(gctx, `SELECT name FROM organizations WHERE id=$1::uuid`, orgID).Scan(&d.OrgName)
+		d.OrgName = fetchOrgName(gctx, s.db, orgID)
 		if d.OrgName == "" {
 			d.OrgName = orgID
 		}
@@ -104,12 +106,16 @@ func (s *Service) GetBoardReportData(ctx context.Context, orgID string) (*BoardR
 	// 3. Previous score from score_history (most recent snapshot before today).
 	g.Go(func() error {
 		var prevScore int
-		_ = s.db.QueryRow(gctx, `
+		if err := s.db.QueryRow(gctx, `
 			SELECT score FROM ck_score_history
 			WHERE org_id = $1::uuid AND recorded_at < NOW()::date
 			ORDER BY recorded_at DESC
 			LIMIT 1
-		`, orgID).Scan(&prevScore)
+		`, orgID).Scan(&prevScore); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			// S13-18: ErrNoRows ist erwartet (frischer Org ohne History) — alles
+			// andere muss sichtbar sein.
+			log.Warn().Err(err).Str("org_id", orgID).Msg("board-report: previous score lookup failed")
+		}
 		d.ScorePrevious = prevScore
 		return nil
 	})
@@ -158,10 +164,14 @@ func (s *Service) GetBoardReportData(ctx context.Context, orgID string) (*BoardR
 	// 6. Incidents in the last 30 days.
 	g.Go(func() error {
 		since := time.Now().UTC().Add(-30 * 24 * time.Hour)
-		_ = s.db.QueryRow(gctx, `
+		if err := s.db.QueryRow(gctx, `
 			SELECT COUNT(*)::int FROM ck_incidents
 			WHERE org_id = $1::uuid AND created_at >= $2
-		`, orgID, since).Scan(&d.RecentIncidents)
+		`, orgID, since).Scan(&d.RecentIncidents); err != nil {
+			// S13-18: kein hard-fail — Report soll auch ohne diesen Counter
+			// ausliefern. Aber Sichtbarkeit im Log.
+			log.Warn().Err(err).Str("org_id", orgID).Msg("board-report: incidents-30d counter failed")
+		}
 		return nil
 	})
 

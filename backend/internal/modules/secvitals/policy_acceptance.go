@@ -80,7 +80,7 @@ type policyAcceptanceSMTPConfig struct {
 func sendAcceptanceEmail(cfg policyAcceptanceSMTPConfig, to, subject, body string) error {
 	from := cfg.From
 	if from == "" {
-		from = "compliance@sechealth.local"
+		from = "compliance@vakt.local"
 	}
 
 	var msg strings.Builder

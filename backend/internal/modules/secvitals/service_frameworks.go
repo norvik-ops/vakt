@@ -500,13 +500,20 @@ func (s *Service) checkFrameworkMilestone(ctx context.Context, orgID, frameworkI
 		}
 		dedupeKey := fmt.Sprintf("%s:%d", frameworkID, threshold)
 		var already int
-		_ = s.db.QueryRow(ctx,
+		if err := s.db.QueryRow(ctx,
 			`SELECT COUNT(*) FROM user_notifications
 			 WHERE org_id = $1::uuid
 			   AND type   = 'framework_milestone'
 			   AND module = $2`,
 			orgID, dedupeKey,
-		).Scan(&already)
+		).Scan(&already); err != nil {
+			// S13-18: bei Fehler defensiv abbrechen — sonst wuerden wir die
+			// Milestone-Notification potenziell doppelt versenden.
+			log.Warn().Err(err).
+				Str("framework_id", frameworkID).Int("threshold", threshold).
+				Msg("milestone dedupe lookup failed — skipping notification")
+			continue
+		}
 		if already > 0 {
 			continue
 		}

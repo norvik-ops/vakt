@@ -23,7 +23,7 @@ func (s *Service) ExportFrameworkPDF(ctx context.Context, orgID, frameworkID str
 		return nil, "", fmt.Errorf("get gap analysis: %w", err)
 	}
 	var orgName string
-	_ = s.db.QueryRow(ctx, `SELECT name FROM organizations WHERE id=$1::uuid`, orgID).Scan(&orgName)
+	orgName = fetchOrgName(ctx, s.db, orgID)
 
 	pdfBytes, err := GenerateFrameworkPDF(report, gaps, orgName)
 	if err != nil {
@@ -45,7 +45,7 @@ func (s *Service) ExportSoAPDF(ctx context.Context, orgID, frameworkID string) (
 		return nil, "", fmt.Errorf("list controls for soa: %w", err)
 	}
 	var orgName string
-	_ = s.db.QueryRow(ctx, `SELECT name FROM organizations WHERE id=$1::uuid`, orgID).Scan(&orgName)
+	orgName = fetchOrgName(ctx, s.db, orgID)
 
 	pdfBytes, err := GenerateSoAPDF(rows, fw.Name, orgName, time.Now())
 	if err != nil {
@@ -97,7 +97,7 @@ func (s *Service) ExportTISAXReportPDF(ctx context.Context, orgID, frameworkID, 
 	}
 
 	var orgName string
-	_ = s.db.QueryRow(ctx, `SELECT name FROM organizations WHERE id=$1::uuid`, orgID).Scan(&orgName)
+	orgName = fetchOrgName(ctx, s.db, orgID)
 	if orgName == "" {
 		orgName = orgID
 	}
@@ -241,7 +241,7 @@ func (s *Service) ExportDORAPDF(ctx context.Context, orgID string) ([]byte, erro
 		return nil, err
 	}
 	var orgName string
-	_ = s.db.QueryRow(ctx, `SELECT name FROM organizations WHERE id=$1::uuid`, orgID).Scan(&orgName)
+	orgName = fetchOrgName(ctx, s.db, orgID)
 	if orgName == "" {
 		orgName = orgID
 	}
@@ -500,7 +500,7 @@ func (s *Service) GetExecutiveSummaryData(ctx context.Context, orgID string) (*E
 	d := &ExecutiveSummaryData{GeneratedAt: time.Now().UTC()}
 
 	// Org name (soft-fail)
-	_ = s.db.QueryRow(ctx, `SELECT name FROM organizations WHERE id=$1::uuid`, orgID).Scan(&d.OrgName)
+	d.OrgName = fetchOrgName(ctx, s.db, orgID)
 	if d.OrgName == "" {
 		d.OrgName = orgID
 	}
@@ -568,22 +568,30 @@ func (s *Service) GetExecutiveSummaryData(ctx context.Context, orgID string) (*E
 		_ = riskRows.Err()
 	}
 
-	// Last 30 days activity
+	// Last 30 days activity — soft-fail: einzelne Counter-Abfragen sind nicht
+	// kritisch fuer die Executive-Summary, aber Fehler MUESSEN sichtbar sein
+	// (S13-18). Bei Fehler bleibt der Counter 0 und wir loggen die Ursache.
 	since := time.Now().UTC().Add(-30 * 24 * time.Hour)
-	_ = s.db.QueryRow(ctx, `
+	if err := s.db.QueryRow(ctx, `
 		SELECT COUNT(*)::int FROM ck_controls
 		WHERE org_id=$1::uuid AND manual_status='implemented' AND updated_at >= $2
-	`, orgID, since).Scan(&d.Last30DaysActivity.ClosedControls)
+	`, orgID, since).Scan(&d.Last30DaysActivity.ClosedControls); err != nil {
+		log.Warn().Err(err).Str("org_id", orgID).Msg("executive-summary: ClosedControls counter failed")
+	}
 
-	_ = s.db.QueryRow(ctx, `
+	if err := s.db.QueryRow(ctx, `
 		SELECT COUNT(*)::int FROM ck_incidents
 		WHERE org_id=$1::uuid AND created_at >= $2
-	`, orgID, since).Scan(&d.Last30DaysActivity.NewIncidents)
+	`, orgID, since).Scan(&d.Last30DaysActivity.NewIncidents); err != nil {
+		log.Warn().Err(err).Str("org_id", orgID).Msg("executive-summary: NewIncidents counter failed")
+	}
 
-	_ = s.db.QueryRow(ctx, `
+	if err := s.db.QueryRow(ctx, `
 		SELECT COUNT(*)::int FROM vb_findings
 		WHERE org_id=$1::uuid AND status='resolved' AND updated_at >= $2
-	`, orgID, since).Scan(&d.Last30DaysActivity.ResolvedFindings)
+	`, orgID, since).Scan(&d.Last30DaysActivity.ResolvedFindings); err != nil {
+		log.Warn().Err(err).Str("org_id", orgID).Msg("executive-summary: ResolvedFindings counter failed")
+	}
 
 	return d, nil
 }

@@ -56,7 +56,7 @@ func (s *Service) GeneratePolicyDraft(ctx context.Context, orgID string, in Gene
 	// Resolve org name if not provided.
 	orgName := in.OrgName
 	if orgName == "" {
-		_ = s.db.QueryRow(ctx, `SELECT name FROM organizations WHERE id = $1::uuid`, orgID).Scan(&orgName)
+		orgName = fetchOrgName(ctx, s.db, orgID)
 		if orgName == "" {
 			orgName = "Ihr Unternehmen"
 		}

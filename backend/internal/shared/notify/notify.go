@@ -1,4 +1,4 @@
-// Package notify provides two notification paths used by all SecHealth modules.
+// Package notify provides two notification paths used by all Vakt modules.
 //
 // The Service type persists a notification to the notifications table and then
 // enqueues an Asynq delivery task so a worker can fan it out over Slack,

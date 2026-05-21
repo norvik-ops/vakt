@@ -1,11 +1,11 @@
-name: 'SecHealth Secrets'
-description: 'Inject SecHealth secrets as masked environment variables'
+name: 'Vakt Secrets'
+description: 'Inject Vakt Vault secrets as masked environment variables'
 inputs:
   url:
-    description: 'SecHealth instance URL'
+    description: 'Vakt instance URL'
     required: true
   token:
-    description: 'SecHealth API token (sk_...)'
+    description: 'Vakt API token (sk_...)'
     required: true
   project:
     description: 'Project name or ID'

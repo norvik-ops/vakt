@@ -918,6 +918,8 @@
     "demoCredentials": "Demo-Zugangsdaten",
     "demoHint": "Einfach auf einen Account klicken — das Formular wird automatisch ausgefüllt.",
     "demoDisclaimer": "Dies ist eine öffentliche Demo-Instanz. Bitte keine echten oder sensiblen Daten eingeben. Vakt übernimmt keine Haftung für eingegebene Daten.",
+    "demoPreparing": "Demo wird vorbereitet…",
+    "demoUnavailable": "Demo ist gerade nicht verfügbar — bitte in einer Minute erneut versuchen.",
     "forgotPasswordTitle": "Passwort zurücksetzen",
     "forgotPasswordDesc": "Geben Sie Ihre E-Mail-Adresse ein. Wir senden Ihnen einen Link zum Zurücksetzen Ihres Passworts.",
     "forgotPasswordEmailLabel": "E-Mail-Adresse",
@@ -1117,7 +1119,17 @@
     "loadFailed": "Fehler beim Laden",
     "networkError": "Netzwerkfehler",
     "unauthorized": "Nicht autorisiert",
-    "retry": "Erneut versuchen"
+    "retry": "Erneut versuchen",
+    "GENERIC": "Ein Fehler ist aufgetreten.",
+    "AUTH_INVALID_CREDENTIALS": "E-Mail oder Passwort ist falsch.",
+    "AUTH_BAD_REQUEST": "Die Anfrage konnte nicht verarbeitet werden.",
+    "AUTH_VALIDATION_ERROR": "Bitte überprüfe deine Eingaben.",
+    "AUTH_INVALID_STATE": "Sitzungs-Token abgelaufen. Bitte erneut anmelden.",
+    "AUTH_TOKEN_REVOKED": "Deine Sitzung wurde beendet. Bitte melde dich erneut an.",
+    "AUTH_OIDC_NOT_CONFIGURED": "SSO ist auf dieser Instanz nicht aktiviert.",
+    "AUTH_OIDC_FAILED": "SSO-Login fehlgeschlagen. Bitte später erneut versuchen.",
+    "ACCOUNT_LOCKED": "Konto vorübergehend gesperrt. Bitte warte 15 Minuten.",
+    "RATE_LIMITED": "Zu viele Anfragen. Bitte einen Moment warten."
   },
   "onboarding": {
     "title": "Erste Schritte",

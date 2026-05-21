@@ -7,6 +7,7 @@ import { Button } from '../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Skeleton } from '../components/ui/skeleton'
 import { useToast } from '../shared/hooks/useToast'
+import { useFormatDate } from '../shared/hooks/useFormatDate'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,19 +32,12 @@ interface SecurityEventsData {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
+// S13-27: vorher hardcoded 'de-DE'. Jetzt nutzt formatDateTime den `useFormatDate`-Hook
+// und respektiert die aktive i18n-Locale.
 
 function useFormatTimeRelative() {
   const { t } = useTranslation()
+  const { formatDateTime } = useFormatDate()
   return function formatTimeRelative(iso: string) {
     const diff = Date.now() - new Date(iso).getTime()
     const mins = Math.floor(diff / 60_000)
@@ -51,7 +45,10 @@ function useFormatTimeRelative() {
     if (mins < 60) return t('admin.security.minutesAgo', { count: mins })
     const hrs = Math.floor(mins / 60)
     if (hrs < 24) return t('admin.security.hoursAgo', { count: hrs })
-    return formatDateTime(iso)
+    return formatDateTime(iso, {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    })
   }
 }
 
@@ -109,6 +106,7 @@ function PageSkeleton() {
 export default function AdminSecurityPage() {
   const { t } = useTranslation()
   const formatTimeRelative = useFormatTimeRelative()
+  const { formatDateTime } = useFormatDate()
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -211,7 +209,10 @@ export default function AdminSecurityPage() {
                               {formatTimeRelative(acc.locked_at)}
                             </td>
                             <td className="px-4 py-3 text-secondary">
-                              {formatDateTime(acc.locked_until)}
+                              {formatDateTime(acc.locked_until, {
+                                day: '2-digit', month: '2-digit', year: 'numeric',
+                                hour: '2-digit', minute: '2-digit',
+                              })}
                             </td>
                             <td className="px-4 py-3 text-right">
                               <Button

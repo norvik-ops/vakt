@@ -1,22 +1,22 @@
-# SecHealth secrets injection for GitLab CI
+# Vakt Vault secrets injection for GitLab CI
 # Usage: add the following to your .gitlab-ci.yml
 #
 #   include:
-#     - remote: 'https://your-sechealth/ci/gitlab-template.yml'
+#     - remote: 'https://your-vakt-instance/ci/gitlab-template.yml'
 #
 # Required CI/CD variables:
-#   VAKT_URL   — base URL of your SecHealth instance (no trailing slash)
+#   VAKT_URL   — base URL of your Vakt instance (no trailing slash)
 #   VAKT_TOKEN — API token (sk_so_...)
 #   VAKT_PROJECT — project ID or slug
 #
 # Optional:
 #   VAKT_ENV   — environment name (default: prod)
 
-.sechealth-secrets:
+.vakt-secrets:
   before_script:
     - |
       _SS_ENV="${VAKT_ENV:-prod}"
-      echo "Fetching SecHealth secrets for project=${VAKT_PROJECT} env=${_SS_ENV}"
+      echo "Fetching Vakt Vault secrets for project=${VAKT_PROJECT} env=${_SS_ENV}"
 
       # Resolve environment ID
       _SS_ENV_ID=$(curl -sfH "Authorization: Bearer ${VAKT_TOKEN}" \

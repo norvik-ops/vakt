@@ -918,6 +918,8 @@
     "demoCredentials": "Demo-inloggegevens",
     "demoHint": "Klik op een account om het formulier automatisch in te vullen.",
     "demoDisclaimer": "Dit is een openbare demo-instantie. Voer geen echte of gevoelige gegevens in. Vakt aanvaardt geen aansprakelijkheid voor ingevoerde gegevens.",
+    "demoPreparing": "Demo wordt voorbereid…",
+    "demoUnavailable": "Demo is momenteel niet beschikbaar — probeer het over een minuut opnieuw.",
     "forgotPasswordTitle": "Wachtwoord opnieuw instellen",
     "forgotPasswordDesc": "Voer uw e-mailadres in. We sturen u een link om uw wachtwoord opnieuw in te stellen.",
     "forgotPasswordEmailLabel": "E-mailadres",
@@ -1117,7 +1119,17 @@
     "loadFailed": "Laden mislukt",
     "networkError": "Netwerkfout",
     "unauthorized": "Niet geautoriseerd",
-    "retry": "Opnieuw proberen"
+    "retry": "Opnieuw proberen",
+    "GENERIC": "Er is een fout opgetreden.",
+    "AUTH_INVALID_CREDENTIALS": "Ongeldige e-mail of wachtwoord.",
+    "AUTH_BAD_REQUEST": "Het verzoek kon niet worden verwerkt.",
+    "AUTH_VALIDATION_ERROR": "Controleer uw invoer.",
+    "AUTH_INVALID_STATE": "Sessietoken verlopen. Meld u opnieuw aan.",
+    "AUTH_TOKEN_REVOKED": "Uw sessie is beëindigd. Meld u opnieuw aan.",
+    "AUTH_OIDC_NOT_CONFIGURED": "SSO is niet ingeschakeld op deze instantie.",
+    "AUTH_OIDC_FAILED": "SSO-aanmelding mislukt. Probeer het later opnieuw.",
+    "ACCOUNT_LOCKED": "Account tijdelijk vergrendeld. Wacht 15 minuten.",
+    "RATE_LIMITED": "Te veel verzoeken. Wacht even."
   },
   "onboarding": {
     "title": "Aan de slag",

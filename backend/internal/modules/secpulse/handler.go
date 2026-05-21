@@ -501,7 +501,7 @@ func (h *Handler) DownloadReport(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "report not found or not ready"})
 	}
-	filename := fmt.Sprintf("sechealth-report-%s.pdf", reportID[:8])
+	filename := fmt.Sprintf("vakt-report-%s.pdf", reportID[:8])
 	if title != "" {
 		// sanitise title for filename
 		safe := strings.Map(func(r rune) rune {

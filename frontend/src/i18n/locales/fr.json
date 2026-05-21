@@ -918,6 +918,8 @@
     "demoCredentials": "Identifiants de démo",
     "demoHint": "Cliquez sur un compte pour remplir automatiquement le formulaire.",
     "demoDisclaimer": "Ceci est une instance de démo publique. Veuillez ne pas saisir de données réelles ou sensibles. Vakt décline toute responsabilité pour les données saisies.",
+    "demoPreparing": "Préparation de la démo…",
+    "demoUnavailable": "La démo est temporairement indisponible — veuillez réessayer dans une minute.",
     "forgotPasswordTitle": "Réinitialiser le mot de passe",
     "forgotPasswordDesc": "Saisissez votre adresse e-mail. Nous vous enverrons un lien pour réinitialiser votre mot de passe.",
     "forgotPasswordEmailLabel": "Adresse e-mail",
@@ -1117,7 +1119,17 @@
     "loadFailed": "Échec du chargement",
     "networkError": "Erreur réseau",
     "unauthorized": "Non autorisé",
-    "retry": "Réessayer"
+    "retry": "Réessayer",
+    "GENERIC": "Une erreur s'est produite.",
+    "AUTH_INVALID_CREDENTIALS": "Identifiants invalides.",
+    "AUTH_BAD_REQUEST": "La requête n'a pas pu être traitée.",
+    "AUTH_VALIDATION_ERROR": "Veuillez vérifier vos informations.",
+    "AUTH_INVALID_STATE": "Jeton de session expiré. Veuillez vous reconnecter.",
+    "AUTH_TOKEN_REVOKED": "Votre session a été terminée. Veuillez vous reconnecter.",
+    "AUTH_OIDC_NOT_CONFIGURED": "Le SSO n'est pas activé sur cette instance.",
+    "AUTH_OIDC_FAILED": "Échec de la connexion SSO. Veuillez réessayer plus tard.",
+    "ACCOUNT_LOCKED": "Compte temporairement verrouillé. Veuillez patienter 15 minutes.",
+    "RATE_LIMITED": "Trop de requêtes. Veuillez patienter un instant."
   },
   "onboarding": {
     "title": "Premiers pas",

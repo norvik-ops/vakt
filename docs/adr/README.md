@@ -29,6 +29,7 @@ Diese ADRs dokumentieren wichtige Architekturentscheidungen der Vakt-Plattform. 
 | [0015](0015-ephemere-demo-sessions.md) | Ephemere Demo-Sessions pro Visitor (4 h Lebensdauer, Random-Credentials) | Accepted |
 | [0016](0016-public-mirror-via-script.md) | Public Mirror per Script statt inline rsync im CI; Compile-Check als Gate | Accepted |
 | [0017](0017-api-contract-tests.md) | API-Contract-Tests gegen Backend ↔ Frontend Drift (OpenAPI durchsetzen) | Accepted |
+| [0018](0018-goroutine-lifecycle-und-panic-eskalation.md) | Goroutine-Lifecycle (Parent-Context-Pflicht) und Panic-Eskalation via `safego.Run` | Accepted |
 
 ## Wann eine neue ADR schreiben?
 

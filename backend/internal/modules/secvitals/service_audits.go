@@ -288,7 +288,7 @@ func (s *Service) ExportAuditPackage(ctx context.Context, orgID, frameworkID str
 
 	// 2. Load org name.
 	var orgName string
-	_ = s.db.QueryRow(ctx, `SELECT name FROM organizations WHERE id=$1::uuid`, orgID).Scan(&orgName)
+	orgName = fetchOrgName(ctx, s.db, orgID)
 	if orgName == "" {
 		orgName = orgID
 	}

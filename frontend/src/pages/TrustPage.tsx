@@ -310,7 +310,7 @@ export default function TrustPage() {
           <p>Zuletzt aktualisiert: {new Date(data.published_at).toLocaleDateString('de-DE')}</p>
           <p className="mt-1">
             Powered by{' '}
-            <a href="https://github.com/sechealth-app/sechealth" className="text-indigo-500 hover:underline" target="_blank" rel="noreferrer">
+            <a href="https://github.com/norvik-ops/vatk" className="text-indigo-500 hover:underline" target="_blank" rel="noreferrer">
               Vakt
             </a>
           </p>

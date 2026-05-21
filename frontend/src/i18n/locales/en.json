@@ -918,6 +918,8 @@
     "demoCredentials": "Demo Credentials",
     "demoHint": "Click on an account to auto-fill the form.",
     "demoDisclaimer": "This is a public demo instance. Please do not enter real or sensitive data. Vakt accepts no liability for data entered.",
+    "demoPreparing": "Preparing demo…",
+    "demoUnavailable": "Demo is currently unavailable — please try again in a minute.",
     "forgotPasswordTitle": "Reset Password",
     "forgotPasswordDesc": "Enter your email address. We will send you a link to reset your password.",
     "forgotPasswordEmailLabel": "Email Address",
@@ -1117,7 +1119,17 @@
     "loadFailed": "Failed to Load",
     "networkError": "Network Error",
     "unauthorized": "Unauthorized",
-    "retry": "Try Again"
+    "retry": "Try Again",
+    "GENERIC": "An error occurred.",
+    "AUTH_INVALID_CREDENTIALS": "Invalid email or password.",
+    "AUTH_BAD_REQUEST": "The request could not be processed.",
+    "AUTH_VALIDATION_ERROR": "Please check your input.",
+    "AUTH_INVALID_STATE": "Session token expired. Please sign in again.",
+    "AUTH_TOKEN_REVOKED": "Your session has ended. Please sign in again.",
+    "AUTH_OIDC_NOT_CONFIGURED": "SSO is not enabled on this instance.",
+    "AUTH_OIDC_FAILED": "SSO login failed. Please try again later.",
+    "ACCOUNT_LOCKED": "Account temporarily locked. Please wait 15 minutes.",
+    "RATE_LIMITED": "Too many requests. Please wait a moment."
   },
   "onboarding": {
     "title": "Getting Started",

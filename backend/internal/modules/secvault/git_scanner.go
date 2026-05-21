@@ -207,7 +207,7 @@ func RunGitScan(ctx context.Context, input TriggerGitScanInput) ([]ScanResult, e
 		return nil, fmt.Errorf("repo url validation failed in worker: %w", err)
 	}
 
-	tmpDir, err := os.MkdirTemp("", "sechealth-gitscan-*")
+	tmpDir, err := os.MkdirTemp("", "vakt-gitscan-*")
 	if err != nil {
 		return nil, fmt.Errorf("create temp dir: %w", err)
 	}

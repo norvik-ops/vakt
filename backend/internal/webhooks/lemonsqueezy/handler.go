@@ -44,7 +44,17 @@ type Handler struct {
 
 // NewHandler constructs a Handler.
 // privateKeyPEM is the PEM-encoded ECDSA private key used to sign license keys.
+//
+// Wenn webhookSecret leer ist, lehnt verifySignature jeden Request ab — der
+// Handler ist dann effektiv deaktiviert. Ein leeres Secret bei aktivem
+// LemonSqueezy-Modus ist ein Konfig-Fehler; siehe NewHandler-Warnung in den
+// Logs (S13-3).
 func NewHandler(webhookSecret, privateKeyPEM string, smtpCfg SMTPConfig) *Handler {
+	if webhookSecret == "" {
+		log.Warn().Msg("lemonsqueezy: VAKT_LS_WEBHOOK_SECRET is empty — " +
+			"webhook signature verification will reject every request. " +
+			"Set the secret or remove the LemonSqueezy registration to silence this warning.")
+	}
 	return &Handler{
 		webhookSecret: webhookSecret,
 		privateKeyPEM: privateKeyPEM,
@@ -104,6 +114,32 @@ func (h *Handler) Handle(c echo.Context) error {
 	}
 
 	ctx := c.Request().Context()
+
+	// S13-2 Replay-Schutz: LemonSqueezy retried bei Netzwerk-Hangs identische
+	// Bodies. Wir deduplizieren auf sha256(body) BEVOR Business-Logik laeuft.
+	// Bei Replay return 200 OK (LemonSqueezy soll nicht weiter retryen), ohne
+	// erneute Verarbeitung.
+	if h.db != nil {
+		sum := sha256.Sum256(body)
+		eventHash := hex.EncodeToString(sum[:])
+		tag, dedupErr := h.db.Exec(ctx,
+			`INSERT INTO lemonsqueezy_webhook_events (event_hash, event_name)
+			 VALUES ($1, $2) ON CONFLICT (event_hash) DO NOTHING`,
+			eventHash, event.Meta.EventName,
+		)
+		if dedupErr != nil {
+			// DB-Fehler: nicht silently durchrutschen lassen — 500 damit LS retried.
+			log.Error().Err(dedupErr).Str("event_hash", eventHash).
+				Msg("lemonsqueezy: dedup insert failed")
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "dedup persistence failed"})
+		}
+		if tag.RowsAffected() == 0 {
+			log.Info().Str("event_hash", eventHash).
+				Str("event_name", event.Meta.EventName).
+				Msg("lemonsqueezy: duplicate webhook detected — skipping replay")
+			return c.NoContent(http.StatusOK)
+		}
+	}
 
 	switch event.Meta.EventName {
 	case "subscription_created":
