@@ -8,7 +8,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
-	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/safego"
 )
 
 // SearchResult is a single cross-module search hit.
@@ -77,23 +78,24 @@ func (h *Handler) Search(c echo.Context) error {
 		wg  sync.WaitGroup
 	)
 
+	// ADR-0018: Cross-Module-Search-Fanout läuft über safego.Run mit dem
+	// Request-Context. Eine Panic in einem Source-Fetcher (z.B. fehlerhaftes
+	// SQL-Mapping) lässt den Search-Endpoint nicht crashen — der Panic-Hook
+	// loggt + tracet, die anderen Sources fertig.
 	for _, fn := range sources {
 		wg.Add(1)
-		go func(f fetcher) {
+		f := fn
+		safego.Run(ctx, "search.fanout.fetch", func(c context.Context) error {
 			defer wg.Done()
-			defer func() {
-				if r := recover(); r != nil {
-					log.Error().Interface("panic", r).Msg("search goroutine panic recovered")
-				}
-			}()
-			res := f(ctx, h.db, orgID, pattern, perSource)
+			res := f(c, h.db, orgID, pattern, perSource)
 			if len(res) == 0 {
-				return
+				return nil
 			}
 			mu.Lock()
 			all = append(all, res...)
 			mu.Unlock()
-		}(fn)
+			return nil
+		})
 	}
 	wg.Wait()
 

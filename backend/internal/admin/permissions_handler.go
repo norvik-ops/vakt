@@ -100,7 +100,7 @@ func (h *PermissionsHandler) GetPermissions(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"data": perms,
 	})
 }

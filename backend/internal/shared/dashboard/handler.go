@@ -76,7 +76,7 @@ func (h *Handler) GetScore(c echo.Context) error {
 	inp := h.svc.LoadScoreInputs(ctx, orgID, cfg)
 	score, components := ComputeScore(inp)
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"score":      score,
 		"components": components,
 	})

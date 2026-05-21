@@ -7,7 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/shared/auditlog"
+	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/pagination"
 )
 
@@ -25,7 +25,7 @@ func (h *Handler) BulkUpdateCAPAs(c echo.Context) error {
 		log.Error().Err(err).Msg("bulk update capas")
 		return errResp(c, http.StatusInternalServerError, "failed to bulk update capas", "CK_BULK_UPDATE_FAILED")
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID:        orgID(c),
 		UserID:       userID(c),
 		Action:       "bulk_update",
@@ -63,7 +63,7 @@ func (h *Handler) CreateCAPA(c echo.Context) error {
 		log.Error().Err(err).Msg("create capa")
 		return errResp(c, http.StatusInternalServerError, "failed to create capa", "CK_CREATE_CAPA_FAILED")
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID: orgID(c), UserID: userID(c), Action: "create",
 		ResourceType: "vakt-comply/capa", ResourceID: capa.ID, ResourceName: capa.Title,
 		IPAddress: c.RealIP(),
@@ -101,7 +101,7 @@ func (h *Handler) UpdateCAPA(c echo.Context) error {
 		log.Error().Err(err).Msg("update capa")
 		return errResp(c, http.StatusInternalServerError, "failed to update capa", "CK_UPDATE_CAPA_FAILED")
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID: orgID(c), UserID: userID(c), Action: "update",
 		ResourceType: "vakt-comply/capa", ResourceID: capa.ID, ResourceName: capa.Title,
 		IPAddress: c.RealIP(),
@@ -119,7 +119,7 @@ func (h *Handler) DeleteCAPA(c echo.Context) error {
 		log.Error().Err(err).Msg("delete capa")
 		return errResp(c, http.StatusInternalServerError, "failed to delete capa", "CK_DELETE_CAPA_FAILED")
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID: orgID(c), UserID: userID(c), Action: "delete",
 		ResourceType: "vakt-comply/capa", ResourceID: id,
 		IPAddress: c.RealIP(),

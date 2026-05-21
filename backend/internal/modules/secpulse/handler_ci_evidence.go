@@ -96,7 +96,7 @@ func (h *Handler) ReceiveCIEvidence(c echo.Context) error {
 	)
 
 	// Build collector_data JSON for full fidelity.
-	collectorData := map[string]interface{}{
+	collectorData := map[string]any{
 		"pipeline":      input.Pipeline,
 		"repo":          input.Repo,
 		"branch":        input.Branch,

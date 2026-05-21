@@ -6,7 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/shared/auditlog"
+	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/pagination"
 )
 
@@ -83,7 +83,7 @@ func (h *Handler) CreateRisk(c echo.Context) error {
 		log.Error().Err(err).Msg("create risk")
 		return errResp(c, http.StatusInternalServerError, "failed to create risk", "CK_CREATE_RISK_FAILED")
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID:        orgID(c),
 		UserID:       userID(c),
 		Action:       "create",

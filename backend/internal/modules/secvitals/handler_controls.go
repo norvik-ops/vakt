@@ -8,7 +8,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/shared/auditlog"
+	"github.com/matharnica/vakt/internal/shared/audit"
 )
 
 // BulkUpdateControls handles PATCH /api/v1/secvitals/controls/bulk.
@@ -25,7 +25,7 @@ func (h *Handler) BulkUpdateControls(c echo.Context) error {
 		log.Error().Err(err).Msg("bulk update controls")
 		return errResp(c, http.StatusInternalServerError, "failed to bulk update controls", "CK_BULK_UPDATE_FAILED")
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID:        orgID(c),
 		UserID:       userID(c),
 		Action:       "bulk_update",
@@ -56,7 +56,7 @@ func (h *Handler) GetControlMappings(c echo.Context) error {
 	if mappings == nil {
 		mappings = []ControlMapping{}
 	}
-	return c.JSON(http.StatusOK, map[string]interface{}{"mappings": mappings})
+	return c.JSON(http.StatusOK, map[string]any{"mappings": mappings})
 }
 
 // GetControlChangelog handles GET /secvitals/controls/:id/changelog.
@@ -70,7 +70,7 @@ func (h *Handler) GetControlChangelog(c echo.Context) error {
 	if entries == nil {
 		entries = []ChangeLogEntry{}
 	}
-	return c.JSON(http.StatusOK, map[string]interface{}{"changelog": entries})
+	return c.JSON(http.StatusOK, map[string]any{"changelog": entries})
 }
 
 // UpdateControl handles PATCH /api/v1/secvitals/controls/:id.
@@ -121,7 +121,7 @@ func (h *Handler) UpdateControl(c echo.Context) error {
 		appendIfChanged("maturity_score", oldScore, newScore)
 	}
 
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID:        orgID(c),
 		UserID:       userID(c),
 		Action:       "update",

@@ -49,7 +49,7 @@ func (s *Service) CreateIncident(ctx context.Context, orgID string, in CreateInc
 		return nil, err
 	}
 	inc.DeadlineStatus = computeDeadlineStatus(inc)
-	s.triggerWebhook(orgID, "incident.created", map[string]any{
+	s.triggerWebhook(ctx, orgID, "incident.created", map[string]any{
 		"id":       inc.ID,
 		"title":    inc.Title,
 		"severity": inc.Severity,
@@ -69,7 +69,7 @@ func (s *Service) UpdateIncident(ctx context.Context, orgID, id string, in Updat
 	}
 	inc.DeadlineStatus = computeDeadlineStatus(inc)
 	if in.Status != "" {
-		s.triggerWebhook(orgID, "incident.status_changed", map[string]any{
+		s.triggerWebhook(ctx, orgID, "incident.status_changed", map[string]any{
 			"id":       inc.ID,
 			"title":    inc.Title,
 			"severity": inc.Severity,

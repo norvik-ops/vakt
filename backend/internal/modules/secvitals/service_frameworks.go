@@ -452,7 +452,7 @@ func (s *Service) UpdateControl(ctx context.Context, orgID, controlID string, in
 		return nil, err
 	}
 	if input.ManualStatus != "" || input.NotApplicable {
-		s.triggerWebhook(orgID, "control.status_changed", map[string]any{
+		s.triggerWebhook(ctx, orgID, "control.status_changed", map[string]any{
 			"id":     ctrl.ID,
 			"title":  ctrl.Title,
 			"status": ctrl.Status,

@@ -20,6 +20,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/safego"
 )
 
 // SMTPConfig holds the SMTP settings needed for email-type channels.
@@ -179,13 +181,13 @@ func (s *Service) Fire(ctx context.Context, orgID, event string, payload map[str
 
 	body, _ := json.Marshal(payload)
 
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Error().Interface("panic", r).Msg("alerting: outer dispatch goroutine panic recovered")
-			}
-		}()
-		fireCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	// ADR-0018: outer dispatch + per-channel delivery laufen über safego.Run.
+	// Parent-Context wird durchgereicht, der 30 s-Timeout wird über
+	// context.WithoutCancel(ctx) gehängt — so überlebt das Fan-out einen
+	// Request-Cancel UND respektiert weiterhin shutdown-Signale, falls der
+	// Aufrufer einen lifecycle-Context übergibt.
+	safego.Run(ctx, "alerting.fanout.dispatch", func(parent context.Context) error {
+		fireCtx, cancel := context.WithTimeout(context.WithoutCancel(parent), 30*time.Second)
 		defer cancel()
 
 		var wg sync.WaitGroup
@@ -195,21 +197,16 @@ func (s *Service) Fire(ctx context.Context, orgID, event string, payload map[str
 			ch := ch // capture loop var
 			wg.Add(1)
 			sem <- struct{}{}
-			go func() {
+			safego.Run(fireCtx, "alerting.fanout.deliver", func(c context.Context) error {
 				defer wg.Done()
 				defer func() { <-sem }()
-				defer func() {
-					if r := recover(); r != nil {
-						log.Error().Interface("panic", r).Str("channel_id", ch.ID).Msg("alerting delivery panic")
-					}
-				}()
 
 				urlBytes, err := s.decrypt(ch.URLEncrypted)
 				if err != nil {
 					log.Error().Err(err).Str("channel_id", ch.ID).Msg("alerting: decrypt url failed")
 					status := "failed"
 					_ = s.repo.LogDelivery(fireCtx, orgID, &ch.ID, event, status, nil, payload)
-					return
+					return nil
 				}
 
 				// Email channels: deliver via SMTP instead of HTTP.
@@ -228,7 +225,7 @@ func (s *Service) Fire(ctx context.Context, orgID, event string, payload map[str
 						st = "failed"
 					}
 					_ = s.repo.LogDelivery(fireCtx, orgID, &ch.ID, event, st, nil, payload)
-					return
+					return nil
 				}
 
 				// Format payload according to channel type.
@@ -316,11 +313,13 @@ func (s *Service) Fire(ctx context.Context, orgID, event string, payload map[str
 					status = "failed"
 				}
 				_ = s.repo.LogDelivery(fireCtx, orgID, &ch.ID, event, status, responseCode, payload)
-			}()
+				return nil
+			})
 		}
 
 		wg.Wait()
-	}()
+		return nil
+	})
 }
 
 // sendEmail sends a plain-text alert email via the configured SMTP server.

@@ -1416,7 +1416,7 @@ func (r *Repository) batchGetEOLCache(ctx context.Context, pairs [][2]string) (m
 	}
 
 	// Build WHERE clause: (product, cycle) IN (($1,$2), ($3,$4), ...)
-	args := make([]interface{}, 0, len(pairs)*2)
+	args := make([]any, 0, len(pairs)*2)
 	placeholders := make([]string, 0, len(pairs))
 	for i, p := range pairs {
 		a := i * 2

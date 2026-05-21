@@ -15,6 +15,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/safego"
 )
 
 // productMap maps common component names to their endoflife.date product slug.
@@ -38,11 +40,49 @@ var productMap = map[string]string{
 	"ruby":       "ruby",
 }
 
+// eolValue ist eine polymorphe Repräsentation des `eol`-Feldes aus der
+// endoflife.date-API: das Feld liefert entweder `true`/`false` (Boolean
+// markiert nur dass der Cycle EOL ist) oder einen "YYYY-MM-DD"-String mit
+// dem konkreten EOL-Datum. S14-7: typisiert statt rohes interface{}.
+type eolValue struct {
+	IsEOL bool   // true = Cycle wurde als EOL markiert (Boolean oder dateInVergangenheit)
+	Date  string // optional: "YYYY-MM-DD" wenn die API ein konkretes Datum liefert
+}
+
+// UnmarshalJSON implementiert die polymorphe Decode-Logik. Akzeptiert:
+//   - true / false (Boolean)
+//   - "true" / "false" (Strings — kommen vor)
+//   - "" (Leerstring → kein EOL)
+//   - "YYYY-MM-DD" (konkretes EOL-Datum)
+func (e *eolValue) UnmarshalJSON(raw []byte) error {
+	// Boolean case
+	var b bool
+	if err := json.Unmarshal(raw, &b); err == nil {
+		e.IsEOL = b
+		return nil
+	}
+	// String case
+	var s string
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return fmt.Errorf("eolValue: expected bool or string, got %s", string(raw))
+	}
+	switch s {
+	case "", "false":
+		// supported
+	case "true":
+		e.IsEOL = true
+	default:
+		e.IsEOL = true
+		e.Date = s
+	}
+	return nil
+}
+
 // eolCycle is one entry returned by the endoflife.date API.
 type eolCycle struct {
-	Cycle             string      `json:"cycle"`
-	EOL               interface{} `json:"eol"` // can be bool or "YYYY-MM-DD" string
-	LatestReleaseDate string      `json:"latestReleaseDate,omitempty"`
+	Cycle             string   `json:"cycle"`
+	EOL               eolValue `json:"eol"`
+	LatestReleaseDate string   `json:"latestReleaseDate,omitempty"`
 }
 
 // EOLChecker checks components against the endoflife.date API and stores results.
@@ -138,32 +178,29 @@ func (c *EOLChecker) CheckComponents(ctx context.Context, orgID, sbomID string) 
 	sem := make(chan struct{}, maxParallel)
 	var wg sync.WaitGroup
 
+	// ADR-0018: EOL-Fetcher-Fanout über safego.Run mit Parent-Context.
 	for _, e := range missEntries {
 		e := e
 		wg.Add(1)
 		sem <- struct{}{}
-		go func() {
+		safego.Run(ctx, "secpulse.eol.fetch", func(c2 context.Context) error {
 			defer wg.Done()
 			defer func() { <-sem }()
-			defer func() {
-				if r := recover(); r != nil {
-					log.Error().Interface("panic", r).Msg("eol goroutine panic recovered")
-				}
-			}()
 
-			status, eolDate, fetchedPayload, err := c.fetchEOL(ctx, e.product, e.cycle)
+			status, eolDate, fetchedPayload, err := c.fetchEOL(c2, e.product, e.cycle)
 			if err != nil {
 				log.Warn().Err(err).Str("component", e.comp.Name).Msg("EOL fetch failed")
-				return
+				return nil
 			}
 			// Persist to cache (best-effort).
-			if upsertErr := repo.upsertEOLCache(ctx, e.product, e.cycle, fetchedPayload); upsertErr != nil {
+			if upsertErr := repo.upsertEOLCache(c2, e.product, e.cycle, fetchedPayload); upsertErr != nil {
 				log.Warn().Err(upsertErr).Str("product", e.product).Msg("EOL cache upsert failed")
 			}
 			mu.Lock()
 			results = append(results, eolResult{componentID: e.comp.ID, eolStatus: status, eolDate: eolDate})
 			mu.Unlock()
-		}()
+			return nil
+		})
 	}
 	wg.Wait()
 
@@ -246,25 +283,14 @@ func parseEOLPayload(payload []byte) (string, *string, error) {
 		return "unknown", nil, fmt.Errorf("parse cached payload: %w", err)
 	}
 
-	switch v := entry.EOL.(type) {
-	case bool:
-		if v {
-			return "eol", nil, nil
-		}
+	if !entry.EOL.IsEOL {
 		return "supported", nil, nil
-	case string:
-		// Non-empty string is the EOL date.
-		if v == "" || v == "false" {
-			return "supported", nil, nil
-		}
-		if v == "true" {
-			return "eol", nil, nil
-		}
-		// It's a date string like "2024-10-31".
-		return "eol", &v, nil
 	}
-
-	return "unknown", nil, nil
+	if entry.EOL.Date != "" {
+		date := entry.EOL.Date
+		return "eol", &date, nil
+	}
+	return "eol", nil, nil
 }
 
 // componentRow is an internal struct for listing components by SBOM.

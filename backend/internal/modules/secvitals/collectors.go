@@ -97,7 +97,7 @@ func (c *GitHubCollector) Collect(ctx context.Context, cfg CollectorConfig) ([]b
 	}
 
 	// Helper: perform authenticated GitHub API request.
-	doRequest := func(urlPath string) (map[string]interface{}, int, error) {
+	doRequest := func(urlPath string) (map[string]any, int, error) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 			"https://api.github.com"+urlPath, nil)
 		if err != nil {
@@ -116,7 +116,7 @@ func (c *GitHubCollector) Collect(ctx context.Context, cfg CollectorConfig) ([]b
 		if err != nil {
 			return nil, resp.StatusCode, err
 		}
-		var data map[string]interface{}
+		var data map[string]any
 		if err := json.Unmarshal(body, &data); err != nil {
 			return nil, resp.StatusCode, nil
 		}
@@ -139,7 +139,7 @@ func (c *GitHubCollector) Collect(ctx context.Context, cfg CollectorConfig) ([]b
 			owner, repo, result.DefaultBranch))
 		if bpStatus == http.StatusOK && bpData != nil {
 			result.BranchProtectionEnabled = true
-			if rr, ok := bpData["required_pull_request_reviews"].(map[string]interface{}); ok {
+			if rr, ok := bpData["required_pull_request_reviews"].(map[string]any); ok {
 				if cnt, ok := rr["required_approving_review_count"].(float64); ok && cnt > 0 {
 					result.RequiredPRReviews = true
 				}

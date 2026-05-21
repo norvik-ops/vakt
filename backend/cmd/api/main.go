@@ -39,7 +39,7 @@ import (
 	"github.com/matharnica/vakt/internal/shared/apidocs"
 	"github.com/matharnica/vakt/internal/shared/apikeys"
 	"github.com/matharnica/vakt/internal/shared/auditexport"
-	"github.com/matharnica/vakt/internal/shared/auditlog"
+	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/auditor"
 	"github.com/matharnica/vakt/internal/shared/auditreport"
 	"github.com/matharnica/vakt/internal/shared/comments"
@@ -548,7 +548,7 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	log.Info().Msg("notification preferences routes registered")
 
 	// Audit log — compliance event history
-	auditlog.RegisterRoutes(protected.Group("/audit-log"), pool)
+	audit.RegisterRoutes(protected.Group("/audit-log"), pool)
 	log.Info().Msg("audit log routes registered")
 
 	// Full data export — DSGVO Art. 20 portability + migration safety

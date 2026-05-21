@@ -80,7 +80,7 @@ func (h *Handler) ListAuditLogs(c echo.Context) error {
 		return w.Error()
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"data":  logs,
 		"total": total,
 		"page":  page,
@@ -101,7 +101,7 @@ func (h *Handler) ListUsers(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"data": members,
 	})
 }
@@ -179,7 +179,7 @@ func (h *Handler) UpdateUserRole(c echo.Context) error {
 // ListModules handles GET /api/v1/admin/modules.
 func (h *Handler) ListModules(c echo.Context) error {
 	modules := h.service.ListModules()
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"data": modules,
 	})
 }
@@ -197,7 +197,7 @@ func (h *Handler) ListNotificationChannels(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"data": channels,
 	})
 }
@@ -270,7 +270,7 @@ func (h *Handler) GetCurrentOrg(c echo.Context) error {
 			"code":  "ADMIN_ORG_ERROR",
 		})
 	}
-	return c.JSON(http.StatusOK, map[string]interface{}{"data": org})
+	return c.JSON(http.StatusOK, map[string]any{"data": org})
 }
 
 // UpdateTrustCenter handles PUT /api/v1/admin/trust-center.

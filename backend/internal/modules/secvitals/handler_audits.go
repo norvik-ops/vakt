@@ -6,7 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/shared/auditlog"
+	"github.com/matharnica/vakt/internal/shared/audit"
 )
 
 // GetAuditRecord handles GET /api/v1/secvitals/audits/:id.
@@ -34,7 +34,7 @@ func (h *Handler) UpdateAuditRecord(c echo.Context) error {
 		log.Error().Err(err).Msg("update audit record")
 		return errResp(c, http.StatusInternalServerError, "failed to update audit record", "CK_UPDATE_AUDIT_FAILED")
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID: orgID(c), UserID: userID(c), Action: "update",
 		ResourceType: "vakt-comply/audit", ResourceID: id, ResourceName: record.Title,
 		IPAddress: c.RealIP(),
@@ -66,7 +66,7 @@ func (h *Handler) CreateAuditRecord(c echo.Context) error {
 		log.Error().Err(err).Msg("create audit record")
 		return errResp(c, http.StatusInternalServerError, "failed to create audit record", "CK_CREATE_AUDIT_FAILED")
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID: orgID(c), UserID: userID(c), Action: "create",
 		ResourceType: "vakt-comply/audit", ResourceID: record.ID, ResourceName: record.Title,
 		IPAddress: c.RealIP(),

@@ -247,13 +247,13 @@ func (h *TotpHandler) Confirm(c echo.Context) error {
 	if err := h.StoreRecoveryCodes(ctx, userID, hashedRecovery); err != nil {
 		log.Error().Err(err).Msg("totp confirm: store recovery codes failed")
 		// Non-fatal: 2FA is already activated; log and continue without codes.
-		return c.JSON(http.StatusOK, map[string]interface{}{
+		return c.JSON(http.StatusOK, map[string]any{
 			"backup_codes":   plainCodes,
 			"recovery_codes": []string{},
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"backup_codes":   plainCodes,
 		"recovery_codes": plainRecovery,
 	})
@@ -573,7 +573,7 @@ func (h *TotpHandler) RegenerateRecoveryCodes(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"recovery_codes": plainCodes,
 	})
 }

@@ -98,7 +98,7 @@ func (h *Handler) TestConnection(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"ok":          true,
 		"users_found": len(users),
 	})
@@ -126,7 +126,7 @@ func (h *Handler) Sync(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"synced": len(users),
 		"users":  users,
 	})

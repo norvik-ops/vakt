@@ -11,6 +11,7 @@ linters:
     - staticcheck
     - ineffassign
     - unused
+    - forbidigo
     # Hinweis: misspell ist deaktiviert — dieses Repo enthält viele deutsche
     # User-facing-Strings (Konfiguration, Identifikation, Koordination …),
     # die der englische Wordlist-Linter fälschlich als Tippfehler markiert.
@@ -27,6 +28,21 @@ linters:
         - fmt.Fprintf
         - fmt.Fprintln
         - fmt.Sscanf
+
+    forbidigo:
+      # S14-7 + ADR-0018:
+      # - `interface{}` ist verboten; Go 1.18+ Code nutzt `any`. Der bestehende
+      #   sqlc-/pgx-generierte Code in internal/db/ darf weiter `interface{}`
+      #   verwenden (Library-imposed); die Exclusions-Regel filtert ihn unten raus.
+      # - rohes `go func()` ohne safego.Run ist verboten — Pflicht-Pattern aus
+      #   ADR-0018. Goroutinen werden über internal/shared/safego.Run gestartet,
+      #   damit Panic-Eskalation + Parent-Context-Propagation enforced sind.
+      forbid:
+        - pattern: '\binterface\{\}'
+          msg: "use `any` (Go 1.18+) instead of `interface{}`"
+        - pattern: '^\s*go\s+func\s*\('
+          msg: "raw `go func()` is forbidden — use safego.Run(ctx, name, fn) per ADR-0018"
+      analyze-types: false
 
     staticcheck:
       checks:
@@ -59,6 +75,27 @@ linters:
       - linters:
           - errcheck
         path: "internal/shared/demoseed/"
+      # forbidigo: sqlc-/pgx-generierte Code-Pfade dürfen `interface{}` weiter
+      # verwenden (Library-imposed: Exec/Query/QueryRow Variadic, Scan-Signatur,
+      # generierte Models). Hand-Code muss `any` nutzen.
+      - linters:
+          - forbidigo
+        path: "internal/db/"
+      # forbidigo: das safego-Paket selbst nutzt rohes `go runOnce(...)` als
+      # Implementierung des Helpers — Bootstrapping-Ausnahme.
+      - linters:
+          - forbidigo
+        path: "internal/shared/safego/"
+      # forbidigo: Tests dürfen `go func()` für Test-Setup nutzen (keine
+      # Production-Pflicht).
+      - linters:
+          - forbidigo
+        path: "_test\\.go"
+      # forbidigo: cmd/* Startup-Wiring darf rohe Goroutinen verwenden
+      # (Server-Lifecycle-Owner, kein Parent-Context vorhanden).
+      - linters:
+          - forbidigo
+        path: "^cmd/"
 
 formatters:
   enable:

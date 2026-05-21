@@ -15,6 +15,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/safego"
 )
 
 // Entry describes a single audit event.
@@ -184,18 +186,20 @@ func AuditMiddleware(logger *Logger) echo.MiddlewareFunc {
 			}
 
 			// Fire-and-forget: audit failures must not affect the response.
-			go func() {
-				defer func() {
-					if r := recover(); r != nil {
-						log.Error().Interface("panic", r).Msg("goroutine panic recovered")
-					}
-				}()
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			// ADR-0018: läuft über safego.Run statt rohem `go func()`. Wir
+			// leiten den Request-Context durch, hängen aber einen eigenen
+			// 5-Sekunden-Timeout drauf — damit ein langsamer DB-Insert nicht
+			// die Antwort blockiert UND damit der Audit-Schreiber bei einem
+			// Request-Cancel (z.B. Client disconnect) trotzdem fertig wird.
+			parentCtx := c.Request().Context()
+			safego.Run(parentCtx, "audit.middleware.write", func(c2 context.Context) error {
+				ctx, cancel := context.WithTimeout(context.WithoutCancel(c2), 5*time.Second)
 				defer cancel()
 				if logErr := logger.Log(ctx, entry); logErr != nil {
 					log.Error().Err(logErr).Msg("audit log write failed")
 				}
-			}()
+				return nil
+			})
 
 			return err
 		}

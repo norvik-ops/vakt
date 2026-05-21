@@ -96,12 +96,12 @@ func (h *HealthHandler) HandleHealth(c echo.Context) error {
 	redisOK, redisLatency := h.redisCheck(c)
 	queue := h.queueStats()
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"db": map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
+		"db": map[string]any{
 			"ok":         dbOK,
 			"latency_ms": dbLatency,
 		},
-		"redis": map[string]interface{}{
+		"redis": map[string]any{
 			"ok":         redisOK,
 			"latency_ms": redisLatency,
 		},

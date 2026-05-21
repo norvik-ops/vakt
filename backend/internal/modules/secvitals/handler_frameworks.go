@@ -9,7 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/shared/auditlog"
+	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/pagination"
 )
 
@@ -35,7 +35,7 @@ func (h *Handler) EnableFramework(c echo.Context) error {
 		log.Error().Err(err).Str("name", name).Msg("enable framework")
 		return errResp(c, http.StatusInternalServerError, "failed to enable framework", "CK_ENABLE_FRAMEWORK_FAILED")
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID: orgID(c), UserID: userID(c), Action: "create",
 		ResourceType: "vakt-comply/framework", ResourceID: fw.ID, ResourceName: fw.Name,
 		IPAddress: c.RealIP(),
@@ -53,7 +53,7 @@ func (h *Handler) DeleteFramework(c echo.Context) error {
 		log.Error().Err(err).Str("framework_id", frameworkID).Msg("delete framework")
 		return errResp(c, http.StatusInternalServerError, "failed to delete framework", "CK_DELETE_FRAMEWORK_FAILED")
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID: orgID(c), UserID: userID(c), Action: "delete",
 		ResourceType: "vakt-comply/framework", ResourceID: frameworkID,
 		IPAddress: c.RealIP(),

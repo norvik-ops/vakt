@@ -1,8 +1,16 @@
-// Package auditlog provides a lightweight, fire-and-forget audit log writer.
-// Every write operation (create/update/delete/approve/export) on compliance-relevant
-// resources is appended to the audit_log table.  Errors are intentionally swallowed
-// so that a failing audit write never causes a business operation to fail.
-package auditlog
+// WriteEntry + Write sind der lightweight fire-and-forget Audit-Log-Writer
+// (vorher Package auditlog, in Sprint 14.6 als Teil von audit konsolidiert).
+// Jede mutierende Operation auf compliance-relevante Ressourcen
+// (create/update/delete/approve/export) sollte einen WriteEntry über
+// Write(ctx, db, e) anhängen. Fehler werden bewusst verschluckt — ein
+// gescheiterter Audit-Write darf NIEMALS eine Business-Operation zum
+// Scheitern bringen.
+//
+// Die Middleware-Variante (AuditMiddleware + Logger.Log) ist für
+// Echo-Request-Handler gedacht; Write ist für service-layer fire-and-forget
+// aus Business-Logik heraus. Beide Pfade schreiben in dieselbe
+// audit_log-Tabelle.
+package audit
 
 import (
 	"context"
@@ -11,8 +19,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Entry describes a single compliance audit event.
-type Entry struct {
+// WriteEntry describes a single compliance audit event.
+type WriteEntry struct {
 	OrgID        string
 	UserID       string // empty string = system / anonymous
 	UserEmail    string
@@ -24,10 +32,10 @@ type Entry struct {
 	IPAddress    string
 }
 
-// Log writes one audit entry to the audit_log table.
+// Write writes one audit entry to the audit_log table.
 // Errors are intentionally swallowed — audit logging must never cause a business
 // operation to fail.  If db is nil the function is a no-op.
-func Log(ctx context.Context, db *pgxpool.Pool, e Entry) {
+func Write(ctx context.Context, db *pgxpool.Pool, e WriteEntry) {
 	if db == nil {
 		return
 	}

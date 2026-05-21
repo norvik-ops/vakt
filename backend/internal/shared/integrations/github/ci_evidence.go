@@ -169,7 +169,7 @@ func collectRunsForIntegration(
 		)
 		sourceRef := fmt.Sprintf("github:ci:%s:%d", integrationID, run.ID)
 
-		detailsJSON, _ := json.Marshal(map[string]interface{}{
+		detailsJSON, _ := json.Marshal(map[string]any{
 			"run_id":        run.ID,
 			"run_number":    run.RunNumber,
 			"workflow_name": workflowName,

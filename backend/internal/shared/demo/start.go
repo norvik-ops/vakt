@@ -50,7 +50,7 @@ func (h *StartHandler) Start(c echo.Context) error {
 		ORDER BY u.created_at LIMIT 1`, sess.OrgID, sess.AdminID).
 		Scan(&analystEmail)
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"admin_email":      adminEmail,
 		"admin_password":   sess.AdminPassword,
 		"analyst_email":    analystEmail,

@@ -56,7 +56,7 @@ func (h *Handler) AuditorView(c echo.Context) error {
 		return errResp(c, http.StatusInternalServerError, "failed to generate report", "CK_AUDITOR_REPORT_FAILED")
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"framework": fw,
 		"report":    report,
 	})

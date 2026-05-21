@@ -14,7 +14,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/shared/auditlog"
+	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/pagination"
 )
 
@@ -35,7 +35,7 @@ func NewHandler(service *Service) *Handler {
 func (h *Handler) audit(c echo.Context, action, resourceType, resourceID, resourceName string) {
 	orgID, _ := c.Get("org_id").(string)
 	userID, _ := c.Get("user_id").(string)
-	auditlog.Log(c.Request().Context(), h.service.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.service.db, audit.WriteEntry{
 		OrgID:        orgID,
 		UserID:       userID,
 		Action:       action,
@@ -250,7 +250,7 @@ func (h *Handler) ImportAssets(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"inserted": inserted,
 		"errored":  errored,
 		"errors":   errs,
@@ -574,7 +574,7 @@ func (h *Handler) GetAssetSBOM(c echo.Context) error {
 	if components == nil {
 		components = []ComponentSummary{}
 	}
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"sbom":       sbom,
 		"components": components,
 	})
@@ -602,7 +602,7 @@ func (h *Handler) GetEOLDashboard(c echo.Context) error {
 	if components == nil {
 		components = []ComponentSummary{}
 	}
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"data": components,
 	})
 }

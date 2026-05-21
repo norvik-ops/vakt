@@ -15,7 +15,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/shared/auditlog"
+	"github.com/matharnica/vakt/internal/shared/audit"
+	"github.com/matharnica/vakt/internal/shared/safego"
 )
 
 var validate = validator.New()
@@ -61,7 +62,7 @@ func (h *Handler) CreateProject(c echo.Context) error {
 		log.Error().Err(err).Msg("CreateProject failed")
 		return serverError(c, err)
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID: orgID, UserID: userID, Action: "create",
 		ResourceType: "vakt-vault/project", ResourceID: project.ID, ResourceName: project.Name,
 		IPAddress: c.RealIP(),
@@ -94,7 +95,7 @@ func (h *Handler) DeleteProject(c echo.Context) error {
 		log.Error().Err(err).Msg("DeleteProject failed")
 		return serverError(c, err)
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID: orgID, UserID: mustString(c, "user_id"), Action: "delete",
 		ResourceType: "vakt-vault/project", ResourceID: projectID,
 		IPAddress: c.RealIP(),
@@ -181,7 +182,7 @@ func (h *Handler) SetSecret(c echo.Context) error {
 		log.Error().Err(err).Msg("SetSecret failed")
 		return serverError(c, err)
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID: orgID, UserID: userID, Action: "update",
 		ResourceType: "vakt-vault/secret", ResourceID: key,
 		IPAddress: c.RealIP(),
@@ -209,26 +210,23 @@ func (h *Handler) GetSecret(c echo.Context) error {
 	auditKey := key
 	auditIP := c.RealIP()
 	auditUserID, _ := c.Get("user_id").(string)
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Error().Interface("panic", r).Msg("goroutine panic recovered")
-			}
-		}()
+	// ADR-0018: safego.Run + WithoutCancel — Audit-Schreiber überlebt Client-Disconnect.
+	safego.Run(c.Request().Context(), "secvault.secret.reveal.audit", func(parent context.Context) error {
 		if auditOrgID == "" {
-			return
+			return nil
 		}
 		var uid *string
 		if auditUserID != "" {
 			uid = &auditUserID
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), 5*time.Second)
 		defer cancel()
 		_, _ = h.db.Exec(ctx, `
 			INSERT INTO audit_log (org_id, user_id, action, resource_type, resource_id, ip_address)
 			VALUES ($1::uuid, $2::uuid, 'secret.reveal', 'secvault/secret', $3, $4)`,
 			auditOrgID, uid, auditKey, auditIP)
-	}()
+		return nil
+	})
 
 	return c.JSON(http.StatusOK, secret)
 }
@@ -265,7 +263,7 @@ func (h *Handler) DeleteSecret(c echo.Context) error {
 		log.Error().Err(err).Msg("DeleteSecret failed")
 		return serverError(c, err)
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID: orgID, UserID: mustString(c, "user_id"), Action: "delete",
 		ResourceType: "vakt-vault/secret", ResourceID: key,
 		IPAddress: c.RealIP(),

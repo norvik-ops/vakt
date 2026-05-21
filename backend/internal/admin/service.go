@@ -109,7 +109,7 @@ func (s *Service) ListAuditLogs(ctx context.Context, orgID string, page, limit i
 	offset := (page - 1) * limit
 
 	// Build the WHERE clause dynamically to avoid excessive SQL branching.
-	args := []interface{}{orgID}
+	args := []any{orgID}
 	where := "org_id = $1::uuid"
 	argN := 2
 

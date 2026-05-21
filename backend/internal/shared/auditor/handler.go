@@ -65,7 +65,7 @@ func (h *Handler) CreateInvite(c echo.Context) error {
 	}
 
 	inviteURL := fmt.Sprintf("/auditor/accept/%s", rawToken)
-	return c.JSON(http.StatusCreated, map[string]interface{}{
+	return c.JSON(http.StatusCreated, map[string]any{
 		"invite":     inv,
 		"token":      rawToken,
 		"invite_url": inviteURL,

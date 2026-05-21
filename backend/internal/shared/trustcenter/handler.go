@@ -253,7 +253,7 @@ func (h *Handler) GetTrustCenterSettings(c echo.Context) error {
 	if subprocessorsMd != nil {
 		s.SubprocessorsMd = *subprocessorsMd
 	}
-	return c.JSON(http.StatusOK, map[string]interface{}{"data": s})
+	return c.JSON(http.StatusOK, map[string]any{"data": s})
 }
 
 // UpdateTrustCenterSettings handles PATCH /api/v1/trust-center/settings
@@ -325,7 +325,7 @@ func (h *Handler) ListCertificates(c echo.Context) error {
 		cert.ExpiresAt = expiresAt
 		certs = append(certs, cert)
 	}
-	return c.JSON(http.StatusOK, map[string]interface{}{"data": certs})
+	return c.JSON(http.StatusOK, map[string]any{"data": certs})
 }
 
 // CreateCertificate handles POST /api/v1/trust-center/certificates
@@ -464,5 +464,5 @@ func (h *Handler) ListPublishedPolicies(c echo.Context) error {
 		}
 		ids = append(ids, id)
 	}
-	return c.JSON(http.StatusOK, map[string]interface{}{"data": ids})
+	return c.JSON(http.StatusOK, map[string]any{"data": ids})
 }

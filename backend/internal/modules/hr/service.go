@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/shared/auditlog"
+	"github.com/matharnica/vakt/internal/shared/audit"
 )
 
 // Actor identifies who is performing a state-changing operation and from where.
@@ -31,10 +31,10 @@ type Service struct {
 }
 
 // audit is the single point where the HR service writes audit-log entries.
-// Best-effort: a failure here is logged inside auditlog.Log but never aborts
+// Best-effort: a failure here is logged inside audit.Write but never aborts
 // the calling operation.
 func (s *Service) audit(ctx context.Context, actor Actor, action, resourceType, resourceID, resourceName string) {
-	auditlog.Log(ctx, s.db, auditlog.Entry{
+	audit.Write(ctx, s.db, audit.WriteEntry{
 		OrgID:        actor.OrgID,
 		UserID:       actor.UserID,
 		UserEmail:    actor.UserEmail,

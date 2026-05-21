@@ -255,7 +255,7 @@ func (h *Handler) ListResilienceTests(c echo.Context) error {
 		log.Error().Err(err).Msg("list resilience tests")
 		return errResp(c, http.StatusInternalServerError, "failed to list resilience tests", "CK_LIST_RESILIENCE_TESTS_FAILED")
 	}
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"tests":                tests,
 		"tlpt_overdue_warning": tlptOverdue,
 	})

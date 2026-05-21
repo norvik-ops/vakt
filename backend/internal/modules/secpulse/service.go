@@ -21,6 +21,7 @@ import (
 	"github.com/matharnica/vakt/internal/shared/dashboard"
 	"github.com/matharnica/vakt/internal/shared/evidence_auto"
 	"github.com/matharnica/vakt/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/safego"
 	"github.com/matharnica/vakt/internal/shared/webhooks"
 )
 
@@ -64,20 +65,18 @@ func (s *Service) WithWebhooks(svc *webhooks.WebhookService) {
 
 // triggerWebhook fires a webhook event in a background goroutine so the caller
 // is never blocked by network latency or a slow endpoint.
-func (s *Service) triggerWebhook(orgID, eventType string, payload map[string]any) {
+// ADR-0018: läuft über safego.Run; parentCtx ist der Request-/Job-Context.
+// WithoutCancel-Wrapper bewahrt Fire-and-Forget-Semantik beim Client-Disconnect.
+func (s *Service) triggerWebhook(parentCtx context.Context, orgID, eventType string, payload map[string]any) {
 	if s.webhookSvc == nil {
 		return
 	}
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Error().Interface("panic", r).Msg("secpulse: webhook goroutine panic recovered")
-			}
-		}()
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	safego.Run(parentCtx, "secpulse.webhook.trigger", func(parent context.Context) error {
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), 15*time.Second)
 		defer cancel()
 		s.webhookSvc.TriggerEvent(ctx, orgID, eventType, payload)
-	}()
+		return nil
+	})
 }
 
 // invalidateDashboardCache deletes the cached dashboard aggregate for the given
@@ -331,7 +330,7 @@ func (s *Service) UpsertFinding(ctx context.Context, orgID string, f Finding) (*
 	if err != nil {
 		return nil, err
 	}
-	s.triggerWebhook(orgID, "finding.created", map[string]any{
+	s.triggerWebhook(ctx, orgID, "finding.created", map[string]any{
 		"id":       result.ID,
 		"title":    result.Title,
 		"severity": result.Severity,
@@ -342,13 +341,9 @@ func (s *Service) UpsertFinding(ctx context.Context, orgID string, f Finding) (*
 		capturedOrgID := orgID
 		capturedTitle := result.Title
 		capturedSev := result.Severity
-		go func() {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Error().Interface("panic", r).Msg("finding notification: goroutine panic")
-				}
-			}()
-			notifyCtx, notifyCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		// ADR-0018: notify-fanout über safego.Run mit Parent-Context + WithoutCancel.
+		safego.Run(ctx, "secpulse.finding.notify.severity", func(parent context.Context) error {
+			notifyCtx, notifyCancel := context.WithTimeout(context.WithoutCancel(parent), 10*time.Second)
 			defer notifyCancel()
 			sev := "Kritisch"
 			if capturedSev == "high" {
@@ -358,7 +353,8 @@ func (s *Service) UpsertFinding(ctx context.Context, orgID string, f Finding) (*
 				"Neues "+sev+"-Finding",
 				"Das Finding \""+capturedTitle+"\" wurde als "+sev+" eingestuft.",
 				"warning", "secpulse")
-		}()
+			return nil
+		})
 	}
 	return result, nil
 }
@@ -394,23 +390,19 @@ func (s *Service) UpdateFinding(ctx context.Context, orgID, findingID string, in
 		return nil, err
 	}
 
-	// Notify org when a finding is assigned.
+	// Notify org when a finding is assigned. ADR-0018: safego.Run + WithoutCancel.
 	if input.AssignedTo != nil && *input.AssignedTo != "" {
 		capturedOrgID := orgID
 		capturedTitle := finding.Title
-		go func() {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Error().Interface("panic", r).Msg("goroutine panic recovered")
-				}
-			}()
-			notifyCtx, notifyCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		safego.Run(ctx, "secpulse.finding.notify.assigned", func(parent context.Context) error {
+			notifyCtx, notifyCancel := context.WithTimeout(context.WithoutCancel(parent), 10*time.Second)
 			defer notifyCancel()
 			notify.Send(notifyCtx, s.db, capturedOrgID,
 				"Finding zugewiesen",
 				"Das Finding \""+capturedTitle+"\" wurde einem Bearbeiter zugewiesen.",
 				"info", "secpulse")
-		}()
+			return nil
+		})
 	}
 
 	// Enqueue auto-evidence job when a finding is resolved.
@@ -432,27 +424,24 @@ func (s *Service) UpdateFinding(ctx context.Context, orgID, findingID string, in
 		}
 	}
 
-	// Collect auto-evidence into the unassigned inbox when finding is resolved (best-effort).
+	// Collect auto-evidence into the unassigned inbox when finding is resolved
+	// (best-effort). ADR-0018: safego.Run + WithoutCancel.
 	if input.Status != nil && *input.Status == "resolved" {
 		capturedOrgID := orgID
 		capturedFindingID := findingID
-		go func() {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Error().Interface("panic", r).Msg("goroutine panic recovered")
-				}
-			}()
-			evidCtx, evidCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		safego.Run(ctx, "secpulse.finding.evidence.collect", func(parent context.Context) error {
+			evidCtx, evidCancel := context.WithTimeout(context.WithoutCancel(parent), 30*time.Second)
 			defer evidCancel()
 			if autoErr := evidence_auto.CollectSecPulseEvidence(evidCtx, s.db, capturedOrgID, capturedFindingID); autoErr != nil {
 				log.Warn().Err(autoErr).Msg("auto-evidence collection failed")
 			}
-		}()
+			return nil
+		})
 	}
 
 	// Trigger outgoing webhook for severity change (non-blocking).
 	if input.Severity != nil {
-		s.triggerWebhook(orgID, "finding.severity_changed", map[string]any{
+		s.triggerWebhook(ctx, orgID, "finding.severity_changed", map[string]any{
 			"id":       finding.ID,
 			"title":    finding.Title,
 			"severity": finding.Severity,

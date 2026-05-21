@@ -16,6 +16,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/safego"
 )
 
 // --- Models ---
@@ -337,20 +339,17 @@ func (s *Service) AcceptPolicy(ctx context.Context, token, ip string) error {
 	}
 
 	// Create ISO 27001 A.5.1 evidence on matching controls.
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Error().Interface("panic", r).Msg("goroutine panic recovered")
-			}
-		}()
-		bgCtx, bgCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// ADR-0018: safego.Run mit Parent-Context + WithoutCancel-Timeout, damit ein
+	// Request-Cancel die Evidence-Erfassung nicht abbricht.
+	safego.Run(ctx, "secvitals.policy.acceptance.evidence", func(parent context.Context) error {
+		bgCtx, bgCancel := context.WithTimeout(context.WithoutCancel(parent), 10*time.Second)
 		defer bgCancel()
 		title := fmt.Sprintf("Richtlinien-Akzeptanz: %s", policyTitle)
 
 		controls, err := s.repo.FindControlsByKeywords(bgCtx, orgID, []string{"policy", "richtlinie", "information security policies", "a.5.1", "a5.1"})
 		if err != nil || len(controls) == 0 {
 			log.Info().Str("org_id", orgID).Msg("policy acceptance: no matching A.5.1 controls found for evidence")
-			return
+			return nil
 		}
 
 		collectorData, _ := json.Marshal(map[string]string{
@@ -371,7 +370,8 @@ func (s *Service) AcceptPolicy(ctx context.Context, token, ip string) error {
 			Str("request_id", req.ID).
 			Int("controls_updated", len(controls)).
 			Msg("policy acceptance evidence recorded")
-	}()
+		return nil
+	})
 
 	return nil
 }

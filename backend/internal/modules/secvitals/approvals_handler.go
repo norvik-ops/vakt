@@ -9,7 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/shared/auditlog"
+	"github.com/matharnica/vakt/internal/shared/audit"
 )
 
 // isOrgAdmin returns true when the authenticated user has the Admin role in the organisation.
@@ -84,7 +84,7 @@ func (h *Handler) RequestControlApproval(c echo.Context) error {
 		return errResp(c, http.StatusInternalServerError, "failed to create approval request", "CK_INTERNAL")
 	}
 
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID:        orgID(c),
 		UserID:       userID(c),
 		Action:       "request_approval",
@@ -170,7 +170,7 @@ func (h *Handler) reviewApproval(c echo.Context, approve bool) error {
 	if approve {
 		action = "approve_approval"
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID:        orgID(c),
 		UserID:       userID(c),
 		Action:       action,

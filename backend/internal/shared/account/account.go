@@ -23,12 +23,12 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/matharnica/vakt/internal/shared/auditlog"
+	"github.com/matharnica/vakt/internal/shared/audit"
 )
 
 // Service orchestrates DSGVO Art. 17 and Art. 20 actions for the calling user.
 //
-// Why the service owns auditlog calls (P2-19): the audit-log entry for an
+// Why the service owns audit.Write calls (P2-19): the audit-log entry for an
 // account deletion or export MUST be written even if the API is consumed
 // outside of an HTTP context — e.g. a future CLI or scheduled job. Keeping
 // auditing in the handler couples it to Echo and creates a gap when the
@@ -233,7 +233,7 @@ func (s *Service) DeleteUserAccount(ctx context.Context, userID, suppliedPasswor
 
 	// 4. Audit-log AFTER the commit so a rolled-back deletion does not
 	// produce a misleading "deleted" entry.
-	auditlog.Log(ctx, s.db, auditlog.Entry{
+	audit.Write(ctx, s.db, audit.WriteEntry{
 		UserID:       userID,
 		Action:       "delete",
 		ResourceType: "account",

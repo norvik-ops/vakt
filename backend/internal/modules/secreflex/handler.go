@@ -10,7 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/shared/auditlog"
+	"github.com/matharnica/vakt/internal/shared/audit"
 )
 
 // Handler handles HTTP requests for PhishGuard.
@@ -31,7 +31,7 @@ func errJSON(c echo.Context, code int, msg, errCode string) error {
 func (h *Handler) audit(c echo.Context, action, resourceType, resourceID, resourceName string) {
 	orgID, _ := c.Get("org_id").(string)
 	userID, _ := c.Get("user_id").(string)
-	auditlog.Log(c.Request().Context(), h.service.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.service.db, audit.WriteEntry{
 		OrgID:        orgID,
 		UserID:       userID,
 		Action:       action,
@@ -141,7 +141,7 @@ func (h *Handler) ImportTargetsCSV(c echo.Context) error {
 		return errJSON(c, http.StatusBadRequest, "invalid body", "PG_BAD_REQUEST")
 	}
 	imported, errs := h.service.ImportTargetsCSV(c.Request().Context(), orgID, c.Param("id"), body.CSVContent)
-	return c.JSON(http.StatusOK, map[string]interface{}{"imported": imported, "errors": errs})
+	return c.JSON(http.StatusOK, map[string]any{"imported": imported, "errors": errs})
 }
 
 // ── Landing pages ─────────────────────────────────────────────────────────────
@@ -396,7 +396,7 @@ func (h *Handler) ReceivePhishReport(c echo.Context) error {
 		}
 		return errJSON(c, http.StatusInternalServerError, "failed to record report", "PG_ERROR")
 	}
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"status":        "recorded",
 		"is_simulation": report.IsSimulation,
 	})

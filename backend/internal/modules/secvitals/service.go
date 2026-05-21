@@ -12,6 +12,7 @@ import (
 	"github.com/matharnica/vakt/internal/shared/ai"
 	"github.com/matharnica/vakt/internal/shared/dashboard"
 	"github.com/matharnica/vakt/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/safego"
 	"github.com/matharnica/vakt/internal/shared/webhooks"
 )
 
@@ -79,20 +80,21 @@ func (s *Service) WithWebhooks(svc *webhooks.WebhookService) {
 
 // triggerWebhook fires a webhook event in a background goroutine so the caller
 // is never blocked by network latency or a slow endpoint.
-func (s *Service) triggerWebhook(orgID, eventType string, payload map[string]any) {
+//
+// ADR-0018: läuft über safego.Run, parentCtx ist der Request-/Job-Context des
+// Aufrufers. WithoutCancel hängt einen unabhängigen Timeout-Lifecycle dran
+// damit ein Client-Disconnect das Webhook nicht abbricht (Fire-and-Forget-
+// Semantik beibehalten), shutdown-Signale aber respektiert werden.
+func (s *Service) triggerWebhook(parentCtx context.Context, orgID, eventType string, payload map[string]any) {
 	if s.webhookSvc == nil {
 		return
 	}
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Error().Interface("panic", r).Msg("secvitals: webhook goroutine panic recovered")
-			}
-		}()
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	safego.Run(parentCtx, "secvitals.webhook.trigger", func(parent context.Context) error {
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), 15*time.Second)
 		defer cancel()
 		s.webhookSvc.TriggerEvent(ctx, orgID, eventType, payload)
-	}()
+		return nil
+	})
 }
 
 // Repo exposes the underlying repository for use by ancillary services (e.g. EvidenceFileService).

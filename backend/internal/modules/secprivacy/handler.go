@@ -13,8 +13,9 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/shared/auditlog"
+	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/pagination"
+	"github.com/matharnica/vakt/internal/shared/safego"
 )
 
 // AlertFunc is a callback used to fire external alert events without importing
@@ -95,7 +96,7 @@ func (h *Handler) CreateVVT(c echo.Context) error {
 		log.Error().Err(err).Msg("create vvt")
 		return errResp(c, http.StatusInternalServerError, "failed to create VVT entry", "PO_CREATE_VVT_FAILED")
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID:        orgID(c),
 		UserID:       func() string { v, _ := c.Get("user_id").(string); return v }(),
 		Action:       "create",
@@ -121,7 +122,7 @@ func (h *Handler) UpdateVVT(c echo.Context) error {
 		log.Error().Err(err).Msg("update vvt")
 		return errResp(c, http.StatusInternalServerError, "failed to update VVT entry", "PO_UPDATE_VVT_FAILED")
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID:        orgID(c),
 		UserID:       func() string { v, _ := c.Get("user_id").(string); return v }(),
 		Action:       "update",
@@ -140,7 +141,7 @@ func (h *Handler) DeleteVVT(c echo.Context) error {
 		log.Error().Err(err).Msg("delete vvt")
 		return errResp(c, http.StatusInternalServerError, "failed to delete VVT entry", "PO_DELETE_VVT_FAILED")
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID:        orgID(c),
 		UserID:       func() string { v, _ := c.Get("user_id").(string); return v }(),
 		Action:       "delete",
@@ -186,7 +187,7 @@ func (h *Handler) CreateDPIA(c echo.Context) error {
 		log.Error().Err(err).Msg("create dpia")
 		return errResp(c, http.StatusInternalServerError, "failed to create DPIA", "PO_CREATE_DPIA_FAILED")
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID:        orgID(c),
 		UserID:       func() string { v, _ := c.Get("user_id").(string); return v }(),
 		Action:       "create",
@@ -223,7 +224,7 @@ func (h *Handler) ApproveDPIA(c echo.Context) error {
 		log.Error().Err(err).Msg("approve dpia")
 		return errResp(c, http.StatusInternalServerError, "failed to approve DPIA", "PO_APPROVE_DPIA_FAILED")
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID:        orgID(c),
 		UserID:       uid,
 		Action:       "approve",
@@ -352,21 +353,19 @@ func (h *Handler) CreateBreach(c echo.Context) error {
 		capturedOrgID := orgID(c)
 		capturedBreachID := breach.ID
 		capturedTitle := breach.Title
-		go func() {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Error().Interface("panic", r).Msg("alert goroutine panic")
-				}
-			}()
-			alertCtx, alertCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		// ADR-0018: safego.Run + WithoutCancel — Alert darf nicht vom Client-
+		// Disconnect abgebrochen werden, aber respektiert lifecycle-Shutdown.
+		safego.Run(c.Request().Context(), "secprivacy.breach.alert", func(parent context.Context) error {
+			alertCtx, alertCancel := context.WithTimeout(context.WithoutCancel(parent), 30*time.Second)
 			defer alertCancel()
 			h.alertFunc(alertCtx, capturedOrgID, "breach.created", map[string]any{
 				"breach_id": capturedBreachID,
 				"title":     capturedTitle,
 			})
-		}()
+			return nil
+		})
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID:        orgID(c),
 		UserID:       func() string { v, _ := c.Get("user_id").(string); return v }(),
 		Action:       "create",
@@ -413,7 +412,7 @@ func (h *Handler) MarkAuthorityNotified(c echo.Context) error {
 		log.Error().Err(err).Msg("mark authority notified")
 		return errResp(c, http.StatusInternalServerError, "failed to update breach", "PO_UPDATE_BREACH_FAILED")
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID:        orgID(c),
 		UserID:       func() string { v, _ := c.Get("user_id").(string); return v }(),
 		Action:       "update",
@@ -486,7 +485,7 @@ func (h *Handler) CreateDSR(c echo.Context) error {
 		log.Error().Err(err).Msg("create dsr")
 		return errResp(c, http.StatusInternalServerError, "failed to create DSR", "PO_CREATE_DSR_FAILED")
 	}
-	auditlog.Log(c.Request().Context(), h.db, auditlog.Entry{
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID:        orgID(c),
 		UserID:       func() string { v, _ := c.Get("user_id").(string); return v }(),
 		Action:       "create",

@@ -96,7 +96,7 @@ func (h *Handler) ListKeys(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"data": keys,
 	})
 }

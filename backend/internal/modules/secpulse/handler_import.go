@@ -98,7 +98,7 @@ func (h *Handler) ImportFindings(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"imported": count,
 		"format":   format,
 		"asset_id": assetID,
