@@ -34,8 +34,8 @@ import (
 	"github.com/matharnica/vakt/internal/modules/secvault"
 	"github.com/matharnica/vakt/internal/modules/secvitals"
 	"github.com/matharnica/vakt/internal/shared/account"
-	"github.com/matharnica/vakt/internal/shared/ai"
-	"github.com/matharnica/vakt/internal/shared/alerting"
+	"github.com/matharnica/vakt/internal/services/ai"
+	"github.com/matharnica/vakt/internal/services/alerting"
 	"github.com/matharnica/vakt/internal/shared/apidocs"
 	"github.com/matharnica/vakt/internal/shared/apikeys"
 	"github.com/matharnica/vakt/internal/shared/auditexport"
@@ -48,7 +48,7 @@ import (
 	shareddb "github.com/matharnica/vakt/internal/shared/db"
 	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/demoseed"
-	"github.com/matharnica/vakt/internal/shared/evidence_auto"
+	"github.com/matharnica/vakt/internal/services/evidence_auto"
 	"github.com/matharnica/vakt/internal/shared/feedback"
 	cloudintegration "github.com/matharnica/vakt/internal/shared/integrations/cloud"
 	ghintegration "github.com/matharnica/vakt/internal/shared/integrations/github"
@@ -417,8 +417,18 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 		auditexport.Register(protected.Group("/secvitals"), pool)
 		// One-click audit report PDF
 		auditreport.RegisterRoutes(protected.Group("/secvitals"), pool)
-		// AI-generated reports via OpenAI-compatible provider
-		ai.Register(protected.Group("/secvitals"), pool, cfg.AIProvider, cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel)
+		// AI-generated reports via OpenAI-compatible provider.
+		// Sprint 15 (S15-1/2/3/5): Rate-Limit + Daily-Quota + Response-Cache
+		// + Streaming-SSE-Endpoint laufen über RegisterWithOptions, sofern
+		// Redis verfügbar ist.
+		ai.RegisterWithOptions(protected.Group("/secvitals"), pool, cfg.AIProvider, cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel, ai.RegisterOptions{
+			Redis:            rdb,
+			RateLimitRPM:     cfg.AIRateLimitRPM,
+			DailyTokenLimit:  cfg.AIDailyTokenLimit,
+			CacheTTLSeconds:  cfg.AICacheTTLSeconds,
+			CostPerMTokenIn:  cfg.AICostPerMTokenIn,
+			CostPerMTokenOut: cfg.AICostPerMTokenOut,
+		})
 		// Auditor portal — read-only secvitals access via session token (no Bearer auth)
 		secvitals.RegisterAuditor(api.Group("/auditor/secvitals", auditorRateLimiter, auditor.AuditorAuth(pool)), ckHandler)
 		// Auto-evidence inbox — GitHub, SecReflex, SecPulse

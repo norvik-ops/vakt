@@ -17,11 +17,31 @@ import (
 	"context"
 	"fmt"
 	"runtime/debug"
+	"sync/atomic"
 
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
+
+// panicHandler ist der optionale Sentry/3rd-party-Hook (S15-14). Wenn der
+// Aufrufer (cmd/api/main.go, cmd/worker/main.go) einen Sentry-Init macht, ruft
+// er SetPanicHandler mit einer Funktion auf, die das Sentry-Event verschickt.
+// safego.Run feuert dann den Hook zusätzlich zu zerolog + OTel. Default: nil.
+//
+// atomic.Pointer hält den Hook thread-safe; SetPanicHandler darf jederzeit
+// laufen, auch nach dem Start (z.B. wenn DSN aus Live-Config kommt).
+var panicHandler atomic.Pointer[func(err error, goroutineName string, stack []byte)]
+
+// SetPanicHandler installiert den Sentry-/3rd-party-Panic-Hook. Aufruf mit nil
+// entfernt einen vorher gesetzten Hook.
+func SetPanicHandler(fn func(err error, goroutineName string, stack []byte)) {
+	if fn == nil {
+		panicHandler.Store(nil)
+		return
+	}
+	panicHandler.Store(&fn)
+}
 
 // Run startet fn als Goroutine.
 //
@@ -61,6 +81,10 @@ func runOnce(ctx context.Context, name string, fn func(context.Context) error) {
 			if span := trace.SpanFromContext(ctx); span.IsRecording() {
 				span.RecordError(err, trace.WithStackTrace(true))
 				span.SetStatus(codes.Error, fmt.Sprintf("panic in %s", name))
+			}
+			// S15-14: Sentry-/3rd-party-Hook, falls registriert.
+			if hook := panicHandler.Load(); hook != nil {
+				(*hook)(err, name, stack)
 			}
 		}
 	}()

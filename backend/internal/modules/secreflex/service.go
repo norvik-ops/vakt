@@ -21,8 +21,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/shared/crossevidence"
-	"github.com/matharnica/vakt/internal/shared/evidence_auto"
+	"github.com/matharnica/vakt/internal/services/crossevidence"
+	"github.com/matharnica/vakt/internal/services/evidence_auto"
 )
 
 // Service handles SecReflex business logic.

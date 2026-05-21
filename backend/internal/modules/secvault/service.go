@@ -20,7 +20,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/matharnica/vakt/internal/shared/crossevidence"
+	"github.com/matharnica/vakt/internal/services/crossevidence"
 )
 
 // Service handles SecVault business logic.

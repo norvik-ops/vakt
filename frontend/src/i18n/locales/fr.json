@@ -1242,5 +1242,24 @@
     "available": "est disponible",
     "updateNow": "Mettre à jour →",
     "updateNowLabel": "Mettre à jour"
+  },
+  "ai": {
+    "localBadge": {
+      "local": "Local · {{model}}",
+      "cloud": "Cloud · {{model}}",
+      "tooltip": "Cette réponse a été générée localement — aucune donnée n'a quitté votre instance Vakt.",
+      "cloudTooltip": "Cette réponse a été générée par un fournisseur cloud externe. Votre requête a été envoyée au fournisseur."
+    },
+    "cost": {
+      "local": "local",
+      "tooltip": "Utilisation des tokens et latence pour cette réponse IA."
+    },
+    "stream": {
+      "stop": "Annuler",
+      "thinking": "Réflexion…",
+      "generating": "Génération…",
+      "rateLimited": "Trop de requêtes IA — patientez un instant et réessayez.",
+      "quotaExceeded": "Quota quotidien atteint — disponible à nouveau demain."
+    }
   }
 }

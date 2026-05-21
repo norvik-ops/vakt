@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -30,6 +31,19 @@ type Config struct {
 	AIBaseURL           string // e.g. "https://api.mistral.ai/v1" or "http://ollama:11434/v1"
 	AIAPIKey            string // optional — leave empty for local providers (Ollama, LM Studio)
 	AIModel             string // e.g. "mistral-small-latest", "gpt-4o-mini", "llama3.2"
+	// Sprint 15: AI-Härtung.
+	// AIRateLimitRPM     — max AI-Calls pro Minute pro Org (Token-Bucket, Redis-backed). 0 = aus.
+	// AIDailyTokenLimit  — pro Org pro Kalendertag (UTC). 0 = aus.
+	// AICacheTTLSeconds  — Response-Cache-TTL (sha256(model+prompt) → cached body). 0 = aus.
+	// AICostPerMTokenIn/Out (in Mikro-EUR pro 1M Tokens) — für Kosten-Tracking. Lokales Ollama = 0.
+	AIRateLimitRPM     int
+	AIDailyTokenLimit  int
+	AICacheTTLSeconds  int
+	AICostPerMTokenIn  int64 // micro-EUR per 1M input tokens
+	AICostPerMTokenOut int64 // micro-EUR per 1M output tokens
+	// Sprint 15 S15-14: optionales Sentry-DSN. Wenn leer, kein Sentry-Init.
+	// safego.Run nutzt das automatisch — siehe internal/shared/safego.
+	SentryDSN string
 	CasdoorURL          string
 	CasdoorClientID     string
 	CasdoorClientSecret string
@@ -93,6 +107,33 @@ func getEnv(key, def string) string {
 	return def
 }
 
+// getEnvInt parst eine Integer-Env-Var; bei Fehler oder leerem Wert wird der
+// Default zurueckgegeben. Sprint 15 (S15-1/2/3) nutzt das fuer numerische
+// Rate-/Quota-/Cache-Konfiguration.
+func getEnvInt(key string, def int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return def
+	}
+	return n
+}
+
+func getEnvInt64(key string, def int64) int64 {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	n, err := strconv.ParseInt(v, 10, 64)
+	if err != nil {
+		return def
+	}
+	return n
+}
+
 // Load reads configuration from environment variables with explicit validation.
 func Load() (*Config, error) {
 	cfg := &Config{
@@ -113,6 +154,12 @@ func Load() (*Config, error) {
 		AIBaseURL:           getEnv("VAKT_AI_BASE_URL", "http://ollama:11434/v1"),
 		AIAPIKey:            getEnv("VAKT_AI_API_KEY", ""),
 		AIModel:             getEnv("VAKT_AI_MODEL", "llama3.2:3b"),
+		AIRateLimitRPM:      getEnvInt("VAKT_AI_RATE_LIMIT_RPM", 30),
+		AIDailyTokenLimit:   getEnvInt("VAKT_AI_DAILY_TOKEN_LIMIT_PER_ORG", 0),
+		AICacheTTLSeconds:   getEnvInt("VAKT_AI_CACHE_TTL_SECONDS", 3600),
+		AICostPerMTokenIn:   getEnvInt64("VAKT_AI_COST_PER_MTOKEN_IN_MICRO_EUR", 0),
+		AICostPerMTokenOut:  getEnvInt64("VAKT_AI_COST_PER_MTOKEN_OUT_MICRO_EUR", 0),
+		SentryDSN:           getEnv("VAKT_SENTRY_DSN", ""),
 		CasdoorURL:          getEnv("CASDOOR_URL", ""),
 		CasdoorClientID:     getEnv("CASDOOR_CLIENT_ID", ""),
 		CasdoorClientSecret: getEnv("CASDOOR_CLIENT_SECRET", ""),
@@ -132,7 +179,12 @@ func Load() (*Config, error) {
 		Staging:             getEnv("VAKT_STAGING", "false") == "true",
 		PromoteURL:          getEnv("VAKT_PROMOTE_URL", "http://host.docker.internal:9099/promote"),
 		PromoteSecret:       getEnv("VAKT_PROMOTE_SECRET", ""),
-		MetricsEnabled:      getEnv("VAKT_METRICS_ENABLED", "false") == "true",
+		// Sprint 15 S15-11: Prometheus-Metrics default-on. Vorher war
+		// VAKT_METRICS_ENABLED=false der Default — Operatoren mussten erst
+		// einen Schalter umlegen. Jetzt ist der Endpoint immer aktiv (IP-
+		// allowlisted auf Loopback + Docker-Netz), opt-out via
+		// VAKT_METRICS_DISABLED=true wenn jemand das explizit nicht will.
+		MetricsEnabled:      getEnv("VAKT_METRICS_DISABLED", "false") != "true",
 		EPSSEnabled:         getEnv("VAKT_EPSS_ENABLED", "false") == "true",
 	}
 

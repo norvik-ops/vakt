@@ -120,17 +120,94 @@ func GatherContext(ctx context.Context, db *pgxpool.Pool, orgID string) (*Compli
 type Service struct {
 	db     *pgxpool.Pool
 	client *AIClient
+	model  string
+	// Sprint 15 / S15-1/2/3: optional. Wenn gesetzt, läuft jede AI-Anfrage durch
+	// Rate-Limit + Daily-Quota + Response-Cache und schreibt einen Usage-Record.
+	// Wenn nil: alte Semantik (unbeschränkt, kein Tracking).
+	usage *UsageTracker
 }
 
 func NewService(db *pgxpool.Pool, baseURL, apiKey, model string) *Service {
 	return &Service{
 		db:     db,
 		client: NewAIClient(baseURL, apiKey, model),
+		model:  model,
 	}
+}
+
+// WithUsageTracker rüstet einen Service mit Rate-Limit, Quota und Cache nach.
+// Beim Wiring in cmd/api/main.go aufrufen, sobald rdb verfügbar ist.
+func (s *Service) WithUsageTracker(t *UsageTracker) *Service {
+	s.usage = t
+	return s
 }
 
 func (s *Service) IsAvailable(ctx context.Context) bool {
 	return s.client.IsAvailable(ctx)
+}
+
+// gateAndGenerate ist die zentrale Schleife: Rate-Limit + Quota + Cache + Call
+// + Persist. Aufrufer muss orgID und tag (z.B. "advice", "report") angeben.
+// system kann leer sein — dann läuft Generate() ohne System-Message.
+func (s *Service) gateAndGenerate(ctx context.Context, orgID, tag, system, userPrompt string) (string, error) {
+	if s.usage != nil && orgID != "" {
+		if err := s.usage.CheckRateLimit(ctx, orgID); err != nil {
+			s.usage.Record(ctx, UsageRecord{OrgID: orgID, Model: s.model, Status: "rate_limited", RequestID: tag})
+			return "", err
+		}
+		if err := s.usage.CheckDailyQuota(ctx, orgID); err != nil {
+			s.usage.Record(ctx, UsageRecord{OrgID: orgID, Model: s.model, Status: "rate_limited", RequestID: tag})
+			return "", err
+		}
+	}
+	// Cache-Lookup
+	msgs := buildMessages(system, userPrompt)
+	cacheKey := CacheKey(s.model, msgs)
+	if s.usage != nil {
+		if cached, ok := s.usage.CacheGet(ctx, cacheKey); ok {
+			s.usage.Record(ctx, UsageRecord{OrgID: orgID, Model: s.model, Status: "cache_hit", RequestID: tag})
+			return cached, nil
+		}
+	}
+
+	// Call upstream.
+	start := time.Now()
+	var out string
+	var err error
+	if system != "" {
+		out, err = s.client.GenerateWithSystem(ctx, system, userPrompt)
+	} else {
+		out, err = s.client.Generate(ctx, userPrompt)
+	}
+	dur := int(time.Since(start).Milliseconds())
+	status := "ok"
+	if err != nil {
+		status = "provider_error"
+	}
+	if s.usage != nil {
+		// Token-Counts bei nicht-streaming-Calls unbekannt; nil bewahrt das.
+		s.usage.Record(ctx, UsageRecord{
+			OrgID: orgID, Model: s.model,
+			DurationMs: dur, Status: status, RequestID: tag,
+		})
+		if err == nil && out != "" {
+			s.usage.CacheSet(ctx, cacheKey, out)
+		}
+	}
+	return out, err
+}
+
+// buildMessages erstellt die Message-Liste mit strikter Role-Trennung —
+// User-Input landet NIE im System-Prompt, immer im user-Role-Message
+// (Prompt-Injection-Defense, ADR-Anmerkung S15-4).
+func buildMessages(system, userPrompt string) []chatMessage {
+	if system == "" {
+		return []chatMessage{{Role: "user", Content: userPrompt}}
+	}
+	return []chatMessage{
+		{Role: "system", Content: system},
+		{Role: "user", Content: userPrompt},
+	}
 }
 
 // AdviceContext holds the minimal data needed to build a weekly action-plan prompt.
@@ -292,9 +369,8 @@ func (s *Service) ComplianceAdvice(ctx context.Context, orgID string) (string, e
 	system := "Du bist ein ISO-27001/NIS2-Compliance-Berater. Antworte auf Deutsch, präzise und handlungsorientiert."
 	userPrompt := buildAdvicePrompt(ac)
 
-	// Use a dedicated request that includes a system message for better quality
-	// on small models, while keeping max_tokens low to stay fast on CPU.
-	return s.client.GenerateWithSystem(ctx, system, userPrompt)
+	// Sprint 15: gateAndGenerate hängt Rate-Limit + Quota + Cache vor den Call.
+	return s.gateAndGenerate(ctx, orgID, "advice", system, userPrompt)
 }
 
 func (s *Service) GenerateReport(ctx context.Context, orgID string, reportType ReportType) (string, error) {
@@ -315,7 +391,9 @@ func (s *Service) GenerateReport(ctx context.Context, orgID string, reportType R
 		return "", fmt.Errorf("unknown report type: %s", reportType)
 	}
 
-	return s.client.Generate(ctx, prompt)
+	// Sprint 15: gateAndGenerate. system="" → reines Generate ohne System-Message,
+	// damit das bestehende Report-Verhalten erhalten bleibt.
+	return s.gateAndGenerate(ctx, orgID, "report-"+string(reportType), "", prompt)
 }
 
 func buildGapAnalysisPrompt(cc *ComplianceContext) string {

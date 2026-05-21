@@ -24,10 +24,12 @@
 package ai
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -117,6 +119,99 @@ func (c *AIClient) send(ctx context.Context, messages []chatMessage, maxTokens i
 		return "", fmt.Errorf("no choices in response")
 	}
 	return result.Choices[0].Message.Content, nil
+}
+
+// StreamChunk ist ein einzelnes Delta vom Streaming-Endpoint. Bei einer
+// Cloud-OpenAI-konformen API enthaelt es entweder Content (das naechste
+// Stueck Text) oder Done=true am Ende des Streams.
+type StreamChunk struct {
+	Content string
+	Done    bool
+}
+
+// StreamGenerate sendet system + user-Prompt und streamt die Response als
+// OpenAI-konforme `data: { ... }`-SSE-Frames zurueck. Liefert den Channel,
+// auf dem die Chunks ankommen; der Channel wird geschlossen wenn der Stream
+// endet oder ein Fehler auftritt.
+//
+// Verwendet wird das Standard-OpenAI-Streaming-Format ("stream": true im
+// Request, "delta.content" im jedem SSE-Frame, "[DONE]" als End-Marker).
+// Ollama und LM Studio implementieren das gleiche Format ueber /v1/.
+//
+// Sprint 15 / S15-5.
+func (c *AIClient) StreamGenerate(ctx context.Context, system, userPrompt string, maxTokens int) (<-chan StreamChunk, error) {
+	msgs := buildMessages(system, userPrompt)
+	reqBody := map[string]any{
+		"model":      c.model,
+		"messages":   msgs,
+		"stream":     true,
+		"max_tokens": maxTokens,
+	}
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("marshal stream request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/v1/chat/completions", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("build stream request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "text/event-stream")
+	if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
+
+	// Eigener Client ohne Timeout — Streaming kann lange dauern.
+	stream := &http.Client{Timeout: 0}
+	resp, err := stream.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("stream request: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		_ = resp.Body.Close()
+		return nil, fmt.Errorf("ai provider returned %d on stream", resp.StatusCode)
+	}
+
+	out := make(chan StreamChunk, 16)
+	go runStreamReader(resp.Body, out)
+	return out, nil
+}
+
+// runStreamReader parst den OpenAI-SSE-Stream Zeile-für-Zeile und emittiert
+// StreamChunks. Schließt den Output-Channel + den Body, wenn der Stream endet
+// (entweder via "[DONE]" oder via EOF). NICHT durch safego.Run gewrapped —
+// der Aufrufer (Handler) kann die Cancellation via ctx kontrollieren.
+func runStreamReader(body io.ReadCloser, out chan<- StreamChunk) {
+	defer close(out)
+	defer body.Close()
+	scanner := bufio.NewScanner(body)
+	// SSE-Frames können größer sein als der Default-Buffer (64 KB).
+	scanner.Buffer(make([]byte, 0, 256*1024), 1024*1024)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+		payload := strings.TrimPrefix(line, "data: ")
+		if payload == "[DONE]" {
+			out <- StreamChunk{Done: true}
+			return
+		}
+		var frame struct {
+			Choices []struct {
+				Delta struct {
+					Content string `json:"content"`
+				} `json:"delta"`
+			} `json:"choices"`
+		}
+		if err := json.Unmarshal([]byte(payload), &frame); err != nil {
+			continue
+		}
+		if len(frame.Choices) > 0 && frame.Choices[0].Delta.Content != "" {
+			out <- StreamChunk{Content: frame.Choices[0].Delta.Content}
+		}
+	}
 }
 
 // IsAvailable checks connectivity to the provider's /v1/models endpoint.

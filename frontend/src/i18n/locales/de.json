@@ -1240,5 +1240,24 @@
     "available": "ist verfügbar",
     "updateNow": "Jetzt aktualisieren →",
     "updateNowLabel": "Jetzt aktualisieren"
+  },
+  "ai": {
+    "localBadge": {
+      "local": "Lokal · {{model}}",
+      "cloud": "Cloud · {{model}}",
+      "tooltip": "Diese Antwort wurde lokal generiert — keine Daten haben deine Vakt-Instanz verlassen.",
+      "cloudTooltip": "Diese Antwort wurde von einem externen Cloud-Provider generiert. Inhalte deiner Anfrage wurden an den Provider gesendet."
+    },
+    "cost": {
+      "local": "lokal",
+      "tooltip": "Token-Verbrauch und Latenz dieser AI-Antwort."
+    },
+    "stream": {
+      "stop": "Abbrechen",
+      "thinking": "Denkt nach…",
+      "generating": "Generiert…",
+      "rateLimited": "Zu viele AI-Anfragen — kurz warten und erneut versuchen.",
+      "quotaExceeded": "Tages-Token-Quota erreicht — morgen wieder verfügbar."
+    }
   }
 }

@@ -19,7 +19,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/shared/dashboard"
-	"github.com/matharnica/vakt/internal/shared/evidence_auto"
+	"github.com/matharnica/vakt/internal/services/evidence_auto"
 	"github.com/matharnica/vakt/internal/shared/notify"
 	"github.com/matharnica/vakt/internal/shared/safego"
 	"github.com/matharnica/vakt/internal/shared/webhooks"

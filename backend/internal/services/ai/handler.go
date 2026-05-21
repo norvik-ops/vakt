@@ -1,7 +1,11 @@
 package ai
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -112,4 +116,104 @@ func (h *Handler) GenerateReport(c echo.Context) error {
 		"type":   input.Type,
 		"report": text,
 	})
+}
+
+// ChatStream handles POST /api/v1/.../ai/chat/stream.
+//
+// Body: { "system": "...", "prompt": "...", "max_tokens": 600 }
+// Response: text/event-stream mit OpenAI-konformen SSE-Frames:
+//
+//	data: {"delta":{"content":"…"}}
+//	data: {"delta":{"content":"…"}}
+//	data: [DONE]
+//
+// Sprint 15 / S15-5. Vor dem Streaming-Start läuft Rate-Limit + Quota durch
+// gateAndStream — analog zu gateAndGenerate für nicht-streaming-Calls.
+func (h *Handler) ChatStream(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	if orgID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+	}
+
+	var input struct {
+		System    string `json:"system"`
+		Prompt    string `json:"prompt"`
+		MaxTokens int    `json:"max_tokens"`
+	}
+	if err := c.Bind(&input); err != nil || input.Prompt == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "prompt required"})
+	}
+	if input.MaxTokens <= 0 || input.MaxTokens > 4096 {
+		input.MaxTokens = 1200
+	}
+
+	// Rate-Limit + Quota vor dem Stream-Start.
+	if h.svc.usage != nil {
+		if err := h.svc.usage.CheckRateLimit(c.Request().Context(), orgID); err != nil {
+			h.svc.usage.Record(c.Request().Context(), UsageRecord{
+				OrgID: orgID, Model: h.svc.model, Status: "rate_limited", RequestID: "chat.stream",
+			})
+			return c.JSON(http.StatusTooManyRequests, map[string]string{"error": err.Error(), "code": "AI_RATE_LIMITED"})
+		}
+		if err := h.svc.usage.CheckDailyQuota(c.Request().Context(), orgID); err != nil {
+			h.svc.usage.Record(c.Request().Context(), UsageRecord{
+				OrgID: orgID, Model: h.svc.model, Status: "rate_limited", RequestID: "chat.stream",
+			})
+			return c.JSON(http.StatusForbidden, map[string]string{"error": err.Error(), "code": "AI_QUOTA_EXCEEDED"})
+		}
+	}
+
+	// SSE-Header setzen.
+	resp := c.Response()
+	resp.Header().Set(echo.HeaderContentType, "text/event-stream")
+	resp.Header().Set("Cache-Control", "no-cache")
+	resp.Header().Set("Connection", "keep-alive")
+	resp.Header().Set("X-Accel-Buffering", "no") // nginx: disable buffering
+	resp.WriteHeader(http.StatusOK)
+
+	stream, err := h.svc.client.StreamGenerate(c.Request().Context(), input.System, input.Prompt, input.MaxTokens)
+	if err != nil {
+		log.Error().Err(err).Msg("ai stream: provider error")
+		if h.svc.usage != nil {
+			h.svc.usage.Record(c.Request().Context(), UsageRecord{
+				OrgID: orgID, Model: h.svc.model, Status: "provider_error", RequestID: "chat.stream",
+			})
+		}
+		_, _ = fmt.Fprintf(resp.Writer, "event: error\ndata: %s\n\n", err.Error())
+		resp.Flush()
+		return nil
+	}
+
+	start := time.Now()
+	var totalContent string
+	for chunk := range stream {
+		if chunk.Done {
+			break
+		}
+		// JSON-encode den Content-Chunk fuer trivialen Frontend-Decode.
+		payload, _ := json.Marshal(map[string]string{"content": chunk.Content})
+		if _, werr := fmt.Fprintf(resp.Writer, "data: %s\n\n", payload); werr != nil {
+			// Client disconnect — kontrollierter Abbruch.
+			if !errors.Is(werr, http.ErrHandlerTimeout) {
+				log.Debug().Err(werr).Msg("ai stream: client disconnect")
+			}
+			break
+		}
+		resp.Flush()
+		totalContent += chunk.Content
+	}
+	// End-Frame
+	_, _ = fmt.Fprintf(resp.Writer, "data: [DONE]\n\n")
+	resp.Flush()
+
+	// Usage persistieren (Tokens unbekannt; only duration + status).
+	if h.svc.usage != nil {
+		h.svc.usage.Record(c.Request().Context(), UsageRecord{
+			OrgID: orgID, Model: h.svc.model,
+			DurationMs: int(time.Since(start).Milliseconds()),
+			Status:     "ok",
+			RequestID:  "chat.stream",
+		})
+	}
+	return nil
 }

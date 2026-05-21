@@ -108,3 +108,44 @@ func TestRun_NilFunctionIsNoop(t *testing.T) {
 	Run(context.Background(), "test_nil", nil)
 	time.Sleep(50 * time.Millisecond)
 }
+
+// TestRun_PanicHandlerHookFires deckt S15-14: der optionale Sentry-/3rd-party-
+// Panic-Hook MUSS bei einer Panic mit Stack ausgefuehrt werden.
+func TestRun_PanicHandlerHookFires(t *testing.T) {
+	t.Cleanup(func() { SetPanicHandler(nil) })
+
+	var fired atomic.Bool
+	var capturedName string
+	var capturedErr error
+	SetPanicHandler(func(err error, name string, stack []byte) {
+		capturedErr = err
+		capturedName = name
+		if len(stack) == 0 {
+			t.Errorf("expected non-empty stack in hook")
+		}
+		fired.Store(true)
+	})
+
+	done := make(chan struct{})
+	go func() {
+		runOnce(context.Background(), "hook_test", func(_ context.Context) error {
+			panic("boom")
+		})
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("runOnce did not return within 2s")
+	}
+
+	if !fired.Load() {
+		t.Fatal("panic handler was not called")
+	}
+	if capturedName != "hook_test" {
+		t.Errorf("expected hook to see name 'hook_test', got %q", capturedName)
+	}
+	if capturedErr == nil {
+		t.Errorf("expected hook to see a non-nil error")
+	}
+}

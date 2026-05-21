@@ -1242,5 +1242,24 @@
     "available": "is beschikbaar",
     "updateNow": "Nu bijwerken →",
     "updateNowLabel": "Nu bijwerken"
+  },
+  "ai": {
+    "localBadge": {
+      "local": "Lokaal · {{model}}",
+      "cloud": "Cloud · {{model}}",
+      "tooltip": "Dit antwoord is lokaal gegenereerd — er hebben geen gegevens uw Vakt-instantie verlaten.",
+      "cloudTooltip": "Dit antwoord is gegenereerd door een externe cloud-provider. Uw verzoek is naar de provider gestuurd."
+    },
+    "cost": {
+      "local": "lokaal",
+      "tooltip": "Tokengebruik en latentie voor dit AI-antwoord."
+    },
+    "stream": {
+      "stop": "Annuleren",
+      "thinking": "Denken…",
+      "generating": "Genereren…",
+      "rateLimited": "Te veel AI-verzoeken — wacht even en probeer opnieuw.",
+      "quotaExceeded": "Dagelijkse tokenquota bereikt — morgen weer beschikbaar."
+    }
   }
 }

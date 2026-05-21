@@ -13,7 +13,7 @@ import (
 	"github.com/matharnica/vakt/internal/modules/secprivacy"
 	"github.com/matharnica/vakt/internal/modules/secpulse"
 	"github.com/matharnica/vakt/internal/modules/secvitals"
-	"github.com/matharnica/vakt/internal/shared/alerting"
+	"github.com/matharnica/vakt/internal/services/alerting"
 	"github.com/matharnica/vakt/internal/shared/bsi"
 	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/emaildigest"

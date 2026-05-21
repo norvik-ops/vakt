@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	sharedcrypto "github.com/matharnica/vakt/internal/shared/crypto"
-	"github.com/matharnica/vakt/internal/shared/evidence_auto"
+	"github.com/matharnica/vakt/internal/services/evidence_auto"
 )
 
 // Service handles GitHub integration business logic.
