@@ -6597,13 +6597,17 @@ export interface components {
         };
         SessionInfo: {
             /** Format: uuid */
-            id?: string;
-            user_agent?: string;
-            ip_address?: string;
+            id: string;
+            /** @description User-Agent-Auszug (max. 120 Zeichen) */
+            device_hint?: string;
             /** Format: date-time */
-            created_at?: string;
+            last_used: string;
             /** Format: date-time */
-            expires_at?: string;
+            created_at: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** @description True, wenn diese Session zur aktuellen X-Vakt-Session-Id passt. */
+            is_current?: boolean;
         };
         TOTPStatusResponse: {
             enabled?: boolean;
@@ -6651,6 +6655,11 @@ export interface components {
             /** @description Access-Token-Lebenszeit in Sekunden */
             expires_in: number;
             user: components["schemas"]["User"];
+            /**
+             * Format: uuid
+             * @description refresh_sessions.id der gerade ausgestellten Session — Frontend speichert sie und sendet sie als X-Vakt-Session-Id Header beim Sessions-Endpoint, damit "diese Session" in der UI markiert + Revoke-All-Others sich selbst ausnehmen kann.
+             */
+            session_id?: string;
         };
         User: {
             /** Format: uuid */

@@ -7,6 +7,40 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Sprint 22 Tail — Verbleibende Frontend-Komponenten + Tests (Tag-Kandidat v0.14.1)
+
+Schließt die 4 in v0.14.0 zurückgestellten Items aus Sprint 22 ab. Damit ist der Sprint-22-Honesty-Audit vollständig abgearbeitet.
+
+**S22-8 AgentRunPanel-Frontend:**
+- Neuer Hook `useAgentRun` (`frontend/src/shared/hooks/useAgentRun.ts`) konsumiert den SSE-Stream von `POST /api/v1/secvitals/ai/agent/run`, parsed strukturierte `AgentEvent`-Frames (plan / tool_call / tool_result / reflect / final / error) und liefert `events[]`, `isRunning`, `error`, `durationMs`, `start()`, `stop()`.
+- Neue Komponente `AgentRunPanel` (`frontend/src/shared/components/AgentRunPanel.tsx`): Goal-Input, Start/Stop-Button, Event-Cards mit farbcodierten Typen, JSON-Expand/Collapse pro Event für Arguments + Result.
+- Neue Page `AIAgentPage` unter `secvitals/ai/agent` — mountet das Panel, listet erlaubte Tools/Approve-Skelett.
+
+**S22-9 ApiKeysPage-Refactor:**
+- **Scope-Picker im Create-Dialog**: Checkbox-Liste pro Modul (`secvitals.*`, `secpulse.*`, `secvault.*`, `secreflex.*`, `secprivacy.*`, `hr.*`) mit Beschreibungstexten. Leer = Personal-Key (Full Access, ambers gekennzeichnet).
+- **Rotate-Button pro Key** mit eigenem Modal: Erklärt die 24h Grace-Period explizit, zeigt den neuen Raw-Key nach Rotation einmalig im New-Key-Dialog.
+- **Scope-Tags und Grace-Indicator** pro Row: code-style-Pills mit dem Scope-String, oder „Personal (Full Access)"-Badge wenn leer. Während aktiver Grace-Period zusätzlich „Grace 24h aktiv"-Marker.
+- **last_used_ip-Anzeige** unterhalb von last_used_at (klein, monospace).
+
+**Backend-Begleitänderungen:**
+- `apikeys.APIKey` Struct um `LastUsedIP` + `RotatedAt` erweitert; `List` selectiert beide Felder mit. Middleware-Hook für API-Key-Auth-Erfolg updated jetzt zusätzlich `last_used_ip` aus `c.RealIP()`.
+
+**S22-10 Session-Management — Current-Session-Marker + Panic-Button:**
+- `auth.AuthResponse` um `session_id` (UUID der `refresh_sessions`-Row) erweitert. `issueTokenPair` nutzt `RETURNING id::text`, damit Login/Register/Refresh die ID mitliefern.
+- Frontend `api/client.ts` um `getSessionId()`/`setSessionId()`-Helpers erweitert; `apiFetch` sendet die ID als `X-Vakt-Session-Id` Header automatisch mit. `Login.tsx` persistiert die ID in localStorage; `setAuthToken(null)` löscht sie wieder.
+- `auth.SessionHandler.ListSessions` markiert die zur Header-ID passende Row mit `is_current: true`. `RevokeAllOtherSessions` nutzt die Header-ID statt einer nicht-funktionierenden Token-Hash-Vergleichslogik.
+- `SessionsPage` zeigt „Diese hier"-Badge + last_used pro Session, separiert „Andere abmelden" und einen 2-Step-confirm Panic-Button („inkl. dieser") mit auto-redirect auf `/login` nach Revoke.
+- OpenAPI-Spec entsprechend nachgezogen: `LoginResponse` um `session_id`, `SessionInfo` an Backend-Form angepasst (`device_hint`, `last_used`, `is_current`) — gem. ADR-0017.
+
+**S22-14 Integration-Tests für Cleanup-Jobs:**
+- Neue Test-Datei `internal/integration_test/cleanup_jobs_real_test.go` (build-tag `integration`):
+  - `TestCleanupAnonymousRuns_DeletesExpiredRows` — seedet 1 expired + 1 fresh Row in `nis2_anonymous_runs`, ruft `nis2wizard.CleanupAnonymousRuns`, asserted nur expired ist weg.
+  - `TestCleanupLoginHistory_DeletesOldEntries` — seedet 1 Eintrag vor 100 Tagen + 1 frischer Eintrag in `login_history`, ruft `auth.CleanupLoginHistory`, asserted Retention-Grenze 90d sauber.
+- Beide Tests bootstrap Postgres via testcontainers-go (analog zu `hr_evidence_real_test.go`), skippen sauber wenn Docker nicht verfügbar.
+
+**Operations-Doku:**
+- `docs/operations/maintenance-window-server-upgrade.md` — Wartungsfenster-Plan für Strato VC-2-4 → VC-6-12 Upgrade: Pre-Flight (T-24h, T-1h), Live-Migration vs. Backup-Restore-Variante, Post-Flight-Validierung (Health-Smoke aus ADR-0017 Checklist), Rollback-Strategie, Kommunikations-Schema.
+
 ### Sprint 22 — Fertigstellungs-Welle für Sprints 17-20 (Tag-Kandidat v0.14.0)
 
 Schließt die Skeleton-Lücken aus 17-20 nach dem Honesty-Audit vom 2026-05-22. Kein neues Feature-Versprechen, sondern Einlösung alter. 12 Items voll-implementiert, 4 größere Frontend-Komponenten als [~] in nachfolgende Welle verschoben.

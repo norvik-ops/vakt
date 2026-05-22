@@ -80,6 +80,9 @@ type AuthResponse struct {
 	RefreshToken string   `json:"refresh_token"`
 	ExpiresIn    int      `json:"expires_in"` // seconds
 	User         AuthUser `json:"user"`
+	// SessionID ist die UUID der refresh_sessions-Row. Frontend speichert sie,
+	// damit die SessionsPage die "diese hier"-Session markieren kann.
+	SessionID string `json:"session_id,omitempty"`
 }
 
 // AuthUser ist die minimal nötige User-Repräsentation für Frontend-State.
@@ -385,11 +388,14 @@ func (s *Service) issueTokenPair(ctx context.Context, userID, orgID string, role
 	if len(deviceHint) > 120 {
 		deviceHint = deviceHint[:120]
 	}
-	_, dbErr := s.db.Exec(ctx, `
+	var sessionID string
+	dbErr := s.db.QueryRow(ctx, `
 		INSERT INTO refresh_sessions (user_id, org_id, token_hash, device_hint, expires_at)
 		VALUES ($1::uuid, $2::uuid, $3, $4, $5)
-		ON CONFLICT (token_hash) DO NOTHING`,
-		userID, orgID, tokenHash, deviceHint, expiresAt)
+		ON CONFLICT (token_hash) DO UPDATE SET last_used = NOW()
+		RETURNING id::text`,
+		userID, orgID, tokenHash, deviceHint, expiresAt,
+	).Scan(&sessionID)
 	if dbErr != nil {
 		// Non-fatal: Redis is the source of truth for token validity.
 		log.Warn().Err(dbErr).Str("user_id", userID).Msg("issueTokenPair: failed to persist refresh session")
@@ -399,6 +405,7 @@ func (s *Service) issueTokenPair(ctx context.Context, userID, orgID string, role
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ExpiresIn:    int(AccessTokenTTL / time.Second),
+		SessionID:    sessionID,
 	}, nil
 }
 

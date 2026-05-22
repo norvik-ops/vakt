@@ -28,7 +28,27 @@ export function setUserInfo(user: UserInfo | null): void {
 // Legacy compatibility shim — callers that still invoke setAuthToken(null) on
 // logout will clear vakt_user.  New callers should prefer setUserInfo().
 export function setAuthToken(token: string | null): void {
-  if (!token) setUserInfo(null)
+  if (!token) {
+    setUserInfo(null)
+    setSessionId(null)
+  }
+}
+
+// Session-ID (refresh_sessions.id) wird beim Login vom Backend zurückgegeben
+// und nur dazu verwendet, in der SessionsPage die aktuelle Session zu markieren
+// und beim Revoke-All sich selbst auszuschließen. Kein Sicherheitsmechanismus —
+// rein UX.
+export function getSessionId(): string | null {
+  try {
+    return localStorage.getItem('vakt_session_id')
+  } catch {
+    return null
+  }
+}
+
+export function setSessionId(id: string | null): void {
+  if (id) localStorage.setItem('vakt_session_id', id)
+  else localStorage.removeItem('vakt_session_id')
 }
 
 // Returns true when a user session exists (cookie is managed by the browser;
@@ -110,6 +130,13 @@ export async function apiFetch<T>(
     if (token) csrfHeader['X-CSRF-Token'] = token
   }
 
+  // X-Vakt-Session-Id: rein kosmetischer Hint fürs Backend, damit die
+  // SessionsPage die "diese hier"-Markierung setzen + Revoke-All-Others
+  // sich selbst ausnehmen kann.
+  const sessionHeader: Record<string, string> = {}
+  const sessionId = getSessionId()
+  if (sessionId) sessionHeader['X-Vakt-Session-Id'] = sessionId
+
   let lastError: unknown = null
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     let res: Response
@@ -119,6 +146,7 @@ export async function apiFetch<T>(
         headers: {
           'Content-Type': 'application/json',
           ...csrfHeader,
+          ...sessionHeader,
           ...(options?.headers ?? {}),
         },
         ...options,

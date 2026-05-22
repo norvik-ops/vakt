@@ -2,7 +2,7 @@ import { useState, useEffect, type FormEvent } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { Building2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { apiFetch } from '../api/client'
+import { apiFetch, setSessionId } from '../api/client'
 import { useAuthStore } from '../shared/stores/auth'
 import { useDemoMode } from '../shared/hooks/useDemoMode'
 import { toast } from '../shared/hooks/useToast'
@@ -103,6 +103,9 @@ export default function Login() {
         body: JSON.stringify({ email, password }),
       })
       setAuth(data.user)
+      if ('session_id' in data && typeof data.session_id === 'string') {
+        setSessionId(data.session_id)
+      }
       navigate('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : t('auth.loginFailed'))

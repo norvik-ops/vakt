@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Key, Plus, Trash2, Copy, Check, AlertTriangle } from 'lucide-react'
+import { Key, Plus, Trash2, Copy, Check, AlertTriangle, RotateCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../shared/components/PageHeader'
 import { Button } from '../components/ui/button'
@@ -12,6 +12,7 @@ import { apiFetch } from '../api/client'
 import { ProGate } from '../shared/components/ProGate'
 import { toast } from '../shared/hooks/useToast'
 import { SkeletonTable } from '../shared/components/SkeletonLoaders'
+import { formatLocale } from '../shared/utils/locale'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,9 +22,23 @@ type APIKey = {
   key_prefix: string
   scopes: string[]
   last_used_at: string | null
+  last_used_ip?: string | null
   expires_at: string | null
   created_at: string
+  rotated_at?: string | null
 }
+
+// Scope-Liste passt zu den 6 Modulen aus CLAUDE.md. Wildcards `.*` geben dem
+// Key vollen Zugriff auf das Modul; `*` ist Admin und sollte nur in seltenen
+// Ausnahmefällen gesetzt werden.
+const SCOPE_GROUPS: Array<{ label: string; description: string; scope: string }> = [
+  { label: 'Vakt Comply', description: 'Controls, Evidence, NIS2/ISO/BSI', scope: 'secvitals.*' },
+  { label: 'Vakt Scan', description: 'Scanner-Orchestrierung, Findings', scope: 'secpulse.*' },
+  { label: 'Vakt Vault', description: 'Secrets, Git-Scan, Rotation', scope: 'secvault.*' },
+  { label: 'Vakt Aware', description: 'Phishing-Sim, Trainings', scope: 'secreflex.*' },
+  { label: 'Vakt Privacy', description: 'VVT, DPIA, AVV, Breaches', scope: 'secprivacy.*' },
+  { label: 'Vakt HR', description: 'Onboarding / Offboarding', scope: 'hr.*' },
+]
 
 type APIKeyListResponse = {
   data: APIKey[]
@@ -69,12 +84,20 @@ function useRevokeAPIKey() {
   })
 }
 
+function useRotateAPIKey() {
+  const qc = useQueryClient()
+  return useMutation<CreateKeyResponse, Error, string>({
+    mutationFn: (id) => apiFetch<CreateKeyResponse>(`/api-keys/${id}/rotate`, { method: 'POST' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['api-keys'] }),
+  })
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | null | undefined): string {
   if (!iso) return '–'
   try {
-    return new Intl.DateTimeFormat('de-DE', {
+    return new Intl.DateTimeFormat(formatLocale(), {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(new Date(iso))
@@ -123,6 +146,7 @@ function CreateKeyDialog({ open, onOpenChange, onCreated }: CreateDialogProps) {
   const [name, setName] = useState('')
   const [expiresAt, setExpiresAt] = useState('')
   const [nameTouched, setNameTouched] = useState(false)
+  const [selectedScopes, setSelectedScopes] = useState<Set<string>>(new Set())
 
   const createKey = useCreateAPIKey()
 
@@ -131,8 +155,18 @@ function CreateKeyDialog({ open, onOpenChange, onCreated }: CreateDialogProps) {
       setName('')
       setExpiresAt('')
       setNameTouched(false)
+      setSelectedScopes(new Set())
     }
     onOpenChange(isOpen)
+  }
+
+  function toggleScope(scope: string) {
+    setSelectedScopes((prev) => {
+      const next = new Set(prev)
+      if (next.has(scope)) next.delete(scope)
+      else next.add(scope)
+      return next
+    })
   }
 
   function handleCreate() {
@@ -141,7 +175,7 @@ function CreateKeyDialog({ open, onOpenChange, onCreated }: CreateDialogProps) {
 
     const input: CreateKeyRequest = {
       name: name.trim(),
-      scopes: [],
+      scopes: Array.from(selectedScopes),
     }
     if (expiresAt) {
       input.expires_at = new Date(expiresAt).toISOString()
@@ -186,6 +220,44 @@ function CreateKeyDialog({ open, onOpenChange, onCreated }: CreateDialogProps) {
               min={new Date().toISOString().split('T')[0]}
             />
             <p className="text-[11px] text-secondary">{t('settings.apiKeysPage.labelExpiryHint')}</p>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Scopes</Label>
+              <span className="text-[11px] text-secondary">
+                {selectedScopes.size === 0 ? 'Personal-Key (Full Access)' : `${selectedScopes.size.toString()} ausgewählt`}
+              </span>
+            </div>
+            <div className="space-y-1 rounded-lg border border-border p-2">
+              {SCOPE_GROUPS.map((g) => {
+                const checked = selectedScopes.has(g.scope)
+                return (
+                  <label
+                    key={g.scope}
+                    className="flex items-start gap-2.5 px-2 py-1.5 rounded hover:bg-muted/40 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleScope(g.scope)}
+                      className="mt-0.5 h-4 w-4 rounded border-border"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-primary">{g.label}</span>
+                        <code className="text-[10px] font-mono text-secondary bg-muted/30 px-1.5 py-0.5 rounded">{g.scope}</code>
+                      </div>
+                      <p className="text-[11px] text-secondary mt-0.5">{g.description}</p>
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+            <p className="text-[11px] text-secondary">
+              Leer lassen → Personal-Key mit voller User-Berechtigung. Scopes setzen für CI-Bots
+              mit Least-Privilege.
+            </p>
           </div>
         </div>
         {createKey.isError && (
@@ -246,6 +318,54 @@ function NewKeyDialog({ rawKey, onClose }: NewKeyDialogProps) {
   )
 }
 
+// ─── Rotate Dialog ────────────────────────────────────────────────────────────
+
+type RotateDialogProps = {
+  keyToRotate: APIKey | null
+  onConfirm: () => void
+  onCancel: () => void
+  isPending: boolean
+}
+
+function RotateKeyDialog({ keyToRotate, onConfirm, onCancel, isPending }: RotateDialogProps) {
+  return (
+    <Dialog open={keyToRotate !== null} onOpenChange={(open) => { if (!open) onCancel() }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Key rotieren</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <p className="text-sm text-secondary">
+            Der Key <strong className="text-primary">{keyToRotate?.name ?? ''}</strong> wird durch
+            einen neuen ersetzt. Der alte Key bleibt für <strong>24 Stunden</strong> weiterhin
+            gültig (Grace-Period), damit CI/CD-Pipelines Zeit zum Umstellen haben.
+          </p>
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed space-y-1">
+              <p><strong>Während der Grace-Period:</strong></p>
+              <ul className="list-disc list-inside space-y-0.5">
+                <li>Alter Key liefert Header <code className="font-mono">X-Vakt-Key-Deprecated: true</code></li>
+                <li>Pipelines sehen Warnung in Logs</li>
+                <li>Nach 24h ist der alte Key endgültig ungültig</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel} disabled={isPending}>
+            Abbrechen
+          </Button>
+          <Button onClick={onConfirm} disabled={isPending}>
+            <RotateCw className="mr-1.5 h-4 w-4" />
+            {isPending ? 'Rotiere…' : 'Jetzt rotieren'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── Confirm Revoke Dialog ────────────────────────────────────────────────────
 
 type ConfirmRevokeProps = {
@@ -289,9 +409,11 @@ function ApiKeysContent() {
   const [createOpen, setCreateOpen] = useState(false)
   const [newRawKey, setNewRawKey] = useState<string | null>(null)
   const [revokingKey, setRevokingKey] = useState<APIKey | null>(null)
+  const [rotatingKey, setRotatingKey] = useState<APIKey | null>(null)
 
   const { data, isLoading, isError, error } = useAPIKeys()
   const revoke = useRevokeAPIKey()
+  const rotate = useRotateAPIKey()
 
   const keys = data?.data ?? []
 
@@ -304,6 +426,21 @@ function ApiKeysContent() {
       },
       onError: (err) => {
         setRevokingKey(null)
+        toast(`Fehler: ${err.message}`, 'error')
+      },
+    })
+  }
+
+  function handleRotate() {
+    if (!rotatingKey) return
+    rotate.mutate(rotatingKey.id, {
+      onSuccess: (result) => {
+        setRotatingKey(null)
+        setNewRawKey(result.raw_key)
+        toast('Key rotiert — alter Key bleibt 24h gültig', 'success')
+      },
+      onError: (err) => {
+        setRotatingKey(null)
         toast(`Fehler: ${err.message}`, 'error')
       },
     })
@@ -358,34 +495,76 @@ function ApiKeysContent() {
           )}
 
           {/* Rows */}
-          {keys.map((key) => (
-            <div
-              key={key.id}
-              className="grid grid-cols-[2fr_1.5fr_1.5fr_1.5fr_auto] gap-x-4 items-center px-4 py-3 border-b border-border last:border-0"
-            >
-              <div className="min-w-0">
-                <div className="text-sm font-medium text-primary truncate">{key.name}</div>
-                <div className="flex items-center gap-1 text-xs font-mono text-secondary mt-0.5">
-                  <span>{key.key_prefix}…</span>
-                  <CopyButton text={key.key_prefix} />
+          {keys.map((key) => {
+            const inGrace = key.rotated_at && new Date(key.rotated_at).getTime() > Date.now() - 24 * 60 * 60 * 1000
+            return (
+              <div
+                key={key.id}
+                className="grid grid-cols-[2fr_1.5fr_1.5fr_1.5fr_auto] gap-x-4 items-start px-4 py-3 border-b border-border last:border-0"
+              >
+                <div className="min-w-0 space-y-1">
+                  <div className="text-sm font-medium text-primary truncate">{key.name}</div>
+                  <div className="flex items-center gap-1 text-xs font-mono text-secondary">
+                    <span>{key.key_prefix}…</span>
+                    <CopyButton text={key.key_prefix} />
+                  </div>
+                  {/* Scope-Tags */}
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {key.scopes.length === 0 ? (
+                      <span className="text-[10px] uppercase font-semibold tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                        Personal (Full Access)
+                      </span>
+                    ) : (
+                      key.scopes.map((s) => (
+                        <code
+                          key={s}
+                          className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-brand/10 text-brand"
+                        >
+                          {s}
+                        </code>
+                      ))
+                    )}
+                    {inGrace && (
+                      <span className="text-[10px] uppercase font-semibold tracking-wide px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                        Grace 24h aktiv
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <span className="text-sm text-secondary">{formatDate(key.created_at)}</span>
+                <div className="text-sm text-secondary">
+                  <div>{formatDate(key.last_used_at)}</div>
+                  {key.last_used_ip && (
+                    <div className="text-[10px] font-mono text-muted mt-0.5">{key.last_used_ip}</div>
+                  )}
+                </div>
+                <span className="text-sm text-secondary">
+                  {key.expires_at ? formatDate(key.expires_at) : t('settings.apiKeysPage.never')}
+                </span>
+                <div className="flex items-center gap-0.5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-secondary hover:text-primary hover:bg-muted/40"
+                    onClick={() => setRotatingKey(key)}
+                    title="Key rotieren (24h Grace-Period)"
+                  >
+                    <RotateCw className="w-4 h-4" />
+                    <span className="sr-only">Rotieren</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => setRevokingKey(key)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span className="sr-only">{t('settings.apiKeysPage.revokeKey')}</span>
+                  </Button>
                 </div>
               </div>
-              <span className="text-sm text-secondary">{formatDate(key.created_at)}</span>
-              <span className="text-sm text-secondary">{formatDate(key.last_used_at)}</span>
-              <span className="text-sm text-secondary">
-                {key.expires_at ? formatDate(key.expires_at) : t('settings.apiKeysPage.never')}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => setRevokingKey(key)}
-              >
-                <Trash2 className="w-4 h-4" />
-                <span className="sr-only">{t('settings.apiKeysPage.revokeKey')}</span>
-              </Button>
-            </div>
-          ))}
+            )
+          })}
         </Card>
 
         <p className="text-xs text-secondary">
@@ -409,6 +588,13 @@ function ApiKeysContent() {
           onConfirm={handleRevoke}
           onCancel={() => setRevokingKey(null)}
           isPending={revoke.isPending}
+        />
+
+        <RotateKeyDialog
+          keyToRotate={rotatingKey}
+          onConfirm={handleRotate}
+          onCancel={() => setRotatingKey(null)}
+          isPending={rotate.isPending}
         />
       </div>
     </ProGate>

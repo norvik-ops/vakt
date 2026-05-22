@@ -89,20 +89,26 @@ components:
 
     SessionInfo:
       type: object
+      required: [id, last_used, created_at, expires_at]
       properties:
         id:
           type: string
           format: uuid
-        user_agent:
+        device_hint:
           type: string
-        ip_address:
+          description: User-Agent-Auszug (max. 120 Zeichen)
+        last_used:
           type: string
+          format: date-time
         created_at:
           type: string
           format: date-time
         expires_at:
           type: string
           format: date-time
+        is_current:
+          type: boolean
+          description: True, wenn diese Session zur aktuellen X-Vakt-Session-Id passt.
 
     TOTPStatusResponse:
       type: object
@@ -193,6 +199,13 @@ components:
           description: Access-Token-Lebenszeit in Sekunden
         user:
           $ref: '#/components/schemas/User'
+        session_id:
+          type: string
+          format: uuid
+          description: refresh_sessions.id der gerade ausgestellten Session — Frontend
+            speichert sie und sendet sie als X-Vakt-Session-Id Header beim Sessions-Endpoint,
+            damit "diese Session" in der UI markiert + Revoke-All-Others sich selbst
+            ausnehmen kann.
 
     User:
       type: object

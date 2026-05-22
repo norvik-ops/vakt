@@ -340,13 +340,14 @@ func handleAPIKey(c echo.Context, next echo.HandlerFunc, db *pgxpool.Pool, rawKe
 		})
 	}
 
-	// Update last_used_at asynchronously — do not block the request.
+	// Update last_used_at + last_used_ip asynchronously — do not block the request.
+	clientIP := c.RealIP()
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		_, _ = db.Exec(ctx,
-			`UPDATE api_keys SET last_used_at = NOW() WHERE id = $1::uuid`,
-			keyID,
+			`UPDATE api_keys SET last_used_at = NOW(), last_used_ip = NULLIF($2, '') WHERE id = $1::uuid`,
+			keyID, clientIP,
 		)
 	}()
 

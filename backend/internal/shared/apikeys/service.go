@@ -25,8 +25,10 @@ type APIKey struct {
 	KeyPrefix  string     `json:"key_prefix"`
 	Scopes     []string   `json:"scopes"`
 	LastUsedAt *time.Time `json:"last_used_at"`
+	LastUsedIP *string    `json:"last_used_ip,omitempty"`
 	ExpiresAt  *time.Time `json:"expires_at"`
 	CreatedAt  time.Time  `json:"created_at"`
+	RotatedAt  *time.Time `json:"rotated_at,omitempty"`
 }
 
 // CreateResult is returned once on key creation — the raw key is included here
@@ -99,7 +101,7 @@ func (s *Service) Create(ctx context.Context, orgID, userID string, input Create
 // List returns all non-revoked API keys belonging to the given user within the org.
 func (s *Service) List(ctx context.Context, orgID, userID string) ([]APIKey, error) {
 	const q = `
-		SELECT id, name, key_prefix, scopes, last_used_at, expires_at, created_at
+		SELECT id, name, key_prefix, scopes, last_used_at, last_used_ip, expires_at, created_at, rotated_at
 		FROM api_keys
 		WHERE org_id = $1::uuid
 		  AND created_by = $2::uuid
@@ -115,7 +117,7 @@ func (s *Service) List(ctx context.Context, orgID, userID string) ([]APIKey, err
 	var keys []APIKey
 	for rows.Next() {
 		var k APIKey
-		if err := rows.Scan(&k.ID, &k.Name, &k.KeyPrefix, &k.Scopes, &k.LastUsedAt, &k.ExpiresAt, &k.CreatedAt); err != nil {
+		if err := rows.Scan(&k.ID, &k.Name, &k.KeyPrefix, &k.Scopes, &k.LastUsedAt, &k.LastUsedIP, &k.ExpiresAt, &k.CreatedAt, &k.RotatedAt); err != nil {
 			return nil, fmt.Errorf("apikeys: scan failed: %w", err)
 		}
 		keys = append(keys, k)

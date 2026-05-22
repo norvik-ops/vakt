@@ -20,6 +20,7 @@ type RefreshSessionInfo struct {
 	LastUsed   time.Time `json:"last_used"`
 	CreatedAt  time.Time `json:"created_at"`
 	ExpiresAt  time.Time `json:"expires_at"`
+	IsCurrent  bool      `json:"is_current,omitempty"`
 }
 
 // SessionHandler handles per-device session listing and revocation.
@@ -53,11 +54,19 @@ func (h *SessionHandler) ListSessions(c echo.Context) error {
 	}
 	defer rows.Close()
 
+	// Frontend sendet die im Login bekommene session_id als Header mit, damit wir
+	// die aktuelle Session im UI markieren können. Kein Sicherheitsmechanismus —
+	// nur kosmetisch ("diese hier").
+	currentSessionID := c.Request().Header.Get("X-Vakt-Session-Id")
+
 	var sessions []RefreshSessionInfo
 	for rows.Next() {
 		var s RefreshSessionInfo
 		if err := rows.Scan(&s.ID, &s.DeviceHint, &s.LastUsed, &s.CreatedAt, &s.ExpiresAt); err != nil {
 			continue
+		}
+		if currentSessionID != "" && s.ID == currentSessionID {
+			s.IsCurrent = true
 		}
 		sessions = append(sessions, s)
 	}
@@ -111,11 +120,12 @@ func (h *SessionHandler) RevokeAllOtherSessions(c echo.Context) error {
 	var query string
 	var args []any
 
-	tokenRaw, _ := c.Get("token_raw").(string)
-	if tokenRaw != "" {
-		currentHash := sha256Hex(tokenRaw)
-		query = `DELETE FROM refresh_sessions WHERE user_id = $1::uuid AND token_hash != $2 RETURNING token_hash`
-		args = []any{userID, currentHash}
+	// Frontend signalisiert die "current" Session über den X-Vakt-Session-Id Header.
+	// Ohne Header → revoke ALL (Panic-Button-Pfad), inklusive der aktuellen Session.
+	currentSessionID := c.Request().Header.Get("X-Vakt-Session-Id")
+	if currentSessionID != "" {
+		query = `DELETE FROM refresh_sessions WHERE user_id = $1::uuid AND id != $2::uuid RETURNING token_hash`
+		args = []any{userID, currentSessionID}
 	} else {
 		query = `DELETE FROM refresh_sessions WHERE user_id = $1::uuid RETURNING token_hash`
 		args = []any{userID}

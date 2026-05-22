@@ -16,6 +16,7 @@ import NIS2AssistantPage from './pages/NIS2AssistantPage'
 import ISO27001ChecklistPage from './pages/ISO27001ChecklistPage'
 import BSIGrundschutzPage from './pages/BSIGrundschutzPage'
 import AIReportPage from './pages/AIReportPage'
+import AIAgentPage from './pages/AIAgentPage'
 import SuppliersPage from './pages/SuppliersPage'
 import AISystemsPage from './pages/AISystemsPage'
 import AIDocumentationPage from './pages/AIDocumentationPage'
@@ -70,6 +71,7 @@ export default function SecVitalsRoutes() {
       <Route path="iso27001" element={<ISO27001ChecklistPage />} />
       <Route path="grundschutz" element={<BSIGrundschutzPage />} />
       <Route path="ai-report" element={<AIReportPage />} />
+      <Route path="ai/agent" element={<AIAgentPage />} />
       <Route path="suppliers" element={<SuppliersPage />} />
       <Route path="ai-systems" element={<AISystemsPage />} />
       <Route path="ai-systems/:id/documentation" element={<AIDocumentationPage />} />
