@@ -74,11 +74,8 @@ func (h *Handler) StreamScanProgress(c echo.Context) error {
 
 	// Sicherheits-Check: Scan muss zur Org des Users gehören. Sonst kann ein
 	// Angreifer mit gestohlener Cookie einen Scan einer anderen Org streamen.
-	var ownerOrgID string
-	if err := h.service.db.QueryRow(c.Request().Context(),
-		`SELECT org_id::text FROM vb_scans WHERE id = $1::uuid`,
-		scanID,
-	).Scan(&ownerOrgID); err != nil {
+	ownerOrgID, err := h.service.GetScanOrgID(c.Request().Context(), scanID)
+	if err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "scan not found"})
 	}
 	if ownerOrgID != orgID {

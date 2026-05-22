@@ -226,6 +226,7 @@ type Querier interface {
 	GetCKMappingsBySourceControlIDs(ctx context.Context, arg GetCKMappingsBySourceControlIDsParams) ([]CkFrameworkMappings, error)
 	GetCKMilestone(ctx context.Context, arg GetCKMilestoneParams) (GetCKMilestoneRow, error)
 	GetCKOrgAdminEmails(ctx context.Context, orgID string) ([]string, error)
+	GetCKOrgMemberRole(ctx context.Context, arg GetCKOrgMemberRoleParams) (string, error)
 	GetCKOrgApprovalRequired(ctx context.Context, id string) (bool, error)
 	GetCKOrgSector(ctx context.Context, id string) (GetCKOrgSectorRow, error)
 	GetCKPolicy(ctx context.Context, arg GetCKPolicyParams) (GetCKPolicyRow, error)
@@ -290,6 +291,7 @@ type Querier interface {
 	GetSRTrainingModuleByID(ctx context.Context, arg GetSRTrainingModuleByIDParams) (SrTrainingModules, error)
 	GetSVEnvironment(ctx context.Context, arg GetSVEnvironmentParams) (SoEnvironments, error)
 	GetSVProject(ctx context.Context, arg GetSVProjectParams) (GetSVProjectRow, error)
+	GetUserDisplayName(ctx context.Context, id string) (string, error)
 	GetUserModulePermissions(ctx context.Context, arg GetUserModulePermissionsParams) ([]UserModulePermissions, error)
 	IncrementCKAuditorLinkUsage(ctx context.Context, id string) error
 	// ── EU AI Act: Classifications + Documentation ─────────────────────────────
@@ -362,6 +364,8 @@ type Querier interface {
 	// ── Control Measures (Maßnahmen-Katalog, TISAX) ─────────────────────────────
 	ListCKMeasures(ctx context.Context, arg ListCKMeasuresParams) ([]CkControlMeasures, error)
 	ListCKMilestones(ctx context.Context, arg ListCKMilestonesParams) ([]ListCKMilestonesRow, error)
+	ListCKMyTaskControls(ctx context.Context, arg ListCKMyTaskControlsParams) ([]ListCKMyTaskControlsRow, error)
+	ListCKMyTaskRisks(ctx context.Context, arg ListCKMyTaskRisksParams) ([]ListCKMyTaskRisksRow, error)
 	ListCKOverdueControls(ctx context.Context, orgID string) ([]ListCKOverdueControlsRow, error)
 	ListCKOverdueTasks(ctx context.Context, orgID string) ([]CkTasks, error)
 	ListCKPendingApprovals(ctx context.Context, orgID string) ([]ListCKPendingApprovalsRow, error)
@@ -377,6 +381,7 @@ type Querier interface {
 	ListCKRiskControls(ctx context.Context, arg ListCKRiskControlsParams) ([]ListCKRiskControlsRow, error)
 	ListCKRisks(ctx context.Context, orgID string) ([]ListCKRisksRow, error)
 	ListCKRisksPaged(ctx context.Context, arg ListCKRisksPagedParams) ([]ListCKRisksPagedRow, error)
+	ListCKSoAEntries(ctx context.Context, orgID string) ([]ListCKSoAEntriesRow, error)
 	ListCKSupplierRisks(ctx context.Context, arg ListCKSupplierRisksParams) ([]ListCKSupplierRisksRow, error)
 	ListCKSuppliers(ctx context.Context, arg ListCKSuppliersParams) ([]ListCKSuppliersRow, error)
 	ListCKTasks(ctx context.Context, arg ListCKTasksParams) ([]CkTasks, error)
@@ -411,6 +416,7 @@ type Querier interface {
 	ListSPAssets(ctx context.Context, arg ListSPAssetsParams) ([]ListSPAssetsRow, error)
 	ListSPComponentsAll(ctx context.Context, arg ListSPComponentsAllParams) ([]ListSPComponentsAllRow, error)
 	ListSPComponentsBySBOM(ctx context.Context, sbomID string) ([]ListSPComponentsBySBOMRow, error)
+	ListSPComponentsBySBOMFull(ctx context.Context, sbomID string) ([]ListSPComponentsBySBOMFullRow, error)
 	ListSPComponentsEOL(ctx context.Context, arg ListSPComponentsEOLParams) ([]ListSPComponentsEOLRow, error)
 	ListSPFindingsByCreated(ctx context.Context, arg ListSPFindingsByCreatedParams) ([]VbFindings, error)
 	ListSPFindingsByRisk(ctx context.Context, arg ListSPFindingsByRiskParams) ([]VbFindings, error)
@@ -532,6 +538,7 @@ type Querier interface {
 	// nil-Input wird vorab gegen die aktuelle Zeile gemappt. Hier wird die Spalte
 	// IMMER überschrieben (Valid=false → NULL, Valid=true → der Wert).
 	UpdateCKRiskTreatment(ctx context.Context, arg UpdateCKRiskTreatmentParams) (UpdateCKRiskTreatmentRow, error)
+	UpdateCKSoAApplicability(ctx context.Context, arg UpdateCKSoAApplicabilityParams) error
 	UpdateCKSupplier(ctx context.Context, arg UpdateCKSupplierParams) (UpdateCKSupplierRow, error)
 	UpdateCKSupplierAssessmentStatus(ctx context.Context, arg UpdateCKSupplierAssessmentStatusParams) error
 	UpdateCKTask(ctx context.Context, arg UpdateCKTaskParams) (CkTasks, error)
@@ -566,6 +573,8 @@ type Querier interface {
 	UpdateSRCampaignStatus(ctx context.Context, arg UpdateSRCampaignStatusParams) error
 	// ── Answers + Reviews ───────────────────────────────────────────────────────
 	UpsertCKAnswer(ctx context.Context, arg UpsertCKAnswerParams) error
+	BatchUpdateSPComponentEOL(ctx context.Context, arg BatchUpdateSPComponentEOLParams) error
+	GetSPScanOrgID(ctx context.Context, id string) (string, error)
 	UpsertSPEOLCache(ctx context.Context, arg UpsertSPEOLCacheParams) error
 	// ── Findings Upsert (single, by raw_id) ─────────────────────────────────────
 	// Single-shot INSERT...ON CONFLICT for importer flows (SARIF/CycloneDX/CSV).

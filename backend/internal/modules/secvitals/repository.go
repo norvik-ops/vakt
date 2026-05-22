@@ -590,6 +590,87 @@ func (r *Repository) ListControlsForSoA(ctx context.Context, orgID, frameworkID 
 	return out, nil
 }
 
+// GetSoAEntries returns all controls for the org's frameworks with SoA applicability metadata.
+func (r *Repository) GetSoAEntries(ctx context.Context, orgID string) ([]SoAEntry, error) {
+	rows, err := r.q.ListCKSoAEntries(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("get soa entries: %w", err)
+	}
+	entries := make([]SoAEntry, 0, len(rows))
+	for _, row := range rows {
+		entries = append(entries, SoAEntry{
+			ControlID:                  row.ControlID,
+			FrameworkName:              row.FrameworkName,
+			Domain:                     row.Domain,
+			Title:                      row.Title,
+			Applicable:                 row.Applicable,
+			Status:                     row.Status,
+			JustificationApplicable:    row.JustYes,
+			JustificationNotApplicable: row.JustNo,
+		})
+	}
+	return entries, nil
+}
+
+// UpdateSoAApplicability sets the applicability and justification for a control.
+func (r *Repository) UpdateSoAApplicability(ctx context.Context, orgID, controlID string, applicable bool, justYes, justNo string) error {
+	return r.q.UpdateCKSoAApplicability(ctx, db.UpdateCKSoAApplicabilityParams{
+		Applicable: applicable,
+		JustYes:    ckOptText(justYes),
+		JustNo:     ckOptText(justNo),
+		ID:         controlID,
+		OrgID:      orgID,
+	})
+}
+
+// GetUserDisplayName returns the display_name (falling back to email) for a user.
+func (r *Repository) GetUserDisplayName(ctx context.Context, userID string) (string, error) {
+	return r.q.GetUserDisplayName(ctx, userID)
+}
+
+// GetMyTaskControls returns controls owned by a user in an org (by display name).
+func (r *Repository) GetMyTaskControls(ctx context.Context, orgID, ownerDisplayName string) ([]MyTask, error) {
+	rows, err := r.q.ListCKMyTaskControls(ctx, db.ListCKMyTaskControlsParams{
+		OrgID: orgID,
+		Owner: ownerDisplayName,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list my task controls: %w", err)
+	}
+	tasks := make([]MyTask, 0, len(rows))
+	for _, row := range rows {
+		tasks = append(tasks, MyTask{
+			ID:          row.ID,
+			Title:       row.Title,
+			Type:        "control",
+			Status:      row.ManualStatus,
+			FrameworkID: row.FrameworkID,
+		})
+	}
+	return tasks, nil
+}
+
+// GetMyTaskRisks returns risks owned by a user in an org (by display name).
+func (r *Repository) GetMyTaskRisks(ctx context.Context, orgID, ownerDisplayName string) ([]MyTask, error) {
+	rows, err := r.q.ListCKMyTaskRisks(ctx, db.ListCKMyTaskRisksParams{
+		OrgID: orgID,
+		Owner: ownerDisplayName,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list my task risks: %w", err)
+	}
+	tasks := make([]MyTask, 0, len(rows))
+	for _, row := range rows {
+		tasks = append(tasks, MyTask{
+			ID:     row.ID,
+			Title:  row.Title,
+			Type:   "risk",
+			Status: row.Status,
+		})
+	}
+	return tasks, nil
+}
+
 // CountEvidenceByControl returns the number of approved evidence items per control for a framework.
 // Result: map[controlUUID]count.
 func (r *Repository) CountEvidenceByControl(ctx context.Context, orgID, frameworkID string) (map[string]int, error) {

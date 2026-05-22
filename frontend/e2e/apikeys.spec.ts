@@ -1,0 +1,90 @@
+import { test, expect } from './fixtures'
+
+const API_KEYS = [
+  {
+    id: 'key-1',
+    name: 'CI Pipeline',
+    key_prefix: 'vk_ci_',
+    scopes: ['secvault.secrets.read'],
+    last_used_at: new Date().toISOString(),
+    last_used_ip: '10.0.0.1',
+    created_at: new Date().toISOString(),
+    rotated_at: null,
+  },
+]
+
+function mockStoreAuth(page: Parameters<typeof test>[1]['page']) {
+  return page.addInitScript(() => {
+    localStorage.setItem(
+      'auth-storage',
+      JSON.stringify({
+        state: {
+          token: 'v2.local.testtoken',
+          user: { id: 'u1', email: 'admin@example.com', role: 'admin', org_id: 'org-1', mfa_enabled: false },
+        },
+        version: 0,
+      }),
+    )
+  })
+}
+
+function mockApiKeys(page: Parameters<typeof test>[1]['page']) {
+  return page.route('**/api/v1/**', (route) => {
+    const url = route.request().url()
+    if (url.includes('/api-keys') && route.request().method() === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(API_KEYS) })
+    }
+    if (url.includes('/rotate') && route.request().method() === 'POST') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ...API_KEYS[0], raw_key: 'vk_new_secret_key_abc123', rotated_at: new Date().toISOString() }),
+      })
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
+  })
+}
+
+test.describe('ApiKeysPage', () => {
+  test('shows key list with scope tags', async ({ page }) => {
+    await mockStoreAuth(page)
+    await mockApiKeys(page)
+    await page.goto('/settings/api-keys')
+    await expect(page.locator('text=CI Pipeline').or(page.locator('[data-testid="api-key-row"]').first())).toBeVisible({ timeout: 8000 })
+  })
+
+  test('rotate button opens modal and shows new raw key once', async ({ page }) => {
+    await mockStoreAuth(page)
+    await mockApiKeys(page)
+    await page.goto('/settings/api-keys')
+
+    const rotateBtn = page.locator('button', { hasText: /rotier|rotate/i }).first()
+    await rotateBtn.waitFor({ state: 'visible', timeout: 8000 })
+    await rotateBtn.click()
+
+    // Modal should appear showing the new raw key.
+    await expect(
+      page.locator('input[readonly]').filter({ hasText: /vk_new/ }).or(
+        page.locator('code', { hasText: /vk_new/ }),
+      ).or(
+        page.locator('[data-testid="raw-key"]'),
+      ).or(
+        page.getByText('vk_new_secret_key_abc123'),
+      ),
+    ).toBeVisible({ timeout: 8000 })
+  })
+
+  test('rotate fires POST /api-keys/:id/rotate', async ({ page }) => {
+    await mockStoreAuth(page)
+    await mockApiKeys(page)
+    await page.goto('/settings/api-keys')
+
+    const rotatePromise = page.waitForRequest(
+      (req) => req.url().includes('/rotate') && req.method() === 'POST',
+    )
+    const rotateBtn = page.locator('button', { hasText: /rotier|rotate/i }).first()
+    await rotateBtn.waitFor({ state: 'visible', timeout: 8000 })
+    await rotateBtn.click()
+    await rotatePromise
+  })
+})

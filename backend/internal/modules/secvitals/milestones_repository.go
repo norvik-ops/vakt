@@ -8,122 +8,168 @@ import (
 	"fmt"
 	"math"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/matharnica/vakt/internal/db"
 )
+
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+// uuidStringPtr returns the UUID as *string (nil when invalid).
+// Shared with repository.go via same package — uses uuidStringFromPgtype.
+func uuidStringPtr(u pgtype.UUID) *string {
+	if !u.Valid {
+		return nil
+	}
+	s := uuidStringFromPgtype(u)
+	return &s
+}
+
+// milestoneFromRow maps a sqlc milestone row (shared column layout) to the
+// AuditMilestone domain type. today is pre-computed by the caller.
+func milestoneFromRow(
+	id, orgID string,
+	frameworkID pgtype.UUID,
+	title string,
+	description pgtype.Text,
+	milestoneDate, milestoneType, status string,
+	createdBy pgtype.UUID,
+	createdAt, updatedAt pgtype.Timestamptz,
+	today time.Time,
+) AuditMilestone {
+	return AuditMilestone{
+		ID:            id,
+		OrgID:         orgID,
+		FrameworkID:   uuidStringPtr(frameworkID),
+		Title:         title,
+		Description:   description.String,
+		MilestoneDate: milestoneDate,
+		MilestoneType: milestoneType,
+		Status:        status,
+		CreatedBy:     uuidStringPtr(createdBy),
+		CreatedAt:     ckTsToTime(createdAt),
+		UpdatedAt:     ckTsToTime(updatedAt),
+		DaysRemaining: computeDaysRemaining(milestoneDate, today),
+	}
+}
+
+// milestoneFromListRow maps a ListCKMilestonesRow to AuditMilestone.
+func milestoneFromListRow(r db.ListCKMilestonesRow, today time.Time) AuditMilestone {
+	return milestoneFromRow(
+		r.ID, r.OrgID, r.FrameworkID,
+		r.Title, r.Description,
+		r.MilestoneDate, r.MilestoneType, r.Status,
+		r.CreatedBy, r.CreatedAt, r.UpdatedAt,
+		today,
+	)
+}
+
+// milestoneFromGetRow maps a GetCKMilestoneRow to AuditMilestone.
+func milestoneFromGetRow(r db.GetCKMilestoneRow, today time.Time) AuditMilestone {
+	return milestoneFromRow(
+		r.ID, r.OrgID, r.FrameworkID,
+		r.Title, r.Description,
+		r.MilestoneDate, r.MilestoneType, r.Status,
+		r.CreatedBy, r.CreatedAt, r.UpdatedAt,
+		today,
+	)
+}
+
+// milestoneFromCreateRow maps a CreateCKMilestoneRow to AuditMilestone.
+func milestoneFromCreateRow(r db.CreateCKMilestoneRow, today time.Time) AuditMilestone {
+	return milestoneFromRow(
+		r.ID, r.OrgID, r.FrameworkID,
+		r.Title, r.Description,
+		r.MilestoneDate, r.MilestoneType, r.Status,
+		r.CreatedBy, r.CreatedAt, r.UpdatedAt,
+		today,
+	)
+}
+
+// milestoneFromUpdateRow maps an UpdateCKMilestoneRow to AuditMilestone.
+func milestoneFromUpdateRow(r db.UpdateCKMilestoneRow, today time.Time) AuditMilestone {
+	return milestoneFromRow(
+		r.ID, r.OrgID, r.FrameworkID,
+		r.Title, r.Description,
+		r.MilestoneDate, r.MilestoneType, r.Status,
+		r.CreatedBy, r.CreatedAt, r.UpdatedAt,
+		today,
+	)
+}
+
+// milestoneFromNextRow maps a NextCKMilestoneRow to AuditMilestone.
+func milestoneFromNextRow(r db.NextCKMilestoneRow, today time.Time) AuditMilestone {
+	return milestoneFromRow(
+		r.ID, r.OrgID, r.FrameworkID,
+		r.Title, r.Description,
+		r.MilestoneDate, r.MilestoneType, r.Status,
+		r.CreatedBy, r.CreatedAt, r.UpdatedAt,
+		today,
+	)
+}
+
+// parseDateArg converts a YYYY-MM-DD string to pgtype.Date (invalid on empty).
+func parseDateArg(s string) pgtype.Date {
+	if s == "" {
+		return pgtype.Date{}
+	}
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return pgtype.Date{}
+	}
+	return pgtype.Date{Time: t, Valid: true}
+}
+
+// ── Repository methods ────────────────────────────────────────────────────────
 
 // ListMilestones returns all milestones for an org ordered by milestone_date ASC.
 // If statusFilter is non-empty only that status is returned.
 func (r *Repository) ListMilestones(ctx context.Context, orgID, statusFilter string) ([]AuditMilestone, error) {
-	query := `
-		SELECT id::text, org_id::text,
-		       framework_id::text,
-		       title, COALESCE(description,''), milestone_date::text,
-		       milestone_type, status,
-		       created_by::text,
-		       created_at, updated_at
-		FROM ck_audit_milestones
-		WHERE org_id = $1::uuid`
-	args := []any{orgID}
-
-	if statusFilter != "" {
-		query += " AND status = $2"
-		args = append(args, statusFilter)
-	}
-	query += " ORDER BY milestone_date ASC"
-
-	rows, err := r.db.Query(ctx, query, args...)
+	rows, err := r.q.ListCKMilestones(ctx, db.ListCKMilestonesParams{
+		OrgID:  orgID,
+		Status: ckOptText(statusFilter),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("list milestones: %w", err)
 	}
-	defer rows.Close()
-
 	today := time.Now().UTC().Truncate(24 * time.Hour)
-	var milestones []AuditMilestone
-	for rows.Next() {
-		var m AuditMilestone
-		var fwID, createdBy *string
-		if err := rows.Scan(
-			&m.ID, &m.OrgID, &fwID,
-			&m.Title, &m.Description, &m.MilestoneDate,
-			&m.MilestoneType, &m.Status, &createdBy,
-			&m.CreatedAt, &m.UpdatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("scan milestone: %w", err)
-		}
-		m.FrameworkID = fwID
-		m.CreatedBy = createdBy
-		m.DaysRemaining = computeDaysRemaining(m.MilestoneDate, today)
-		milestones = append(milestones, m)
+	milestones := make([]AuditMilestone, 0, len(rows))
+	for _, row := range rows {
+		milestones = append(milestones, milestoneFromListRow(row, today))
 	}
-	return milestones, rows.Err()
+	return milestones, nil
 }
 
 // GetMilestone retrieves a single milestone by ID.
 func (r *Repository) GetMilestone(ctx context.Context, orgID, milestoneID string) (*AuditMilestone, error) {
-	var m AuditMilestone
-	var fwID, createdBy *string
-	err := r.db.QueryRow(ctx, `
-		SELECT id::text, org_id::text,
-		       framework_id::text,
-		       title, COALESCE(description,''), milestone_date::text,
-		       milestone_type, status,
-		       created_by::text,
-		       created_at, updated_at
-		FROM ck_audit_milestones
-		WHERE id = $1::uuid AND org_id = $2::uuid`,
-		milestoneID, orgID,
-	).Scan(
-		&m.ID, &m.OrgID, &fwID,
-		&m.Title, &m.Description, &m.MilestoneDate,
-		&m.MilestoneType, &m.Status, &createdBy,
-		&m.CreatedAt, &m.UpdatedAt,
-	)
+	row, err := r.q.GetCKMilestone(ctx, db.GetCKMilestoneParams{ID: milestoneID, OrgID: orgID})
 	if err != nil {
 		return nil, fmt.Errorf("get milestone: %w", err)
 	}
-	m.FrameworkID = fwID
-	m.CreatedBy = createdBy
 	today := time.Now().UTC().Truncate(24 * time.Hour)
-	m.DaysRemaining = computeDaysRemaining(m.MilestoneDate, today)
+	m := milestoneFromGetRow(row, today)
 	return &m, nil
 }
 
 // CreateMilestone inserts a new milestone.
 func (r *Repository) CreateMilestone(ctx context.Context, orgID, createdBy string, in CreateMilestoneInput) (*AuditMilestone, error) {
-	var fwIDArg *string
-	if in.FrameworkID != "" {
-		fwIDArg = &in.FrameworkID
-	}
-	var createdByArg *string
-	if createdBy != "" {
-		createdByArg = &createdBy
-	}
-
-	var m AuditMilestone
-	var fwIDOut, createdByOut *string
-	err := r.db.QueryRow(ctx, `
-		INSERT INTO ck_audit_milestones
-		  (org_id, framework_id, title, description, milestone_date, milestone_type, created_by)
-		VALUES ($1::uuid, $2::uuid, $3, $4, $5::date, $6, $7::uuid)
-		RETURNING id::text, org_id::text,
-		          framework_id::text,
-		          title, COALESCE(description,''), milestone_date::text,
-		          milestone_type, status,
-		          created_by::text,
-		          created_at, updated_at`,
-		orgID, fwIDArg, in.Title, in.Description, in.MilestoneDate, in.MilestoneType, createdByArg,
-	).Scan(
-		&m.ID, &m.OrgID, &fwIDOut,
-		&m.Title, &m.Description, &m.MilestoneDate,
-		&m.MilestoneType, &m.Status, &createdByOut,
-		&m.CreatedAt, &m.UpdatedAt,
-	)
+	row, err := r.q.CreateCKMilestone(ctx, db.CreateCKMilestoneParams{
+		OrgID:         orgID,
+		FrameworkID:   ckOptUUIDFromStr(in.FrameworkID),
+		Title:         in.Title,
+		Description:   ckOptText(in.Description),
+		MilestoneDate: parseDateArg(in.MilestoneDate),
+		MilestoneType: in.MilestoneType,
+		CreatedBy:     ckOptUUIDFromStr(createdBy),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("create milestone: %w", err)
 	}
-	m.FrameworkID = fwIDOut
-	m.CreatedBy = createdByOut
 	today := time.Now().UTC().Truncate(24 * time.Hour)
-	m.DaysRemaining = computeDaysRemaining(m.MilestoneDate, today)
+	m := milestoneFromCreateRow(row, today)
 	return &m, nil
 }
 
@@ -157,47 +203,30 @@ func (r *Repository) UpdateMilestone(ctx context.Context, orgID, milestoneID str
 		status = *in.Status
 	}
 
-	var m AuditMilestone
-	var fwIDOut, createdByOut *string
-	err = r.db.QueryRow(ctx, `
-		UPDATE ck_audit_milestones
-		SET title = $1, description = $2, milestone_date = $3::date,
-		    milestone_type = $4, status = $5, updated_at = NOW()
-		WHERE id = $6::uuid AND org_id = $7::uuid
-		RETURNING id::text, org_id::text,
-		          framework_id::text,
-		          title, COALESCE(description,''), milestone_date::text,
-		          milestone_type, status,
-		          created_by::text,
-		          created_at, updated_at`,
-		title, description, milestoneDate, milestoneType, status,
-		milestoneID, orgID,
-	).Scan(
-		&m.ID, &m.OrgID, &fwIDOut,
-		&m.Title, &m.Description, &m.MilestoneDate,
-		&m.MilestoneType, &m.Status, &createdByOut,
-		&m.CreatedAt, &m.UpdatedAt,
-	)
+	row, err := r.q.UpdateCKMilestone(ctx, db.UpdateCKMilestoneParams{
+		Title:         title,
+		Description:   ckOptText(description),
+		MilestoneDate: parseDateArg(milestoneDate),
+		MilestoneType: milestoneType,
+		Status:        status,
+		ID:            milestoneID,
+		OrgID:         orgID,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("update milestone: %w", err)
 	}
-	m.FrameworkID = fwIDOut
-	m.CreatedBy = createdByOut
 	today := time.Now().UTC().Truncate(24 * time.Hour)
-	m.DaysRemaining = computeDaysRemaining(m.MilestoneDate, today)
+	m := milestoneFromUpdateRow(row, today)
 	return &m, nil
 }
 
 // DeleteMilestone removes a milestone.
 func (r *Repository) DeleteMilestone(ctx context.Context, orgID, milestoneID string) error {
-	tag, err := r.db.Exec(ctx, `
-		DELETE FROM ck_audit_milestones WHERE id = $1::uuid AND org_id = $2::uuid`,
-		milestoneID, orgID,
-	)
+	n, err := r.q.DeleteCKMilestone(ctx, db.DeleteCKMilestoneParams{ID: milestoneID, OrgID: orgID})
 	if err != nil {
 		return fmt.Errorf("delete milestone: %w", err)
 	}
-	if tag.RowsAffected() == 0 {
+	if n == 0 {
 		return fmt.Errorf("milestone not found")
 	}
 	return nil
@@ -205,35 +234,15 @@ func (r *Repository) DeleteMilestone(ctx context.Context, orgID, milestoneID str
 
 // NextMilestone returns the nearest upcoming milestone or nil if none exist.
 func (r *Repository) NextMilestone(ctx context.Context, orgID string) (*AuditMilestone, error) {
-	var m AuditMilestone
-	var fwIDOut, createdByOut *string
-	err := r.db.QueryRow(ctx, `
-		SELECT id::text, org_id::text,
-		       framework_id::text,
-		       title, COALESCE(description,''), milestone_date::text,
-		       milestone_type, status,
-		       created_by::text,
-		       created_at, updated_at
-		FROM ck_audit_milestones
-		WHERE org_id = $1::uuid
-		  AND status = 'upcoming'
-		  AND milestone_date >= CURRENT_DATE
-		ORDER BY milestone_date ASC
-		LIMIT 1`,
-		orgID,
-	).Scan(
-		&m.ID, &m.OrgID, &fwIDOut,
-		&m.Title, &m.Description, &m.MilestoneDate,
-		&m.MilestoneType, &m.Status, &createdByOut,
-		&m.CreatedAt, &m.UpdatedAt,
-	)
+	row, err := r.q.NextCKMilestone(ctx, orgID)
 	if err != nil {
-		return nil, err // caller checks pgx.ErrNoRows
+		if err == pgx.ErrNoRows {
+			return nil, err // caller checks pgx.ErrNoRows
+		}
+		return nil, err
 	}
-	m.FrameworkID = fwIDOut
-	m.CreatedBy = createdByOut
 	today := time.Now().UTC().Truncate(24 * time.Hour)
-	m.DaysRemaining = computeDaysRemaining(m.MilestoneDate, today)
+	m := milestoneFromNextRow(row, today)
 	return &m, nil
 }
 

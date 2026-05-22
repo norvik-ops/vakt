@@ -4,8 +4,10 @@
 package secvitals
 
 import (
+	"errors"
 	"net/http"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
@@ -19,16 +21,11 @@ func (h *Handler) isOrgAdmin(c echo.Context) (bool, error) {
 	if uid == "" || oid == "" {
 		return false, nil
 	}
-	var roleName string
-	err := h.db.QueryRow(c.Request().Context(), `
-		SELECT r.name
-		FROM org_members om
-		JOIN roles r ON r.id = om.role_id
-		WHERE om.user_id = $1::uuid AND om.org_id = $2::uuid
-		LIMIT 1`,
-		uid, oid,
-	).Scan(&roleName)
+	roleName, err := h.service.repo.GetOrgMemberRole(c.Request().Context(), uid, oid)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
 		return false, err
 	}
 	return roleName == "Admin", nil

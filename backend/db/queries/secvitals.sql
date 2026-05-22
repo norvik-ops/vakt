@@ -1875,3 +1875,61 @@ RETURNING id, org_id, title, description, category,
           treatment_due_date, treatment_status,
           residual_likelihood, residual_impact,
           created_at, updated_at;
+
+-- ── SoA Applicability (S25-3) ────────────────────────────────────────────────
+
+-- name: ListCKSoAEntries :many
+SELECT
+    c.id::text                                  AS control_id,
+    f.name                                      AS framework_name,
+    c.domain,
+    c.title,
+    COALESCE(c.soa_applicable, true)            AS applicable,
+    COALESCE(c.manual_status, 'not_started')    AS status,
+    COALESCE(c.soa_justification_yes, '')       AS just_yes,
+    COALESCE(c.soa_justification_no,  '')       AS just_no
+FROM ck_controls c
+JOIN ck_frameworks f ON f.id = c.framework_id AND f.org_id = c.org_id
+WHERE c.org_id = $1
+ORDER BY f.name, c.domain, c.title;
+
+-- name: UpdateCKSoAApplicability :exec
+UPDATE ck_controls
+SET soa_applicable        = $1,
+    soa_justification_yes = $2,
+    soa_justification_no  = $3
+WHERE id = $4::uuid AND org_id = $5::uuid;
+
+-- ── Org Member Role (S25-3) ──────────────────────────────────────────────────
+
+-- name: GetCKOrgMemberRole :one
+SELECT r.name AS role_name
+FROM org_members om
+JOIN roles r ON r.id = om.role_id
+WHERE om.user_id = $1::uuid AND om.org_id = $2::uuid
+LIMIT 1;
+
+-- ── My Tasks (S25-3) ─────────────────────────────────────────────────────────
+
+-- name: GetUserDisplayName :one
+SELECT COALESCE(display_name, email) AS display_name
+FROM users
+WHERE id = $1::uuid;
+
+-- name: ListCKMyTaskControls :many
+SELECT id::text, title, COALESCE(manual_status, '') AS manual_status, framework_id::text
+FROM ck_controls
+WHERE org_id = $1::uuid
+  AND owner = $2
+  AND NOT not_applicable
+ORDER BY control_id ASC
+LIMIT 50;
+
+-- name: ListCKMyTaskRisks :many
+SELECT id::text, title, status
+FROM ck_risks
+WHERE org_id = $1::uuid
+  AND owner = $2
+  AND status NOT IN ('accepted', 'resolved')
+ORDER BY created_at DESC
+LIMIT 50;

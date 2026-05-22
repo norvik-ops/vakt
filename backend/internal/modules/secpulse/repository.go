@@ -1462,22 +1462,9 @@ func (r *Repository) batchUpdateComponentEOL(ctx context.Context, results []eolR
 		dates[i] = res.eolDate
 	}
 
-	_, err := r.db.Exec(ctx, `
-		UPDATE vb_components AS c
-		SET eol_status    = v.status,
-		    eol_date      = v.eol_date::date,
-		    eol_checked_at = NOW()
-		FROM (
-		    SELECT
-		        UNNEST($1::uuid[])   AS id,
-		        UNNEST($2::text[])   AS status,
-		        UNNEST($3::text[])   AS eol_date
-		) AS v
-		WHERE c.id = v.id`,
-		ids, statuses, dates,
-	)
-	if err != nil {
-		return fmt.Errorf("batch update component EOL: %w", err)
-	}
-	return nil
+	return r.q.BatchUpdateSPComponentEOL(ctx, db.BatchUpdateSPComponentEOLParams{
+		Ids:      ids,
+		Statuses: statuses,
+		Dates:    dates,
+	})
 }

@@ -9465,3 +9465,217 @@ func (q *Queries) UpsertCKAnswer(ctx context.Context, arg UpsertCKAnswerParams) 
 	)
 	return err
 }
+
+// ── SoA Applicability (S25-3) ────────────────────────────────────────────────
+
+const listCKSoAEntries = `-- name: ListCKSoAEntries :many
+SELECT
+    c.id::text                                  AS control_id,
+    f.name                                      AS framework_name,
+    c.domain,
+    c.title,
+    COALESCE(c.soa_applicable, true)            AS applicable,
+    COALESCE(c.manual_status, 'not_started')    AS status,
+    COALESCE(c.soa_justification_yes, '')       AS just_yes,
+    COALESCE(c.soa_justification_no,  '')       AS just_no
+FROM ck_controls c
+JOIN ck_frameworks f ON f.id = c.framework_id AND f.org_id = c.org_id
+WHERE c.org_id = $1
+ORDER BY f.name, c.domain, c.title
+`
+
+type ListCKSoAEntriesRow struct {
+	ControlID     string `json:"control_id"`
+	FrameworkName string `json:"framework_name"`
+	Domain        string `json:"domain"`
+	Title         string `json:"title"`
+	Applicable    bool   `json:"applicable"`
+	Status        string `json:"status"`
+	JustYes       string `json:"just_yes"`
+	JustNo        string `json:"just_no"`
+}
+
+func (q *Queries) ListCKSoAEntries(ctx context.Context, orgID string) ([]ListCKSoAEntriesRow, error) {
+	rows, err := q.db.Query(ctx, listCKSoAEntries, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCKSoAEntriesRow{}
+	for rows.Next() {
+		var i ListCKSoAEntriesRow
+		if err := rows.Scan(
+			&i.ControlID,
+			&i.FrameworkName,
+			&i.Domain,
+			&i.Title,
+			&i.Applicable,
+			&i.Status,
+			&i.JustYes,
+			&i.JustNo,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateCKSoAApplicability = `-- name: UpdateCKSoAApplicability :exec
+UPDATE ck_controls
+SET soa_applicable        = $1,
+    soa_justification_yes = $2,
+    soa_justification_no  = $3
+WHERE id = $4::uuid AND org_id = $5::uuid
+`
+
+type UpdateCKSoAApplicabilityParams struct {
+	Applicable bool        `json:"applicable"`
+	JustYes    pgtype.Text `json:"just_yes"`
+	JustNo     pgtype.Text `json:"just_no"`
+	ID         string      `json:"id"`
+	OrgID      string      `json:"org_id"`
+}
+
+func (q *Queries) UpdateCKSoAApplicability(ctx context.Context, arg UpdateCKSoAApplicabilityParams) error {
+	_, err := q.db.Exec(ctx, updateCKSoAApplicability,
+		arg.Applicable,
+		arg.JustYes,
+		arg.JustNo,
+		arg.ID,
+		arg.OrgID,
+	)
+	return err
+}
+
+// ── Org Member Role (S25-3) ──────────────────────────────────────────────────
+
+const getCKOrgMemberRole = `-- name: GetCKOrgMemberRole :one
+SELECT r.name AS role_name
+FROM org_members om
+JOIN roles r ON r.id = om.role_id
+WHERE om.user_id = $1::uuid AND om.org_id = $2::uuid
+LIMIT 1
+`
+
+type GetCKOrgMemberRoleParams struct {
+	UserID string `json:"user_id"`
+	OrgID  string `json:"org_id"`
+}
+
+func (q *Queries) GetCKOrgMemberRole(ctx context.Context, arg GetCKOrgMemberRoleParams) (string, error) {
+	row := q.db.QueryRow(ctx, getCKOrgMemberRole, arg.UserID, arg.OrgID)
+	var roleName string
+	err := row.Scan(&roleName)
+	return roleName, err
+}
+
+// ── My Tasks (S25-3) ─────────────────────────────────────────────────────────
+
+const getUserDisplayName = `-- name: GetUserDisplayName :one
+SELECT COALESCE(display_name, email) AS display_name
+FROM users
+WHERE id = $1::uuid
+`
+
+func (q *Queries) GetUserDisplayName(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, getUserDisplayName, id)
+	var displayName string
+	err := row.Scan(&displayName)
+	return displayName, err
+}
+
+const listCKMyTaskControls = `-- name: ListCKMyTaskControls :many
+SELECT id::text, title, COALESCE(manual_status, '') AS manual_status, framework_id::text
+FROM ck_controls
+WHERE org_id = $1::uuid
+  AND owner = $2
+  AND NOT not_applicable
+ORDER BY control_id ASC
+LIMIT 50
+`
+
+type ListCKMyTaskControlsParams struct {
+	OrgID string `json:"org_id"`
+	Owner string `json:"owner"`
+}
+
+type ListCKMyTaskControlsRow struct {
+	ID           string `json:"id"`
+	Title        string `json:"title"`
+	ManualStatus string `json:"manual_status"`
+	FrameworkID  string `json:"framework_id"`
+}
+
+func (q *Queries) ListCKMyTaskControls(ctx context.Context, arg ListCKMyTaskControlsParams) ([]ListCKMyTaskControlsRow, error) {
+	rows, err := q.db.Query(ctx, listCKMyTaskControls, arg.OrgID, arg.Owner)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCKMyTaskControlsRow{}
+	for rows.Next() {
+		var i ListCKMyTaskControlsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.ManualStatus,
+			&i.FrameworkID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCKMyTaskRisks = `-- name: ListCKMyTaskRisks :many
+SELECT id::text, title, status
+FROM ck_risks
+WHERE org_id = $1::uuid
+  AND owner = $2
+  AND status NOT IN ('accepted', 'resolved')
+ORDER BY created_at DESC
+LIMIT 50
+`
+
+type ListCKMyTaskRisksParams struct {
+	OrgID string `json:"org_id"`
+	Owner string `json:"owner"`
+}
+
+type ListCKMyTaskRisksRow struct {
+	ID     string `json:"id"`
+	Title  string `json:"title"`
+	Status string `json:"status"`
+}
+
+func (q *Queries) ListCKMyTaskRisks(ctx context.Context, arg ListCKMyTaskRisksParams) ([]ListCKMyTaskRisksRow, error) {
+	rows, err := q.db.Query(ctx, listCKMyTaskRisks, arg.OrgID, arg.Owner)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCKMyTaskRisksRow{}
+	for rows.Next() {
+		var i ListCKMyTaskRisksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

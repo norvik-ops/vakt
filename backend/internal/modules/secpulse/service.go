@@ -675,39 +675,29 @@ func (s *Service) GetAssetSBOM(ctx context.Context, orgID, assetID string) (*SBO
 		return nil, nil, fmt.Errorf("get latest SBOM: %w", err)
 	}
 
-	// Use sbom_id filter: list only components for this specific SBOM.
-	rows, err := s.db.Query(ctx, `
-		SELECT c.id::text, c.name, c.version, COALESCE(c.purl,''),
-		       c.eol_status,
-		       CASE WHEN c.eol_date IS NOT NULL THEN c.eol_date::text ELSE NULL END,
-		       s.asset_id::text
-		FROM vb_components c
-		JOIN vb_sboms s ON s.id = c.sbom_id
-		WHERE c.sbom_id = $1::uuid
-		ORDER BY c.name, c.version`,
-		sbom.ID,
-	)
+	compRows, err := s.repo.q.ListSPComponentsBySBOMFull(ctx, sbom.ID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list SBOM components: %w", err)
 	}
-	defer rows.Close()
-
-	var components []ComponentSummary
-	for rows.Next() {
-		var comp ComponentSummary
-		if err := rows.Scan(
-			&comp.ID, &comp.Name, &comp.Version, &comp.PURL,
-			&comp.EOLStatus, &comp.EOLDate, &comp.AssetID,
-		); err != nil {
-			return nil, nil, fmt.Errorf("scan component: %w", err)
-		}
-		components = append(components, comp)
+	components := make([]ComponentSummary, 0, len(compRows))
+	for _, row := range compRows {
+		components = append(components, ComponentSummary{
+			ID:        row.ID,
+			Name:      row.Name,
+			Version:   row.Version,
+			PURL:      row.PURL,
+			EOLStatus: row.EOLStatus,
+			EOLDate:   row.EOLDate,
+			AssetID:   row.AssetID,
+		})
 	}
-	if err := rows.Err(); err != nil {
-		return nil, nil, err
-	}
-
 	return sbom, components, nil
+}
+
+// GetScanOrgID returns the org_id of a scan without requiring the caller to know the org.
+// Used by handlers for ownership verification before streaming.
+func (s *Service) GetScanOrgID(ctx context.Context, scanID string) (string, error) {
+	return s.repo.q.GetSPScanOrgID(ctx, scanID)
 }
 
 // GetEOLDashboard returns paginated components with their EOL status for an org,

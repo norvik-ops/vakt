@@ -216,3 +216,9 @@ func (r *Repository) CountPendingApprovals(ctx context.Context, orgID string) (i
 	}
 	return int(n), nil
 }
+
+// GetOrgMemberRole returns the role name of a user in an organisation.
+// Returns pgx.ErrNoRows if the user is not a member.
+func (r *Repository) GetOrgMemberRole(ctx context.Context, userID, orgID string) (string, error) {
+	return r.q.GetCKOrgMemberRole(ctx, db.GetCKOrgMemberRoleParams{UserID: userID, OrgID: orgID})
+}

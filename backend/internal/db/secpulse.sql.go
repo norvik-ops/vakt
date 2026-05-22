@@ -1731,3 +1731,80 @@ func (q *Queries) UpsertSPSLAConfig(ctx context.Context, arg UpsertSPSLAConfigPa
 	)
 	return err
 }
+
+const listSPComponentsBySBOMFull = `-- name: ListSPComponentsBySBOMFull :many
+SELECT c.id::text, c.name, c.version, COALESCE(c.purl, '') AS purl,
+       c.eol_status,
+       CASE WHEN c.eol_date IS NOT NULL THEN c.eol_date::text ELSE NULL END AS eol_date,
+       s.asset_id::text AS asset_id
+FROM vb_components c
+JOIN vb_sboms s ON s.id = c.sbom_id
+WHERE c.sbom_id = $1::uuid
+ORDER BY c.name, c.version
+`
+
+type ListSPComponentsBySBOMFullRow struct {
+	ID        string  `json:"id"`
+	Name      string  `json:"name"`
+	Version   string  `json:"version"`
+	PURL      string  `json:"purl"`
+	EOLStatus string  `json:"eol_status"`
+	EOLDate   *string `json:"eol_date"`
+	AssetID   string  `json:"asset_id"`
+}
+
+func (q *Queries) ListSPComponentsBySBOMFull(ctx context.Context, sbomID string) ([]ListSPComponentsBySBOMFullRow, error) {
+	rows, err := q.db.Query(ctx, listSPComponentsBySBOMFull, sbomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSPComponentsBySBOMFullRow{}
+	for rows.Next() {
+		var i ListSPComponentsBySBOMFullRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.Version, &i.PURL, &i.EOLStatus, &i.EOLDate, &i.AssetID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSPScanOrgID = `-- name: GetSPScanOrgID :one
+SELECT org_id::text FROM vb_scans WHERE id = $1::uuid
+`
+
+func (q *Queries) GetSPScanOrgID(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, getSPScanOrgID, id)
+	var orgID string
+	err := row.Scan(&orgID)
+	return orgID, err
+}
+
+const batchUpdateSPComponentEOL = `-- name: BatchUpdateSPComponentEOL :exec
+UPDATE vb_components AS c
+SET eol_status     = v.status,
+    eol_date       = v.eol_date::date,
+    eol_checked_at = NOW()
+FROM (
+    SELECT
+        UNNEST($1::uuid[])  AS id,
+        UNNEST($2::text[])  AS status,
+        UNNEST($3::text[])  AS eol_date
+) AS v
+WHERE c.id = v.id
+`
+
+type BatchUpdateSPComponentEOLParams struct {
+	Ids      []string  `json:"ids"`
+	Statuses []string  `json:"statuses"`
+	Dates    []*string `json:"dates"`
+}
+
+func (q *Queries) BatchUpdateSPComponentEOL(ctx context.Context, arg BatchUpdateSPComponentEOLParams) error {
+	_, err := q.db.Exec(ctx, batchUpdateSPComponentEOL, arg.Ids, arg.Statuses, arg.Dates)
+	return err
+}

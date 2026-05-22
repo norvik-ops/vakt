@@ -390,3 +390,29 @@ VALUES ($1, $2, $3, NOW())
 ON CONFLICT (product, cycle) DO UPDATE
   SET payload    = EXCLUDED.payload,
       fetched_at = EXCLUDED.fetched_at;
+
+-- name: ListSPComponentsBySBOMFull :many
+SELECT c.id::text, c.name, c.version, COALESCE(c.purl, '') AS purl,
+       c.eol_status,
+       CASE WHEN c.eol_date IS NOT NULL THEN c.eol_date::text ELSE NULL END AS eol_date,
+       s.asset_id::text AS asset_id
+FROM vb_components c
+JOIN vb_sboms s ON s.id = c.sbom_id
+WHERE c.sbom_id = $1::uuid
+ORDER BY c.name, c.version;
+
+-- name: GetSPScanOrgID :one
+SELECT org_id::text FROM vb_scans WHERE id = $1::uuid;
+
+-- name: BatchUpdateSPComponentEOL :exec
+UPDATE vb_components AS c
+SET eol_status     = v.status,
+    eol_date       = v.eol_date::date,
+    eol_checked_at = NOW()
+FROM (
+    SELECT
+        UNNEST($1::uuid[])  AS id,
+        UNNEST($2::text[])  AS status,
+        UNNEST($3::text[])  AS eol_date
+) AS v
+WHERE c.id = v.id;
