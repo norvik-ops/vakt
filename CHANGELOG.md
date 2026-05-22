@@ -7,6 +7,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Sprint 20 — Enterprise-Auth CE-Tier (Tag-Kandidat v0.13.0)
+
+CE-Schicht der Enterprise-Auth-Welle: feingranulare API-Key-Scopes mit Wildcard-Logik, zerstörungsfreie Rotation mit 24-h-Grace-Period, Login-Historie pro User. Pro-Schicht (SAML, SCIM, IP-Allowlist, MFA-API, SIEM) bleibt explizit Sprint 21 — on-demand bei konkretem Enterprise-Sales-Trigger.
+
+**Backend (S20-1, S20-2, S20-6, S20-8):**
+- Migration 126: `api_keys.previous_key_hash` + `previous_key_grace_expires_at` + `last_used_ip` + `rotated_at` für Rotation. Neue Tabelle `login_history` (user/email/ip/UA/source/result) mit 90-Tage-Retention-Plan.
+- `internal/shared/apikeys/rotation_and_scopes.go`:
+  - `RequireScope(scope)` Echo-Middleware mit Wildcard-Logik (`*`, `secvault.*`, `secvault.secrets.read`).
+  - `ScopeAllows([]string, string) bool` als exportierter Helper für den Auth-Lookup-Pfad.
+  - `Service.RotateKey(orgID, keyID) (*CreateResult, error)` — generiert neuen Hash, alter Hash wandert in Grace-Period (24h), beide werden vom Auth-Middleware akzeptiert. Endpoint `POST /api/v1/api-keys/:id/rotate`.
+  - `RecordLoginAttempt` + `ListLoginHistoryForUser` Helpers.
+- `auth/service.go`: Login-Pfad schreibt `login_history`-Entry bei `bad_password` + `ok`. Best-Effort, blockiert Login nie. Failed-Login ohne user_id (Account-Enumeration-Schutz).
+
+**Docs (S20-8):**
+- `docs/concepts/api-key-scopes.md` — Scope-Format, Wildcards, CI-Pipeline-Workflow, Rotation mit Grace-Period, Migration für Bestands-Keys, Backend-Implementation-Verweise, Skeleton-Status zu Auth-Middleware-Integration.
+- `docs/concepts/README.md` Index aktualisiert.
+
+**Verschoben (S20-3/4/5/7 [~] Frontend-Iteration):**
+- S20-3 ApiKeysPage-Refactor (Scopes-Checkbox-Liste, Rotation-Button, Last-Used-IP) — Backend ist da, Frontend Cosmetic-Iteration.
+- S20-4 Session-Mgmt-Endpoint + S20-5 SessionsPage — bestehende Skelette aus Sprint 2 reichen aktuell; Vollausbau in Folge-Welle.
+- S20-7 Login-History-Section in AccountSettingsPage — Backend-Service-Methode `ListLoginHistoryForUser` ist da, UI ist iterativ.
+
 ### Sprint 19 — NIS2-Self-Assessment-Wizard CE (Tag-Kandidat v0.12.0)
 
 Top-of-Funnel-Akquise-Asset für DACH-Markt 2026. Anonymer Wizard mit 30 NIS2-Fragen, Live-Score, Top-3-Gaps. Pro-Schicht (Branded PDF, Trend-View, Multi-Framework) als Folge-Welle vorbereitet.

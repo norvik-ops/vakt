@@ -21,4 +21,8 @@ func Register(g *echo.Group, db *pgxpool.Pool) {
 	keys.POST("", h.CreateKey)
 	keys.GET("", h.ListKeys)
 	keys.DELETE("/:id", h.RevokeKey)
+	// Sprint 20 S20-2: Key-Rotation mit 24-h-Grace-Period. Beide Keys
+	// (alter + neuer) sind während der Grace gültig — CI-Pipeline kann
+	// kontrolliert switchen ohne Down-Time.
+	keys.POST("/:id/rotate", h.RotateKey)
 }

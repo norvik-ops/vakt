@@ -196,6 +196,9 @@ func (s *Service) Register(ctx context.Context, input RegisterInput, deviceHint 
 
 // Login validates credentials and returns tokens on success.
 // deviceHint is the caller's User-Agent header (truncated to 120 chars).
+//
+// Sprint 20 / S20-6: pro Versuch (Erfolg oder Fehlschlag) ein Eintrag in
+// login_history. Best-Effort, Fehler blockieren den Login nie.
 func (s *Service) Login(ctx context.Context, email, password, deviceHint string) (*AuthResponse, error) {
 	var userID, passwordHash, displayName string
 	err := s.db.QueryRow(ctx, `
@@ -205,11 +208,14 @@ func (s *Service) Login(ctx context.Context, email, password, deviceHint string)
 		email,
 	).Scan(&userID, &passwordHash, &displayName)
 	if err != nil {
+		// Failed-attempt-Record: kein user_id, nur email + IP-Spur.
+		s.recordLogin(ctx, "", "", email, deviceHint, "password", "bad_password")
 		// Return a generic error to avoid user-enumeration.
 		return nil, fmt.Errorf("invalid credentials")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password)); err != nil {
+		s.recordLogin(ctx, "", userID, email, deviceHint, "password", "bad_password")
 		return nil, fmt.Errorf("invalid credentials")
 	}
 
@@ -270,7 +276,21 @@ func (s *Service) Login(ctx context.Context, email, password, deviceHint string)
 		DisplayName: displayName,
 		Roles:       []string{roleName},
 	}
+	// Sprint 20 S20-6: Erfolgreichen Login persistieren.
+	s.recordLogin(ctx, orgID, userID, email, deviceHint, "password", "ok")
 	return resp, nil
+}
+
+// recordLogin schreibt einen login_history-Eintrag. Best-Effort — Fehler
+// werden nicht propagiert, weil sie den Login-Pfad nicht blockieren dürfen.
+// Sprint 20 S20-6.
+func (s *Service) recordLogin(ctx context.Context, orgID, userID, email, userAgent, source, result string) {
+	_, _ = s.db.Exec(ctx, `
+		INSERT INTO login_history (org_id, user_id, email, user_agent, source, result)
+		VALUES (NULLIF($1, '')::uuid, NULLIF($2, '')::uuid, NULLIF($3, ''),
+		        NULLIF($4, ''), $5, $6)`,
+		orgID, userID, email, userAgent, source, result,
+	)
 }
 
 // Refresh validates the given refresh token, rotates it, and returns a new token pair.
