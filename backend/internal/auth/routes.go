@@ -6,7 +6,7 @@ package auth
 import (
 	"github.com/labstack/echo/v4"
 
-	"github.com/matharnica/vakt/internal/license"
+	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
 
 // Register mounts the auth routes onto the given echo Group.
@@ -17,13 +17,15 @@ func Register(g *echo.Group, h *Handler) {
 	g.POST("/logout", h.Logout)
 
 	// OIDC (OAuth2 via Casdoor sidecar) — SSO Pro feature
-	g.GET("/oidc/initiate", h.OIDCInitiate, license.Require(license.FeatureSSO))
-	g.POST("/oidc/callback", h.OIDCCallback, license.Require(license.FeatureSSO))
+	g.GET("/oidc/initiate", h.OIDCInitiate, features.Require(features.FeatureSSO))
+	g.POST("/oidc/callback", h.OIDCCallback, features.Require(features.FeatureSSO))
 
-	// SAML (proxied through Casdoor) — SSO Pro feature
-	g.GET("/saml/metadata", h.SAMLMetadata, license.Require(license.FeatureSSO))
-	g.POST("/saml/callback", h.SAMLCallback, license.Require(license.FeatureSSO))
-	g.POST("/saml/acs", h.SAMLACS, license.Require(license.FeatureSSO))
+	// SAML 2.0 SP — CE feature since v0.17.0 (ADR-0022: KMU-Hygiene, kein Pro-Gate)
+	// Direct SP (crewjam/saml) when org_saml_configs row exists; falls back to Casdoor proxy.
+	g.GET("/saml/metadata", h.SAMLDirectMetadata)
+	g.GET("/saml/initiate", h.SAMLInitiate)    // SP-initiated: returns IdP redirect URL
+	g.POST("/saml/callback", h.SAMLCallback)   // Casdoor-based fallback (IdP-initiated)
+	g.POST("/saml/acs", h.SAMLDirectACS)       // Primary ACS (direct SP or Casdoor fallback)
 
 	// Password reset — local auth only, no auth middleware required.
 	g.POST("/password-reset/request", h.RequestPasswordReset)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -831,4 +832,38 @@ func (r *Repository) GetOrganizationName(ctx context.Context, orgID string) stri
 func (r *Repository) GetTargetEmail(ctx context.Context, targetID string) string {
 	email, _ := r.q.GetSRTargetEmail(ctx, targetID)
 	return email
+}
+
+// ListCampaignsCursor returns campaigns for orgID using keyset pagination on (created_at DESC, id DESC).
+func (r *Repository) ListCampaignsCursor(ctx context.Context, orgID string, cursorID string, cursorTS time.Time, limit int) ([]Campaign, error) {
+	args := []any{orgID}
+	q := `SELECT id, org_id, name, status, template_id, group_id, landing_page_id,
+	             from_name, from_email, subject, scheduled_at, started_at,
+	             completed_at, recurrence, track_opens, betriebsrat_mode,
+	             created_by, created_at, updated_at
+	      FROM sr_campaigns
+	      WHERE org_id = $1`
+	if !cursorTS.IsZero() {
+		q += ` AND (created_at < $2 OR (created_at = $2 AND id::text < $3))`
+		args = append(args, cursorTS, cursorID)
+	}
+	q += ` ORDER BY created_at DESC, id DESC LIMIT $` + strconv.Itoa(len(args)+1)
+	args = append(args, limit+1)
+	rows, err := r.db.Query(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list campaigns cursor: %w", err)
+	}
+	defer rows.Close()
+	var out []Campaign
+	for rows.Next() {
+		var f campaignFields
+		if err := rows.Scan(&f.ID, &f.OrgID, &f.Name, &f.Status, &f.TemplateID, &f.GroupID, &f.LandingPageID,
+			&f.FromName, &f.FromEmail, &f.Subject, &f.ScheduledAt, &f.StartedAt,
+			&f.CompletedAt, &f.Recurrence, &f.TrackOpens, &f.BetriebsratMode,
+			&f.CreatedBy, &f.CreatedAt, &f.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan campaign cursor row: %w", err)
+		}
+		out = append(out, campaignFromFields(f))
+	}
+	return out, rows.Err()
 }

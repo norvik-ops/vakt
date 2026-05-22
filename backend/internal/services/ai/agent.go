@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -31,23 +32,25 @@ import (
 type AgentEventType string
 
 const (
-	AgentEventPlan     AgentEventType = "plan"
-	AgentEventToolCall AgentEventType = "tool_call"
-	AgentEventToolResult AgentEventType = "tool_result"
-	AgentEventReflect  AgentEventType = "reflect"
-	AgentEventFinal    AgentEventType = "final"
-	AgentEventError    AgentEventType = "error"
+	AgentEventPlan             AgentEventType = "plan"
+	AgentEventToolCall         AgentEventType = "tool_call"
+	AgentEventToolResult       AgentEventType = "tool_result"
+	AgentEventReflect          AgentEventType = "reflect"
+	AgentEventFinal            AgentEventType = "final"
+	AgentEventError            AgentEventType = "error"
+	AgentEventApprovalRequired AgentEventType = "approval_required"
+	AgentEventRunStarted       AgentEventType = "run_started"
 )
 
 // AgentEvent ist ein einzelnes Stream-Frame über den Agent-Lauf.
 type AgentEvent struct {
-	Type      AgentEventType `json:"type"`
-	Step      int            `json:"step"`
-	Message   string         `json:"message,omitempty"`
-	Tool      string         `json:"tool,omitempty"`
+	Type      AgentEventType  `json:"type"`
+	Step      int             `json:"step"`
+	Message   string          `json:"message,omitempty"`
+	Tool      string          `json:"tool,omitempty"`
 	Arguments json.RawMessage `json:"arguments,omitempty"`
 	Result    json.RawMessage `json:"result,omitempty"`
-	Timestamp time.Time      `json:"ts"`
+	Timestamp time.Time       `json:"ts"`
 }
 
 // AgentRunRequest beschreibt einen Agent-Lauf.
@@ -60,6 +63,50 @@ type AgentRunRequest struct {
 	// Permissions ist die Liste der Permission-Strings des initiierenden Users.
 	// Der Agent darf nur Tools aufrufen, deren RequireScope hier enthalten ist.
 	Permissions []string `json:"permissions"`
+	// RunID identifiziert den Lauf eindeutig — wird für Approval-Flows benötigt.
+	RunID string `json:"run_id"`
+}
+
+// ApprovalDecision beschreibt die Entscheidung des Benutzers für einen
+// Write-Tool-Approval-Request.
+type ApprovalDecision struct {
+	Approved bool
+	UserID   string
+}
+
+// AgentRunManager verwaltet laufende Approval-Channels per RunID.
+// Thread-safe via sync.Map.
+type AgentRunManager struct {
+	channels sync.Map // key: runID (string) → chan ApprovalDecision
+}
+
+// Register legt einen neuen Approval-Channel für einen Lauf an und gibt ihn zurück.
+func (m *AgentRunManager) Register(runID string) chan ApprovalDecision {
+	ch := make(chan ApprovalDecision, 1)
+	m.channels.Store(runID, ch)
+	return ch
+}
+
+// Decide sendet eine Entscheidung an den wartenden Runner. Gibt false zurück,
+// wenn kein Channel für runID registriert ist.
+func (m *AgentRunManager) Decide(runID string, d ApprovalDecision) bool {
+	val, ok := m.channels.Load(runID)
+	if !ok {
+		return false
+	}
+	ch := val.(chan ApprovalDecision)
+	select {
+	case ch <- d:
+		return true
+	default:
+		// Channel bereits befüllt (doppelter Click) — ignorieren.
+		return false
+	}
+}
+
+// Unregister entfernt den Channel für einen Lauf.
+func (m *AgentRunManager) Unregister(runID string) {
+	m.channels.Delete(runID)
 }
 
 // AgentTool ist die Schnittstelle für ein Tool, das der Agent aufrufen kann.
@@ -72,6 +119,9 @@ type AgentTool interface {
 	// RequireScope wird gegen die User-Permissions geprüft, bevor Execute läuft.
 	// Leer = Read-Only-Tool ohne Scope-Restriktion.
 	RequireScope() string
+	// IsWriteTool gibt true zurück, wenn das Tool Daten mutiert.
+	// Write-Tools benötigen eine explizite Benutzer-Freigabe via ApproveCard.
+	IsWriteTool() bool
 	// Execute wird mit den vom LLM gewählten Args aufgerufen. Returnt JSON-
 	// Result, das in den Reflect-Step zurückfließt.
 	Execute(ctx context.Context, orgID string, args json.RawMessage) (json.RawMessage, error)
@@ -84,15 +134,22 @@ type AgentRunner struct {
 	tools  map[string]AgentTool
 	db     *pgxpool.Pool
 	usage  *UsageTracker
+	runMgr *AgentRunManager
 }
 
 // NewAgentRunner baut einen Runner mit den registrierten Tools.
 func NewAgentRunner(client *AIClient, model string, db *pgxpool.Pool, usage *UsageTracker, tools []AgentTool) *AgentRunner {
+	return NewAgentRunnerWithManager(client, model, db, usage, tools, nil)
+}
+
+// NewAgentRunnerWithManager baut einen Runner mit optionalem AgentRunManager
+// für Write-Tool-Approval-Flows.
+func NewAgentRunnerWithManager(client *AIClient, model string, db *pgxpool.Pool, usage *UsageTracker, tools []AgentTool, runMgr *AgentRunManager) *AgentRunner {
 	m := make(map[string]AgentTool, len(tools))
 	for _, t := range tools {
 		m[t.Name()] = t
 	}
-	return &AgentRunner{client: client, model: model, tools: m, db: db, usage: usage}
+	return &AgentRunner{client: client, model: model, tools: m, db: db, usage: usage, runMgr: runMgr}
 }
 
 // Run führt den Loop aus und ruft onEvent für jedes Event auf. Returnt
@@ -106,6 +163,12 @@ func NewAgentRunner(client *AIClient, model string, db *pgxpool.Pool, usage *Usa
 func (r *AgentRunner) Run(ctx context.Context, req AgentRunRequest, onEvent func(AgentEvent)) {
 	if req.MaxIterations <= 0 || req.MaxIterations > 10 {
 		req.MaxIterations = 5
+	}
+
+	// run_started-Event: RunID an den Client kommunizieren damit er
+	// Approve/Reject-Calls korrekt adressieren kann.
+	if req.RunID != "" {
+		onEvent(AgentEvent{Type: AgentEventRunStarted, Message: req.RunID, Timestamp: time.Now().UTC()})
 	}
 
 	// Rate-Limit + Quota wie bei AI-Chat-Stream.
@@ -157,12 +220,62 @@ func (r *AgentRunner) Run(ctx context.Context, req AgentRunRequest, onEvent func
 		// RBAC-Check (ADR-0020): Agent darf NUR Tools nutzen, die User darf.
 		if scope := tool.RequireScope(); scope != "" && !hasScope(req.Permissions, scope) {
 			onEvent(AgentEvent{
-				Type: AgentEventError, Step: step,
-				Message: fmt.Sprintf("tool %q requires scope %q which the user lacks", toolName, scope),
-				Tool:    toolName,
+				Type:      AgentEventError,
+				Step:      step,
+				Message:   fmt.Sprintf("tool %q requires scope %q which the user lacks", toolName, scope),
+				Tool:      toolName,
 				Timestamp: time.Now().UTC(),
 			})
 			continue
+		}
+
+		// Write-Tool: Approval-Flow via AgentRunManager.
+		if tool.IsWriteTool() && r.runMgr != nil && req.RunID != "" {
+			args := json.RawMessage(`{}`)
+			// Approval-Request in DB persistieren.
+			storeApprovalRequest(ctx, r.db, req.RunID, req.OrgID, req.UserID, toolName, args)
+
+			// approval_required-Event emittieren: Client zeigt ApproveCard.
+			onEvent(AgentEvent{
+				Type:      AgentEventApprovalRequired,
+				Step:      step,
+				Tool:      toolName,
+				Arguments: args,
+				Timestamp: time.Now().UTC(),
+			})
+
+			// Auf Benutzer-Entscheidung warten (max. 5 Minuten).
+			ch := r.runMgr.Register(req.RunID)
+			defer r.runMgr.Unregister(req.RunID)
+
+			select {
+			case decision := <-ch:
+				if !decision.Approved {
+					onEvent(AgentEvent{
+						Type:      AgentEventFinal,
+						Message:   "Abgebrochen durch Benutzer.",
+						Timestamp: time.Now().UTC(),
+					})
+					return
+				}
+				// Approval protokollieren.
+				updateApprovalDecision(ctx, r.db, req.RunID, toolName, true, decision.UserID)
+				// Audit-Eintrag für genehmigten Write-Tool-Call.
+				r.auditApprovedToolCall(ctx, req, toolName, decision.UserID)
+
+			case <-time.After(5 * time.Minute):
+				onEvent(AgentEvent{
+					Type:      AgentEventError,
+					Step:      step,
+					Tool:      toolName,
+					Message:   "Approval-Timeout: Benutzer hat nicht innerhalb von 5 Minuten geantwortet.",
+					Timestamp: time.Now().UTC(),
+				})
+				return
+
+			case <-ctx.Done():
+				return
+			}
 		}
 
 		// Tool ausführen mit leerem Args-Objekt (Skeleton: echte Args kommen
@@ -277,6 +390,61 @@ func (r *AgentRunner) auditAgentStart(ctx context.Context, req AgentRunRequest, 
 		req.OrgID, req.UserID, details,
 	); err != nil {
 		log.Warn().Err(err).Str("org_id", req.OrgID).Msg("ai.agent: audit start write failed")
+	}
+}
+
+// auditApprovedToolCall schreibt einen Audit-Log-Eintrag für einen genehmigten
+// Write-Tool-Call. Enthält Tool-Namen und die User-ID der genehmigenden Person.
+func (r *AgentRunner) auditApprovedToolCall(ctx context.Context, req AgentRunRequest, toolName, approvedByUserID string) {
+	if r.db == nil || req.OrgID == "" {
+		return
+	}
+	details, _ := json.Marshal(map[string]string{
+		"tool":           toolName,
+		"run_id":         req.RunID,
+		"approved_by":    approvedByUserID,
+		"actor":          "ai_agent",
+	})
+	if _, err := r.db.Exec(ctx, `
+		INSERT INTO audit_log
+		  (org_id, user_id, user_email, action, resource_type, resource_id, details, ip_address)
+		VALUES ($1::uuid, NULLIF($2, '')::uuid, 'ai_agent', 'agent_tool_approved', 'ai/agent', NULL, $3, NULL)`,
+		req.OrgID, req.UserID, details,
+	); err != nil {
+		log.Warn().Err(err).Str("org_id", req.OrgID).Str("tool", toolName).Msg("ai.agent: audit tool-approved write failed")
+	}
+}
+
+// storeApprovalRequest persistiert einen Approval-Request in der DB.
+func storeApprovalRequest(ctx context.Context, db *pgxpool.Pool, runID, orgID, userID, toolName string, args json.RawMessage) {
+	if db == nil {
+		return
+	}
+	if _, err := db.Exec(ctx, `
+		INSERT INTO ai_pending_approvals (run_id, org_id, user_id, tool_name, args)
+		VALUES ($1, $2::uuid, NULLIF($3, '')::uuid, $4, $5)`,
+		runID, orgID, userID, toolName, args,
+	); err != nil {
+		log.Warn().Err(err).Str("run_id", runID).Msg("ai.agent: store approval request failed")
+	}
+}
+
+// updateApprovalDecision aktualisiert den Status eines Approval-Requests in der DB.
+func updateApprovalDecision(ctx context.Context, db *pgxpool.Pool, runID, toolName string, approved bool, deciderUserID string) {
+	if db == nil {
+		return
+	}
+	status := "rejected"
+	if approved {
+		status = "approved"
+	}
+	if _, err := db.Exec(ctx, `
+		UPDATE ai_pending_approvals
+		SET status = $1, decided_by = NULLIF($2, '')::uuid, decided_at = NOW()
+		WHERE run_id = $3 AND tool_name = $4 AND status = 'pending'`,
+		status, deciderUserID, runID, toolName,
+	); err != nil {
+		log.Warn().Err(err).Str("run_id", runID).Msg("ai.agent: update approval decision failed")
 	}
 }
 

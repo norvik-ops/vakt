@@ -9,22 +9,23 @@ import {
   Square,
   RotateCw,
   ShieldCheck,
+  ShieldAlert,
+  XCircle,
 } from 'lucide-react'
-import { useAgentRun, type AgentEvent } from '../hooks/useAgentRun'
+import { useAgentRun, type AgentEvent, type ApprovalRequired } from '../hooks/useAgentRun'
 
 // Sprint 18 / S22-8: AgentRunPanel — Live-Visualisierung des Plan/Execute/
 // Reflect-Loops. Konsumiert useAgentRun und rendert pro Event eine Karte:
 //
 //   plan         → blau, Sparkles-Icon, Plan-Text
-//   tool_call    → ambers, Wrench-Icon, expandable Argumente
+//   tool_call    → amber, Wrench-Icon, expandable Argumente
 //   tool_result  → grün, CheckCircle, expandable JSON
 //   reflect      → grau, Brain-Icon, Reflexions-Text
 //   final        → grün, Sparkles, Antwort
 //   error        → rot, AlertCircle
 //
-// Approve-Cards-Skelett: für tool_call mit mutate-Eigenschaft (Backend-Marker)
-// zeigt eine Approve/Reject-UI an. Aktuell nur Skelett, weil das Backend keine
-// pause-and-approve-Semantik hat (ADR-0020 markiert das als Pro-Tier-Feature).
+// S32-2: ApproveCard — wird bei approval_required-Events angezeigt.
+//   Zeigt Tool-Name + Args-Preview. Approve/Reject-Buttons rufen das Backend.
 
 interface JsonBlockProps {
   data: unknown
@@ -87,6 +88,24 @@ function EventCard({ evt, index }: EventCardProps) {
           tint: 'border-destructive/40 bg-destructive/5',
           label: 'Fehler',
         }
+      case 'approval_required':
+        return {
+          icon: <ShieldAlert className="w-4 h-4 text-amber-600" />,
+          tint: 'border-amber-400/50 bg-amber-50 dark:border-amber-700/50 dark:bg-amber-950/30',
+          label: `Freigabe erforderlich: ${evt.tool ?? 'unbekannt'}`,
+        }
+      case 'run_started':
+        return {
+          icon: <Sparkles className="w-4 h-4 text-secondary" />,
+          tint: 'border-border bg-muted/10',
+          label: 'Lauf gestartet',
+        }
+      default:
+        return {
+          icon: <AlertCircle className="w-4 h-4 text-secondary" />,
+          tint: 'border-border bg-muted/10',
+          label: 'Unbekannt',
+        }
     }
   })()
 
@@ -133,6 +152,89 @@ function EventCard({ evt, index }: EventCardProps) {
   )
 }
 
+interface ApproveCardProps {
+  approval: ApprovalRequired
+  onApprove: () => Promise<void>
+  onReject: () => Promise<void>
+}
+
+function ApproveCard({ approval, onApprove, onReject }: ApproveCardProps) {
+  const [loading, setLoading] = useState<'approve' | 'reject' | null>(null)
+
+  const handleApprove = async () => {
+    setLoading('approve')
+    try {
+      await onApprove()
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const handleReject = async () => {
+    setLoading('reject')
+    try {
+      await onReject()
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border-2 border-amber-400/60 bg-amber-50 dark:bg-amber-950/30 p-4 space-y-3">
+      <div className="flex items-start gap-2.5">
+        <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+            Freigabe erforderlich
+          </p>
+          <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+            Der Agent möchte ein Write-Tool ausführen, das Daten verändert.
+            Bitte prüfe die Argumente und genehmige oder lehne ab.
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-amber-300/50 bg-white/60 dark:bg-amber-950/40 p-3 space-y-1">
+        <div className="flex items-center gap-1.5">
+          <Wrench className="w-3.5 h-3.5 text-amber-600" />
+          <span className="text-xs font-mono font-semibold text-amber-800 dark:text-amber-300">
+            {approval.tool}
+          </span>
+        </div>
+        <div>
+          <span className="text-[10px] text-amber-700 dark:text-amber-400 uppercase tracking-wide">
+            Argumente:
+          </span>
+          <pre className="mt-1 text-[11px] font-mono bg-amber-100/60 dark:bg-amber-950/60 p-2 rounded overflow-x-auto whitespace-pre text-amber-900 dark:text-amber-200">
+            {JSON.stringify(approval.arguments, null, 2)}
+          </pre>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 justify-end">
+        <button
+          type="button"
+          onClick={() => void handleReject()}
+          disabled={loading !== null}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-300 bg-red-50 text-red-700 text-sm hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-red-800 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50"
+        >
+          <XCircle className="w-3.5 h-3.5" />
+          {loading === 'reject' ? 'Wird abgelehnt…' : 'Ablehnen'}
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleApprove()}
+          disabled={loading !== null}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-sm hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          {loading === 'approve' ? 'Wird genehmigt…' : 'Genehmigen'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 interface AgentRunPanelProps {
   // Optional vorausgefüllter Goal — z.B. wenn die Komponente von einer
   // Control-Detail-Page mit Kontext aufgerufen wird.
@@ -142,7 +244,7 @@ interface AgentRunPanelProps {
 
 export function AgentRunPanel({ initialGoal = '', contextHints }: AgentRunPanelProps) {
   const [goal, setGoal] = useState(initialGoal)
-  const { events, isRunning, error, durationMs, start, stop } = useAgentRun()
+  const { events, isRunning, error, durationMs, start, stop, runId, pendingApproval, approve, reject } = useAgentRun()
 
   const handleStart = () => {
     if (!goal.trim()) return
@@ -215,6 +317,15 @@ export function AgentRunPanel({ initialGoal = '', contextHints }: AgentRunPanelP
             <p className="text-xs mt-0.5">{error.message}</p>
           </div>
         </div>
+      )}
+
+      {/* Approve Card — oberhalb der Events-Liste wenn eine Freigabe aussteht */}
+      {pendingApproval && runId && (
+        <ApproveCard
+          approval={pendingApproval}
+          onApprove={() => approve(runId)}
+          onReject={() => reject(runId)}
+        />
       )}
 
       {/* Events */}

@@ -219,18 +219,41 @@ func (s *Service) GetDORADashboard(ctx context.Context, orgID string) (*DORADash
 		}
 	}
 
-	// 6. TLPT overdue warning.
-	_, tlptOverdue, err := s.ListResilienceTests(ctx, orgID)
+	// 6+7. TLPT overdue warning + recent tests for PDF (S40-1).
+	allTests, tlptOverdue, err := s.ListResilienceTests(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("list resilience tests: %w", err)
 	}
+	recentTests := allTests
+	if len(recentTests) > 3 {
+		recentTests = recentTests[:3]
+	}
+
+	// 8. IKT-Drittanbieter counts (S38-1/2/3).
+	thirdParties, err := s.repo.ListDORAThirdParties(ctx, orgID, "")
+	if err != nil {
+		return nil, fmt.Errorf("list dora third parties: %w", err)
+	}
+	criticalTP, missingExit := 0, 0
+	for _, tp := range thirdParties {
+		if tp.Criticality == "kritisch" {
+			criticalTP++
+			if !tp.ExitStrategy {
+				missingExit++
+			}
+		}
+	}
 
 	return &DORADashboard{
-		ReadinessPct:         report.ReadinessScore,
-		OpenCriticalControls: openCritical,
-		NextDeadline:         nextDeadline,
-		ExpiredSuppliers:     expiredSuppliers,
-		TLPTOverdueWarning:   tlptOverdue,
+		ReadinessPct:          report.ReadinessScore,
+		OpenCriticalControls:  openCritical,
+		NextDeadline:          nextDeadline,
+		ExpiredSuppliers:      expiredSuppliers,
+		TLPTOverdueWarning:    tlptOverdue,
+		ThirdPartyCount:       len(thirdParties),
+		CriticalThirdParties:  criticalTP,
+		MissingExitStrategies: missingExit,
+		RecentResilienceTests: recentTests,
 	}, nil
 }
 

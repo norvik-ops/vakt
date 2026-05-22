@@ -64,6 +64,20 @@ export function useDeleteResilienceTest() {
   })
 }
 
+export function useLinkResilienceTestAsEvidence(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation<{ id: string }, Error, { control_id: string }>({
+    mutationFn: (body) =>
+      apiFetch<{ id: string }>(`/secvitals/resilience-tests/${id}/link-evidence`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['secvitals', 'resilience-tests'] })
+    },
+  })
+}
+
 export function useUploadResilienceTestAttachment(id: string) {
   const queryClient = useQueryClient()
   return useMutation<ResilienceTest, Error, FormData>({

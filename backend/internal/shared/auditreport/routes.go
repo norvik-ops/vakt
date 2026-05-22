@@ -8,7 +8,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/matharnica/vakt/internal/auth"
-	"github.com/matharnica/vakt/internal/license"
+	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
 
 // RegisterRoutes mounts GET /audit-report on the provided echo group.
@@ -18,5 +18,5 @@ import (
 func RegisterRoutes(g *echo.Group, db *pgxpool.Pool) {
 	h := NewHandler(db)
 	ro := auth.RequireRole("Admin", "SecurityAnalyst", "Viewer", "AuditorReadOnly")
-	g.GET("/audit-report", h.GenerateAuditReport, ro, license.Require(license.FeatureAuditPDF))
+	g.GET("/audit-report", h.GenerateAuditReport, ro, features.Require(features.FeatureAuditPDF))
 }

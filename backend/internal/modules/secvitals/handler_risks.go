@@ -58,7 +58,24 @@ func (h *Handler) UpdateRiskTreatment(c echo.Context) error {
 }
 
 // ListRisks handles GET /api/v1/secvitals/risks.
+// Cursor mode (preferred): ?cursor=<opaque>&limit=25
+// Offset mode (deprecated): ?page=1&limit=25 — sends Deprecation header
 func (h *Handler) ListRisks(c echo.Context) error {
+	if c.QueryParam("page") == "" {
+		cp := pagination.CursorFromRequest(c)
+		cursorID, cursorTS := pagination.DecodeCursor(cp.Cursor)
+		rows, err := h.service.ListRisksCursor(c.Request().Context(), orgID(c), cursorID, cursorTS, cp.Limit)
+		if err != nil {
+			log.Error().Err(err).Msg("list risks cursor")
+			return errResp(c, http.StatusInternalServerError, "failed to list risks", "CK_LIST_RISKS_FAILED")
+		}
+		resp := pagination.WrapCursor(rows, cp, func(r Risk) string {
+			return pagination.EncodeCursor(r.ID, r.CreatedAt)
+		})
+		return c.JSON(http.StatusOK, resp)
+	}
+	c.Response().Header().Set("Deprecation", "true")
+	c.Response().Header().Set("Sunset", "2027-01-01")
 	offset, limit, meta := pagination.FromRequest(c)
 	risks, total, err := h.service.ListRisksPaged(c.Request().Context(), orgID(c), offset, limit)
 	if err != nil {

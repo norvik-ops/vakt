@@ -107,7 +107,7 @@ func (h *PermissionsHandler) GetPermissions(c echo.Context) error {
 
 // UpdatePermissions handles PUT /api/v1/admin/users/:user_id/permissions.
 // Replaces all module permissions for the given user within the caller's org.
-// This is a Pro feature — the route must be registered with license.Require().
+// This is a Pro feature — the route must be registered with features.Require().
 func (h *PermissionsHandler) UpdatePermissions(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
 	targetUserID := c.Param("user_id")

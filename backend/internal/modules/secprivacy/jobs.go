@@ -9,6 +9,9 @@ const (
 
 	// TaskBreachIncidentCreate creates a linked SecVitals incident when a breach is recorded.
 	TaskBreachIncidentCreate = "secprivacy:breach_incident_create"
+
+	// Queue is the dedicated Asynq queue for Vakt Privacy jobs (breach notifications, AVV checks).
+	Queue = "secprivacy"
 )
 
 // BreachIncidentPayload is the Asynq payload for TaskBreachIncidentCreate.

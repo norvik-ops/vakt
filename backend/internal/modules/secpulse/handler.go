@@ -290,19 +290,39 @@ func (h *Handler) GetScan(c echo.Context) error {
 }
 
 // ListFindings handles GET /api/v1/secpulse/findings
+// Supports two pagination modes:
+//   - cursor-based (preferred): ?cursor=<opaque>&limit=25
+//   - offset-based (deprecated): ?page=1&limit=25 — sends Deprecation header
 func (h *Handler) ListFindings(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
-	_, limit, meta := pagination.FromRequest(c)
 	filter := FindingFilter{
 		Severity: c.QueryParam("severity"),
 		Status:   c.QueryParam("status"),
 		AssetID:  c.QueryParam("asset_id"),
 		SortBy:   c.QueryParam("sort"),
 		Order:    c.QueryParam("order"),
-		Page:     meta.Page,
-		Limit:    limit,
 	}
 
+	if c.QueryParam("page") == "" {
+		cp := pagination.CursorFromRequest(c)
+		cursorID, cursorTS := pagination.DecodeCursor(cp.Cursor)
+		rows, err := h.service.ListFindingsCursor(c.Request().Context(), orgID, filter, cursorID, cursorTS, cp.Limit)
+		if err != nil {
+			log.Error().Err(err).Msg("list findings cursor failed")
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to list findings", "code": "VB_LIST_FINDINGS_ERROR"})
+		}
+		resp := pagination.WrapCursor(rows, cp, func(f Finding) string {
+			return pagination.EncodeCursor(f.ID, f.CreatedAt)
+		})
+		return c.JSON(http.StatusOK, resp)
+	}
+
+	// Offset-based path (deprecated)
+	c.Response().Header().Set("Deprecation", "true")
+	c.Response().Header().Set("Sunset", "2027-01-01")
+	_, limit, meta := pagination.FromRequest(c)
+	filter.Page = meta.Page
+	filter.Limit = limit
 	findings, err := h.service.ListFindings(c.Request().Context(), orgID, filter)
 	if err != nil {
 		log.Error().Err(err).Msg("list findings failed")

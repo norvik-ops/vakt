@@ -609,6 +609,10 @@ export interface DORADashboard {
   next_deadline?: NextDeadline
   expired_suppliers: number
   tlpt_overdue_warning: boolean
+  // IKT-Drittanbieter (S38-1/2/3)
+  third_party_count: number
+  critical_third_parties: number
+  missing_exit_strategies: number
 }
 
 // --- Assessment Review (Story 29.4) ---
@@ -771,6 +775,20 @@ export interface ReportabilityResult {
   answers: ReportabilityAnswers
 }
 
+// --- S39-1: BSI-Meldepflicht-Klassifizierung ---
+
+export interface ClassifyReportingInput {
+  essential_service: boolean
+  customer_data: boolean
+  personal_data: boolean
+}
+
+export interface ClassificationResult {
+  obligation: 'probably' | 'none' | 'unclear'
+  authority: string
+  reason: string
+}
+
 // --- CCM (Continuous Control Monitoring) ---
 
 export type CCMCheckType = 'http_endpoint' | 'trivy_no_critical' | 'evidence_freshness' | 'custom_script'
@@ -905,3 +923,49 @@ export interface UpdateMilestoneInput {
   milestone_type?: MilestoneType
   status?: MilestoneStatus
 }
+
+// --- DORA IKT-Drittanbieter-Register (S38-1) ---
+
+export type DORAServiceType = 'IT-Outsourcing' | 'Cloud' | 'SaaS' | 'Netzwerk' | 'Sonstiges'
+export type DORAThirdPartyCriticality = 'kritisch' | 'wichtig' | 'unkritisch'
+export type DORADataLocation = 'EU' | 'Non-EU' | 'Mixed'
+
+export interface DORAThirdParty {
+  id: string
+  org_id: string
+  name: string
+  service_type: DORAServiceType
+  criticality: DORAThirdPartyCriticality
+  contract_start?: string | null
+  contract_end?: string | null
+  sla_rto_hours?: number | null
+  sla_availability?: number | null
+  has_subcontractors: boolean
+  subcontractor_names?: string
+  data_location: DORADataLocation
+  exit_strategy: boolean
+  exit_notes?: string
+  notes?: string
+  created_by?: string | null
+  created_at: string
+  updated_at: string
+  control_ids?: string[]
+}
+
+export interface CreateDORAThirdPartyInput {
+  name: string
+  service_type: DORAServiceType
+  criticality: DORAThirdPartyCriticality
+  contract_start?: string | null
+  contract_end?: string | null
+  sla_rto_hours?: number | null
+  sla_availability?: number | null
+  has_subcontractors: boolean
+  subcontractor_names?: string
+  data_location: DORADataLocation
+  exit_strategy: boolean
+  exit_notes?: string
+  notes?: string
+}
+
+export type UpdateDORAThirdPartyInput = CreateDORAThirdPartyInput

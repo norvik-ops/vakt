@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Azure Entra ID (AzureAD) — SAML SP Metadata Template for Vakt
+
+  How to use:
+  1. In Azure Portal → Enterprise Applications → New Application → Create your own
+  2. Set up Single Sign-On → SAML
+  3. Basic SAML Configuration:
+     - Identifier (Entity ID):  https://<your-vakt-domain>/api/v1/auth/saml/metadata
+     - Reply URL (ACS URL):      https://<your-vakt-domain>/api/v1/auth/saml/acs
+     - Sign-on URL:              https://<your-vakt-domain>/login
+  4. Attributes & Claims:
+     - Unique User Identifier:  user.mail
+     - Additional claims: givenname, surname, emailaddress, name
+  5. Download the Federation Metadata XML and upload it in Vakt Settings → SAML
+-->
+<EntityDescriptor
+  xmlns="urn:oasis:names:tc:SAML:2.0:metadata"
+  entityID="https://YOUR_VAKT_DOMAIN/api/v1/auth/saml/metadata">
+
+  <SPSSODescriptor
+    AuthnRequestsSigned="false"
+    WantAssertionsSigned="true"
+    protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+
+    <NameIDFormat>
+      urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
+    </NameIDFormat>
+
+    <AssertionConsumerService
+      Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+      Location="https://YOUR_VAKT_DOMAIN/api/v1/auth/saml/acs"
+      index="0"
+      isDefault="true"/>
+
+  </SPSSODescriptor>
+
+</EntityDescriptor>

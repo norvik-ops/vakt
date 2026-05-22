@@ -20,6 +20,7 @@ import { useAICopilot } from '../../../shared/hooks/useAICopilot'
 import { toast } from '../../../shared/hooks/useToast'
 import { Sparkles } from 'lucide-react'
 import { ReportabilityWizard } from '../components/ReportabilityWizard'
+import { ClassifyReportingWizard } from '../components/ClassifyReportingWizard'
 import type { Incident, UpdateIncidentInput, DeadlineInfo, IncidentReport } from '../types'
 import { formatLocale } from '../../../shared/utils/locale'
 
@@ -139,6 +140,7 @@ export default function IncidentDetailPage() {
   const [rawSystems, setRawSystems] = useState('')
   const [dirty, setDirty] = useState(false)
   const [wizardOpen, setWizardOpen] = useState(false)
+  const [classifyWizardOpen, setClassifyWizardOpen] = useState(false)
   const [pdfError, setPdfError] = useState<Error | null>(null)
 
   async function handleDownloadPDF() {
@@ -236,14 +238,24 @@ export default function IncidentDetailPage() {
               </Button>
             )}
             {(incident?.incident_type === 'nis2' || incident?.incident_type === 'general') && (
-              <Button
-                variant="outline"
-                onClick={() => setWizardOpen(true)}
-                data-testid="assess-reportability-btn"
-              >
-                <ShieldAlert className="w-4 h-4 mr-1" />
-                Meldepflicht prüfen
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setWizardOpen(true)}
+                  data-testid="assess-reportability-btn"
+                >
+                  <ShieldAlert className="w-4 h-4 mr-1" />
+                  Meldepflicht prüfen
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setClassifyWizardOpen(true)}
+                  data-testid="classify-reporting-btn"
+                >
+                  <ShieldAlert className="w-4 h-4 mr-1" />
+                  BSI-Klassifizierung
+                </Button>
+              </>
             )}
             <Button onClick={handleSave} disabled={!dirty || update.isPending}>
               <Save className="w-4 h-4 mr-1" />
@@ -524,6 +536,13 @@ export default function IncidentDetailPage() {
           incidentId={id}
           open={wizardOpen}
           onClose={() => setWizardOpen(false)}
+        />
+      )}
+      {id && (
+        <ClassifyReportingWizard
+          incidentId={id}
+          open={classifyWizardOpen}
+          onClose={() => setClassifyWizardOpen(false)}
         />
       )}
       <ProGate error={pdfError}>{null}</ProGate>

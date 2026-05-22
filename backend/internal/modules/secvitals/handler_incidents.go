@@ -3,7 +3,6 @@ package secvitals
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -87,7 +86,7 @@ func (h *Handler) AssessReportability(c echo.Context) error {
 	}
 	result, err := h.service.AssessReportability(c.Request().Context(), orgID(c), id, in)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "no rows") {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "incident not found", "CK_INCIDENT_NOT_FOUND")
 		}
 		log.Error().Err(err).Str("incident_id", id).Msg("assess reportability")
@@ -110,7 +109,7 @@ func (h *Handler) GenerateIncidentReportForm(c echo.Context) error {
 	}
 	report, _, err := h.service.GenerateIncidentReportForm(c.Request().Context(), orgID(c), id, body.ReportType, orgID(c))
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "no rows") {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "incident not found", "CK_INCIDENT_NOT_FOUND")
 		}
 		log.Error().Err(err).Str("incident_id", id).Msg("generate incident report form")
@@ -138,7 +137,7 @@ func (h *Handler) DownloadIncidentReportPDF(c echo.Context) error {
 	reportID := c.Param("reportId")
 	pdfBytes, err := h.service.GetIncidentReportPDF(c.Request().Context(), orgID(c), reportID)
 	if err != nil {
-		if strings.Contains(err.Error(), "no rows") {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "report not found", "CK_REPORT_NOT_FOUND")
 		}
 		log.Error().Err(err).Str("report_id", reportID).Msg("download incident report pdf")
@@ -172,7 +171,7 @@ func (h *Handler) IncidentReportPDF(c echo.Context) error {
 	id := c.Param("id")
 	inc, err := h.service.GetIncident(c.Request().Context(), orgID(c), id)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "no rows") {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "incident not found", "CK_INCIDENT_NOT_FOUND")
 		}
 		log.Error().Err(err).Str("incident_id", id).Msg("get incident for pdf")
@@ -192,6 +191,25 @@ func (h *Handler) IncidentReportPDF(c echo.Context) error {
 	filename := fmt.Sprintf("incident-%s-bafin.pdf", inc.ID)
 	c.Response().Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	return c.Blob(http.StatusOK, "application/pdf", pdfBytes)
+}
+
+// ClassifyReportingObligation handles POST /api/v1/secvitals/incidents/:id/classify-reporting.
+// S39-1: 3-question BSI meldepflicht wizard — returns obligation + authority + reason.
+func (h *Handler) ClassifyReportingObligation(c echo.Context) error {
+	id := c.Param("id")
+	var in ClassifyReportingInput
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+	result, err := h.service.ClassifyReportingObligation(c.Request().Context(), orgID(c), id, in)
+	if err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "incident not found", "CK_INCIDENT_NOT_FOUND")
+		}
+		log.Error().Err(err).Str("incident_id", id).Msg("classify reporting obligation")
+		return errResp(c, http.StatusInternalServerError, "failed to classify reporting obligation", "CK_CLASSIFY_FAILED")
+	}
+	return c.JSON(http.StatusOK, result)
 }
 
 // NIS2ReportingEnabled handles GET /api/v1/secvitals/nis2/enabled.

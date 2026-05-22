@@ -21,6 +21,7 @@ import (
 
 	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/platform/events"
 )
 
 // Service handles PrivacyOps business logic.
@@ -401,16 +402,7 @@ func (s *Service) UpdateDSR(ctx context.Context, orgID, id string, in UpdateDSRI
 	}
 	// Enqueue cross-module evidence when a DSR is completed.
 	if in.Status == "completed" && s.asynqClient != nil {
-		p := crossevidence.EvidencePayload{
-			OrgID:        orgID,
-			Source:       "secprivacy",
-			ResourceType: "vakt-privacy/dsr-completed",
-			ResourceID:   id,
-			Title:        "Betroffenenanfrage (DSR) abgeschlossen",
-			Description:  "Eine Datenschutz-Betroffenenanfrage wurde vollständig bearbeitet und abgeschlossen.",
-			OccurredAt:   time.Now(),
-		}
-		if task, taskErr := crossevidence.NewRecordEvidenceTask(p); taskErr == nil {
+		if task, taskErr := crossevidence.NewRecordEvidenceTask(events.DSRCompleted(orgID, id)); taskErr == nil {
 			_, _ = s.asynqClient.EnqueueContext(ctx, task)
 		}
 	}
@@ -779,7 +771,7 @@ func (s *Service) publishBreachCreated(ctx context.Context, b *Breach) {
 	}
 	if s.asynqClient != nil {
 		task := asynq.NewTask(TaskBreachIncidentCreate, data)
-		if _, err := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue("default")); err != nil {
+		if _, err := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(Queue)); err != nil {
 			log.Error().Err(err).Str("breach_id", b.ID).Msg("secprivacy: failed to enqueue breach incident job")
 		}
 	} else {
@@ -866,4 +858,9 @@ func (s *Service) ListVVTPaged(ctx context.Context, orgID string, offset, limit 
 // ListBreachesPaged returns a page of breach records plus the total count.
 func (s *Service) ListBreachesPaged(ctx context.Context, orgID string, offset, limit int) ([]Breach, int, error) {
 	return s.repo.ListBreachesPaged(ctx, orgID, offset, limit)
+}
+
+// ListDSRsCursor returns DSRs using keyset pagination.
+func (s *Service) ListDSRsCursor(ctx context.Context, orgID string, cursorID string, cursorTS time.Time, limit int) ([]DSR, error) {
+	return s.repo.ListDSRsCursor(ctx, orgID, cursorID, cursorTS, limit)
 }

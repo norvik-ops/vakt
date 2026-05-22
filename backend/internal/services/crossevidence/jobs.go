@@ -3,32 +3,33 @@ package crossevidence
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/hibiken/asynq"
+
+	"github.com/matharnica/vakt/internal/shared/platform/events"
 )
 
 // TaskRecordEvidence is the Asynq task type for cross-module evidence recording.
 // It is enqueued by SecReflex, SecPrivacy, and SecVault when compliance-relevant
 // events occur, and processed by the worker which calls the SecVitals evidence API.
-const TaskRecordEvidence = "secvitals:record_evidence"
+const (
+	TaskRecordEvidence = "secvitals:record_evidence"
 
-// EvidencePayload is the task payload for cross-module evidence recording.
-type EvidencePayload struct {
-	OrgID        string    `json:"org_id"`
-	Source       string    `json:"source"`        // "secreflex" | "secprivacy" | "secvault"
-	ResourceType string    `json:"resource_type"` // "training_completion" | "dsr_completed" | "secret_rotated"
-	ResourceID   string    `json:"resource_id"`
-	Title        string    `json:"title"`
-	Description  string    `json:"description"`
-	OccurredAt   time.Time `json:"occurred_at"`
-}
+	// Queue is the dedicated Asynq queue for cross-module evidence and compliance jobs.
+	Queue = "secvitals"
+)
 
-// NewRecordEvidenceTask creates a new evidence recording task.
+// EvidencePayload is an alias for events.CrossModuleEvent.
+// Use the typed constructors in the events package (events.DSRCompleted,
+// events.SecretRotated, events.TrainingCompleted, etc.) instead of building
+// this struct directly. See ADR-0023.
+type EvidencePayload = events.CrossModuleEvent
+
+// NewRecordEvidenceTask creates a new Asynq evidence recording task from a typed event.
 func NewRecordEvidenceTask(p EvidencePayload) (*asynq.Task, error) {
 	payload, err := json.Marshal(p)
 	if err != nil {
 		return nil, fmt.Errorf("marshal evidence payload: %w", err)
 	}
-	return asynq.NewTask(TaskRecordEvidence, payload, asynq.Queue("low")), nil
+	return asynq.NewTask(TaskRecordEvidence, payload, asynq.Queue(Queue)), nil
 }

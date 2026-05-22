@@ -40,3 +40,18 @@ func CleanupPasswordResetTokens(ctx context.Context, pool *pgxpool.Pool) error {
 	log.Info().Int64("deleted", tag.RowsAffected()).Msg("auth: password reset token cleanup complete")
 	return nil
 }
+
+// TaskCleanupDenyListFallback is the Asynq task type for the daily cleanup of
+// expired rows from the token_deny_list_fallback table.
+const TaskCleanupDenyListFallback = "auth:cleanup_deny_list_fallback"
+
+// NewCleanupDenyListFallbackTask creates the daily cleanup task with a 23h uniqueness lock.
+func NewCleanupDenyListFallbackTask() *asynq.Task {
+	return asynq.NewTask(TaskCleanupDenyListFallback, nil, asynq.Unique(23*time.Hour))
+}
+
+// CleanupDenyListFallback removes expired entries from token_deny_list_fallback.
+func CleanupDenyListFallback(ctx context.Context, pool *pgxpool.Pool) error {
+	cleanupExpiredFallbackEntries(ctx, pool)
+	return nil
+}

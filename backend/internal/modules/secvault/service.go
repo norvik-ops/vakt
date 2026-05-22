@@ -22,6 +22,7 @@ import (
 
 	"github.com/matharnica/vakt/internal/db"
 	"github.com/matharnica/vakt/internal/services/crossevidence"
+	"github.com/matharnica/vakt/internal/shared/platform/events"
 )
 
 // Service handles SecVault business logic.
@@ -545,16 +546,7 @@ func (s *Service) RotateSecret(ctx context.Context, orgID, envID, key string, in
 
 	// Enqueue cross-module evidence for SecVitals access-control controls.
 	if s.queue != nil {
-		p := crossevidence.EvidencePayload{
-			OrgID:        orgID,
-			Source:       "secvault",
-			ResourceType: "vakt-vault/secret-rotated",
-			ResourceID:   key,
-			Title:        "Secret rotiert: " + key,
-			Description:  "Ein Secret wurde gemäß Rotationsrichtlinie aktualisiert.",
-			OccurredAt:   time.Now(),
-		}
-		if task, taskErr := crossevidence.NewRecordEvidenceTask(p); taskErr == nil {
+		if task, taskErr := crossevidence.NewRecordEvidenceTask(events.SecretRotated(orgID, key)); taskErr == nil {
 			_, _ = s.queue.EnqueueContext(ctx, task)
 		}
 	}
@@ -686,4 +678,9 @@ func slugify(name string) string {
 		s = strings.ReplaceAll(s, "--", "-")
 	}
 	return strings.Trim(s, "-")
+}
+
+// ListGitScansCursor returns git scans using keyset pagination.
+func (s *Service) ListGitScansCursor(ctx context.Context, orgID string, cursorID string, cursorTS time.Time, limit int) ([]GitScan, error) {
+	return s.repo.ListGitScansCursor(ctx, orgID, cursorID, cursorTS, limit)
 }

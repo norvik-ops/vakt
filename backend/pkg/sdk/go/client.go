@@ -81,7 +81,7 @@ func (sc *SecretsClient) List(ctx context.Context, projectID, envID string) ([]s
 }
 
 // doGet executes an authenticated GET request and JSON-decodes the response body into dst.
-func (c *Client) doGet(ctx context.Context, path string, dst interface{}) error {
+func (c *Client) doGet(ctx context.Context, path string, dst any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
 		return fmt.Errorf("build request: %w", err)

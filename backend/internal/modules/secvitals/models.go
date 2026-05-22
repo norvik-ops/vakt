@@ -928,6 +928,12 @@ type DORADashboard struct {
 	NextDeadline         *NextDeadline `json:"next_deadline,omitempty"`
 	ExpiredSuppliers     int           `json:"expired_suppliers"`
 	TLPTOverdueWarning   bool          `json:"tlpt_overdue_warning"`
+	// IKT-Drittanbieter (S38-1/2/3)
+	ThirdPartyCount       int `json:"third_party_count"`
+	CriticalThirdParties  int `json:"critical_third_parties"`
+	MissingExitStrategies int `json:"missing_exit_strategies"`
+	// TLPT summary (S40-1) — last 3 TLPT tests for PDF
+	RecentResilienceTests []ResilienceTest `json:"recent_resilience_tests,omitempty"`
 }
 
 // NextDeadline holds the nearest unreported DORA deadline.
@@ -1300,4 +1306,82 @@ type EvidenceFile struct {
 	UploadedBy   string    `json:"uploaded_by"`
 	CreatedAt    time.Time `json:"created_at"`
 	DownloadURL  string    `json:"download_url"` // computed, not stored
+}
+
+// --- DORA IKT-Drittanbieter-Register (Art. 28-44 / S38-1) ---
+
+// DORAThirdParty represents an IKT third-party service provider in the DORA register.
+type DORAThirdParty struct {
+	ID                 string    `json:"id"`
+	OrgID              string    `json:"org_id"`
+	Name               string    `json:"name"`
+	ServiceType        string    `json:"service_type"`
+	Criticality        string    `json:"criticality"`
+	ContractStart      *string   `json:"contract_start,omitempty"`  // ISO date string
+	ContractEnd        *string   `json:"contract_end,omitempty"`    // ISO date string
+	SLARTOHours        *int      `json:"sla_rto_hours,omitempty"`
+	SLAAvailability    *float64  `json:"sla_availability,omitempty"`
+	HasSubcontractors  bool      `json:"has_subcontractors"`
+	SubcontractorNames string    `json:"subcontractor_names,omitempty"`
+	DataLocation       string    `json:"data_location"`
+	ExitStrategy       bool      `json:"exit_strategy"`
+	ExitNotes          string    `json:"exit_notes,omitempty"`
+	Notes              string    `json:"notes,omitempty"`
+	CreatedBy          *string   `json:"created_by,omitempty"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+	// Control IDs linked via dora_third_party_controls — populated on get, not list
+	ControlIDs []string `json:"control_ids,omitempty"`
+}
+
+// CreateDORAThirdPartyInput holds validated input for creating a third party entry.
+type CreateDORAThirdPartyInput struct {
+	Name               string   `json:"name"                validate:"required,min=1,max=255"`
+	ServiceType        string   `json:"service_type"        validate:"required,oneof=IT-Outsourcing Cloud SaaS Netzwerk Sonstiges"`
+	Criticality        string   `json:"criticality"         validate:"required,oneof=kritisch wichtig unkritisch"`
+	ContractStart      *string  `json:"contract_start"`
+	ContractEnd        *string  `json:"contract_end"`
+	SLARTOHours        *int     `json:"sla_rto_hours"`
+	SLAAvailability    *float64 `json:"sla_availability"`
+	HasSubcontractors  bool     `json:"has_subcontractors"`
+	SubcontractorNames string   `json:"subcontractor_names"`
+	DataLocation       string   `json:"data_location"       validate:"required,oneof=EU Non-EU Mixed"`
+	ExitStrategy       bool     `json:"exit_strategy"`
+	ExitNotes          string   `json:"exit_notes"`
+	Notes              string   `json:"notes"`
+}
+
+// UpdateDORAThirdPartyInput holds validated input for updating a third party entry.
+type UpdateDORAThirdPartyInput struct {
+	Name               string   `json:"name"                validate:"required,min=1,max=255"`
+	ServiceType        string   `json:"service_type"        validate:"required,oneof=IT-Outsourcing Cloud SaaS Netzwerk Sonstiges"`
+	Criticality        string   `json:"criticality"         validate:"required,oneof=kritisch wichtig unkritisch"`
+	ContractStart      *string  `json:"contract_start"`
+	ContractEnd        *string  `json:"contract_end"`
+	SLARTOHours        *int     `json:"sla_rto_hours"`
+	SLAAvailability    *float64 `json:"sla_availability"`
+	HasSubcontractors  bool     `json:"has_subcontractors"`
+	SubcontractorNames string   `json:"subcontractor_names"`
+	DataLocation       string   `json:"data_location"       validate:"required,oneof=EU Non-EU Mixed"`
+	ExitStrategy       bool     `json:"exit_strategy"`
+	ExitNotes          string   `json:"exit_notes"`
+	Notes              string   `json:"notes"`
+}
+
+// --- S39-1: BSI-Meldepflicht-Klassifizierung ---
+
+// ClassifyReportingInput is the request body for POST /incidents/:id/classify-reporting.
+// It accepts a simple 3-question wizard payload.
+type ClassifyReportingInput struct {
+	EssentialService bool `json:"essential_service"`
+	CustomerData     bool `json:"customer_data"`
+	PersonalData     bool `json:"personal_data"`
+}
+
+// ClassificationResult is returned by the classify-reporting endpoint and stored
+// in ck_incidents.classification_result JSONB (Migration 140).
+type ClassificationResult struct {
+	Obligation string `json:"obligation"` // "probably" | "none" | "unclear"
+	Authority  string `json:"authority"`  // "BSI" | "BaFin+BSI" | "LDA" | ""
+	Reason     string `json:"reason"`
 }

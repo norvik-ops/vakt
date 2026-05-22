@@ -10,6 +10,7 @@ type Asset struct {
 	Name        string    `json:"name"`
 	Type        string    `json:"type"`
 	Criticality string    `json:"criticality"`
+	Environment string    `json:"environment"` // prod | staging | dev (S44-2)
 	Tags        []string  `json:"tags"`
 	OwnerID     *string   `json:"owner_id,omitempty"`
 	ExternalURL *string   `json:"external_url,omitempty"`
@@ -31,6 +32,7 @@ type CreateAssetInput struct {
 	Name        string   `json:"name"         validate:"required,min=1,max=255"`
 	Type        string   `json:"type"         validate:"required,oneof=server container webapp repository"`
 	Criticality string   `json:"criticality"  validate:"required,oneof=low medium high critical"`
+	Environment string   `json:"environment"  validate:"omitempty,oneof=prod staging dev"`
 	Tags        []string `json:"tags"`
 	OwnerID     *string  `json:"owner_id,omitempty"`
 	ExternalURL string   `json:"external_url"`
@@ -41,6 +43,7 @@ type UpdateAssetInput struct {
 	Name        *string  `json:"name"         validate:"omitempty,min=1,max=255"`
 	Type        *string  `json:"type"         validate:"omitempty,oneof=server container webapp repository"`
 	Criticality *string  `json:"criticality"  validate:"omitempty,oneof=low medium high critical"`
+	Environment *string  `json:"environment"  validate:"omitempty,oneof=prod staging dev"`
 	Tags        []string `json:"tags"`
 	OwnerID     *string  `json:"owner_id,omitempty"`
 	ExternalURL *string  `json:"external_url,omitempty"`
@@ -51,6 +54,7 @@ type CSVAssetRow struct {
 	Name        string
 	Type        string
 	Criticality string
+	Environment string
 	Tags        []string
 	ExternalURL string
 }

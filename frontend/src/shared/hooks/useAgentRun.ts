@@ -4,6 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 // POST /api/v1/secvitals/ai/agent/run. Backend streamt strukturierte
 // AgentEvent-Frames (plan, tool_call, tool_result, reflect, final, error)
 // und schließt mit "data: [DONE]\n\n".
+//
+// S32-2: Approval-Flow — run_started + approval_required Events,
+// approve() und reject() Calls zu den neuen Backend-Endpoints.
 
 export type AgentEventType =
   | 'plan'
@@ -12,6 +15,8 @@ export type AgentEventType =
   | 'reflect'
   | 'final'
   | 'error'
+  | 'approval_required'
+  | 'run_started'
 
 export interface AgentEvent {
   type: AgentEventType
@@ -28,6 +33,12 @@ export interface AgentRunRequest {
   maxIterations?: number
 }
 
+export interface ApprovalRequired {
+  runId: string
+  tool: string
+  arguments: unknown
+}
+
 function readCsrfToken(): string | null {
   const m = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/)
   return m ? decodeURIComponent(m[1]) : null
@@ -38,9 +49,12 @@ export function useAgentRun() {
   const [isRunning, setIsRunning] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const [durationMs, setDurationMs] = useState(0)
+  const [runId, setRunId] = useState<string | null>(null)
+  const [pendingApproval, setPendingApproval] = useState<ApprovalRequired | null>(null)
 
   const abortRef = useRef<AbortController | null>(null)
   const startTimeRef = useRef(0)
+  const runIdRef = useRef<string | null>(null)
 
   useEffect(() => () => abortRef.current?.abort(), [])
 
@@ -58,6 +72,9 @@ export function useAgentRun() {
     setEvents([])
     setError(null)
     setIsRunning(true)
+    setRunId(null)
+    runIdRef.current = null
+    setPendingApproval(null)
     startTimeRef.current = Date.now()
     setDurationMs(0)
 
@@ -113,6 +130,25 @@ export function useAgentRun() {
             }
             try {
               const evt = JSON.parse(payload) as AgentEvent
+
+              // run_started: RunID aus message extrahieren.
+              if (evt.type === 'run_started' && evt.message) {
+                runIdRef.current = evt.message
+                setRunId(evt.message)
+              }
+              // approval_required: ApproveCard anzeigen.
+              else if (evt.type === 'approval_required' && evt.tool) {
+                setPendingApproval({
+                  runId: runIdRef.current ?? '',
+                  tool: evt.tool ?? '',
+                  arguments: evt.arguments ?? {},
+                })
+              }
+              // tool_result nach Approval: ApproveCard ausblenden.
+              else if (evt.type === 'tool_result') {
+                setPendingApproval(null)
+              }
+
               setEvents((prev) => [...prev, evt])
             } catch {
               // Frame ungültig — überspringen.
@@ -131,5 +167,28 @@ export function useAgentRun() {
     }
   }, [])
 
-  return { events, isRunning, error, durationMs, start, stop }
+  const approve = useCallback(async (rid: string) => {
+    const csrf = readCsrfToken()
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (csrf) headers['X-CSRF-Token'] = csrf
+    await fetch(`/api/v1/secvitals/ai/agent/runs/${rid}/approve`, {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+    })
+  }, [])
+
+  const reject = useCallback(async (rid: string) => {
+    const csrf = readCsrfToken()
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (csrf) headers['X-CSRF-Token'] = csrf
+    await fetch(`/api/v1/secvitals/ai/agent/runs/${rid}/reject`, {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+    })
+    setPendingApproval(null)
+  }, [])
+
+  return { events, isRunning, error, durationMs, start, stop, runId, pendingApproval, approve, reject }
 }

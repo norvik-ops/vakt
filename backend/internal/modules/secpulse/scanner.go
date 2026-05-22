@@ -31,12 +31,13 @@ var privateRanges = []net.IPNet{
 	parseCIDR("192.168.0.0/16"),
 }
 
-// parseCIDR is a helper that panics on invalid CIDR — used only for compile-time
-// constants above.
+// parseCIDR parses a hardcoded CIDR block; terminates with a fatal log on
+// invalid input so startup failures appear in structured logs rather than a
+// bare panic trace.
 func parseCIDR(cidr string) net.IPNet {
 	_, network, err := net.ParseCIDR(cidr)
 	if err != nil {
-		panic("secpulse: invalid built-in CIDR " + cidr + ": " + err.Error())
+		log.Fatal().Err(err).Str("cidr", cidr).Msg("secpulse: invalid built-in CIDR")
 	}
 	return *network
 }

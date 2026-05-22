@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 
-	"github.com/matharnica/vakt/internal/license"
+	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
 
 // Register mounts the API key routes under the given protected group.
@@ -17,7 +17,7 @@ func Register(g *echo.Group, db *pgxpool.Pool) {
 	svc := NewService(db)
 	h := NewHandler(svc)
 
-	keys := g.Group("/api-keys", license.Require(license.FeatureAPI))
+	keys := g.Group("/api-keys", features.Require(features.FeatureAPI))
 	keys.POST("", h.CreateKey)
 	keys.GET("", h.ListKeys)
 	keys.DELETE("/:id", h.RevokeKey)

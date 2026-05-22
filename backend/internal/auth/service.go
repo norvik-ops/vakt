@@ -58,9 +58,10 @@ func validatePasswordStrength(password string) error {
 
 // Service handles authentication business logic: registration, login, and token refresh.
 type Service struct {
-	db    *pgxpool.Pool
-	redis *redis.Client
-	key   paseto.V4SymmetricKey
+	db       *pgxpool.Pool
+	redis    *redis.Client
+	key      paseto.V4SymmetricKey
+	denyFall *denyListFallback // PostgreSQL fallback when Redis is unavailable
 }
 
 // RegisterInput holds validated data for the registration endpoint.
@@ -103,9 +104,10 @@ type refreshPayload struct {
 // NewService constructs an auth Service.
 func NewService(db *pgxpool.Pool, redisClient *redis.Client, key paseto.V4SymmetricKey) *Service {
 	return &Service{
-		db:    db,
-		redis: redisClient,
-		key:   key,
+		db:       db,
+		redis:    redisClient,
+		key:      key,
+		denyFall: &denyListFallback{db: db},
 	}
 }
 
@@ -508,12 +510,18 @@ func (s *Service) recordIPLoginFailure(ctx context.Context, ip string) {
 
 // RevokeToken blacklists an access token in Redis so that AuthMiddleware will
 // reject it for the remainder of its natural lifetime (AccessTokenTTL).
-// A 2-second context timeout prevents this call from blocking the response.
+// If Redis is unavailable, the token hash is written to the PostgreSQL fallback
+// table (token_deny_list_fallback) so that revocation survives a Redis outage.
 func (s *Service) RevokeToken(ctx context.Context, rawToken string) error {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	rCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	key := tokenDenyKey(rawToken)
-	return s.redis.Set(ctx, key, "1", AccessTokenTTL).Err()
+	if err := s.redis.Set(rCtx, key, "1", AccessTokenTTL).Err(); err != nil {
+		log.Warn().Err(err).Msg("RevokeToken: Redis unavailable — writing to PG fallback")
+		s.denyFall.revokeInFallback(ctx, key, time.Now().Add(AccessTokenTTL))
+		return nil
+	}
+	return nil
 }
 
 // tokenDenyKey returns the Redis key used to blacklist an access token.

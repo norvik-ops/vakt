@@ -459,8 +459,24 @@ func (h *Handler) ExportDPIA(c echo.Context) error {
 // --- DSR ---
 
 // ListDSRs handles GET /api/v1/secprivacy/dsr.
-// Returns all data subject requests for the authenticated organisation.
+// Cursor mode (preferred): ?cursor=<opaque>&limit=25
+// Offset mode (deprecated): ?page=1&limit=25 — sends Deprecation header
 func (h *Handler) ListDSRs(c echo.Context) error {
+	if c.QueryParam("page") == "" {
+		cp := pagination.CursorFromRequest(c)
+		cursorID, cursorTS := pagination.DecodeCursor(cp.Cursor)
+		rows, err := h.service.ListDSRsCursor(c.Request().Context(), orgID(c), cursorID, cursorTS, cp.Limit)
+		if err != nil {
+			log.Error().Err(err).Msg("list dsrs cursor")
+			return errResp(c, http.StatusInternalServerError, "failed to list DSRs", "PO_LIST_DSRS_FAILED")
+		}
+		resp := pagination.WrapCursor(rows, cp, func(d DSR) string {
+			return pagination.EncodeCursor(d.ID, d.CreatedAt)
+		})
+		return c.JSON(http.StatusOK, resp)
+	}
+	c.Response().Header().Set("Deprecation", "true")
+	c.Response().Header().Set("Sunset", "2027-01-01")
 	dsrs, err := h.service.ListDSRs(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("list dsrs")

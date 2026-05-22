@@ -27,6 +27,7 @@ import (
 	"github.com/matharnica/vakt/internal/modules/secvault"
 	"github.com/matharnica/vakt/internal/modules/secvitals"
 	"github.com/matharnica/vakt/internal/services/alerting"
+	"github.com/matharnica/vakt/internal/services/siem"
 	"github.com/matharnica/vakt/internal/shared/bsi"
 	"github.com/matharnica/vakt/internal/shared/nis2wizard"
 	"github.com/matharnica/vakt/internal/shared/controltests"
@@ -34,8 +35,8 @@ import (
 	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/emaildigest"
 	"github.com/matharnica/vakt/internal/shared/errorbudget"
-	cloudintegration "github.com/matharnica/vakt/internal/shared/integrations/cloud"
-	ghintegration "github.com/matharnica/vakt/internal/shared/integrations/github"
+	cloudintegration "github.com/matharnica/vakt/internal/shared/platform/integrations/cloud"
+	ghintegration "github.com/matharnica/vakt/internal/shared/platform/integrations/github"
 	"github.com/matharnica/vakt/internal/shared/notifications"
 	"github.com/matharnica/vakt/internal/shared/notify"
 	"github.com/matharnica/vakt/internal/shared/retention"
@@ -681,6 +682,12 @@ func handleRetentionRun(pool *pgxpool.Pool) asynq.HandlerFunc {
 func handleCleanupPasswordResetTokens(pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
 		return auth.CleanupPasswordResetTokens(ctx, pool)
+	}
+}
+
+func handleCleanupDenyListFallback(pool *pgxpool.Pool) asynq.HandlerFunc {
+	return func(ctx context.Context, _ *asynq.Task) error {
+		return auth.CleanupDenyListFallback(ctx, pool)
 	}
 }
 
@@ -1344,3 +1351,94 @@ func handleEOLCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	}
 }
 
+// handleSIEMForward handles siem:forward_pending jobs.
+// It forwards up to 100 unforwarded audit entries per org to the configured SIEM backend.
+func handleSIEMForward(pool *pgxpool.Pool) asynq.HandlerFunc {
+	return func(ctx context.Context, _ *asynq.Task) error {
+		svc := siem.NewService(pool)
+		if err := svc.ForwardPending(ctx); err != nil {
+			log.Error().Err(err).Msg("siem forward pending failed")
+			return err
+		}
+		return nil
+	}
+}
+
+
+// handleDORADeadlineStatus computes and persists the DORA Ampel-Status for all
+// IKT-DORA incidents across all orgs. Runs every 5 minutes (S37-4).
+func handleDORADeadlineStatus(pool *pgxpool.Pool) asynq.HandlerFunc {
+	return func(ctx context.Context, _ *asynq.Task) error {
+		rows, err := pool.Query(ctx, `SELECT id::text FROM organizations WHERE is_deleted = false`)
+		if err != nil {
+			return fmt.Errorf("dora_deadline_status: list orgs: %w", err)
+		}
+		defer rows.Close()
+
+		var orgIDs []string
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				continue
+			}
+			orgIDs = append(orgIDs, id)
+		}
+
+		svc := secvitals.NewService(pool)
+		g, gCtx := errgroup.WithContext(ctx)
+		sem := make(chan struct{}, 5)
+		for _, orgID := range orgIDs {
+			orgID := orgID
+			sem <- struct{}{}
+			g.Go(func() error {
+				defer func() { <-sem }()
+				if err := svc.UpdateDORADeadlineStatus(gCtx, orgID); err != nil {
+					log.Error().Err(err).Str("org_id", orgID).Msg("dora_deadline_status: update failed")
+				}
+				return nil
+			})
+		}
+		return g.Wait()
+	}
+}
+
+// handleNIS2ObligationCheck iterates all organisations and fires in-app/email notifications
+// for NIS2 incidents where the classify-reporting wizard has set obligation = "probably".
+// Runs daily. S39-2.
+func handleNIS2ObligationCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
+	return func(ctx context.Context, _ *asynq.Task) error {
+		rows, err := pool.Query(ctx, `SELECT id::text FROM organizations WHERE is_deleted = false`)
+		if err != nil {
+			return fmt.Errorf("nis2_obligation_check: list orgs: %w", err)
+		}
+		defer rows.Close()
+
+		var orgIDs []string
+		for rows.Next() {
+			var orgID string
+			if err := rows.Scan(&orgID); err != nil {
+				continue
+			}
+			orgIDs = append(orgIDs, orgID)
+		}
+		if err := rows.Err(); err != nil {
+			return err
+		}
+
+		svc := secvitals.NewService(pool)
+		g, gCtx := errgroup.WithContext(ctx)
+		sem := make(chan struct{}, 5)
+		for _, orgID := range orgIDs {
+			orgID := orgID
+			sem <- struct{}{}
+			g.Go(func() error {
+				defer func() { <-sem }()
+				if err := svc.CheckNIS2ObligationDeadlines(gCtx, orgID); err != nil {
+					log.Error().Err(err).Str("org_id", orgID).Msg("nis2_obligation_check: failed")
+				}
+				return nil
+			})
+		}
+		return g.Wait()
+	}
+}

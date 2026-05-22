@@ -24,6 +24,22 @@ import (
 // paseto library directly.
 type SymmetricKey = paseto.V4SymmetricKey
 
+// checkDenyList returns true when the token is revoked.
+// It checks Redis first; on Redis error it falls back to the PostgreSQL
+// token_deny_list_fallback table. Returns false (token valid) when both
+// Redis and the fallback are unreachable.
+func checkDenyList(ctx context.Context, rdb *redis.Client, fb *denyListFallback, rawToken string) bool {
+	denyKey := tokenDenyKey(rawToken)
+	rCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	exists, err := rdb.Exists(rCtx, denyKey).Result()
+	if err != nil {
+		log.Warn().Err(err).Msg("deny-list: Redis unavailable — checking PG fallback")
+		return fb.isRevokedInFallback(ctx, denyKey)
+	}
+	return exists > 0
+}
+
 // PasetoMiddleware validates a Paseto v4 bearer token and populates echo.Context
 // with "user_id", "org_id", and "roles".  It does not handle API keys; use
 // AuthMiddleware for the full (DB-backed) authentication chain.
@@ -63,13 +79,7 @@ func PasetoMiddleware(key paseto.V4SymmetricKey, rdb ...*redis.Client) echo.Midd
 
 			// Check token deny-list (logout revocation).
 			if redisClient != nil {
-				denyKey := tokenDenyKey(tokenStr)
-				ctx, cancel := context.WithTimeout(c.Request().Context(), 2*time.Second)
-				exists, err := redisClient.Exists(ctx, denyKey).Result()
-				cancel()
-				if err != nil {
-					log.Warn().Err(err).Msg("token deny-list check skipped — Redis unavailable")
-				} else if exists > 0 {
+				if checkDenyList(c.Request().Context(), redisClient, nil, tokenStr) {
 					return c.JSON(http.StatusUnauthorized, map[string]string{
 						"error": "token has been revoked",
 						"code":  "AUTH_TOKEN_REVOKED",
@@ -145,14 +155,10 @@ func AuthMiddleware(key paseto.V4SymmetricKey, db *pgxpool.Pool, rdb ...*redis.C
 			}
 
 			// Check token deny-list (logout revocation).
+			// On Redis failure falls back to the PostgreSQL deny-list table (S31-4).
 			if redisClient != nil {
-				denyKey := tokenDenyKey(tokenStr)
-				ctx, cancel := context.WithTimeout(c.Request().Context(), 2*time.Second)
-				exists, err := redisClient.Exists(ctx, denyKey).Result()
-				cancel()
-				if err != nil {
-					log.Warn().Err(err).Msg("token deny-list check skipped — Redis unavailable")
-				} else if exists > 0 {
+				fb := &denyListFallback{db: db}
+				if checkDenyList(c.Request().Context(), redisClient, fb, tokenStr) {
 					return c.JSON(http.StatusUnauthorized, map[string]string{
 						"error": "token has been revoked",
 						"code":  "AUTH_TOKEN_REVOKED",

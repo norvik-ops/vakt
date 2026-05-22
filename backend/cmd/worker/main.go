@@ -26,11 +26,12 @@ import (
 	"github.com/matharnica/vakt/internal/modules/secvault"
 	"github.com/matharnica/vakt/internal/modules/secvitals"
 	"github.com/matharnica/vakt/internal/services/alerting"
+	"github.com/matharnica/vakt/internal/services/siem"
 	"github.com/matharnica/vakt/internal/shared/bsi"
 	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/emaildigest"
-	cloudintegration "github.com/matharnica/vakt/internal/shared/integrations/cloud"
+	cloudintegration "github.com/matharnica/vakt/internal/shared/platform/integrations/cloud"
 	"github.com/matharnica/vakt/internal/shared/nis2wizard"
 	"github.com/matharnica/vakt/internal/shared/notifications"
 	"github.com/matharnica/vakt/internal/shared/retention"
@@ -60,10 +61,17 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 		asynq.Config{
 			Concurrency: workerConcurrency(),
 			Queues: map[string]int{
-				"critical":    5,
-				"default":     10,
+				// Module-dedicated queues (S31-3): each module has its own namespace so
+				// a long-running scan batch cannot starve breach-notification or evidence jobs.
+				secpulse.QueueScans:   8,  // scanner jobs — highest module concurrency
+				secvitals.Queue:       5,  // evidence collection, deadline checks
+				secprivacy.Queue:      5,  // breach notifications, AVV checks
+				secreflex.Queue:       3,  // campaign send, training reminders
+				// Generic queues kept for backward compat with external enqueues.
+				"critical":    10,
+				"default":     5,
 				"low":         3,
-				"maintenance": 2, // SBOM generation and EOL checks — lower priority than user-facing jobs
+				secpulse.QueueMaintenance: 2, // SBOM generation and EOL checks
 			},
 		},
 	)
@@ -136,6 +144,12 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	// SecVitals: periodic DORA/NIS2 incident deadline check
 	mux.HandleFunc(secvitals.TaskIncidentDeadlineCheck, handleIncidentDeadlineCheck(pool))
 
+	// SecVitals: DORA Ampel-Status update every 5 minutes (S37-4)
+	mux.HandleFunc(secvitals.TaskDORADeadlineStatus, handleDORADeadlineStatus(pool))
+
+	// SecVitals: daily NIS2 classified-incident deadline check (S39-2)
+	mux.HandleFunc(secvitals.TaskNIS2ObligationCheck, handleNIS2ObligationCheck(pool))
+
 	// SecVitals: daily supplier certificate expiry check
 	mux.HandleFunc(secvitals.TaskCertExpiryCheck, handleCertExpiryCheck(pool))
 
@@ -157,6 +171,9 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	// Auth: daily cleanup of expired and used password reset tokens
 	mux.HandleFunc(auth.TaskCleanupPasswordResetTokens, handleCleanupPasswordResetTokens(pool))
 
+	// Auth: daily cleanup of expired deny-list fallback entries (S31-4)
+	mux.HandleFunc(auth.TaskCleanupDenyListFallback, handleCleanupDenyListFallback(pool))
+
 	// Sprint 22 S22-12 + S22-13: Cleanup-Jobs für NIS2-Wizard-anonyme-Runs
 	// (täglich) und Login-History > 90 Tage (wöchentlich).
 	mux.HandleFunc(nis2wizard.TaskCleanupAnonymousRuns, handleCleanupNIS2AnonymousRuns(pool))
@@ -170,6 +187,9 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 
 	// Queue health: every 5 minutes — warn when failed/archived jobs accumulate
 	mux.HandleFunc(taskQueueHealthCheck, handleQueueHealthCheck(cfg))
+
+	// SIEM forward: every 5 minutes — forward pending audit entries to configured SIEM
+	mux.HandleFunc(siem.TaskSIEMForward, handleSIEMForward(pool))
 
 	return srv, mux
 }

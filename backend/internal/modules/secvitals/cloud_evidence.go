@@ -6,7 +6,7 @@ package secvitals
 import (
 	"context"
 
-	cloud "github.com/matharnica/vakt/internal/shared/integrations/cloud"
+	cloud "github.com/matharnica/vakt/internal/shared/platform/integrations/cloud"
 )
 
 // CloudEvidenceWriter adapts secvitals.Repository to implement cloud.EvidenceWriter.

@@ -9,7 +9,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/license"
+	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
 
 // Sprint 19 / S19-1 + S19-3: HTTP-Handler für den Public Wizard.
@@ -58,14 +58,14 @@ func RegisterAuthenticated(g *echo.Group, h *Handler) {
 	g.POST("/nis2-assessment/pdf", h.ExportPDF)
 
 	// Sprint 28 / S28-3: Re-Assessment + History (ProGate: FeatureNIS2Reporting).
-	g.POST("/reassess", h.StartReassessment, license.Require(license.FeatureNIS2Reporting))
+	g.POST("/reassess", h.StartReassessment, features.Require(features.FeatureNIS2Reporting))
 	g.POST("/reassess/:id/answer", h.AnswerReassessment)
 	g.GET("/reassess/:id/result", h.GetReassessmentResult)
-	g.GET("/history", h.GetHistory, license.Require(license.FeatureNIS2Reporting))
+	g.GET("/history", h.GetHistory, features.Require(features.FeatureNIS2Reporting))
 
 	// Sprint 28 / S28-4: Multi-Framework-Assessment (NIS2 + ISO27001 + DSGVO-TOM).
 	// ProGate: FeatureNIS2Reporting für Start; Answer + Result sind nach Start frei.
-	g.POST("/nis2-assessment/multi/start", h.StartMultiFramework, license.Require(license.FeatureNIS2Reporting))
+	g.POST("/nis2-assessment/multi/start", h.StartMultiFramework, features.Require(features.FeatureNIS2Reporting))
 	g.POST("/nis2-assessment/multi/:id/answer", h.AnswerMultiFramework)
 	g.GET("/nis2-assessment/multi/:id/result", h.GetMultiFrameworkResult)
 }
@@ -111,8 +111,7 @@ func (h *Handler) ExportPDF(c echo.Context) error {
 	}
 
 	// ProGate: FeatureNIS2Reporting erforderlich.
-	lic, _ := c.Get("license").(*license.License)
-	if lic == nil || !lic.Has(license.FeatureNIS2Reporting) {
+	if !features.IsEnabled(c, features.FeatureNIS2Reporting) {
 		return c.JSON(http.StatusForbidden, map[string]string{
 			"error": "NIS2 PDF export requires Pro license",
 		})

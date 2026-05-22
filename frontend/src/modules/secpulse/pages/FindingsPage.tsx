@@ -581,10 +581,15 @@ export default function FindingsPage() {
                       />
                     </TableCell>
                     <TableCell
-                      className="font-medium max-w-xs truncate"
+                      className="font-medium max-w-xs"
                       onClick={() => navigate(`/secpulse/findings/${f.id}`)}
                     >
-                      {f.title}
+                      <span className="truncate block">{f.title}</span>
+                      {f.sla_due_at && new Date(f.sla_due_at) < new Date() && (
+                        <Badge className="mt-0.5 text-[10px] py-0 bg-red-500/20 text-red-400 border-red-500/30">
+                          SLA überfällig
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <InlineSeverityCell finding={f} />

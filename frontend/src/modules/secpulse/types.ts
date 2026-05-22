@@ -21,6 +21,7 @@ export interface Finding {
   description: string
   notes?: string
   assigned_to?: string
+  sla_due_at?: string
   created_at: string
   updated_at: string
 }

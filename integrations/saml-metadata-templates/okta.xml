@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Okta — SAML SP Metadata Template for Vakt
+
+  How to use:
+  1. In Okta Admin Console → Applications → Create App Integration → SAML 2.0
+  2. General Settings: give the app a name (e.g. "Vakt")
+  3. Configure SAML:
+     - Single sign-on URL:  https://<your-vakt-domain>/api/v1/auth/saml/acs
+     - Audience URI:        https://<your-vakt-domain>/api/v1/auth/saml/metadata
+     - Name ID format:      EmailAddress
+     - Application username: Email
+  4. Attribute Statements:
+     - email:       user.email
+     - firstName:   user.firstName
+     - lastName:    user.lastName
+  5. Download the IdP Metadata (from the Sign On tab → View SAML setup instructions)
+     and upload it in Vakt Settings → SAML
+-->
+<EntityDescriptor
+  xmlns="urn:oasis:names:tc:SAML:2.0:metadata"
+  entityID="https://YOUR_VAKT_DOMAIN/api/v1/auth/saml/metadata">
+
+  <SPSSODescriptor
+    AuthnRequestsSigned="false"
+    WantAssertionsSigned="true"
+    protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+
+    <NameIDFormat>
+      urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
+    </NameIDFormat>
+
+    <AssertionConsumerService
+      Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+      Location="https://YOUR_VAKT_DOMAIN/api/v1/auth/saml/acs"
+      index="0"
+      isDefault="true"/>
+
+  </SPSSODescriptor>
+
+</EntityDescriptor>

@@ -6,7 +6,8 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/matharnica/vakt/internal/auth"
-	"github.com/matharnica/vakt/internal/license"
+	siemSvc "github.com/matharnica/vakt/internal/services/siem"
+	"github.com/matharnica/vakt/internal/shared/platform/features"
 	sharedmw "github.com/matharnica/vakt/internal/shared/middleware"
 )
 
@@ -39,13 +40,38 @@ func Register(g *echo.Group, h *Handler, health *HealthHandler, db *pgxpool.Pool
 	admin.GET("/org/security", h.GetOrgSecurity)
 	admin.PUT("/org/security", h.UpdateOrgSecurity)
 
+	// Per-org AI model selection (S32-3 ADR-0024)
+	admin.GET("/org/ai-settings", h.GetOrgAISettings)
+	admin.PUT("/org/ai-settings", h.UpdateOrgAISettings)
+
+	// Pro: per-org IP allowlist + MFA-for-sensitive-calls (S21-5, S21-6)
+	admin.GET("/org/security-ext", h.GetOrgSecurityExtensions)
+	admin.PUT("/org/ip-allowlist", h.UpdateOrgIPAllowlist, features.Require(features.FeatureAPI))
+	admin.PUT("/org/mfa-sensitive", h.UpdateOrgMFASensitive, features.Require(features.FeatureAPI))
+
 	// Per-user module permissions (GET is Community; PUT requires Pro)
 	admin.GET("/users/:user_id/permissions", h.Permissions.GetPermissions)
-	admin.PUT("/users/:user_id/permissions", h.Permissions.UpdatePermissions, license.Require(license.FeatureGranularPermissions))
+	admin.PUT("/users/:user_id/permissions", h.Permissions.UpdatePermissions, features.Require(features.FeatureGranularPermissions))
 
 	// Security events dashboard + account unlock
 	sec := NewSecurityHandler(db, rdb)
 	admin.GET("/security-events", sec.GetSecurityEvents)
 	admin.DELETE("/accounts/:email/unlock", sec.UnlockAccount)
+
+	// Pro-gated SIEM config
+	siemH := siemSvc.NewHandler(siemSvc.NewService(db))
+	admin.GET("/org/siem", siemH.GetSIEMConfig, features.Require(features.FeatureSIEM))
+	admin.PUT("/org/siem", siemH.UpdateSIEMConfig, features.Require(features.FeatureSIEM))
+	admin.POST("/org/siem/test", siemH.TestForward, features.Require(features.FeatureSIEM))
+
+	// SAML direct SP config (CE — no feature gate)
+	admin.GET("/org/saml-config", h.GetOrgSAMLConfig)
+	admin.PUT("/org/saml-config", h.UpdateOrgSAMLConfig)
+	admin.POST("/org/saml-config/regenerate-cert", h.RegenerateSAMLCert)
+
+	// Pro-gated SCIM token management (S21-4)
+	admin.GET("/scim/tokens", h.ListSCIMTokens, features.Require(features.FeatureSCIMProvisioning))
+	admin.POST("/scim/tokens", h.CreateSCIMToken, features.Require(features.FeatureSCIMProvisioning))
+	admin.DELETE("/scim/tokens/:id", h.RevokeSCIMToken, features.Require(features.FeatureSCIMProvisioning))
 
 }

@@ -122,8 +122,8 @@ export default function DORADashboardPage() {
       />
 
       <div className="flex-1 p-6 space-y-6">
-        {/* 5-Tile Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+        {/* 6-Tile Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
 
           {/* Tile 1: Bereitschaftsgrad */}
           <Card data-testid="tile-readiness">
@@ -243,6 +243,33 @@ export default function DORADashboardPage() {
                   Aktuell
                 </Badge>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Tile 6: IKT-Drittanbieter (S38-3) */}
+          <Card data-testid="tile-third-parties">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-secondary flex items-center gap-2">
+                <Building2 className="w-4 h-4" />
+                IKT-Drittanbieter
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-primary" data-testid="third-party-count">
+                {dashboard.third_party_count}
+              </div>
+              {dashboard.missing_exit_strategies > 0 ? (
+                <Badge variant="destructive" className="mt-2 text-xs">
+                  {dashboard.missing_exit_strategies} ohne Exit-Plan
+                </Badge>
+              ) : dashboard.critical_third_parties > 0 ? (
+                <Badge variant="success" className="mt-2 text-xs">
+                  {dashboard.critical_third_parties} kritisch — Exit-Pläne OK
+                </Badge>
+              ) : null}
+              <Link to="/secvitals/dora/third-parties" className="text-xs text-brand underline mt-1 inline-block">
+                Zum Register →
+              </Link>
             </CardContent>
           </Card>
         </div>

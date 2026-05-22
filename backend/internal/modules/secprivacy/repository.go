@@ -4,6 +4,7 @@ package secprivacy
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -916,4 +917,36 @@ func (r *Repository) ListBreachesPaged(ctx context.Context, orgID string, offset
 		out = append(out, breachFromRow(row))
 	}
 	return out, int(total), nil
+}
+
+// ListDSRsCursor returns DSRs for orgID using keyset pagination on (created_at DESC, id DESC).
+func (r *Repository) ListDSRsCursor(ctx context.Context, orgID string, cursorID string, cursorTS time.Time, limit int) ([]DSR, error) {
+	args := []any{orgID}
+	q := `SELECT id, org_id, requester_name, requester_email, type, description,
+	             status, due_date, received_at, completed_at, notes,
+	             created_at, updated_at
+	      FROM po_dsr
+	      WHERE org_id = $1`
+	if !cursorTS.IsZero() {
+		q += ` AND (created_at < $2 OR (created_at = $2 AND id::text < $3))`
+		args = append(args, cursorTS, cursorID)
+	}
+	q += ` ORDER BY created_at DESC, id DESC LIMIT $` + strconv.Itoa(len(args)+1)
+	args = append(args, limit+1)
+	rows, err := r.db.Query(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list dsrs cursor: %w", err)
+	}
+	defer rows.Close()
+	var out []DSR
+	for rows.Next() {
+		var f dsrFields
+		if err := rows.Scan(&f.ID, &f.OrgID, &f.RequesterName, &f.RequesterEmail, &f.Type, &f.Description,
+			&f.Status, &f.DueDate, &f.ReceivedAt, &f.CompletedAt, &f.Notes,
+			&f.CreatedAt, &f.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan dsr cursor row: %w", err)
+		}
+		out = append(out, dsrFromFields(f))
+	}
+	return out, rows.Err()
 }

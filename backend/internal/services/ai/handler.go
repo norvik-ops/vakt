@@ -217,3 +217,43 @@ func (h *Handler) ChatStream(c echo.Context) error {
 	}
 	return nil
 }
+
+// ListOllamaModels handles GET /api/v1/secvitals/ai/models.
+// Proxies the Ollama /api/tags endpoint and returns a simplified model list.
+// When the AI provider is not Ollama or is unavailable, returns an empty list.
+func (h *Handler) ListOllamaModels(c echo.Context) error {
+	baseURL := h.svc.client.baseURL
+	if baseURL == "" {
+		return c.JSON(http.StatusOK, map[string]any{"models": []string{}})
+	}
+	// Strip /v1 suffix to get the Ollama root URL.
+	ollamaRoot := baseURL
+	if len(ollamaRoot) > 3 && ollamaRoot[len(ollamaRoot)-3:] == "/v1" {
+		ollamaRoot = ollamaRoot[:len(ollamaRoot)-3]
+	}
+
+	ctx := c.Request().Context()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ollamaRoot+"/api/tags", nil)
+	if err != nil {
+		return c.JSON(http.StatusOK, map[string]any{"models": []string{}})
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return c.JSON(http.StatusOK, map[string]any{"models": []string{}})
+	}
+	defer resp.Body.Close()
+
+	var payload struct {
+		Models []struct {
+			Name string `json:"name"`
+		} `json:"models"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return c.JSON(http.StatusOK, map[string]any{"models": []string{}})
+	}
+	names := make([]string, 0, len(payload.Models))
+	for _, m := range payload.Models {
+		names = append(names, m.Name)
+	}
+	return c.JSON(http.StatusOK, map[string]any{"models": names})
+}

@@ -1,0 +1,152 @@
+name: "DORA"
+version: "2025-01"
+description: "Digital Operational Resilience Act (DORA) — ICT-Resilienzanforderungen für Finanzunternehmen (Verordnung (EU) 2022/2554, gültig ab Jan. 2025)."
+
+controls:
+  # Art. 5-16 — ICT-Risikomanagement
+  - id: "DORA-1.1"
+    title: "ICT-Risikomanagement-Framework"
+    description: "Implementiere ein umfassendes ICT-Risikomanagement-Framework gem. Art. 5 DORA. Identifiziere, klassifiziere und manage alle ICT-Risiken. Nachweis: ICT-Risikoregister, Framework-Dokumentation."
+    domain: "ICT-Risikomanagement"
+    evidence_type: "manual"
+    weight: 3
+    iso27001_mapping: "A.5.30, A.8.6, A.6.4"
+
+  - id: "DORA-1.2"
+    title: "ICT-Strategie und Governance"
+    description: "Stelle sicher, dass die Geschäftsleitung die digitale Resilienzstrategie trägt und überwacht. Nachweis: Management-Beschlüsse, Strategie-Dokument, Governance-Struktur."
+    domain: "ICT-Risikomanagement"
+    evidence_type: "manual"
+    weight: 3
+    iso27001_mapping: "A.5.1, A.5.2, A.6.1"
+
+  - id: "DORA-1.3"
+    title: "Asset-Inventar (ICT-Assets)"
+    description: "Führe ein vollständiges, aktuelles Inventar aller ICT-Assets und deren Abhängigkeiten. Nachweis: Asset-Register mit Klassifizierung und letztem Aktualisierungsdatum."
+    domain: "ICT-Risikomanagement"
+    evidence_type: "automated"
+    weight: 3
+    iso27001_mapping: "A.8.1, A.8.2"
+
+  - id: "DORA-1.4"
+    title: "Schutzmaßnahmen und Prävention"
+    description: "Implementiere technische und organisatorische Maßnahmen zum Schutz kritischer ICT-Systeme. Nachweis: Maßnahmenkatalog, Technische Konfigurationen."
+    domain: "ICT-Risikomanagement"
+    evidence_type: "manual"
+    weight: 3
+    iso27001_mapping: "A.8.7, A.8.8, A.8.20"
+
+  - id: "DORA-1.5"
+    title: "Erkennung von ICT-Anomalien und -Vorfällen"
+    description: "Implementiere Systeme zur frühzeitigen Erkennung von Anomalien, Cyberangriffen und ICT-Vorfällen (SIEM, IDS/IPS). Nachweis: SIEM-Konfiguration, Alarmierungsprotokoll."
+    domain: "ICT-Risikomanagement"
+    evidence_type: "automated"
+    weight: 3
+    iso27001_mapping: "A.8.15, A.8.16"
+
+  - id: "DORA-1.6"
+    title: "ICT-Business-Continuity-Management"
+    description: "Erstelle und teste BCM-Pläne für alle kritischen ICT-Systeme. Definiere RTO und RPO. Nachweis: BCM-Plan, Testergebnisse, RTO/RPO-Dokumentation."
+    domain: "ICT-Risikomanagement"
+    evidence_type: "manual"
+    weight: 3
+    iso27001_mapping: "A.8.13, A.8.14"
+
+  - id: "DORA-1.7"
+    title: "Backup und Wiederherstellung"
+    description: "Implementiere regelmäßige Backups mit verifizierten Wiederherstellungstests. Nachweis: Backup-Konfiguration, Restore-Test-Protokolle."
+    domain: "ICT-Risikomanagement"
+    evidence_type: "automated"
+    weight: 3
+    iso27001_mapping: "A.8.13"
+
+  - id: "DORA-1.8"
+    title: "Patch- und Schwachstellenmanagement"
+    description: "Scanne regelmäßig auf Schwachstellen und stelle zeitnahes Patching sicher. Nachweis: Scan-Berichte, Patch-Protokoll mit Fristen."
+    domain: "ICT-Risikomanagement"
+    evidence_type: "automated"
+    weight: 2
+    iso27001_mapping: "A.8.8, A.8.19"
+
+  # Art. 17-23 — ICT-bezogenes Vorfallmanagement
+  - id: "DORA-2.1"
+    title: "Klassifizierung von ICT-Vorfällen"
+    description: "Klassifiziere ICT-Vorfälle nach den DORA-Kriterien (Art. 18) hinsichtlich Schwere und Auswirkung. Nachweis: Klassifizierungsschema, Anwendungsbeispiele."
+    domain: "Vorfallmanagement"
+    evidence_type: "manual"
+    weight: 3
+    iso27001_mapping: "A.5.24, A.5.25"
+
+  - id: "DORA-2.2"
+    title: "Meldung schwerwiegender ICT-Vorfälle (BaFin/EBA)"
+    description: "Melde schwerwiegende ICT-Vorfälle fristgerecht an die zuständige Aufsichtsbehörde (BaFin, EBA, ECB). Nachweis: Meldetemplate, Meldungsarchiv."
+    domain: "Vorfallmanagement"
+    evidence_type: "manual"
+    weight: 3
+    iso27001_mapping: "A.5.24, A.5.26"
+
+  - id: "DORA-2.3"
+    title: "Incident-Response-Prozess"
+    description: "Definiere klare Prozesse für Erkennung, Eindämmung, Beseitigung und Nachbereitung von ICT-Vorfällen. Nachweis: IR-Richtlinie, Playbooks, Eskalationsmatrix."
+    domain: "Vorfallmanagement"
+    evidence_type: "manual"
+    weight: 3
+    iso27001_mapping: "A.5.26, A.5.27"
+
+  - id: "DORA-2.4"
+    title: "Post-Incident-Review"
+    description: "Führe nach jedem schwerwiegenden Vorfall eine strukturierte Nachbereitung durch (Root Cause Analysis, Lessons Learned). Nachweis: Review-Berichte."
+    domain: "Vorfallmanagement"
+    evidence_type: "manual"
+    weight: 2
+    iso27001_mapping: "A.5.27"
+
+  # Art. 24-27 — Digital Operational Resilience Testing
+  - id: "DORA-3.1"
+    title: "Jährliche ICT-Resilienz-Tests"
+    description: "Führe jährliche Resilienz-Tests aller kritischen ICT-Systeme durch (Vulnerability Assessments, Penetrationstests). Nachweis: Testpläne, Berichte."
+    domain: "Resilienztests"
+    evidence_type: "manual"
+    weight: 3
+    iso27001_mapping: "A.5.36, A.8.8"
+
+  - id: "DORA-3.2"
+    title: "Threat-Led Penetration Testing (TLPT)"
+    description: "Führe für systemrelevante Institute alle 3 Jahre DORA-konforme TLPT durch. Nachweis: TLPT-Bericht (von akkreditiertem Anbieter)."
+    domain: "Resilienztests"
+    evidence_type: "manual"
+    weight: 2
+    iso27001_mapping: "A.8.8"
+
+  - id: "DORA-3.3"
+    title: "Szenarienbasierte Resilienztests"
+    description: "Simuliere realistische Angriffsszenarien (Red-Team-Übungen, Tabletop-Exercises) und dokumentiere Ergebnisse. Nachweis: Übungsberichte."
+    domain: "Resilienztests"
+    evidence_type: "manual"
+    weight: 2
+    iso27001_mapping: "A.5.36"
+
+  # Art. 28-44 — IKT-Drittparteienrisiken
+  - id: "DORA-4.1"
+    title: "IKT-Drittparteienrisiko-Management"
+    description: "Implementiere ein formales Management-Framework für IKT-Drittparteienrisiken. Nachweis: Drittparteienregister, Risikobewertungsmatrix."
+    domain: "Drittparteienrisiken"
+    evidence_type: "manual"
+    weight: 3
+    iso27001_mapping: "A.5.19, A.5.20"
+
+  - id: "DORA-4.2"
+    title: "Vertragsanforderungen für IKT-Drittanbieter"
+    description: "Stelle sicher, dass alle IKT-Dienstleisterverträge die DORA-Mindestanforderungen (Art. 30) erfüllen. Nachweis: Vertragsvorlagen, Prüfnachweis."
+    domain: "Drittparteienrisiken"
+    evidence_type: "manual"
+    weight: 3
+    iso27001_mapping: "A.5.20, A.5.21"
+
+  - id: "DORA-4.3"
+    title: "Ausstiegsstrategie für kritische IKT-Drittanbieter"
+    description: "Entwickle Ausstiegsstrategien für kritische IKT-Abhängigkeiten. Nachweis: Exit-Plan-Dokument."
+    domain: "Drittparteienrisiken"
+    evidence_type: "manual"
+    weight: 2
+    iso27001_mapping: "A.5.19"

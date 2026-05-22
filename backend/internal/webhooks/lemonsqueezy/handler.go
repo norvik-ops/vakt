@@ -22,6 +22,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/license"
+	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
 
 // SMTPConfig holds mail delivery settings (reuses values from the main config).
@@ -227,16 +228,16 @@ func (h *Handler) issueKey(ctx context.Context, email, orgName, lsSubID string) 
 	}
 
 	proFeatures := []string{
-		license.FeatureTISAX,
-		license.FeatureDORA,
-		license.FeatureEUAIAct,
-		license.FeatureCRA,
-		license.FeatureAIAdvisor,
-		license.FeatureAuditPDF,
-		license.FeatureSSO,
-		license.FeatureAPI,
-		license.FeatureSecReflex,
-		license.FeatureSecPulse,
+		features.FeatureTISAX,
+		features.FeatureDORA,
+		features.FeatureEUAIAct,
+		features.FeatureCRA,
+		features.FeatureAIAdvisor,
+		features.FeatureAuditPDF,
+		features.FeatureSSO,
+		features.FeatureAPI,
+		features.FeatureSecReflex,
+		features.FeatureSecPulse,
 	}
 
 	key, err := license.Sign(h.privateKeyPEM, "pro", orgName, proFeatures, nil)

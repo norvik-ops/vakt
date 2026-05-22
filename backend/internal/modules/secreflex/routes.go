@@ -7,7 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/matharnica/vakt/internal/auth"
-	"github.com/matharnica/vakt/internal/license"
+	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
 
 // Register wires PhishGuard routes under the provided group.
@@ -23,28 +23,28 @@ func Register(g *echo.Group, h *Handler) {
 	p := g.Group("", ro)
 
 	// --- Pro: Template management ---
-	p.GET("/templates", h.ListTemplates, license.Require(license.FeatureSecReflex))
-	p.GET("/templates/presets", h.ListPresets, license.Require(license.FeatureSecReflex))
-	p.POST("/templates", h.CreateTemplate, rw, license.Require(license.FeatureSecReflex))
+	p.GET("/templates", h.ListTemplates, features.Require(features.FeatureSecReflex))
+	p.GET("/templates/presets", h.ListPresets, features.Require(features.FeatureSecReflex))
+	p.POST("/templates", h.CreateTemplate, rw, features.Require(features.FeatureSecReflex))
 
 	// --- Pro: Target groups ---
-	p.GET("/groups", h.ListTargetGroups, license.Require(license.FeatureSecReflex))
-	p.POST("/groups", h.CreateTargetGroup, rw, license.Require(license.FeatureSecReflex))
-	p.GET("/groups/:id/targets", h.ListTargets, license.Require(license.FeatureSecReflex))
-	p.POST("/groups/:id/targets/import", h.ImportTargetsCSV, rw, license.Require(license.FeatureSecReflex))
+	p.GET("/groups", h.ListTargetGroups, features.Require(features.FeatureSecReflex))
+	p.POST("/groups", h.CreateTargetGroup, rw, features.Require(features.FeatureSecReflex))
+	p.GET("/groups/:id/targets", h.ListTargets, features.Require(features.FeatureSecReflex))
+	p.POST("/groups/:id/targets/import", h.ImportTargetsCSV, rw, features.Require(features.FeatureSecReflex))
 
 	// --- Pro: Landing pages ---
-	p.GET("/landing-pages", h.ListLandingPages, license.Require(license.FeatureSecReflex))
-	p.POST("/landing-pages", h.CreateLandingPage, rw, license.Require(license.FeatureSecReflex))
+	p.GET("/landing-pages", h.ListLandingPages, features.Require(features.FeatureSecReflex))
+	p.POST("/landing-pages", h.CreateLandingPage, rw, features.Require(features.FeatureSecReflex))
 
 	// --- Pro: Campaign management (multi-campaign orchestration) ---
-	p.GET("/campaigns", h.ListCampaigns, license.Require(license.FeatureSecReflex))
-	p.POST("/campaigns", h.CreateCampaign, rw, license.Require(license.FeatureSecReflex))
-	p.GET("/campaigns/:id", h.GetCampaign, license.Require(license.FeatureSecReflex))
-	p.POST("/campaigns/:id/launch", h.LaunchCampaign, rw, license.Require(license.FeatureSecReflex))
-	p.POST("/campaigns/:id/abort", h.AbortCampaign, rw, license.Require(license.FeatureSecReflex))
-	p.GET("/campaigns/:id/stats", h.GetCampaignStats, license.Require(license.FeatureSecReflex))
-	p.GET("/campaigns/:id/report", h.ExportCampaignReport, license.Require(license.FeatureSecReflex))
+	p.GET("/campaigns", h.ListCampaigns, features.Require(features.FeatureSecReflex))
+	p.POST("/campaigns", h.CreateCampaign, rw, features.Require(features.FeatureSecReflex))
+	p.GET("/campaigns/:id", h.GetCampaign, features.Require(features.FeatureSecReflex))
+	p.POST("/campaigns/:id/launch", h.LaunchCampaign, rw, features.Require(features.FeatureSecReflex))
+	p.POST("/campaigns/:id/abort", h.AbortCampaign, rw, features.Require(features.FeatureSecReflex))
+	p.GET("/campaigns/:id/stats", h.GetCampaignStats, features.Require(features.FeatureSecReflex))
+	p.GET("/campaigns/:id/report", h.ExportCampaignReport, features.Require(features.FeatureSecReflex))
 
 	// --- Community: Training modules (create/list) ---
 	p.GET("/training-modules", h.ListModules)
@@ -92,7 +92,7 @@ func Register(g *echo.Group, h *Handler) {
 	g.POST("/phish-report", h.ReceivePhishReport)
 
 	// --- Pro: Phish-report analytics and token management ---
-	p.GET("/phish-reports", h.ListPhishReports, license.Require(license.FeatureSecReflex))
-	p.GET("/phish-reports/stats", h.GetPhishReportStats, license.Require(license.FeatureSecReflex))
-	p.POST("/phish-report-token/regenerate", h.RegeneratePhishToken, rw, license.Require(license.FeatureSecReflex))
+	p.GET("/phish-reports", h.ListPhishReports, features.Require(features.FeatureSecReflex))
+	p.GET("/phish-reports/stats", h.GetPhishReportStats, features.Require(features.FeatureSecReflex))
+	p.POST("/phish-report-token/regenerate", h.RegeneratePhishToken, rw, features.Require(features.FeatureSecReflex))
 }

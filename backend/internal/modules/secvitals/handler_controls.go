@@ -1,9 +1,9 @@
 package secvitals
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -89,7 +89,7 @@ func (h *Handler) UpdateControl(c echo.Context) error {
 
 	ctrl, err := h.service.UpdateControl(c.Request().Context(), orgID(c), c.Param("id"), in)
 	if err != nil {
-		if strings.Contains(err.Error(), "maturity_score must be between") {
+		if errors.Is(err, ErrInvalidMaturityScore) {
 			return errResp(c, http.StatusUnprocessableEntity, err.Error(), "CK_VALIDATION_ERROR")
 		}
 		log.Error().Err(err).Msg("update control")

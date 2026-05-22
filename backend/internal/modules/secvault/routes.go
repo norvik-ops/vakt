@@ -7,7 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/matharnica/vakt/internal/auth"
-	"github.com/matharnica/vakt/internal/license"
+	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
 
 // Register wires SecretOps routes under the provided group.
@@ -45,9 +45,9 @@ func Register(g *echo.Group, h *Handler) {
 	g.GET("/share/:token", h.UseShareLink) // public — validated by token only
 
 	// API tokens — Pro feature (FeatureAPI)
-	g.POST("/tokens", h.CreateToken, admin, license.Require(license.FeatureAPI))
-	g.GET("/tokens", h.ListTokens, rw, license.Require(license.FeatureAPI))
-	g.DELETE("/tokens/:id", h.RevokeToken, admin, license.Require(license.FeatureAPI))
+	g.POST("/tokens", h.CreateToken, admin, features.Require(features.FeatureAPI))
+	g.GET("/tokens", h.ListTokens, rw, features.Require(features.FeatureAPI))
+	g.DELETE("/tokens/:id", h.RevokeToken, admin, features.Require(features.FeatureAPI))
 
 	// Import & export — import: admin; export: analyst+
 	g.POST("/projects/:project_id/import", h.ImportSecrets, admin)

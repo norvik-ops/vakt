@@ -275,7 +275,7 @@ type Querier interface {
 	GetCKRisk(ctx context.Context, arg GetCKRiskParams) (GetCKRiskRow, error)
 	// Aggregiert pro Tag (TO_CHAR auf UTC); MAX statt LAST/FIRST_VALUE weil
 	// mehrere Snapshots am gleichen Tag normaler Fall sind. Score wird in
-	// float8 gecastet damit sqlc keinen interface{}-Typ generiert.
+	// float8 gecastet damit sqlc keinen any-Typ generiert.
 	GetCKScoreHistory(ctx context.Context, arg GetCKScoreHistoryParams) ([]GetCKScoreHistoryRow, error)
 	GetCKSupplier(ctx context.Context, arg GetCKSupplierParams) (GetCKSupplierRow, error)
 	// Minimal projection für den Expiry-Notifier-Worker; nur Evidence die

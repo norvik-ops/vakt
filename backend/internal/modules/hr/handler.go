@@ -60,7 +60,24 @@ func errResp(c echo.Context, code int, msg, errCode string) error {
 // --- Employees ---
 
 // ListEmployees handles GET /api/v1/hr/employees.
+// Cursor mode (preferred): ?cursor=<opaque>&limit=25
+// Offset mode (deprecated): ?page=1&limit=25 — sends Deprecation header
 func (h *Handler) ListEmployees(c echo.Context) error {
+	if c.QueryParam("page") == "" {
+		cp := pagination.CursorFromRequest(c)
+		cursorID, cursorTS := pagination.DecodeCursor(cp.Cursor)
+		rows, err := h.Service.ListEmployeesCursor(c.Request().Context(), orgID(c), cursorID, cursorTS, cp.Limit)
+		if err != nil {
+			log.Error().Err(err).Msg("list employees cursor")
+			return errResp(c, http.StatusInternalServerError, "failed to list employees", "HR_LIST_EMPLOYEES_FAILED")
+		}
+		resp := pagination.WrapCursor(rows, cp, func(e Employee) string {
+			return pagination.EncodeCursor(e.ID, e.CreatedAt)
+		})
+		return c.JSON(http.StatusOK, resp)
+	}
+	c.Response().Header().Set("Deprecation", "true")
+	c.Response().Header().Set("Sunset", "2027-01-01")
 	offset, limit, meta := pagination.FromRequest(c)
 	employees, total, err := h.Service.ListEmployeesPaged(c.Request().Context(), orgID(c), offset, limit)
 	if err != nil {

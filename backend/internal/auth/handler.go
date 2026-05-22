@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
@@ -34,6 +35,7 @@ type Handler struct {
 	service  *Service
 	validate *validator.Validate
 	cfg      *config.Config
+	db       *pgxpool.Pool // for SAML direct SP config lookups
 }
 
 // NewHandler constructs an auth Handler.
@@ -43,6 +45,12 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 		validate: validator.New(),
 		cfg:      cfg,
 	}
+}
+
+// WithDB attaches a DB pool to the handler (required for direct SAML SP).
+func (h *Handler) WithDB(db *pgxpool.Pool) *Handler {
+	h.db = db
+	return h
 }
 
 // Logout handles POST /api/v1/auth/logout.

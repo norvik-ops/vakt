@@ -20,6 +20,12 @@ const (
 	TaskAutoEvidence   = "secpulse:auto_evidence"
 	TaskSBOMGenerate   = "secpulse:sbom:generate"
 	TaskEOLCheck       = "secpulse:eol:check"
+
+	// QueueScans is the dedicated Asynq queue for scanner jobs.
+	// Higher concurrency than other module queues to avoid starving user-facing scans.
+	QueueScans = "secpulse"
+	// QueueMaintenance is the queue for background SBOM/EOL maintenance tasks.
+	QueueMaintenance = "maintenance"
 )
 
 // AutoEvidencePayload is the Asynq task payload for the auto-evidence job.
@@ -72,7 +78,7 @@ func EnqueueSBOMGenerate(client *asynq.Client, payload SBOMGeneratePayload) erro
 		return fmt.Errorf("marshal SBOMGeneratePayload: %w", err)
 	}
 	task := asynq.NewTask(TaskSBOMGenerate, b)
-	_, err = client.Enqueue(task, asynq.Queue("maintenance"))
+	_, err = client.Enqueue(task, asynq.Queue(QueueMaintenance))
 	return err
 }
 
@@ -85,6 +91,6 @@ func EnqueueEOLCheck(client *asynq.Client, payload EOLCheckPayload) error {
 		return fmt.Errorf("marshal EOLCheckPayload: %w", err)
 	}
 	task := asynq.NewTask(TaskEOLCheck, b)
-	_, err = client.Enqueue(task, asynq.Queue("maintenance"))
+	_, err = client.Enqueue(task, asynq.Queue(QueueMaintenance))
 	return err
 }

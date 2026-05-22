@@ -4,7 +4,7 @@ import { Spinner } from '../components/Spinner'
 import { Link } from 'react-router-dom'
 import {
   Building2, Layers, Bell, Trash2, Plus, Check, X,
-  Webhook, Globe, Mail, Server, MapPin, Download, ShieldCheck, FileText, ExternalLink, Sparkles, Rocket, Key, Clock, ArrowUpCircle, RefreshCw, Zap, FileBarChart2,
+  Webhook, Globe, Mail, Server, MapPin, Download, ShieldCheck, Shield, FileText, ExternalLink, Sparkles, Rocket, Key, Clock, ArrowUpCircle, RefreshCw, Zap, FileBarChart2, Radio,
 } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
@@ -863,6 +863,535 @@ function NotificationsSection() {
   )
 }
 
+// ─── SIEM Integration (S21-7, S21-8) ─────────────────────────────────────────
+
+interface OrgSIEMConfig {
+  enabled: boolean
+  adapter: 'splunk_hec' | 'elastic' | 'webhook'
+  endpoint: string
+  token: string // write-only: comes back as "***" or ""
+}
+
+function useOrgSIEMConfig() {
+  return useQuery<OrgSIEMConfig>({
+    queryKey: ['admin', 'org', 'siem'],
+    queryFn: () => apiFetch<OrgSIEMConfig>('/admin/org/siem'),
+    retry: false,
+  })
+}
+
+function useUpdateSIEMConfig() {
+  const qc = useQueryClient()
+  return useMutation<void, Error, Partial<OrgSIEMConfig>>({
+    mutationFn: (input) =>
+      apiFetch<void>('/admin/org/siem', {
+        method: 'PUT',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['admin', 'org', 'siem'] }),
+  })
+}
+
+function useTestSIEM() {
+  return useMutation<void, Error>({
+    mutationFn: () => apiFetch<void>('/admin/org/siem/test', { method: 'POST' }),
+  })
+}
+
+function SIEMSection() {
+  const { data, isLoading, error: queryError } = useOrgSIEMConfig()
+  const update = useUpdateSIEMConfig()
+  const test = useTestSIEM()
+
+  const [enabled, setEnabled] = useState(false)
+  const [adapter, setAdapter] = useState<OrgSIEMConfig['adapter']>('webhook')
+  const [endpoint, setEndpoint] = useState('')
+  const [token, setToken] = useState('')
+  const [saved, setSaved] = useState(false)
+  const [testResult, setTestResult] = useState<'idle' | 'ok' | 'err'>('idle')
+  const [testError, setTestError] = useState('')
+
+  useEffect(() => {
+    if (data) {
+      setEnabled(data.enabled)
+      setAdapter(data.adapter)
+      setEndpoint(data.endpoint)
+      // Don't pre-fill the token input — it's write-only
+    }
+  }, [data])
+
+  const isProLocked = queryError instanceof FeatureLockedError
+
+  function handleSave() {
+    update.mutate(
+      { enabled, adapter, endpoint, token: token || '' },
+      {
+        onSuccess: () => {
+          setSaved(true)
+          setToken('')
+          setTimeout(() => setSaved(false), 2500)
+        },
+      },
+    )
+  }
+
+  function handleTest() {
+    setTestResult('idle')
+    setTestError('')
+    test.mutate(undefined, {
+      onSuccess: () => setTestResult('ok'),
+      onError: (err) => { setTestResult('err'); setTestError(err.message) },
+    })
+  }
+
+  return (
+    <SectionCard title="SIEM-Integration" icon={Radio}>
+      {isLoading && (
+        <div className="flex items-center justify-center h-16">
+          <Spinner size="sm" />
+        </div>
+      )}
+
+      {isProLocked && (
+        <div className="flex items-start gap-4">
+          <div className="mt-0.5 p-2 rounded-lg bg-brand/10 shrink-0">
+            <Sparkles className="w-4 h-4 text-brand" />
+          </div>
+          <div>
+            <p className="font-semibold text-primary text-sm mb-1">
+              Pro-Feature
+              <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-semibold bg-brand/10 text-brand px-1.5 py-0.5 rounded">Pro</span>
+            </p>
+            <p className="text-secondary text-sm leading-relaxed mb-2">
+              Leite Audit-Log-Einträge automatisch an Splunk, Elasticsearch oder einen generischen Webhook weiter.
+              Verfügbar mit Vakt Pro.
+            </p>
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand">
+              <Clock className="w-3.5 h-3.5" />
+              Vakt Pro erforderlich
+            </span>
+          </div>
+        </div>
+      )}
+
+      {!isLoading && !isProLocked && (
+        <div className="space-y-4">
+          {/* Enable toggle */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-primary">SIEM-Weiterleitung aktivieren</p>
+              <p className="text-[11px] text-secondary leading-relaxed">
+                Audit-Einträge werden alle 5 Minuten an das konfigurierte SIEM weitergeleitet.
+              </p>
+            </div>
+            <Switch
+              checked={enabled}
+              onCheckedChange={setEnabled}
+              aria-label="SIEM aktivieren"
+            />
+          </div>
+
+          {/* Adapter */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Adapter</Label>
+            <Select value={adapter} onValueChange={(v) => setAdapter(v as OrgSIEMConfig['adapter'])}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="splunk_hec">Splunk HEC</SelectItem>
+                <SelectItem value="elastic">Elasticsearch</SelectItem>
+                <SelectItem value="webhook">Webhook</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Endpoint */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Endpunkt-URL</Label>
+            <Input
+              value={endpoint}
+              onChange={(e) => setEndpoint(e.target.value)}
+              placeholder={
+                adapter === 'splunk_hec'
+                  ? 'https://splunk.example.com:8088'
+                  : adapter === 'elastic'
+                  ? 'https://elastic.example.com:9200'
+                  : 'https://webhook.example.com/siem'
+              }
+              className="h-8 text-sm"
+            />
+          </div>
+
+          {/* Token */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">
+              {adapter === 'splunk_hec' ? 'HEC Token' : adapter === 'elastic' ? 'API Key' : 'Bearer Token (optional)'}
+            </Label>
+            <Input
+              type="password"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder={data?.token === '***' ? '••••••••  (gesetzt — leer lassen zum Beibehalten)' : '••••••••'}
+              className="h-8 text-sm"
+              autoComplete="new-password"
+            />
+            <p className="text-[11px] text-secondary">
+              Leer lassen, um den gespeicherten Token beizubehalten.
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={update.isPending}
+              className="h-8 text-xs"
+            >
+              {saved ? (
+                <><Check className="w-3.5 h-3.5 mr-1" />Gespeichert</>
+              ) : update.isPending ? (
+                <><Spinner size="sm" />Speichern…</>
+              ) : (
+                'Speichern'
+              )}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleTest}
+              disabled={test.isPending || !endpoint}
+              className="h-8 text-xs"
+            >
+              {test.isPending ? (
+                <><Spinner size="sm" />Testen…</>
+              ) : (
+                'Test-Event senden'
+              )}
+            </Button>
+          </div>
+
+          {update.isError && (
+            <p className="text-[11px] text-red-500">{update.error.message}</p>
+          )}
+          {testResult === 'ok' && (
+            <p className="text-[11px] text-green-600 dark:text-green-400">
+              Test-Event erfolgreich gesendet.
+            </p>
+          )}
+          {testResult === 'err' && (
+            <p className="text-[11px] text-red-500">Test fehlgeschlagen: {testError}</p>
+          )}
+        </div>
+      )}
+    </SectionCard>
+  )
+}
+
+// ─── AI Model Settings (S32-3 ADR-0024) ──────────────────────────────────────
+
+interface OrgAISettings {
+  model_override: string
+  base_url_override: string
+}
+
+function useOrgAISettings() {
+  return useQuery<OrgAISettings>({
+    queryKey: ['org-ai-settings'],
+    queryFn: () => apiFetch<OrgAISettings>('/admin/org/ai-settings'),
+  })
+}
+
+function useOllamaModels() {
+  return useQuery<{ models: string[] }>({
+    queryKey: ['ollama-models'],
+    queryFn: () => apiFetch<{ models: string[] }>('/secvitals/ai/models'),
+    staleTime: 60_000,
+  })
+}
+
+function useUpdateOrgAISettings() {
+  const qc = useQueryClient()
+  return useMutation<void, Error, OrgAISettings>({
+    mutationFn: (data) =>
+      apiFetch<void>('/admin/org/ai-settings', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['org-ai-settings'] }),
+  })
+}
+
+function AISettingsSection() {
+  const { data: settings, isLoading } = useOrgAISettings()
+  const { data: modelsData } = useOllamaModels()
+  const { data: lic } = useQuery<LicenseInfo>({ queryKey: ['license'], queryFn: () => apiFetch<LicenseInfo>('/license') })
+  const update = useUpdateOrgAISettings()
+
+  const [model, setModel] = useState('')
+  const [baseURL, setBaseURL] = useState('')
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    if (settings) {
+      setModel(settings.model_override)
+      setBaseURL(settings.base_url_override)
+    }
+  }, [settings])
+
+  const handleSave = () => {
+    update.mutate(
+      { model_override: model, base_url_override: baseURL },
+      { onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 2000) } },
+    )
+  }
+
+  const ollamaModels = modelsData?.models ?? []
+  const isPro = lic?.features?.includes('ai_advisor') ?? false
+
+  return (
+    <SectionCard title="KI-Modell" icon={Sparkles}>
+      {isLoading ? (
+        <Spinner size="sm" />
+      ) : (
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Modell</Label>
+            {ollamaModels.length > 0 ? (
+              <Select value={model} onValueChange={setModel}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="System-Standard verwenden" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">System-Standard</SelectItem>
+                  {ollamaModels.map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                placeholder="System-Standard (aus VAKT_AI_MODEL)"
+                className="h-8 text-sm"
+              />
+            )}
+            <p className="text-[11px] text-secondary">
+              Leer = ENV-Wert <code className="font-mono">VAKT_AI_MODEL</code> wird verwendet.
+            </p>
+          </div>
+
+          {isPro && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Custom Endpunkt (BYOK) <Badge variant="secondary" className="text-[10px] ml-1">Pro</Badge></Label>
+              <Input
+                value={baseURL}
+                onChange={(e) => setBaseURL(e.target.value)}
+                placeholder="https://api.openai.com/v1"
+                className="h-8 text-sm"
+              />
+              <p className="text-[11px] text-secondary">
+                Bei Extern-Endpunkten trägt der Betreiber die DSGVO-Verantwortung
+                (Art. 28 AVV empfohlen).
+              </p>
+            </div>
+          )}
+
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={update.isPending}
+            className="h-8 text-xs"
+          >
+            {saved ? (
+              <><Check className="w-3.5 h-3.5 mr-1" />Gespeichert</>
+            ) : update.isPending ? (
+              <><Spinner size="sm" />Speichern…</>
+            ) : (
+              'Speichern'
+            )}
+          </Button>
+          {update.isError && (
+            <p className="text-xs text-destructive">{update.error.message}</p>
+          )}
+        </div>
+      )}
+    </SectionCard>
+  )
+}
+
+// ─── SAML Direct SP Setup (S21-1/2) ──────────────────────────────────────────
+
+interface OrgSAMLConfig {
+  org_id: string
+  entity_id: string
+  acs_url: string
+  idp_metadata: string
+  cert_pem: string
+  enabled: boolean
+}
+
+function useOrgSAMLConfig() {
+  return useQuery<OrgSAMLConfig>({
+    queryKey: ['org-saml-config'],
+    queryFn: () => apiFetch<OrgSAMLConfig>('/admin/org/saml-config'),
+  })
+}
+
+function useUpdateSAMLConfig() {
+  const qc = useQueryClient()
+  return useMutation<void, Error, Omit<OrgSAMLConfig, 'org_id' | 'cert_pem'>>({
+    mutationFn: (data) =>
+      apiFetch<void>('/admin/org/saml-config', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['org-saml-config'] }),
+  })
+}
+
+function useRegenerateSAMLCert() {
+  const qc = useQueryClient()
+  return useMutation<{ cert_pem: string }, Error>({
+    mutationFn: () =>
+      apiFetch<{ cert_pem: string }>('/admin/org/saml-config/regenerate-cert', { method: 'POST' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['org-saml-config'] }),
+  })
+}
+
+function SAMLSetupSection() {
+  const { data, isLoading } = useOrgSAMLConfig()
+  const update = useUpdateSAMLConfig()
+  const regen = useRegenerateSAMLCert()
+
+  const [entityID, setEntityID] = useState('')
+  const [acsURL, setACSURL] = useState('')
+  const [idpMeta, setIdpMeta] = useState('')
+  const [enabled, setEnabled] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [regenDone, setRegenDone] = useState(false)
+
+  useEffect(() => {
+    if (data) {
+      setEntityID(data.entity_id ?? '')
+      setACSURL(data.acs_url ?? '')
+      setIdpMeta(data.idp_metadata ?? '')
+      setEnabled(data.enabled ?? false)
+    }
+  }, [data])
+
+  const handleSave = () => {
+    update.mutate(
+      { entity_id: entityID, acs_url: acsURL, idp_metadata: idpMeta, enabled },
+      { onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 2000) } },
+    )
+  }
+
+  const handleRegen = () => {
+    regen.mutate(undefined, {
+      onSuccess: () => { setRegenDone(true); setTimeout(() => setRegenDone(false), 3000) },
+    })
+  }
+
+  const metadataURL = window.location.origin + '/api/v1/auth/saml/metadata'
+  const initiateURL = window.location.origin + '/api/v1/auth/saml/initiate'
+
+  return (
+    <SectionCard title="SAML 2.0 (Single Sign-On)" icon={Shield}>
+      {isLoading ? (
+        <Spinner size="sm" />
+      ) : (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Switch checked={enabled} onCheckedChange={setEnabled} id="saml-enabled" />
+            <Label htmlFor="saml-enabled" className="text-xs">SAML aktiviert</Label>
+          </div>
+
+          {/* SP Endpoint URLs (read-only) */}
+          <div className="rounded-md bg-muted/40 p-3 space-y-2 text-xs">
+            <p className="font-medium text-secondary uppercase tracking-wider text-[10px]">SP-Endpunkte (in IdP eintragen)</p>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-secondary">Metadata URL</Label>
+              <code className="block font-mono text-[11px] break-all">{metadataURL}</code>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-secondary">ACS URL / Single Sign-On URL</Label>
+              <code className="block font-mono text-[11px] break-all">{initiateURL.replace('/initiate', '/acs')}</code>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">SP Entity ID</Label>
+            <Input
+              value={entityID}
+              onChange={(e) => setEntityID(e.target.value)}
+              placeholder={`${window.location.origin}/saml`}
+              className="h-8 text-sm font-mono"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">ACS URL</Label>
+            <Input
+              value={acsURL}
+              onChange={(e) => setACSURL(e.target.value)}
+              placeholder={`${window.location.origin}/api/v1/auth/saml/acs`}
+              className="h-8 text-sm font-mono"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">IdP Metadata XML</Label>
+            <textarea
+              value={idpMeta}
+              onChange={(e) => setIdpMeta(e.target.value)}
+              placeholder='<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" …'
+              className="w-full h-28 rounded-md border border-input bg-transparent px-3 py-2 text-xs font-mono resize-y focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            <p className="text-[11px] text-secondary">
+              Aus dem IdP herunterladen (AzureAD: Enterprise-App → SAML → Federation Metadata XML).
+            </p>
+          </div>
+
+          {data?.cert_pem && (
+            <div className="space-y-1.5">
+              <Label className="text-xs text-secondary">SP Zertifikat (öffentlich)</Label>
+              <pre className="text-[10px] font-mono bg-muted/40 rounded p-2 max-h-24 overflow-auto">{data.cert_pem}</pre>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRegen}
+                disabled={regen.isPending}
+                className="h-7 text-xs"
+              >
+                {regenDone ? <><Check className="w-3 h-3 mr-1" />Erneuert</> : 'Zertifikat erneuern'}
+              </Button>
+            </div>
+          )}
+
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={update.isPending}
+            className="h-8 text-xs"
+          >
+            {saved ? (
+              <><Check className="w-3.5 h-3.5 mr-1" />Gespeichert</>
+            ) : update.isPending ? (
+              <><Spinner size="sm" />Speichern…</>
+            ) : (
+              'Speichern'
+            )}
+          </Button>
+          {update.isError && <p className="text-xs text-destructive">{update.error.message}</p>}
+        </div>
+      )}
+    </SectionCard>
+  )
+}
+
 // ─── Server Info ──────────────────────────────────────────────────────────────
 
 function UpdateSection() {
@@ -1202,6 +1731,30 @@ export default function Settings() {
 
           {/* Staging-only: promote to demo — StagingSection renders null on non-staging instances */}
           <StagingSection />
+
+          {/* AI Model Settings (S32-3) */}
+          <div>
+            <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">KI-Einstellungen</h3>
+            <div className="max-w-sm">
+              <AISettingsSection />
+            </div>
+          </div>
+
+          {/* SAML 2.0 SSO Setup (S21-1, S21-2) */}
+          <div>
+            <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">Single Sign-On (SAML)</h3>
+            <div className="max-w-sm">
+              <SAMLSetupSection />
+            </div>
+          </div>
+
+          {/* SIEM Integration (S21-7, S21-8) */}
+          <div>
+            <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">SIEM-Integration</h3>
+            <div className="max-w-sm">
+              <SIEMSection />
+            </div>
+          </div>
 
           {/* Row 4: System info — read-only reference, visually de-emphasized */}
           <div>

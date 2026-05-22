@@ -14,10 +14,11 @@ import (
 	"github.com/matharnica/vakt/internal/modules/secpulse"
 	"github.com/matharnica/vakt/internal/modules/secvitals"
 	"github.com/matharnica/vakt/internal/services/alerting"
+	"github.com/matharnica/vakt/internal/services/siem"
 	"github.com/matharnica/vakt/internal/shared/bsi"
 	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/emaildigest"
-	cloudintegration "github.com/matharnica/vakt/internal/shared/integrations/cloud"
+	cloudintegration "github.com/matharnica/vakt/internal/shared/platform/integrations/cloud"
 	"github.com/matharnica/vakt/internal/shared/nis2wizard"
 	"github.com/matharnica/vakt/internal/shared/notifications"
 	"github.com/matharnica/vakt/internal/shared/retention"
@@ -120,6 +121,20 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		log.Error().Err(err).Msg("failed to register incident deadline check cron")
 	}
 
+	// Daily at 08:30 UTC: check NIS2-classified incidents (obligation = "probably") for deadline alerts (S39-2).
+	if _, err := scheduler.Register("30 8 * * *",
+		secvitals.NewNIS2ObligationCheckTask(),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register nis2 obligation check cron")
+	}
+
+	// Every 5 minutes: update DORA IKT-incident Ampel-Status (S37-4).
+	if _, err := scheduler.Register("*/5 * * * *",
+		secvitals.NewDORADeadlineStatusTask(),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register DORA deadline status cron")
+	}
+
 	// Daily at 07:00 UTC: check supplier certificate expiry.
 	if _, err := scheduler.Register("0 7 * * *",
 		secvitals.NewCertExpiryCheckTask(),
@@ -153,6 +168,13 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		auth.NewCleanupPasswordResetTokensTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register password reset token cleanup cron")
+	}
+
+	// Daily at 03:05 UTC: delete expired rows from token_deny_list_fallback (S31-4).
+	if _, err := scheduler.Register("5 3 * * *",
+		auth.NewCleanupDenyListFallbackTask(),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register deny-list fallback cleanup cron")
 	}
 
 	// Sprint 22 S22-12: täglich 03:15 UTC — abgelaufene NIS2-Wizard-Runs aufräumen.
@@ -202,6 +224,13 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		asynq.NewTask(taskErrorBudgetReport, nil),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register error budget report cron")
+	}
+
+	// Every 5 minutes: forward pending audit entries to configured SIEM backends.
+	if _, err := scheduler.Register("*/5 * * * *",
+		siem.NewSIEMForwardTask(),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register siem forward cron")
 	}
 
 	return scheduler

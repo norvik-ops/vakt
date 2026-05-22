@@ -43,7 +43,7 @@ var productMap = map[string]string{
 // eolValue ist eine polymorphe Repräsentation des `eol`-Feldes aus der
 // endoflife.date-API: das Feld liefert entweder `true`/`false` (Boolean
 // markiert nur dass der Cycle EOL ist) oder einen "YYYY-MM-DD"-String mit
-// dem konkreten EOL-Datum. S14-7: typisiert statt rohes interface{}.
+// dem konkreten EOL-Datum. S14-7: typisiert statt rohes any.
 type eolValue struct {
 	IsEOL bool   // true = Cycle wurde als EOL markiert (Boolean oder dateInVergangenheit)
 	Date  string // optional: "YYYY-MM-DD" wenn die API ein konkretes Datum liefert

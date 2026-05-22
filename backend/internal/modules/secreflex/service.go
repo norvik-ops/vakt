@@ -23,6 +23,7 @@ import (
 
 	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/services/evidence_auto"
+	"github.com/matharnica/vakt/internal/shared/platform/events"
 )
 
 // Service handles SecReflex business logic.
@@ -353,7 +354,7 @@ func (s *Service) LaunchCampaign(ctx context.Context, orgID, campaignID string) 
 			"org_id":      orgID,
 		})
 		task := asynq.NewTask(TaskSendCampaign, payload)
-		if _, err := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue("default")); err != nil {
+		if _, err := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(Queue)); err != nil {
 			log.Warn().Err(err).Str("campaign_id", campaignID).Msg("failed to enqueue send_campaign job")
 		}
 	}
@@ -475,16 +476,7 @@ func (s *Service) CompleteAssignment(ctx context.Context, orgID, assignmentID st
 
 	// Enqueue cross-module evidence for SecVitals awareness controls.
 	if s.asynqClient != nil && passed {
-		p := crossevidence.EvidencePayload{
-			OrgID:        orgID,
-			Source:       "secreflex",
-			ResourceType: "vakt-aware/training-completion",
-			ResourceID:   assignmentID,
-			Title:        "Security Awareness Training abgeschlossen",
-			Description:  "Ein Mitarbeiter hat ein Security Awareness Training erfolgreich absolviert.",
-			OccurredAt:   time.Now(),
-		}
-		if task, taskErr := crossevidence.NewRecordEvidenceTask(p); taskErr == nil {
+		if task, taskErr := crossevidence.NewRecordEvidenceTask(events.TrainingCompleted(orgID, assignmentID)); taskErr == nil {
 			_, _ = s.asynqClient.EnqueueContext(ctx, task)
 		}
 	}
@@ -833,4 +825,9 @@ func (s *Service) ExportCampaignReport(ctx context.Context, orgID, campaignID st
 	}, campaign.Name)
 	filename := safeName + ".pdf"
 	return pdf, filename, nil
+}
+
+// ListCampaignsCursor returns campaigns using keyset pagination.
+func (s *Service) ListCampaignsCursor(ctx context.Context, orgID string, cursorID string, cursorTS time.Time, limit int) ([]Campaign, error) {
+	return s.repo.ListCampaignsCursor(ctx, orgID, cursorID, cursorTS, limit)
 }

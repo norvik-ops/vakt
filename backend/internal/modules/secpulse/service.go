@@ -18,11 +18,12 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/shared/dashboard"
+	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/services/evidence_auto"
+	"github.com/matharnica/vakt/internal/shared/dashboard"
 	"github.com/matharnica/vakt/internal/shared/notify"
 	"github.com/matharnica/vakt/internal/shared/safego"
-	"github.com/matharnica/vakt/internal/shared/webhooks"
+	"github.com/matharnica/vakt/internal/shared/platform/webhooks"
 )
 
 // webhookTrigger abstracts the webhook delivery dependency for testability.
@@ -287,12 +288,8 @@ func (s *Service) TriggerScan(ctx context.Context, orgID, assetID string, input 
 	taskType := taskTypeForScanner(input.Scanner)
 
 	if s.asynqClient != nil {
-		queue := "default"
-		if input.Scanner == "openvas" {
-			queue = "low"
-		}
 		task := asynq.NewTask(taskType, payloadBytes)
-		if _, err := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(queue)); err != nil {
+		if _, err := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(QueueScans)); err != nil {
 			return nil, fmt.Errorf("enqueue scan task: %w", err)
 		}
 	}
@@ -420,7 +417,7 @@ func (s *Service) UpdateFinding(ctx context.Context, orgID, findingID string, in
 		payloadBytes, marshalErr := json.Marshal(payload)
 		if marshalErr == nil {
 			task := asynq.NewTask(TaskAutoEvidence, payloadBytes)
-			_, _ = s.asynqClient.EnqueueContext(ctx, task, asynq.Queue("low"))
+			_, _ = s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(crossevidence.Queue))
 		}
 	}
 
@@ -524,7 +521,7 @@ func (s *Service) GenerateReport(ctx context.Context, orgID, userID string, scop
 
 	if s.asynqClient != nil {
 		task := asynq.NewTask(TaskGenerateReport, payloadBytes)
-		if _, err := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue("low")); err != nil {
+		if _, err := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(QueueScans)); err != nil {
 			return nil, fmt.Errorf("enqueue report task: %w", err)
 		}
 	}
@@ -704,4 +701,10 @@ func (s *Service) GetScanOrgID(ctx context.Context, scanID string) (string, erro
 // optionally filtered to only EOL components. page is 1-based.
 func (s *Service) GetEOLDashboard(ctx context.Context, orgID string, eolOnly bool, page int) ([]ComponentSummary, error) {
 	return s.repo.ListComponentsWithEOL(ctx, orgID, eolOnly, page)
+}
+
+// ListFindingsCursor returns findings using keyset pagination.
+// Returns limit+1 rows so the caller can detect HasMore.
+func (s *Service) ListFindingsCursor(ctx context.Context, orgID string, filter FindingFilter, cursorID string, cursorTS time.Time, limit int) ([]Finding, error) {
+	return s.repo.ListFindingsCursor(ctx, orgID, filter, cursorID, cursorTS, limit)
 }

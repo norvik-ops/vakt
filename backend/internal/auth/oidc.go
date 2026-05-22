@@ -221,6 +221,21 @@ func (s *Service) SAMLLogin(ctx context.Context, cfg *config.Config, samlRespons
 	return authResp, tokErr
 }
 
+// provisionSAMLUser provisions a user from a direct SAML assertion (S21-1).
+// It reuses provisionOIDCUser with provider="saml" and then issues a token pair.
+func (s *Service) provisionSAMLUser(ctx context.Context, orgID, nameID, email, displayName, deviceHint string) (*AuthResponse, error) {
+	userID, resolvedOrgID, roles, err := s.provisionOIDCUser(ctx, nameID, "saml", email, displayName, "")
+	if err != nil {
+		s.recordLogin(ctx, orgID, "", email, deviceHint, "saml_direct", "provision_failed")
+		return nil, fmt.Errorf("saml_direct: provision user: %w", err)
+	}
+	authResp, tokErr := s.issueTokenPair(ctx, userID, resolvedOrgID, roles, deviceHint)
+	if tokErr == nil {
+		s.recordLogin(ctx, resolvedOrgID, userID, email, deviceHint, "saml_direct", "ok")
+	}
+	return authResp, tokErr
+}
+
 // provisionOIDCUser looks up or creates a user based on their OIDC subject.
 // It returns the userID, their primary orgID, and the list of role names.
 func (s *Service) provisionOIDCUser(ctx context.Context, oidcSubject, provider, email, displayName, avatarURL string) (string, string, []string, error) {

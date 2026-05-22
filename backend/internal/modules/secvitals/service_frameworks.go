@@ -87,6 +87,13 @@ func (s *Service) EnableFramework(ctx context.Context, orgID, name string) (*Fra
 		}
 	}
 
+	// Auto-seed DORA ↔ ISO 27001 mappings (S37-2).
+	if name == "DORA" || name == "ISO27001" {
+		if seedErr := s.SeedDORAMappings(ctx, orgID); seedErr != nil {
+			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed DORA↔ISO27001 mappings (non-critical)")
+		}
+	}
+
 	return fw, nil
 }
 
@@ -946,4 +953,62 @@ func (s *Service) AttachResilienceTestFile(ctx context.Context, orgID, id, uploa
 		return nil, fmt.Errorf("update attachment: %w", err)
 	}
 	return s.GetResilienceTest(ctx, orgID, id)
+}
+
+// SeedDORAMappings idempotently seeds the DORA ↔ ISO 27001 cross-framework mappings
+// into ck_framework_control_mappings. S37-2.
+func (s *Service) SeedDORAMappings(ctx context.Context, orgID string) error {
+	doraFW, err := s.repo.FindFrameworkByName(ctx, orgID, "DORA")
+	if err != nil {
+		return fmt.Errorf("find DORA framework: %w", err)
+	}
+	if doraFW == nil {
+		return nil // DORA not enabled yet — skip silently
+	}
+
+	isoFW, err := s.repo.FindFrameworkByName(ctx, orgID, "ISO27001")
+	if err != nil {
+		return fmt.Errorf("find ISO27001 framework: %w", err)
+	}
+	if isoFW == nil {
+		return nil // ISO27001 not enabled yet — skip silently
+	}
+
+	doraControls, err := s.repo.ListControls(ctx, orgID, doraFW.ID)
+	if err != nil {
+		return fmt.Errorf("list DORA controls for seed: %w", err)
+	}
+	isoControls, err := s.repo.ListControls(ctx, orgID, isoFW.ID)
+	if err != nil {
+		return fmt.Errorf("list ISO27001 controls for seed: %w", err)
+	}
+
+	doraByControlID := make(map[string]string, len(doraControls))
+	for _, c := range doraControls {
+		doraByControlID[c.ControlID] = c.ID
+	}
+	isoByControlID := make(map[string]string, len(isoControls))
+	for _, c := range isoControls {
+		isoByControlID[c.ControlID] = c.ID
+	}
+
+	// doraISO27001Mapping maps DORA control IDs → comma-separated ISO 27001 Annex A IDs.
+	// Expand comma-separated entries into individual mappings.
+	for doraCode, isoRaw := range doraISO27001Mapping {
+		doraUUID, ok := doraByControlID[doraCode]
+		if !ok {
+			continue
+		}
+		for _, isoCode := range strings.Split(isoRaw, ",") {
+			isoCode = strings.TrimSpace(isoCode)
+			isoUUID, ok2 := isoByControlID[isoCode]
+			if !ok2 {
+				continue
+			}
+			if _, err := s.repo.CreateMapping(ctx, orgID, doraUUID, isoUUID); err != nil {
+				log.Warn().Err(err).Str("dora", doraCode).Str("iso", isoCode).Msg("seed DORA mapping failed")
+			}
+		}
+	}
+	return nil
 }

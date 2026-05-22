@@ -1,0 +1,52 @@
+# NIS2 / BSIG-neu Meldebehörden-Verzeichnis (S39-4)
+# Diese Datei wird von GET /api/v1/secvitals/authorities ausgelesen.
+authorities:
+  - key: BSI
+    name: "Bundesamt für Sicherheit in der Informationstechnik (BSI)"
+    portal: "https://meldung.bsi.bund.de"
+    phone: "+49 228 9582-777"
+    submit_note: "Meldung über das BSI MELDUNG Portal einreichen oder per Fax an +49 228 9582-5777."
+    sectors:
+      - energy
+      - water
+      - health
+      - transport
+      - telecom
+      - waste
+      - aerospace
+      - public_admin
+      - other
+
+  - key: BaFin
+    name: "Bundesanstalt für Finanzdienstleistungsaufsicht (BaFin)"
+    portal: "https://www.bafin.de"
+    phone: "+49 228 4108-0"
+    submit_note: "Meldung per BaFin-Meldeplattform oder schriftlich einreichen. Parallel-Meldung an BSI erforderlich."
+    sectors:
+      - finance
+
+  - key: BNetzA
+    name: "Bundesnetzagentur (BNetzA)"
+    portal: "https://www.bundesnetzagentur.de"
+    phone: "+49 228 14-0"
+    submit_note: "Meldung per Online-Formular oder schriftlich an die BNetzA. Parallel-Meldung an BSI erforderlich."
+    sectors:
+      - energy
+      - telecom
+
+  - key: LDA
+    name: "Landesdatenschutzbehörde (LDA / DSB)"
+    portal: "https://www.bfdi.bund.de/DE/Infothek/LandesdatenSchutzbehoerden/ldsb_node.html"
+    phone: ""
+    submit_note: "Bei Datenpannen mit personenbezogenen Daten: Meldung an zuständige Landesdatenschutzbehörde innerhalb von 72h (DSGVO Art. 33). Behörde richtet sich nach dem Bundesland des Verantwortlichen."
+    sectors:
+      - energy
+      - water
+      - health
+      - finance
+      - transport
+      - telecom
+      - waste
+      - aerospace
+      - public_admin
+      - other

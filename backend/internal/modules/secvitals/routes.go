@@ -7,7 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/matharnica/vakt/internal/auth"
-	"github.com/matharnica/vakt/internal/license"
+	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
 
 // Register wires ComplyKit routes under the provided group.
@@ -54,12 +54,12 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/frameworks/available", h.ListAvailableFrameworks)
 	g.POST("/frameworks/install", h.InstallFrameworkPlugin, rw)
 	// CRITICAL: static TISAX routes must be registered BEFORE /frameworks/:id to avoid route conflict.
-	g.GET("/frameworks/tisax/iso-mapping", h.GetTISAXISOMapping, license.Require(license.FeatureTISAX))
-	g.GET("/frameworks/tisax/coverage-after-iso", h.GetTISAXCoverageAfterISO, license.Require(license.FeatureTISAX))
+	g.GET("/frameworks/tisax/iso-mapping", h.GetTISAXISOMapping, features.Require(features.FeatureTISAX))
+	g.GET("/frameworks/tisax/coverage-after-iso", h.GetTISAXCoverageAfterISO, features.Require(features.FeatureTISAX))
 	g.GET("/frameworks/:id", h.GetFrameworkByID)
 	// CRITICAL: CRA-specific enable route must be registered BEFORE the generic /:name/enable
 	// to gate CRA behind a Pro license — FeatureCRA must be active to enable the CRA framework.
-	g.POST("/frameworks/CRA/enable", h.EnableFramework, rw, license.Require(license.FeatureCRA))
+	g.POST("/frameworks/CRA/enable", h.EnableFramework, rw, features.Require(features.FeatureCRA))
 	g.POST("/frameworks/:name/enable", h.EnableFramework, rw)
 	g.DELETE("/frameworks/:id", h.DeleteFramework, rw)
 	// CRITICAL: overdue-reviews and export/xlsx are static paths and must be registered BEFORE /controls/:id
@@ -68,16 +68,16 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/controls/export/xlsx", h.ExportControlsXLSX)
 	g.GET("/controls/:id", h.GetControlByID)
 	g.GET("/frameworks/:id/report", h.GetReadinessReport)
-	g.GET("/frameworks/:id/export-pdf", h.ExportFrameworkPDF, license.Require(license.FeatureAuditPDF))
+	g.GET("/frameworks/:id/export-pdf", h.ExportFrameworkPDF, features.Require(features.FeatureAuditPDF))
 	g.GET("/frameworks/:id/gaps", h.GetGapAnalysis)
 	// CRITICAL: tisax-controls, tisax-gaps, and tisax-report-pdf must be registered BEFORE /frameworks/:id/controls
 	// to avoid route ambiguity with the :id parameter.
-	g.GET("/frameworks/:id/tisax-controls", h.GetTISAXControls, license.Require(license.FeatureTISAX))
-	g.GET("/frameworks/:id/tisax-gaps", h.GetTISAXGapAnalysis, license.Require(license.FeatureTISAX))
-	g.GET("/frameworks/:id/tisax-report-pdf", h.ExportTISAXReportPDF, license.Require(license.FeatureTISAX))
+	g.GET("/frameworks/:id/tisax-controls", h.GetTISAXControls, features.Require(features.FeatureTISAX))
+	g.GET("/frameworks/:id/tisax-gaps", h.GetTISAXGapAnalysis, features.Require(features.FeatureTISAX))
+	g.GET("/frameworks/:id/tisax-report-pdf", h.ExportTISAXReportPDF, features.Require(features.FeatureTISAX))
 	// CRITICAL: soa.pdf and audit-package.zip must be registered before /frameworks/:id/controls to avoid route conflict.
-	g.GET("/frameworks/:id/soa.pdf", h.ExportSoAPDF, license.Require(license.FeatureAuditPDF))
-	g.GET("/frameworks/:id/audit-package.zip", h.ExportAuditPackage, license.Require(license.FeatureAuditPDF))
+	g.GET("/frameworks/:id/soa.pdf", h.ExportSoAPDF, features.Require(features.FeatureAuditPDF))
+	g.GET("/frameworks/:id/audit-package.zip", h.ExportAuditPackage, features.Require(features.FeatureAuditPDF))
 	g.GET("/frameworks/:id/controls", h.ListControls)
 	g.POST("/frameworks/:id/auditor-link", h.CreateAuditorLink, rw)
 
@@ -156,68 +156,70 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/incidents/:id", h.GetIncident)
 	g.PATCH("/incidents/:id", h.UpdateIncident, rw)
 	// CRITICAL: nis2/enabled must be registered BEFORE incidents/:id to avoid route conflict
-	g.GET("/nis2/enabled", h.NIS2ReportingEnabled, license.Require(license.FeatureNIS2Reporting))
-	g.POST("/incidents/:id/mark-reported", h.MarkDeadlineReported, rw, license.Require(license.FeatureNIS2Reporting))
-	g.POST("/incidents/:id/assess-reportability", h.AssessReportability, rw, license.Require(license.FeatureNIS2Reporting))
+	g.GET("/nis2/enabled", h.NIS2ReportingEnabled, features.Require(features.FeatureNIS2Reporting))
+	g.POST("/incidents/:id/mark-reported", h.MarkDeadlineReported, rw, features.Require(features.FeatureNIS2Reporting))
+	g.POST("/incidents/:id/assess-reportability", h.AssessReportability, rw, features.Require(features.FeatureNIS2Reporting))
+	// S39-1: BSI-Meldepflicht-Klassifizierung (new 3-question wizard with "probably/none/unclear" output)
+	g.POST("/incidents/:id/classify-reporting", h.ClassifyReportingObligation, rw, features.Require(features.FeatureNIS2Reporting))
 	// CRITICAL: incidents/:id/reports must be before incidents/:id/report-pdf to avoid ambiguity
-	g.GET("/incidents/:id/reports", h.ListIncidentReports, license.Require(license.FeatureNIS2Reporting))
-	g.POST("/incidents/:id/reports", h.GenerateIncidentReportForm, rw, license.Require(license.FeatureNIS2Reporting))
-	g.GET("/incidents/:id/report-pdf", h.IncidentReportPDF, license.Require(license.FeatureAuditPDF))
+	g.GET("/incidents/:id/reports", h.ListIncidentReports, features.Require(features.FeatureNIS2Reporting))
+	g.POST("/incidents/:id/reports", h.GenerateIncidentReportForm, rw, features.Require(features.FeatureNIS2Reporting))
+	g.GET("/incidents/:id/report-pdf", h.IncidentReportPDF, features.Require(features.FeatureAuditPDF))
 	// Report download (separate resource path)
-	g.GET("/incident-reports/:reportId/pdf", h.DownloadIncidentReportPDF, license.Require(license.FeatureAuditPDF))
+	g.GET("/incident-reports/:reportId/pdf", h.DownloadIncidentReportPDF, features.Require(features.FeatureAuditPDF))
 
 	// Supplier Register — Pro feature
-	g.GET("/suppliers", h.ListSuppliers, license.Require(license.FeatureSupplierPortal))
-	g.POST("/suppliers", h.CreateSupplier, rw, license.Require(license.FeatureSupplierPortal))
+	g.GET("/suppliers", h.ListSuppliers, features.Require(features.FeatureSupplierPortal))
+	g.POST("/suppliers", h.CreateSupplier, rw, features.Require(features.FeatureSupplierPortal))
 	// CRITICAL: static paths must be registered BEFORE /suppliers/:id to avoid route conflict
-	g.GET("/suppliers/export", h.ExportSuppliers, license.Require(license.FeatureSupplierPortal))
-	g.POST("/suppliers/import-csv", h.ImportSuppliersCSV, rw, license.Require(license.FeatureSupplierPortal))
-	g.GET("/suppliers/:id", h.GetSupplier, license.Require(license.FeatureSupplierPortal))
-	g.PATCH("/suppliers/:id", h.UpdateSupplier, rw, license.Require(license.FeatureSupplierPortal))
-	g.DELETE("/suppliers/:id", h.DeleteSupplier, rw, license.Require(license.FeatureSupplierPortal))
-	g.GET("/suppliers/:id/incidents", h.GetSupplierIncidents, license.Require(license.FeatureSupplierPortal))
-	g.POST("/suppliers/:id/risks", h.LinkSupplierRisk, rw, license.Require(license.FeatureSupplierPortal))
-	g.GET("/suppliers/:id/risks", h.ListSupplierRisks, license.Require(license.FeatureSupplierPortal))
-	g.DELETE("/suppliers/:id/risks/:riskId", h.UnlinkSupplierRisk, rw, license.Require(license.FeatureSupplierPortal))
+	g.GET("/suppliers/export", h.ExportSuppliers, features.Require(features.FeatureSupplierPortal))
+	g.POST("/suppliers/import-csv", h.ImportSuppliersCSV, rw, features.Require(features.FeatureSupplierPortal))
+	g.GET("/suppliers/:id", h.GetSupplier, features.Require(features.FeatureSupplierPortal))
+	g.PATCH("/suppliers/:id", h.UpdateSupplier, rw, features.Require(features.FeatureSupplierPortal))
+	g.DELETE("/suppliers/:id", h.DeleteSupplier, rw, features.Require(features.FeatureSupplierPortal))
+	g.GET("/suppliers/:id/incidents", h.GetSupplierIncidents, features.Require(features.FeatureSupplierPortal))
+	g.POST("/suppliers/:id/risks", h.LinkSupplierRisk, rw, features.Require(features.FeatureSupplierPortal))
+	g.GET("/suppliers/:id/risks", h.ListSupplierRisks, features.Require(features.FeatureSupplierPortal))
+	g.DELETE("/suppliers/:id/risks/:riskId", h.UnlinkSupplierRisk, rw, features.Require(features.FeatureSupplierPortal))
 	// CRITICAL: static paths under /suppliers/:id must come before the bare /suppliers/:id param routes
-	g.GET("/suppliers/:id/status", h.GetSupplierStatus, license.Require(license.FeatureSupplierPortal))
+	g.GET("/suppliers/:id/status", h.GetSupplierStatus, features.Require(features.FeatureSupplierPortal))
 
 	// Supplier assessments (Story 29.3) — Pro feature
-	g.POST("/suppliers/:id/assessments", h.CreateSupplierAssessment, rw, license.Require(license.FeatureSupplierPortal))
-	g.GET("/suppliers/:id/assessments", h.ListSupplierAssessments, license.Require(license.FeatureSupplierPortal))
+	g.POST("/suppliers/:id/assessments", h.CreateSupplierAssessment, rw, features.Require(features.FeatureSupplierPortal))
+	g.GET("/suppliers/:id/assessments", h.ListSupplierAssessments, features.Require(features.FeatureSupplierPortal))
 
 	// Assessment routes — CRITICAL: static sub-paths before bare :id to avoid route conflicts
 	g.GET("/assessments/:id/answers", h.GetAssessmentAnswers)
-	g.GET("/assessments/:id/report-pdf", h.GetAssessmentReportPDF, license.Require(license.FeatureAuditPDF))
+	g.GET("/assessments/:id/report-pdf", h.GetAssessmentReportPDF, features.Require(features.FeatureAuditPDF))
 	g.GET("/assessments/:id", h.GetAssessment)
 	g.PATCH("/assessments/:id", h.UpdateAssessment, rw)
 	g.PATCH("/assessments/:id/answers/:aid", h.ReviewAnswer, rw)
 
 	// AI System Inventory — EU AI Act Pro feature
-	g.GET("/ai-systems", h.ListAISystems, license.Require(license.FeatureEUAIAct))
-	g.POST("/ai-systems", h.CreateAISystem, rw, license.Require(license.FeatureEUAIAct))
+	g.GET("/ai-systems", h.ListAISystems, features.Require(features.FeatureEUAIAct))
+	g.POST("/ai-systems", h.CreateAISystem, rw, features.Require(features.FeatureEUAIAct))
 	// CRITICAL: static sub-paths before bare :id to avoid route conflicts
-	g.GET("/ai-systems/:id/classifications", h.ListAIClassifications, license.Require(license.FeatureEUAIAct))
-	g.POST("/ai-systems/:id/classify", h.ClassifyAISystem, rw, license.Require(license.FeatureEUAIAct))
+	g.GET("/ai-systems/:id/classifications", h.ListAIClassifications, features.Require(features.FeatureEUAIAct))
+	g.POST("/ai-systems/:id/classify", h.ClassifyAISystem, rw, features.Require(features.FeatureEUAIAct))
 	// CRITICAL: documentation/versions and documentation/export-pdf before documentation
-	g.GET("/ai-systems/:id/documentation/versions", h.ListAIDocumentationVersions, license.Require(license.FeatureEUAIAct))
-	g.GET("/ai-systems/:id/documentation/export-pdf", h.ExportAIDocumentationPDF, license.Require(license.FeatureEUAIAct))
-	g.GET("/ai-systems/:id/documentation", h.GetLatestAIDocumentation, license.Require(license.FeatureEUAIAct))
-	g.POST("/ai-systems/:id/documentation", h.SaveAIDocumentation, rw, license.Require(license.FeatureEUAIAct))
-	g.GET("/ai-systems/:id", h.GetAISystem, license.Require(license.FeatureEUAIAct))
-	g.PATCH("/ai-systems/:id", h.UpdateAISystem, rw, license.Require(license.FeatureEUAIAct))
-	g.DELETE("/ai-systems/:id", h.DeleteAISystem, rw, license.Require(license.FeatureEUAIAct))
+	g.GET("/ai-systems/:id/documentation/versions", h.ListAIDocumentationVersions, features.Require(features.FeatureEUAIAct))
+	g.GET("/ai-systems/:id/documentation/export-pdf", h.ExportAIDocumentationPDF, features.Require(features.FeatureEUAIAct))
+	g.GET("/ai-systems/:id/documentation", h.GetLatestAIDocumentation, features.Require(features.FeatureEUAIAct))
+	g.POST("/ai-systems/:id/documentation", h.SaveAIDocumentation, rw, features.Require(features.FeatureEUAIAct))
+	g.GET("/ai-systems/:id", h.GetAISystem, features.Require(features.FeatureEUAIAct))
+	g.PATCH("/ai-systems/:id", h.UpdateAISystem, rw, features.Require(features.FeatureEUAIAct))
+	g.DELETE("/ai-systems/:id", h.DeleteAISystem, rw, features.Require(features.FeatureEUAIAct))
 
 	// Org sector + authority directory (Story 31.4) — EU AI Act / NIS2 Pro feature
-	g.GET("/org-sector", h.GetOrgSector, license.Require(license.FeatureEUAIAct))
-	g.PATCH("/org-sector", h.UpdateOrgSector, rw, license.Require(license.FeatureEUAIAct))
-	g.GET("/authorities", h.ListAuthorities, license.Require(license.FeatureEUAIAct))
-	g.GET("/org-authorities", h.GetOrgAuthorities, license.Require(license.FeatureEUAIAct))
+	g.GET("/org-sector", h.GetOrgSector, features.Require(features.FeatureEUAIAct))
+	g.PATCH("/org-sector", h.UpdateOrgSector, rw, features.Require(features.FeatureEUAIAct))
+	g.GET("/authorities", h.ListAuthorities, features.Require(features.FeatureEUAIAct))
+	g.GET("/org-authorities", h.GetOrgAuthorities, features.Require(features.FeatureEUAIAct))
 
 	// EU AI Act Dashboard (Story 30.4)
 	// CRITICAL: eu-ai-act/report-pdf before eu-ai-act/dashboard to avoid route ambiguity
-	g.GET("/eu-ai-act/report-pdf", h.GetEUAIActReportPDF, license.Require(license.FeatureEUAIAct))
-	g.GET("/eu-ai-act/dashboard", h.GetEUAIActDashboard, license.Require(license.FeatureEUAIAct))
+	g.GET("/eu-ai-act/report-pdf", h.GetEUAIActReportPDF, features.Require(features.FeatureEUAIAct))
+	g.GET("/eu-ai-act/dashboard", h.GetEUAIActDashboard, features.Require(features.FeatureEUAIAct))
 
 	// Policy Management
 	g.GET("/policies", h.ListPolicies)
@@ -248,20 +250,31 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.POST("/policy-templates/:id/apply", h.CreatePolicyFromTemplate, rw)
 
 	// Resilience Tests (DORA Art. 24-27) — DORA Pro feature
-	g.GET("/resilience-tests", h.ListResilienceTests, license.Require(license.FeatureDORA))
-	g.POST("/resilience-tests", h.CreateResilienceTest, rw, license.Require(license.FeatureDORA))
-	g.GET("/resilience-tests/:id", h.GetResilienceTest, license.Require(license.FeatureDORA))
-	g.PATCH("/resilience-tests/:id", h.UpdateResilienceTest, rw, license.Require(license.FeatureDORA))
-	g.DELETE("/resilience-tests/:id", h.DeleteResilienceTest, rw, license.Require(license.FeatureDORA))
-	g.POST("/resilience-tests/:id/attachment", h.UploadResilienceTestAttachment, rw, license.Require(license.FeatureDORA))
+	g.GET("/resilience-tests", h.ListResilienceTests, features.Require(features.FeatureDORA))
+	g.POST("/resilience-tests", h.CreateResilienceTest, rw, features.Require(features.FeatureDORA))
+	g.GET("/resilience-tests/:id", h.GetResilienceTest, features.Require(features.FeatureDORA))
+	g.PATCH("/resilience-tests/:id", h.UpdateResilienceTest, rw, features.Require(features.FeatureDORA))
+	g.DELETE("/resilience-tests/:id", h.DeleteResilienceTest, rw, features.Require(features.FeatureDORA))
+	g.POST("/resilience-tests/:id/attachment", h.UploadResilienceTestAttachment, rw, features.Require(features.FeatureDORA))
+	g.POST("/resilience-tests/:id/link-evidence", h.LinkResilienceTestAsEvidence, rw, features.Require(features.FeatureDORA))
 
 	// DORA Dashboard (Story 27.5)
-	g.GET("/dora/dashboard", h.GetDORADashboard, license.Require(license.FeatureDORA))
-	g.GET("/dora/report-pdf", h.GetDORAPDF, license.Require(license.FeatureDORA))
+	g.GET("/dora/dashboard", h.GetDORADashboard, features.Require(features.FeatureDORA))
+	g.GET("/dora/report-pdf", h.GetDORAPDF, features.Require(features.FeatureDORA))
+
+	// DORA IKT-Drittanbieter-Register (Art. 28-44 / S38-1)
+	// CRITICAL: static sub-paths (/third-parties) before param routes.
+	g.GET("/dora/third-parties", h.ListDORAThirdParties, features.Require(features.FeatureDORA))
+	g.POST("/dora/third-parties", h.CreateDORAThirdParty, rw, features.Require(features.FeatureDORA))
+	g.GET("/dora/third-parties/:id", h.GetDORAThirdParty, features.Require(features.FeatureDORA))
+	g.PATCH("/dora/third-parties/:id", h.UpdateDORAThirdParty, rw, features.Require(features.FeatureDORA))
+	g.DELETE("/dora/third-parties/:id", h.DeleteDORAThirdParty, rw, features.Require(features.FeatureDORA))
+	g.POST("/dora/third-parties/:id/controls", h.LinkDORAThirdPartyControl, rw, features.Require(features.FeatureDORA))
+	g.DELETE("/dora/third-parties/:id/controls/:controlId", h.UnlinkDORAThirdPartyControl, rw, features.Require(features.FeatureDORA))
 
 	// Executive Summary PDF — cross-framework compliance overview
 	// CRITICAL: /reports/executive-summary is a static path; registered before any dynamic /reports/:id routes.
-	g.GET("/reports/executive-summary", h.GetExecutiveSummaryPDF, license.Require(license.FeatureAuditPDF))
+	g.GET("/reports/executive-summary", h.GetExecutiveSummaryPDF, features.Require(features.FeatureAuditPDF))
 
 	// CCM (Continuous Control Monitoring)
 	g.GET("/ccm/checks", h.ListCCMChecks)
@@ -347,7 +360,7 @@ func RegisterAuditor(g *echo.Group, h *Handler) {
 	g.GET("/frameworks/:id", h.GetFrameworkByID)
 	g.GET("/frameworks/:id/controls", h.ListControls)
 	// SoA PDF export requires Pro FeatureAuditPDF — basic auditor view remains Community.
-	g.GET("/frameworks/:id/soa.pdf", h.ExportSoAPDF, license.Require(license.FeatureAuditPDF))
+	g.GET("/frameworks/:id/soa.pdf", h.ExportSoAPDF, features.Require(features.FeatureAuditPDF))
 	g.GET("/risks", h.ListRisks)
 	g.GET("/incidents", h.ListIncidents)
 	g.GET("/policies", h.ListPolicies)

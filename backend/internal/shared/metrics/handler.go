@@ -111,6 +111,17 @@ func (h *Handler) ServeMetrics(c echo.Context) error {
 	}
 	fmt.Fprintf(w, "vakt_backup_age_hours %g\n", backupAgeHours)
 
+	// ── vakt_organizations_total ─────────────────────────────────────────────
+	fmt.Fprintln(w, "# HELP vakt_organizations_total Total number of organizations")
+	fmt.Fprintln(w, "# TYPE vakt_organizations_total gauge")
+	var orgsTotal int64
+	err = h.db.QueryRow(ctx, `SELECT COUNT(*) FROM organisations`).Scan(&orgsTotal)
+	if err != nil {
+		log.Error().Err(err).Msg("metrics: query organizations_total")
+		orgsTotal = 0
+	}
+	fmt.Fprintf(w, "vakt_organizations_total %d\n", orgsTotal)
+
 	// ── per-org business metrics ──────────────────────────────────────────────
 	// Collect all org IDs first, then query metrics per org concurrently.
 	orgIDs, err := h.listOrgIDs(ctx)

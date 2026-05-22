@@ -462,7 +462,7 @@ func (s *Service) SubmitAssessment(ctx context.Context, rawToken, clientIP, user
 
 	now := time.Now().UTC()
 	if err := s.repo.UpdateAssessmentStatus(ctx, a.ID, "submitted", &now, clientIP, userAgent); err != nil {
-		if strings.Contains(err.Error(), "already submitted") {
+		if errors.Is(err, ErrAssessmentExpiredOrSubmitted) {
 			return ErrAssessmentExpiredOrSubmitted
 		}
 		return fmt.Errorf("update assessment status: %w", err)

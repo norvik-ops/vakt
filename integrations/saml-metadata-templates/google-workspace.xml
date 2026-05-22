@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Google Workspace — SAML SP Metadata Template for Vakt
+
+  How to use:
+  1. Google Admin Console → Apps → Web and mobile apps → Add App → Add custom SAML app
+  2. Google IdP Details: download the IdP metadata XML (keep for later)
+  3. Service Provider Details:
+     - ACS URL:     https://<your-vakt-domain>/api/v1/auth/saml/acs
+     - Entity ID:   https://<your-vakt-domain>/api/v1/auth/saml/metadata
+     - Name ID:     Primary Email, EMAIL format
+  4. Attribute Mapping:
+     - Basic Information → Primary Email → email
+     - Basic Information → First Name → firstName
+     - Basic Information → Last Name → lastName
+  5. Upload the Google IdP Metadata XML in Vakt Settings → SAML
+
+  Note: Google Workspace SAML does not support signed AuthnRequests
+  from the SP side in the basic configuration.
+-->
+<EntityDescriptor
+  xmlns="urn:oasis:names:tc:SAML:2.0:metadata"
+  entityID="https://YOUR_VAKT_DOMAIN/api/v1/auth/saml/metadata">
+
+  <SPSSODescriptor
+    AuthnRequestsSigned="false"
+    WantAssertionsSigned="true"
+    protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+
+    <NameIDFormat>
+      urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
+    </NameIDFormat>
+
+    <AssertionConsumerService
+      Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+      Location="https://YOUR_VAKT_DOMAIN/api/v1/auth/saml/acs"
+      index="0"
+      isDefault="true"/>
+
+  </SPSSODescriptor>
+
+</EntityDescriptor>

@@ -2,7 +2,7 @@ package secprivacy
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/matharnica/vakt/internal/license"
+	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
 
 // Register wires PrivacyOps routes under the provided group.
@@ -36,7 +36,7 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/dpias", h.ListDPIAs)
 	g.POST("/dpias", h.CreateDPIA)
 	// DPIA PDF export is a Pro feature — basic DPIA management remains Community.
-	g.GET("/dpias/export", h.ExportDPIA, license.Require(license.FeatureAuditPDF)) // must be before /dpias/:id
+	g.GET("/dpias/export", h.ExportDPIA, features.Require(features.FeatureAuditPDF)) // must be before /dpias/:id
 	g.GET("/dpias/:id", h.GetDPIA)
 	g.PUT("/dpias/:id", h.UpdateDPIA)
 	g.POST("/dpias/:id/approve", h.ApproveDPIA)
@@ -52,9 +52,9 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.PUT("/avvs/:id", h.UpdateAVV)
 	g.DELETE("/avvs/:id", h.DeleteAVV)
 	// AVV and SCC PDF export are Pro features — basic AVV management remains Community.
-	g.GET("/avvs/:id/pdf", h.ExportAVVPDF, license.Require(license.FeatureAuditPDF))
+	g.GET("/avvs/:id/pdf", h.ExportAVVPDF, features.Require(features.FeatureAuditPDF))
 	g.PATCH("/avvs/:id/scc", h.UpdateAVVSCC)
-	g.GET("/avvs/:id/scc.pdf", h.ExportSCCPDF, license.Require(license.FeatureAuditPDF))
+	g.GET("/avvs/:id/scc.pdf", h.ExportSCCPDF, features.Require(features.FeatureAuditPDF))
 
 	// Breach Notifications (Art. 33/34 DSGVO)
 	g.GET("/breaches", h.ListBreaches)

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../../api/client'
-import type { Incident, CreateIncidentInput, UpdateIncidentInput, MarkDeadlineReportedInput, AssessReportabilityInput, ReportabilityResult, IncidentReport, GenerateReportInput } from '../types'
+import type { Incident, CreateIncidentInput, UpdateIncidentInput, MarkDeadlineReportedInput, AssessReportabilityInput, ReportabilityResult, IncidentReport, GenerateReportInput, ClassifyReportingInput, ClassificationResult } from '../types'
 import type { PaginatedResponse } from '../../../shared/types/pagination'
 
 export function useIncidents(page = 1, limit = 25) {
@@ -87,6 +87,18 @@ export function useGenerateIncidentReport(id: string) {
       apiFetch<IncidentReport>(`/secvitals/incidents/${id}/reports`, { method: 'POST', body: JSON.stringify(input) }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['secvitals', 'incidents', id, 'reports'] })
+    },
+  })
+}
+
+// S39-1: BSI-Meldepflicht-Klassifizierung
+export function useClassifyReportingObligation(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation<ClassificationResult, Error, ClassifyReportingInput>({
+    mutationFn: (input) =>
+      apiFetch<ClassificationResult>(`/secvitals/incidents/${id}/classify-reporting`, { method: 'POST', body: JSON.stringify(input) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['secvitals', 'incidents', id] })
     },
   })
 }

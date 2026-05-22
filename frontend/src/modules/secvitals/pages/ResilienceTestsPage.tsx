@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ShieldAlert, Plus, Pencil, Trash2, Paperclip } from 'lucide-react'
+import { ShieldAlert, Plus, Pencil, Trash2, Paperclip, Link2 } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
@@ -30,6 +30,7 @@ import {
   useUpdateResilienceTest,
   useDeleteResilienceTest,
   useUploadResilienceTestAttachment,
+  useLinkResilienceTestAsEvidence,
 } from '../hooks/useResilienceTests'
 import type { ResilienceTest, CreateResilienceTestInput } from '../types'
 import { formatLocale } from '../../../shared/utils/locale'
@@ -94,10 +95,12 @@ function ResilienceTestRow({
   test,
   onEdit,
   onDelete,
+  onLinkEvidence,
 }: {
   test: ResilienceTest
   onEdit: () => void
   onDelete: () => void
+  onLinkEvidence: () => void
 }) {
   return (
     <Card>
@@ -133,14 +136,18 @@ function ResilienceTestRow({
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit} title="Bearbeiten">
               <Pencil className="w-3.5 h-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onLinkEvidence} title="Als DORA-Evidenz verknüpfen">
+              <Link2 className="w-3.5 h-3.5" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
               className="h-7 w-7 text-red-400 hover:text-red-300"
               onClick={onDelete}
+              title="Löschen"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
@@ -157,12 +164,15 @@ export default function ResilienceTestsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState<CreateResilienceTestInput>(emptyForm())
+  const [linkTestId, setLinkTestId] = useState<string | null>(null)
+  const [linkControlId, setLinkControlId] = useState('')
 
   const { data, isLoading, isError, error } = useResilienceTests()
   const createTest = useCreateResilienceTest()
   const updateTest = useUpdateResilienceTest(editId ?? '')
   const deleteTest = useDeleteResilienceTest()
   const uploadAttachment = useUploadResilienceTestAttachment(editId ?? '')
+  const linkEvidence = useLinkResilienceTestAsEvidence(linkTestId ?? '')
 
   const tests = data?.tests ?? []
   const tlptOverdueWarning = data?.tlpt_overdue_warning ?? false
@@ -270,11 +280,48 @@ export default function ResilienceTestsPage() {
                 test={t}
                 onEdit={() => openEdit(t)}
                 onDelete={() => handleDelete(t.id)}
+                onLinkEvidence={() => { setLinkTestId(t.id); setLinkControlId('') }}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Link-as-evidence dialog (S40-1) */}
+      <Dialog open={!!linkTestId} onOpenChange={(v) => !v && setLinkTestId(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Als DORA-Evidenz verknüpfen</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              Verknüpfe diesen Resilienztest als Evidenz mit einem DORA-Control (z.B. Art. 26).
+              Die Control-ID findest du in der Kontrolldetailseite.
+            </p>
+            <div className="space-y-1.5">
+              <Label>Control-ID *</Label>
+              <Input
+                placeholder="UUID des Controls (z.B. DORA-3.2)"
+                value={linkControlId}
+                onChange={(e) => setLinkControlId(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLinkTestId(null)}>Abbrechen</Button>
+            <Button
+              disabled={!linkControlId || linkEvidence.isPending}
+              onClick={() => {
+                linkEvidence.mutate({ control_id: linkControlId }, {
+                  onSuccess: () => setLinkTestId(null),
+                })
+              }}
+            >
+              {linkEvidence.isPending ? 'Verknüpfen …' : 'Als Evidenz speichern'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">

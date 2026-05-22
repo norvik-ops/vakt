@@ -24,6 +24,7 @@ import AIDocumentationPage from './pages/AIDocumentationPage'
 import EUAIActDashboardPage from './pages/EUAIActDashboardPage'
 import DORAPage from './pages/DORAPage'
 import DORADashboardPage from './pages/DORADashboardPage'
+import DORAThirdPartiesPage from './pages/DORAThirdPartiesPage'
 import ResilienceTestsPage from './pages/ResilienceTestsPage'
 import TISAXPage from './pages/TISAXPage'
 import TISAXMappingPage from './pages/TISAXMappingPage'
@@ -79,8 +80,9 @@ export default function SecVitalsRoutes() {
       <Route path="ai-systems" element={<AISystemsPage />} />
       <Route path="ai-systems/:id/documentation" element={<AIDocumentationPage />} />
       <Route path="eu-ai-act/dashboard" element={<EUAIActDashboardPage />} />
-      {/* CRITICAL: dora/dashboard must be before dora/:frameworkId to avoid catch-all match */}
+      {/* CRITICAL: dora/dashboard and dora/third-parties must be before dora/:frameworkId to avoid catch-all match */}
       <Route path="dora/dashboard" element={<DORADashboardPage />} />
+      <Route path="dora/third-parties" element={<DORAThirdPartiesPage />} />
       <Route path="dora/:frameworkId" element={<DORAPage />} />
       <Route path="resilience-tests" element={<ResilienceTestsPage />} />
       <Route path="questionnaires/:id" element={<QuestionnairePage />} />

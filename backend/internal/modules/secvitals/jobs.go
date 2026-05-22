@@ -22,6 +22,16 @@ const (
 
 	// TaskScoreSnapshot is the task type for daily compliance score snapshots.
 	TaskScoreSnapshot = "secvitals:score_snapshot"
+
+	// TaskDORADeadlineStatus is the task type for computing DORA Ampel-Status every 5 minutes (S37-4).
+	TaskDORADeadlineStatus = "secvitals:dora_deadline_status"
+
+	// TaskNIS2ObligationCheck is the task type for checking NIS2-classified incident deadlines (S39-2).
+	// It specifically targets incidents where classification_result.obligation = "probably".
+	TaskNIS2ObligationCheck = "secvitals:nis2_obligation_check"
+
+	// Queue is the dedicated Asynq queue for Vakt Comply evidence and compliance jobs.
+	Queue = "secvitals"
 )
 
 // NewEvidenceExpiryAlertTask creates a new evidence expiry alert task.
@@ -52,4 +62,16 @@ func NewCCMRunDueTask() *asynq.Task {
 // The Unique option prevents duplicate tasks within a 23-hour window.
 func NewScoreSnapshotTask() *asynq.Task {
 	return asynq.NewTask(TaskScoreSnapshot, nil, asynq.Unique(23*time.Hour))
+}
+
+// NewDORADeadlineStatusTask creates a task for computing DORA Ampel-Status (S37-4).
+// Unique window of 4 minutes prevents duplicate executions within a 5-minute cron interval.
+func NewDORADeadlineStatusTask() *asynq.Task {
+	return asynq.NewTask(TaskDORADeadlineStatus, nil, asynq.Unique(4*time.Minute))
+}
+
+// NewNIS2ObligationCheckTask creates a task for checking NIS2-classified incident deadlines (S39-2).
+// Unique window of 23 hours prevents duplicate tasks within a daily cron window.
+func NewNIS2ObligationCheckTask() *asynq.Task {
+	return asynq.NewTask(TaskNIS2ObligationCheck, nil, asynq.Unique(23*time.Hour))
 }

@@ -108,46 +108,44 @@ func (s *Service) ListAuditLogs(ctx context.Context, orgID string, page, limit i
 	}
 	offset := (page - 1) * limit
 
-	// Build the WHERE clause dynamically to avoid excessive SQL branching.
-	args := []any{orgID}
-	where := "org_id = $1::uuid"
-	argN := 2
-
+	// Fixed-placeholder query: optional filters use IS NULL short-circuit so no
+	// dynamic SQL or fmt.Sprintf is needed. NULL means "no filter on this column".
+	var nullUserID, nullAction, nullResourceType *string
 	if userID != "" {
-		where += fmt.Sprintf(" AND user_id = $%d::uuid", argN)
-		args = append(args, userID)
-		argN++
+		nullUserID = &userID
 	}
 	if action != "" {
-		where += fmt.Sprintf(" AND action = $%d", argN)
-		args = append(args, action)
-		argN++
+		nullAction = &action
 	}
 	if resourceType != "" {
-		where += fmt.Sprintf(" AND resource_type = $%d", argN)
-		args = append(args, resourceType)
-		argN++
+		nullResourceType = &resourceType
 	}
 
-	// Count total.
 	// Query audit_log directly (not the audit_logs VIEW) so that created_at is
-	// available as a real column; the VIEW aliased it as "timestamp" and exposed
-	// user_agent / status_code as NULLs that no longer have meaning.
+	// available as a real column.
 	var total int
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM audit_log WHERE %s", where)
-	if err := s.db.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+	if err := s.db.QueryRow(ctx, `
+		SELECT COUNT(*) FROM audit_log
+		WHERE org_id = $1::uuid
+		  AND ($2::uuid IS NULL OR user_id = $2::uuid)
+		  AND ($3 IS NULL OR action = $3)
+		  AND ($4 IS NULL OR resource_type = $4)`,
+		orgID, nullUserID, nullAction, nullResourceType,
+	).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count audit logs: %w", err)
 	}
 
-	// Fetch page.
-	dataArgs := append(args, limit, offset)
-	rows, err := s.db.Query(ctx, fmt.Sprintf(`
+	rows, err := s.db.Query(ctx, `
 		SELECT id::text, org_id::text, user_id::text, action, resource_type,
 		       resource_id, ip_address, created_at
 		FROM audit_log
-		WHERE %s
+		WHERE org_id = $1::uuid
+		  AND ($2::uuid IS NULL OR user_id = $2::uuid)
+		  AND ($3 IS NULL OR action = $3)
+		  AND ($4 IS NULL OR resource_type = $4)
 		ORDER BY created_at DESC
-		LIMIT $%d OFFSET $%d`, where, argN, argN+1), dataArgs...)
+		LIMIT $5 OFFSET $6`,
+		orgID, nullUserID, nullAction, nullResourceType, limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("query audit logs: %w", err)
 	}

@@ -468,25 +468,36 @@ func GenerateDORAPDF(dashboard *DORADashboard, orgName string) ([]byte, error) {
 		pdf.CellFormat(180, 7, fmt.Sprintf("Fristtyp: %s  |  Fällig am: %s", nd.DeadlineType, nd.DeadlineAt.Format("02.01.2006 15:04 UTC")), "0", 1, "L", false, 0, "")
 	}
 
-	// ── Section 4: Drittanbieter ──────────────────────────────────────────────
+	// ── Section 4: IKT-Drittanbieter (Art. 28-44) ────────────────────────────
 	pdf.SetY(pdf.GetY() + 4)
 	pdf.SetTextColor(30, 30, 40)
 	pdf.SetFont("Helvetica", "B", 13)
-	pdf.CellFormat(180, 8, "4. Drittanbieter", "", 1, "L", false, 0, "")
+	pdf.CellFormat(180, 8, "4. IKT-Drittanbieter-Register (Art. 28-44)", "", 1, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 10)
-	if dashboard.ExpiredSuppliers == 0 {
-		pdf.SetTextColor(34, 197, 94)
-		pdf.CellFormat(180, 7, "Keine abgelaufenen Verträge.", "0", 1, "L", false, 0, "")
-	} else {
+	if dashboard.ThirdPartyCount == 0 {
 		pdf.SetTextColor(220, 38, 38)
+		pdf.CellFormat(180, 7, "Kein IKT-Drittanbieter eingetragen — Register muss gemäß Art. 28 DORA geführt werden.", "0", 1, "L", false, 0, "")
+	} else {
+		pdf.SetTextColor(30, 30, 40)
+		pdf.CellFormat(180, 7, fmt.Sprintf("Eingetragene Drittanbieter: %d  |  davon kritisch: %d", dashboard.ThirdPartyCount, dashboard.CriticalThirdParties), "0", 1, "L", false, 0, "")
+		if dashboard.MissingExitStrategies > 0 {
+			pdf.SetTextColor(220, 38, 38)
+			pdf.CellFormat(180, 7, fmt.Sprintf("WARNUNG: %d kritische Drittanbieter ohne Ausstiegsstrategie (Art. 43 DORA).", dashboard.MissingExitStrategies), "0", 1, "L", false, 0, "")
+		} else {
+			pdf.SetTextColor(34, 197, 94)
+			pdf.CellFormat(180, 7, "Alle kritischen Drittanbieter haben eine dokumentierte Ausstiegsstrategie.", "0", 1, "L", false, 0, "")
+		}
+	}
+	if dashboard.ExpiredSuppliers > 0 {
+		pdf.SetTextColor(234, 179, 8)
 		pdf.CellFormat(180, 7, fmt.Sprintf("%d Lieferanten mit abgelaufenem Vertrag — Überprüfung erforderlich.", dashboard.ExpiredSuppliers), "0", 1, "L", false, 0, "")
 	}
 
-	// ── Section 5: Resilienztests ─────────────────────────────────────────────
+	// ── Section 5: Resilienztests (Art. 24-27) ───────────────────────────────
 	pdf.SetY(pdf.GetY() + 4)
 	pdf.SetTextColor(30, 30, 40)
 	pdf.SetFont("Helvetica", "B", 13)
-	pdf.CellFormat(180, 8, "5. Resilienztests", "", 1, "L", false, 0, "")
+	pdf.CellFormat(180, 8, "5. Resilienztests (Art. 24-27)", "", 1, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 10)
 	if dashboard.TLPTOverdueWarning {
 		pdf.SetTextColor(220, 38, 38)
@@ -494,6 +505,22 @@ func GenerateDORAPDF(dashboard *DORADashboard, orgName string) ([]byte, error) {
 	} else {
 		pdf.SetTextColor(34, 197, 94)
 		pdf.CellFormat(180, 7, "TLPT-Tests aktuell — DORA Art. 26 erfüllt.", "0", 1, "L", false, 0, "")
+	}
+	if len(dashboard.RecentResilienceTests) > 0 {
+		pdf.SetTextColor(30, 30, 40)
+		pdf.SetFont("Helvetica", "B", 9)
+		pdf.CellFormat(180, 6, "Letzte Tests:", "0", 1, "L", false, 0, "")
+		pdf.SetFont("Helvetica", "", 9)
+		for _, rt := range dashboard.RecentResilienceTests {
+			provider := rt.Provider
+			if provider == "" {
+				provider = "–"
+			}
+			pdf.CellFormat(180, 5,
+				fmt.Sprintf("  • %s | %s | %s | Abhilfe: %s",
+					rt.Type, rt.TestDate.Format("02.01.2006"), provider, rt.RemediationStatus),
+				"0", 1, "L", false, 0, "")
+		}
 	}
 
 	// ── Footer ────────────────────────────────────────────────────────────────

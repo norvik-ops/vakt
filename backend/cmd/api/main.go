@@ -27,6 +27,7 @@ import (
 	"github.com/matharnica/vakt/internal/auth"
 	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/license"
+	scimSvc "github.com/matharnica/vakt/internal/services/scim"
 	"github.com/matharnica/vakt/internal/modules/hr"
 	"github.com/matharnica/vakt/internal/modules/secprivacy"
 	"github.com/matharnica/vakt/internal/modules/secpulse"
@@ -40,7 +41,7 @@ import (
 	"github.com/matharnica/vakt/internal/shared/apikeys"
 	"github.com/matharnica/vakt/internal/shared/auditexport"
 	"github.com/matharnica/vakt/internal/shared/audit"
-	"github.com/matharnica/vakt/internal/shared/auditor"
+	"github.com/matharnica/vakt/internal/shared/platform/auditor"
 	"github.com/matharnica/vakt/internal/shared/auditreport"
 	"github.com/matharnica/vakt/internal/shared/comments"
 	"github.com/matharnica/vakt/internal/shared/dashboard"
@@ -50,9 +51,9 @@ import (
 	"github.com/matharnica/vakt/internal/shared/demoseed"
 	"github.com/matharnica/vakt/internal/services/evidence_auto"
 	"github.com/matharnica/vakt/internal/shared/feedback"
-	cloudintegration "github.com/matharnica/vakt/internal/shared/integrations/cloud"
-	ghintegration "github.com/matharnica/vakt/internal/shared/integrations/github"
-	"github.com/matharnica/vakt/internal/shared/ldap"
+	cloudintegration "github.com/matharnica/vakt/internal/shared/platform/integrations/cloud"
+	ghintegration "github.com/matharnica/vakt/internal/shared/platform/integrations/github"
+	"github.com/matharnica/vakt/internal/shared/platform/ldap"
 	"github.com/matharnica/vakt/internal/shared/metrics"
 	sharedmw "github.com/matharnica/vakt/internal/shared/middleware"
 	"github.com/matharnica/vakt/internal/shared/nis2wizard"
@@ -64,10 +65,10 @@ import (
 	"github.com/matharnica/vakt/internal/shared/search"
 	"github.com/matharnica/vakt/internal/shared/setup"
 	"github.com/matharnica/vakt/internal/shared/telemetry"
-	"github.com/matharnica/vakt/internal/shared/trustcenter"
+	"github.com/matharnica/vakt/internal/shared/platform/trustcenter"
 	"github.com/matharnica/vakt/internal/shared/updatecheck"
 	"github.com/matharnica/vakt/internal/shared/usermgmt"
-	sharedwebhooks "github.com/matharnica/vakt/internal/shared/webhooks"
+	sharedwebhooks "github.com/matharnica/vakt/internal/shared/platform/webhooks"
 	lswebhook "github.com/matharnica/vakt/internal/webhooks/lemonsqueezy"
 )
 
@@ -172,7 +173,7 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	//   sso_enabled  — blendet den SSO-Button ein/aus
 	//   version      — wird im Footer angezeigt
 	e.GET("/health", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]interface{}{
+		return c.JSON(http.StatusOK, map[string]any{
 			"status":      "ok",
 			"version":     cfg.Version,
 			"demo":        cfg.DemoSeed,
@@ -232,9 +233,11 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 			if isNIS2Public {
 				// Remove the restrictive X-Frame-Options set by the global Secure middleware.
 				c.Response().Header().Del("X-Frame-Options")
-				// Override the CSP to allow framing from any origin.
+				// Override the CSP to allow framing from any origin (see ADR-0028).
 				c.Response().Header().Set("Content-Security-Policy",
 					"default-src 'self'; script-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors *; object-src 'none'; base-uri 'self'")
+				// Minimize hostname leakage when navigating from the embedded iframe.
+				c.Response().Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 			}
 			return next(c)
 		}
@@ -372,6 +375,12 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 		admin.RegisterStaging(protected, admin.NewStagingHandler(cfg.PromoteURL, cfg.PromoteSecret))
 		log.Info().Msg("staging routes registered")
 	}
+
+	// SCIM 2.0 provisioning — uses its own Bearer token auth (not Paseto).
+	// Mounted on the plain api group; SCIMAuthMiddleware + feature gate are
+	// applied inside scimSvc.Register.
+	scimSvc.Register(api.Group("/scim/v2"), pool)
+	log.Info().Msg("scim routes registered")
 
 	// Outgoing webhooks — created before modules so event triggers can be wired in.
 	// The webhookSvc is also registered as routes below (after module routes).

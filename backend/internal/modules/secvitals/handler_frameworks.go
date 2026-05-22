@@ -1,10 +1,10 @@
 package secvitals
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -93,8 +93,26 @@ func (h *Handler) GetGapAnalysis(c echo.Context) error {
 }
 
 // ListControls handles GET /api/v1/secvitals/frameworks/:id/controls.
+// Cursor mode (preferred): ?cursor=<opaque>&limit=25
+// Offset mode (deprecated): ?page=1&limit=25 — sends Deprecation header
 func (h *Handler) ListControls(c echo.Context) error {
 	frameworkID := c.Param("id")
+
+	if c.QueryParam("page") == "" {
+		cp := pagination.CursorFromRequest(c)
+		cursorControlID, cursorID := pagination.DecodeControlCursor(cp.Cursor)
+		rows, err := h.service.ListControlsCursor(c.Request().Context(), orgID(c), frameworkID, cursorControlID, cursorID, cp.Limit)
+		if err != nil {
+			log.Error().Err(err).Str("framework_id", frameworkID).Msg("list controls cursor")
+			return errResp(c, http.StatusInternalServerError, "failed to list controls", "CK_LIST_CONTROLS_FAILED")
+		}
+		resp := pagination.WrapCursor(rows, cp, func(ctrl Control) string {
+			return pagination.EncodeControlCursor(ctrl.ControlID, ctrl.ID)
+		})
+		return c.JSON(http.StatusOK, resp)
+	}
+	c.Response().Header().Set("Deprecation", "true")
+	c.Response().Header().Set("Sunset", "2027-01-01")
 	offset, limit, meta := pagination.FromRequest(c)
 	controls, total, err := h.service.ListControlsPaged(c.Request().Context(), orgID(c), frameworkID, offset, limit)
 	if err != nil {
@@ -174,7 +192,7 @@ func (h *Handler) DeleteFrameworkMapping(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "mapping id is required", "CK_BAD_REQUEST")
 	}
 	if err := h.service.DeleteFrameworkMapping(c.Request().Context(), orgID(c), mappingID); err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "mapping not found", "CK_MAPPING_NOT_FOUND")
 		}
 		log.Error().Err(err).Str("mapping_id", mappingID).Msg("delete framework mapping")
@@ -322,7 +340,7 @@ func (h *Handler) ExportTISAXReportPDF(c echo.Context) error {
 		c.Request().Context(), orgID(c), frameworkID, protectionLevel, assessmentLevel,
 	)
 	if err != nil {
-		if strings.Contains(err.Error(), "invalid protection_level") || strings.Contains(err.Error(), "invalid assessment_level") {
+		if errors.Is(err, ErrInvalidProtection) || errors.Is(err, ErrInvalidAssessment) {
 			return errResp(c, http.StatusBadRequest, err.Error(), "CK_TISAX_PDF_BAD_PARAMS")
 		}
 		log.Error().Err(err).Str("framework_id", frameworkID).Msg("export tisax report pdf")

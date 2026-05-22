@@ -14,7 +14,7 @@ import (
 	"github.com/matharnica/vakt/internal/shared/dashboard"
 	"github.com/matharnica/vakt/internal/shared/notify"
 	"github.com/matharnica/vakt/internal/shared/safego"
-	"github.com/matharnica/vakt/internal/shared/webhooks"
+	"github.com/matharnica/vakt/internal/shared/platform/webhooks"
 )
 
 // ErrDORANotEnabled is returned when DORA framework is not enabled for the organisation.

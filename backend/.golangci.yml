@@ -42,6 +42,8 @@ linters:
           msg: "use `any` (Go 1.18+) instead of `interface{}`"
         - pattern: '^\s*go\s+func\s*\('
           msg: "raw `go func()` is forbidden — use safego.Run(ctx, name, fn) per ADR-0018"
+        - pattern: 'strings\.Contains\(.*\.Error\(\)'
+          msg: "use errors.Is/errors.As with sentinel errors instead of string matching on err.Error()"
       analyze-types: false
 
     staticcheck:

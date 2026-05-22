@@ -260,25 +260,61 @@ func scanFromVbScans(r db.VbScans) Scan {
 // query. The Row-types diverge in column order (ADR-0013), so we centralise
 // the mapping here.
 type assetFields struct {
-	ID, OrgID, Name, Type, Criticality string
-	Tags                               []string
-	OwnerID                            pgtype.UUID
-	ExternalUrl                        pgtype.Text
-	CreatedAt, UpdatedAt               pgtype.Timestamptz
+	ID, OrgID, Name, Type, Criticality, Environment string
+	Tags                                             []string
+	OwnerID                                          pgtype.UUID
+	ExternalUrl                                      pgtype.Text
+	CreatedAt, UpdatedAt                             pgtype.Timestamptz
 }
 
 func assetFromFields(f assetFields) Asset {
+	env := f.Environment
+	if env == "" {
+		env = "prod"
+	}
 	return Asset{
 		ID:          f.ID,
 		OrgID:       f.OrgID,
 		Name:        f.Name,
 		Type:        f.Type,
 		Criticality: f.Criticality,
+		Environment: env,
 		Tags:        f.Tags,
 		OwnerID:     spUUIDPtr(f.OwnerID),
 		ExternalURL: spTextPtr(f.ExternalUrl),
 		CreatedAt:   spTsToTime(f.CreatedAt),
 		UpdatedAt:   spTsToTime(f.UpdatedAt),
+	}
+}
+
+// enrichEnvironments fetches the environment column for a slice of assets via a
+// single IN-query and patches the slice in place. Called after every sqlc-based
+// asset read because the environment column was added after sqlc generation.
+func (r *Repository) enrichEnvironments(ctx context.Context, assets []Asset) {
+	if len(assets) == 0 {
+		return
+	}
+	ids := make([]string, len(assets))
+	for i, a := range assets {
+		ids[i] = a.ID
+	}
+	rows, err := r.db.Query(ctx,
+		`SELECT id, environment FROM vb_assets WHERE id = ANY($1)`, ids)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	envMap := make(map[string]string, len(assets))
+	for rows.Next() {
+		var id, env string
+		if rows.Scan(&id, &env) == nil {
+			envMap[id] = env
+		}
+	}
+	for i := range assets {
+		if env, ok := envMap[assets[i].ID]; ok {
+			assets[i].Environment = env
+		}
 	}
 }
 
@@ -300,9 +336,17 @@ func (r *Repository) CreateAsset(ctx context.Context, orgID string, input Create
 	if err != nil {
 		return nil, fmt.Errorf("insert asset: %w", err)
 	}
+	env := input.Environment
+	if env == "" {
+		env = "prod"
+	}
+	if _, execErr := r.db.Exec(ctx,
+		`UPDATE vb_assets SET environment=$1 WHERE id=$2`, env, row.ID); execErr != nil {
+		log.Warn().Err(execErr).Str("asset_id", row.ID).Msg("could not set environment on new asset")
+	}
 	a := assetFromFields(assetFields{
 		ID: row.ID, OrgID: row.OrgID, Name: row.Name, Type: row.Type,
-		Criticality: row.Criticality, Tags: row.Tags,
+		Criticality: row.Criticality, Environment: env, Tags: row.Tags,
 		OwnerID: row.OwnerID, ExternalUrl: row.ExternalUrl,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	})
@@ -342,6 +386,7 @@ func (r *Repository) ListAssets(ctx context.Context, orgID string, page, limit i
 			CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		}))
 	}
+	r.enrichEnvironments(ctx, out)
 	return out, int(total), nil
 }
 
@@ -354,13 +399,14 @@ func (r *Repository) GetAsset(ctx context.Context, orgID, assetID string) (*Asse
 		}
 		return nil, fmt.Errorf("get asset: %w", err)
 	}
-	a := assetFromFields(assetFields{
+	tmp := []Asset{assetFromFields(assetFields{
 		ID: row.ID, OrgID: row.OrgID, Name: row.Name, Type: row.Type,
 		Criticality: row.Criticality, Tags: row.Tags,
 		OwnerID: row.OwnerID, ExternalUrl: row.ExternalUrl,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
-	})
-	return &a, nil
+	})}
+	r.enrichEnvironments(ctx, tmp)
+	return &tmp[0], nil
 }
 
 // GetAssetByName fetches the first non-deleted asset matching name (case-insensitive) within the org.
@@ -373,13 +419,14 @@ func (r *Repository) GetAssetByName(ctx context.Context, orgID, name string) (*A
 		}
 		return nil, fmt.Errorf("get asset by name: %w", err)
 	}
-	a := assetFromFields(assetFields{
+	tmp := []Asset{assetFromFields(assetFields{
 		ID: row.ID, OrgID: row.OrgID, Name: row.Name, Type: row.Type,
 		Criticality: row.Criticality, Tags: row.Tags,
 		OwnerID: row.OwnerID, ExternalUrl: row.ExternalUrl,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
-	})
-	return &a, nil
+	})}
+	r.enrichEnvironments(ctx, tmp)
+	return &tmp[0], nil
 }
 
 // ResolveAssetRef resolves an asset reference (UUID or name) to an asset ID.
@@ -449,9 +496,18 @@ func (r *Repository) UpdateAsset(ctx context.Context, orgID, assetID string, inp
 	if err != nil {
 		return nil, fmt.Errorf("update asset: %w", err)
 	}
+	newEnv := cur.Environment
+	if input.Environment != nil {
+		newEnv = *input.Environment
+		if _, execErr := r.db.Exec(ctx,
+			`UPDATE vb_assets SET environment=$1 WHERE id=$2 AND org_id=$3`,
+			newEnv, assetID, orgID); execErr != nil {
+			log.Warn().Err(execErr).Str("asset_id", assetID).Msg("could not update environment")
+		}
+	}
 	a := assetFromFields(assetFields{
 		ID: row.ID, OrgID: row.OrgID, Name: row.Name, Type: row.Type,
-		Criticality: row.Criticality, Tags: row.Tags,
+		Criticality: row.Criticality, Environment: newEnv, Tags: row.Tags,
 		OwnerID: row.OwnerID, ExternalUrl: row.ExternalUrl,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	})
@@ -1467,4 +1523,159 @@ func (r *Repository) batchUpdateComponentEOL(ctx context.Context, results []eolR
 		Statuses: statuses,
 		Dates:    dates,
 	})
+}
+
+// ListFindingsCursor returns findings using keyset pagination.
+// Fetch limit+1 rows so callers can detect HasMore; the caller strips the extra row.
+func (r *Repository) ListFindingsCursor(ctx context.Context, orgID string, filter FindingFilter, cursorID string, cursorTS time.Time, limit int) ([]Finding, error) {
+	const baseQuery = `
+		SELECT id, org_id, asset_id, scan_id, cve_id,
+		       title, description, severity,
+		       cvss_score, epss_score, epss_percentile, risk_score,
+		       status, scanner, raw_id, sources, template_id,
+		       assigned_to, justification,
+		       reopen_count, occurrence_count,
+		       last_seen_at, sla_due_at, created_at, updated_at
+		FROM vb_findings
+		WHERE org_id = $1`
+
+	args := []any{orgID}
+	q := baseQuery
+	n := 2
+
+	if filter.Severity != "" {
+		args = append(args, filter.Severity)
+		q += fmt.Sprintf(" AND severity = $%d", n)
+		n++
+	}
+	if filter.Status != "" {
+		args = append(args, filter.Status)
+		q += fmt.Sprintf(" AND status = $%d", n)
+		n++
+	}
+	if !cursorTS.IsZero() && cursorID != "" {
+		args = append(args, cursorTS, cursorID)
+		q += fmt.Sprintf(" AND (created_at < $%d OR (created_at = $%d AND id::text < $%d))", n, n, n+1)
+		n += 2
+	}
+	args = append(args, int32(limit+1))
+	q += fmt.Sprintf(" ORDER BY created_at DESC, id DESC LIMIT $%d", n)
+
+	rows, err := r.db.Query(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list findings cursor: %w", err)
+	}
+	defer rows.Close()
+
+	var out []Finding
+	for rows.Next() {
+		var f vbFindingRow
+		if err := rows.Scan(
+			&f.ID, &f.OrgID, &f.AssetID, &f.ScanID, &f.CVEID,
+			&f.Title, &f.Description, &f.Severity,
+			&f.CVSSScore, &f.EPSSScore, &f.EPSSPercentile, &f.RiskScore,
+			&f.Status, &f.Scanner, &f.RawID, &f.Sources, &f.TemplateID,
+			&f.AssignedTo, &f.Justification,
+			&f.ReopenCount, &f.OccurrenceCount,
+			&f.LastSeenAt, &f.SLADueAt, &f.CreatedAt, &f.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan finding cursor row: %w", err)
+		}
+		out = append(out, findingFromRow(f))
+	}
+	return out, rows.Err()
+}
+
+// vbFindingRow is a scan target for raw vb_findings queries.
+type vbFindingRow struct {
+	ID              pgtype.UUID
+	OrgID           string
+	AssetID         pgtype.UUID
+	ScanID          pgtype.UUID
+	CVEID           pgtype.Text
+	Title           string
+	Description     pgtype.Text
+	Severity        string
+	CVSSScore       pgtype.Float8
+	EPSSScore       pgtype.Float8
+	EPSSPercentile  pgtype.Float8
+	RiskScore       pgtype.Float8
+	Status          string
+	Scanner         string
+	RawID           pgtype.Text
+	Sources         []string
+	TemplateID      pgtype.Text
+	AssignedTo      pgtype.UUID
+	Justification   pgtype.Text
+	ReopenCount     int32
+	OccurrenceCount int32
+	LastSeenAt      pgtype.Timestamptz
+	SLADueAt        pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+}
+
+func findingFromRow(r vbFindingRow) Finding {
+	f := Finding{
+		ID:              r.ID.String(),
+		OrgID:           r.OrgID,
+		AssetID:         r.AssetID.String(),
+		Severity:        r.Severity,
+		Status:          r.Status,
+		Scanner:         r.Scanner,
+		Title:           r.Title,
+		ReopenCount:     int(r.ReopenCount),
+		OccurrenceCount: int(r.OccurrenceCount),
+		CreatedAt:       spTsToTime(r.CreatedAt),
+		UpdatedAt:       spTsToTime(r.UpdatedAt),
+		LastSeenAt:      spTsToTime(r.LastSeenAt),
+	}
+	if r.Description.Valid {
+		f.Description = r.Description.String
+	}
+	if r.CVEID.Valid {
+		s := r.CVEID.String
+		f.CVEID = &s
+	}
+	if r.ScanID.Valid {
+		s := r.ScanID.String()
+		f.ScanID = &s
+	}
+	if r.CVSSScore.Valid {
+		v := r.CVSSScore.Float64
+		f.CVSSScore = &v
+	}
+	if r.EPSSScore.Valid {
+		v := r.EPSSScore.Float64
+		f.EPSSScore = &v
+	}
+	if r.EPSSPercentile.Valid {
+		v := r.EPSSPercentile.Float64
+		f.EPSSPercentile = &v
+	}
+	if r.RiskScore.Valid {
+		v := r.RiskScore.Float64
+		f.RiskScore = &v
+	}
+	if r.RawID.Valid {
+		f.RawID = r.RawID.String
+	}
+	if r.Sources != nil {
+		f.Sources = r.Sources
+	}
+	if r.TemplateID.Valid {
+		f.TemplateID = r.TemplateID.String
+	}
+	if r.AssignedTo.Valid {
+		s := r.AssignedTo.String()
+		f.AssignedTo = &s
+	}
+	if r.Justification.Valid {
+		f.Justification = r.Justification.String
+	}
+	if r.SLADueAt.Valid {
+		t := r.SLADueAt.Time
+		f.SLADueAt = &t
+	}
+	return f
 }

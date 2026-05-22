@@ -21,7 +21,7 @@ const (
 	CkCheckTypeCustomScript      CkCheckType = "custom_script"
 )
 
-func (e *CkCheckType) Scan(src interface{}) error {
+func (e *CkCheckType) Scan(src any) error {
 	switch s := src.(type) {
 	case []byte:
 		*e = CkCheckType(s)
@@ -39,7 +39,7 @@ type NullCkCheckType struct {
 }
 
 // Scan implements the Scanner interface.
-func (ns *NullCkCheckType) Scan(value interface{}) error {
+func (ns *NullCkCheckType) Scan(value any) error {
 	if value == nil {
 		ns.CkCheckType, ns.Valid = "", false
 		return nil

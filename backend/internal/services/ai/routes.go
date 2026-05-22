@@ -55,6 +55,8 @@ func RegisterWithOptions(g *echo.Group, db *pgxpool.Pool, provider, baseURL, api
 	}
 	h := NewHandler(svc)
 	g.GET("/ai/status", h.Status)
+	// S32-3: Ollama model list for org settings model dropdown.
+	g.GET("/ai/models", h.ListOllamaModels)
 	g.POST("/ai/report", h.GenerateReport)
 	g.POST("/ai/advice", h.ComplianceAdvice)
 	// AI Copilot — Policy-Drafting + Incident-Response-Guide (Sprint 12)
@@ -63,7 +65,11 @@ func RegisterWithOptions(g *echo.Group, db *pgxpool.Pool, provider, baseURL, api
 	// Sprint 15 / S15-5: SSE-Streaming-Endpoint fuer AI-Advisor + Documentation.
 	g.POST("/ai/chat/stream", h.ChatStream)
 	// Sprint 18 / S18-3: Agent-Run-Endpoint (Plan/Execute/Reflect, SSE).
-	runner := NewAgentRunner(svc.client, svc.model, db, svc.usage, DefaultAgentTools(db))
-	agentH := NewAgentHandler(svc.client, svc.model, runner)
+	// S32-2: runMgr für Write-Tool-Approval-Flow (ApproveCard im Frontend).
+	runMgr := &AgentRunManager{}
+	runner := NewAgentRunnerWithManager(svc.client, svc.model, db, svc.usage, DefaultAgentTools(db), runMgr)
+	agentH := NewAgentHandler(svc.client, svc.model, runner, runMgr, db)
 	g.POST("/ai/agent/run", agentH.AgentRun)
+	g.POST("/ai/agent/runs/:run_id/approve", agentH.ApproveRun)
+	g.POST("/ai/agent/runs/:run_id/reject", agentH.RejectRun)
 }

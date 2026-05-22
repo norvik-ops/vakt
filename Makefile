@@ -1,4 +1,4 @@
-.PHONY: dev api-local frontend-local stop stop-local test lint build migrate seed seed-local backup public-mirror
+.PHONY: dev api-local frontend-local stop stop-local test lint build migrate seed seed-local backup public-mirror rotate-key
 
 # ── Docker-based dev (requires Docker) ─────────────────────────────────────
 dev:
@@ -17,9 +17,9 @@ stop:
 # First-time setup: sudo pacman -S postgresql redis
 #   sudo -u postgres initdb -D /var/lib/postgres/data
 #   sudo systemctl start postgresql redis
-#   sudo -u postgres psql -c "CREATE USER sechealth WITH PASSWORD 'sechealth';;"
-#   sudo -u postgres psql -c "CREATE DATABASE sechealth OWNER sechealth;"
-LOCAL_DB  := postgres://sechealth:sechealth@localhost:5432/sechealth?sslmode=disable
+#   sudo -u postgres psql -c "CREATE USER vakt WITH PASSWORD 'vakt';;"
+#   sudo -u postgres psql -c "CREATE DATABASE vakt OWNER vakt;"
+LOCAL_DB  := postgres://vakt:vakt@localhost:5432/vakt?sslmode=disable
 LOCAL_ENV := VAKT_DB_URL="$(LOCAL_DB)" \
              VAKT_REDIS_URL="redis://localhost:6379" \
              VAKT_SECRET_KEY="d7463ee089bc65fac0efe91ee13b88413e256de2151228eeebee4787e5d276f7" \
@@ -62,6 +62,9 @@ migrate:
 
 seed:
 	cd backend && go run ./cmd/seed
+
+rotate-key: ## Rotate the master encryption key: make rotate-key [NEW_KEY=<hex>]
+	@bash scripts/rotate-key.sh
 
 backup: ## Create a timestamped backup archive (PostgreSQL dump + encrypted key)
 	@bash scripts/backup.sh .

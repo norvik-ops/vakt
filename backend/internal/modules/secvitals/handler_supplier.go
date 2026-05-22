@@ -163,7 +163,7 @@ func (h *Handler) LinkSupplierRisk(c echo.Context) error {
 	}
 	if err := h.service.LinkSupplierRisk(c.Request().Context(), orgID(c), supplierID, body.RiskID); err != nil {
 		log.Error().Err(err).Str("supplier_id", supplierID).Str("risk_id", body.RiskID).Msg("link supplier risk")
-		if strings.Contains(err.Error(), "not found") {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, err.Error(), "CK_NOT_FOUND")
 		}
 		return errResp(c, http.StatusInternalServerError, "failed to link risk", "CK_LINK_SUPPLIER_RISK_FAILED")
@@ -183,7 +183,7 @@ func (h *Handler) UnlinkSupplierRisk(c echo.Context) error {
 	}
 	if err := h.service.UnlinkSupplierRisk(c.Request().Context(), orgID(c), supplierID, riskID); err != nil {
 		log.Error().Err(err).Str("supplier_id", supplierID).Str("risk_id", riskID).Msg("unlink supplier risk")
-		if strings.Contains(err.Error(), "not found") {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, err.Error(), "CK_NOT_FOUND")
 		}
 		return errResp(c, http.StatusInternalServerError, "failed to unlink risk", "CK_UNLINK_SUPPLIER_RISK_FAILED")
@@ -200,7 +200,7 @@ func (h *Handler) ListSupplierRisks(c echo.Context) error {
 	risks, err := h.service.ListSupplierRisks(c.Request().Context(), orgID(c), supplierID)
 	if err != nil {
 		log.Error().Err(err).Str("supplier_id", supplierID).Msg("list supplier risks")
-		if strings.Contains(err.Error(), "not found") {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, err.Error(), "CK_NOT_FOUND")
 		}
 		return errResp(c, http.StatusInternalServerError, "failed to list supplier risks", "CK_LIST_SUPPLIER_RISKS_FAILED")
@@ -283,7 +283,7 @@ func (h *Handler) UpdateQuestionnaire(c echo.Context) error {
 	}
 	q, err := h.service.UpdateQuestionnaire(c.Request().Context(), orgID(c), id, in)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "questionnaire not found", "CK_QUESTIONNAIRE_NOT_FOUND")
 		}
 		log.Error().Err(err).Str("id", id).Msg("update questionnaire")
@@ -325,7 +325,7 @@ func (h *Handler) AddQuestion(c echo.Context) error {
 	}
 	q, err := h.service.AddQuestion(c.Request().Context(), orgID(c), id, in)
 	if err != nil {
-		if strings.Contains(err.Error(), "multiple_choice question requires non-empty options") {
+		if errors.Is(err, ErrInvalidOptions) {
 			return errResp(c, http.StatusUnprocessableEntity, err.Error(), "CK_VALIDATION_ERROR")
 		}
 		log.Error().Err(err).Str("questionnaire_id", id).Msg("add question")
@@ -358,7 +358,7 @@ func (h *Handler) UpdateQuestion(c echo.Context) error {
 	}
 	q, err := h.service.UpdateQuestion(c.Request().Context(), orgID(c), id, qid, in)
 	if err != nil {
-		if strings.Contains(err.Error(), "multiple_choice question requires non-empty options") {
+		if errors.Is(err, ErrInvalidOptions) {
 			return errResp(c, http.StatusUnprocessableEntity, err.Error(), "CK_VALIDATION_ERROR")
 		}
 		log.Error().Err(err).Str("questionnaire_id", id).Str("question_id", qid).Msg("update question")
@@ -633,7 +633,7 @@ func (h *Handler) ReviewAnswer(c echo.Context) error {
 	}
 	evidenceID, err := h.service.ReviewAnswer(c.Request().Context(), orgID, assessmentID, answerID, in)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "answer not found", "CK_NOT_FOUND")
 		}
 		return errResp(c, http.StatusBadRequest, err.Error(), "CK_VALIDATION_ERROR")
@@ -654,7 +654,7 @@ func (h *Handler) GetSupplierStatus(c echo.Context) error {
 	}
 	status, err := h.service.ComputeSupplierStatus(c.Request().Context(), orgID, supplierID)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "supplier not found", "CK_NOT_FOUND")
 		}
 		return errResp(c, http.StatusInternalServerError, "failed to compute status", "CK_INTERNAL")
@@ -677,7 +677,7 @@ func (h *Handler) UpdateAssessment(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "Ungültige Eingabe", "VALIDATION_ERROR")
 	}
 	if err := h.service.MarkAssessmentReviewed(c.Request().Context(), orgID, assessmentID); err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "assessment not found or not in submitted state", "CK_NOT_FOUND")
 		}
 		return errResp(c, http.StatusInternalServerError, "failed to update assessment", "CK_INTERNAL")
@@ -720,7 +720,7 @@ func (h *Handler) GetAssessmentReportPDF(c echo.Context) error {
 	}
 	pdf, err := h.service.GenerateAssessmentReportPDF(c.Request().Context(), orgID, assessmentID)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "assessment not found", "CK_NOT_FOUND")
 		}
 		return errResp(c, http.StatusInternalServerError, "failed to generate PDF", "CK_INTERNAL")

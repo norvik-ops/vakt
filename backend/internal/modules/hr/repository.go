@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -419,4 +420,51 @@ func (r *Repository) DisableUser(ctx context.Context, orgID, email string) error
 // matching the given email within the org.
 func (r *Repository) RevokeUserAPIKeys(ctx context.Context, orgID, email string) error {
 	return r.q.HRRevokeUserAPIKeys(ctx, db.HRRevokeUserAPIKeysParams{OrgID: orgID, Email: email})
+}
+
+// ListEmployeesCursor returns employees for orgID using keyset pagination on (created_at DESC, id DESC).
+func (r *Repository) ListEmployeesCursor(ctx context.Context, orgID string, cursorID string, cursorTS time.Time, limit int) ([]Employee, error) {
+	args := []any{orgID}
+	q := `SELECT id, org_id, first_name, last_name, email, department, role,
+	             start_date, end_date, status, notes, created_at, updated_at
+	      FROM hr_employees
+	      WHERE org_id = $1`
+	if !cursorTS.IsZero() {
+		q += ` AND (created_at < $2 OR (created_at = $2 AND id::text < $3))`
+		args = append(args, cursorTS, cursorID)
+	}
+	q += ` ORDER BY created_at DESC, id DESC LIMIT $` + strconv.Itoa(len(args)+1)
+	args = append(args, limit+1)
+	rows, err := r.db.Query(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list employees cursor: %w", err)
+	}
+	defer rows.Close()
+	var out []Employee
+	for rows.Next() {
+		var id, orgID, firstName, lastName, email, status string
+		var department, role, notes pgtype.Text
+		var startDate, endDate pgtype.Date
+		var createdAt, updatedAt pgtype.Timestamptz
+		if err := rows.Scan(&id, &orgID, &firstName, &lastName, &email, &department, &role,
+			&startDate, &endDate, &status, &notes, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan employee cursor row: %w", err)
+		}
+		out = append(out, Employee{
+			ID:         id,
+			OrgID:      orgID,
+			FirstName:  firstName,
+			LastName:   lastName,
+			Email:      email,
+			Department: textToString(department),
+			Role:       textToString(role),
+			StartDate:  dateToString(startDate),
+			EndDate:    dateToString(endDate),
+			Status:     status,
+			Notes:      textToString(notes),
+			CreatedAt:  tsToTime(createdAt),
+			UpdatedAt:  tsToTime(updatedAt),
+		})
+	}
+	return out, rows.Err()
 }

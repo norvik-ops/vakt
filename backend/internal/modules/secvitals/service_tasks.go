@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 )
@@ -336,4 +337,14 @@ func (s *Service) ListPoliciesPaged(ctx context.Context, orgID string, offset, l
 // ListCAPAsPaged returns a page of CAPAs plus the total count.
 func (s *Service) ListCAPAsPaged(ctx context.Context, orgID, statusFilter string, offset, limit int) ([]CAPA, int, error) {
 	return s.repo.ListCAPAsPaged(ctx, orgID, statusFilter, offset, limit)
+}
+
+// ListRisksCursor returns risks using keyset pagination.
+func (s *Service) ListRisksCursor(ctx context.Context, orgID string, cursorID string, cursorTS time.Time, limit int) ([]Risk, error) {
+	return s.repo.ListRisksCursor(ctx, orgID, cursorID, cursorTS, limit)
+}
+
+// ListControlsCursor returns controls using keyset pagination.
+func (s *Service) ListControlsCursor(ctx context.Context, orgID, frameworkID string, cursorControlID, cursorID string, limit int) ([]Control, error) {
+	return s.repo.ListControlsCursor(ctx, orgID, frameworkID, cursorControlID, cursorID, limit)
 }

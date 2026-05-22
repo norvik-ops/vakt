@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -15,9 +16,7 @@ import (
 //   - list_stale_evidence: lädt SecVitals-Evidence, die in <30 Tagen abläuft
 //   - list_controls_without_evidence: SecVitals-Controls ohne aktiven Evidence-Eintrag
 //
-// Alle drei sind Read-Only-Tools — kein mutierender Tool-Call ohne explizite
-// Human-in-the-Loop-Approval (siehe geplante S18-4 ApproveBeforeApply-Pattern
-// im Frontend AgentRunPanel).
+// S32-2: add_control_note als erstes Write-Tool — erfordert ApproveCard-Freigabe.
 
 // listOpenFindingsTool: SecPulse-Findings mit status='open'. Read-Only.
 type listOpenFindingsTool struct {
@@ -32,6 +31,7 @@ func (t *listOpenFindingsTool) ArgumentsSchema() json.RawMessage {
 	return json.RawMessage(`{"type":"object","properties":{"severity":{"type":"string","enum":["critical","high","medium","low"]}}}`)
 }
 func (t *listOpenFindingsTool) RequireScope() string { return "secpulse.findings.read" }
+func (t *listOpenFindingsTool) IsWriteTool() bool    { return false }
 func (t *listOpenFindingsTool) Execute(ctx context.Context, orgID string, _ json.RawMessage) (json.RawMessage, error) {
 	rows, err := t.db.Query(ctx, `
 		SELECT id::text, title, severity, created_at
@@ -52,9 +52,9 @@ func (t *listOpenFindingsTool) Execute(ctx context.Context, orgID string, _ json
 	var out []row
 	for rows.Next() {
 		var r row
-		var ts interface{}
+		var ts pgtype.Timestamptz
 		if err := rows.Scan(&r.ID, &r.Title, &r.Severity, &ts); err == nil {
-			r.CreatedAt = fmt.Sprintf("%v", ts)
+			r.CreatedAt = ts.Time.UTC().Format("2006-01-02T15:04:05Z")
 			out = append(out, r)
 		}
 	}
@@ -75,6 +75,7 @@ func (t *listStaleEvidenceTool) ArgumentsSchema() json.RawMessage {
 	return json.RawMessage(`{"type":"object","properties":{}}`)
 }
 func (t *listStaleEvidenceTool) RequireScope() string { return "secvitals.evidence.read" }
+func (t *listStaleEvidenceTool) IsWriteTool() bool    { return false }
 func (t *listStaleEvidenceTool) Execute(ctx context.Context, orgID string, _ json.RawMessage) (json.RawMessage, error) {
 	rows, err := t.db.Query(ctx, `
 		SELECT e.id::text, e.title, e.expires_at
@@ -97,9 +98,9 @@ func (t *listStaleEvidenceTool) Execute(ctx context.Context, orgID string, _ jso
 	var out []row
 	for rows.Next() {
 		var r row
-		var ts interface{}
+		var ts pgtype.Timestamptz
 		if err := rows.Scan(&r.ID, &r.Title, &ts); err == nil {
-			r.ExpiresAt = fmt.Sprintf("%v", ts)
+			r.ExpiresAt = ts.Time.UTC().Format("2006-01-02T15:04:05Z")
 			out = append(out, r)
 		}
 	}
@@ -124,6 +125,7 @@ func (t *listControlsWithoutEvidenceTool) ArgumentsSchema() json.RawMessage {
 func (t *listControlsWithoutEvidenceTool) RequireScope() string {
 	return "secvitals.controls.read"
 }
+func (t *listControlsWithoutEvidenceTool) IsWriteTool() bool { return false }
 func (t *listControlsWithoutEvidenceTool) Execute(ctx context.Context, orgID string, _ json.RawMessage) (json.RawMessage, error) {
 	rows, err := t.db.Query(ctx, `
 		SELECT c.id::text, c.control_id, c.title
@@ -154,6 +156,39 @@ func (t *listControlsWithoutEvidenceTool) Execute(ctx context.Context, orgID str
 	return body, nil
 }
 
+// addControlNoteTool: writes a note to a SecVitals control. Write-Tool — requires approval.
+type addControlNoteTool struct {
+	db *pgxpool.Pool
+}
+
+func (t *addControlNoteTool) Name() string { return "add_control_note" }
+func (t *addControlNoteTool) Description() string {
+	return "Fügt eine Agent-Notiz zu einem Vakt-Comply-Control hinzu. Erfordert Benutzer-Freigabe (Write-Tool)."
+}
+func (t *addControlNoteTool) ArgumentsSchema() json.RawMessage {
+	return json.RawMessage(`{"type":"object","required":["control_id","note"],"properties":{"control_id":{"type":"string"},"note":{"type":"string"}}}`)
+}
+func (t *addControlNoteTool) RequireScope() string { return "secvitals.controls.write" }
+func (t *addControlNoteTool) IsWriteTool() bool    { return true }
+func (t *addControlNoteTool) Execute(ctx context.Context, orgID string, args json.RawMessage) (json.RawMessage, error) {
+	var a struct {
+		ControlID string `json:"control_id"`
+		Note      string `json:"note"`
+	}
+	if err := json.Unmarshal(args, &a); err != nil || a.ControlID == "" || a.Note == "" {
+		return nil, fmt.Errorf("control_id and note required")
+	}
+	_, err := t.db.Exec(ctx, `
+		UPDATE ck_controls SET notes = COALESCE(notes, '') || $1
+		WHERE id::text = $2 AND org_id = $3::uuid`,
+		"\n[Agent] "+a.Note, a.ControlID, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("update control note: %w", err)
+	}
+	result, _ := json.Marshal(map[string]string{"status": "ok", "control_id": a.ControlID})
+	return result, nil
+}
+
 // DefaultAgentTools liefert die Tool-Liste, die im Standard-Wiring an den
 // AgentRunner gegeben wird. Wer neue Tools registrieren will, erweitert
 // diese Liste in ai/routes.go.
@@ -162,5 +197,6 @@ func DefaultAgentTools(db *pgxpool.Pool) []AgentTool {
 		&listOpenFindingsTool{db: db},
 		&listStaleEvidenceTool{db: db},
 		&listControlsWithoutEvidenceTool{db: db},
+		&addControlNoteTool{db: db},
 	}
 }

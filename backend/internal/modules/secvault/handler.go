@@ -16,6 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/shared/audit"
+	"github.com/matharnica/vakt/internal/shared/pagination"
 	"github.com/matharnica/vakt/internal/shared/safego"
 )
 
@@ -556,6 +557,21 @@ func (h *Handler) TriggerGitScan(c echo.Context) error {
 // ListGitScans handles GET /secvault/git-scans
 func (h *Handler) ListGitScans(c echo.Context) error {
 	orgID := mustString(c, "org_id")
+	if c.QueryParam("page") == "" {
+		cp := pagination.CursorFromRequest(c)
+		cursorID, cursorTS := pagination.DecodeCursor(cp.Cursor)
+		rows, err := h.service.ListGitScansCursor(c.Request().Context(), orgID, cursorID, cursorTS, cp.Limit)
+		if err != nil {
+			log.Error().Err(err).Msg("ListGitScans cursor failed")
+			return serverError(c, err)
+		}
+		resp := pagination.WrapCursor(rows, cp, func(s GitScan) string {
+			return pagination.EncodeCursor(s.ID, s.CreatedAt)
+		})
+		return c.JSON(http.StatusOK, resp)
+	}
+	c.Response().Header().Set("Deprecation", "true")
+	c.Response().Header().Set("Sunset", "2027-01-01")
 	scans, err := h.service.ListGitScans(c.Request().Context(), orgID)
 	if err != nil {
 		log.Error().Err(err).Msg("ListGitScans failed")

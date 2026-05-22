@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -36,7 +35,7 @@ func (h *Handler) DeleteAISystem(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "invalid AI system ID", "CK_INVALID_ID")
 	}
 	if err := h.service.DeleteAISystem(c.Request().Context(), orgID(c), id); err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "AI system not found", "CK_NOT_FOUND")
 		}
 		return errResp(c, http.StatusInternalServerError, "failed to delete AI system", "CK_INTERNAL")
@@ -96,7 +95,7 @@ func (h *Handler) ClassifyAISystem(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.service.ClassifyAISystem(c.Request().Context(), orgID(c), id, in); err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "AI system not found", "CK_NOT_FOUND")
 		}
 		log.Error().Err(err).Msg("classify ai system")
@@ -142,7 +141,7 @@ func (h *Handler) GetLatestAIDocumentation(c echo.Context) error {
 	id := c.Param("id")
 	doc, err := h.service.GetLatestAIDocumentation(c.Request().Context(), orgID(c), id)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "documentation not found", "CK_NOT_FOUND")
 		}
 		return errResp(c, http.StatusInternalServerError, "failed to get documentation", "CK_GET_AI_DOC_FAILED")
@@ -168,7 +167,7 @@ func (h *Handler) ExportAIDocumentationPDF(c echo.Context) error {
 	id := c.Param("id")
 	pdfBytes, filename, err := h.service.ExportAIDocumentationPDF(c.Request().Context(), orgID(c), id)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "AI system not found", "CK_NOT_FOUND")
 		}
 		log.Error().Err(err).Msg("export ai documentation pdf")
@@ -208,8 +207,9 @@ func (h *Handler) UpdateOrgSector(c echo.Context) error {
 }
 
 // ListAuthorities handles GET /api/v1/secvitals/authorities.
+// S39-4: reads from db/seeds/authorities.yaml (falls back to in-memory directory).
 func (h *Handler) ListAuthorities(c echo.Context) error {
-	all := ListAllAuthorities()
+	all := LoadAuthoritiesFromYAML()
 	return c.JSON(http.StatusOK, all)
 }
 
@@ -286,7 +286,7 @@ func (h *Handler) GetResilienceTest(c echo.Context) error {
 	}
 	t, err := h.service.GetResilienceTest(c.Request().Context(), orgID(c), id)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "no rows") {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "resilience test not found", "CK_RESILIENCE_TEST_NOT_FOUND")
 		}
 		log.Error().Err(err).Str("id", id).Msg("get resilience test")
@@ -307,7 +307,7 @@ func (h *Handler) UpdateResilienceTest(c echo.Context) error {
 	}
 	t, err := h.service.UpdateResilienceTest(c.Request().Context(), orgID(c), id, in)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "no rows") {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "resilience test not found", "CK_RESILIENCE_TEST_NOT_FOUND")
 		}
 		log.Error().Err(err).Msg("update resilience test")
@@ -320,13 +320,40 @@ func (h *Handler) UpdateResilienceTest(c echo.Context) error {
 func (h *Handler) DeleteResilienceTest(c echo.Context) error {
 	id := c.Param("id")
 	if err := h.service.DeleteResilienceTest(c.Request().Context(), orgID(c), id); err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "resilience test not found", "CK_RESILIENCE_TEST_NOT_FOUND")
 		}
 		log.Error().Err(err).Msg("delete resilience test")
 		return errResp(c, http.StatusInternalServerError, "failed to delete resilience test", "CK_DELETE_RESILIENCE_TEST_FAILED")
 	}
 	return c.NoContent(http.StatusNoContent)
+}
+
+// LinkResilienceTestAsEvidence handles POST /api/v1/secvitals/resilience-tests/:id/link-evidence (S40-1).
+// Creates a compliance evidence record on the given DORA control from the test result.
+func (h *Handler) LinkResilienceTestAsEvidence(c echo.Context) error {
+	id := c.Param("id")
+	if _, err := uuid.Parse(id); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid resilience test id", "CK_BAD_REQUEST")
+	}
+	var body struct {
+		ControlID string `json:"control_id" validate:"required"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+	if err := h.validate.Struct(body); err != nil {
+		return errResp(c, http.StatusUnprocessableEntity, "control_id is required", "VALIDATION_ERROR")
+	}
+	ev, err := h.service.LinkResilienceTestAsEvidence(c.Request().Context(), orgID(c), id, body.ControlID, userID(c))
+	if err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "resilience test not found", "CK_NOT_FOUND")
+		}
+		log.Error().Err(err).Msg("link resilience test as evidence")
+		return errResp(c, http.StatusInternalServerError, "failed to link as evidence", "CK_LINK_EVIDENCE_FAILED")
+	}
+	return c.JSON(http.StatusCreated, ev)
 }
 
 // UploadResilienceTestAttachment handles POST /api/v1/secvitals/resilience-tests/:id/attachment.
@@ -407,6 +434,117 @@ func (h *Handler) GetDORAPDF(c echo.Context) error {
 	}
 	c.Response().Header().Set("Content-Disposition", `attachment; filename="dora-bericht.pdf"`)
 	return c.Blob(http.StatusOK, "application/pdf", pdfBytes)
+}
+
+// --- DORA IKT-Drittanbieter-Register (Art. 28-44) ---
+
+// ListDORAThirdParties handles GET /api/v1/secvitals/dora/third-parties.
+func (h *Handler) ListDORAThirdParties(c echo.Context) error {
+	criticality := c.QueryParam("criticality")
+	list, err := h.service.ListDORAThirdParties(c.Request().Context(), orgID(c), criticality)
+	if err != nil {
+		log.Error().Err(err).Msg("list dora third parties")
+		return errResp(c, http.StatusInternalServerError, "failed to list third parties", "CK_LIST_DORA_TP_FAILED")
+	}
+	return c.JSON(http.StatusOK, list)
+}
+
+// GetDORAThirdParty handles GET /api/v1/secvitals/dora/third-parties/:id.
+func (h *Handler) GetDORAThirdParty(c echo.Context) error {
+	id := c.Param("id")
+	tp, err := h.service.GetDORAThirdParty(c.Request().Context(), orgID(c), id)
+	if err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "third party not found", "CK_NOT_FOUND")
+		}
+		return errResp(c, http.StatusInternalServerError, "failed to get third party", "CK_GET_DORA_TP_FAILED")
+	}
+	return c.JSON(http.StatusOK, tp)
+}
+
+// CreateDORAThirdParty handles POST /api/v1/secvitals/dora/third-parties.
+func (h *Handler) CreateDORAThirdParty(c echo.Context) error {
+	var in CreateDORAThirdPartyInput
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+	if err := h.validate.Struct(in); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
+	}
+	tp, err := h.service.CreateDORAThirdParty(c.Request().Context(), orgID(c), userID(c), in)
+	if err != nil {
+		log.Error().Err(err).Msg("create dora third party")
+		return errResp(c, http.StatusInternalServerError, "failed to create third party", "CK_CREATE_DORA_TP_FAILED")
+	}
+	return c.JSON(http.StatusCreated, tp)
+}
+
+// UpdateDORAThirdParty handles PATCH /api/v1/secvitals/dora/third-parties/:id.
+func (h *Handler) UpdateDORAThirdParty(c echo.Context) error {
+	id := c.Param("id")
+	var in UpdateDORAThirdPartyInput
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+	if err := h.validate.Struct(in); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
+	}
+	tp, err := h.service.UpdateDORAThirdParty(c.Request().Context(), orgID(c), id, in)
+	if err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "third party not found", "CK_NOT_FOUND")
+		}
+		log.Error().Err(err).Msg("update dora third party")
+		return errResp(c, http.StatusInternalServerError, "failed to update third party", "CK_UPDATE_DORA_TP_FAILED")
+	}
+	return c.JSON(http.StatusOK, tp)
+}
+
+// DeleteDORAThirdParty handles DELETE /api/v1/secvitals/dora/third-parties/:id.
+func (h *Handler) DeleteDORAThirdParty(c echo.Context) error {
+	id := c.Param("id")
+	if err := h.service.DeleteDORAThirdParty(c.Request().Context(), orgID(c), id); err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "third party not found", "CK_NOT_FOUND")
+		}
+		log.Error().Err(err).Msg("delete dora third party")
+		return errResp(c, http.StatusInternalServerError, "failed to delete third party", "CK_DELETE_DORA_TP_FAILED")
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+// LinkDORAThirdPartyControl handles POST /api/v1/secvitals/dora/third-parties/:id/controls.
+func (h *Handler) LinkDORAThirdPartyControl(c echo.Context) error {
+	id := c.Param("id")
+	var body struct {
+		ControlID string `json:"control_id" validate:"required"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+	if err := h.validate.Struct(body); err != nil {
+		return errResp(c, http.StatusUnprocessableEntity, "control_id is required", "VALIDATION_ERROR")
+	}
+	if err := h.service.LinkDORAThirdPartyControl(c.Request().Context(), orgID(c), id, body.ControlID); err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "third party not found", "CK_NOT_FOUND")
+		}
+		return errResp(c, http.StatusInternalServerError, "failed to link control", "CK_LINK_DORA_TP_CTRL_FAILED")
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+// UnlinkDORAThirdPartyControl handles DELETE /api/v1/secvitals/dora/third-parties/:id/controls/:controlId.
+func (h *Handler) UnlinkDORAThirdPartyControl(c echo.Context) error {
+	id := c.Param("id")
+	controlID := c.Param("controlId")
+	if err := h.service.UnlinkDORAThirdPartyControl(c.Request().Context(), orgID(c), id, controlID); err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "third party not found", "CK_NOT_FOUND")
+		}
+		return errResp(c, http.StatusInternalServerError, "failed to unlink control", "CK_UNLINK_DORA_TP_CTRL_FAILED")
+	}
+	return c.NoContent(http.StatusNoContent)
 }
 
 // GetExecutiveSummaryPDF handles GET /api/v1/secvitals/reports/executive-summary.

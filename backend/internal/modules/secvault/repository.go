@@ -3,6 +3,7 @@ package secvault
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -776,4 +777,45 @@ func mapRotationPolicyRow(row db.SVRotationPolicyRow) *RotationPolicy {
 		p.NextRotationAt = &t
 	}
 	return p
+}
+
+// ListGitScansCursor returns git scans for orgID using keyset pagination on (created_at DESC, id DESC).
+func (r *Repository) ListGitScansCursor(ctx context.Context, orgID string, cursorID string, cursorTS time.Time, limit int) ([]GitScan, error) {
+	args := []any{orgID}
+	q := `SELECT id::text, org_id, repo_url, branch, status,
+	             finding_count, open_count, dismissed_count,
+	             COALESCE(error_message, ''), scanned_at, created_at
+	      FROM so_git_scans
+	      WHERE org_id = $1::uuid`
+	if !cursorTS.IsZero() {
+		q += ` AND (created_at < $2 OR (created_at = $2 AND id::text < $3))`
+		args = append(args, cursorTS, cursorID)
+	}
+	q += ` ORDER BY created_at DESC, id DESC LIMIT $` + strconv.Itoa(len(args)+1)
+	args = append(args, limit+1)
+	rows, err := r.db.Query(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list git scans cursor: %w", err)
+	}
+	defer rows.Close()
+	var out []GitScan
+	for rows.Next() {
+		var gs GitScan
+		var fc, oc, dc int32
+		var scannedAt, createdAt pgtype.Timestamptz
+		if err := rows.Scan(&gs.ID, &gs.OrgID, &gs.RepoURL, &gs.Branch, &gs.Status,
+			&fc, &oc, &dc, &gs.ErrorMessage, &scannedAt, &createdAt); err != nil {
+			return nil, fmt.Errorf("scan git scan cursor row: %w", err)
+		}
+		gs.FindingCount = int(fc)
+		gs.OpenCount = int(oc)
+		gs.DismissedCount = int(dc)
+		if scannedAt.Valid {
+			t := scannedAt.Time
+			gs.ScannedAt = &t
+		}
+		gs.CreatedAt = createdAt.Time
+		out = append(out, gs)
+	}
+	return out, rows.Err()
 }

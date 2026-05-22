@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/shared/audit"
+	"github.com/matharnica/vakt/internal/shared/pagination"
 )
 
 // Handler handles HTTP requests for PhishGuard.
@@ -182,6 +183,21 @@ func (h *Handler) CreateLandingPage(c echo.Context) error {
 
 func (h *Handler) ListCampaigns(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
+	if c.QueryParam("page") == "" {
+		cp := pagination.CursorFromRequest(c)
+		cursorID, cursorTS := pagination.DecodeCursor(cp.Cursor)
+		rows, err := h.service.ListCampaignsCursor(c.Request().Context(), orgID, cursorID, cursorTS, cp.Limit)
+		if err != nil {
+			log.Error().Err(err).Msg("list campaigns cursor")
+			return errJSON(c, http.StatusInternalServerError, "failed to list campaigns", "PG_ERROR")
+		}
+		resp := pagination.WrapCursor(rows, cp, func(cam Campaign) string {
+			return pagination.EncodeCursor(cam.ID, cam.CreatedAt)
+		})
+		return c.JSON(http.StatusOK, resp)
+	}
+	c.Response().Header().Set("Deprecation", "true")
+	c.Response().Header().Set("Sunset", "2027-01-01")
 	items, err := h.service.ListCampaigns(c.Request().Context(), orgID)
 	if err != nil {
 		return errJSON(c, http.StatusInternalServerError, "failed to list campaigns", "PG_ERROR")

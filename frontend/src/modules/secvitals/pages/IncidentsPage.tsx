@@ -26,6 +26,7 @@ import { SkeletonCardGrid } from '../../../shared/components/SkeletonLoaders'
 import { ComplianceTooltip } from '../../../shared/components/ComplianceTooltip'
 import type { SortDir } from '../../../shared/hooks/useSortableTable'
 import { formatLocale } from '../../../shared/utils/locale'
+import { ClassifyReportingWizard } from '../components/ClassifyReportingWizard'
 
 const SEVERITY_NUM: Record<Incident['severity'], number> = { critical: 4, high: 3, medium: 2, low: 1 }
 type SortableIncident = Incident & { severity_order: number }
@@ -147,6 +148,9 @@ export default function IncidentsPage() {
   const [form, setForm] = useState<CreateIncidentInput>(emptyForm())
   const [rawSystems, setRawSystems] = useState('')
   const [page, setPage] = useState(1)
+  // S39-1: after incident creation, show the Meldepflicht classification wizard
+  const [classifyWizardOpen, setClassifyWizardOpen] = useState(false)
+  const [createdIncidentId, setCreatedIncidentId] = useState<string | null>(null)
 
   const { data: incidents, isLoading, isError, pagination } = useIncidents(page)
   const createIncident = useCreateIncident()
@@ -217,9 +221,14 @@ export default function IncidentsPage() {
       affected_systems: rawSystems.split(',').map((s) => s.trim()).filter(Boolean),
     }
     createIncident.mutate(payload, {
-      onSuccess: () => {
+      onSuccess: (incident) => {
         setDialogOpen(false)
         toast('Vorfall gemeldet: Der Vorfall wurde dokumentiert und wird nachverfolgt.', 'success')
+        // S39-1: open Meldepflicht classification wizard for NIS2/general incidents
+        if (incident.incident_type === 'nis2' || incident.incident_type === 'general') {
+          setCreatedIncidentId(incident.id)
+          setClassifyWizardOpen(true)
+        }
       },
       onError: (err) => toast(handleApiError(err), 'error'),
     })
@@ -315,6 +324,18 @@ export default function IncidentsPage() {
           onPageChange={setPage}
         />
       </div>
+
+      {/* S39-1: BSI-Meldepflicht-Klassifizierung — shown after incident creation */}
+      {createdIncidentId && (
+        <ClassifyReportingWizard
+          incidentId={createdIncidentId}
+          open={classifyWizardOpen}
+          onClose={() => {
+            setClassifyWizardOpen(false)
+            setCreatedIncidentId(null)
+          }}
+        />
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">

@@ -3036,7 +3036,7 @@ func (r *Repository) UpdateAssessmentStatus(ctx context.Context, id, status stri
 		return fmt.Errorf("update assessment status: %w", err)
 	}
 	if n == 0 && (status == "submitted" || status == "reviewed") {
-		return fmt.Errorf("assessment already submitted")
+		return ErrAssessmentExpiredOrSubmitted
 	}
 	return nil
 }
@@ -4514,4 +4514,200 @@ func (r *Repository) CountResolvedFindingsSince(ctx context.Context, orgID strin
 		return 0, fmt.Errorf("count resolved findings since: %w", err)
 	}
 	return int(n), nil
+}
+
+// ListRisksCursor returns risks using keyset pagination ordered by (created_at DESC, id DESC).
+// Returns limit+1 rows so the caller can detect HasMore.
+func (r *Repository) ListRisksCursor(ctx context.Context, orgID string, cursorID string, cursorTS time.Time, limit int) ([]Risk, error) {
+	const baseQ = `
+		SELECT id, org_id, title, description, category,
+		       likelihood, impact, risk_score, owner, status, treatment, treatment_notes,
+		       treatment_option, treatment_plan, treatment_owner, treatment_due_date,
+		       treatment_status, residual_likelihood, residual_impact,
+		       created_at, updated_at
+		FROM ck_risks
+		WHERE org_id = $1`
+
+	args := []any{orgID}
+	q := baseQ
+	n := 2
+	if !cursorTS.IsZero() && cursorID != "" {
+		args = append(args, cursorTS, cursorID)
+		q += fmt.Sprintf(" AND (created_at < $%d OR (created_at = $%d AND id::text < $%d))", n, n, n+1)
+		n += 2
+	}
+	args = append(args, int32(limit+1))
+	q += fmt.Sprintf(" ORDER BY created_at DESC, id DESC LIMIT $%d", n)
+
+	rows, err := r.db.Query(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list risks cursor: %w", err)
+	}
+	defer rows.Close()
+
+	var out []Risk
+	for rows.Next() {
+		var f riskFields
+		if err := rows.Scan(
+			&f.ID, &f.OrgID, &f.Title, &f.Description, &f.Category,
+			&f.Likelihood, &f.Impact, &f.RiskScore, &f.Owner, &f.Status, &f.Treatment, &f.TreatmentNotes,
+			&f.TreatmentOption, &f.TreatmentPlan, &f.TreatmentOwner, &f.TreatmentDueDate,
+			&f.TreatmentStatus, &f.ResidualLikelihood, &f.ResidualImpact,
+			&f.CreatedAt, &f.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan risk cursor row: %w", err)
+		}
+		out = append(out, riskFromFields(f))
+	}
+	return out, rows.Err()
+}
+
+// ListControlsCursor returns controls using keyset pagination ordered by (control_id ASC, id ASC).
+// Returns limit+1 rows so the caller can detect HasMore.
+func (r *Repository) ListControlsCursor(ctx context.Context, orgID, frameworkID string, cursorControlID, cursorID string, limit int) ([]Control, error) {
+	const baseQ = `
+		SELECT id, framework_id, org_id, control_id, title, description, domain,
+		       evidence_type, weight,
+		       not_applicable, not_applicable_reason, manual_status, maturity_score, owner,
+		       last_reviewed_at, review_interval_days, next_review_due,
+		       last_reviewed_by, review_note, due_date
+		FROM ck_controls
+		WHERE framework_id = $1 AND org_id = $2`
+
+	args := []any{frameworkID, orgID}
+	q := baseQ
+	n := 3
+	if cursorControlID != "" && cursorID != "" {
+		args = append(args, cursorControlID, cursorID)
+		q += fmt.Sprintf(" AND (control_id > $%d OR (control_id = $%d AND id::text > $%d))", n, n, n+1)
+		n += 2
+	}
+	args = append(args, int32(limit+1))
+	q += fmt.Sprintf(" ORDER BY control_id ASC, id ASC LIMIT $%d", n)
+
+	rows, err := r.db.Query(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list controls cursor: %w", err)
+	}
+	defer rows.Close()
+
+	var out []Control
+	for rows.Next() {
+		var f controlFields
+		if err := rows.Scan(
+			&f.ID, &f.FrameworkID, &f.OrgID, &f.ControlID, &f.Title, &f.Description, &f.Domain,
+			&f.EvidenceType, &f.Weight,
+			&f.NotApplicable, &f.NotApplicableReason, &f.ManualStatus, &f.MaturityScore, &f.Owner,
+			&f.LastReviewedAt, &f.ReviewIntervalDays, &f.NextReviewDue,
+			&f.LastReviewedBy, &f.ReviewNote, &f.DueDate,
+		); err != nil {
+			return nil, fmt.Errorf("scan control cursor row: %w", err)
+		}
+		out = append(out, controlFromFields(f))
+	}
+	return out, rows.Err()
+}
+
+// UpdateIncidentDORADeadlineStatus persists the computed Ampel-Status map to
+// ck_incidents.dora_deadline_status JSONB. S37-4.
+func (r *Repository) UpdateIncidentDORADeadlineStatus(ctx context.Context, incidentID string, status map[string]string) error {
+	b, err := json.Marshal(status)
+	if err != nil {
+		return fmt.Errorf("marshal dora deadline status: %w", err)
+	}
+	_, err = r.db.Exec(ctx,
+		`UPDATE ck_incidents SET dora_deadline_status = $2, updated_at = NOW() WHERE id = $1::uuid`,
+		incidentID, b,
+	)
+	return err
+}
+
+// SaveClassificationResult persists the classify-reporting wizard result to
+// ck_incidents.classification_result JSONB (S39-1, Migration 140).
+func (r *Repository) SaveClassificationResult(ctx context.Context, orgID, incidentID string, result ClassificationResult) error {
+	b, err := json.Marshal(result)
+	if err != nil {
+		return fmt.Errorf("marshal classification result: %w", err)
+	}
+	tag, err := r.db.Exec(ctx,
+		`UPDATE ck_incidents
+		    SET classification_result = $3, updated_at = NOW()
+		  WHERE id = $1::uuid AND org_id = $2::uuid`,
+		incidentID, orgID, b,
+	)
+	if err != nil {
+		return fmt.Errorf("save classification result: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
+}
+
+// ListNIS2ClassifiedIncidents returns all incidents where the classification
+// wizard marked the obligation as "probably" — used by the NIS2 deadline check job (S39-2).
+func (r *Repository) ListNIS2ClassifiedIncidents(ctx context.Context, orgID string) ([]Incident, error) {
+	rows, err := r.db.Query(ctx,
+		`SELECT id::text, org_id::text, title, description, severity, status,
+		        discovered_at, resolved_at, affected_systems, incident_type,
+		        reporting_obligation, notification_authority,
+		        deadline_24h, deadline_72h, deadline_30d,
+		        reported_24h_at, reported_72h_at, reported_30d_at,
+		        notified_warn_24h, notified_warn_72h, notified_warn_30d,
+		        created_at, updated_at
+		   FROM ck_incidents
+		  WHERE org_id = $1::uuid
+		    AND classification_result->>'obligation' = 'probably'
+		    AND status NOT IN ('resolved','closed')`,
+		orgID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list nis2 classified incidents: %w", err)
+	}
+	defer rows.Close()
+
+	var out []Incident
+	for rows.Next() {
+		var inc Incident
+		var desc, severity, status, incType, obligation pgtype.Text
+		var authority pgtype.Text
+		var resolvedAt, d24h, d72h, d30d pgtype.Timestamptz
+		var r24h, r72h, r30d pgtype.Timestamptz
+		var systems []string
+		var warn24h, warn72h, warn30d bool
+		var createdAt, updatedAt pgtype.Timestamptz
+
+		if err := rows.Scan(
+			&inc.ID, &inc.OrgID, &inc.Title, &desc, &severity, &status,
+			&inc.DiscoveredAt, &resolvedAt, &systems, &incType,
+			&obligation, &authority,
+			&d24h, &d72h, &d30d,
+			&r24h, &r72h, &r30d,
+			&warn24h, &warn72h, &warn30d,
+			&createdAt, &updatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan nis2 classified incident: %w", err)
+		}
+		inc.Description = desc.String
+		inc.Severity = severity.String
+		inc.Status = status.String
+		inc.AffectedSystems = systems
+		inc.IncidentType = incType.String
+		inc.ReportingObligation = obligation.String
+		inc.NotificationAuthority = authority.String
+		inc.ResolvedAt = ckTsToTimePtr(resolvedAt)
+		inc.Deadline24h = ckTsToTimePtr(d24h)
+		inc.Deadline72h = ckTsToTimePtr(d72h)
+		inc.Deadline30d = ckTsToTimePtr(d30d)
+		inc.Reported24hAt = ckTsToTimePtr(r24h)
+		inc.Reported72hAt = ckTsToTimePtr(r72h)
+		inc.Reported30dAt = ckTsToTimePtr(r30d)
+		inc.NotifiedWarn24h = warn24h
+		inc.NotifiedWarn72h = warn72h
+		inc.NotifiedWarn30d = warn30d
+		inc.CreatedAt = ckTsToTime(createdAt)
+		inc.UpdatedAt = ckTsToTime(updatedAt)
+		out = append(out, inc)
+	}
+	return out, rows.Err()
 }

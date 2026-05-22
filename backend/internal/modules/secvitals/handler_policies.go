@@ -1,9 +1,9 @@
 package secvitals
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -158,7 +158,7 @@ func (h *Handler) GeneratePolicyDraft(c echo.Context) error {
 	draft, err := h.service.GeneratePolicyDraft(c.Request().Context(), orgID(c), in)
 	if err != nil {
 		log.Error().Err(err).Msg("generate policy draft")
-		if strings.Contains(err.Error(), "nicht konfiguriert") {
+		if errors.Is(err, ErrNotConfigured) {
 			return errResp(c, http.StatusServiceUnavailable, err.Error(), "CK_AI_NOT_CONFIGURED")
 		}
 		return errResp(c, http.StatusInternalServerError, "AI generation failed", "CK_AI_FAILED")

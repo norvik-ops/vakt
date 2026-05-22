@@ -19,7 +19,7 @@ import (
 	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/emaildigest"
-	cloudintegration "github.com/matharnica/vakt/internal/shared/integrations/cloud"
+	cloudintegration "github.com/matharnica/vakt/internal/shared/platform/integrations/cloud"
 	"github.com/matharnica/vakt/internal/shared/notifications"
 	"github.com/matharnica/vakt/internal/shared/retention"
 	"github.com/matharnica/vakt/internal/shared/scheduledreports"

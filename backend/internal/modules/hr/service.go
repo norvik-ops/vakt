@@ -396,3 +396,8 @@ func allRequiredCompleted(items []ChecklistItem, completed []string) bool {
 	}
 	return true
 }
+
+// ListEmployeesCursor returns employees using keyset pagination.
+func (s *Service) ListEmployeesCursor(ctx context.Context, orgID string, cursorID string, cursorTS time.Time, limit int) ([]Employee, error) {
+	return s.repo.ListEmployeesCursor(ctx, orgID, cursorID, cursorTS, limit)
+}

@@ -3723,7 +3723,7 @@ type GetCKScoreHistoryRow struct {
 
 // Aggregiert pro Tag (TO_CHAR auf UTC); MAX statt LAST/FIRST_VALUE weil
 // mehrere Snapshots am gleichen Tag normaler Fall sind. Score wird in
-// float8 gecastet damit sqlc keinen interface{}-Typ generiert.
+// float8 gecastet damit sqlc keinen any-Typ generiert.
 func (q *Queries) GetCKScoreHistory(ctx context.Context, arg GetCKScoreHistoryParams) ([]GetCKScoreHistoryRow, error) {
 	rows, err := q.db.Query(ctx, getCKScoreHistory, arg.OrgID, arg.Days)
 	if err != nil {
