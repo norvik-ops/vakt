@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { formatDate, formatDateTime } from '../../../shared/utils/date'
+import { Spinner } from '../../../components/Spinner'
 import { ArrowLeft, Save, Clock, CheckCircle2, AlertTriangle, FileDown, ShieldAlert } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Breadcrumbs } from '../../../shared/components/Breadcrumbs'
@@ -201,7 +202,7 @@ export default function IncidentDetailPage() {
 
   if (isLoading) return (
     <div className="flex items-center justify-center h-48">
-      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <Spinner size="lg" color="primary" />
     </div>
   )
   if (isError || !incident) return (

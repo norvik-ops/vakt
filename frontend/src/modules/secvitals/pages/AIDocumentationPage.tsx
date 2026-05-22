@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { FileText, Download, History, ChevronLeft } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
 import { Textarea } from '../../../components/ui/textarea'
@@ -159,7 +160,7 @@ export default function AIDocumentationPage() {
 
         {docLoading ? (
           <div className="flex items-center justify-center h-48">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <Spinner size="lg" color="primary" />
           </div>
         ) : (
           <div className="space-y-6 max-w-3xl">

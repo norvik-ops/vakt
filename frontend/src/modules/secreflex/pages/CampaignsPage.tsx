@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Fish, Plus, Workflow, ShieldCheck } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { InfoBanner } from '../../../shared/components/InfoBanner'
 import { Button } from '../../../components/ui/button'
@@ -16,14 +17,9 @@ import { useTemplates } from '../hooks/useTemplates'
 import { useTargetGroups } from '../hooks/useTargetGroups'
 import type { Campaign } from '../types'
 import { ProGate } from '../../../shared/components/ProGate'
+import { campaignStatusVariant } from '../../../lib/statusMapping'
 
-const statusVariant: Record<Campaign['status'], React.ComponentProps<typeof Badge>['variant']> = {
-  draft: 'secondary',
-  scheduled: 'default',
-  running: 'default',
-  completed: 'success',
-  aborted: 'destructive',
-}
+const statusVariant = campaignStatusVariant
 
 export default function CampaignsPage() {
   const navigate = useNavigate()
@@ -95,7 +91,7 @@ export default function CampaignsPage() {
         <ProGate error={campaignsError}>
           {isLoading ? (
             <div className="flex justify-center py-16">
-              <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+              <Spinner size="md" />
             </div>
           ) : !campaigns || campaigns.length === 0 ? (
             <EmptyState

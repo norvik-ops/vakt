@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ClipboardCheck, Plus, ChevronDown, ChevronRight, Pencil, Trash2, Check, X } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Button } from '../../../components/ui/button'
@@ -135,7 +136,7 @@ function ReviewItemsPanel({ campaign }: { campaign: AccessReviewCampaign }) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-20">
-        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <Spinner size="md" color="primary" />
       </div>
     )
   }
@@ -394,7 +395,7 @@ export default function AccessReviewsPage() {
       <div className="flex-1 p-6 space-y-3">
         {isLoading && (
           <div className="flex items-center justify-center h-48">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <Spinner size="lg" color="primary" />
           </div>
         )}
 

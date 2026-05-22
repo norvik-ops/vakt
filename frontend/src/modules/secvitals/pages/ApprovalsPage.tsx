@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CheckCircle2, XCircle, ShieldCheck } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Button } from '../../../components/ui/button'
@@ -152,7 +153,7 @@ export default function ApprovalsPage() {
 
       {isLoading ? (
         <div className="flex justify-center py-12">
-          <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+          <Spinner size="lg" />
         </div>
       ) : approvals.length === 0 ? (
         <EmptyState

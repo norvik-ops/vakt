@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { Spinner } from '../../../components/Spinner'
 import {
   ShieldCheck, ShieldAlert, Siren, BookOpen, ClipboardList,
   ChevronRight, TrendingUp, Shield, FileText, DownloadCloud,
@@ -539,7 +540,7 @@ export default function SecVitalsOverviewPage() {
               >
                 {isGeneratingExec ? (
                   <>
-                    <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <Spinner size="xs" color="current" />
                     Wird erstellt…
                   </>
                 ) : (
@@ -557,7 +558,7 @@ export default function SecVitalsOverviewPage() {
               >
                 {isGeneratingReport ? (
                   <>
-                    <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <Spinner size="xs" color="current" />
                     Wird erstellt…
                   </>
                 ) : (

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { GraduationCap, ChevronDown, ChevronUp, UserPlus, Download } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
@@ -9,6 +10,7 @@ import { Label } from '../../../components/ui/label'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/ui/table'
 import { useTrainingModules, useAssignments, useAssignModule } from '../hooks/useTraining'
 import type { TrainingModule, Assignment } from '../types'
+import { assignmentStatusVariant } from '../../../lib/statusMapping'
 
 async function downloadCertificate(assignmentId: string) {
   const response = await fetch(`/api/v1/secreflex/assignments/${assignmentId}/certificate`, {
@@ -24,11 +26,6 @@ async function downloadCertificate(assignmentId: string) {
   URL.revokeObjectURL(url)
 }
 
-const assignmentStatusVariant: Record<Assignment['status'], React.ComponentProps<typeof Badge>['variant']> = {
-  assigned: 'secondary',
-  completed: 'success',
-  failed: 'destructive',
-}
 
 function ModuleRow({ module }: { module: TrainingModule }) {
   const [expanded, setExpanded] = useState(false)
@@ -77,7 +74,7 @@ function ModuleRow({ module }: { module: TrainingModule }) {
         <div className="border-t border-border p-4">
           {isLoading ? (
             <div className="flex justify-center py-4">
-              <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+              <Spinner size="sm" />
             </div>
           ) : !assignments || assignments.length === 0 ? (
             <p className="text-sm text-secondary text-center py-4">No assignments yet.</p>
@@ -173,7 +170,7 @@ export default function TrainingPage() {
       <div className="flex-1 p-6 space-y-3">
         {isLoading ? (
           <div className="flex justify-center py-16">
-            <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <Spinner size="md" />
           </div>
         ) : !modules || modules.length === 0 ? (
           <EmptyState

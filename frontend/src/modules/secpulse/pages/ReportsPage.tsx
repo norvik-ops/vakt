@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { FileText, TrendingUp, Download } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { useTranslation } from 'react-i18next'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -13,13 +14,9 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import { useRiskTrend, useReports, useCreateReport, useDownloadReport } from '../hooks/useReports'
 import type { Report } from '../types'
 import { ProGate } from '../../../shared/components/ProGate'
+import { jobStatusVariant } from '../../../lib/statusMapping'
 
-const statusVariant: Record<Report['status'], React.ComponentProps<typeof Badge>['variant']> = {
-  pending: 'secondary',
-  processing: 'default',
-  completed: 'success',
-  failed: 'destructive',
-}
+const statusVariant = jobStatusVariant
 
 export default function ReportsPage() {
   const { t } = useTranslation()
@@ -85,7 +82,7 @@ export default function ReportsPage() {
           <CardContent className="p-0">
             {isLoading ? (
               <div className="flex justify-center py-8">
-                <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                <Spinner size="md" />
               </div>
             ) : !reports || reports.length === 0 ? (
               <p className="text-sm text-secondary py-8 text-center">{t('secpulse.reportsPage.noReports')}</p>

@@ -1,31 +1,32 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Spinner } from '../components/Spinner'
 import { Link } from 'react-router-dom'
 import {
   Building2, Layers, Bell, Trash2, Plus, Check, X,
   Webhook, Globe, Mail, Server, MapPin, Download, ShieldCheck, FileText, ExternalLink, Sparkles, Rocket, Key, Clock, ArrowUpCircle, RefreshCw, Zap, FileBarChart2,
 } from 'lucide-react'
-import { PageHeader } from '../shared/components/PageHeader'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
-import { Badge } from '../components/ui/badge'
-import { Switch } from '../components/ui/switch'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
+import { PageHeader } from '../../../shared/components/PageHeader'
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
+import { Label } from '../../../components/ui/label'
+import { Badge } from '../../../components/ui/badge'
+import { Switch } from '../../../components/ui/switch'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { useTranslation } from 'react-i18next'
-import { apiFetch, FeatureLockedError } from '../api/client'
-import { useAuthStore } from '../shared/stores/auth'
-import { cn } from '../lib/utils'
-import { VAKT_LS_PORTAL_URL } from '../lib/constants'
-import { useOrgSector, useUpdateOrgSector } from '../modules/secvitals/hooks/useOrgSector'
-import { useApprovalSetting, useUpdateApprovalSetting } from '../modules/secvitals/hooks/useApprovals'
-import { SECTOR_LABELS } from '../modules/secvitals/types'
-import { useExportData } from '../hooks/useDataExport'
-import { useAuditReport } from '../modules/secvitals/hooks/useAuditReport'
-import { ProGate } from '../shared/components/ProGate'
-import { useUpdateCheck } from '../shared/hooks/useUpdateCheck'
-import { formatLocale } from '../shared/utils/locale'
+import { apiFetch, FeatureLockedError } from '../../../api/client'
+import { useAuthStore } from '../../../shared/stores/auth'
+import { cn } from '../../../lib/utils'
+import { VAKT_LS_PORTAL_URL } from '../../../lib/constants'
+import { useOrgSector, useUpdateOrgSector } from '../../../modules/secvitals/hooks/useOrgSector'
+import { useApprovalSetting, useUpdateApprovalSetting } from '../../../modules/secvitals/hooks/useApprovals'
+import { SECTOR_LABELS } from '../../../modules/secvitals/types'
+import { useExportData } from '../../../hooks/useDataExport'
+import { useAuditReport } from '../../../modules/secvitals/hooks/useAuditReport'
+import { ProGate } from '../../../shared/components/ProGate'
+import { useUpdateCheck } from '../../../shared/hooks/useUpdateCheck'
+import { formatLocale } from '../../../shared/utils/locale'
 
 // ─── Retention / Digest hooks (used by DigestToggleSection) ──────────────────
 
@@ -212,7 +213,7 @@ function LicenseSection() {
   if (isLoading) return (
     <SectionCard title={t('settingsPage.licenseTitle')} icon={Sparkles}>
       <div className="h-16 flex items-center justify-center">
-        <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+        <Spinner size="sm" />
       </div>
     </SectionCard>
   )
@@ -402,7 +403,7 @@ function OrgSection() {
             <div>
               {secLoading ? (
                 <div className="flex items-center justify-center h-8">
-                  <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                  <Spinner size="sm" />
                 </div>
               ) : (
                 <div className="flex items-start justify-between gap-4">
@@ -434,7 +435,7 @@ function OrgSection() {
             <div className="border-t border-border pt-4">
               {approvalLoading ? (
                 <div className="flex items-center justify-center h-8">
-                  <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                  <Spinner size="sm" />
                 </div>
               ) : (
                 <div className="flex items-start justify-between gap-4">
@@ -583,7 +584,7 @@ function ModulesSection() {
     <SectionCard title={t('settingsPage.modulesTitle')} icon={Layers}>
       {isLoading && (
         <div className="flex items-center justify-center h-16">
-          <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+          <Spinner size="sm" />
         </div>
       )}
       {isError && (
@@ -637,7 +638,7 @@ function DigestToggleSection() {
       <div className="space-y-3">
         {isLoading ? (
           <div className="flex items-center justify-center h-10">
-            <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <Spinner size="sm" />
           </div>
         ) : (
           <div className="flex items-start justify-between gap-4">
@@ -761,7 +762,7 @@ function NotificationsSection() {
       <div className="space-y-2">
         {isLoading && (
           <div className="flex items-center justify-center h-12">
-            <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <Spinner size="sm" />
           </div>
         )}
         {isError && <p className="text-xs text-secondary">{t('settingsPage.notificationsNotLoadable')}</p>}
@@ -961,7 +962,7 @@ function DataExportSection() {
         >
           {isLoading ? (
             <>
-              <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1.5" />
+              <Spinner size="xs" color="current" className="mr-1.5" />
               {t('settingsPage.exporting')}
             </>
           ) : (
@@ -1002,7 +1003,7 @@ function AuditReportSection() {
         >
           {isGenerating ? (
             <>
-              <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              <Spinner size="xs" color="current" />
               {t('settingsPage.generatingReport')}
             </>
           ) : (
@@ -1095,7 +1096,7 @@ function StagingSection() {
               disabled={promote.isPending}
             >
               {promote.isPending ? (
-                <><div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1.5" />{t('settingsPage.stagingStarting')}</>
+                <><Spinner size="xs" color="current" className="mr-1.5" />{t('settingsPage.stagingStarting')}</>
               ) : t('settingsPage.stagingConfirm')}
             </Button>
           </DialogFooter>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { Spinner } from '../../../components/Spinner'
 import {
   ArrowLeft,
   Copy,
@@ -182,7 +183,7 @@ function AuditorLinksTab({ frameworkId }: { frameworkId: string }) {
 
       {isLoading && (
         <div className="flex items-center justify-center h-24">
-          <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+          <Spinner size="md" />
         </div>
       )}
 
@@ -919,7 +920,7 @@ export default function FrameworkDetailPage() {
         {/* Readiness score header */}
         <div className="flex items-center gap-6 p-6 bg-surface border border-border rounded-lg">
           {reportLoading ? (
-            <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <Spinner size="lg" />
           ) : report ? (
             <>
               <div className="text-center">
@@ -980,7 +981,7 @@ export default function FrameworkDetailPage() {
           <TabsContent value="gaps">
             {gapsLoading ? (
               <div className="flex items-center justify-center h-32">
-                <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                <Spinner size="md" />
               </div>
             ) : gaps && gaps.gaps.length > 0 ? (
               <div className="space-y-3">

@@ -59,4 +59,9 @@ EOF
 echo "→ Creating archive..."
 tar -czf "${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz" -C "$WORK_DIR" .
 
-echo "✓ Backup saved: ${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz"
+echo "→ Signing archive..."
+openssl dgst -sha256 -hmac "$SECRET_KEY" "${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz" \
+  | awk '{print $NF}' > "${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz.sig"
+
+echo "✓ Backup saved:    ${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz"
+echo "✓ Signature saved: ${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz.sig"

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Flag, ShieldAlert, ShieldCheck, Copy, RefreshCw, Info } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
@@ -77,7 +78,7 @@ export default function PhishReportsPage() {
           <h2 className="text-sm font-semibold mb-3">Gemeldete Mails</h2>
           {isLoading ? (
             <div className="flex justify-center py-16">
-              <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+              <Spinner size="md" />
             </div>
           ) : !reports || reports.length === 0 ? (
             <EmptyState

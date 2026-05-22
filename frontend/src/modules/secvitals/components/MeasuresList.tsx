@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Lock, Trash2, Plus, ChevronDown, ChevronRight } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
@@ -207,7 +208,7 @@ export function MeasuresList({ controlId }: { controlId: string }) {
       <CardContent className="space-y-3">
         {isLoading ? (
           <div className="flex justify-center py-6">
-            <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <Spinner size="md" />
           </div>
         ) : (
           <>

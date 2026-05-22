@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Activity, Plus, Play, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Button } from '../../../components/ui/button'
@@ -83,7 +84,7 @@ function ResultsDialog({
         </DialogHeader>
         {isLoading && (
           <div className="flex items-center justify-center h-24">
-            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <Spinner size="md" color="primary" />
           </div>
         )}
         {!isLoading && (!results || results.length === 0) && (
@@ -316,7 +317,7 @@ export default function CCMPage() {
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-center h-48">
-          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <Spinner size="lg" color="primary" />
         </div>
       </div>
     )

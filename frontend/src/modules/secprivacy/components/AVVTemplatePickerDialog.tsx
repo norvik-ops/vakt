@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { FileText, ChevronRight } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import {
   Dialog,
   DialogContent,
@@ -111,7 +112,7 @@ export function AVVTemplatePickerDialog({
           <div className="space-y-2 py-2">
             {isLoading && (
               <div className="flex items-center justify-center h-24">
-                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <Spinner size="md" color="primary" />
               </div>
             )}
             {templates?.map((tpl) => (

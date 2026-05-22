@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Eye, EyeOff, Trash2, Key, ClipboardList } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
@@ -141,7 +142,7 @@ function EnvTab({ projectId, env }: { projectId: string; env: Environment }) {
 
       {isLoading ? (
         <div className="flex justify-center py-8">
-          <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+          <Spinner size="md" />
         </div>
       ) : !keys || keys.length === 0 ? (
         <p className="text-sm text-secondary py-6 text-center">Noch keine Secrets vorhanden.</p>
@@ -230,7 +231,7 @@ export default function ProjectDetailPage() {
 
   if (isLoading) return (
     <div className="flex justify-center py-16">
-      <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+      <Spinner size="md" />
     </div>
   )
 

@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import { Trash2, Plus, FlaskConical, ChevronDown, ChevronRight, Bell, History, ExternalLink, Zap } from 'lucide-react'
-import { PageHeader } from '../shared/components/PageHeader'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
-import { Badge } from '../components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table'
-import { cn } from '../lib/utils'
-import { formatLocale } from '../shared/utils/locale'
+import { Spinner } from '../../../components/Spinner'
+import { PageHeader } from '../../../shared/components/PageHeader'
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
+import { Label } from '../../../components/ui/label'
+import { Badge } from '../../../components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/ui/table'
+import { cn } from '../../../lib/utils'
+import { formatLocale } from '../../../shared/utils/locale'
 import {
   ALERT_EVENTS,
   useAlertChannels,
@@ -21,7 +22,7 @@ import {
   useChannelDeliveries,
   type AlertChannel,
   type CreateChannelInput,
-} from '../modules/settings/hooks/useAlerting'
+} from '../../../modules/settings/hooks/useAlerting'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -138,7 +139,7 @@ function QuickSetupCard({
             disabled={testing}
           >
             {testing ? (
-              <div className="w-3 h-3 border border-brand border-t-transparent rounded-full animate-spin mr-1.5" />
+              <Spinner size="xs" className="mr-1.5" />
             ) : (
               <FlaskConical className="w-3.5 h-3.5 mr-1.5" />
             )}
@@ -152,7 +153,7 @@ function QuickSetupCard({
             disabled={!url.trim() || saving}
           >
             {saving ? (
-              <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin mr-1.5" />
+              <Spinner size="xs" color="white" className="mr-1.5" />
             ) : null}
             Speichern
           </Button>
@@ -381,7 +382,7 @@ function ChannelDeliveryHistory({ channelId }: { channelId: string }) {
         <div className="px-4 pb-3">
           {isLoading && (
             <div className="flex items-center gap-2 py-2">
-              <div className="w-3 h-3 border border-brand border-t-transparent rounded-full animate-spin" />
+              <Spinner size="xs" />
               <span className="text-[11px] text-secondary">Lädt…</span>
             </div>
           )}
@@ -456,7 +457,7 @@ function ChannelsSection() {
 
       {isLoading && (
         <div className="flex items-center justify-center py-10">
-          <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+          <Spinner size="md" />
         </div>
       )}
       {isError && (
@@ -527,7 +528,7 @@ function ChannelsSection() {
                         className="p-1.5 rounded text-secondary hover:text-brand hover:bg-brand/10 transition-colors disabled:opacity-50"
                       >
                         {testingId === ch.id
-                          ? <div className="w-3.5 h-3.5 border border-brand border-t-transparent rounded-full animate-spin" />
+                          ? <Spinner size="sm" className="w-3.5 h-3.5 border" />
                           : <FlaskConical className="w-3.5 h-3.5" />
                         }
                       </button>
@@ -586,7 +587,7 @@ function DeliveryHistorySection() {
         <>
           {isLoading && (
             <div className="flex items-center justify-center py-6">
-              <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+              <Spinner size="sm" />
             </div>
           )}
           {!isLoading && entries.length === 0 && (

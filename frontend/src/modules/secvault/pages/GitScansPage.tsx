@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { GitBranch, Plus, ChevronDown, ChevronUp, KeyRound } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { InfoBanner } from '../../../shared/components/InfoBanner'
 import { Button } from '../../../components/ui/button'
@@ -10,13 +11,9 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { useGitScans, useTriggerGitScan, useGitScanResults, useDismissScanResult } from '../hooks/useGitScans'
 import type { GitScan } from '../types'
+import { jobStatusVariant } from '../../../lib/statusMapping'
 
-const statusVariant: Record<GitScan['status'], React.ComponentProps<typeof Badge>['variant']> = {
-  pending: 'secondary',
-  running: 'default',
-  completed: 'success',
-  failed: 'destructive',
-}
+const statusVariant = jobStatusVariant
 
 function ScanResultsPanel({ scanId }: { scanId: string }) {
   const { data: results, isLoading } = useGitScanResults(scanId, true)
@@ -37,7 +34,7 @@ function ScanResultsPanel({ scanId }: { scanId: string }) {
   if (isLoading) {
     return (
       <div className="flex justify-center py-4">
-        <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+        <Spinner size="sm" />
       </div>
     )
   }
@@ -165,7 +162,7 @@ export default function GitScansPage() {
       <div className="flex-1 p-6 space-y-3">
         {isLoading ? (
           <div className="flex justify-center py-16">
-            <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <Spinner size="md" />
           </div>
         ) : !scans || scans.length === 0 ? (
           <EmptyState

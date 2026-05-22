@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   ClipboardCheck, Plus, ChevronDown, ChevronUp, Trash2, AlertTriangle, CheckSquare,
 } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Pagination } from '../../../shared/components/Pagination'
@@ -411,7 +412,7 @@ export default function CAPAsPage() {
         {/* List */}
         {isLoading ? (
           <div className="flex items-center justify-center h-48">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <Spinner size="lg" color="primary" />
           </div>
         ) : !capas || capas.length === 0 ? (
           <EmptyState

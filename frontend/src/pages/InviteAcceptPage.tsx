@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Spinner } from '../components/Spinner'
 import { apiFetch } from '../api/client'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -73,7 +74,7 @@ export default function InviteAcceptPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg">
-        <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+        <Spinner size="lg" />
       </div>
     )
   }

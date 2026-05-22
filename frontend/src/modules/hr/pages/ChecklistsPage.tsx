@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Plus, Trash2, ClipboardList, ChevronDown, ChevronRight } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
@@ -184,7 +185,7 @@ export default function ChecklistsPage() {
 
       {isLoading && (
         <div className="flex justify-center py-12">
-          <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+          <Spinner size="lg" />
         </div>
       )}
 

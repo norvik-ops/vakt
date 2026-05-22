@@ -146,7 +146,21 @@ func (h *Handler) Login(c echo.Context) error {
 		})
 	}
 
-	// Account lockout: reject immediately if too many recent failures.
+	clientIP := c.RealIP()
+
+	// IP-level lockout: reject if this IP has too many recent failures across any account.
+	ipLocked, ipLockErr := h.service.checkIPLocked(c.Request().Context(), clientIP)
+	if ipLockErr != nil {
+		log.Warn().Err(ipLockErr).Str("ip", clientIP).Msg("login: IP lockout check error")
+	}
+	if ipLocked {
+		return c.JSON(http.StatusTooManyRequests, map[string]string{
+			"error": "Too many failed attempts from this IP. Try again in 15 minutes.",
+			"code":  "IP_LOCKED",
+		})
+	}
+
+	// Account lockout: reject immediately if too many recent failures for this email.
 	locked, lockErr := h.service.checkAccountLocked(c.Request().Context(), body.Email)
 	if lockErr != nil {
 		log.Warn().Err(lockErr).Str("email", body.Email).Msg("login: lockout check error")
@@ -165,8 +179,9 @@ func (h *Handler) Login(c echo.Context) error {
 	resp, err := h.service.Login(c.Request().Context(), body.Email, body.Password, loginDeviceHint)
 	if err != nil {
 		log.Debug().Err(err).Str("email", body.Email).Msg("login failed")
-		// Record failure to enable lockout after repeated bad credentials.
+		// Record failure for both email lockout and IP lockout.
 		h.service.recordLoginFailure(c.Request().Context(), body.Email)
+		h.service.recordIPLoginFailure(c.Request().Context(), clientIP)
 		return c.JSON(http.StatusUnauthorized, map[string]string{
 			"error": "invalid credentials",
 			"code":  "AUTH_INVALID_CREDENTIALS",

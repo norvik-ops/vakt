@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ShieldCheck, Plus, BookOpen, Trash2, Download } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { useTranslation } from 'react-i18next'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card'
@@ -240,7 +241,7 @@ export default function FrameworksPage() {
 
           {isLoading && (
             <div className="flex items-center justify-center h-24">
-              <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+              <Spinner size="md" />
             </div>
           )}
           {isError && (

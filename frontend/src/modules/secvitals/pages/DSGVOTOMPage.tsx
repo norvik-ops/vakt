@@ -1,5 +1,6 @@
 import { Info } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { Spinner } from '../../../components/Spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
 import { useFrameworks } from '../hooks/useFrameworks'
@@ -117,7 +118,7 @@ export default function DSGVOTOMPage() {
         {/* TOM List */}
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
-            <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <Spinner size="md" />
           </div>
         ) : (
           <div className="flex flex-col gap-2" data-testid="tom-list">

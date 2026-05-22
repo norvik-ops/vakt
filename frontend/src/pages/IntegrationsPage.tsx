@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Plug, GitBranch, RefreshCw, Trash2, ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertCircle, Plus, Cloud, ShieldAlert } from 'lucide-react'
+import { Spinner } from '../components/Spinner'
 import {
   useGitHubIntegrations,
   useAddGitHubIntegration,
@@ -296,7 +297,7 @@ function GitHubTab() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-32">
-        <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+        <Spinner size="md" />
       </div>
     )
   }
@@ -484,7 +485,7 @@ function AWSTab() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-32">
-        <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+        <Spinner size="md" />
       </div>
     )
   }
@@ -674,7 +675,7 @@ function AzureTab() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-32">
-        <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+        <Spinner size="md" />
       </div>
     )
   }

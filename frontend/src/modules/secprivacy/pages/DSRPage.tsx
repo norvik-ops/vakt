@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Users, Plus, Pencil, Trash2, AlertTriangle, Download, ShieldCheck } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
@@ -306,7 +307,7 @@ export default function DSRPage() {
       <div className="flex-1 p-6 space-y-6">
         {isLoading && (
           <div className="flex items-center justify-center h-48">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <Spinner size="lg" color="primary" />
           </div>
         )}
 

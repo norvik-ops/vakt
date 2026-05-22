@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { FileText, Plus, Trash2, Shield } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
@@ -56,7 +57,7 @@ export default function TemplatesPage() {
       <div className="flex-1 p-6">
         {isLoading ? (
           <div className="flex justify-center py-16">
-            <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <Spinner size="md" />
           </div>
         ) : !templates || templates.length === 0 ? (
           <EmptyState

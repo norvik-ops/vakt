@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, ChevronDown, Download, Shield } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Progress } from '../../../components/ui/progress'
@@ -332,7 +333,7 @@ export default function CISControlsPage() {
       <div className="flex-1 p-6 space-y-6 overflow-auto">
         {isLoading && (
           <div className="flex items-center justify-center h-32">
-            <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <Spinner size="md" />
           </div>
         )}
 

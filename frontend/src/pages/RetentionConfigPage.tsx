@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Spinner } from '../components/Spinner'
 import { PageHeader } from '../shared/components/PageHeader'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -150,7 +151,7 @@ export default function RetentionConfigPage() {
             <CardContent>
               {isLoading ? (
                 <div className="flex items-center justify-center h-16">
-                  <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                  <Spinner size="sm" />
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -232,7 +233,7 @@ export default function RetentionConfigPage() {
             <CardContent>
               {isLoading ? (
                 <div className="flex items-center justify-center h-16">
-                  <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                  <Spinner size="sm" />
                 </div>
               ) : (
                 <div className="space-y-4">

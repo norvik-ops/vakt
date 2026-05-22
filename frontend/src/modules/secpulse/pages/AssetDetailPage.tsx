@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ScanLine, Trash2 } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Breadcrumbs } from '../../../shared/components/Breadcrumbs'
 import { trackPage } from '../../../shared/hooks/useRecentPages'
@@ -13,6 +14,7 @@ import { useAsset, useTriggerScan, useDeleteAsset } from '../hooks/useAssets'
 import { useFindings } from '../hooks/useFindings'
 import type { Asset, Finding } from '../types'
 import { cn } from '../../../lib/utils'
+import { findingSeverityClass } from '../../../lib/statusMapping'
 import { useState, useRef, useEffect } from 'react'
 
 const criticalityClass: Record<Asset['criticality'], string> = {
@@ -22,13 +24,7 @@ const criticalityClass: Record<Asset['criticality'], string> = {
   critical: 'border-transparent bg-severity-critical-bg text-severity-critical',
 }
 
-const severityClass: Record<Finding['severity'], string> = {
-  info:     'border-transparent bg-surface2 text-muted',
-  low:      'border-transparent bg-severity-info-bg text-severity-info',
-  medium:   'border-transparent bg-severity-medium-bg text-severity-medium',
-  high:     'border-transparent bg-severity-high-bg text-severity-high',
-  critical: 'border-transparent bg-severity-critical-bg text-severity-critical',
-}
+const severityClass = findingSeverityClass
 
 const assetTypeLabels: Record<Asset['type'], string> = {
   web_app: 'Web App',
@@ -77,7 +73,7 @@ export default function AssetDetailPage() {
   if (isLoading) {
     return (
       <div className="flex justify-center py-16">
-        <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+        <Spinner size="md" />
       </div>
     )
   }
@@ -114,7 +110,7 @@ export default function AssetDetailPage() {
             </Button>
             <Button onClick={() => { void handleScan() }} disabled={triggerScan.isPending}>
               {triggerScan.isPending ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                <Spinner size="sm" color="white" className="mr-2" />
               ) : (
                 <ScanLine className="w-4 h-4 mr-1" />
               )}

@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { Paperclip, Eye, Trash2, Upload } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { Button } from '../../../components/ui/button'
 import {
   useEvidenceFilesByControl,
@@ -112,7 +113,7 @@ export function EvidenceFileUpload({ controlId, evidenceId: _evidenceId }: Evide
       {/* Upload state */}
       {upload.isPending && (
         <div className="flex items-center gap-2 text-sm text-secondary">
-          <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+          <Spinner size="sm" />
           <span>Wird hochgeladen…</span>
         </div>
       )}
@@ -127,7 +128,7 @@ export function EvidenceFileUpload({ controlId, evidenceId: _evidenceId }: Evide
       {/* File list */}
       {isLoading ? (
         <div className="flex justify-center py-4">
-          <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+          <Spinner size="sm" />
         </div>
       ) : files && files.length > 0 ? (
         <ul className="divide-y divide-border rounded-lg border border-border overflow-hidden">

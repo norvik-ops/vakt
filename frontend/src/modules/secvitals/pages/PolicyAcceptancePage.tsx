@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Users, Plus, ChevronDown, ChevronUp, CheckCircle2, Clock } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent } from '../../../components/ui/card'
@@ -311,7 +312,7 @@ export default function PolicyAcceptancePage() {
 
       {isLoading && (
         <div className="flex justify-center py-12">
-          <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+          <Spinner size="md" />
         </div>
       )}
 

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { History, Eye, X } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -88,7 +89,7 @@ export default function PolicyVersionHistory({ policyId, currentVersion }: Props
       <CardContent>
         {isLoading && (
           <div className="flex items-center justify-center h-16">
-            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <Spinner size="sm" color="primary" />
           </div>
         )}
         {isError && (

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Download } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { toast } from '../hooks/useToast'
+import { Spinner } from '../../components/Spinner'
 
 interface ExportButtonProps {
   endpoint: string
@@ -59,7 +60,7 @@ export function ExportButton({
     >
       {isLoading ? (
         <>
-          <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1.5" aria-hidden="true" />
+          <Spinner size="xs" color="current" className="mr-1.5" />
           Wird exportiert…
         </>
       ) : (

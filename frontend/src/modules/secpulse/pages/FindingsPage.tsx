@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useSavedFilters } from '../../../shared/hooks/useSavedFilters'
+import { Spinner } from '../../../components/Spinner'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Download, AlertTriangle, Upload, Trash2, RefreshCw, FileDown } from 'lucide-react'
@@ -25,6 +26,7 @@ import { apiFetch } from '../../../api/client'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Finding } from '../types'
 import { cn } from '../../../lib/utils'
+import { findingSeverityClass, findingSeverityOrder } from '../../../lib/statusMapping'
 import { ImportFindingsDialog } from '../components/ImportFindingsDialog'
 import { CSVImportDialog } from '../../../shared/components/CSVImportDialog'
 import { MobileCard } from '../../../shared/components/MobileCard'
@@ -59,7 +61,7 @@ function InlineStatusCell({ finding }: { finding: Finding }) {
   if (patch.isPending) {
     return (
       <span className="flex items-center gap-1.5 text-sm text-secondary">
-        <span className="w-3.5 h-3.5 border-2 border-brand border-t-transparent rounded-full animate-spin inline-block" />
+        <Spinner size="sm" className="w-3.5 h-3.5" />
         {finding.status.replace(/_/g, ' ')}
       </span>
     )
@@ -135,7 +137,7 @@ function InlineSeverityCell({ finding }: { finding: Finding }) {
   if (saving) {
     return (
       <span className="flex items-center gap-1.5">
-        <span className="w-3.5 h-3.5 border-2 border-brand border-t-transparent rounded-full animate-spin inline-block" />
+        <Spinner size="sm" className="w-3.5 h-3.5" />
         <Badge className={cn('capitalize', badgeClass)}>{displaySeverity}</Badge>
       </span>
     )
@@ -177,18 +179,8 @@ function InlineSeverityCell({ finding }: { finding: Finding }) {
   )
 }
 
-const severityClass: Record<Finding['severity'], string> = {
-  info:     'bg-surface2 text-muted border-transparent',
-  low:      'bg-severity-info-bg text-severity-info border-transparent',
-  medium:   'bg-severity-medium-bg text-severity-medium border-transparent',
-  high:     'bg-severity-high-bg text-severity-high border-transparent',
-  critical: 'bg-severity-critical-bg text-severity-critical border-transparent',
-}
-
-// Custom sort key: maps severity to a numeric weight for sorting
-const SEVERITY_ORDER: Record<Finding['severity'], number> = {
-  critical: 5, high: 4, medium: 3, low: 2, info: 1,
-}
+const severityClass = findingSeverityClass
+const SEVERITY_ORDER = findingSeverityOrder
 
 // Augment Finding with a numeric severity_order field for sorting
 type SortableFinding = Finding & { severity_order: number }

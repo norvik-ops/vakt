@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { Spinner } from '../components/Spinner'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { ShieldCheck, FileText, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { fetchAcceptanceInfo, submitAcceptance } from '../modules/secvitals/hooks/usePolicyAcceptance'
@@ -46,7 +47,7 @@ export default function PolicyAcceptPage() {
 
         {isLoading && (
           <div className="flex justify-center py-20">
-            <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <Spinner size="lg" />
           </div>
         )}
 

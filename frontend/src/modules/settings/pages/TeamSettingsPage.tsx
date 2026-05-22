@@ -1,18 +1,18 @@
 import { useState } from 'react'
 import { Plus, ShieldCheck, Trash2, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { PageHeader } from '../shared/components/PageHeader'
-import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
-import { useFieldValidation, required, email as emailRule } from '../shared/hooks/useFieldValidation'
-import { FieldError } from '../shared/components/FieldError'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../components/ui/dialog'
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../components/ui/alert-dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table'
-import { useAuthStore } from '../shared/stores/auth'
+import { PageHeader } from '../../../shared/components/PageHeader'
+import { Button } from '../../../components/ui/button'
+import { Badge } from '../../../components/ui/badge'
+import { Input } from '../../../components/ui/input'
+import { Label } from '../../../components/ui/label'
+import { useFieldValidation, required, email as emailRule } from '../../../shared/hooks/useFieldValidation'
+import { FieldError } from '../../../shared/components/FieldError'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../../../components/ui/dialog'
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../../../components/ui/alert-dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/ui/table'
+import { useAuthStore } from '../../../shared/stores/auth'
 import {
   useTeamMembers,
   useUpdateRole,
@@ -22,11 +22,11 @@ import {
   useRevokeInvitation,
   type TeamMember,
   type TeamInvitation,
-} from '../hooks/useTeam'
-import { UserPermissionsEditor } from '../components/UserPermissionsEditor'
-import { toast } from '../shared/hooks/useToast'
-import { ErrorState } from '../shared/components/ErrorState'
-import { formatLocale } from '../shared/utils/locale'
+} from '../../../hooks/useTeam'
+import { UserPermissionsEditor } from '../../../components/UserPermissionsEditor'
+import { toast } from '../../../shared/hooks/useToast'
+import { ErrorState } from '../../../shared/components/ErrorState'
+import { formatLocale } from '../../../shared/utils/locale'
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Spinner } from '../components/Spinner'
 import { Shield, Award, FileText, Plus, Trash2 } from 'lucide-react'
-import { PageHeader } from '../shared/components/PageHeader'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
-import { Card } from '../components/ui/card'
-import { apiFetch } from '../api/client'
-import type { Policy } from '../modules/secvitals/types'
+import { PageHeader } from '../../../shared/components/PageHeader'
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
+import { Label } from '../../../components/ui/label'
+import { Card } from '../../../components/ui/card'
+import { apiFetch } from '../../../api/client'
+import type { Policy } from '../../../modules/secvitals/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -305,7 +306,7 @@ function CertificatesSection() {
     <div className="space-y-4">
       {isLoading && (
         <div className="flex items-center justify-center h-12">
-          <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <Spinner size="sm" />
         </div>
       )}
       {!isLoading && certs.length === 0 && (
@@ -415,7 +416,7 @@ function PoliciesSection() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-12">
-        <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <Spinner size="sm" />
       </div>
     )
   }
@@ -508,7 +509,7 @@ export default function TrustCenterSettingsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <Spinner size="lg" />
       </div>
     )
   }

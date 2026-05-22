@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PackageX, RefreshCw } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { ProGate } from '../../../shared/components/ProGate'
@@ -80,7 +81,7 @@ export default function EOLDashboardPage() {
           description="Software-Komponenten nach End-of-Life-Status (CRA-Readiness)."
         />
         <div className="flex justify-center py-16">
-          <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+          <Spinner size="md" />
         </div>
       </div>
     )

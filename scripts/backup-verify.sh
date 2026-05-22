@@ -7,11 +7,31 @@ if [ -z "$BACKUP_FILE" ] || [ ! -f "$BACKUP_FILE" ]; then
   exit 1
 fi
 
+SIG_FILE="${BACKUP_FILE}.sig"
+if [ ! -f "$SIG_FILE" ]; then
+  echo "ERROR: Signature file not found: $SIG_FILE" >&2
+  exit 1
+fi
+
 if [ -f .env ]; then
   set -a; source .env; set +a
 fi
 
-DB_URL="${VAKT_DB_URL:-}"
+SECRET_KEY="${VAKT_SECRET_KEY:-}"
+if [ -z "$SECRET_KEY" ]; then
+  echo "ERROR: VAKT_SECRET_KEY not set" >&2
+  exit 1
+fi
+
+echo "→ Verifying HMAC-SHA256 signature..."
+EXPECTED=$(cat "$SIG_FILE")
+ACTUAL=$(openssl dgst -sha256 -hmac "$SECRET_KEY" "$BACKUP_FILE" | awk '{print $NF}')
+if [ "$EXPECTED" != "$ACTUAL" ]; then
+  echo "ERROR: HMAC signature mismatch — archive may be corrupted or tampered with" >&2
+  exit 1
+fi
+echo "✓ HMAC signature valid"
+
 WORK_DIR=$(mktemp -d)
 trap 'rm -rf "$WORK_DIR"' EXIT
 

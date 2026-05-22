@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ClipboardCheck, Plus } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { useTranslation } from 'react-i18next'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent } from '../../../components/ui/card'
@@ -95,7 +96,7 @@ export default function AuditsPage() {
       <div className="flex-1 p-6">
         {isLoading && (
           <div className="flex items-center justify-center h-48">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <Spinner size="lg" color="primary" />
           </div>
         )}
         {isError && (

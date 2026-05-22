@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { Spinner } from '../components/Spinner'
 import { Building2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiFetch, setSessionId } from '../api/client'
@@ -211,7 +212,7 @@ export default function Login() {
                 <p className="text-xs text-secondary">{t('auth.demoHint')}</p>
                 {demoStarting && (
                   <div className="flex items-center gap-2 py-2">
-                    <span className="w-3.5 h-3.5 border-2 border-brand border-t-transparent rounded-full animate-spin inline-block shrink-0" />
+                    <Spinner size="sm" className="w-3.5 h-3.5" />
                     <span className="text-xs text-secondary">{t('auth.demoPreparing')}</span>
                   </div>
                 )}

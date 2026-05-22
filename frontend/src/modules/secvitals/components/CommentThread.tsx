@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Trash2, MessageSquare } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { useComments, useCreateComment, useDeleteComment } from '../hooks/useTasks'
@@ -59,7 +60,7 @@ export function CommentThread({
         {/* Comment list */}
         {isLoading ? (
           <div className="flex justify-center py-4">
-            <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <Spinner size="sm" />
           </div>
         ) : comments && comments.length > 0 ? (
           <ul className="space-y-3">

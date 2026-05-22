@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Users, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
 import { EmptyState } from '../../../shared/components/EmptyState'
@@ -63,7 +64,7 @@ function TargetGroupRow({ group, onDelete }: { group: TargetGroup; onDelete: () 
           </div>
           {isLoading ? (
             <div className="flex justify-center py-4">
-              <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+              <Spinner size="sm" />
             </div>
           ) : !targets || targets.length === 0 ? (
             <p className="text-sm text-secondary text-center py-4">No targets yet.</p>
@@ -162,7 +163,7 @@ export default function TargetGroupsPage() {
       <div className="flex-1 p-6 space-y-3">
         {isLoading ? (
           <div className="flex justify-center py-16">
-            <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <Spinner size="md" />
           </div>
         ) : !groups || groups.length === 0 ? (
           <EmptyState

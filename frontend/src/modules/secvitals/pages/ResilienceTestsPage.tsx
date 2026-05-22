@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ShieldAlert, Plus, Pencil, Trash2, Paperclip } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { ProGate } from '../../../shared/components/ProGate'
@@ -240,7 +241,7 @@ export default function ResilienceTestsPage() {
       <div className="flex-1 p-6">
         {isLoading && (
           <div className="flex items-center justify-center h-48">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <Spinner size="lg" color="primary" />
           </div>
         )}
         {isError && (

@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Server, ScanSearch, Upload } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
@@ -288,7 +289,7 @@ export default function AssetsPage() {
             />
             {importAssets.isPending && (
               <p className="text-sm text-secondary flex items-center gap-2">
-                <span className="w-3.5 h-3.5 border-2 border-brand border-t-transparent rounded-full animate-spin inline-block" />
+                <Spinner size="sm" className="w-3.5 h-3.5" />
                 {t('secpulse.assetsPage.importing')}
               </p>
             )}
@@ -395,7 +396,7 @@ export default function AssetsPage() {
               </Button>
               <Button type="submit" disabled={createAsset.isPending}>
                 {createAsset.isPending ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  <Spinner size="sm" color="white" className="mr-2" />
                 ) : null}
                 {createAsset.isPending ? t('secpulse.assetsPage.creating') : t('secpulse.assetsPage.createAsset')}
               </Button>

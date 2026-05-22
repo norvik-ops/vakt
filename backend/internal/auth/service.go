@@ -414,11 +414,22 @@ const (
 	loginFailMax = 5
 	// loginLockoutTTL is the lockout duration and the TTL of the failure counter.
 	loginLockoutTTL = 15 * time.Minute
+
+	// ipLockoutFailMax is the number of failed login attempts from a single IP
+	// (across any email address) that trigger an IP-level lockout.
+	ipLockoutFailMax = 10
+	// ipLockoutTTL is the IP lockout duration.
+	ipLockoutTTL = 15 * time.Minute
 )
 
 // loginFailKey returns the Redis key used to count consecutive login failures.
 func loginFailKey(email string) string {
 	return "login_fail:" + email
+}
+
+// loginIPFailKey returns the Redis key for counting per-IP login failures.
+func loginIPFailKey(ip string) string {
+	return "login_fail_ip:" + ip
 }
 
 // checkAccountLocked returns true if the account is currently locked out.
@@ -462,6 +473,37 @@ func (s *Service) clearLoginFailures(ctx context.Context, email string) {
 	if err := s.redis.Del(ctx, loginFailKey(email)).Err(); err != nil && err != redis.Nil {
 		log.Warn().Err(err).Str("email", email).Msg("login: failed to clear login failures")
 	}
+}
+
+// checkIPLocked returns true if the originating IP has exceeded the per-IP
+// failure threshold, regardless of which email address was targeted.
+func (s *Service) checkIPLocked(ctx context.Context, ip string) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	val, err := s.redis.Get(ctx, loginIPFailKey(ip)).Int64()
+	if err == redis.Nil {
+		return false, nil
+	}
+	if err != nil {
+		log.Warn().Err(err).Str("ip", ip).Msg("ip lockout check skipped — Redis unavailable")
+		return false, nil
+	}
+	return val >= ipLockoutFailMax, nil
+}
+
+// recordIPLoginFailure increments the per-IP failure counter.
+func (s *Service) recordIPLoginFailure(ctx context.Context, ip string) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	key := loginIPFailKey(ip)
+	pipe := s.redis.Pipeline()
+	incrCmd := pipe.Incr(ctx, key)
+	pipe.Expire(ctx, key, ipLockoutTTL)
+	if _, err := pipe.Exec(ctx); err != nil {
+		log.Warn().Err(err).Str("ip", ip).Msg("login: failed to record IP login failure")
+		return
+	}
+	log.Debug().Str("ip", ip).Int64("count", incrCmd.Val()).Msg("login: recorded IP failure")
 }
 
 // RevokeToken blacklists an access token in Redis so that AuthMiddleware will

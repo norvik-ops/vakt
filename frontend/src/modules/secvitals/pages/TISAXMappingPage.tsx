@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import {
@@ -135,7 +136,7 @@ export default function TISAXMappingPage() {
         {/* Content */}
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
-            <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <Spinner size="md" />
           </div>
         ) : !results || results.length === 0 ? (
           <div className="flex items-center gap-3 p-4 bg-surface border border-border rounded-lg text-sm text-secondary">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Key, Plus, Trash2, Copy, Check } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
@@ -95,7 +96,7 @@ export default function TokensPage() {
         <ProGate error={tokensError}>
         {isLoading ? (
           <div className="flex justify-center py-16">
-            <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <Spinner size="md" />
           </div>
         ) : !tokens || tokens.length === 0 ? (
           <EmptyState

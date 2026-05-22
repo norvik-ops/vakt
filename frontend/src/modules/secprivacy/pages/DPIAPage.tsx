@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { FileSearch, Plus, Pencil, Trash2, ShieldCheck, Download, ClipboardCheck } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
@@ -352,7 +353,7 @@ export default function DPIAPage() {
       <div className="flex-1 p-6">
         {isLoading && (
           <div className="flex items-center justify-center h-48">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <Spinner size="lg" color="primary" />
           </div>
         )}
 

@@ -32,6 +32,7 @@ import { PageTransition } from './PageTransition'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal'
 import { AppTour } from './AppTour'
+import { Spinner } from '../../components/Spinner'
 import { ChangelogPopover } from './ChangelogPopover'
 
 interface NavItem {
@@ -595,7 +596,7 @@ export default function Layout() {
           <Suspense
             fallback={
               <div className="flex items-center justify-center h-64">
-                <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                <Spinner size="lg" />
               </div>
             }
           >

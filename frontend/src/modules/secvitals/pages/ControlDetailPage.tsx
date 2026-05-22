@@ -5,6 +5,7 @@ import {
   Circle, Clock, CheckCircle2, MinusCircle, Trash2, ListChecks, History,
   Pencil, X, ShieldAlert, CalendarDays,
 } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../../../api/client'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -196,7 +197,7 @@ function EvidenceHistoryDialog({
         <div className="py-2 space-y-3 max-h-96 overflow-y-auto">
           {isLoading && (
             <div className="flex justify-center py-8">
-              <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+              <Spinner size="md" />
             </div>
           )}
           {!isLoading && (!history || history.length === 0) && (
@@ -998,7 +999,7 @@ export default function ControlDetailPage() {
           <CardContent className="p-0">
             {evidenceLoading ? (
               <div className="flex justify-center py-8">
-                <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                <Spinner size="md" />
               </div>
             ) : !evidence || evidence.length === 0 ? (
               <div className="flex flex-col items-center py-12 text-center">

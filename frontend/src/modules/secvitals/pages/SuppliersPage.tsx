@@ -17,20 +17,10 @@ import type { Supplier, CreateSupplierInput } from '../types'
 import { SkeletonCardGrid } from '../../../shared/components/SkeletonLoaders'
 import { FieldError } from '../../../shared/components/FieldError'
 import { useFormValidation } from '../../../shared/hooks/useFormValidation'
-import { toast as globalToast } from '../../../shared/hooks/useToast'
+import { toast } from '../../../shared/hooks/useToast'
 import { formatLocale } from '../../../shared/utils/locale'
 
 // ─── Toast (minimal inline) ───────────────────────────────────────────────────
-function useToast() {
-  const [message, setMessage] = useState<string | null>(null)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
-  useEffect(() => () => clearTimeout(timerRef.current), [])
-  function show(msg: string) {
-    setMessage(msg)
-    timerRef.current = setTimeout(() => setMessage(null), 3000)
-  }
-  return { message, show }
-}
 
 const CRITICALITY_CLASS: Record<Supplier['criticality'], string> = {
   standard: 'bg-secondary text-secondary-foreground',
@@ -196,7 +186,6 @@ export default function SuppliersPage() {
   const updateSupplier = useUpdateSupplier(editId ?? '')
   const deleteSupplier = useDeleteSupplier()
   const importCSV = useImportSuppliersCSV()
-  const toast = useToast()
   const { errors: supErrors, validate: validateSup, clearError: clearSupError, clearAll: clearSupErrors } = useFormValidation<Record<string, unknown>>({
     name: { required: true, maxLength: 200 },
     contact_email: { pattern: /^$|^[^\s@]+@[^\s@]+\.[^\s@]+$/, patternMessage: 'Bitte eine gültige E-Mail-Adresse eingeben.' },
@@ -241,7 +230,7 @@ export default function SuppliersPage() {
       createSupplier.mutate(payload, {
         onSuccess: () => {
           setDialogOpen(false)
-          globalToast(`Lieferant hinzugefügt: ${form.name} wurde zur Lieferantenliste hinzugefügt.`, 'success')
+          toast(`Lieferant hinzugefügt: ${form.name} wurde zur Lieferantenliste hinzugefügt.`, 'success')
         },
       })
     }
@@ -252,7 +241,7 @@ export default function SuppliersPage() {
       credentials: 'include',
     })
     if (!res.ok) {
-      toast.show('CSV-Export fehlgeschlagen. Bitte versuchen Sie es erneut.')
+      toast('CSV-Export fehlgeschlagen. Bitte versuchen Sie es erneut.', 'error')
       return
     }
     const blob = await res.blob()
@@ -277,10 +266,10 @@ export default function SuppliersPage() {
     formData.append('file', file)
     importCSV.mutate(formData, {
       onSuccess: (result) => {
-        toast.show(`Import abgeschlossen: ${result.imported} importiert, ${result.skipped} übersprungen.`)
+        toast(`Import abgeschlossen: ${result.imported} importiert, ${result.skipped} übersprungen.`, 'success')
       },
       onError: (err) => {
-        toast.show(`Import fehlgeschlagen: ${err.message}`)
+        toast(`Import fehlgeschlagen: ${err.message}`, 'error')
       },
     })
     // Reset file input so same file can be re-uploaded
@@ -292,11 +281,6 @@ export default function SuppliersPage() {
   return (
     <ProGate error={isError ? error : null}>
     <div className="flex flex-col h-full">
-      {toast.message && (
-        <div className="fixed bottom-4 right-4 z-50 bg-red-500/90 text-white text-sm px-4 py-2 rounded-lg shadow-lg" data-testid="export-error-toast">
-          {toast.message}
-        </div>
-      )}
       <PageHeader
         title="Lieferanten-Register"
         description="Drittanbieter und Dienstleister verwalten — NIS2 Art. 21 / DORA Art. 28."

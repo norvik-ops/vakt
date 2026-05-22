@@ -1,5 +1,6 @@
 import { Building2, ExternalLink, Phone, Send } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { Spinner } from '../../../components/Spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
 import { useAuthorities, useOrgSector } from '../hooks/useOrgSector'
@@ -28,7 +29,7 @@ export default function AuthorityDirectoryPage() {
 
         {isLoading && (
           <div className="flex items-center justify-center h-32">
-            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <Spinner size="md" color="primary" />
           </div>
         )}
 

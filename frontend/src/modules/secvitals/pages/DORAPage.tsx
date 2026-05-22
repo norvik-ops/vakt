@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ChevronDown } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -150,7 +151,7 @@ export default function DORAPage() {
         <div className="flex-1 p-6 space-y-4">
           {isLoading ? (
             <div className="flex items-center justify-center h-32">
-              <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+              <Spinner size="md" />
             </div>
           ) : (
             ARTICLE_ORDER.map((article) => {

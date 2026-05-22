@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { PageHeader } from '../shared/components/PageHeader'
+import { Spinner } from '../components/Spinner'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -144,7 +145,7 @@ export default function ScoreConfigPage() {
             <h2 className="text-sm font-semibold text-primary mb-4">Gewichtungen</h2>
             {isLoading ? (
               <div className="flex items-center justify-center h-16">
-                <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                <Spinner size="sm" />
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-4">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { Spinner } from '../../../components/Spinner'
 import { ArrowLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -13,15 +14,10 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '.
 import { useFinding, usePatchFinding } from '../hooks/useFindings'
 import type { Finding } from '../types'
 import { cn } from '../../../lib/utils'
+import { findingSeverityClass } from '../../../lib/statusMapping'
 import { Comments } from '../../../shared/components/Comments'
 
-const severityClass: Record<Finding['severity'], string> = {
-  info:     'bg-surface2 text-muted border-transparent',
-  low:      'bg-severity-info-bg text-severity-info border-transparent',
-  medium:   'bg-severity-medium-bg text-severity-medium border-transparent',
-  high:     'bg-severity-high-bg text-severity-high border-transparent',
-  critical: 'bg-severity-critical-bg text-severity-critical border-transparent',
-}
+const severityClass = findingSeverityClass
 
 export default function FindingDetailPage() {
   const { t } = useTranslation()
@@ -59,7 +55,7 @@ export default function FindingDetailPage() {
 
   if (isLoading) return (
     <div className="flex justify-center py-16">
-      <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+      <Spinner size="md" />
     </div>
   )
 

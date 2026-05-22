@@ -1,19 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Play, Square, BarChart2, FileDown } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { useCampaign, useCampaignStats, useLaunchCampaign, useAbortCampaign, useDownloadCampaignReport } from '../hooks/useCampaigns'
 import type { Campaign } from '../types'
+import { campaignStatusVariant } from '../../../lib/statusMapping'
 
-const statusVariant: Record<Campaign['status'], React.ComponentProps<typeof Badge>['variant']> = {
-  draft: 'secondary',
-  scheduled: 'default',
-  running: 'default',
-  completed: 'success',
-  aborted: 'destructive',
-}
+const statusVariant = campaignStatusVariant
 
 function StatCard({ label, value, pct }: { label: string; value: number; pct?: number }) {
   return (
@@ -40,7 +36,7 @@ export default function CampaignDetailPage() {
 
   if (isLoading) return (
     <div className="flex justify-center py-16">
-      <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+      <Spinner size="md" />
     </div>
   )
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Lock, Plus, Trash2 } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
@@ -67,7 +68,7 @@ export default function ProjectsPage() {
       <div className="flex-1 p-6">
         {isLoading ? (
           <div className="flex items-center justify-center h-40">
-            <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <Spinner size="lg" />
           </div>
         ) : !projects || projects.length === 0 ? (
           <EmptyState

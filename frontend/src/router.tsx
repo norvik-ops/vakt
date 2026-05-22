@@ -4,6 +4,7 @@ import { apiFetch } from './api/client'
 import { useAuthStore } from './shared/stores/auth'
 import Layout from './shared/components/Layout'
 import { ErrorBoundary } from './shared/components/ErrorBoundary'
+import { Spinner } from './components/Spinner'
 
 // Eager-loaded: Auth-Flows (Login/Setup), Dashboard (initial Landing),
 // öffentliche Pages mit Magic-Link-Tokens (auditor/policy/invite/dsr —
@@ -27,17 +28,17 @@ import NotFoundPage from './pages/NotFoundPage'
 // Sprint 16 S16-3: alle anderen Page-Imports lazy. Reduziert das Initial-
 // Bundle um die Settings-/Admin-/Audit-Sektionen, die nach Login selten
 // auf den ersten Klick gebraucht werden.
-const Settings                   = lazy(() => import('./pages/Settings'))
+const Settings                   = lazy(() => import('./modules/settings/pages/Settings'))
 const ScoreConfigPage            = lazy(() => import('./pages/ScoreConfigPage'))
-const AlertingSettingsPage       = lazy(() => import('./pages/AlertingSettingsPage'))
-const AccountSettingsPage        = lazy(() => import('./pages/AccountSettingsPage'))
+const AlertingSettingsPage       = lazy(() => import('./modules/settings/pages/AlertingSettingsPage'))
+const AccountSettingsPage        = lazy(() => import('./modules/settings/pages/AccountSettingsPage'))
 const RetentionConfigPage        = lazy(() => import('./pages/RetentionConfigPage'))
 const SessionsPage               = lazy(() => import('./pages/SessionsPage'))
 const OrgBrandingPage            = lazy(() => import('./pages/OrgBrandingPage'))
-const TrustCenterSettingsPage    = lazy(() => import('./pages/TrustCenterSettingsPage'))
+const TrustCenterSettingsPage    = lazy(() => import('./modules/settings/pages/TrustCenterSettingsPage'))
 const IntegrationsPage           = lazy(() => import('./pages/IntegrationsPage'))
-const AuditorSettingsPage        = lazy(() => import('./pages/AuditorSettingsPage'))
-const TeamSettingsPage           = lazy(() => import('./pages/TeamSettingsPage'))
+const AuditorSettingsPage        = lazy(() => import('./modules/settings/pages/AuditorSettingsPage'))
+const TeamSettingsPage           = lazy(() => import('./modules/settings/pages/TeamSettingsPage'))
 const AuditLogPage               = lazy(() => import('./pages/AuditLogPage'))
 const ApiKeysPage                = lazy(() => import('./pages/ApiKeysPage'))
 const AdminHealthPage            = lazy(() => import('./pages/AdminHealthPage'))
@@ -57,7 +58,7 @@ const HR          = lazy(() => import('./modules/hr/HRRoutes'))
 function LoadingSpinner() {
   return (
     <div className="flex items-center justify-center h-64">
-      <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <Spinner size="lg" />
     </div>
   )
 }

@@ -85,6 +85,25 @@ func TestLoginFailKey(t *testing.T) {
 	assert.NotEqual(t, key, key2)
 }
 
+// TestLoginIPFailKey verifies the key format used for per-IP login failure counters.
+func TestLoginIPFailKey(t *testing.T) {
+	key := loginIPFailKey("192.168.1.1")
+	assert.Equal(t, "login_fail_ip:192.168.1.1", key)
+
+	// Ensure IP keys are separate from email keys.
+	emailKey := loginFailKey("192.168.1.1")
+	assert.NotEqual(t, key, emailKey, "IP and email keys must use different namespaces")
+
+	// Different IPs produce different keys.
+	key2 := loginIPFailKey("10.0.0.1")
+	assert.NotEqual(t, key, key2)
+}
+
+// TestIPLockoutConstants documents the expected lockout thresholds.
+func TestIPLockoutConstants(t *testing.T) {
+	assert.Equal(t, int64(10), int64(ipLockoutFailMax), "IP lockout triggers at 10 failures")
+}
+
 // TestTokenDenyKey verifies that token revocation keys are deterministic SHA-256 hashes.
 func TestTokenDenyKey(t *testing.T) {
 	token := "some-raw-access-token"

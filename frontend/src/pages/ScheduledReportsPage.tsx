@@ -5,6 +5,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2, Play, Calendar, X } from 'lucide-react'
+import { Spinner } from '../components/Spinner'
 import { PageHeader } from '../shared/components/PageHeader'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -333,7 +334,7 @@ function ReportDialog({ open, onClose, initial, onSave, isSaving }: ReportDialog
           <Button onClick={handleSave} disabled={!canSave || isSaving}>
             {isSaving ? (
               <>
-                <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1.5" />
+                <Spinner size="xs" color="current" className="mr-1.5" />
                 Wird gespeichert…
               </>
             ) : 'Speichern'}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Shield, ChevronRight, ChevronLeft, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Spinner } from '../components/Spinner'
 
 // Sprint 19 / S19-4 + S19-5: Public-Wizard-Page für NIS2-Self-Assessment.
 // Lebt unter /nis2-check (kein Layout-Wrapper, eigenes leichtgewichtiges
@@ -136,7 +137,7 @@ export default function NIS2WizardPage() {
   if (loading || !run || questions.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        <Spinner size="lg" />
       </div>
     )
   }

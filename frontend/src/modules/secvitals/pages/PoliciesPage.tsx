@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BookOpen, Plus, LayoutTemplate, Sparkles, ChevronsUpDown, ChevronUp, ChevronDown, Printer } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../../components/ui/button'
@@ -341,7 +342,7 @@ export default function PoliciesPage() {
           <div className="space-y-3 py-2">
             {templatesLoading && (
               <div className="flex items-center justify-center h-32">
-                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <Spinner size="md" color="primary" />
               </div>
             )}
             {templates && templates.map((tpl) => (
@@ -432,7 +433,7 @@ export default function PoliciesPage() {
 
               {generateDraft.isPending && (
                 <div className="flex items-center gap-3 text-sm text-muted-foreground p-3 bg-accent rounded-lg">
-                  <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin shrink-0" />
+                  <Spinner size="sm" />
                   {t('secvitals.policiesPage.aiGenerating')}
                 </div>
               )}
@@ -461,7 +462,7 @@ export default function PoliciesPage() {
                 >
                   {generateDraft.isPending ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      <Spinner size="sm" color="white" className="mr-2" />
                       {t('secvitals.policiesPage.generating')}
                     </>
                   ) : (

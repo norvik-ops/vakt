@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { Spinner } from '../components/Spinner'
 import { Shield, CheckCircle, Clock, AlertCircle, ExternalLink, Award, FileText, Users } from 'lucide-react'
 import { formatLocale } from '../shared/utils/locale'
 
@@ -133,7 +134,7 @@ export default function TrustPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        <Spinner size="lg" />
       </div>
     )
   }

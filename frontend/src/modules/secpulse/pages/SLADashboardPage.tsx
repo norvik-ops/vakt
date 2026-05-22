@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Clock, AlertTriangle } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Badge } from '../../../components/ui/badge'
@@ -8,18 +9,12 @@ import { Button } from '../../../components/ui/button'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/ui/table'
 import { useSLADashboard } from '../hooks/useAssets'
 import type { SLAEntry } from '../types'
+import { findingSeverityVariant } from '../../../lib/statusMapping'
 
 /** Active filter tab on the SLA dashboard. */
 type FilterTab = 'all' | 'overdue' | 'at_risk'
 
-/** Maps finding severity to the shadcn Badge variant for consistent colouring. */
-const severityVariant: Record<SLAEntry['severity'], React.ComponentProps<typeof Badge>['variant']> = {
-  info: 'secondary',
-  low: 'outline',
-  medium: 'warning',
-  high: 'outline',
-  critical: 'destructive',
-}
+const severityVariant = findingSeverityVariant
 
 /**
  * Computes the percentage of SLA time consumed for a finding.
@@ -124,7 +119,7 @@ export default function SLADashboardPage() {
 
         {isLoading && (
           <div className="flex justify-center py-16">
-            <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <Spinner size="md" />
           </div>
         )}
 

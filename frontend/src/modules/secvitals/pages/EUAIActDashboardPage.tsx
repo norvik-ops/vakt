@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Bot, Download, AlertTriangle, CheckCircle, FileText } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
@@ -89,7 +90,7 @@ export default function EUAIActDashboardPage() {
         )}
         {isLoading && (
           <div className="flex items-center justify-center h-48">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <Spinner size="lg" color="primary" />
           </div>
         )}
         {isError && <ProGate error={error}><div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">Fehler beim Laden des Dashboards.</div></ProGate>}

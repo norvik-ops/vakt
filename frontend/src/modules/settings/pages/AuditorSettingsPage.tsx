@@ -1,22 +1,22 @@
 import { useState, useEffect } from 'react'
 import { Copy, Trash2, Plus, UserCheck } from 'lucide-react'
-import { PageHeader } from '../shared/components/PageHeader'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
-import { Badge } from '../components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog'
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../components/ui/alert-dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table'
-import { formatLocale } from '../shared/utils/locale'
+import { PageHeader } from '../../../shared/components/PageHeader'
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
+import { Label } from '../../../components/ui/label'
+import { Badge } from '../../../components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../../../components/ui/alert-dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/ui/table'
+import { formatLocale } from '../../../shared/utils/locale'
 import {
   useAuditorInvites,
   useCreateAuditorInvite,
   useRevokeAuditorInvite,
   type AuditorInvite,
   type CreateInviteInput,
-} from '../hooks/useAuditor'
+} from '../../../hooks/useAuditor'
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Bell } from 'lucide-react'
+import { Spinner } from '../components/Spinner'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { PageHeader } from '../shared/components/PageHeader'
 import { Switch } from '../components/ui/switch'
@@ -158,7 +159,7 @@ export default function NotificationPreferencesPage() {
           description="Steuere welche Ereignisse du per E-Mail oder In-App erhältst."
         />
         <div className="flex items-center justify-center flex-1">
-          <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+          <Spinner size="md" />
         </div>
       </div>
     )
@@ -269,7 +270,7 @@ export default function NotificationPreferencesPage() {
             >
               {updatePrefs.isPending ? (
                 <>
-                  <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1.5" />
+                  <Spinner size="xs" color="current" className="mr-1.5" />
                   Wird gespeichert…
                 </>
               ) : (

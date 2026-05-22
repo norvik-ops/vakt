@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ChevronDown, Download } from 'lucide-react'
+import { Spinner } from '../../../components/Spinner'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
@@ -210,7 +211,7 @@ export default function TISAXPage() {
             <TabsContent key={level} value={level}>
               {isLoading ? (
                 <div className="flex items-center justify-center h-32">
-                  <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                  <Spinner size="md" />
                 </div>
               ) : isError ? (
                 <ProGate error={error}><div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">Fehler beim Laden der Controls.</div></ProGate>
