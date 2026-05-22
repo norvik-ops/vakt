@@ -7,6 +7,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Sprint 18 — Agentic-AI v2 (Tag-Kandidat v0.11.0)
+
+Vakts erste agentische AI-Workflows mit Plan/Execute/Reflect-Loop, Tool-Registry und RBAC-Enforcement. Adressiert den Bericht-§8-„AI-Native"-Hebel.
+
+**Backend:**
+- `AgentRunner` (`services/ai/agent.go`) mit MaxIterations (Default 5, Cap 10), OnEvent-Callback, Rate-Limit + Quota wie AI-Chat-Stream.
+- `AgentTool`-Interface + drei Read-Only-Tools: `list_open_findings`, `list_stale_evidence`, `list_controls_without_evidence`. Jedes Tool deklariert `RequireScope` (z.B. `secpulse.findings.read`).
+- `POST /api/v1/secvitals/ai/agent/run` als SSE-Endpoint. Frame-Types: `plan`, `tool_call`, `tool_result`, `final`, `error`. Terminiert mit `[DONE]`.
+
+**RBAC + Audit:**
+- Tools werden im Plan-Prompt NUR gelistet, wenn der User den Scope hat. Defensiver zweiter Check vor jedem Execute. Audit-Log-Entry pro Agent-Run-Start (`action=agent_run_start, actor=ai_agent`).
+- **ADR-0020** Accepted: keine Privilege-Escalation via AI; Pre-Approval-Pattern für mutierende Tools vorbereitet.
+
+**Drei initiale Workflows:** Triage offener Findings, Wochen-Compliance-Plan, Evidence-Re-Collection.
+
+**Docs:**
+- `docs/concepts/ai-agents.md` — Architektur-Diagramm, Komponenten, SSE-Format, drei Workflows, Skeleton-Grenzen.
+- ADR-0020 in `docs/adr/README.md`-Index.
+
+**Verschoben (S18-4 [~]):**
+- `AgentRunPanel`-Frontend mit Live-Plan-Steps + Approve-Cards. Backend-SSE-Endpoint ist produktiv; Frontend ist Cosmetic-Iteration für eine Folge-Welle.
+
+**Skeleton-Grenzen (bewusst):**
+- Plan-zu-Tool-Mapping via Substring-Heuristik statt echtem OpenAI-Function-Calling-Schema.
+- Reflect ist Single-Pass-Final-Event statt iterativer LLM-Roundtrip pro Tool-Result.
+- Beide Punkte sind Folge-Wellen-Themen; das Skeleton beweist das Pattern + die RBAC-Architektur.
+
 ### Sprint 17 — Realtime-Welle (Tag-Kandidat v0.10.0)
 
 Erste produktive SSE-Endpoints nach dem ADR-0019-Pattern aus Sprint 16. Notifications und Scan-Progress werden jetzt live gepushed statt gepollt.

@@ -31,6 +31,7 @@ Diese ADRs dokumentieren wichtige Architekturentscheidungen der Vakt-Plattform. 
 | [0017](0017-api-contract-tests.md) | API-Contract-Tests gegen Backend ↔ Frontend Drift (OpenAPI durchsetzen) | Accepted |
 | [0018](0018-goroutine-lifecycle-und-panic-eskalation.md) | Goroutine-Lifecycle (Parent-Context-Pflicht) und Panic-Eskalation via `safego.Run` | Accepted |
 | [0019](0019-sse-statt-websocket-fuer-realtime.md) | Server-Sent Events statt WebSockets für alle Realtime-Pfade (Notifications, Scan-Progress, AI-Streaming) | Accepted |
+| [0020](0020-ai-agent-tool-permissions.md) | AI-Agent darf nur Tools nutzen, die der initiierende User auch darf — keine Privilege-Escalation via AI | Accepted |
 
 ## Wann eine neue ADR schreiben?
 

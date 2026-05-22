@@ -62,4 +62,8 @@ func RegisterWithOptions(g *echo.Group, db *pgxpool.Pool, provider, baseURL, api
 	g.POST("/ai/incident-guide", h.IncidentResponseGuide)
 	// Sprint 15 / S15-5: SSE-Streaming-Endpoint fuer AI-Advisor + Documentation.
 	g.POST("/ai/chat/stream", h.ChatStream)
+	// Sprint 18 / S18-3: Agent-Run-Endpoint (Plan/Execute/Reflect, SSE).
+	runner := NewAgentRunner(svc.client, svc.model, db, svc.usage, DefaultAgentTools(db))
+	agentH := NewAgentHandler(svc.client, svc.model, runner)
+	g.POST("/ai/agent/run", agentH.AgentRun)
 }
