@@ -7,6 +7,67 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### v0.15.0 — NIS2 Pro-Layer (Tag-Kandidat, Sprint 28)
+
+Schließt die Pro-Schicht aus Sprint 19 vollständig ab. Kein Breaking-Change — alle neuen Features sind additiv und hinter `FeatureNIS2Reporting` Pro-gated. CE-Features des NIS2-Wizards bleiben unverändert.
+
+**S28-1 Embedded-Mode:**
+- NIS2-Self-Assessment-Wizard via `<iframe>` einbettbar auf Partner- und Berater-Sites.
+- CORS `Access-Control-Allow-Origin: *` auf öffentlichen Wizard-Endpoints (`/api/v1/public/nis2-assessment/*`).
+- `X-Frame-Options`-Header wird auf `/nis2-check*`-Routen entfernt; CSP `frame-ancestors *` gesetzt.
+- Resize-Helper `public/nis2-embed.js` (PostMessage-basiert, 26 Zeilen, kein Tracking, kein Cookie).
+
+**S28-2 Branded PDF-Export (Pro, `FeatureNIS2Reporting`):**
+- `GET /api/v1/public/nis2-assessment/:token/export-pdf` — generiert mehrseitiges PDF: Cover mit Gesamtscore, Bereichs-Tabelle, Top-Gaps, Detailantworten.
+- Footer „Erstellt mit Vakt · vakt.io". Rückgabe als `application/pdf` Blob (filename `nis2-assessment.pdf`).
+- Frontend-Download-Button im Result-Screen — sichtbar nur wenn authentifiziert. Bei `402 Payment Required`: Upgrade-CTA.
+
+**S28-3 Re-Assessment-History (Pro, `FeatureNIS2Reporting`):**
+- Neue Tabelle `ck_nis2_assessment_runs` (Migration 127): speichert vollständige Assessment-Runs mit Scores + Top-Gaps.
+- 90-Tage-Cooldown zwischen Re-Assessments — `429 Too Many Requests` mit `Retry-After`-Header bei Verletzung.
+- Endpoint `GET /api/v1/secvitals/nis2-assessment/history` liefert alle Runs sortiert nach Datum.
+- Frontend-Seite `/secvitals/nis2-history`: Trend-Pfeile (TrendingUp / TrendingDown) pro Bereich, Delta-Spalte zum Vorrun, Cooldown-Restanzeige, Leer-State mit CTA.
+
+**S28-4 Multi-Framework-Wizard (Pro, `FeatureNIS2Reporting`):**
+- 80 kombinierte Fragen: NIS2 (~30), ISO 27001 (~25), DSGVO-TOM (~25). Stabile IDs mit `mf.`-Prefix.
+- 23 Cross-Mapping-Fragen, die mehreren Frameworks angerechnet werden (Ref-Feld pro Frage).
+- Score-Engine `MultiFrameworkScore`: `NIS2`, `ISO27001`, `DSGVO`, `Overall`, `TopGaps`, `ByFramework`.
+- Neue Route `/nis2-check/multi` — eigene Frontend-Page mit drei Fortschrittsbalken (NIS2 indigo, ISO27001 emerald, DSGVO violet) + Cross-Mapping-Hinweis im Result.
+
+**S28-5 Landing-Page SEO:**
+- `docs/marketing/nis2-check-landing.md` — deutschsprachige SEO-Vorlage für `vakt.io/nis2-check`.
+- Meta-Block (title, description, canonical), Hero, NIS2-Bereichs-Tabelle, 3-Schritt-Flow, Zielgruppen-Blöcke, FAQ (5 Fragen inkl. DSGVO-Hinweis), Legal-Disclaimer. Optimiert auf „NIS2 Self-Assessment", „NIS2 Umsetzungsgesetz", „BSI NIS2 Compliance Check".
+
+---
+
+### v0.14.3 — Interne Qualitätswelle (Sprints 24-27, kein User-Impact)
+
+Keine neuen User-facing-Features. Keine DB-Migrations. Kein Upgrade-Eingriff nötig.
+
+**S24 — UX-Polish + Security-Hardening:**
+- **`Spinner`-Komponente** als zentrale Ladeanimation eingeführt; Inline-`div`-Spinner in Frontend entfernt.
+- **`StatusMapping`-Bibliothek** — zentralisierte `Record`-Typen für Status/Severity-Farb- und Label-Mappings; keine gestreuten `switch`-Blöcke mehr.
+- **Toast-Migration** — verbleibende Inline-`fixed-bottom`-Toast-Blöcke auf globalen `toast()`-Hook umgestellt.
+- **Settings-Modul** — 6 Settings-Pages nach `modules/settings/pages/` migriert (saubere Modul-Struktur).
+- **IP-Lockout** — per-IP Redis-Failure-Counter: nach 10 fehlgeschlagenen Logins wird die IP für 15 Minuten gesperrt. Brute-Force-Schutz auf Login-Endpoint.
+- **Backup-HMAC** — Backup-Archive werden mit HMAC-SHA256 signiert; Integritätsprüfung beim Restore.
+
+**S25 — sqlc-Welle 1 (SecPulse + SecVitals) + E2E:**
+- **SecPulse sqlc-Abschluss** — 3 verbleibende Raw-SQL-Stellen in `secpulse/` auf sqlc migriert.
+- **SecVitals sqlc Wellen 1+2** — `service_soa`, `approvals_handler`, `handler_my_tasks`, `milestones_repository` auf sqlc.
+- **Playwright E2E V22-1** — Sessions-Panic-2-Step-Confirm, ApiKeys-Rotate-Modal, AgentRunPanel-Visualisierung. Schließt V22-1 aus dem Verifizierungs-Backlog ab.
+
+**S26 — sqlc-Welle 2 (SecVitals + SecReflex + HR):**
+- **SecVitals sqlc Wellen 3+4+5** — `handler_ical`, `handler_templates`, `service_policies`, `service_frameworks`, `handler_boardreport`, `service_reporting`, `policy_acceptance` auf sqlc.
+- **SecReflex + Vakt HR sqlc-Abschluss** — alle verbleibenden Raw-SQL-Stellen in beiden Modulen migriert.
+
+**S27 — sqlc-Abschluss Vakt Vault + E2E Verification:**
+- **Vakt Vault sqlc komplett** — 29 neue sqlc-Queries (Shares, API-Tokens, Git-Scans, Scan-Results, Rotation-Policies, Access-Log, Secrets-Metadata). Drei dokumentierte Ausnahmen bleiben Embedded-SQL: `UpsertSecret` (ON CONFLICT + Crypto-Bytes), `GetSecretRaw`, `GetSecretByID` — beide geben `[]byte`-Encrypted-Value zurück, das sqlc-Code-Gen nicht abbilden kann.
+- **SecPulse CI-Evidence** — `INSERT INTO ck_evidence` in `handler_ci_evidence.go` auf `r.q.InsertCKCIEvidence` migriert.
+- **E2E Grace-Period-Badge** — Playwright-Test für `API_KEYS_IN_GRACE`-Fixture (rotated_at = jetzt → `text=Grace 24h aktiv` sichtbar). Schließt V22-1 vollständig ab.
+
+---
+
 ### v0.14.2 — Build-Hotfix (2026-05-23)
 
 Pure Build-Fix. Funktional identisch zu v0.14.1 für den Runtime-Pfad.
