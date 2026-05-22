@@ -7,6 +7,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### v0.14.2 — Build-Hotfix (2026-05-23)
+
+Pure Build-Fix. Funktional identisch zu v0.14.1 für den Runtime-Pfad.
+
+- **OpenAPI-Drift gefixt:** `HealthResponse` und `DemoStartResponse` Schemas waren in `backend/internal/shared/apidocs/openapi.yaml` nie definiert, wurden aber in `frontend/src/pages/Login.tsx` per `components['schemas']` referenziert. `npm run build` (tsc -b) ist deshalb seit v0.14.0 rot. Schemas nachgezogen, Types regeneriert. ADR-0017-Honesty-Audit-Miss.
+- **`Setup.tsx` dead state entfernt:** `migratedMsg`-useState wurde gesetzt, dann `navigate('/')` — gerendert wurde es nie. Auf `toast()` umgestellt, damit der User die NIS2-Migrations-Bestätigung nach dem Sign-up auch tatsächlich sieht.
+- **Verifizierung:** `go test ./...` + `npm run build` + `npm run test` alle grün.
+
 ### Sprint 22 Tail — Verbleibende Frontend-Komponenten + Tests (Tag-Kandidat v0.14.1)
 
 Schließt die 4 in v0.14.0 zurückgestellten Items aus Sprint 22 ab. Damit ist der Sprint-22-Honesty-Audit vollständig abgearbeitet.
