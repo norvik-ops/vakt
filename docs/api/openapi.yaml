@@ -87,6 +87,42 @@ components:
           type: string
           description: New refresh token
 
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+        version:
+          type: string
+          description: Version-Tag der laufenden Instanz (z.B. "v0.14.1")
+        demo:
+          type: boolean
+          description: True wenn die Instanz im Demo-Modus läuft (VAKT_DEMO=true).
+        sso_enabled:
+          type: boolean
+          description: True wenn Casdoor-OIDC konfiguriert ist (Login-Page blendet SSO-Button ein).
+
+    DemoStartResponse:
+      type: object
+      required: [admin_email, admin_password, analyst_email, analyst_password, expires_in]
+      properties:
+        admin_email:
+          type: string
+          format: email
+        admin_password:
+          type: string
+          description: Klartext-Passwort (einmaliger Disclosure — danach nur Bcrypt-Hash in DB).
+        analyst_email:
+          type: string
+          format: email
+        analyst_password:
+          type: string
+        expires_in:
+          type: integer
+          description: Sekunden bis die ephemere Demo-Org von Asynq-Cleanup gelöscht wird (default 14400 = 4h).
+
     SessionInfo:
       type: object
       required: [id, last_used, created_at, expires_at]

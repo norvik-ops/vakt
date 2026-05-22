@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { apiFetch } from '../api/client'
+import { toast } from '../shared/hooks/useToast'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -216,7 +217,6 @@ export default function Setup() {
   const [modules, setModules] = useState<string[]>([...ALL_MODULES])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [migratedMsg, setMigratedMsg] = useState<string | null>(null)
 
   // Sprint 22 S22-4: bei Sign-up mit ?nis2_token= aus dem Public-Wizard
   // wird der Token nach erfolgreichem Setup an den Migrate-Endpoint
@@ -257,8 +257,9 @@ export default function Setup() {
             { method: 'POST', body: JSON.stringify({ token: nis2Token }) },
           )
           localStorage.removeItem('vakt_nis2_token')
-          setMigratedMsg(
-            `NIS2-Wizard-Ergebnis übernommen: ${migrateResp.controls_mapped} Controls vorbelegt.`,
+          toast(
+            `NIS2-Wizard-Ergebnis übernommen: ${migrateResp.controls_mapped.toString()} Controls vorbelegt.`,
+            'success',
           )
         } catch {
           // Migration ist Bonus — Setup-Erfolg nicht blockieren.

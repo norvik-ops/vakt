@@ -6595,6 +6595,27 @@ export interface components {
             /** @description New refresh token */
             refresh_token?: string;
         };
+        HealthResponse: {
+            /** @example ok */
+            status: string;
+            /** @description Version-Tag der laufenden Instanz (z.B. "v0.14.1") */
+            version?: string;
+            /** @description True wenn die Instanz im Demo-Modus läuft (VAKT_DEMO=true). */
+            demo?: boolean;
+            /** @description True wenn Casdoor-OIDC konfiguriert ist (Login-Page blendet SSO-Button ein). */
+            sso_enabled?: boolean;
+        };
+        DemoStartResponse: {
+            /** Format: email */
+            admin_email: string;
+            /** @description Klartext-Passwort (einmaliger Disclosure — danach nur Bcrypt-Hash in DB). */
+            admin_password: string;
+            /** Format: email */
+            analyst_email: string;
+            analyst_password: string;
+            /** @description Sekunden bis die ephemere Demo-Org von Asynq-Cleanup gelöscht wird (default 14400 = 4h). */
+            expires_in: number;
+        };
         SessionInfo: {
             /** Format: uuid */
             id: string;
