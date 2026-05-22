@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Shield, ChevronRight, ChevronLeft, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Shield, ChevronRight, ChevronLeft, AlertTriangle, CheckCircle2, Download } from 'lucide-react'
 import { Spinner } from '../components/Spinner'
+import { useAuthStore } from '../shared/stores/auth'
 
 // Sprint 19 / S19-4 + S19-5: Public-Wizard-Page für NIS2-Self-Assessment.
 // Lebt unter /nis2-check (kein Layout-Wrapper, eigenes leichtgewichtiges
@@ -143,7 +144,7 @@ export default function NIS2WizardPage() {
   }
 
   if (finished && result) {
-    return <ResultView result={result} />
+    return <ResultView result={result} isAuthenticated={useAuthStore.getState().isAuthenticated()} />
   }
 
   const q = questions[stepIdx]
@@ -221,9 +222,39 @@ export default function NIS2WizardPage() {
   )
 }
 
-function ResultView({ result }: { result: ResultResponse }) {
+function ResultView({ result, isAuthenticated }: { result: ResultResponse; isAuthenticated: boolean }) {
   const score = result.score ?? 0
   const scoreColor = score >= 70 ? 'text-green-600' : score >= 40 ? 'text-amber-600' : 'text-red-600'
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const [pdfError, setPdfError] = useState<string | null>(null)
+
+  const handleDownloadPDF = async () => {
+    setPdfLoading(true)
+    setPdfError(null)
+    try {
+      const resp = await fetch(
+        `/api/v1/secvitals/nis2-assessment/pdf?token=${encodeURIComponent(result.token)}`,
+        { method: 'POST' },
+      )
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}))
+        setPdfError((body as { error?: string }).error ?? 'PDF-Export fehlgeschlagen')
+        return
+      }
+      const blob = await resp.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'nis2-assessment.pdf'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setPdfError('PDF-Export fehlgeschlagen')
+    } finally {
+      setPdfLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b">
@@ -245,6 +276,23 @@ function ResultView({ result }: { result: ResultResponse }) {
               <><AlertTriangle className="w-4 h-4 inline mr-1 text-red-500" />Akuter Handlungsbedarf vor NIS2-Stichtag.</>
             )}
           </p>
+
+          {/* PDF-Download — nur für eingeloggte User mit Pro-Lizenz */}
+          {isAuthenticated && (
+            <div className="mt-6">
+              <button
+                onClick={() => void handleDownloadPDF()}
+                disabled={pdfLoading}
+                className="inline-flex items-center gap-2 bg-white border border-indigo-300 text-indigo-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download className="w-4 h-4" />
+                {pdfLoading ? 'Wird generiert…' : 'Als PDF exportieren'}
+              </button>
+              {pdfError && (
+                <p className="text-xs text-red-600 mt-2">{pdfError}</p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="bg-white border rounded-xl p-6">

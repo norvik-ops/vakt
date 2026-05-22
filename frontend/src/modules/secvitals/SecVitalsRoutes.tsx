@@ -13,6 +13,7 @@ import AuditsPage from './pages/AuditsPage'
 import AuditDetailPage from './pages/AuditDetailPage'
 import NIS2ChecklistPage from './pages/NIS2ChecklistPage'
 import NIS2AssistantPage from './pages/NIS2AssistantPage'
+import NIS2ReassessmentPage from './pages/NIS2ReassessmentPage'
 import ISO27001ChecklistPage from './pages/ISO27001ChecklistPage'
 import BSIGrundschutzPage from './pages/BSIGrundschutzPage'
 import AIReportPage from './pages/AIReportPage'
@@ -68,6 +69,8 @@ export default function SecVitalsRoutes() {
       <Route path="audits/:id" element={<AuditDetailPage />} />
       <Route path="nis2" element={<NIS2ChecklistPage />} />
       <Route path="nis2-assistant" element={<NIS2AssistantPage />} />
+      {/* Sprint 28 / S28-3: Re-Assessment History — ProGate: FeatureNIS2Reporting */}
+      <Route path="nis2-history" element={<NIS2ReassessmentPage />} />
       <Route path="iso27001" element={<ISO27001ChecklistPage />} />
       <Route path="grundschutz" element={<BSIGrundschutzPage />} />
       <Route path="ai-report" element={<AIReportPage />} />

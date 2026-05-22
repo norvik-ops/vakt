@@ -15,6 +15,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import TrustPage from './pages/TrustPage'
 import NIS2WizardPage from './pages/NIS2WizardPage'
+import MultiFrameworkWizardPage from './pages/MultiFrameworkWizardPage'
 import AuditorAcceptPage from './pages/AuditorAcceptPage'
 import PolicyAcceptPage from './pages/PolicyAcceptPage'
 import InviteAcceptPage from './pages/InviteAcceptPage'
@@ -152,6 +153,12 @@ export const router = createBrowserRouter([
     // Top-of-Funnel-Akquise-Asset.
     path: '/nis2-check',
     element: <NIS2WizardPage />,
+  },
+  {
+    // Sprint 28 S28-4: Multi-Framework-Assessment (NIS2 + ISO27001 + DSGVO-TOM).
+    // ProGate: FeatureNIS2Reporting. Kein Layout-Wrapper, kein Setup-Guard.
+    path: '/nis2-check/multi',
+    element: <MultiFrameworkWizardPage />,
   },
   {
     path: '/login',

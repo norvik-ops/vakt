@@ -221,6 +221,25 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	nis2wizard.Register(api.Group("/public/nis2-assessment", nis2RateLimiter), nis2wizardHandler)
 	log.Info().Msg("nis2 wizard public routes registered")
 
+	// S28-1: NIS2 Embedded-Mode — override the global X-Frame-Options: DENY and
+	// CSP frame-ancestors 'none' for paths that must be embeddable in partner iframes.
+	// Applies to both the API endpoints and the frontend SPA route (/nis2-check).
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			p := c.Request().URL.Path
+			isNIS2Public := strings.HasPrefix(p, "/nis2-check") ||
+				strings.HasPrefix(p, "/api/v1/public/nis2-assessment")
+			if isNIS2Public {
+				// Remove the restrictive X-Frame-Options set by the global Secure middleware.
+				c.Response().Header().Del("X-Frame-Options")
+				// Override the CSP to allow framing from any origin.
+				c.Response().Header().Set("Content-Security-Policy",
+					"default-src 'self'; script-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors *; object-src 'none'; base-uri 'self'")
+			}
+			return next(c)
+		}
+	})
+
 	// Setup wizard — rate-limited, no auth (only works before first org exists).
 	setupRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
 		middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(5.0 / 60.0), Burst: 5, ExpiresIn: 5 * time.Minute},
