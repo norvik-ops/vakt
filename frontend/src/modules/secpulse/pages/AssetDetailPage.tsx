@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/ui/table'
 import { useAsset, useTriggerScan, useDeleteAsset } from '../hooks/useAssets'
 import { useFindings } from '../hooks/useFindings'
-import type { Asset, Finding } from '../types'
+import type { Asset } from '../types'
 import { cn } from '../../../lib/utils'
 import { findingSeverityClass } from '../../../lib/statusMapping'
 import { useState, useRef, useEffect } from 'react'

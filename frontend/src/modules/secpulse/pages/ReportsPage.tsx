@@ -12,7 +12,6 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/ui/table'
 import { useRiskTrend, useReports, useCreateReport, useDownloadReport } from '../hooks/useReports'
-import type { Report } from '../types'
 import { ProGate } from '../../../shared/components/ProGate'
 import { jobStatusVariant } from '../../../lib/statusMapping'
 

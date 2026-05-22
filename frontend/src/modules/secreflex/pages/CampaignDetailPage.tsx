@@ -6,7 +6,6 @@ import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { useCampaign, useCampaignStats, useLaunchCampaign, useAbortCampaign, useDownloadCampaignReport } from '../hooks/useCampaigns'
-import type { Campaign } from '../types'
 import { campaignStatusVariant } from '../../../lib/statusMapping'
 
 const statusVariant = campaignStatusVariant

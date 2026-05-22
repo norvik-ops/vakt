@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '../../../components/ui/label'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/ui/table'
 import { useTrainingModules, useAssignments, useAssignModule } from '../hooks/useTraining'
-import type { TrainingModule, Assignment } from '../types'
+import type { TrainingModule } from '../types'
 import { assignmentStatusVariant } from '../../../lib/statusMapping'
 
 async function downloadCertificate(assignmentId: string) {

@@ -25,6 +25,9 @@ function makeDashboard(overrides: Partial<DORADashboard> = {}): DORADashboard {
     next_deadline: undefined,
     expired_suppliers: 0,
     tlpt_overdue_warning: false,
+    third_party_count: 0,
+    critical_third_parties: 0,
+    missing_exit_strategies: 0,
     ...overrides,
   }
 }

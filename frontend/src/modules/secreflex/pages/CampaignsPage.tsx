@@ -15,7 +15,6 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import { useCampaigns, useCreateCampaign } from '../hooks/useCampaigns'
 import { useTemplates } from '../hooks/useTemplates'
 import { useTargetGroups } from '../hooks/useTargetGroups'
-import type { Campaign } from '../types'
 import { ProGate } from '../../../shared/components/ProGate'
 import { campaignStatusVariant } from '../../../lib/statusMapping'
 

@@ -17,7 +17,7 @@ import { apiFetch, FeatureLockedError } from '../../../api/client'
 import { ProGate } from '../../../shared/components/ProGate'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import { Card, CardContent, CardHeader } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
 
 // Sprint 28 / S28-3: Re-Assessment-History — zeigt alle vergangenen NIS2-
@@ -452,7 +452,7 @@ export default function NIS2ReassessmentPage() {
       <PageHeader
         title="NIS2-Re-Assessment History"
         description="Verfolgen Sie die Entwicklung Ihrer NIS2-Compliance über mehrere Bewertungen. Alle 90 Tage empfehlen wir eine neue Bewertung."
-        action={
+        actions={
           <Button
             onClick={() => {
               if (!inCooldown) {

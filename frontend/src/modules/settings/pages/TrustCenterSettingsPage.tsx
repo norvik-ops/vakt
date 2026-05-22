@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Spinner } from '../components/Spinner'
+import { Spinner } from '../../../components/Spinner'
 import { Shield, Award, FileText, Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
