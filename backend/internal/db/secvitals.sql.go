@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -9678,4 +9679,823 @@ func (q *Queries) ListCKMyTaskRisks(ctx context.Context, arg ListCKMyTaskRisksPa
 		return nil, err
 	}
 	return items, nil
+}
+
+// ── Board Report + Executive Summary (s26-sqlc-vitals-4) ─────────────────────
+
+const getBoardReportComplianceScoreRows = `-- name: GetBoardReportComplianceScoreRows :many
+SELECT
+    COUNT(c.id)::int                                                     AS total,
+    COUNT(c.id) FILTER (WHERE c.manual_status = 'implemented')::int     AS implemented
+FROM ck_frameworks f
+LEFT JOIN ck_controls c ON c.framework_id = f.id AND c.org_id = f.org_id
+WHERE f.org_id = $1::uuid
+GROUP BY f.id
+`
+
+type GetBoardReportComplianceScoreRowsRow struct {
+	Total       int32 `json:"total"`
+	Implemented int32 `json:"implemented"`
+}
+
+func (q *Queries) GetBoardReportComplianceScoreRows(ctx context.Context, orgID string) ([]GetBoardReportComplianceScoreRowsRow, error) {
+	rows, err := q.db.Query(ctx, getBoardReportComplianceScoreRows, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetBoardReportComplianceScoreRowsRow{}
+	for rows.Next() {
+		var i GetBoardReportComplianceScoreRowsRow
+		if err := rows.Scan(&i.Total, &i.Implemented); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCKPreviousScore = `-- name: GetCKPreviousScore :one
+SELECT score FROM ck_score_history
+WHERE org_id = $1::uuid AND recorded_at < NOW()::date
+ORDER BY recorded_at DESC
+LIMIT 1
+`
+
+func (q *Queries) GetCKPreviousScore(ctx context.Context, orgID string) (float64, error) {
+	row := q.db.QueryRow(ctx, getCKPreviousScore, orgID)
+	var score float64
+	err := row.Scan(&score)
+	return score, err
+}
+
+const countCKRecentIncidents = `-- name: CountCKRecentIncidents :one
+SELECT COUNT(*)::int FROM ck_incidents
+WHERE org_id = $1::uuid AND created_at >= $2
+`
+
+type CountCKRecentIncidentsParams struct {
+	OrgID string    `json:"org_id"`
+	Since time.Time `json:"since"`
+}
+
+func (q *Queries) CountCKRecentIncidents(ctx context.Context, arg CountCKRecentIncidentsParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countCKRecentIncidents, arg.OrgID, arg.Since)
+	var count int32
+	err := row.Scan(&count)
+	return count, err
+}
+
+const listActiveOrgIDs = `-- name: ListActiveOrgIDs :many
+SELECT id::text FROM organizations WHERE is_deleted = false
+`
+
+func (q *Queries) ListActiveOrgIDs(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, listActiveOrgIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getExecutiveFrameworkScores = `-- name: GetExecutiveFrameworkScores :many
+SELECT f.name,
+       COUNT(c.id)::int                                                    AS total,
+       COUNT(c.id) FILTER (WHERE c.manual_status = 'implemented')::int     AS implemented
+FROM ck_frameworks f
+LEFT JOIN ck_controls c ON c.framework_id = f.id AND c.org_id = f.org_id
+WHERE f.org_id = $1::uuid
+GROUP BY f.name
+ORDER BY f.name
+`
+
+type GetExecutiveFrameworkScoresRow struct {
+	Name        string `json:"name"`
+	Total       int32  `json:"total"`
+	Implemented int32  `json:"implemented"`
+}
+
+func (q *Queries) GetExecutiveFrameworkScores(ctx context.Context, orgID string) ([]GetExecutiveFrameworkScoresRow, error) {
+	rows, err := q.db.Query(ctx, getExecutiveFrameworkScores, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetExecutiveFrameworkScoresRow{}
+	for rows.Next() {
+		var i GetExecutiveFrameworkScoresRow
+		if err := rows.Scan(&i.Name, &i.Total, &i.Implemented); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getExecutiveTopRisks = `-- name: GetExecutiveTopRisks :many
+SELECT title,
+       (likelihood * impact)::int AS score,
+       CASE
+           WHEN (likelihood * impact) >= 15 THEN 'critical'
+           WHEN (likelihood * impact) >= 9  THEN 'high'
+           WHEN (likelihood * impact) >= 4  THEN 'medium'
+           ELSE 'low'
+       END AS severity
+FROM ck_risks
+WHERE org_id = $1::uuid AND status = 'open'
+ORDER BY score DESC, updated_at DESC
+LIMIT 5
+`
+
+type GetExecutiveTopRisksRow struct {
+	Title    string `json:"title"`
+	Score    int32  `json:"score"`
+	Severity string `json:"severity"`
+}
+
+func (q *Queries) GetExecutiveTopRisks(ctx context.Context, orgID string) ([]GetExecutiveTopRisksRow, error) {
+	rows, err := q.db.Query(ctx, getExecutiveTopRisks, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetExecutiveTopRisksRow{}
+	for rows.Next() {
+		var i GetExecutiveTopRisksRow
+		if err := rows.Scan(&i.Title, &i.Score, &i.Severity); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countCKClosedControlsSince = `-- name: CountCKClosedControlsSince :one
+SELECT COUNT(*)::int FROM ck_controls
+WHERE org_id = $1::uuid AND manual_status = 'implemented' AND updated_at >= $2
+`
+
+type CountCKClosedControlsSinceParams struct {
+	OrgID string    `json:"org_id"`
+	Since time.Time `json:"since"`
+}
+
+func (q *Queries) CountCKClosedControlsSince(ctx context.Context, arg CountCKClosedControlsSinceParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countCKClosedControlsSince, arg.OrgID, arg.Since)
+	var count int32
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countCKIncidentsSince = `-- name: CountCKIncidentsSince :one
+SELECT COUNT(*)::int FROM ck_incidents
+WHERE org_id = $1::uuid AND created_at >= $2
+`
+
+type CountCKIncidentsSinceParams struct {
+	OrgID string    `json:"org_id"`
+	Since time.Time `json:"since"`
+}
+
+func (q *Queries) CountCKIncidentsSince(ctx context.Context, arg CountCKIncidentsSinceParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countCKIncidentsSince, arg.OrgID, arg.Since)
+	var count int32
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countSPResolvedFindingsSince = `-- name: CountSPResolvedFindingsSince :one
+SELECT COUNT(*)::int FROM vb_findings
+WHERE org_id = $1::uuid AND status = 'resolved' AND updated_at >= $2
+`
+
+type CountSPResolvedFindingsSinceParams struct {
+	OrgID string    `json:"org_id"`
+	Since time.Time `json:"since"`
+}
+
+func (q *Queries) CountSPResolvedFindingsSince(ctx context.Context, arg CountSPResolvedFindingsSinceParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countSPResolvedFindingsSince, arg.OrgID, arg.Since)
+	var count int32
+	err := row.Scan(&count)
+	return count, err
+}
+
+// ── Policy Acceptance (s26-sqlc-vitals-5 — DSGVO-sensitiv) ──────────────────
+
+const getCKOrgName = `-- name: GetCKOrgName :one
+SELECT name FROM organizations WHERE id = $1::uuid
+`
+
+func (q *Queries) GetCKOrgName(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, getCKOrgName, id)
+	var name string
+	err := row.Scan(&name)
+	return name, err
+}
+
+const createCKPolicyAcceptanceCampaign = `-- name: CreateCKPolicyAcceptanceCampaign :one
+INSERT INTO ck_policy_acceptance_campaigns (org_id, policy_id, name, message, deadline, created_by)
+VALUES ($1::uuid, $2::uuid, $3, $4, $5::date, $6::uuid)
+RETURNING id::text, org_id::text, policy_id::text, name,
+          COALESCE(message, '') AS message,
+          deadline::text,
+          created_at
+`
+
+type CreateCKPolicyAcceptanceCampaignParams struct {
+	OrgID     string      `json:"org_id"`
+	PolicyID  string      `json:"policy_id"`
+	Name      string      `json:"name"`
+	Message   string      `json:"message"`
+	Deadline  pgtype.Text `json:"deadline"`
+	CreatedBy pgtype.UUID `json:"created_by"`
+}
+
+type CreateCKPolicyAcceptanceCampaignRow struct {
+	ID        string             `json:"id"`
+	OrgID     string             `json:"org_id"`
+	PolicyID  string             `json:"policy_id"`
+	Name      string             `json:"name"`
+	Message   string             `json:"message"`
+	Deadline  pgtype.Text        `json:"deadline"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) CreateCKPolicyAcceptanceCampaign(ctx context.Context, arg CreateCKPolicyAcceptanceCampaignParams) (CreateCKPolicyAcceptanceCampaignRow, error) {
+	row := q.db.QueryRow(ctx, createCKPolicyAcceptanceCampaign,
+		arg.OrgID,
+		arg.PolicyID,
+		arg.Name,
+		arg.Message,
+		arg.Deadline,
+		arg.CreatedBy,
+	)
+	var i CreateCKPolicyAcceptanceCampaignRow
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.PolicyID,
+		&i.Name,
+		&i.Message,
+		&i.Deadline,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const listCKPolicyAcceptanceCampaigns = `-- name: ListCKPolicyAcceptanceCampaigns :many
+SELECT id::text, org_id::text, policy_id::text, name,
+       COALESCE(message, '') AS message,
+       deadline::text,
+       created_at
+FROM ck_policy_acceptance_campaigns
+WHERE org_id = $1::uuid AND policy_id = $2::uuid
+ORDER BY created_at DESC
+`
+
+type ListCKPolicyAcceptanceCampaignsParams struct {
+	OrgID    string `json:"org_id"`
+	PolicyID string `json:"policy_id"`
+}
+
+type ListCKPolicyAcceptanceCampaignsRow struct {
+	ID        string             `json:"id"`
+	OrgID     string             `json:"org_id"`
+	PolicyID  string             `json:"policy_id"`
+	Name      string             `json:"name"`
+	Message   string             `json:"message"`
+	Deadline  pgtype.Text        `json:"deadline"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) ListCKPolicyAcceptanceCampaigns(ctx context.Context, arg ListCKPolicyAcceptanceCampaignsParams) ([]ListCKPolicyAcceptanceCampaignsRow, error) {
+	rows, err := q.db.Query(ctx, listCKPolicyAcceptanceCampaigns, arg.OrgID, arg.PolicyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCKPolicyAcceptanceCampaignsRow{}
+	for rows.Next() {
+		var i ListCKPolicyAcceptanceCampaignsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrgID,
+			&i.PolicyID,
+			&i.Name,
+			&i.Message,
+			&i.Deadline,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const createCKPolicyAcceptanceRequest = `-- name: CreateCKPolicyAcceptanceRequest :one
+INSERT INTO ck_policy_acceptance_requests (campaign_id, org_id, recipient_email, recipient_name, token_hash)
+VALUES ($1::uuid, $2::uuid, $3, $4, $5)
+RETURNING id::text
+`
+
+type CreateCKPolicyAcceptanceRequestParams struct {
+	CampaignID     string `json:"campaign_id"`
+	OrgID          string `json:"org_id"`
+	RecipientEmail string `json:"recipient_email"`
+	RecipientName  string `json:"recipient_name"`
+	TokenHash      string `json:"token_hash"`
+}
+
+func (q *Queries) CreateCKPolicyAcceptanceRequest(ctx context.Context, arg CreateCKPolicyAcceptanceRequestParams) (string, error) {
+	row := q.db.QueryRow(ctx, createCKPolicyAcceptanceRequest,
+		arg.CampaignID,
+		arg.OrgID,
+		arg.RecipientEmail,
+		arg.RecipientName,
+		arg.TokenHash,
+	)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const markCKPolicyAcceptanceRequestSent = `-- name: MarkCKPolicyAcceptanceRequestSent :exec
+UPDATE ck_policy_acceptance_requests SET sent_at = now() WHERE id = $1::uuid
+`
+
+func (q *Queries) MarkCKPolicyAcceptanceRequestSent(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, markCKPolicyAcceptanceRequestSent, id)
+	return err
+}
+
+const getCKPolicyAcceptanceCampaignStats = `-- name: GetCKPolicyAcceptanceCampaignStats :one
+SELECT
+    COUNT(*)::int                          AS total,
+    COUNT(accepted_at)::int                AS accepted,
+    (COUNT(*) - COUNT(accepted_at))::int   AS pending
+FROM ck_policy_acceptance_requests
+WHERE campaign_id = $1::uuid
+`
+
+type GetCKPolicyAcceptanceCampaignStatsRow struct {
+	Total    int32 `json:"total"`
+	Accepted int32 `json:"accepted"`
+	Pending  int32 `json:"pending"`
+}
+
+func (q *Queries) GetCKPolicyAcceptanceCampaignStats(ctx context.Context, campaignID string) (GetCKPolicyAcceptanceCampaignStatsRow, error) {
+	row := q.db.QueryRow(ctx, getCKPolicyAcceptanceCampaignStats, campaignID)
+	var i GetCKPolicyAcceptanceCampaignStatsRow
+	err := row.Scan(&i.Total, &i.Accepted, &i.Pending)
+	return i, err
+}
+
+const listCKPolicyAcceptanceRequests = `-- name: ListCKPolicyAcceptanceRequests :many
+SELECT id::text, campaign_id::text, recipient_email,
+       COALESCE(recipient_name, '') AS recipient_name,
+       accepted_at, sent_at, created_at
+FROM ck_policy_acceptance_requests
+WHERE campaign_id = $1::uuid
+ORDER BY created_at ASC
+`
+
+type ListCKPolicyAcceptanceRequestsRow struct {
+	ID             string             `json:"id"`
+	CampaignID     string             `json:"campaign_id"`
+	RecipientEmail string             `json:"recipient_email"`
+	RecipientName  string             `json:"recipient_name"`
+	AcceptedAt     pgtype.Timestamptz `json:"accepted_at"`
+	SentAt         pgtype.Timestamptz `json:"sent_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) ListCKPolicyAcceptanceRequests(ctx context.Context, campaignID string) ([]ListCKPolicyAcceptanceRequestsRow, error) {
+	rows, err := q.db.Query(ctx, listCKPolicyAcceptanceRequests, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCKPolicyAcceptanceRequestsRow{}
+	for rows.Next() {
+		var i ListCKPolicyAcceptanceRequestsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.RecipientEmail,
+			&i.RecipientName,
+			&i.AcceptedAt,
+			&i.SentAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCKPolicyAcceptanceRequestByToken = `-- name: GetCKPolicyAcceptanceRequestByToken :one
+SELECT
+    par.id::text            AS id,
+    par.campaign_id::text   AS campaign_id,
+    par.recipient_email,
+    COALESCE(par.recipient_name, '') AS recipient_name,
+    par.accepted_at,
+    par.sent_at,
+    par.created_at,
+    p.title                 AS policy_title,
+    pac.org_id::text        AS org_id
+FROM ck_policy_acceptance_requests par
+JOIN ck_policy_acceptance_campaigns pac ON pac.id = par.campaign_id
+JOIN ck_policies p ON p.id = pac.policy_id
+WHERE par.token_hash = $1
+`
+
+type GetCKPolicyAcceptanceRequestByTokenRow struct {
+	ID             string             `json:"id"`
+	CampaignID     string             `json:"campaign_id"`
+	RecipientEmail string             `json:"recipient_email"`
+	RecipientName  string             `json:"recipient_name"`
+	AcceptedAt     pgtype.Timestamptz `json:"accepted_at"`
+	SentAt         pgtype.Timestamptz `json:"sent_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	PolicyTitle    string             `json:"policy_title"`
+	OrgID          string             `json:"org_id"`
+}
+
+func (q *Queries) GetCKPolicyAcceptanceRequestByToken(ctx context.Context, tokenHash string) (GetCKPolicyAcceptanceRequestByTokenRow, error) {
+	row := q.db.QueryRow(ctx, getCKPolicyAcceptanceRequestByToken, tokenHash)
+	var i GetCKPolicyAcceptanceRequestByTokenRow
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.RecipientEmail,
+		&i.RecipientName,
+		&i.AcceptedAt,
+		&i.SentAt,
+		&i.CreatedAt,
+		&i.PolicyTitle,
+		&i.OrgID,
+	)
+	return i, err
+}
+
+const recordCKPolicyAcceptance = `-- name: RecordCKPolicyAcceptance :execrows
+UPDATE ck_policy_acceptance_requests
+SET accepted_at = now(), accepted_ip = $2
+WHERE id = $1::uuid AND accepted_at IS NULL
+`
+
+type RecordCKPolicyAcceptanceParams struct {
+	ID         string `json:"id"`
+	AcceptedIP string `json:"accepted_ip"`
+}
+
+func (q *Queries) RecordCKPolicyAcceptance(ctx context.Context, arg RecordCKPolicyAcceptanceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, recordCKPolicyAcceptance, arg.ID, arg.AcceptedIP)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const getCKPolicyAcceptancePublicInfo = `-- name: GetCKPolicyAcceptancePublicInfo :one
+SELECT
+    p.title                     AS policy_title,
+    o.name                      AS org_name,
+    COALESCE(pac.message, '')   AS message,
+    pac.deadline::text          AS deadline,
+    par.accepted_at
+FROM ck_policy_acceptance_requests par
+JOIN ck_policy_acceptance_campaigns pac ON pac.id = par.campaign_id
+JOIN ck_policies p ON p.id = pac.policy_id
+JOIN organizations o ON o.id = pac.org_id
+WHERE par.token_hash = $1
+`
+
+type GetCKPolicyAcceptancePublicInfoRow struct {
+	PolicyTitle string             `json:"policy_title"`
+	OrgName     string             `json:"org_name"`
+	Message     string             `json:"message"`
+	Deadline    pgtype.Text        `json:"deadline"`
+	AcceptedAt  pgtype.Timestamptz `json:"accepted_at"`
+}
+
+func (q *Queries) GetCKPolicyAcceptancePublicInfo(ctx context.Context, tokenHash string) (GetCKPolicyAcceptancePublicInfoRow, error) {
+	row := q.db.QueryRow(ctx, getCKPolicyAcceptancePublicInfo, tokenHash)
+	var i GetCKPolicyAcceptancePublicInfoRow
+	err := row.Scan(
+		&i.PolicyTitle,
+		&i.OrgName,
+		&i.Message,
+		&i.Deadline,
+		&i.AcceptedAt,
+	)
+	return i, err
+}
+
+// ── iCal Deadlines (s26-sqlc-vitals-3) ──────────────────────────────────────
+
+const listCKICalMilestones = `-- name: ListCKICalMilestones :many
+SELECT id::text, title, COALESCE(description, '') AS description, milestone_date
+FROM ck_audit_milestones
+WHERE org_id = $1::uuid
+  AND status IN ('upcoming')
+  AND milestone_date >= CURRENT_DATE
+ORDER BY milestone_date
+LIMIT 100
+`
+
+type ListCKICalMilestonesRow struct {
+	ID            string      `json:"id"`
+	Title         string      `json:"title"`
+	Description   string      `json:"description"`
+	MilestoneDate pgtype.Date `json:"milestone_date"`
+}
+
+func (q *Queries) ListCKICalMilestones(ctx context.Context, orgID string) ([]ListCKICalMilestonesRow, error) {
+	rows, err := q.db.Query(ctx, listCKICalMilestones, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCKICalMilestonesRow{}
+	for rows.Next() {
+		var i ListCKICalMilestonesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.MilestoneDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCKICalCAPAs = `-- name: ListCKICalCAPAs :many
+SELECT id::text, title, due_date
+FROM ck_capas
+WHERE org_id = $1::uuid
+  AND due_date IS NOT NULL
+  AND status IN ('open', 'in_progress')
+ORDER BY due_date
+LIMIT 100
+`
+
+type ListCKICalCAPAsRow struct {
+	ID      string      `json:"id"`
+	Title   string      `json:"title"`
+	DueDate pgtype.Date `json:"due_date"`
+}
+
+func (q *Queries) ListCKICalCAPAs(ctx context.Context, orgID string) ([]ListCKICalCAPAsRow, error) {
+	rows, err := q.db.Query(ctx, listCKICalCAPAs, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCKICalCAPAsRow{}
+	for rows.Next() {
+		var i ListCKICalCAPAsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.DueDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCKICalExpiringEvidence = `-- name: ListCKICalExpiringEvidence :many
+SELECT e.id::text, e.title, e.expires_at
+FROM ck_evidence e
+WHERE e.org_id = $1::uuid
+  AND e.expires_at IS NOT NULL
+  AND e.expires_at > NOW()
+ORDER BY e.expires_at
+LIMIT 50
+`
+
+type ListCKICalExpiringEvidenceRow struct {
+	ID        string             `json:"id"`
+	Title     string             `json:"title"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+}
+
+func (q *Queries) ListCKICalExpiringEvidence(ctx context.Context, orgID string) ([]ListCKICalExpiringEvidenceRow, error) {
+	rows, err := q.db.Query(ctx, listCKICalExpiringEvidence, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCKICalExpiringEvidenceRow{}
+	for rows.Next() {
+		var i ListCKICalExpiringEvidenceRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+// ── Policy Templates (s26-sqlc-vitals-3) ─────────────────────────────────────
+
+const listCKPolicyTemplates = `-- name: ListCKPolicyTemplates :many
+SELECT id::text, category, name, description, content, tags,
+       COALESCE(framework, '') AS framework, created_at::text AS created_at
+FROM ck_policy_templates
+WHERE ($1::text IS NULL OR category = $1::text)
+ORDER BY category, name
+`
+
+type ListCKPolicyTemplatesParams struct {
+	Category pgtype.Text `json:"category"`
+}
+
+type ListCKPolicyTemplatesRow struct {
+	ID          string   `json:"id"`
+	Category    string   `json:"category"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Content     string   `json:"content"`
+	Tags        []string `json:"tags"`
+	Framework   string   `json:"framework"`
+	CreatedAt   string   `json:"created_at"`
+}
+
+func (q *Queries) ListCKPolicyTemplates(ctx context.Context, arg ListCKPolicyTemplatesParams) ([]ListCKPolicyTemplatesRow, error) {
+	rows, err := q.db.Query(ctx, listCKPolicyTemplates, arg.Category)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCKPolicyTemplatesRow{}
+	for rows.Next() {
+		var i ListCKPolicyTemplatesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Category,
+			&i.Name,
+			&i.Description,
+			&i.Content,
+			&i.Tags,
+			&i.Framework,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCKPolicyTemplateByID = `-- name: GetCKPolicyTemplateByID :one
+SELECT id::text, category, name, description, content, tags,
+       COALESCE(framework, '') AS framework, created_at::text AS created_at
+FROM ck_policy_templates
+WHERE id = $1::uuid
+`
+
+type GetCKPolicyTemplateByIDRow struct {
+	ID          string   `json:"id"`
+	Category    string   `json:"category"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Content     string   `json:"content"`
+	Tags        []string `json:"tags"`
+	Framework   string   `json:"framework"`
+	CreatedAt   string   `json:"created_at"`
+}
+
+func (q *Queries) GetCKPolicyTemplateByID(ctx context.Context, id string) (GetCKPolicyTemplateByIDRow, error) {
+	row := q.db.QueryRow(ctx, getCKPolicyTemplateByID, id)
+	var i GetCKPolicyTemplateByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Category,
+		&i.Name,
+		&i.Description,
+		&i.Content,
+		&i.Tags,
+		&i.Framework,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+// ── Policy AI Generator context (s26-sqlc-vitals-3) ──────────────────────────
+
+const listCKTopControlsByFramework = `-- name: ListCKTopControlsByFramework :many
+SELECT control_id, title
+FROM ck_controls
+WHERE framework_id = $1::uuid AND org_id = $2::uuid
+ORDER BY weight DESC
+LIMIT 10
+`
+
+type ListCKTopControlsByFrameworkParams struct {
+	FrameworkID string `json:"framework_id"`
+	OrgID       string `json:"org_id"`
+}
+
+type ListCKTopControlsByFrameworkRow struct {
+	ControlID string `json:"control_id"`
+	Title     string `json:"title"`
+}
+
+func (q *Queries) ListCKTopControlsByFramework(ctx context.Context, arg ListCKTopControlsByFrameworkParams) ([]ListCKTopControlsByFrameworkRow, error) {
+	rows, err := q.db.Query(ctx, listCKTopControlsByFramework, arg.FrameworkID, arg.OrgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCKTopControlsByFrameworkRow{}
+	for rows.Next() {
+		var i ListCKTopControlsByFrameworkRow
+		if err := rows.Scan(
+			&i.ControlID,
+			&i.Title,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+// ── Framework Milestone Dedup (s26-sqlc-vitals-3) ────────────────────────────
+
+const countCKFrameworkMilestoneNotifs = `-- name: CountCKFrameworkMilestoneNotifs :one
+SELECT COUNT(*) AS cnt
+FROM user_notifications
+WHERE org_id = $1::uuid
+  AND type   = 'framework_milestone'
+  AND module = $2
+`
+
+type CountCKFrameworkMilestoneNotifsParams struct {
+	OrgID     string `json:"org_id"`
+	DedupeKey string `json:"dedupe_key"`
+}
+
+func (q *Queries) CountCKFrameworkMilestoneNotifs(ctx context.Context, arg CountCKFrameworkMilestoneNotifsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countCKFrameworkMilestoneNotifs, arg.OrgID, arg.DedupeKey)
+	var cnt int64
+	err := row.Scan(&cnt)
+	return cnt, err
 }

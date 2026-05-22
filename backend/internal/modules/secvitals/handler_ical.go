@@ -33,94 +33,49 @@ func (h *Handler) CalendarDeadlines(c echo.Context) error {
 	var events []icalEvent
 
 	// --- Source 1: Audit milestones ---
-	milestoneRows, err := h.db.Query(ctx, `
-		SELECT id::text, title, COALESCE(description, ''), milestone_date
-		FROM ck_audit_milestones
-		WHERE org_id = $1::uuid
-		  AND status IN ('upcoming')
-		  AND milestone_date >= CURRENT_DATE
-		ORDER BY milestone_date
-		LIMIT 100`, oid)
+	milestones, err := h.q.ListCKICalMilestones(ctx, oid)
 	if err != nil {
 		log.Error().Err(err).Str("org_id", oid).Msg("ical: query milestones")
 		return errResp(c, http.StatusInternalServerError, "failed to load deadlines", "CK_ICAL_ERROR")
 	}
-	defer milestoneRows.Close()
-	for milestoneRows.Next() {
-		var id, title, desc string
-		var milestoneDate time.Time
-		if err := milestoneRows.Scan(&id, &title, &desc, &milestoneDate); err != nil {
-			log.Warn().Err(err).Msg("ical: scan milestone row")
-			continue
-		}
+	for _, m := range milestones {
 		events = append(events, icalEvent{
-			uid:         id + "@vakt",
-			dtstart:     milestoneDate.Format("20060102"),
-			summary:     title,
-			description: desc,
+			uid:         m.ID + "@vakt",
+			dtstart:     m.MilestoneDate.Time.Format("20060102"),
+			summary:     m.Title,
+			description: m.Description,
 		})
 	}
-	milestoneRows.Close()
 
 	// --- Source 2: Open/in-progress CAPAs with due dates ---
-	capaRows, err := h.db.Query(ctx, `
-		SELECT id::text, title, due_date
-		FROM ck_capas
-		WHERE org_id = $1::uuid
-		  AND due_date IS NOT NULL
-		  AND status IN ('open', 'in_progress')
-		ORDER BY due_date
-		LIMIT 100`, oid)
+	capas, err := h.q.ListCKICalCAPAs(ctx, oid)
 	if err != nil {
 		log.Error().Err(err).Str("org_id", oid).Msg("ical: query capas")
 		return errResp(c, http.StatusInternalServerError, "failed to load deadlines", "CK_ICAL_ERROR")
 	}
-	defer capaRows.Close()
-	for capaRows.Next() {
-		var id, title string
-		var dueDate time.Time
-		if err := capaRows.Scan(&id, &title, &dueDate); err != nil {
-			log.Warn().Err(err).Msg("ical: scan capa row")
-			continue
-		}
+	for _, ca := range capas {
 		events = append(events, icalEvent{
-			uid:         id + "@vakt",
-			dtstart:     dueDate.Format("20060102"),
-			summary:     "CAPA fällig: " + title,
+			uid:         ca.ID + "@vakt",
+			dtstart:     ca.DueDate.Time.Format("20060102"),
+			summary:     "CAPA fällig: " + ca.Title,
 			description: "Corrective and Preventive Action",
 		})
 	}
-	capaRows.Close()
 
-	// --- Source 3: Evidence expiring within 90 days ---
-	evidenceRows, err := h.db.Query(ctx, `
-		SELECT e.id::text, e.title, e.expires_at
-		FROM ck_evidence e
-		WHERE e.org_id = $1::uuid
-		  AND e.expires_at IS NOT NULL
-		  AND e.expires_at > NOW()
-		ORDER BY e.expires_at
-		LIMIT 50`, oid)
+	// --- Source 3: Evidence expiring within the future ---
+	evidences, err := h.q.ListCKICalExpiringEvidence(ctx, oid)
 	if err != nil {
 		log.Error().Err(err).Str("org_id", oid).Msg("ical: query evidence")
 		return errResp(c, http.StatusInternalServerError, "failed to load deadlines", "CK_ICAL_ERROR")
 	}
-	defer evidenceRows.Close()
-	for evidenceRows.Next() {
-		var id, title string
-		var expiresAt time.Time
-		if err := evidenceRows.Scan(&id, &title, &expiresAt); err != nil {
-			log.Warn().Err(err).Msg("ical: scan evidence row")
-			continue
-		}
+	for _, ev := range evidences {
 		events = append(events, icalEvent{
-			uid:         id + "@vakt",
-			dtstart:     expiresAt.UTC().Format("20060102"),
-			summary:     "Nachweis läuft ab: " + title,
+			uid:         ev.ID + "@vakt",
+			dtstart:     ev.ExpiresAt.Time.UTC().Format("20060102"),
+			summary:     "Nachweis läuft ab: " + ev.Title,
 			description: "Compliance-Nachweis läuft ab",
 		})
 	}
-	evidenceRows.Close()
 
 	// Build iCalendar output.
 	dtstamp := now.Format("20060102T150405Z")

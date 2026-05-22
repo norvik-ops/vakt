@@ -113,3 +113,23 @@ SELECT id, run_id, org_id, step_id, completed_by, completed_at
 FROM hr_run_events
 WHERE org_id = $1 AND run_id = $2
 ORDER BY completed_at ASC;
+
+-- name: HRRevokeUserSessions :exec
+UPDATE sessions SET revoked_at = NOW()
+FROM users
+WHERE sessions.user_id = users.id
+  AND users.org_id    = $1::uuid
+  AND users.email     = $2
+  AND sessions.revoked_at IS NULL;
+
+-- name: HRDisableUser :exec
+UPDATE users SET status = 'disabled'
+WHERE org_id = $1::uuid AND email = $2;
+
+-- name: HRRevokeUserAPIKeys :exec
+UPDATE api_keys SET revoked_at = NOW()
+FROM users
+WHERE api_keys.created_by = users.id
+  AND users.org_id        = $1::uuid
+  AND users.email         = $2
+  AND api_keys.revoked_at IS NULL;

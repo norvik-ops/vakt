@@ -783,8 +783,7 @@ func (s *Service) GetAssignmentCertificate(ctx context.Context, orgID, assignmen
 		return nil, "", fmt.Errorf("get module: %w", err)
 	}
 
-	var orgName string
-	_ = s.db.QueryRow(ctx, `SELECT name FROM organizations WHERE id=$1::uuid`, orgID).Scan(&orgName)
+	orgName := s.repo.GetOrganizationName(ctx, orgID)
 	if orgName == "" {
 		orgName = "Ihre Organisation"
 	}
@@ -792,8 +791,7 @@ func (s *Service) GetAssignmentCertificate(ctx context.Context, orgID, assignmen
 	// Determine user email from the assignment's target.
 	userEmail := "Unbekannt"
 	if assignment.TargetID != nil {
-		var email string
-		if err := s.db.QueryRow(ctx, `SELECT email FROM sr_targets WHERE id=$1`, *assignment.TargetID).Scan(&email); err == nil {
+		if email := s.repo.GetTargetEmail(ctx, *assignment.TargetID); email != "" {
 			userEmail = email
 		}
 	} else if assignment.Department != "" {
@@ -820,8 +818,7 @@ func (s *Service) ExportCampaignReport(ctx context.Context, orgID, campaignID st
 	if err != nil {
 		return nil, "", fmt.Errorf("get campaign stats: %w", err)
 	}
-	var orgName string
-	_ = s.db.QueryRow(ctx, `SELECT name FROM organizations WHERE id=$1::uuid`, orgID).Scan(&orgName)
+	orgName := s.repo.GetOrganizationName(ctx, orgID)
 
 	pdf, err := GenerateCampaignReportPDF(campaign, stats, orgName)
 	if err != nil {

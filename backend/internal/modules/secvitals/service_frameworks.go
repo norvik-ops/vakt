@@ -13,6 +13,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/matharnica/vakt/internal/db"
 	"github.com/matharnica/vakt/internal/shared/notify"
 )
 
@@ -499,14 +500,11 @@ func (s *Service) checkFrameworkMilestone(ctx context.Context, orgID, frameworkI
 			continue
 		}
 		dedupeKey := fmt.Sprintf("%s:%d", frameworkID, threshold)
-		var already int
-		if err := s.db.QueryRow(ctx,
-			`SELECT COUNT(*) FROM user_notifications
-			 WHERE org_id = $1::uuid
-			   AND type   = 'framework_milestone'
-			   AND module = $2`,
-			orgID, dedupeKey,
-		).Scan(&already); err != nil {
+		already, err := s.q.CountCKFrameworkMilestoneNotifs(ctx, db.CountCKFrameworkMilestoneNotifsParams{
+			OrgID:     orgID,
+			DedupeKey: dedupeKey,
+		})
+		if err != nil {
 			// S13-18: bei Fehler defensiv abbrechen — sonst wuerden wir die
 			// Milestone-Notification potenziell doppelt versenden.
 			log.Warn().Err(err).

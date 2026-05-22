@@ -403,3 +403,20 @@ func (r *Repository) ListRunEvents(ctx context.Context, orgID, runID string) ([]
 	}
 	return out, nil
 }
+
+// RevokeUserSessions revokes all active sessions for the platform user
+// matching the given email within the org.
+func (r *Repository) RevokeUserSessions(ctx context.Context, orgID, email string) error {
+	return r.q.HRRevokeUserSessions(ctx, db.HRRevokeUserSessionsParams{OrgID: orgID, Email: email})
+}
+
+// DisableUser sets the platform user's status to 'disabled'.
+func (r *Repository) DisableUser(ctx context.Context, orgID, email string) error {
+	return r.q.HRDisableUser(ctx, db.HRDisableUserParams{OrgID: orgID, Email: email})
+}
+
+// RevokeUserAPIKeys revokes all active API keys for the platform user
+// matching the given email within the org.
+func (r *Repository) RevokeUserAPIKeys(ctx context.Context, orgID, email string) error {
+	return r.q.HRRevokeUserAPIKeys(ctx, db.HRRevokeUserAPIKeysParams{OrgID: orgID, Email: email})
+}

@@ -294,3 +294,9 @@ WHERE org_id = $1;
 
 -- name: SetOrgPhishReportToken :exec
 UPDATE organizations SET phish_report_token = $1 WHERE id = $2;
+
+-- name: GetSROrganizationName :one
+SELECT name FROM organizations WHERE id = $1::uuid;
+
+-- name: GetSRTargetEmail :one
+SELECT email FROM sr_targets WHERE id = $1;

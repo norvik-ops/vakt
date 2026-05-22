@@ -818,3 +818,17 @@ func (r *Repository) SetPhishReportToken(ctx context.Context, orgID, token strin
 		ID:               orgID,
 	})
 }
+
+// GetOrganizationName returns the name of the organisation with the given ID.
+// Returns "" when the row is not found.
+func (r *Repository) GetOrganizationName(ctx context.Context, orgID string) string {
+	name, _ := r.q.GetSROrganizationName(ctx, orgID)
+	return name
+}
+
+// GetTargetEmail returns the email address of the sr_target with the given ID.
+// Returns "" when the row is not found.
+func (r *Repository) GetTargetEmail(ctx context.Context, targetID string) string {
+	email, _ := r.q.GetSRTargetEmail(ctx, targetID)
+	return email
+}

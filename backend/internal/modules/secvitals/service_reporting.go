@@ -381,22 +381,9 @@ func (s *Service) GetDSGVOTOMCoverage(ctx context.Context, orgID, dsgvoFramework
 // the current compliance score (org-wide + per-framework) into ck_score_history.
 // Called daily by the Asynq scheduler.
 func (s *Service) RecordScoreSnapshotForAllOrgs(ctx context.Context) error {
-	rows, err := s.repo.db.Query(ctx, `SELECT id::text FROM organizations WHERE is_deleted = false`)
+	orgIDs, err := s.repo.ListActiveOrgIDs(ctx)
 	if err != nil {
 		return fmt.Errorf("score_snapshot: list orgs: %w", err)
-	}
-	defer rows.Close()
-
-	var orgIDs []string
-	for rows.Next() {
-		var id string
-		if scanErr := rows.Scan(&id); scanErr != nil {
-			continue
-		}
-		orgIDs = append(orgIDs, id)
-	}
-	if err := rows.Err(); err != nil {
-		return err
 	}
 
 	for _, orgID := range orgIDs {
@@ -506,25 +493,16 @@ func (s *Service) GetExecutiveSummaryData(ctx context.Context, orgID string) (*E
 	}
 
 	// Framework scores
-	rows, err := s.db.Query(ctx, `
-		SELECT f.name,
-		       COUNT(c.id)::int                                                    AS total,
-		       COUNT(c.id) FILTER (WHERE c.manual_status = 'implemented')::int     AS implemented
-		FROM ck_frameworks f
-		LEFT JOIN ck_controls c ON c.framework_id = f.id AND c.org_id = f.org_id
-		WHERE f.org_id = $1::uuid
-		GROUP BY f.name
-		ORDER BY f.name
-	`, orgID)
+	fwScores, err := s.repo.GetExecutiveFrameworkScores(ctx, orgID)
 	if err != nil {
 		log.Warn().Err(err).Msg("executive summary: frameworks query")
 	} else {
-		defer rows.Close()
 		var totalWeight, weightedSum float64
-		for rows.Next() {
-			var r ExecutiveFrameworkRow
-			if err := rows.Scan(&r.Name, &r.Total, &r.Implemented); err != nil {
-				continue
+		for _, row := range fwScores {
+			r := ExecutiveFrameworkRow{
+				Name:        row.Name,
+				Total:       row.Total,
+				Implemented: row.Implemented,
 			}
 			if r.Total > 0 {
 				r.Score = float64(r.Implemented) / float64(r.Total) * 100
@@ -533,64 +511,45 @@ func (s *Service) GetExecutiveSummaryData(ctx context.Context, orgID string) (*E
 			weightedSum += r.Score * float64(r.Total)
 			totalWeight += float64(r.Total)
 		}
-		_ = rows.Err()
 		if totalWeight > 0 {
 			d.OverallScore = weightedSum / totalWeight
 		}
 	}
 
 	// Top 5 risks by score (likelihood * impact)
-	riskRows, err := s.db.Query(ctx, `
-		SELECT title,
-		       (likelihood * impact)::int AS score,
-		       CASE
-		           WHEN (likelihood * impact) >= 15 THEN 'critical'
-		           WHEN (likelihood * impact) >= 9  THEN 'high'
-		           WHEN (likelihood * impact) >= 4  THEN 'medium'
-		           ELSE 'low'
-		       END AS severity
-		FROM ck_risks
-		WHERE org_id = $1::uuid AND status = 'open'
-		ORDER BY score DESC, updated_at DESC
-		LIMIT 5
-	`, orgID)
+	topRisks, err := s.repo.GetExecutiveTopRisks(ctx, orgID)
 	if err != nil {
 		log.Warn().Err(err).Msg("executive summary: risks query")
 	} else {
-		defer riskRows.Close()
-		for riskRows.Next() {
-			var r ExecutiveRiskRow
-			if err := riskRows.Scan(&r.Title, &r.Score, &r.Severity); err != nil {
-				continue
-			}
-			d.TopRisks = append(d.TopRisks, r)
+		for _, row := range topRisks {
+			d.TopRisks = append(d.TopRisks, ExecutiveRiskRow{
+				Title:    row.Title,
+				Score:    row.Score,
+				Severity: row.Severity,
+			})
 		}
-		_ = riskRows.Err()
 	}
 
 	// Last 30 days activity — soft-fail: einzelne Counter-Abfragen sind nicht
 	// kritisch fuer die Executive-Summary, aber Fehler MUESSEN sichtbar sein
 	// (S13-18). Bei Fehler bleibt der Counter 0 und wir loggen die Ursache.
 	since := time.Now().UTC().Add(-30 * 24 * time.Hour)
-	if err := s.db.QueryRow(ctx, `
-		SELECT COUNT(*)::int FROM ck_controls
-		WHERE org_id=$1::uuid AND manual_status='implemented' AND updated_at >= $2
-	`, orgID, since).Scan(&d.Last30DaysActivity.ClosedControls); err != nil {
+	if n, err := s.repo.CountClosedControlsSince(ctx, orgID, since); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("executive-summary: ClosedControls counter failed")
+	} else {
+		d.Last30DaysActivity.ClosedControls = n
 	}
 
-	if err := s.db.QueryRow(ctx, `
-		SELECT COUNT(*)::int FROM ck_incidents
-		WHERE org_id=$1::uuid AND created_at >= $2
-	`, orgID, since).Scan(&d.Last30DaysActivity.NewIncidents); err != nil {
+	if n, err := s.repo.CountIncidentsSince(ctx, orgID, since); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("executive-summary: NewIncidents counter failed")
+	} else {
+		d.Last30DaysActivity.NewIncidents = n
 	}
 
-	if err := s.db.QueryRow(ctx, `
-		SELECT COUNT(*)::int FROM vb_findings
-		WHERE org_id=$1::uuid AND status='resolved' AND updated_at >= $2
-	`, orgID, since).Scan(&d.Last30DaysActivity.ResolvedFindings); err != nil {
+	if n, err := s.repo.CountResolvedFindingsSince(ctx, orgID, since); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("executive-summary: ResolvedFindings counter failed")
+	} else {
+		d.Last30DaysActivity.ResolvedFindings = n
 	}
 
 	return d, nil

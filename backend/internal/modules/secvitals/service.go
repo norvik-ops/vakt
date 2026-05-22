@@ -9,6 +9,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 
+	"github.com/matharnica/vakt/internal/db"
 	"github.com/matharnica/vakt/internal/services/ai"
 	"github.com/matharnica/vakt/internal/shared/dashboard"
 	"github.com/matharnica/vakt/internal/shared/notify"
@@ -25,6 +26,7 @@ var ErrNotFound = errors.New("not found")
 // Service handles ComplyKit business logic.
 type Service struct {
 	db         *pgxpool.Pool
+	q          *db.Queries
 	rdb        *redis.Client
 	repo       *Repository
 	notifSvc   notifyService
@@ -43,10 +45,11 @@ type webhookTrigger interface {
 }
 
 // NewService creates a new ComplyKit service.
-func NewService(db *pgxpool.Pool) *Service {
+func NewService(dbPool *pgxpool.Pool) *Service {
 	return &Service{
-		db:   db,
-		repo: NewRepository(db),
+		db:   dbPool,
+		q:    db.New(dbPool),
+		repo: NewRepository(dbPool),
 	}
 }
 

@@ -1933,3 +1933,227 @@ WHERE org_id = $1::uuid
   AND status NOT IN ('accepted', 'resolved')
 ORDER BY created_at DESC
 LIMIT 50;
+
+-- ── Board Report + Executive Summary (s26-sqlc-vitals-4) ─────────────────────
+
+-- name: GetBoardReportComplianceScoreRows :many
+-- Liefert pro Framework: Gesamtanzahl Controls + Anzahl implemented Controls.
+-- Für den gewichteten Score-Durchschnitt im Board-Report.
+SELECT
+    COUNT(c.id)::int                                                     AS total,
+    COUNT(c.id) FILTER (WHERE c.manual_status = 'implemented')::int     AS implemented
+FROM ck_frameworks f
+LEFT JOIN ck_controls c ON c.framework_id = f.id AND c.org_id = f.org_id
+WHERE f.org_id = $1::uuid
+GROUP BY f.id;
+
+-- name: GetCKPreviousScore :one
+-- Letzter Score-Snapshot vor heute (für Board-Report Delta).
+SELECT score FROM ck_score_history
+WHERE org_id = $1::uuid AND recorded_at < NOW()::date
+ORDER BY recorded_at DESC
+LIMIT 1;
+
+-- name: CountCKRecentIncidents :one
+-- Anzahl Incidents der letzten 30 Tage für den Board-Report.
+SELECT COUNT(*)::int FROM ck_incidents
+WHERE org_id = $1::uuid AND created_at >= $2;
+
+-- name: ListActiveOrgIDs :many
+-- Alle nicht gelöschten Organisationen (für den täglichen Score-Snapshot-Job).
+SELECT id::text FROM organizations WHERE is_deleted = false;
+
+-- name: GetExecutiveFrameworkScores :many
+-- Pro Framework: Name, Gesamtanzahl Controls, Anzahl implemented.
+-- Für Executive Summary PDF (Section 2 — Framework overview).
+SELECT f.name,
+       COUNT(c.id)::int                                                    AS total,
+       COUNT(c.id) FILTER (WHERE c.manual_status = 'implemented')::int     AS implemented
+FROM ck_frameworks f
+LEFT JOIN ck_controls c ON c.framework_id = f.id AND c.org_id = f.org_id
+WHERE f.org_id = $1::uuid
+GROUP BY f.name
+ORDER BY f.name;
+
+-- name: GetExecutiveTopRisks :many
+-- Top-5 offene Risiken nach Score (likelihood * impact) für Executive Summary.
+SELECT title,
+       (likelihood * impact)::int AS score,
+       CASE
+           WHEN (likelihood * impact) >= 15 THEN 'critical'
+           WHEN (likelihood * impact) >= 9  THEN 'high'
+           WHEN (likelihood * impact) >= 4  THEN 'medium'
+           ELSE 'low'
+       END AS severity
+FROM ck_risks
+WHERE org_id = $1::uuid AND status = 'open'
+ORDER BY score DESC, updated_at DESC
+LIMIT 5;
+
+-- name: CountCKClosedControlsSince :one
+-- Anzahl auf 'implemented' gesetzter Controls seit einem Zeitpunkt.
+SELECT COUNT(*)::int FROM ck_controls
+WHERE org_id = $1::uuid AND manual_status = 'implemented' AND updated_at >= $2;
+
+-- name: CountCKIncidentsSince :one
+-- Anzahl neu eröffneter Incidents seit einem Zeitpunkt.
+SELECT COUNT(*)::int FROM ck_incidents
+WHERE org_id = $1::uuid AND created_at >= $2;
+
+-- name: CountSPResolvedFindingsSince :one
+-- Anzahl auf 'resolved' gesetzter Findings seit einem Zeitpunkt.
+SELECT COUNT(*)::int FROM vb_findings
+WHERE org_id = $1::uuid AND status = 'resolved' AND updated_at >= $2;
+
+-- ── iCal Deadlines (handler_ical.go — s26-sqlc-vitals-3) ────────────────────
+
+-- name: ListCKICalMilestones :many
+SELECT id::text, title, COALESCE(description, '') AS description, milestone_date
+FROM ck_audit_milestones
+WHERE org_id = $1::uuid
+  AND status IN ('upcoming')
+  AND milestone_date >= CURRENT_DATE
+ORDER BY milestone_date
+LIMIT 100;
+
+-- name: ListCKICalCAPAs :many
+SELECT id::text, title, due_date
+FROM ck_capas
+WHERE org_id = $1::uuid
+  AND due_date IS NOT NULL
+  AND status IN ('open', 'in_progress')
+ORDER BY due_date
+LIMIT 100;
+
+-- name: ListCKICalExpiringEvidence :many
+SELECT e.id::text, e.title, e.expires_at
+FROM ck_evidence e
+WHERE e.org_id = $1::uuid
+  AND e.expires_at IS NOT NULL
+  AND e.expires_at > NOW()
+ORDER BY e.expires_at
+LIMIT 50;
+
+-- ── Policy Templates (handler_templates.go — s26-sqlc-vitals-3) ──────────────
+
+-- name: ListCKPolicyTemplates :many
+-- Optional category filter via sqlc.narg; NULL means no filter (return all).
+SELECT id::text, category, name, description, content, tags,
+       COALESCE(framework, '') AS framework, created_at::text AS created_at
+FROM ck_policy_templates
+WHERE (sqlc.narg('category')::text IS NULL OR category = sqlc.narg('category')::text)
+ORDER BY category, name;
+
+-- name: GetCKPolicyTemplateByID :one
+SELECT id::text, category, name, description, content, tags,
+       COALESCE(framework, '') AS framework, created_at::text AS created_at
+FROM ck_policy_templates
+WHERE id = $1::uuid;
+
+-- ── Policy AI Generator context (service_policies.go — s26-sqlc-vitals-3) ────
+
+-- name: ListCKTopControlsByFramework :many
+-- Top-10 controls for a framework ordered by weight DESC.
+-- Used by GeneratePolicyDraft to provide framework context to the AI prompt.
+SELECT control_id, title
+FROM ck_controls
+WHERE framework_id = $1::uuid AND org_id = $2::uuid
+ORDER BY weight DESC
+LIMIT 10;
+
+-- ── Framework Milestone Dedup (service_frameworks.go — s26-sqlc-vitals-3) ────
+
+-- name: CountCKFrameworkMilestoneNotifs :one
+-- Checks whether a milestone notification has already been sent for a given
+-- deduplication key stored in user_notifications.module as "<frameworkID>:<threshold>".
+SELECT COUNT(*) AS cnt
+FROM user_notifications
+WHERE org_id = $1::uuid
+  AND type   = 'framework_milestone'
+  AND module = $2;
+
+-- ── Policy Acceptance (s26-sqlc-vitals-5 — DSGVO-sensitiv) ──────────────────
+
+-- name: GetCKOrgName :one
+-- Liest den Org-Namen für Akzeptanz-Kampagnen-Emails.
+SELECT name FROM organizations WHERE id = $1::uuid;
+
+-- name: CreateCKPolicyAcceptanceCampaign :one
+INSERT INTO ck_policy_acceptance_campaigns (org_id, policy_id, name, message, deadline, created_by)
+VALUES ($1::uuid, $2::uuid, $3, $4, $5::date, $6::uuid)
+RETURNING id::text, org_id::text, policy_id::text, name,
+          COALESCE(message, '') AS message,
+          deadline::text,
+          created_at;
+
+-- name: ListCKPolicyAcceptanceCampaigns :many
+SELECT id::text, org_id::text, policy_id::text, name,
+       COALESCE(message, '') AS message,
+       deadline::text,
+       created_at
+FROM ck_policy_acceptance_campaigns
+WHERE org_id = $1::uuid AND policy_id = $2::uuid
+ORDER BY created_at DESC;
+
+-- name: CreateCKPolicyAcceptanceRequest :one
+-- Legt einen Akzeptanz-Request an und gibt die neue UUID zurück.
+INSERT INTO ck_policy_acceptance_requests (campaign_id, org_id, recipient_email, recipient_name, token_hash)
+VALUES ($1::uuid, $2::uuid, $3, $4, $5)
+RETURNING id::text;
+
+-- name: MarkCKPolicyAcceptanceRequestSent :exec
+UPDATE ck_policy_acceptance_requests SET sent_at = now() WHERE id = $1::uuid;
+
+-- name: GetCKPolicyAcceptanceCampaignStats :one
+SELECT
+    COUNT(*)::int                          AS total,
+    COUNT(accepted_at)::int                AS accepted,
+    (COUNT(*) - COUNT(accepted_at))::int   AS pending
+FROM ck_policy_acceptance_requests
+WHERE campaign_id = $1::uuid;
+
+-- name: ListCKPolicyAcceptanceRequests :many
+SELECT id::text, campaign_id::text, recipient_email,
+       COALESCE(recipient_name, '') AS recipient_name,
+       accepted_at, sent_at, created_at
+FROM ck_policy_acceptance_requests
+WHERE campaign_id = $1::uuid
+ORDER BY created_at ASC;
+
+-- name: GetCKPolicyAcceptanceRequestByToken :one
+-- Liest Request + Policy-Titel + Org-ID für den Token-basierten Accept-Flow.
+SELECT
+    par.id::text            AS id,
+    par.campaign_id::text   AS campaign_id,
+    par.recipient_email,
+    COALESCE(par.recipient_name, '') AS recipient_name,
+    par.accepted_at,
+    par.sent_at,
+    par.created_at,
+    p.title                 AS policy_title,
+    pac.org_id::text        AS org_id
+FROM ck_policy_acceptance_requests par
+JOIN ck_policy_acceptance_campaigns pac ON pac.id = par.campaign_id
+JOIN ck_policies p ON p.id = pac.policy_id
+WHERE par.token_hash = $1;
+
+-- name: RecordCKPolicyAcceptance :execrows
+-- Setzt accepted_at und accepted_ip. WHERE accepted_at IS NULL stellt
+-- Idempotenz sicher (0 RowsAffected = bereits akzeptiert, kein Fehler im Aufrufer).
+UPDATE ck_policy_acceptance_requests
+SET accepted_at = now(), accepted_ip = $2
+WHERE id = $1::uuid AND accepted_at IS NULL;
+
+-- name: GetCKPolicyAcceptancePublicInfo :one
+-- Öffentliche Info für das Accept-Portal (Token-basiert, kein Auth).
+SELECT
+    p.title                     AS policy_title,
+    o.name                      AS org_name,
+    COALESCE(pac.message, '')   AS message,
+    pac.deadline::text          AS deadline,
+    par.accepted_at
+FROM ck_policy_acceptance_requests par
+JOIN ck_policy_acceptance_campaigns pac ON pac.id = par.campaign_id
+JOIN ck_policies p ON p.id = pac.policy_id
+JOIN organizations o ON o.id = pac.org_id
+WHERE par.token_hash = $1;

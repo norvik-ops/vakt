@@ -1337,3 +1337,25 @@ func (q *Queries) UpsertSRTarget(ctx context.Context, arg UpsertSRTargetParams) 
 	)
 	return i, err
 }
+
+const getSROrganizationName = `-- name: GetSROrganizationName :one
+SELECT name FROM organizations WHERE id = $1::uuid
+`
+
+func (q *Queries) GetSROrganizationName(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, getSROrganizationName, id)
+	var name string
+	err := row.Scan(&name)
+	return name, err
+}
+
+const getSRTargetEmail = `-- name: GetSRTargetEmail :one
+SELECT email FROM sr_targets WHERE id = $1
+`
+
+func (q *Queries) GetSRTargetEmail(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, getSRTargetEmail, id)
+	var email string
+	err := row.Scan(&email)
+	return email, err
+}

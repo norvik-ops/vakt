@@ -15,8 +15,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 
+	db "github.com/matharnica/vakt/internal/db"
 	"github.com/matharnica/vakt/internal/shared/safego"
 )
 
@@ -407,10 +409,7 @@ func generateAcceptanceToken() (plaintext, hash string, err error) {
 
 // GetOrgName returns the name of an organisation.
 func (r *Repository) GetOrgName(ctx context.Context, orgID string) (string, error) {
-	var name string
-	err := r.db.QueryRow(ctx,
-		`SELECT name FROM organizations WHERE id = $1::uuid`, orgID,
-	).Scan(&name)
+	name, err := r.q.GetCKOrgName(ctx, orgID)
 	if err != nil {
 		return "", fmt.Errorf("get org name: %w", err)
 	}
@@ -419,65 +418,86 @@ func (r *Repository) GetOrgName(ctx context.Context, orgID string) (string, erro
 
 // CreateAcceptanceCampaign inserts a new acceptance campaign.
 func (r *Repository) CreateAcceptanceCampaign(ctx context.Context, orgID, userID string, in CreateCampaignInput) (*PolicyAcceptanceCampaign, error) {
-	var c PolicyAcceptanceCampaign
-	var deadline *string
+	var deadlineParam pgtype.Text
 	if in.Deadline != nil && *in.Deadline != "" {
-		deadline = in.Deadline
+		deadlineParam = pgtype.Text{String: *in.Deadline, Valid: true}
 	}
 
-	var createdByParam *string
+	var createdByParam pgtype.UUID
 	if userID != "" {
-		createdByParam = &userID
+		if err := createdByParam.Scan(userID); err != nil {
+			return nil, fmt.Errorf("parse created_by uuid: %w", err)
+		}
 	}
 
-	err := r.db.QueryRow(ctx, `
-		INSERT INTO ck_policy_acceptance_campaigns (org_id, policy_id, name, message, deadline, created_by)
-		VALUES ($1::uuid, $2::uuid, $3, $4, $5::date, $6::uuid)
-		RETURNING id::text, org_id::text, policy_id::text, name, COALESCE(message,''),
-		          deadline::text, created_at`,
-		orgID, in.PolicyID, in.Name, in.Message, deadline, createdByParam,
-	).Scan(&c.ID, &c.OrgID, &c.PolicyID, &c.Name, &c.Message, &c.Deadline, &c.CreatedAt)
+	row, err := r.q.CreateCKPolicyAcceptanceCampaign(ctx, db.CreateCKPolicyAcceptanceCampaignParams{
+		OrgID:     orgID,
+		PolicyID:  in.PolicyID,
+		Name:      in.Name,
+		Message:   in.Message,
+		Deadline:  deadlineParam,
+		CreatedBy: createdByParam,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("create acceptance campaign: %w", err)
 	}
-	return &c, nil
+
+	var deadlineStr *string
+	if row.Deadline.Valid {
+		s := row.Deadline.String
+		deadlineStr = &s
+	}
+
+	return &PolicyAcceptanceCampaign{
+		ID:        row.ID,
+		OrgID:     row.OrgID,
+		PolicyID:  row.PolicyID,
+		Name:      row.Name,
+		Message:   row.Message,
+		Deadline:  deadlineStr,
+		CreatedAt: row.CreatedAt.Time,
+	}, nil
 }
 
 // ListAcceptanceCampaigns returns all campaigns for a policy.
 func (r *Repository) ListAcceptanceCampaigns(ctx context.Context, orgID, policyID string) ([]PolicyAcceptanceCampaign, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT id::text, org_id::text, policy_id::text, name, COALESCE(message,''),
-		       deadline::text, created_at
-		FROM ck_policy_acceptance_campaigns
-		WHERE org_id = $1::uuid AND policy_id = $2::uuid
-		ORDER BY created_at DESC`,
-		orgID, policyID,
-	)
+	rows, err := r.q.ListCKPolicyAcceptanceCampaigns(ctx, db.ListCKPolicyAcceptanceCampaignsParams{
+		OrgID:    orgID,
+		PolicyID: policyID,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("list acceptance campaigns: %w", err)
 	}
-	defer rows.Close()
 
-	var campaigns []PolicyAcceptanceCampaign
-	for rows.Next() {
-		var c PolicyAcceptanceCampaign
-		if err := rows.Scan(&c.ID, &c.OrgID, &c.PolicyID, &c.Name, &c.Message, &c.Deadline, &c.CreatedAt); err != nil {
-			return nil, fmt.Errorf("scan acceptance campaign: %w", err)
+	campaigns := make([]PolicyAcceptanceCampaign, 0, len(rows))
+	for _, row := range rows {
+		var deadlineStr *string
+		if row.Deadline.Valid {
+			s := row.Deadline.String
+			deadlineStr = &s
 		}
-		campaigns = append(campaigns, c)
+		campaigns = append(campaigns, PolicyAcceptanceCampaign{
+			ID:        row.ID,
+			OrgID:     row.OrgID,
+			PolicyID:  row.PolicyID,
+			Name:      row.Name,
+			Message:   row.Message,
+			Deadline:  deadlineStr,
+			CreatedAt: row.CreatedAt.Time,
+		})
 	}
-	return campaigns, rows.Err()
+	return campaigns, nil
 }
 
 // CreateAcceptanceRequest inserts a new acceptance request and returns its ID.
 func (r *Repository) CreateAcceptanceRequest(ctx context.Context, campaignID, orgID string, recipient RecipientInput, tokenHash string) (string, error) {
-	var id string
-	err := r.db.QueryRow(ctx, `
-		INSERT INTO ck_policy_acceptance_requests (campaign_id, org_id, recipient_email, recipient_name, token_hash)
-		VALUES ($1::uuid, $2::uuid, $3, $4, $5)
-		RETURNING id::text`,
-		campaignID, orgID, recipient.Email, recipient.Name, tokenHash,
-	).Scan(&id)
+	id, err := r.q.CreateCKPolicyAcceptanceRequest(ctx, db.CreateCKPolicyAcceptanceRequestParams{
+		CampaignID:     campaignID,
+		OrgID:          orgID,
+		RecipientEmail: recipient.Email,
+		RecipientName:  recipient.Name,
+		TokenHash:      tokenHash,
+	})
 	if err != nil {
 		return "", fmt.Errorf("create acceptance request: %w", err)
 	}
@@ -486,130 +506,100 @@ func (r *Repository) CreateAcceptanceRequest(ctx context.Context, campaignID, or
 
 // MarkAcceptanceRequestSent updates sent_at to now.
 func (r *Repository) MarkAcceptanceRequestSent(ctx context.Context, requestID string) error {
-	_, err := r.db.Exec(ctx, `
-		UPDATE ck_policy_acceptance_requests SET sent_at = now() WHERE id = $1::uuid`,
-		requestID,
-	)
-	return err
+	return r.q.MarkCKPolicyAcceptanceRequestSent(ctx, requestID)
 }
 
 // GetCampaignStats returns total / accepted / pending counts for a campaign.
 func (r *Repository) GetCampaignStats(ctx context.Context, campaignID string) (*CampaignStats, error) {
-	var stats CampaignStats
-	err := r.db.QueryRow(ctx, `
-		SELECT
-			COUNT(*) AS total,
-			COUNT(accepted_at) AS accepted,
-			COUNT(*) - COUNT(accepted_at) AS pending
-		FROM ck_policy_acceptance_requests
-		WHERE campaign_id = $1::uuid`,
-		campaignID,
-	).Scan(&stats.Total, &stats.Accepted, &stats.Pending)
+	row, err := r.q.GetCKPolicyAcceptanceCampaignStats(ctx, campaignID)
 	if err != nil {
 		return nil, fmt.Errorf("get campaign stats: %w", err)
 	}
-	return &stats, nil
+	return &CampaignStats{
+		Total:    int(row.Total),
+		Accepted: int(row.Accepted),
+		Pending:  int(row.Pending),
+	}, nil
 }
 
 // ListAcceptanceRequests returns all requests for a campaign.
 func (r *Repository) ListAcceptanceRequests(ctx context.Context, campaignID string) ([]PolicyAcceptanceRequest, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT id::text, campaign_id::text, recipient_email, COALESCE(recipient_name,''),
-		       accepted_at, sent_at, created_at
-		FROM ck_policy_acceptance_requests
-		WHERE campaign_id = $1::uuid
-		ORDER BY created_at ASC`,
-		campaignID,
-	)
+	rows, err := r.q.ListCKPolicyAcceptanceRequests(ctx, campaignID)
 	if err != nil {
 		return nil, fmt.Errorf("list acceptance requests: %w", err)
 	}
-	defer rows.Close()
 
-	var requests []PolicyAcceptanceRequest
-	for rows.Next() {
-		var req PolicyAcceptanceRequest
-		if err := rows.Scan(
-			&req.ID, &req.CampaignID, &req.RecipientEmail, &req.RecipientName,
-			&req.AcceptedAt, &req.SentAt, &req.CreatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("scan acceptance request: %w", err)
-		}
-		requests = append(requests, req)
+	requests := make([]PolicyAcceptanceRequest, 0, len(rows))
+	for _, row := range rows {
+		requests = append(requests, PolicyAcceptanceRequest{
+			ID:             row.ID,
+			CampaignID:     row.CampaignID,
+			RecipientEmail: row.RecipientEmail,
+			RecipientName:  row.RecipientName,
+			AcceptedAt:     ckTsToTimePtr(row.AcceptedAt),
+			SentAt:         ckTsToTimePtr(row.SentAt),
+			CreatedAt:      ckTsToTime(row.CreatedAt),
+		})
 	}
-	return requests, rows.Err()
+	return requests, nil
 }
 
 // GetRequestByTokenHash looks up a request by its token hash.
 // Returns request, policy title, org_id, and any error.
 func (r *Repository) GetRequestByTokenHash(ctx context.Context, tokenHash string) (*PolicyAcceptanceRequest, string, string, error) {
-	var req PolicyAcceptanceRequest
-	var policyTitle, orgID string
-	err := r.db.QueryRow(ctx, `
-		SELECT
-			par.id::text, par.campaign_id::text, par.recipient_email, COALESCE(par.recipient_name,''),
-			par.accepted_at, par.sent_at, par.created_at,
-			p.title,
-			pac.org_id::text
-		FROM ck_policy_acceptance_requests par
-		JOIN ck_policy_acceptance_campaigns pac ON pac.id = par.campaign_id
-		JOIN ck_policies p ON p.id = pac.policy_id
-		WHERE par.token_hash = $1`,
-		tokenHash,
-	).Scan(
-		&req.ID, &req.CampaignID, &req.RecipientEmail, &req.RecipientName,
-		&req.AcceptedAt, &req.SentAt, &req.CreatedAt,
-		&policyTitle, &orgID,
-	)
+	row, err := r.q.GetCKPolicyAcceptanceRequestByToken(ctx, tokenHash)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, "", "", fmt.Errorf("token not found")
 		}
 		return nil, "", "", fmt.Errorf("get request by token: %w", err)
 	}
-	return &req, policyTitle, orgID, nil
+	req := &PolicyAcceptanceRequest{
+		ID:             row.ID,
+		CampaignID:     row.CampaignID,
+		RecipientEmail: row.RecipientEmail,
+		RecipientName:  row.RecipientName,
+		AcceptedAt:     ckTsToTimePtr(row.AcceptedAt),
+		SentAt:         ckTsToTimePtr(row.SentAt),
+		CreatedAt:      ckTsToTime(row.CreatedAt),
+	}
+	return req, row.PolicyTitle, row.OrgID, nil
 }
 
 // RecordAcceptance sets accepted_at and accepted_ip for a request.
 func (r *Repository) RecordAcceptance(ctx context.Context, requestID, ip string) error {
-	tag, err := r.db.Exec(ctx, `
-		UPDATE ck_policy_acceptance_requests
-		SET accepted_at = now(), accepted_ip = $2
-		WHERE id = $1::uuid AND accepted_at IS NULL`,
-		requestID, ip,
-	)
+	// RowsAffected = 0 means already accepted — treat as success (idempotent).
+	_, err := r.q.RecordCKPolicyAcceptance(ctx, db.RecordCKPolicyAcceptanceParams{
+		ID:         requestID,
+		AcceptedIP: ip,
+	})
 	if err != nil {
 		return fmt.Errorf("record acceptance: %w", err)
-	}
-	if tag.RowsAffected() == 0 {
-		// Already accepted — treat as success.
-		return nil
 	}
 	return nil
 }
 
 // GetAcceptancePublicInfo returns policy/org/message info for the public accept page.
 func (r *Repository) GetAcceptancePublicInfo(ctx context.Context, tokenHash string) (*acceptancePublicInfo, error) {
-	var info acceptancePublicInfo
-	err := r.db.QueryRow(ctx, `
-		SELECT
-			p.title,
-			o.name,
-			COALESCE(pac.message,''),
-			pac.deadline::text,
-			par.accepted_at
-		FROM ck_policy_acceptance_requests par
-		JOIN ck_policy_acceptance_campaigns pac ON pac.id = par.campaign_id
-		JOIN ck_policies p ON p.id = pac.policy_id
-		JOIN organizations o ON o.id = pac.org_id
-		WHERE par.token_hash = $1`,
-		tokenHash,
-	).Scan(&info.PolicyTitle, &info.OrgName, &info.Message, &info.Deadline, &info.AcceptedAt)
+	row, err := r.q.GetCKPolicyAcceptancePublicInfo(ctx, tokenHash)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, fmt.Errorf("token not found")
 		}
 		return nil, fmt.Errorf("get acceptance public info: %w", err)
 	}
-	return &info, nil
+
+	var deadlineStr *string
+	if row.Deadline.Valid {
+		s := row.Deadline.String
+		deadlineStr = &s
+	}
+
+	return &acceptancePublicInfo{
+		PolicyTitle: row.PolicyTitle,
+		OrgName:     row.OrgName,
+		Message:     row.Message,
+		Deadline:    deadlineStr,
+		AcceptedAt:  ckTsToTimePtr(row.AcceptedAt),
+	}, nil
 }

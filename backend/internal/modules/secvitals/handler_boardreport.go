@@ -73,45 +73,27 @@ func (s *Service) GetBoardReportData(ctx context.Context, orgID string) (*BoardR
 		weightedSum float64
 	)
 	g.Go(func() error {
-		rows, err := s.db.Query(gctx, `
-			SELECT
-			    COUNT(c.id)::int                                                     AS total,
-			    COUNT(c.id) FILTER (WHERE c.manual_status = 'implemented')::int     AS implemented
-			FROM ck_frameworks f
-			LEFT JOIN ck_controls c ON c.framework_id = f.id AND c.org_id = f.org_id
-			WHERE f.org_id = $1::uuid
-			GROUP BY f.id
-		`, orgID)
+		scoreRows, err := s.repo.GetBoardReportComplianceScoreRows(gctx, orgID)
 		if err != nil {
 			// Non-fatal: leave score at 0.
 			return nil //nolint:nilerr
 		}
-		defer rows.Close()
-		for rows.Next() {
-			var total, implemented int
-			if err := rows.Scan(&total, &implemented); err != nil {
-				continue
-			}
-			if total > 0 {
-				score := float64(implemented) / float64(total) * 100
+		for _, row := range scoreRows {
+			if row.Total > 0 {
+				score := float64(row.Implemented) / float64(row.Total) * 100
 				scoreMu.Lock()
-				weightedSum += score * float64(total)
-				totalWeight += float64(total)
+				weightedSum += score * float64(row.Total)
+				totalWeight += float64(row.Total)
 				scoreMu.Unlock()
 			}
 		}
-		return rows.Err()
+		return nil
 	})
 
 	// 3. Previous score from score_history (most recent snapshot before today).
 	g.Go(func() error {
-		var prevScore int
-		if err := s.db.QueryRow(gctx, `
-			SELECT score FROM ck_score_history
-			WHERE org_id = $1::uuid AND recorded_at < NOW()::date
-			ORDER BY recorded_at DESC
-			LIMIT 1
-		`, orgID).Scan(&prevScore); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		prevScore, err := s.repo.GetPreviousScore(gctx, orgID)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			// S13-18: ErrNoRows ist erwartet (frischer Org ohne History) — alles
 			// andere muss sichtbar sein.
 			log.Warn().Err(err).Str("org_id", orgID).Msg("board-report: previous score lookup failed")
@@ -164,13 +146,13 @@ func (s *Service) GetBoardReportData(ctx context.Context, orgID string) (*BoardR
 	// 6. Incidents in the last 30 days.
 	g.Go(func() error {
 		since := time.Now().UTC().Add(-30 * 24 * time.Hour)
-		if err := s.db.QueryRow(gctx, `
-			SELECT COUNT(*)::int FROM ck_incidents
-			WHERE org_id = $1::uuid AND created_at >= $2
-		`, orgID, since).Scan(&d.RecentIncidents); err != nil {
+		count, err := s.repo.CountRecentIncidents(gctx, orgID, since)
+		if err != nil {
 			// S13-18: kein hard-fail — Report soll auch ohne diesen Counter
 			// ausliefern. Aber Sichtbarkeit im Log.
 			log.Warn().Err(err).Str("org_id", orgID).Msg("board-report: incidents-30d counter failed")
+		} else {
+			d.RecentIncidents = count
 		}
 		return nil
 	})

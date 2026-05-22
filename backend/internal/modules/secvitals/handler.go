@@ -4,6 +4,8 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
+
+	"github.com/matharnica/vakt/internal/db"
 )
 
 // Handler handles HTTP requests for ComplyKit.
@@ -12,6 +14,7 @@ type Handler struct {
 	validate      *validator.Validate
 	uploadDir     string
 	db            *pgxpool.Pool
+	q             *db.Queries
 	paCfg         PolicyAcceptanceHandlerConfig
 	evidenceFiles *EvidenceFileService
 }
@@ -25,8 +28,9 @@ func NewHandler(service *Service) *Handler {
 }
 
 // WithDB attaches a DB pool used for audit logging.
-func (h *Handler) WithDB(db *pgxpool.Pool) *Handler {
-	h.db = db
+func (h *Handler) WithDB(dbPool *pgxpool.Pool) *Handler {
+	h.db = dbPool
+	h.q = db.New(dbPool)
 	return h
 }
 

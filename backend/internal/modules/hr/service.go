@@ -118,33 +118,13 @@ func (s *Service) UpdateEmployee(ctx context.Context, actor Actor, id string, in
 // the HR record update is already committed and must not be rolled back due to a
 // transient auth-DB issue.
 func (s *Service) revokeUserAccess(ctx context.Context, orgID, email string) {
-	if _, err := s.db.Exec(ctx,
-		`UPDATE sessions SET revoked_at = NOW()
-		 FROM users
-		 WHERE sessions.user_id = users.id
-		   AND users.org_id    = $1::uuid
-		   AND users.email     = $2
-		   AND sessions.revoked_at IS NULL`,
-		orgID, email,
-	); err != nil {
+	if err := s.repo.RevokeUserSessions(ctx, orgID, email); err != nil {
 		log.Error().Err(err).Str("email", email).Msg("hr: revoke sessions on termination")
 	}
-	if _, err := s.db.Exec(ctx,
-		`UPDATE users SET status = 'disabled'
-		 WHERE org_id = $1::uuid AND email = $2`,
-		orgID, email,
-	); err != nil {
+	if err := s.repo.DisableUser(ctx, orgID, email); err != nil {
 		log.Error().Err(err).Str("email", email).Msg("hr: disable user on termination")
 	}
-	if _, err := s.db.Exec(ctx,
-		`UPDATE api_keys SET revoked_at = NOW()
-		 FROM users
-		 WHERE api_keys.created_by = users.id
-		   AND users.org_id        = $1::uuid
-		   AND users.email         = $2
-		   AND api_keys.revoked_at IS NULL`,
-		orgID, email,
-	); err != nil {
+	if err := s.repo.RevokeUserAPIKeys(ctx, orgID, email); err != nil {
 		log.Error().Err(err).Str("email", email).Msg("hr: revoke api keys on termination")
 	}
 }

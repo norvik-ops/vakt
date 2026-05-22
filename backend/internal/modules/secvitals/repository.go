@@ -4388,3 +4388,130 @@ func (r *Repository) BulkUpdateCAPAStatus(ctx context.Context, orgID string, ids
 	}
 	return nil
 }
+
+// --- Board Report + Executive Summary (s26-sqlc-vitals-4) ---
+
+// BoardReportComplianceScoreRow is a single framework's control counts for the board report score.
+type BoardReportComplianceScoreRow struct {
+	Total       int
+	Implemented int
+}
+
+// GetBoardReportComplianceScoreRows returns per-framework control counts for computing the weighted compliance score.
+func (r *Repository) GetBoardReportComplianceScoreRows(ctx context.Context, orgID string) ([]BoardReportComplianceScoreRow, error) {
+	rows, err := r.q.GetBoardReportComplianceScoreRows(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("board report compliance score: %w", err)
+	}
+	out := make([]BoardReportComplianceScoreRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, BoardReportComplianceScoreRow{
+			Total:       int(row.Total),
+			Implemented: int(row.Implemented),
+		})
+	}
+	return out, nil
+}
+
+// GetPreviousScore returns the most recent compliance score snapshot before today (for board report delta).
+// Returns 0 and no error when no prior snapshot exists.
+func (r *Repository) GetPreviousScore(ctx context.Context, orgID string) (int, error) {
+	score, err := r.q.GetCKPreviousScore(ctx, orgID)
+	if err != nil {
+		return 0, err
+	}
+	return int(score), nil
+}
+
+// CountRecentIncidents returns the number of incidents created at or after `since`.
+func (r *Repository) CountRecentIncidents(ctx context.Context, orgID string, since time.Time) (int, error) {
+	n, err := r.q.CountCKRecentIncidents(ctx, db.CountCKRecentIncidentsParams{OrgID: orgID, Since: since})
+	if err != nil {
+		return 0, fmt.Errorf("count recent incidents: %w", err)
+	}
+	return int(n), nil
+}
+
+// ListActiveOrgIDs returns IDs of all non-deleted organisations.
+func (r *Repository) ListActiveOrgIDs(ctx context.Context) ([]string, error) {
+	ids, err := r.q.ListActiveOrgIDs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list active org ids: %w", err)
+	}
+	return ids, nil
+}
+
+// ExecutiveFrameworkScoreRow holds name + control counts for the executive summary.
+type ExecutiveFrameworkScoreRow struct {
+	Name        string
+	Total       int
+	Implemented int
+}
+
+// GetExecutiveFrameworkScores returns per-framework name + control counts for the executive summary.
+func (r *Repository) GetExecutiveFrameworkScores(ctx context.Context, orgID string) ([]ExecutiveFrameworkScoreRow, error) {
+	rows, err := r.q.GetExecutiveFrameworkScores(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("executive framework scores: %w", err)
+	}
+	out := make([]ExecutiveFrameworkScoreRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, ExecutiveFrameworkScoreRow{
+			Name:        row.Name,
+			Total:       int(row.Total),
+			Implemented: int(row.Implemented),
+		})
+	}
+	return out, nil
+}
+
+// ExecutiveTopRiskRow holds title, score and severity for the top-5 risks.
+type ExecutiveTopRiskRow struct {
+	Title    string
+	Score    int
+	Severity string
+}
+
+// GetExecutiveTopRisks returns the top-5 open risks by score for the executive summary.
+func (r *Repository) GetExecutiveTopRisks(ctx context.Context, orgID string) ([]ExecutiveTopRiskRow, error) {
+	rows, err := r.q.GetExecutiveTopRisks(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("executive top risks: %w", err)
+	}
+	out := make([]ExecutiveTopRiskRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, ExecutiveTopRiskRow{
+			Title:    row.Title,
+			Score:    int(row.Score),
+			Severity: row.Severity,
+		})
+	}
+	return out, nil
+}
+
+// CountClosedControlsSince returns the number of controls set to 'implemented' since `since`.
+func (r *Repository) CountClosedControlsSince(ctx context.Context, orgID string, since time.Time) (int, error) {
+	n, err := r.q.CountCKClosedControlsSince(ctx, db.CountCKClosedControlsSinceParams{OrgID: orgID, Since: since})
+	if err != nil {
+		return 0, fmt.Errorf("count closed controls since: %w", err)
+	}
+	return int(n), nil
+}
+
+// CountIncidentsSince returns the number of incidents created at or after `since`.
+func (r *Repository) CountIncidentsSince(ctx context.Context, orgID string, since time.Time) (int, error) {
+	n, err := r.q.CountCKIncidentsSince(ctx, db.CountCKIncidentsSinceParams{OrgID: orgID, Since: since})
+	if err != nil {
+		return 0, fmt.Errorf("count incidents since: %w", err)
+	}
+	return int(n), nil
+}
+
+// CountResolvedFindingsSince returns the number of findings set to 'resolved' since `since`.
+func (r *Repository) CountResolvedFindingsSince(ctx context.Context, orgID string, since time.Time) (int, error) {
+	n, err := r.q.CountSPResolvedFindingsSince(ctx, db.CountSPResolvedFindingsSinceParams{OrgID: orgID, Since: since})
+	if err != nil {
+		return 0, fmt.Errorf("count resolved findings since: %w", err)
+	}
+	return int(n), nil
+}

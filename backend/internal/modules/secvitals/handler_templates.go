@@ -6,8 +6,11 @@ package secvitals
 import (
 	"net/http"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/db"
 )
 
 // ListDBPolicyTemplates handles GET /api/v1/secvitals/templates
@@ -23,61 +26,20 @@ func (h *Handler) ListDBPolicyTemplates(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "invalid category; must be policy, dpia, or avv", "INVALID_CATEGORY")
 	}
 
-	var templates []DBPolicyTemplate
-
-	if category == "" {
-		pgRows, queryErr := h.db.Query(ctx, `
-			SELECT id, category, name, description, content, tags, framework, created_at
-			FROM ck_policy_templates
-			ORDER BY category, name
-		`)
-		if queryErr != nil {
-			log.Error().Err(queryErr).Msg("ListDBPolicyTemplates: query failed")
-			return errResp(c, http.StatusInternalServerError, "failed to list templates", "DB_ERROR")
-		}
-		defer pgRows.Close()
-
-		for pgRows.Next() {
-			var t DBPolicyTemplate
-			if scanErr := pgRows.Scan(&t.ID, &t.Category, &t.Name, &t.Description, &t.Content, &t.Tags, &t.Framework, &t.CreatedAt); scanErr != nil {
-				log.Error().Err(scanErr).Msg("ListDBPolicyTemplates: scan failed")
-				continue
-			}
-			templates = append(templates, t)
-		}
-		if pgRows.Err() != nil {
-			log.Error().Err(pgRows.Err()).Msg("ListDBPolicyTemplates: rows error")
-			return errResp(c, http.StatusInternalServerError, "failed to read templates", "DB_ERROR")
-		}
-	} else {
-		pgRows, queryErr := h.db.Query(ctx, `
-			SELECT id, category, name, description, content, tags, framework, created_at
-			FROM ck_policy_templates
-			WHERE category = $1
-			ORDER BY name
-		`, category)
-		if queryErr != nil {
-			log.Error().Err(queryErr).Msg("ListDBPolicyTemplates: query failed")
-			return errResp(c, http.StatusInternalServerError, "failed to list templates", "DB_ERROR")
-		}
-		defer pgRows.Close()
-
-		for pgRows.Next() {
-			var t DBPolicyTemplate
-			if scanErr := pgRows.Scan(&t.ID, &t.Category, &t.Name, &t.Description, &t.Content, &t.Tags, &t.Framework, &t.CreatedAt); scanErr != nil {
-				log.Error().Err(scanErr).Msg("ListDBPolicyTemplates: scan failed")
-				continue
-			}
-			templates = append(templates, t)
-		}
-		if pgRows.Err() != nil {
-			log.Error().Err(pgRows.Err()).Msg("ListDBPolicyTemplates: rows error")
-			return errResp(c, http.StatusInternalServerError, "failed to read templates", "DB_ERROR")
-		}
+	arg := db.ListCKPolicyTemplatesParams{}
+	if category != "" {
+		arg.Category = pgtype.Text{String: category, Valid: true}
 	}
 
-	if templates == nil {
-		templates = []DBPolicyTemplate{}
+	rows, queryErr := h.q.ListCKPolicyTemplates(ctx, arg)
+	if queryErr != nil {
+		log.Error().Err(queryErr).Msg("ListDBPolicyTemplates: query failed")
+		return errResp(c, http.StatusInternalServerError, "failed to list templates", "DB_ERROR")
+	}
+
+	templates := make([]DBPolicyTemplate, 0, len(rows))
+	for _, r := range rows {
+		templates = append(templates, templateListRowToDTO(r))
 	}
 	return c.JSON(http.StatusOK, templates)
 }
@@ -92,16 +54,48 @@ func (h *Handler) GetDBPolicyTemplate(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "missing template id", "MISSING_ID")
 	}
 
-	var t DBPolicyTemplate
-	err := h.db.QueryRow(ctx, `
-		SELECT id, category, name, description, content, tags, framework, created_at
-		FROM ck_policy_templates
-		WHERE id = $1
-	`, id).Scan(&t.ID, &t.Category, &t.Name, &t.Description, &t.Content, &t.Tags, &t.Framework, &t.CreatedAt)
+	r, err := h.q.GetCKPolicyTemplateByID(ctx, id)
 	if err != nil {
 		log.Error().Err(err).Str("id", id).Msg("GetDBPolicyTemplate: not found")
 		return errResp(c, http.StatusNotFound, "template not found", "TEMPLATE_NOT_FOUND")
 	}
 
-	return c.JSON(http.StatusOK, t)
+	return c.JSON(http.StatusOK, templateGetRowToDTO(r))
+}
+
+// templateListRowToDTO converts a ListCKPolicyTemplatesRow to DBPolicyTemplate.
+// COALESCE(framework, '') means empty string signals DB NULL — convert back to nil.
+func templateListRowToDTO(r db.ListCKPolicyTemplatesRow) DBPolicyTemplate {
+	var fw *string
+	if r.Framework != "" {
+		fw = &r.Framework
+	}
+	return DBPolicyTemplate{
+		ID:          r.ID,
+		Category:    r.Category,
+		Name:        r.Name,
+		Description: r.Description,
+		Content:     r.Content,
+		Tags:        r.Tags,
+		Framework:   fw,
+		CreatedAt:   r.CreatedAt,
+	}
+}
+
+// templateGetRowToDTO converts a GetCKPolicyTemplateByIDRow to DBPolicyTemplate.
+func templateGetRowToDTO(r db.GetCKPolicyTemplateByIDRow) DBPolicyTemplate {
+	var fw *string
+	if r.Framework != "" {
+		fw = &r.Framework
+	}
+	return DBPolicyTemplate{
+		ID:          r.ID,
+		Category:    r.Category,
+		Name:        r.Name,
+		Description: r.Description,
+		Content:     r.Content,
+		Tags:        r.Tags,
+		Framework:   fw,
+		CreatedAt:   r.CreatedAt,
+	}
 }

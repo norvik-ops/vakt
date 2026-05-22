@@ -35,7 +35,15 @@ type Querier interface {
 	CountCKControls(ctx context.Context, arg CountCKControlsParams) (int64, error)
 	// Returns one row per control_id with the count of approved+pending evidence.
 	CountCKEvidenceByControl(ctx context.Context, arg CountCKEvidenceByControlParams) ([]CountCKEvidenceByControlRow, error)
+	// Anzahl auf 'implemented' gesetzter Controls seit einem Zeitpunkt (Executive Summary / Board Report).
+	CountCKClosedControlsSince(ctx context.Context, arg CountCKClosedControlsSinceParams) (int32, error)
+	// Checks whether a milestone notification has already been sent (dedupe key = "<frameworkID>:<threshold>").
+	CountCKFrameworkMilestoneNotifs(ctx context.Context, arg CountCKFrameworkMilestoneNotifsParams) (int64, error)
 	CountCKIncidents(ctx context.Context, orgID string) (int64, error)
+	// Anzahl neu eröffneter Incidents seit einem Zeitpunkt (Executive Summary).
+	CountCKIncidentsSince(ctx context.Context, arg CountCKIncidentsSinceParams) (int32, error)
+	// Anzahl Incidents der letzten 30 Tage für den Board-Report.
+	CountCKRecentIncidents(ctx context.Context, arg CountCKRecentIncidentsParams) (int32, error)
 	CountCKPendingApprovals(ctx context.Context, orgID string) (int64, error)
 	CountCKPolicies(ctx context.Context, orgID string) (int64, error)
 	CountCKRisks(ctx context.Context, orgID string) (int64, error)
@@ -44,6 +52,8 @@ type Querier interface {
 	CountPPVVT(ctx context.Context, orgID string) (int64, error)
 	CountSPAssets(ctx context.Context, arg CountSPAssetsParams) (int64, error)
 	CountSPFindings(ctx context.Context, arg CountSPFindingsParams) (int64, error)
+	// Anzahl auf 'resolved' gesetzter Findings seit einem Zeitpunkt (Executive Summary).
+	CountSPResolvedFindingsSince(ctx context.Context, arg CountSPResolvedFindingsSinceParams) (int32, error)
 	// ── Tracking events ───────────────────────────────────────────────────────
 	CountSREventsByType(ctx context.Context, arg CountSREventsByTypeParams) (int64, error)
 	CountSRTargetsInGroup(ctx context.Context, groupID string) (int64, error)
@@ -87,6 +97,9 @@ type Querier interface {
 	CreateCKMilestone(ctx context.Context, arg CreateCKMilestoneParams) (CreateCKMilestoneRow, error)
 	// ── Policies ────────────────────────────────────────────────────────────────
 	CreateCKPolicy(ctx context.Context, arg CreateCKPolicyParams) (CreateCKPolicyRow, error)
+	// ── Policy Acceptance (s26-sqlc-vitals-5 — DSGVO-sensitiv) ─────────────────
+	CreateCKPolicyAcceptanceCampaign(ctx context.Context, arg CreateCKPolicyAcceptanceCampaignParams) (CreateCKPolicyAcceptanceCampaignRow, error)
+	CreateCKPolicyAcceptanceRequest(ctx context.Context, arg CreateCKPolicyAcceptanceRequestParams) (string, error)
 	CreateCKQuestion(ctx context.Context, arg CreateCKQuestionParams) (CkQuestionnaireQuestions, error)
 	// ── Questionnaires ──────────────────────────────────────────────────────────
 	CreateCKQuestionnaire(ctx context.Context, arg CreateCKQuestionnaireParams) (CkQuestionnaires, error)
@@ -201,6 +214,8 @@ type Querier interface {
 	// ── Control Discovery (used by SecPulse auto-evidence + AI classifier) ────
 	FindCKPatchControls(ctx context.Context, orgID string) ([]FindCKPatchControlsRow, error)
 	FirstHRChecklistByType(ctx context.Context, arg FirstHRChecklistByTypeParams) (HrChecklists, error)
+	// Liefert pro Framework: Gesamtanzahl Controls + Anzahl implemented (Board Report Score).
+	GetBoardReportComplianceScoreRows(ctx context.Context, orgID string) ([]GetBoardReportComplianceScoreRowsRow, error)
 	GetCKAISystem(ctx context.Context, arg GetCKAISystemParams) (CkAiSystems, error)
 	GetCKAccessReviewCampaign(ctx context.Context, arg GetCKAccessReviewCampaignParams) (CkAccessReviewCampaigns, error)
 	GetCKAnswerWithQuestion(ctx context.Context, arg GetCKAnswerWithQuestionParams) (GetCKAnswerWithQuestionRow, error)
@@ -220,6 +235,10 @@ type Querier interface {
 	// Within a single framework; only approved evidence.
 	GetCKExpiringEvidence(ctx context.Context, arg GetCKExpiringEvidenceParams) ([]GetCKExpiringEvidenceRow, error)
 	GetCKExpiringEvidenceAllFrameworks(ctx context.Context, arg GetCKExpiringEvidenceAllFrameworksParams) ([]GetCKExpiringEvidenceAllFrameworksRow, error)
+	// Pro Framework: Name, Gesamtanzahl Controls, Anzahl implemented (Executive Summary PDF Section 2).
+	GetExecutiveFrameworkScores(ctx context.Context, orgID string) ([]GetExecutiveFrameworkScoresRow, error)
+	// Top-5 offene Risiken nach Score für Executive Summary PDF Section 3.
+	GetExecutiveTopRisks(ctx context.Context, orgID string) ([]GetExecutiveTopRisksRow, error)
 	GetCKFramework(ctx context.Context, arg GetCKFrameworkParams) (CkFrameworks, error)
 	GetCKIncident(ctx context.Context, arg GetCKIncidentParams) (GetCKIncidentRow, error)
 	GetCKIncidentReportPDF(ctx context.Context, arg GetCKIncidentReportPDFParams) ([]byte, error)
@@ -228,8 +247,20 @@ type Querier interface {
 	GetCKOrgAdminEmails(ctx context.Context, orgID string) ([]string, error)
 	GetCKOrgMemberRole(ctx context.Context, arg GetCKOrgMemberRoleParams) (string, error)
 	GetCKOrgApprovalRequired(ctx context.Context, id string) (bool, error)
+	// Liest den Org-Namen für Akzeptanz-Kampagnen-Emails (s26-sqlc-vitals-5).
+	GetCKOrgName(ctx context.Context, id string) (string, error)
 	GetCKOrgSector(ctx context.Context, id string) (GetCKOrgSectorRow, error)
 	GetCKPolicy(ctx context.Context, arg GetCKPolicyParams) (GetCKPolicyRow, error)
+	// Aggregiert Total/Accepted/Pending für eine Akzeptanz-Kampagne.
+	GetCKPolicyAcceptanceCampaignStats(ctx context.Context, campaignID string) (GetCKPolicyAcceptanceCampaignStatsRow, error)
+	// Öffentliche Info für das Accept-Portal (Token-basiert, kein Auth).
+	GetCKPolicyAcceptancePublicInfo(ctx context.Context, tokenHash string) (GetCKPolicyAcceptancePublicInfoRow, error)
+	// Liest Request + Policy-Titel + Org-ID für den Token-basierten Accept-Flow.
+	GetCKPolicyAcceptanceRequestByToken(ctx context.Context, tokenHash string) (GetCKPolicyAcceptanceRequestByTokenRow, error)
+	// Returns a single DB-backed compliance template by UUID.
+	GetCKPolicyTemplateByID(ctx context.Context, id string) (GetCKPolicyTemplateByIDRow, error)
+	// Letzter Score-Snapshot vor heute (Board-Report Delta).
+	GetCKPreviousScore(ctx context.Context, orgID string) (float64, error)
 	GetCKPolicyVersion(ctx context.Context, arg GetCKPolicyVersionParams) (CkPolicyVersions, error)
 	GetCKQuestion(ctx context.Context, arg GetCKQuestionParams) (CkQuestionnaireQuestions, error)
 	GetCKQuestionnaireBase(ctx context.Context, arg GetCKQuestionnaireBaseParams) (CkQuestionnaires, error)
@@ -248,6 +279,10 @@ type Querier interface {
 	GetHRChecklistRun(ctx context.Context, arg GetHRChecklistRunParams) (HrChecklistRuns, error)
 	GetHREmployee(ctx context.Context, arg GetHREmployeeParams) (HrEmployees, error)
 	GetHREmployeeByEmail(ctx context.Context, arg GetHREmployeeByEmailParams) (HrEmployees, error)
+	// ── HR user-revocation helpers (sessions/users/api_keys — cross-module) ─
+	HRDisableUser(ctx context.Context, arg HRDisableUserParams) error
+	HRRevokeUserAPIKeys(ctx context.Context, arg HRRevokeUserAPIKeysParams) error
+	HRRevokeUserSessions(ctx context.Context, arg HRRevokeUserSessionsParams) error
 	GetLatestCKAIDocumentation(ctx context.Context, arg GetLatestCKAIDocumentationParams) (CkAiDocumentation, error)
 	GetLatestSPSBOM(ctx context.Context, arg GetLatestSPSBOMParams) (GetLatestSPSBOMRow, error)
 	// ── DSR Portal Settings (on organizations table) ────────────────────────────
@@ -285,7 +320,10 @@ type Querier interface {
 	GetSRCampaignGroupID(ctx context.Context, id string) (pgtype.UUID, error)
 	GetSRCompletionByAssignment(ctx context.Context, arg GetSRCompletionByAssignmentParams) (SrCompletions, error)
 	GetSRLandingPageForCampaign(ctx context.Context, id string) (SrLandingPages, error)
+	// ── SecReflex cross-table lookups ─────────────────────────────────────────
+	GetSROrganizationName(ctx context.Context, id string) (string, error)
 	GetSRPhishReportStats(ctx context.Context, orgID string) (GetSRPhishReportStatsRow, error)
+	GetSRTargetEmail(ctx context.Context, id string) (string, error)
 	GetSRTemplate(ctx context.Context, arg GetSRTemplateParams) (SrTemplates, error)
 	GetSRTrainingModuleByAttackType(ctx context.Context, arg GetSRTrainingModuleByAttackTypeParams) (SrTrainingModules, error)
 	GetSRTrainingModuleByID(ctx context.Context, arg GetSRTrainingModuleByIDParams) (SrTrainingModules, error)
@@ -307,6 +345,8 @@ type Querier interface {
 	// ── Risk ↔ Control Links ────────────────────────────────────────────────────
 	LinkCKRiskControl(ctx context.Context, arg LinkCKRiskControlParams) error
 	LinkCKSupplierRisk(ctx context.Context, arg LinkCKSupplierRiskParams) error
+	// Alle nicht gelöschten Organisationen (täglicher Score-Snapshot-Job).
+	ListActiveOrgIDs(ctx context.Context) ([]string, error)
 	ListAllBuiltinCKFrameworks(ctx context.Context) ([]CkFrameworks, error)
 	ListAllCKControlExceptions(ctx context.Context, orgID string) ([]CkControlExceptions, error)
 	// ── Org Helpers (verwendet von secvitals; touchen organizations/users) ────
@@ -355,6 +395,12 @@ type Querier interface {
 	ListCKEvidenceForFramework(ctx context.Context, arg ListCKEvidenceForFrameworkParams) ([]ListCKEvidenceForFrameworkRow, error)
 	ListCKEvidenceHistory(ctx context.Context, arg ListCKEvidenceHistoryParams) ([]ListCKEvidenceHistoryRow, error)
 	ListCKFrameworks(ctx context.Context, orgID string) ([]CkFrameworks, error)
+	// iCal feed: open/in-progress CAPAs with due dates.
+	ListCKICalCAPAs(ctx context.Context, orgID string) ([]ListCKICalCAPAsRow, error)
+	// iCal feed: evidence items expiring in the future.
+	ListCKICalExpiringEvidence(ctx context.Context, orgID string) ([]ListCKICalExpiringEvidenceRow, error)
+	// iCal feed: upcoming audit milestones.
+	ListCKICalMilestones(ctx context.Context, orgID string) ([]ListCKICalMilestonesRow, error)
 	ListCKIncidentReports(ctx context.Context, arg ListCKIncidentReportsParams) ([]ListCKIncidentReportsRow, error)
 	ListCKIncidents(ctx context.Context, orgID string) ([]ListCKIncidentsRow, error)
 	ListCKIncidentsBySupplier(ctx context.Context, arg ListCKIncidentsBySupplierParams) ([]ListCKIncidentsBySupplierRow, error)
@@ -371,6 +417,11 @@ type Querier interface {
 	ListCKPendingApprovals(ctx context.Context, orgID string) ([]ListCKPendingApprovalsRow, error)
 	ListCKPolicies(ctx context.Context, orgID string) ([]ListCKPoliciesRow, error)
 	ListCKPoliciesPaged(ctx context.Context, arg ListCKPoliciesPagedParams) ([]ListCKPoliciesPagedRow, error)
+	// ── Policy Acceptance (s26-sqlc-vitals-5) ───────────────────────────────────
+	ListCKPolicyAcceptanceCampaigns(ctx context.Context, arg ListCKPolicyAcceptanceCampaignsParams) ([]ListCKPolicyAcceptanceCampaignsRow, error)
+	ListCKPolicyAcceptanceRequests(ctx context.Context, campaignID string) ([]ListCKPolicyAcceptanceRequestsRow, error)
+	// DB-backed compliance templates from ck_policy_templates (optional category filter).
+	ListCKPolicyTemplates(ctx context.Context, arg ListCKPolicyTemplatesParams) ([]ListCKPolicyTemplatesRow, error)
 	// ── Policy-Versions ─────────────────────────────────────────────────────────
 	ListCKPolicyVersions(ctx context.Context, arg ListCKPolicyVersionsParams) ([]CkPolicyVersions, error)
 	ListCKQuestionnaires(ctx context.Context, arg ListCKQuestionnairesParams) ([]CkQuestionnaires, error)
@@ -385,6 +436,8 @@ type Querier interface {
 	ListCKSupplierRisks(ctx context.Context, arg ListCKSupplierRisksParams) ([]ListCKSupplierRisksRow, error)
 	ListCKSuppliers(ctx context.Context, arg ListCKSuppliersParams) ([]ListCKSuppliersRow, error)
 	ListCKTasks(ctx context.Context, arg ListCKTasksParams) ([]CkTasks, error)
+	// Top-10 controls for a framework by weight — used by AI policy generator for context.
+	ListCKTopControlsByFramework(ctx context.Context, arg ListCKTopControlsByFrameworkParams) ([]ListCKTopControlsByFrameworkRow, error)
 	ListExpiringPPAVVs(ctx context.Context, reviewDate pgtype.Date) ([]ListExpiringPPAVVsRow, error)
 	ListHRChecklistRuns(ctx context.Context, arg ListHRChecklistRunsParams) ([]HrChecklistRuns, error)
 	ListHRChecklists(ctx context.Context, orgID string) ([]HrChecklists, error)
@@ -446,6 +499,8 @@ type Querier interface {
 	MarkCKIncidentDeadlineReported(ctx context.Context, arg MarkCKIncidentDeadlineReportedParams) (MarkCKIncidentDeadlineReportedRow, error)
 	// Analog zu MarkDeadlineReported, aber für die Warning-Flags.
 	MarkCKIncidentWarnNotified(ctx context.Context, arg MarkCKIncidentWarnNotifiedParams) error
+	// Setzt sent_at für einen Akzeptanz-Request (s26-sqlc-vitals-5).
+	MarkCKPolicyAcceptanceRequestSent(ctx context.Context, id string) error
 	MarkExpiredPPAVVs(ctx context.Context) (int64, error)
 	MarkPPBreachAuthorityNotified(ctx context.Context, arg MarkPPBreachAuthorityNotifiedParams) error
 	// Returns MAX(version)+1 für die nächste Doku-Version (oder 1, wenn leer).
@@ -460,6 +515,8 @@ type Querier interface {
 	ReviewCKApproval(ctx context.Context, arg ReviewCKApprovalParams) (ReviewCKApprovalRow, error)
 	ReviewCKEvidence(ctx context.Context, arg ReviewCKEvidenceParams) (int64, error)
 	RevokeCKAuditorLink(ctx context.Context, arg RevokeCKAuditorLinkParams) (int64, error)
+	// Setzt accepted_at + accepted_ip; idempotent via WHERE accepted_at IS NULL (s26-sqlc-vitals-5).
+	RecordCKPolicyAcceptance(ctx context.Context, arg RecordCKPolicyAcceptanceParams) (int64, error)
 	SaveCKCCMResult(ctx context.Context, arg SaveCKCCMResultParams) error
 	// ── Incident-Reports (PDFs) ─────────────────────────────────────────────────
 	SaveCKIncidentReport(ctx context.Context, arg SaveCKIncidentReportParams) (SaveCKIncidentReportRow, error)

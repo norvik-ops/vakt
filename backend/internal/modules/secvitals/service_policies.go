@@ -7,6 +7,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/matharnica/vakt/internal/db"
 )
 
 // --- Policy Management (FR-CK14) ---
@@ -65,20 +67,14 @@ func (s *Service) GeneratePolicyDraft(ctx context.Context, orgID string, in Gene
 	// Optionally load top-10 framework controls for context.
 	frameworkContext := ""
 	if in.FrameworkID != "" {
-		rows, err := s.db.Query(ctx, `
-			SELECT control_id, title FROM ck_controls
-			WHERE framework_id = $1::uuid AND org_id = $2::uuid
-			ORDER BY weight DESC LIMIT 10`,
-			in.FrameworkID, orgID,
-		)
+		controls, err := s.q.ListCKTopControlsByFramework(ctx, db.ListCKTopControlsByFrameworkParams{
+			FrameworkID: in.FrameworkID,
+			OrgID:       orgID,
+		})
 		if err == nil {
-			defer rows.Close()
 			var lines []string
-			for rows.Next() {
-				var controlID, title string
-				if rows.Scan(&controlID, &title) == nil {
-					lines = append(lines, controlID+": "+title)
-				}
+			for _, c := range controls {
+				lines = append(lines, c.ControlID+": "+c.Title)
 			}
 			if len(lines) > 0 {
 				frameworkContext = "Relevante ISO 27001 Anforderungen als Kontext:\n" + strings.Join(lines, "\n")

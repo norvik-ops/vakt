@@ -619,3 +619,56 @@ func (q *Queries) UpdateHREmployee(ctx context.Context, arg UpdateHREmployeePara
 	)
 	return i, err
 }
+
+const hRRevokeUserSessions = `-- name: HRRevokeUserSessions :exec
+UPDATE sessions SET revoked_at = NOW()
+FROM users
+WHERE sessions.user_id = users.id
+  AND users.org_id    = $1::uuid
+  AND users.email     = $2
+  AND sessions.revoked_at IS NULL
+`
+
+type HRRevokeUserSessionsParams struct {
+	OrgID string `json:"org_id"`
+	Email string `json:"email"`
+}
+
+func (q *Queries) HRRevokeUserSessions(ctx context.Context, arg HRRevokeUserSessionsParams) error {
+	_, err := q.db.Exec(ctx, hRRevokeUserSessions, arg.OrgID, arg.Email)
+	return err
+}
+
+const hRDisableUser = `-- name: HRDisableUser :exec
+UPDATE users SET status = 'disabled'
+WHERE org_id = $1::uuid AND email = $2
+`
+
+type HRDisableUserParams struct {
+	OrgID string `json:"org_id"`
+	Email string `json:"email"`
+}
+
+func (q *Queries) HRDisableUser(ctx context.Context, arg HRDisableUserParams) error {
+	_, err := q.db.Exec(ctx, hRDisableUser, arg.OrgID, arg.Email)
+	return err
+}
+
+const hRRevokeUserAPIKeys = `-- name: HRRevokeUserAPIKeys :exec
+UPDATE api_keys SET revoked_at = NOW()
+FROM users
+WHERE api_keys.created_by = users.id
+  AND users.org_id        = $1::uuid
+  AND users.email         = $2
+  AND api_keys.revoked_at IS NULL
+`
+
+type HRRevokeUserAPIKeysParams struct {
+	OrgID string `json:"org_id"`
+	Email string `json:"email"`
+}
+
+func (q *Queries) HRRevokeUserAPIKeys(ctx context.Context, arg HRRevokeUserAPIKeysParams) error {
+	_, err := q.db.Exec(ctx, hRRevokeUserAPIKeys, arg.OrgID, arg.Email)
+	return err
+}
