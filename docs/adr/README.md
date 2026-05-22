@@ -32,6 +32,7 @@ Diese ADRs dokumentieren wichtige Architekturentscheidungen der Vakt-Plattform. 
 | [0018](0018-goroutine-lifecycle-und-panic-eskalation.md) | Goroutine-Lifecycle (Parent-Context-Pflicht) und Panic-Eskalation via `safego.Run` | Accepted |
 | [0019](0019-sse-statt-websocket-fuer-realtime.md) | Server-Sent Events statt WebSockets für alle Realtime-Pfade (Notifications, Scan-Progress, AI-Streaming) | Accepted |
 | [0020](0020-ai-agent-tool-permissions.md) | AI-Agent darf nur Tools nutzen, die der initiierende User auch darf — keine Privilege-Escalation via AI | Accepted |
+| [0021](0021-nis2-wizard-ce-vs-pro-cut.md) | NIS2-Wizard ist CE (Top-of-Funnel-Akquise), Branded-PDF + Re-Assessment-History + Multi-Framework sind Pro | Accepted |
 
 ## Wann eine neue ADR schreiben?
 

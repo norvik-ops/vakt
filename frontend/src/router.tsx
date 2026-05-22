@@ -13,6 +13,7 @@ import Setup from './pages/Setup'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import TrustPage from './pages/TrustPage'
+import NIS2WizardPage from './pages/NIS2WizardPage'
 import AuditorAcceptPage from './pages/AuditorAcceptPage'
 import PolicyAcceptPage from './pages/PolicyAcceptPage'
 import InviteAcceptPage from './pages/InviteAcceptPage'
@@ -144,6 +145,12 @@ export const router = createBrowserRouter([
   {
     path: '/dsr/:slug',
     element: <DSRPortalPage />,
+  },
+  {
+    // Sprint 19 S19-4: Public NIS2-Wizard — kein Layout, kein Auth.
+    // Top-of-Funnel-Akquise-Asset.
+    path: '/nis2-check',
+    element: <NIS2WizardPage />,
   },
   {
     path: '/login',

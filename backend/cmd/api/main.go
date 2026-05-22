@@ -55,6 +55,7 @@ import (
 	"github.com/matharnica/vakt/internal/shared/ldap"
 	"github.com/matharnica/vakt/internal/shared/metrics"
 	sharedmw "github.com/matharnica/vakt/internal/shared/middleware"
+	"github.com/matharnica/vakt/internal/shared/nis2wizard"
 	"github.com/matharnica/vakt/internal/shared/notifications"
 	"github.com/matharnica/vakt/internal/shared/notify"
 	"github.com/matharnica/vakt/internal/shared/onboarding"
@@ -210,6 +211,15 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	// Trust Center — public, no auth
 	trustcenter.Register(e, pool)
 	log.Info().Msg("trust center routes registered")
+
+	// Sprint 19 / S19-1: NIS2-Self-Assessment-Wizard — public, no auth.
+	// Rate-limited gegen Abuse (5 Calls/min/IP). CE-Top-of-Funnel-Asset.
+	nis2RateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
+		middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(5.0 / 60.0), Burst: 10, ExpiresIn: 5 * time.Minute},
+	))
+	nis2wizard.Register(api.Group("/public/nis2-assessment", nis2RateLimiter),
+		nis2wizard.NewHandler(nis2wizard.NewService(pool), cfg.SecretKey))
+	log.Info().Msg("nis2 wizard public routes registered")
 
 	// Setup wizard — rate-limited, no auth (only works before first org exists).
 	setupRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(

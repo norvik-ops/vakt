@@ -7,6 +7,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Sprint 19 — NIS2-Self-Assessment-Wizard CE (Tag-Kandidat v0.12.0)
+
+Top-of-Funnel-Akquise-Asset für DACH-Markt 2026. Anonymer Wizard mit 30 NIS2-Fragen, Live-Score, Top-3-Gaps. Pro-Schicht (Branded PDF, Trend-View, Multi-Framework) als Folge-Welle vorbereitet.
+
+**Backend:**
+- Migration 125: `nis2_anonymous_runs` (7d-Lebensdauer, IP-Hash für DSGVO) + `ck_nis2_assessments` (Org-Migration bei Sign-up).
+- `internal/shared/nis2wizard/` mit 30 Fragen über 8 Themenbereiche (NIS2 Art. 21 + BSI NIS2-UmsG §30). Gewichtete Score-Engine 0-4 mit Per-Area-Aufschlüsselung.
+- Public-Endpoints (kein Auth, Rate-Limit 5/min/IP): `POST /public/nis2-assessment/{start,answer}`, `GET /public/nis2-assessment/{result,questions}`.
+- `Service.MigrateToOrg(token, orgID, userID)` für Sign-up-Flow.
+- 9 Score-Engine-Tests.
+
+**Frontend:**
+- `pages/NIS2WizardPage.tsx` unter `/nis2-check` (kein Layout, mobile-first). Multi-Step-Flow, Progress-Bar, Live-Score, Token in localStorage für Wiederbesuch.
+- Result-Screen mit Ampel-Bewertung, Top-3-Gaps, CTA „Account erstellen + Ergebnis übernehmen".
+
+**Docs:**
+- **ADR-0021** Accepted: CE vs Pro Cut. Wizard + Sign-up-Migration sind CE; Branded-PDF + Trend + Multi-Framework sind Pro.
+
+**Verschoben (S19-7..12 [~] Folge-Welle):**
+- Embedded-Mode (iframe), Branded-PDF, Re-Assessment-History, Multi-Framework-Wizard, Auto-Mapping bei Sign-up, Landing-Page-Marketing.
+
 ### Sprint 18 — Agentic-AI v2 (Tag-Kandidat v0.11.0)
 
 Vakts erste agentische AI-Workflows mit Plan/Execute/Reflect-Loop, Tool-Registry und RBAC-Enforcement. Adressiert den Bericht-§8-„AI-Native"-Hebel.
