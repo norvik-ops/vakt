@@ -18,6 +18,7 @@ import (
 	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/emaildigest"
 	cloudintegration "github.com/matharnica/vakt/internal/shared/integrations/cloud"
+	"github.com/matharnica/vakt/internal/shared/nis2wizard"
 	"github.com/matharnica/vakt/internal/shared/notifications"
 	"github.com/matharnica/vakt/internal/shared/retention"
 	"github.com/matharnica/vakt/internal/shared/scheduledreports"
@@ -152,6 +153,20 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		auth.NewCleanupPasswordResetTokensTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register password reset token cleanup cron")
+	}
+
+	// Sprint 22 S22-12: täglich 03:15 UTC — abgelaufene NIS2-Wizard-Runs aufräumen.
+	if _, err := scheduler.Register("15 3 * * *",
+		nis2wizard.NewCleanupAnonymousRunsTask(),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register nis2 anonymous runs cleanup cron")
+	}
+
+	// Sprint 22 S22-13: wöchentlich Sonntag 04:00 UTC — login_history > 90d aufräumen.
+	if _, err := scheduler.Register("0 4 * * 0",
+		auth.NewCleanupLoginHistoryTask(),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register login history cleanup cron")
 	}
 
 	// Daily at 04:00 UTC: collect cloud evidence from all enabled AWS + Azure integrations.

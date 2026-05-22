@@ -28,6 +28,7 @@ import (
 	"github.com/matharnica/vakt/internal/modules/secvitals"
 	"github.com/matharnica/vakt/internal/services/alerting"
 	"github.com/matharnica/vakt/internal/shared/bsi"
+	"github.com/matharnica/vakt/internal/shared/nis2wizard"
 	"github.com/matharnica/vakt/internal/shared/controltests"
 	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/shared/demo"
@@ -680,6 +681,20 @@ func handleRetentionRun(pool *pgxpool.Pool) asynq.HandlerFunc {
 func handleCleanupPasswordResetTokens(pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
 		return auth.CleanupPasswordResetTokens(ctx, pool)
+	}
+}
+
+// Sprint 22 / S22-12: täglicher Cleanup für abgelaufene NIS2-Wizard-Runs.
+func handleCleanupNIS2AnonymousRuns(pool *pgxpool.Pool) asynq.HandlerFunc {
+	return func(ctx context.Context, _ *asynq.Task) error {
+		return nis2wizard.CleanupAnonymousRuns(ctx, pool)
+	}
+}
+
+// Sprint 22 / S22-13: wöchentlicher Cleanup für Login-History > 90 Tage.
+func handleCleanupLoginHistory(pool *pgxpool.Pool) asynq.HandlerFunc {
+	return func(ctx context.Context, _ *asynq.Task) error {
+		return auth.CleanupLoginHistory(ctx, pool)
 	}
 }
 

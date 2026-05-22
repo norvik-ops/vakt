@@ -143,10 +143,18 @@ func (s *Service) OIDCLogin(ctx context.Context, cfg *config.Config, provider, c
 	// Step 3: Provision or load user.
 	userID, orgID, roles, err := s.provisionOIDCUser(ctx, profile.Sub, provider, profile.Email, profile.Name, profile.Avatar)
 	if err != nil {
+		// S22-3: failed OIDC-Provisionierung wird auch persistiert
+		s.recordLogin(ctx, "", "", profile.Email, deviceHint, "oidc", "oidc_failed")
 		return nil, fmt.Errorf("OIDC: provision user: %w", err)
 	}
 
-	return s.issueTokenPair(ctx, userID, orgID, roles, deviceHint)
+	authResp, tokenErr := s.issueTokenPair(ctx, userID, orgID, roles, deviceHint)
+	if tokenErr != nil {
+		return authResp, tokenErr
+	}
+	// S22-3: erfolgreicher OIDC-Login in login_history persistieren.
+	s.recordLogin(ctx, orgID, userID, profile.Email, deviceHint, "oidc", "ok")
+	return authResp, nil
 }
 
 // SAMLLogin processes a SAML assertion consumer response proxied via Casdoor.
@@ -200,10 +208,17 @@ func (s *Service) SAMLLogin(ctx context.Context, cfg *config.Config, samlRespons
 
 	userID, orgID, roles, err := s.provisionOIDCUser(ctx, samlResp.Sub, "saml", samlResp.Email, samlResp.Name, "")
 	if err != nil {
+		// S22-3: failed SAML auch persistieren.
+		s.recordLogin(ctx, "", "", samlResp.Email, deviceHint, "saml", "oidc_failed")
 		return nil, fmt.Errorf("SAML: provision user: %w", err)
 	}
 
-	return s.issueTokenPair(ctx, userID, orgID, roles, deviceHint)
+	authResp, tokErr := s.issueTokenPair(ctx, userID, orgID, roles, deviceHint)
+	if tokErr == nil {
+		// S22-3: erfolgreicher SAML-Login.
+		s.recordLogin(ctx, orgID, userID, samlResp.Email, deviceHint, "saml", "ok")
+	}
+	return authResp, tokErr
 }
 
 // provisionOIDCUser looks up or creates a user based on their OIDC subject.

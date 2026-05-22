@@ -7,6 +7,38 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Sprint 22 — Fertigstellungs-Welle für Sprints 17-20 (Tag-Kandidat v0.14.0)
+
+Schließt die Skeleton-Lücken aus 17-20 nach dem Honesty-Audit vom 2026-05-22. Kein neues Feature-Versprechen, sondern Einlösung alter. 12 Items voll-implementiert, 4 größere Frontend-Komponenten als [~] in nachfolgende Welle verschoben.
+
+**22.1 Backend-Bugs (echte Defekte):**
+- **S22-1 Auth-Lookup mit Grace-Period:** API-Key-Auth-Middleware akzeptiert jetzt `previous_key_hash` während `previous_key_grace_expires_at > NOW()`. Beim Match über alten Hash: Response-Header `X-Vakt-Key-Deprecated: true` + `Sunset: <RFC1123>` als Migrations-Signal. **Bug aus Sprint 20 effektiv broken Rotation** ist gefixt.
+- **S22-2 RequireScope-Kontext-Plumbing:** Auth-Middleware setzt jetzt `auth_method=api_key`, `api_key_scopes`, `api_key_id` im Echo-Context. `apikeys.RequireScope(scope)`-Middleware kann das nun nutzen — manuelles Mounten auf Routen ist möglich. Volle 200-Route-Annotation ist noch eigener Sprint, aber das Plumbing steht.
+- **S22-3 OIDC + SAML + Register schreiben login_history:** `auth.OIDCLogin`, `auth.SAMLLogin`, `auth.Register` rufen jetzt `recordLogin` mit source=`oidc`/`saml`/`register`. Failed-OIDC-Provisioning auch als `oidc_failed`. Sprint 20 hatte nur Password-Pfad — Audit-Gap geschlossen.
+
+**22.2 Sign-up-Integration (NIS2-Akquise-Loop schließen):**
+- **S22-4 Setup.tsx liest `?nis2_token=` + localStorage** und ruft nach erfolgreichem Setup `POST /secvitals/nis2-assessment/migrate-from-anonymous` auf. CTA aus dem Public-Wizard läuft jetzt nicht mehr ins Leere.
+- **S22-5 Auto-Mapping auf NIS2-Controls** in `nis2wizard.AutoMapToControls`: value 0-1 → `not_implemented`, 2 → `partial`, 3-4 → `implemented`. Mapping via NIS2-Ref-Substring auf `ck_controls.description`/`control_id`. Nur Controls ohne aktiven manual_status werden überschrieben.
+- **S22-6 Authentifizierter Endpoint** `POST /api/v1/secvitals/nis2-assessment/migrate-from-anonymous`. Service-Methode `MigrateAndAutoMap` kombiniert Migration + Auto-Mapping in einem atomaren Schritt.
+
+**22.3 Frontend-UI (3 von 5, größere Komponenten als [~]):**
+- **S22-7 `ScanProgressIndicator`-Komponente** unter `modules/secpulse/components/`. Konsumiert SSE-Stream, zeigt Live-Phase + Percent-Bar + Heartbeat-Filter. Auto-Cleanup beim Unmount via AbortController.
+- **S22-11 `LoginHistorySection`-Komponente** unter `shared/components/`. Tabelle mit TS / Quelle / Browser-Excerpt / IP / Result-Badge. Failed-Logins fett markiert. UA-Mini-Parser (Firefox/Edge/Chrome/Safari-Detection). In `AccountSettingsPage` eingebaut.
+
+**22.4 Cleanup-Jobs:**
+- **S22-12 `TaskCleanupAnonymousRuns`** (täglich 03:15 UTC): `DELETE FROM nis2_anonymous_runs WHERE expires_at < NOW()`. Im Worker-Scheduler verdrahtet.
+- **S22-13 `TaskCleanupLoginHistory`** (wöchentlich Sonntag 04:00 UTC): `DELETE FROM login_history WHERE ts < NOW() - INTERVAL '90 days'`. Worker-Handler + Scheduler-Cron.
+
+**22.5 Doku:**
+- **S22-15 `docs/reviews/2026-05-22-honesty-audit.md`** dokumentiert den Skeleton-Status-Audit der zu Sprint 22 führte. Methodik, Item-Klassifikation, Lessons-Learned.
+- **S22-16 CHANGELOG + UPGRADE** für v0.14.0 mit klarer Bugfix-Kennzeichnung der S22-1-Rotation-Defekts.
+
+**Verschoben (S22-8, S22-9, S22-10, S22-14 [~]) → Folge-Welle:**
+- S22-8 `AgentRunPanel`-Frontend (groß, Streaming-UI mit Approve-Cards).
+- S22-9 `ApiKeysPage`-Refactor (Scope-Checkbox-Wizard, Rotation-Button-UI mit Modal).
+- S22-10 Session-Mgmt-Backend-Endpoint (`/auth/sessions{,/:id/revoke,/revoke-all}`) + SessionsPage-Ausbau.
+- S22-14 Integration-Tests für Cleanup-Jobs (brauchen testcontainers-Setup, separater Test-Hardening-Sprint).
+
 ### Sprint 20 — Enterprise-Auth CE-Tier (Tag-Kandidat v0.13.0)
 
 CE-Schicht der Enterprise-Auth-Welle: feingranulare API-Key-Scopes mit Wildcard-Logik, zerstörungsfreie Rotation mit 24-h-Grace-Period, Login-Historie pro User. Pro-Schicht (SAML, SCIM, IP-Allowlist, MFA-API, SIEM) bleibt explizit Sprint 21 — on-demand bei konkretem Enterprise-Sales-Trigger.

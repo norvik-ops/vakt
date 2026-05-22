@@ -217,8 +217,8 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	nis2RateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
 		middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(5.0 / 60.0), Burst: 10, ExpiresIn: 5 * time.Minute},
 	))
-	nis2wizard.Register(api.Group("/public/nis2-assessment", nis2RateLimiter),
-		nis2wizard.NewHandler(nis2wizard.NewService(pool), cfg.SecretKey))
+	nis2wizardHandler := nis2wizard.NewHandler(nis2wizard.NewService(pool), cfg.SecretKey)
+	nis2wizard.Register(api.Group("/public/nis2-assessment", nis2RateLimiter), nis2wizardHandler)
 	log.Info().Msg("nis2 wizard public routes registered")
 
 	// Setup wizard — rate-limited, no auth (only works before first org exists).
@@ -416,6 +416,9 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 		efSvc := secvitals.NewEvidenceFileService(ckSvc.Repo(), cfg.UploadDir)
 		ckHandler.WithEvidenceFileService(efSvc)
 		secvitals.Register(protected.Group("/secvitals"), ckHandler)
+		// Sprint 22 / S22-6: authentifizierter NIS2-Wizard-Migrate-Endpoint
+		// (POST /secvitals/nis2-assessment/migrate-from-anonymous).
+		nis2wizard.RegisterAuthenticated(protected.Group("/secvitals"), nis2wizardHandler)
 		// Auditor portal uses URL token — exempt from Bearer auth; rate-limited to 30 req/min per IP
 		portalRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
 			middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(30.0 / 60.0), Burst: 30, ExpiresIn: 5 * time.Minute},
@@ -512,6 +515,8 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	// Account self-service: DSGVO Art. 17 (delete) and Art. 20 (export).
 	accountHandler := account.NewHandler(account.NewService(pool))
 	account.Register(protected, accountHandler)
+	// Sprint 22 S22-11: Login-History-Endpoint.
+	account.RegisterLoginHistory(protected, account.NewLoginHistoryHandler(pool))
 	log.Info().Msg("account routes registered")
 
 	// GitHub integration — branch protection, PR review, dependency alert compliance checks

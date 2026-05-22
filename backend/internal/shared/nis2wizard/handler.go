@@ -31,6 +31,41 @@ func Register(g *echo.Group, h *Handler) {
 	g.GET("/questions", h.Questions)
 }
 
+// RegisterAuthenticated mountet den Migrate-Endpoint. Sprint 22 S22-4/5/6.
+// Aufrufer übergibt eine authentifizierte Echo-Gruppe.
+func RegisterAuthenticated(g *echo.Group, h *Handler) {
+	g.POST("/nis2-assessment/migrate-from-anonymous", h.MigrateFromAnonymous)
+}
+
+// MigrateFromAnonymous ist der authentifizierte Endpoint, der einen anonymen
+// Magic-Token in die Org des Aufrufers migriert + die Antworten als
+// initialer manual_status auf NIS2-Controls projiziert (Auto-Mapping).
+//
+// Body: { "token": "<32-hex>" }
+// Response: { "assessment_id": "<uuid>", "controls_mapped": N }
+func (h *Handler) MigrateFromAnonymous(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	userID, _ := c.Get("user_id").(string)
+	if orgID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+	}
+	var input struct {
+		Token string `json:"token"`
+	}
+	if err := c.Bind(&input); err != nil || input.Token == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "token required"})
+	}
+	assessmentID, mapped, err := h.svc.MigrateAndAutoMap(c.Request().Context(), input.Token, orgID, userID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("nis2: migrate-from-anonymous failed")
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, map[string]any{
+		"assessment_id":   assessmentID,
+		"controls_mapped": mapped,
+	})
+}
+
 // Start legt einen neuen Run an + gibt Token zurück. Im Body optional
 // `referrer` (Marketing-Attribution).
 func (h *Handler) Start(c echo.Context) error {

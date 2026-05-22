@@ -277,20 +277,39 @@ var scopePathPrefixes = map[string][]string{
 //
 // Keys with the "vakt_" prefix and empty scopes are treated as full-access
 // personal keys (equivalent to the user's own session).
+//
+// Sprint 22 / S22-1 (Bugfix): die Lookup-Query akzeptiert WÄHREND der
+// 24-h-Grace-Period nach Rotation auch den `previous_key_hash`. Vorher
+// war der alte Key sofort nach Rotation tot — die Grace stand nur in der
+// DB, der Auth-Lookup ignorierte sie. Wenn der Match über
+// previous_key_hash kommt, setzen wir Response-Header
+// `X-Vakt-Key-Deprecated: true` + `Sunset: <ISO>` als Migrations-Signal
+// fuer CI-Pipelines.
+//
+// Sprint 22 / S22-2: setzt `auth_method=api_key` + `api_key_scopes` im
+// Context, damit die `apikeys.RequireScope`-Middleware fein-granulare
+// Scope-Pruefung auf einzelnen Endpoints machen kann.
 func handleAPIKey(c echo.Context, next echo.HandlerFunc, db *pgxpool.Pool, rawKey string) error {
 	sum := sha256.Sum256([]byte(rawKey))
 	keyHash := hex.EncodeToString(sum[:])
 
 	const query = `
-		SELECT ak.id, ak.org_id, ak.created_by, ak.scopes
+		SELECT ak.id, ak.org_id, ak.created_by, ak.scopes,
+		       (ak.key_hash = $1) AS matched_current,
+		       ak.previous_key_grace_expires_at
 		FROM api_keys ak
-		WHERE ak.key_hash = $1
+		WHERE (ak.key_hash = $1
+		       OR (ak.previous_key_hash = $1
+		           AND ak.previous_key_grace_expires_at IS NOT NULL
+		           AND ak.previous_key_grace_expires_at > NOW()))
 		  AND ak.revoked_at IS NULL
 		  AND (ak.expires_at IS NULL OR ak.expires_at > NOW())`
 
 	var keyID, orgID, createdBy string
 	var scopes []string
-	err := db.QueryRow(c.Request().Context(), query, keyHash).Scan(&keyID, &orgID, &createdBy, &scopes)
+	var matchedCurrent bool
+	var graceExpiresAt *time.Time
+	err := db.QueryRow(c.Request().Context(), query, keyHash).Scan(&keyID, &orgID, &createdBy, &scopes, &matchedCurrent, &graceExpiresAt)
 	if err != nil {
 		log.Debug().Err(err).Msg("api key lookup failed")
 		return c.JSON(http.StatusUnauthorized, map[string]string{
@@ -298,6 +317,17 @@ func handleAPIKey(c echo.Context, next echo.HandlerFunc, db *pgxpool.Pool, rawKe
 			"code":  "AUTH_INVALID_TOKEN",
 		})
 	}
+
+	// S22-1: Deprecation-Header wenn alter (previous_key_hash) Treffer.
+	if !matchedCurrent && graceExpiresAt != nil {
+		c.Response().Header().Set("X-Vakt-Key-Deprecated", "true")
+		c.Response().Header().Set("Sunset", graceExpiresAt.UTC().Format(time.RFC1123))
+	}
+
+	// S22-2: Context-Markierung fuer apikeys.RequireScope-Middleware.
+	c.Set("auth_method", "api_key")
+	c.Set("api_key_scopes", scopes)
+	c.Set("api_key_id", keyID)
 
 	// Personal "vakt_" keys with empty scopes have full user-level access.
 	// Legacy "sk_" keys without scopes are rejected (no default grant).

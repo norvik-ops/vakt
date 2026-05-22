@@ -216,6 +216,16 @@ export default function Setup() {
   const [modules, setModules] = useState<string[]>([...ALL_MODULES])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [migratedMsg, setMigratedMsg] = useState<string | null>(null)
+
+  // Sprint 22 S22-4: bei Sign-up mit ?nis2_token= aus dem Public-Wizard
+  // wird der Token nach erfolgreichem Setup an den Migrate-Endpoint
+  // gesendet. Token kommt entweder per Query-Param ODER aus localStorage
+  // (Wizard speichert ihn dort).
+  const nis2Token = (() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('nis2_token') || localStorage.getItem('vakt_nis2_token') || ''
+  })()
 
   const toggleModule = (mod: string) => {
     setModules((prev) =>
@@ -237,6 +247,23 @@ export default function Setup() {
         method: 'POST',
         body: JSON.stringify(payload),
       })
+      // Sprint 22 S22-4: NIS2-Wizard-Token migrieren falls vorhanden.
+      // Setup-Endpoint logged den User schon ein (Cookie gesetzt), also
+      // hat der nachfolgende authentifizierte Call Auth-Context.
+      if (nis2Token) {
+        try {
+          const migrateResp = await apiFetch<{ assessment_id: string; controls_mapped: number }>(
+            '/secvitals/nis2-assessment/migrate-from-anonymous',
+            { method: 'POST', body: JSON.stringify({ token: nis2Token }) },
+          )
+          localStorage.removeItem('vakt_nis2_token')
+          setMigratedMsg(
+            `NIS2-Wizard-Ergebnis übernommen: ${migrateResp.controls_mapped} Controls vorbelegt.`,
+          )
+        } catch {
+          // Migration ist Bonus — Setup-Erfolg nicht blockieren.
+        }
+      }
       navigate('/', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : t('setup.setupFailed'))

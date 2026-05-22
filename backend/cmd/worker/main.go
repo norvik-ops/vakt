@@ -31,6 +31,7 @@ import (
 	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/emaildigest"
 	cloudintegration "github.com/matharnica/vakt/internal/shared/integrations/cloud"
+	"github.com/matharnica/vakt/internal/shared/nis2wizard"
 	"github.com/matharnica/vakt/internal/shared/notifications"
 	"github.com/matharnica/vakt/internal/shared/retention"
 	"github.com/matharnica/vakt/internal/shared/scheduledreports"
@@ -155,6 +156,11 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 
 	// Auth: daily cleanup of expired and used password reset tokens
 	mux.HandleFunc(auth.TaskCleanupPasswordResetTokens, handleCleanupPasswordResetTokens(pool))
+
+	// Sprint 22 S22-12 + S22-13: Cleanup-Jobs für NIS2-Wizard-anonyme-Runs
+	// (täglich) und Login-History > 90 Tage (wöchentlich).
+	mux.HandleFunc(nis2wizard.TaskCleanupAnonymousRuns, handleCleanupNIS2AnonymousRuns(pool))
+	mux.HandleFunc(auth.TaskCleanupLoginHistory, handleCleanupLoginHistory(pool))
 
 	// Cloud integrations: daily evidence collection from AWS + Azure
 	mux.HandleFunc(cloudintegration.TaskCloudSync, handleCloudSync(cfg, pool))

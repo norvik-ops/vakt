@@ -191,7 +191,12 @@ func (s *Service) Register(ctx context.Context, input RegisterInput, deviceHint 
 	}
 
 	roles := []string{"Admin"}
-	return s.issueTokenPair(ctx, userID, orgID, roles, deviceHint)
+	resp, tokErr := s.issueTokenPair(ctx, userID, orgID, roles, deviceHint)
+	if tokErr == nil {
+		// S22-3: Register-Flow = erfolgreicher Erst-Login.
+		s.recordLogin(ctx, orgID, userID, input.Email, deviceHint, "register", "ok")
+	}
+	return resp, tokErr
 }
 
 // Login validates credentials and returns tokens on success.

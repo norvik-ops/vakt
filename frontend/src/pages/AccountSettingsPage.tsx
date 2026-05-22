@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../shared/components/PageHeader'
 import { RecoveryCodesDialog } from '../shared/components/RecoveryCodesDialog'
+import { LoginHistorySection } from '../shared/components/LoginHistorySection'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -517,6 +518,9 @@ export default function AccountSettingsPage() {
           {t('settings.sessionsPage.title')} <ExternalLink className="h-3.5 w-3.5" />
         </Link>
       </Card>
+
+      {/* Sprint 22 S22-11: Login-History */}
+      <LoginHistorySection />
 
       <SetupDialog open={setupOpen} onClose={() => setSetupOpen(false)} />
       <DisableDialog open={disableOpen} onClose={() => setDisableOpen(false)} />
