@@ -261,10 +261,10 @@ func scanFromVbScans(r db.VbScans) Scan {
 // the mapping here.
 type assetFields struct {
 	ID, OrgID, Name, Type, Criticality, Environment string
-	Tags                                             []string
-	OwnerID                                          pgtype.UUID
-	ExternalUrl                                      pgtype.Text
-	CreatedAt, UpdatedAt                             pgtype.Timestamptz
+	Tags                                            []string
+	OwnerID                                         pgtype.UUID
+	ExternalUrl                                     pgtype.Text
+	CreatedAt, UpdatedAt                            pgtype.Timestamptz
 }
 
 func assetFromFields(f assetFields) Asset {

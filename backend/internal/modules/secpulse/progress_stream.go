@@ -20,9 +20,9 @@ import (
 // Sprint 17 / S17-2.
 type ProgressEvent struct {
 	ScanID    string    `json:"scan_id"`
-	Phase     string    `json:"phase"`              // "started" | "fetching" | "scanning" | "parsing" | "finished" | "failed"
-	Percent   int       `json:"percent,omitempty"`  // 0-100, optional
-	Message   string    `json:"message,omitempty"`  // human-readable status, optional
+	Phase     string    `json:"phase"`             // "started" | "fetching" | "scanning" | "parsing" | "finished" | "failed"
+	Percent   int       `json:"percent,omitempty"` // 0-100, optional
+	Message   string    `json:"message,omitempty"` // human-readable status, optional
 	Timestamp time.Time `json:"ts"`
 }
 

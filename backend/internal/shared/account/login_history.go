@@ -19,8 +19,8 @@ type LoginHistoryItem struct {
 	TS        time.Time `json:"ts"`
 	IP        string    `json:"ip,omitempty"`
 	UserAgent string    `json:"user_agent,omitempty"`
-	Source    string    `json:"source"`            // password | oidc | saml | register | magic_link | api_key
-	Result    string    `json:"result"`            // ok | bad_password | locked | mfa_failed | oidc_failed
+	Source    string    `json:"source"` // password | oidc | saml | register | magic_link | api_key
+	Result    string    `json:"result"` // ok | bad_password | locked | mfa_failed | oidc_failed
 }
 
 // LoginHistoryHandler bindet einen pgx-Pool an den Endpoint.
