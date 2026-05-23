@@ -190,9 +190,12 @@ describe('useFormValidation — clearAll', () => {
 })
 
 describe('useFormValidation — scrollToError', () => {
+  let scrollSpy: ReturnType<typeof vi.fn>
+
   beforeEach(() => {
     vi.useFakeTimers()
-    Element.prototype.scrollIntoView = vi.fn()
+    scrollSpy = vi.fn()
+    Element.prototype.scrollIntoView = scrollSpy
   })
   afterEach(() => {
     vi.restoreAllMocks()
@@ -212,7 +215,7 @@ describe('useFormValidation — scrollToError', () => {
     act(() => { vi.runAllTimers() })
 
     expect(spy).toHaveBeenCalledWith('[data-field="name"]')
-    expect(el.scrollIntoView).toHaveBeenCalled()
+    expect(scrollSpy).toHaveBeenCalled()
   })
 
   it('does not scroll when scrollToError is false', () => {

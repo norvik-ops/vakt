@@ -53,4 +53,12 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-call': 'warn',
     },
   },
+  {
+    // Test files need `as any` for mock return typing — vi.mocked().mockReturnValue()
+    // requires partial shapes that don't satisfy the full UseQueryResult/UseMutationResult types.
+    files: ['**/*.test.{ts,tsx}', 'src/test-utils/**'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
+  },
 )
