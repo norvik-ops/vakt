@@ -17,7 +17,7 @@ CREATE INDEX IF NOT EXISTS idx_ck_controls_cursor
 
 -- secvault secrets
 CREATE INDEX IF NOT EXISTS idx_so_secrets_cursor
-    ON so_secrets (project_id, created_at DESC, id DESC);
+    ON so_secrets (org_id, created_at DESC, id DESC);
 
 -- secprivacy DSRs (table is po_dsr)
 CREATE INDEX IF NOT EXISTS idx_po_dsr_cursor
