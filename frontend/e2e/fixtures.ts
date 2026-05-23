@@ -36,6 +36,12 @@ export const test = base.extend({
             headers: { 'Content-Type': 'application/json' },
           })
         }
+        if (url.endsWith('/health')) {
+          return new Response(
+            JSON.stringify({ demo: false, version: 'e2e-test', sso_enabled: false }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          )
+        }
         return origFetch(input, init)
       }
     })
