@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 interface Props {
   children: ReactNode
@@ -8,6 +9,39 @@ interface Props {
 interface State {
   hasError: boolean
   error: Error | null
+}
+
+function ErrorFallback({ error }: { error: Error | null }) {
+  const { t } = useTranslation()
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-8">
+      <div className="max-w-md w-full rounded-lg border border-destructive/30 bg-destructive/5 p-8 text-center">
+        <h1 className="text-xl font-semibold text-destructive mb-2">{t('errors.boundary.title')}</h1>
+        {error && (
+          <p className="text-sm text-muted-foreground mb-4">{error.message}</p>
+        )}
+        {import.meta.env.DEV && error?.stack && (
+          <pre className="text-left text-xs bg-muted rounded p-3 overflow-auto max-h-40 mb-4 text-secondary whitespace-pre-wrap">
+            {error.stack}
+          </pre>
+        )}
+        <div className="flex flex-col sm:flex-row gap-2 justify-center">
+          <button
+            onClick={() => { window.location.reload(); }}
+            className="px-4 py-2 rounded bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition-colors"
+          >
+            {t('errors.boundary.reload')}
+          </button>
+          <Link
+            to="/"
+            className="px-4 py-2 rounded border border-border text-sm text-secondary hover:text-primary hover:border-brand/60 transition-colors"
+          >
+            {t('errors.boundary.home')}
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -37,35 +71,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-background p-8">
-          <div className="max-w-md w-full rounded-lg border border-destructive/30 bg-destructive/5 p-8 text-center">
-            <h1 className="text-xl font-semibold text-destructive mb-2">Etwas ist schiefgelaufen</h1>
-            {this.state.error && (
-              <p className="text-sm text-muted-foreground mb-4">{this.state.error.message}</p>
-            )}
-            {import.meta.env.DEV && this.state.error?.stack && (
-              <pre className="text-left text-xs bg-muted rounded p-3 overflow-auto max-h-40 mb-4 text-secondary whitespace-pre-wrap">
-                {this.state.error.stack}
-              </pre>
-            )}
-            <div className="flex flex-col sm:flex-row gap-2 justify-center">
-              <button
-                onClick={() => { window.location.reload(); }}
-                className="px-4 py-2 rounded bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition-colors"
-              >
-                Seite neu laden
-              </button>
-              <Link
-                to="/"
-                className="px-4 py-2 rounded border border-border text-sm text-secondary hover:text-primary hover:border-brand/60 transition-colors"
-              >
-                Zurück zur Startseite
-              </Link>
-            </div>
-          </div>
-        </div>
-      )
+      return <ErrorFallback error={this.state.error} />
     }
     return this.props.children
   }

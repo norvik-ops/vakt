@@ -1129,7 +1129,23 @@
     "AUTH_OIDC_NOT_CONFIGURED": "Le SSO n'est pas activé sur cette instance.",
     "AUTH_OIDC_FAILED": "Échec de la connexion SSO. Veuillez réessayer plus tard.",
     "ACCOUNT_LOCKED": "Compte temporairement verrouillé. Veuillez patienter 15 minutes.",
-    "RATE_LIMITED": "Trop de requêtes. Veuillez patienter un instant."
+    "RATE_LIMITED": "Trop de requêtes. Veuillez patienter un instant.",
+    "boundary": {
+      "title": "Une erreur s'est produite",
+      "reload": "Recharger la page",
+      "home": "Retour à l'accueil"
+    },
+    "pro": {
+      "title": "Fonctionnalité Pro",
+      "description": "Cette fonctionnalité n'est pas disponible dans l'édition Community. Vakt Pro avec TISAX, DORA, EU AI Act, assistant de notification NIS2, export PDF d'audit, SSO, accès API, permissions de modules granulaires et plus encore est en préparation.",
+      "soon": "Bientôt disponible"
+    }
+  },
+  "validation": {
+    "required": "Ce champ est obligatoire.",
+    "minLength": "Au moins {{count}} caractères requis.",
+    "email": "Veuillez saisir une adresse e-mail valide.",
+    "passwordStrength": "Au moins 10 caractères, 1 majuscule, 1 chiffre et 1 caractère spécial."
   },
   "onboarding": {
     "title": "Premiers pas",

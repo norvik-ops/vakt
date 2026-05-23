@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import i18next from 'i18next'
 
 export interface ValidationRule {
   test: (v: string) => boolean
@@ -43,19 +44,19 @@ export function useFieldValidation(
 
 export const required: ValidationRule = {
   test: (v) => v.trim().length > 0,
-  message: 'Dieses Feld ist erforderlich.',
+  get message() { return i18next.t('validation.required') },
 }
 
 export function minLength(n: number): ValidationRule {
   return {
     test: (v) => v.length >= n,
-    message: `Mindestens ${String(n)} Zeichen erforderlich.`,
+    get message() { return i18next.t('validation.minLength', { count: n }) },
   }
 }
 
 export const email: ValidationRule = {
   test: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),
-  message: 'Bitte eine gültige E-Mail-Adresse eingeben.',
+  get message() { return i18next.t('validation.email') },
 }
 
 export const passwordStrength: ValidationRule = {
@@ -64,8 +65,7 @@ export const passwordStrength: ValidationRule = {
     /[A-Z]/.test(v) &&
     /[0-9]/.test(v) &&
     /[^A-Za-z0-9]/.test(v),
-  message:
-    'Mindestens 10 Zeichen, 1 Großbuchstabe, 1 Ziffer und 1 Sonderzeichen.',
+  get message() { return i18next.t('validation.passwordStrength') },
 }
 
 // ─── Password strength score (0-4) ───────────────────────────────────────────

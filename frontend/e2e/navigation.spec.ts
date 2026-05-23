@@ -24,7 +24,7 @@ test.describe('Navigation', () => {
   test('navigates to settings page', async ({ page }) => {
     await page.goto('/settings')
     await expect(page).toHaveURL(/settings/)
-    await expect(page.locator('text=Einstellungen, text=Settings').first()).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText('Einstellungen').or(page.getByText('Settings')).first()).toBeVisible({ timeout: 5000 })
   })
 
   test('sidebar links are reachable', async ({ page }) => {

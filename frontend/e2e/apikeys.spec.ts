@@ -30,14 +30,8 @@ const API_KEYS_IN_GRACE = [
 function mockStoreAuth(page: Parameters<typeof test>[1]['page']) {
   return page.addInitScript(() => {
     localStorage.setItem(
-      'auth-storage',
-      JSON.stringify({
-        state: {
-          token: 'v2.local.testtoken',
-          user: { id: 'u1', email: 'admin@example.com', role: 'admin', org_id: 'org-1', mfa_enabled: false },
-        },
-        version: 0,
-      }),
+      'vakt_user',
+      JSON.stringify({ id: 'u1', email: 'admin@example.com', role: 'admin', display_name: 'Admin', roles: ['admin'] }),
     )
   })
 }

@@ -22,6 +22,14 @@ import (
 // or expired.
 var ErrTokenInvalid = errors.New("token invalid or expired")
 
+// resetThrottleMax is the maximum number of password reset emails per address
+// within resetThrottleTTL. Chosen to allow legitimate use (lost password,
+// typo in new password) while preventing inbox-spam abuse.
+const (
+	resetThrottleMax = 3
+	resetThrottleTTL = time.Hour
+)
+
 // RequestPasswordReset generates a reset token for the given email address and
 // sends it via SMTP. If the email is not found in the DB the function returns
 // nil without error — callers must not distinguish found/not-found.
@@ -36,6 +44,21 @@ func (s *Service) RequestPasswordReset(ctx context.Context, email, frontendURL, 
 	}
 	if err != nil {
 		return fmt.Errorf("lookup user: %w", err)
+	}
+
+	// Per-email throttle: suppress emails silently once the limit is reached.
+	// Fail-open: if Redis is unavailable the request proceeds normally.
+	throttleKey := "reset_req:" + email
+	if cnt, incrErr := s.redis.Incr(ctx, throttleKey).Result(); incrErr == nil {
+		if cnt == 1 {
+			_ = s.redis.Expire(ctx, throttleKey, resetThrottleTTL).Err()
+		}
+		if cnt > resetThrottleMax {
+			log.Warn().Str("email", email).Msg("password reset: per-email rate limit reached, suppressing")
+			return nil
+		}
+	} else {
+		log.Warn().Err(incrErr).Msg("password reset: redis throttle unavailable, failing open")
 	}
 
 	// Generate 32 cryptographically random bytes as the raw token.

@@ -1129,7 +1129,23 @@
     "AUTH_OIDC_NOT_CONFIGURED": "SSO is niet ingeschakeld op deze instantie.",
     "AUTH_OIDC_FAILED": "SSO-aanmelding mislukt. Probeer het later opnieuw.",
     "ACCOUNT_LOCKED": "Account tijdelijk vergrendeld. Wacht 15 minuten.",
-    "RATE_LIMITED": "Te veel verzoeken. Wacht even."
+    "RATE_LIMITED": "Te veel verzoeken. Wacht even.",
+    "boundary": {
+      "title": "Er is iets misgegaan",
+      "reload": "Pagina herladen",
+      "home": "Terug naar home"
+    },
+    "pro": {
+      "title": "Pro-functie",
+      "description": "Deze functie is niet beschikbaar in de Community-editie. Vakt Pro met TISAX, DORA, EU AI Act, NIS2-meldingsassistent, Audit PDF-export, SSO, API-toegang, granulaire modulerechten en meer is binnenkort beschikbaar.",
+      "soon": "Binnenkort beschikbaar"
+    }
+  },
+  "validation": {
+    "required": "Dit veld is verplicht.",
+    "minLength": "Minimaal {{count}} tekens vereist.",
+    "email": "Voer een geldig e-mailadres in.",
+    "passwordStrength": "Minimaal 10 tekens, 1 hoofdletter, 1 cijfer en 1 speciaal teken."
   },
   "onboarding": {
     "title": "Aan de slag",

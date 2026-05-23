@@ -7,6 +7,9 @@ test.describe('Dashboard', () => {
     await page.addInitScript((u) => {
       localStorage.setItem('vakt_user', JSON.stringify(u))
     }, FAKE_USER)
+    await page.route('**/api/v1/**', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '{"data":[],"pagination":{"page":1,"limit":25,"total":0,"total_pages":1}}' })
+    )
     await page.route('**/api/v1/dashboard**', route =>
       route.fulfill({
         status: 200,
@@ -16,15 +19,23 @@ test.describe('Dashboard', () => {
           open_findings: 14,
           open_risks: 5,
           active_incidents: 2,
+          score: 72,
           score_history: [
             { date: '2026-04-01', score: 60 },
             { date: '2026-05-01', score: 72 },
           ],
+          framework_scores: [],
+          open_capas: 0,
+          overdue_controls: 0,
+          overdue_tasks: 0,
+          critical_risks: 0,
+          top_risks: [],
+          recent_activity: [],
+          policies_total: 0,
+          policies_approved: 0,
+          components: { critical_findings: 0, high_findings: 0, open_breaches: 0, active_frameworks: 0 },
         }),
       })
-    )
-    await page.route('**/api/v1/**', route =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: '{"data":[],"pagination":{"page":1,"limit":25,"total":0,"total_pages":1}}' })
     )
   })
 

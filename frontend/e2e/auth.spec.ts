@@ -18,6 +18,7 @@ test.describe('Authentication', () => {
   })
 
   test('logs in successfully with valid credentials', async ({ page }) => {
+    await page.route('**/api/v1/**', route => route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }))
     await page.route('**/api/v1/auth/login', route =>
       route.fulfill({
         status: 200,
@@ -31,7 +32,6 @@ test.describe('Authentication', () => {
         }),
       })
     )
-    await page.route('**/api/v1/**', route => route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }))
 
     await page.goto('/login')
     await page.fill('input[type="email"]', 'admin@example.com')

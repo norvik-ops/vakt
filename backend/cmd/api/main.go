@@ -75,7 +75,7 @@ import (
 // version is injected at build time via -ldflags "-X main.version=..."
 var version = "dev"
 
-func setupEcho(cfg *config.Config) *echo.Echo {
+func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
 	e := echo.New()
@@ -354,7 +354,7 @@ func setupEcho(cfg *config.Config) *echo.Echo {
 	// Update check service (opt-in, no phone-home)
 	updateSvc := updatecheck.NewService(cfg.UpdateCheck, cfg.Version, rdb)
 	updatecheck.Register(protected, updateSvc)
-	updateSvc.StartBackgroundRefresh(context.Background())
+	updateSvc.StartBackgroundRefresh(lifecycleCtx)
 	log.Info().Msg("update check routes registered")
 
 	// Admin routes (also require Admin role)
@@ -889,7 +889,8 @@ func main() {
 		seedCancel()
 	}
 
-	e := setupEcho(cfg)
+	serverCtx, serverCancel := context.WithCancel(context.Background())
+	e := setupEcho(serverCtx, cfg)
 
 	if cfg.DemoSeed {
 		log.Warn().Msg("demo mode active — ephemeral sessions are open to the public, do NOT use in production")
@@ -909,6 +910,7 @@ func main() {
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
 
+	serverCancel() // stop background goroutines (e.g. update-check refresh)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := e.Shutdown(ctx); err != nil {

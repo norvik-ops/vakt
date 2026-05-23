@@ -87,6 +87,7 @@ test.describe('SecHR — Checklists', () => {
 test.describe('SecHR — Navigation', () => {
   test('HR module is accessible from sidebar', async ({ page }) => {
     await login(page)
+    await page.goto('/')
     const hrLink = page.getByRole('link', { name: /hr|mitarbeiter|personal/i })
     await expect(hrLink.first()).toBeVisible()
   })

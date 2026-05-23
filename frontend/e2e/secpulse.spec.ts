@@ -16,8 +16,8 @@ test.describe('SecPulse — SLA Dashboard', () => {
   })
 
   test('SLA dashboard renders with filter tabs', async ({ page }) => {
-    await expect(page.getByRole('tab', { name: /alle/i })).toBeVisible()
-    await expect(page.getByRole('tab', { name: /überfällig/i })).toBeVisible()
-    await expect(page.getByRole('tab', { name: /gefährdet/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /alle/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /überfällig/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /gefährdet/i })).toBeVisible()
   })
 })

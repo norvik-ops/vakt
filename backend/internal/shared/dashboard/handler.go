@@ -178,7 +178,9 @@ func (h *Handler) GetAggregate(c echo.Context) error {
 
 	if h.rdb != nil {
 		if blob, err := json.Marshal(resp); err == nil {
-			cacheCtx, cacheCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			// context.WithoutCancel: cache write must complete even if client
+			// disconnects mid-request (OTel trace context inherited, ADR-0018).
+			cacheCtx, cacheCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 			defer cacheCancel()
 			if err := h.rdb.Set(cacheCtx, aggregateCacheKey(orgID), blob, aggregateCacheTTL).Err(); err != nil {
 				log.Warn().Err(err).Str("org_id", orgID).Msg("dashboard aggregate: redis set failed")

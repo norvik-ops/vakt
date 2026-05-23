@@ -119,7 +119,7 @@ test.describe('SecReflex — Training', () => {
   })
 
   test('shows training module list', async ({ page }) => {
-    await expect(page.getByText('Phishing erkennen').or(page.getByText(/training|modul/i))).toBeVisible()
+    await expect(page.getByText('Phishing erkennen').or(page.getByText(/training|modul/i)).first()).toBeVisible()
   })
 })
 

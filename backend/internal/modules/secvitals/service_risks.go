@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/matharnica/vakt/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/safego"
 )
 
 // --- Risk Assessment (FR-CK12) ---
@@ -44,14 +45,16 @@ func (s *Service) UpdateRisk(ctx context.Context, orgID, id string, in UpdateRis
 	}
 	s.invalidateDashboardCache(ctx, orgID)
 	if in.Owner != "" && risk != nil {
-		go func() {
-			notifyCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		title := risk.Title
+		safego.Run(ctx, "secvitals.risk.notify_owner", func(ctx context.Context) error {
+			notifyCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
 			notify.Send(notifyCtx, s.db, orgID,
 				"Risiko zugewiesen",
-				fmt.Sprintf("Das Risiko '%s' wurde Ihnen zugewiesen.", risk.Title),
+				fmt.Sprintf("Das Risiko '%s' wurde Ihnen zugewiesen.", title),
 				"info", "secvitals")
-		}()
+			return nil
+		})
 	}
 	return risk, nil
 }

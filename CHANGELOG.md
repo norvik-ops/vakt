@@ -7,6 +7,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### v0.23.0 — Security Hardening Wave 2 + Test Coverage (2026-05-23)
+
+#### Sicherheit
+- **Per-Email Password-Reset-Throttle** — max. 3 Reset-Mails pro Stunde pro Adresse via Redis-INCR; verhindert Inbox-Spam-Angriffe ohne Enumeration-Leak (Antwort bleibt immer HTTP 200)
+- **HR API-Key-Scope** — `/api/v1/hr/`-Endpoints werden jetzt in der Scope-Path-Map geprüft; scoped API-Keys mit `"hr"`-Scope können gezielt auf HR-Endpoints zugreifen, andere Scopes werden abgewiesen
+
+#### Bugfixes
+- **EOL-Version-Parsing: Großbuchstaben-V-Prefix** — `normaliseCycle("V3.9")` lieferte `"v3.9"` statt `"3.9"`, weil `TrimPrefix` case-sensitiv ist und vor `ToLower` aufgerufen wurde. Fix: erst lowercase, dann trim. Betraf SBOM-Komponenten mit Großbuchstaben-V-Versionspräfix (z.B. aus Syft), die silently als "unknown" EOL-Status bewertet wurden.
+
+#### Tests
+- **MFAEnforceMiddleware vollständig getestet** — 8 neue Unit-Tests ohne Real-DB via `mfaDB`-Interface-Fake: exempt paths, missing context, fail-closed bei org-DB-Fehler (503), fail-closed bei TOTP-DB-Fehler (403), MFA required/not required, TOTP enabled/disabled
+- **Password-Reset-Throttle-Invarianten** — 5 reine Logik-Tests: Konstanten-Grenzen, Zähler-Bedingung, Redis-Key-Format
+- **secpulse Domain-Invarianten** — 15 neue Tests: SLA-Severity-Mapping (BSI-90-Tage-Fallback), EOL-Versionsparsing (`majorCycle`, `normaliseCycle`), EOL-Payload-Deserialisierung (bool/string/date polymorph), `eolValue.UnmarshalJSON` alle 6 Varianten
+
+#### Infrastruktur
+- **`StartBackgroundRefresh` Lifecycle-Context** — Update-Check-Goroutine läuft jetzt mit Server-Lifecycle-Context statt `context.Background()`; wird bei SIGTERM sauber gestoppt bevor Echo shutdown
+
 ### v0.22.0 — Supplier Portal + Vakt Scan (2026-05-22)
 
 #### Added

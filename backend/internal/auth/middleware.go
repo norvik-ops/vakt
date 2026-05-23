@@ -13,11 +13,20 @@ import (
 	"time"
 
 	"aidanwoods.dev/go-paseto"
+	pgx "github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/safego"
 )
+
+// mfaDB is the minimal DB surface used by MFAEnforceMiddleware.
+// *pgxpool.Pool satisfies this interface; tests can inject a lightweight fake.
+type mfaDB interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
 
 // SymmetricKey is an alias for the Paseto v4 symmetric key type so that test
 // code and callers outside this package can reference it without importing the
@@ -215,6 +224,12 @@ var mfaExemptPaths = []string{
 // Routes listed in mfaExemptPaths are always allowed through so that users can
 // complete the TOTP setup flow without being locked out.
 func MFAEnforceMiddleware(db *pgxpool.Pool) echo.MiddlewareFunc {
+	return mfaEnforceMiddleware(db)
+}
+
+// mfaEnforceMiddleware is the testable implementation behind MFAEnforceMiddleware.
+// It accepts the mfaDB interface so tests can inject a fake without a real Postgres.
+func mfaEnforceMiddleware(db mfaDB) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			// Allow exempted paths regardless of MFA policy.
@@ -275,6 +290,7 @@ var scopePathPrefixes = map[string][]string{
 	"secvitals":  {"/api/v1/secvitals/"},
 	"secreflex":  {"/api/v1/secreflex/"},
 	"secprivacy": {"/api/v1/secprivacy/"},
+	"hr":         {"/api/v1/hr/"},
 }
 
 // handleAPIKey looks up the raw API key in the database by its SHA-256 hash,
@@ -347,15 +363,18 @@ func handleAPIKey(c echo.Context, next echo.HandlerFunc, db *pgxpool.Pool, rawKe
 	}
 
 	// Update last_used_at + last_used_ip asynchronously — do not block the request.
+	// context.WithoutCancel detaches from the request lifetime so the write
+	// completes even after the response is sent (ADR-0018).
 	clientIP := c.RealIP()
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	safego.Run(context.WithoutCancel(c.Request().Context()), "auth.api_key.update_last_used", func(ctx context.Context) error {
+		updateCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 		defer cancel()
-		_, _ = db.Exec(ctx,
+		_, _ = db.Exec(updateCtx,
 			`UPDATE api_keys SET last_used_at = NOW(), last_used_ip = NULLIF($2, '') WHERE id = $1::uuid`,
 			keyID, clientIP,
 		)
-	}()
+		return nil
+	})
 
 	// Personal keys with empty scopes have full user-level access — no path check.
 	if isPersonalKey && len(scopes) == 0 {

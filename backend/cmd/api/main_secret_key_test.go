@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,7 +23,7 @@ func TestSetupEchoEmptySecretKey(t *testing.T) {
 	}
 
 	// setupEcho must not panic with an empty key.
-	e := setupEcho(cfg)
+	e := setupEcho(context.Background(), cfg)
 	assert.NotNil(t, e)
 
 	// Health endpoint must still respond.

@@ -267,9 +267,10 @@ func majorCycle(version string) string {
 	return parts[0]
 }
 
-// normaliseCycle trims leading "v" and lowercases for comparison.
+// normaliseCycle lowercases and trims a leading "v" for endoflife.date comparison.
+// Lowercase must happen before TrimPrefix so that "V3.9" → "3.9", not "v3.9".
 func normaliseCycle(cycle string) string {
-	return strings.ToLower(strings.TrimPrefix(cycle, "v"))
+	return strings.TrimPrefix(strings.ToLower(cycle), "v")
 }
 
 // parseEOLPayload interprets a cached JSON payload and returns (eol_status, eol_date, error).

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -26,7 +27,7 @@ func testConfig() *config.Config {
 // Frontend (useDemoMode, Login.tsx, Layout.tsx) hängt an den Feldern demo,
 // sso_enabled und version — Pflichtfelder gemäß ADR-0017 + openapi.yaml.
 func TestHealthEndpoint(t *testing.T) {
-	e := setupEcho(testConfig())
+	e := setupEcho(context.Background(), testConfig())
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
