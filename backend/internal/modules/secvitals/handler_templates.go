@@ -64,7 +64,7 @@ func (h *Handler) GetDBPolicyTemplate(c echo.Context) error {
 }
 
 // templateListRowToDTO converts a ListCKPolicyTemplatesRow to DBPolicyTemplate.
-// COALESCE(framework, '') means empty string signals DB NULL — convert back to nil.
+// COALESCE(framework, ”) means empty string signals DB NULL — convert back to nil.
 func templateListRowToDTO(r db.ListCKPolicyTemplatesRow) DBPolicyTemplate {
 	var fw *string
 	if r.Framework != "" {

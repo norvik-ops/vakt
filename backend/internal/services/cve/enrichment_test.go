@@ -249,7 +249,6 @@ func (t *hostRewriteTransport) RoundTrip(req *http.Request) (*http.Response, err
 
 type fakeRedis struct {
 	store map[string][]byte
-	srv   *fakeRESPServer
 }
 
 func newFakeRedis() *fakeRedis {

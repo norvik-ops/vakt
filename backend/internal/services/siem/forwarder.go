@@ -91,7 +91,7 @@ func (a *SplunkHECAdapter) Forward(ctx context.Context, entries []AuditEntry) er
 		if err != nil {
 			return fmt.Errorf("splunk hec forward: %w", err)
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if resp.StatusCode >= 400 {
 			return fmt.Errorf("splunk hec returned %d", resp.StatusCode)
 		}
@@ -143,7 +143,7 @@ func (a *ElasticAdapter) Forward(ctx context.Context, entries []AuditEntry) erro
 	if err != nil {
 		return fmt.Errorf("elastic bulk forward: %w", err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("elastic bulk returned %d", resp.StatusCode)
 	}
@@ -192,7 +192,7 @@ func (a *WebhookAdapter) Forward(ctx context.Context, entries []AuditEntry) erro
 	if err != nil {
 		return fmt.Errorf("webhook forward: %w", err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("webhook returned %d", resp.StatusCode)
 	}

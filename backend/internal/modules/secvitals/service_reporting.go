@@ -22,8 +22,7 @@ func (s *Service) ExportFrameworkPDF(ctx context.Context, orgID, frameworkID str
 	if err != nil {
 		return nil, "", fmt.Errorf("get gap analysis: %w", err)
 	}
-	var orgName string
-	orgName = fetchOrgName(ctx, s.db, orgID)
+	orgName := fetchOrgName(ctx, s.db, orgID)
 
 	pdfBytes, err := GenerateFrameworkPDF(report, gaps, orgName)
 	if err != nil {
@@ -44,8 +43,7 @@ func (s *Service) ExportSoAPDF(ctx context.Context, orgID, frameworkID string) (
 	if err != nil {
 		return nil, "", fmt.Errorf("list controls for soa: %w", err)
 	}
-	var orgName string
-	orgName = fetchOrgName(ctx, s.db, orgID)
+	orgName := fetchOrgName(ctx, s.db, orgID)
 
 	pdfBytes, err := GenerateSoAPDF(rows, fw.Name, orgName, time.Now())
 	if err != nil {
@@ -545,11 +543,7 @@ func (s *Service) GetExecutiveSummaryData(ctx context.Context, orgID string) (*E
 		log.Warn().Err(err).Msg("executive summary: risks query")
 	} else {
 		for _, row := range topRisks {
-			d.TopRisks = append(d.TopRisks, ExecutiveRiskRow{
-				Title:    row.Title,
-				Score:    row.Score,
-				Severity: row.Severity,
-			})
+			d.TopRisks = append(d.TopRisks, ExecutiveRiskRow(row))
 		}
 	}
 

@@ -1317,8 +1317,8 @@ type DORAThirdParty struct {
 	Name               string    `json:"name"`
 	ServiceType        string    `json:"service_type"`
 	Criticality        string    `json:"criticality"`
-	ContractStart      *string   `json:"contract_start,omitempty"`  // ISO date string
-	ContractEnd        *string   `json:"contract_end,omitempty"`    // ISO date string
+	ContractStart      *string   `json:"contract_start,omitempty"` // ISO date string
+	ContractEnd        *string   `json:"contract_end,omitempty"`   // ISO date string
 	SLARTOHours        *int      `json:"sla_rto_hours,omitempty"`
 	SLAAvailability    *float64  `json:"sla_availability,omitempty"`
 	HasSubcontractors  bool      `json:"has_subcontractors"`

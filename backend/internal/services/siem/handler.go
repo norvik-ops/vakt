@@ -84,12 +84,7 @@ func (h *Handler) UpdateSIEMConfig(c echo.Context) error {
 		})
 	}
 
-	if err := h.svc.SetOrgConfig(c.Request().Context(), orgID, OrgSIEMConfig{
-		Enabled:  req.Enabled,
-		Adapter:  req.Adapter,
-		Endpoint: req.Endpoint,
-		Token:    req.Token, // empty = keep existing (handled in SQL)
-	}); err != nil {
+	if err := h.svc.SetOrgConfig(c.Request().Context(), orgID, OrgSIEMConfig(req)); err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Msg("update siem config failed")
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "failed to update SIEM config",

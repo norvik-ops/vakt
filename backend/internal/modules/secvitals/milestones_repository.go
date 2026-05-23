@@ -15,7 +15,6 @@ import (
 	"github.com/matharnica/vakt/internal/db"
 )
 
-
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 // uuidStringPtr returns the UUID as *string (nil when invalid).
