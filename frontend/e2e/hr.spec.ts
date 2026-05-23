@@ -68,7 +68,7 @@ test.describe('SecHR — Employees', () => {
     const addBtn = page.getByRole('button', { name: /mitarbeiter|employee|hinzufügen|anlegen/i })
     if (await addBtn.isVisible()) {
       await addBtn.click()
-      await expect(page.getByRole('dialog')).toBeVisible()
+      await expect(page.getByRole('dialog', { name: /mitarbeiter hinzufügen|mitarbeiter bearbeiten/i })).toBeVisible()
     }
   })
 })
@@ -87,7 +87,7 @@ test.describe('SecHR — Checklists', () => {
 test.describe('SecHR — Navigation', () => {
   test('HR module is accessible from sidebar', async ({ page }) => {
     await login(page)
-    await page.goto('/')
+    await page.goto('/hr/employees')
     const hrLink = page.getByRole('link', { name: /hr|mitarbeiter|personal/i })
     await expect(hrLink.first()).toBeVisible()
   })
