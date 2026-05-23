@@ -6,7 +6,5 @@ CREATE TABLE IF NOT EXISTS token_deny_list_fallback (
     expires_at  TIMESTAMPTZ NOT NULL
 );
 
--- GIN-style partial index: only live entries are ever checked.
 CREATE INDEX IF NOT EXISTS idx_token_deny_fallback_expires
-    ON token_deny_list_fallback (expires_at)
-    WHERE expires_at > NOW();
+    ON token_deny_list_fallback (expires_at);
