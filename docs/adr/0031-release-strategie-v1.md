@@ -43,18 +43,17 @@ v0.23.0 schließt alle vier identifizierten Lücken:
 2. **i18n-Datumsformatierung** (S13-27): Bulk-Migration aller 62 raw date-Calls auf
    `useFormatDate`; `shared/utils/date.ts` auf `navigator.language` umgestellt.
 3. **Dokumentation**: MSP-Onboarding-Guide (`docs/wiki/msp-onboarding.md`),
-   Launch-Checkliste (`docs/dev/launch-checklist.md`), ADR-0030 + ADR-0031.
+   interne Launch-Checkliste (9 Gates), ADR-0030 + ADR-0031.
 4. **CHANGELOG** aktualisiert, Backlog-Status-Marker auf `[x]` gesetzt.
 
 ### Stufe 2: v1.0.0 — Public Launch
 
-v1.0.0 wird getaggt, wenn alle Gates aus der Launch-Checkliste
-(`docs/dev/launch-checklist.md`) grün sind:
+v1.0.0 wird getaggt, wenn alle folgenden Quality-Gates grün sind:
 
 | Gate | Kriterium |
 |------|-----------|
 | Code Quality | TSC 0 errors, ESLint 0 errors, `go build` + `go test ./...` + `golangci-lint` grün |
-| API Smoke-Test | `/health`-Felder, Demo-Flow, Login-Response (siehe CLAUDE.md) |
+| API Smoke-Test | `/health`-Felder (demo, sso_enabled, version, status), Demo-Flow, Login-Response |
 | Security | CSRF-Headers, MFA-Enforcement, Rate-Limits, kein Secret in Git |
 | Doku | Wiki vollständig, API-Reference aktuell, CHANGELOG aktuell |
 | Demo-Instanz | Ephemerer Flow funktioniert, 4h-Cleanup-Job läuft |
@@ -107,8 +106,8 @@ v1.0.0 wird getaggt, wenn alle Gates aus der Launch-Checkliste
   Kein vager "wenn es gut genug ist"-Zustand.
 - **Reputationsschutz** — Lücken in Enterprise-Auth-UI und i18n werden vor dem
   öffentlichen Launch behoben; kein erster Eindruck mit offensichtlichen Inkonsistenzen.
-- **Launch-Checkliste als Qualitätsgate** — die Checkliste in `docs/dev/launch-checklist.md`
-  ist wiederverwendbar für alle zukünftigen Major-Releases.
+- **Launch-Checkliste als Qualitätsgate** — die 9 Quality-Gates aus dieser ADR
+  sind wiederverwendbar für alle zukünftigen Major-Releases.
 - **Pen-Test-Verschiebung explizit** — die Entscheidung ist dokumentiert, nicht still
   vergessen. SECURITY-ASSESSMENT.md reflektiert den Status; Kunden können informiert
   entscheiden.
@@ -130,9 +129,7 @@ v1.0.0 wird getaggt, wenn alle Gates aus der Launch-Checkliste
 
 ## Referenzen
 
-- Produktreife-Backlog: `.forgehive/PRODUKTREIFE-BACKLOG.md`
-- Launch-Checkliste: `docs/dev/launch-checklist.md`
 - MSP-Portal-Ausschluss: ADR-0008
 - Security-Assessment: `docs/SECURITY-ASSESSMENT.md`
-- Pen-Test-Status: `docs/reviews/2026-05-bericht-verify.md`
 - DSGVO Demo-Betrieb: ADR-0015 (Ephemere Demo-Sessions)
+- i18n-Datumsformatierung: ADR-0030

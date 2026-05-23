@@ -57,27 +57,27 @@ Manuelle QA auf Staging (interne Testumgebung)
 
 ## Infrastruktur-Details
 
-### Instanzen auf norvikserver
+### Instanzen
 
 | Instanz | Image-Tag | Aktualisierung |
 |---------|-----------|----------------|
-| Staging | `:staging` | Automatisch per CI |
-| Demo | `:latest` | Manuell per Promote-Button |
+| Staging | `:staging` | Automatisch per CI auf jeden Push nach `main` |
+| Demo | `:latest` | Manuell per Promote-Webhook |
 
-### Relevante Systemd-Services
+### Relevante Systemd-Services (auf dem Deploy-Host)
 
 ```bash
 # Promote-Webhook (lauscht auf 127.0.0.1:9099)
 systemctl status vakt-promote.service
 
-# GitHub Actions Runner
-systemctl status actions.runner.Matharnica-vakt-server.norvikserver.service
+# GitHub Actions Self-hosted Runner (Name variiert je nach Installation)
+systemctl status actions.runner.<runner-name>.service
 ```
 
 ### Promote-Webhook manuell testen
 
 ```bash
-# Auf dem Server
+# Auf dem Deploy-Host
 curl -X POST http://127.0.0.1:9099/promote \
   -H "X-Promote-Secret: <VAKT_PROMOTE_SECRET aus .env>"
 ```
@@ -85,7 +85,7 @@ curl -X POST http://127.0.0.1:9099/promote \
 ### Promote-Log einsehen
 
 ```bash
-ssh norvikserver "tail -f /var/log/vakt-promote.log"
+ssh <deploy-host> "tail -f /var/log/vakt-promote.log"
 ```
 
 ---
