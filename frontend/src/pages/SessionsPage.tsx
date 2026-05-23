@@ -5,9 +5,19 @@ import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../shared/components/PageHeader'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../components/ui/alert-dialog'
 import { apiFetch } from '../api/client'
 import { SkeletonTable } from '../shared/components/SkeletonLoaders'
-import { formatLocale } from '../shared/utils/locale'
+import { useFormatDate } from '../shared/hooks/useFormatDate'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -60,17 +70,6 @@ async function panicRevokeAll(): Promise<void> {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatDate(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat(formatLocale(), {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date(iso))
-  } catch {
-    return iso
-  }
-}
-
 function useParseUserAgent() {
   const { t } = useTranslation()
   return function parseUserAgent(ua?: string): string {
@@ -87,12 +86,14 @@ function useParseUserAgent() {
 
 export default function SessionsPage() {
   const { t } = useTranslation()
+  const { formatDateTime } = useFormatDate()
   const parseUserAgent = useParseUserAgent()
   const { data: sessions, isLoading, isError } = useSessions()
   const revoke = useRevokeSession()
   const revokeOthers = useRevokeOtherSessions()
   const [panicConfirm, setPanicConfirm] = useState(false)
   const [panicRunning, setPanicRunning] = useState(false)
+  const [revokeTargetId, setRevokeTargetId] = useState<string | null>(null)
 
   const handlePanic = async () => {
     if (!panicConfirm) {
@@ -169,10 +170,10 @@ export default function SessionsPage() {
               </span>
             </div>
             <span className="text-sm text-secondary">
-              {formatDate(session.last_used)}
+              {formatDateTime(session.last_used)}
             </span>
             <span className="text-sm text-secondary">
-              {formatDate(session.expires_at)}
+              {formatDateTime(session.expires_at)}
             </span>
             <Button
               variant="ghost"
@@ -180,7 +181,7 @@ export default function SessionsPage() {
               className="text-destructive hover:text-destructive hover:bg-destructive/10"
               disabled={revoke.isPending || session.is_current}
               title={session.is_current ? 'Diese Session abzumelden geht über Logout — nicht hier' : undefined}
-              onClick={() => { revoke.mutate(session.id); }}
+              onClick={() => { setRevokeTargetId(session.id); }}
             >
               <Trash2 className="w-4 h-4" />
               <span className="sr-only">{t('settings.sessionsPage.revokeSession')}</span>
@@ -188,6 +189,30 @@ export default function SessionsPage() {
           </div>
         ))}
       </Card>
+
+      {/* Confirm revoke single session */}
+      <AlertDialog open={revokeTargetId !== null} onOpenChange={(open) => { if (!open) setRevokeTargetId(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Session widerrufen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Diese Session wird sofort ungültig. Sie müssen sich auf diesem Gerät erneut anmelden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (revokeTargetId) revoke.mutate(revokeTargetId)
+                setRevokeTargetId(null)
+              }}
+            >
+              Widerrufen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Actions: Andere abmelden + Panic-Button */}
       {sessions && sessions.length > 0 && (

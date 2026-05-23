@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Key, Plus, Trash2, Copy, Check, AlertTriangle, RotateCw } from 'lucide-react'
+import { Key, Plus, Trash2, Copy, Check, AlertTriangle, RotateCw, ScrollText } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../shared/components/PageHeader'
 import { Button } from '../components/ui/button'
@@ -12,7 +13,7 @@ import { apiFetch } from '../api/client'
 import { ProGate } from '../shared/components/ProGate'
 import { toast } from '../shared/hooks/useToast'
 import { SkeletonTable } from '../shared/components/SkeletonLoaders'
-import { formatLocale } from '../shared/utils/locale'
+import { useFormatDate } from '../shared/hooks/useFormatDate'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -93,18 +94,6 @@ function useRotateAPIKey() {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '–'
-  try {
-    return new Intl.DateTimeFormat(formatLocale(), {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date(iso))
-  } catch {
-    return iso
-  }
-}
 
 function CopyButton({ text }: { text: string }) {
   const { t } = useTranslation()
@@ -406,6 +395,8 @@ function ConfirmRevokeDialog({ keyId, keyName, onConfirm, onCancel, isPending }:
 
 function ApiKeysContent() {
   const { t } = useTranslation()
+  const { formatDate } = useFormatDate()
+  const navigate = useNavigate()
   const [createOpen, setCreateOpen] = useState(false)
   const [newRawKey, setNewRawKey] = useState<string | null>(null)
   const [revokingKey, setRevokingKey] = useState<APIKey | null>(null)
@@ -533,7 +524,7 @@ function ApiKeysContent() {
                 </div>
                 <span className="text-sm text-secondary">{formatDate(key.created_at)}</span>
                 <div className="text-sm text-secondary">
-                  <div>{formatDate(key.last_used_at)}</div>
+                  <div>{key.last_used_at ? formatDate(key.last_used_at) : '–'}</div>
                   {key.last_used_ip && (
                     <div className="text-[10px] font-mono text-muted mt-0.5">{key.last_used_ip}</div>
                   )}
@@ -542,6 +533,16 @@ function ApiKeysContent() {
                   {key.expires_at ? formatDate(key.expires_at) : t('settings.apiKeysPage.never')}
                 </span>
                 <div className="flex items-center gap-0.5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-secondary hover:text-primary hover:bg-muted/40"
+                    onClick={() => { void navigate('/settings/audit-log'); }}
+                    title="Audit-Trail anzeigen"
+                  >
+                    <ScrollText className="w-4 h-4" />
+                    <span className="sr-only">Audit-Trail anzeigen</span>
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"

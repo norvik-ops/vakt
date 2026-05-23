@@ -4,7 +4,7 @@ import { Spinner } from '../components/Spinner'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { ShieldCheck, FileText, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { fetchAcceptanceInfo, submitAcceptance } from '../modules/secvitals/hooks/usePolicyAcceptance'
-import { formatLocale } from '../shared/utils/locale'
+import { useFormatDate } from '../shared/hooks/useFormatDate'
 
 // ---------------------------------------------------------------------------
 // Page
@@ -14,6 +14,7 @@ export default function PolicyAcceptPage() {
   const { token = '' } = useParams<{ token: string }>()
   const [accepted, setAccepted] = useState(false)
   const [acceptedAt, setAcceptedAt] = useState<string | null>(null)
+  const { formatDateTime } = useFormatDate()
 
   const { data: info, isLoading, error } = useQuery({
     queryKey: ['policy-accept', token],
@@ -26,10 +27,7 @@ export default function PolicyAcceptPage() {
     mutationFn: () => submitAcceptance(token),
     onSuccess: () => {
       setAccepted(true)
-      setAcceptedAt(new Date().toLocaleString(formatLocale(), {
-        day: '2-digit', month: '2-digit', year: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-      }))
+      setAcceptedAt(formatDateTime(new Date()))
     },
   })
 

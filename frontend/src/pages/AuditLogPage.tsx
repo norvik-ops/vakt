@@ -18,7 +18,7 @@ import { Skeleton } from '../components/ui/skeleton'
 import { useAuthStore } from '../shared/stores/auth'
 import { ErrorState } from '../shared/components/ErrorState'
 import { useAuditLog, type AuditLogEntry } from '../hooks/useAuditLog'
-import { formatLocale } from '../shared/utils/locale'
+import { useFormatDate } from '../shared/hooks/useFormatDate'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -35,17 +35,6 @@ function dateToRFC3339Start(date: string): string {
 /** Convert a local date string (YYYY-MM-DD) to RFC3339 at end-of-day UTC. */
 function dateToRFC3339End(date: string): string {
   return `${date}T23:59:59Z`
-}
-
-function formatTimestamp(iso: string): string {
-  return new Date(iso).toLocaleString(formatLocale(), {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })
 }
 
 function actionBadge(action: string) {
@@ -85,10 +74,10 @@ function escapeCsvCell(value: string): string {
   return value
 }
 
-function exportCsv(entries: AuditLogEntry[]) {
+function exportCsv(entries: AuditLogEntry[], formatDateTime: (v: string) => string) {
   const headers = ['Zeitstempel', 'Benutzer', 'Aktion', 'Ressourcentyp', 'Details', 'IP-Adresse']
   const rows = entries.map((e) => [
-    formatTimestamp(e.created_at),
+    formatDateTime(e.created_at),
     e.user_email ?? e.user_id ?? 'System',
     e.action,
     e.resource_type,
@@ -129,6 +118,7 @@ function SkeletonRows() {
 export default function AuditLogPage() {
   const { user } = useAuthStore()
   const isAdminOrOwner = user?.roles?.includes('admin') || user?.roles?.includes('owner')
+  const { formatDateTime } = useFormatDate()
 
   // Filter state — persisted across page reloads via localStorage
   const [filters, setFilters] = useSavedFilters('audit-log', {
@@ -202,7 +192,7 @@ export default function AuditLogPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => { if (entries.length > 0) exportCsv(entries) }}
+              onClick={() => { if (entries.length > 0) exportCsv(entries, formatDateTime) }}
               disabled={entries.length === 0}
               className="h-8 text-xs"
             >
@@ -306,7 +296,7 @@ export default function AuditLogPage() {
                     entries.map((entry) => (
                       <TableRow key={entry.id} className="hover:bg-surface/50">
                         <TableCell className="text-[12px] text-secondary whitespace-nowrap font-mono">
-                          {formatTimestamp(entry.created_at)}
+                          {formatDateTime(entry.created_at)}
                         </TableCell>
                         <TableCell className="text-[12px] text-primary max-w-[200px] truncate">
                           {entry.user_email ?? entry.user_id ?? <span className="text-secondary italic">System</span>}

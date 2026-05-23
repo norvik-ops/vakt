@@ -26,7 +26,7 @@ import {
   type CloudEvidenceItem,
 } from '../hooks/useCloud'
 import { toast } from '../shared/hooks/useToast'
-import { formatLocale } from '../shared/utils/locale'
+import { useFormatDate } from '../shared/hooks/useFormatDate'
 
 // --- Status badge ---
 
@@ -138,9 +138,10 @@ function IntegrationRow({ integration }: { integration: GitHubIntegration }) {
   const [expanded, setExpanded] = useState(false)
   const deleteIntegration = useDeleteGitHubIntegration()
   const syncIntegration = useSyncGitHubIntegration()
+  const { formatDateTime } = useFormatDate()
 
   const lastSync = integration.last_synced_at
-    ? new Date(integration.last_synced_at).toLocaleString(formatLocale(), { dateStyle: 'short', timeStyle: 'short' })
+    ? formatDateTime(integration.last_synced_at, { dateStyle: 'short', timeStyle: 'short' })
     : 'Noch nicht synchronisiert'
 
   function handleSync() {
@@ -390,6 +391,7 @@ function SyncLastBadge({ status, lastSyncAt }: { status: string | null; lastSync
 // --- Recent evidence list ---
 
 function RecentEvidenceList({ items }: { items: CloudEvidenceItem[] }) {
+  const { formatDateTime } = useFormatDate()
   if (items.length === 0) {
     return <p className="text-xs text-secondary py-2">Noch keine Evidence gesammelt. Synchronisierung starten.</p>
   }
@@ -401,7 +403,7 @@ function RecentEvidenceList({ items }: { items: CloudEvidenceItem[] }) {
           <div className="min-w-0">
             <p className="text-xs font-medium text-primary truncate">{item.title}</p>
             <p className="text-[11px] text-secondary mt-0.5">
-              {new Date(item.created_at).toLocaleString(formatLocale(), { dateStyle: 'short', timeStyle: 'short' })}
+              {formatDateTime(item.created_at, { dateStyle: 'short', timeStyle: 'short' })}
             </p>
           </div>
         </div>
@@ -433,6 +435,7 @@ function AWSTab() {
   const saveConfig = useSaveAWSConfig()
   const testConnection = useTestAWSConnection()
   const syncAWS = useSyncAWS()
+  const { formatDateTime } = useFormatDate()
 
   const [accessKeyID, setAccessKeyID] = useState('')
   const [secretAccessKey, setSecretAccessKey] = useState('')
@@ -491,7 +494,7 @@ function AWSTab() {
   }
 
   const lastSyncFormatted = status?.last_sync_at
-    ? new Date(status.last_sync_at).toLocaleString(formatLocale(), { dateStyle: 'short', timeStyle: 'short' })
+    ? formatDateTime(status.last_sync_at, { dateStyle: 'short', timeStyle: 'short' })
     : null
 
   return (
@@ -623,6 +626,7 @@ function AzureTab() {
   const saveConfig = useSaveAzureConfig()
   const testConnection = useTestAzureConnection()
   const syncAzure = useSyncAzure()
+  const { formatDateTime } = useFormatDate()
 
   const [tenantID, setTenantID] = useState('')
   const [clientID, setClientID] = useState('')
@@ -681,7 +685,7 @@ function AzureTab() {
   }
 
   const lastSyncFormatted = status?.last_sync_at
-    ? new Date(status.last_sync_at).toLocaleString(formatLocale(), { dateStyle: 'short', timeStyle: 'short' })
+    ? formatDateTime(status.last_sync_at, { dateStyle: 'short', timeStyle: 'short' })
     : null
 
   return (

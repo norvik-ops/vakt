@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { History, Check, X, ShieldAlert } from 'lucide-react'
 
 import { apiFetch } from '../../api/client'
-import { formatLocale } from '../utils/locale'
+import { useFormatDate } from '../hooks/useFormatDate'
 
 // Sprint 22 / S22-11: Login-History-Section für die AccountSettingsPage.
 // Konsumiert GET /api/v1/account/login-history (Sprint 22 Backend).
@@ -40,6 +40,7 @@ function uaShort(ua: string): string {
 }
 
 export function LoginHistorySection() {
+  const { formatDateTime } = useFormatDate()
   const { data, isLoading } = useQuery<LoginEntry[]>({
     queryKey: ['account', 'login-history'],
     queryFn: () => apiFetch<LoginEntry[]>('/account/login-history'),
@@ -80,10 +81,7 @@ export function LoginHistorySection() {
                 return (
                   <tr key={i} className={isFail ? 'font-semibold' : ''}>
                     <td className="py-2 pr-3 text-primary">
-                      {new Date(e.ts).toLocaleString(formatLocale(), {
-                        day: '2-digit', month: '2-digit', year: 'numeric',
-                        hour: '2-digit', minute: '2-digit',
-                      })}
+                      {formatDateTime(e.ts)}
                     </td>
                     <td className="py-2 pr-3 text-secondary">{sourceLabels[e.source] ?? e.source}</td>
                     <td className="py-2 pr-3 text-secondary">{uaShort(e.user_agent ?? '')}</td>

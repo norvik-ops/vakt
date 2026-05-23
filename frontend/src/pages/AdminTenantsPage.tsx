@@ -28,7 +28,7 @@ import {
 import { Skeleton } from '../components/ui/skeleton'
 import { useToast } from '../shared/hooks/useToast'
 import { setAuthToken } from '../api/client'
-import { formatLocale } from '../shared/utils/locale'
+import { useFormatDate } from '../shared/hooks/useFormatDate'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -70,14 +70,6 @@ function PlanBadge({ plan }: { plan: string }) {
       {PLAN_LABELS[plan] ?? plan}
     </Badge>
   )
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(formatLocale(), {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
 }
 
 // ─── Create Dialog ────────────────────────────────────────────────────────────
@@ -174,6 +166,7 @@ export default function AdminTenantsPage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const { formatDate } = useFormatDate()
   const [search, setSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [deactivateTarget, setDeactivateTarget] = useState<ManagedOrg | null>(null)

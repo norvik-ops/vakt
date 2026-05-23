@@ -38,7 +38,7 @@ import {
 import { apiFetch } from '../api/client'
 import { toast } from '../shared/hooks/useToast'
 import { SkeletonTable } from '../shared/components/SkeletonLoaders'
-import { formatLocale } from '../shared/utils/locale'
+import { useFormatDate } from '../shared/hooks/useFormatDate'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -130,17 +130,6 @@ const SCHEDULE_LABELS: Record<Schedule, string> = {
 const FORMAT_LABELS: Record<Format, string> = {
   pdf: 'PDF',
   csv: 'CSV',
-}
-
-// ─── Date helpers ─────────────────────────────────────────────────────────────
-
-function formatDate(iso: string | null) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString(formatLocale(), {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
 }
 
 // ─── Chips input for email addresses ──────────────────────────────────────────
@@ -356,6 +345,11 @@ interface ReportCardProps {
 }
 
 function ReportCard({ report, onEdit, onDelete, onRunNow, isRunning }: ReportCardProps) {
+  const { formatDate: fmtDate } = useFormatDate()
+  function formatDate(iso: string | null) {
+    if (!iso) return '—'
+    return fmtDate(iso)
+  }
   return (
     <div className="bg-surface border border-border rounded-xl p-5 flex flex-col gap-3 hover:border-brand/30 transition-colors">
       <div className="flex items-start justify-between gap-2">

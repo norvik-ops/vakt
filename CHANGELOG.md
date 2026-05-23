@@ -7,7 +7,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### v0.23.0 — Security Hardening Wave 2 + Test Coverage (2026-05-23)
+### v0.23.0 — Security Hardening Wave 2 + Release Readiness Phase 1 (2026-05-23)
+
+#### Phase 1 — Release Readiness
+
+- **feat(auth): Enterprise-Auth Frontend vollständig** — Confirm-Dialog für Session-Widerruf in `SessionsPage` (inkl. Panic-Button „Alle anderen abmelden"), Audit-Trail-Link pro API-Key in `ApiKeysPage`, Login-History-Section in `AccountSettingsPage` (letzte 50 Versuche, Failed-Logins fett markiert) (S20-3, S20-5, S20-7)
+- **refactor(i18n): 62 raw date-Calls auf `useFormatDate` migriert** — alle Datumsangaben in Audit-Trail, Finding-Listen, Session-Tabellen, Compliance-Reports und Supplier-Portal respektieren jetzt die gewählte Sprache (DE/EN/FR/NL); kein hardcoded `de-DE` mehr in React-Komponenten (S13-27)
+- **fix(i18n): `shared/utils/date.ts` auf `navigator.language` umgestellt** — Fallback-Locale in Utility-Funktionen war hardcoded `de-DE`; liest jetzt Browser-Locale dynamisch; betrifft Chart-Label-Formatter und CSV-Export-Datumsspalten
 
 #### Sicherheit
 - **Per-Email Password-Reset-Throttle** — max. 3 Reset-Mails pro Stunde pro Adresse via Redis-INCR; verhindert Inbox-Spam-Angriffe ohne Enumeration-Leak (Antwort bleibt immer HTTP 200)

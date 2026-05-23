@@ -17,7 +17,7 @@ Die externe Code-Analyse markierte die Frontend-Test-Coverage als „kritisch" (
 
 1. **Risiko-priorisierte Test-Liste**: Pro Modul sind die kritischen Flows explizit benannt (siehe unten) und müssen Tests haben.
 2. **A11y-Tests** (`vitest-axe`, `axe-playwright`) sind Pflicht für UI-Komponenten, nicht Pages.
-3. **E2E-Tests** (Playwright) decken die Top-10 User-Journeys ab.
+3. **E2E-Tests** (Playwright) decken die Top-10 User-Journeys ab — CI läuft auf **Chromium, Firefox und WebKit** (seit 2026-05-23).
 4. **Service-Layer-Tests** im Backend haben Vorrang vor UI-Tests bei der Aufwandsallokation — Business-Logik ist dort.
 
 ### Kritische Flows mit Test-Pflicht

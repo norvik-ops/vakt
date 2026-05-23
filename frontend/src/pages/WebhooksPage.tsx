@@ -44,7 +44,7 @@ import {
   type CreateWebhookInput,
 } from '../hooks/useWebhooks'
 import { EmptyState } from '../shared/components/EmptyState'
-import { formatLocale } from '../shared/utils/locale'
+import { useFormatDate } from '../shared/hooks/useFormatDate'
 
 // ─── Event labels ─────────────────────────────────────────────────────────────
 
@@ -230,6 +230,7 @@ function WebhookDialog({ open, onClose, initial }: WebhookDialogProps) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function WebhooksPage() {
+  const { formatDateTime } = useFormatDate()
   const { data, isLoading } = useWebhooks()
   const webhooks = data?.data ?? []
 
@@ -332,7 +333,7 @@ export default function WebhooksPage() {
                     </TableCell>
                     <TableCell className="text-xs text-secondary">
                       {wh.last_triggered_at
-                        ? new Date(wh.last_triggered_at).toLocaleString(formatLocale())
+                        ? formatDateTime(wh.last_triggered_at)
                         : '—'}
                     </TableCell>
                     <TableCell>

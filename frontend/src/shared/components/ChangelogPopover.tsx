@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Sparkles, X } from 'lucide-react'
 import changelog from '../data/changelog.json'
-import { formatLocale } from '../utils/locale'
+import { useFormatDate } from '../hooks/useFormatDate'
 
 interface ChangelogEntry {
   type: 'feat' | 'improvement' | 'fix'
@@ -40,6 +40,7 @@ const TYPE_LABELS: Record<ChangelogEntry['type'], { label: string; color: string
 export function ChangelogPopover() {
   const [open, setOpen] = useState(false)
   const { hasNew, markSeen } = useChangelogState()
+  const { formatDate } = useFormatDate()
 
   function handleOpen() {
     setOpen(true)
@@ -80,7 +81,7 @@ export function ChangelogPopover() {
                   <div className="flex items-center gap-2 mb-2">
                     <span className="font-mono text-xs font-bold text-primary">v{version.version}</span>
                     <span className="text-xs text-secondary">
-                      {new Date(version.date).toLocaleDateString(formatLocale())}
+                      {formatDate(version.date)}
                     </span>
                   </div>
                   <ul className="space-y-1.5">

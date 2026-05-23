@@ -5,8 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { apiFetch } from '../../api/client'
-import { formatDateTime } from '../utils/date'
-import { formatLocale } from '../utils/locale'
+import { useFormatDate } from '../hooks/useFormatDate'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -27,7 +26,7 @@ interface TeamMember {
 
 // ── Relative time helper ──────────────────────────────────────────────────────
 
-function relativeTime(dateStr: string, lang: string): string {
+function relativeTime(dateStr: string, lang: string, fallbackFormat: (v: string) => string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const minutes = Math.floor(diff / 60_000)
   if (lang === 'en') {
@@ -37,7 +36,7 @@ function relativeTime(dateStr: string, lang: string): string {
     if (hours < 24) return `${hours.toString()} hr. ago`
     const days = Math.floor(hours / 24)
     if (days < 7) return `${days.toString()} day${days === 1 ? '' : 's'} ago`
-    return new Date(dateStr).toLocaleDateString('en-GB')
+    return fallbackFormat(dateStr)
   }
   if (minutes < 1) return 'Gerade eben'
   if (minutes < 60) return `vor ${minutes.toString()} Min.`
@@ -45,7 +44,7 @@ function relativeTime(dateStr: string, lang: string): string {
   if (hours < 24) return `vor ${hours.toString()} Std.`
   const days = Math.floor(hours / 24)
   if (days < 7) return `vor ${days.toString()} Tag${days === 1 ? '' : 'en'}`
-  return new Date(dateStr).toLocaleDateString(formatLocale())
+  return fallbackFormat(dateStr)
 }
 
 // ── Avatar initials helper ────────────────────────────────────────────────────
@@ -145,6 +144,7 @@ export interface CommentsProps {
 
 export function Comments({ entityType, entityId }: CommentsProps) {
   const { t, i18n } = useTranslation()
+  const { formatDate, formatDateTime } = useFormatDate()
   const { data: comments, isLoading } = useComments(entityType, entityId)
   const createComment = useCreateComment(entityType, entityId)
   const deleteComment = useDeleteComment(entityType, entityId)
@@ -286,7 +286,7 @@ export function Comments({ entityType, entityId }: CommentsProps) {
                       className="text-xs text-secondary"
                       title={formatDateTime(comment.created_at)}
                     >
-                      {relativeTime(comment.created_at, lang)}
+                      {relativeTime(comment.created_at, lang, formatDate)}
                     </span>
                   </div>
                   <p className="text-sm text-primary leading-relaxed whitespace-pre-wrap break-words">

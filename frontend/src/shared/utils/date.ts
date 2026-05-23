@@ -1,9 +1,16 @@
 /**
  * Date formatting utilities with user timezone support.
+ *
+ * NOTE: These functions use `navigator.language` for locale detection.
+ * They are intended for use in non-React (non-component) contexts only.
+ * @deprecated Prefer useFormatDate() hook in React components.
  */
 
+/**
+ * @deprecated Prefer useFormatDate() hook in React components.
+ */
 export function formatDateTime(dateStr: string): string {
-  return new Intl.DateTimeFormat('de-DE', {
+  return new Intl.DateTimeFormat(navigator.language, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -13,14 +20,20 @@ export function formatDateTime(dateStr: string): string {
   }).format(new Date(dateStr))
 }
 
+/**
+ * @deprecated Prefer useFormatDate() hook in React components.
+ */
 export function formatDate(dateStr: string): string {
-  return new Intl.DateTimeFormat('de-DE', {
+  return new Intl.DateTimeFormat(navigator.language, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
   }).format(new Date(dateStr))
 }
 
+/**
+ * @deprecated Prefer useFormatDate() hook in React components.
+ */
 export function formatRelative(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const minutes = Math.floor(diff / 60000)

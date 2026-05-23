@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { formatLocale } from '../shared/utils/locale'
+import { useFormatDate } from '../shared/hooks/useFormatDate'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,20 +54,13 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   rejected: { label: 'Abgelehnt', color: 'bg-red-100 text-red-800' },
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(formatLocale(), {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
-}
-
 // ---------------------------------------------------------------------------
 // DSRPortalStatusPage
 // ---------------------------------------------------------------------------
 
 export default function DSRPortalStatusPage() {
   const { token } = useParams<{ token: string }>()
+  const { formatDate } = useFormatDate()
 
   const { data: dsr, isLoading, isError } = useQuery({
     queryKey: ['dsr-status', token],

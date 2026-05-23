@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Spinner } from '../components/Spinner'
 import { Shield, CheckCircle, Clock, AlertCircle, ExternalLink, Award, FileText, Users } from 'lucide-react'
-import { formatLocale } from '../shared/utils/locale'
+import { useFormatDate } from '../shared/hooks/useFormatDate'
 
 interface FrameworkStatus {
   name: string
@@ -111,6 +111,7 @@ export default function TrustPage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [activeTab, setActiveTab] = useState<TabId>('frameworks')
+  const { formatDate } = useFormatDate()
 
   useEffect(() => {
     void fetch(`/api/v1/trust/${slug}`)
@@ -309,7 +310,7 @@ export default function TrustPage() {
 
         {/* Footer */}
         <div className="mt-8 text-center text-xs text-gray-400">
-          <p>Zuletzt aktualisiert: {new Date(data.published_at).toLocaleDateString(formatLocale())}</p>
+          <p>Zuletzt aktualisiert: {formatDate(data.published_at)}</p>
           <p className="mt-1">
             Powered by{' '}
             <a href="https://github.com/norvik-ops/vatk" className="text-indigo-500 hover:underline" target="_blank" rel="noreferrer">

@@ -5,8 +5,8 @@ import { Button } from '../../components/ui/button'
 import { cn } from '../../lib/utils'
 import { useNotifications, useMarkNotificationRead, useMarkAllRead } from '../../hooks/useDashboard'
 import type { UserNotification } from '../../hooks/useDashboard'
-import { formatLocale } from '../utils/locale'
 import { useNotificationStream } from '../hooks/useNotificationStream'
+import { useFormatDate } from '../hooks/useFormatDate'
 
 /** Maps notification type to the corresponding Lucide icon component. */
 const typeIcon: Record<string, React.ElementType> = {
@@ -113,8 +113,9 @@ export function NotificationBell() {
  * in the same interaction, before the panel is closed.
  */
 function NotificationItem({ notification: n, onRead }: { notification: UserNotification; onRead: () => void }) {
+  const { formatDate } = useFormatDate()
   const Icon = typeIcon[n.type] ?? Info
-  const date = new Date(n.created_at).toLocaleDateString(formatLocale(), { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+  const date = formatDate(n.created_at, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 
   return (
     <button

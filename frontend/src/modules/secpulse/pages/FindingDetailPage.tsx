@@ -16,11 +16,13 @@ import type { Finding } from '../types'
 import { cn } from '../../../lib/utils'
 import { findingSeverityClass } from '../../../lib/statusMapping'
 import { Comments } from '../../../shared/components/Comments'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const severityClass = findingSeverityClass
 
 export default function FindingDetailPage() {
   const { t } = useTranslation()
+  const { formatDate } = useFormatDate()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: finding, isLoading, error } = useFinding(id ?? '')
@@ -166,7 +168,7 @@ export default function FindingDetailPage() {
                 )}
                 <div>
                   <dt className="text-secondary">{t('secpulse.findingDetail.discovered')}</dt>
-                  <dd className="mt-0.5 text-primary">{new Date(finding.created_at).toLocaleDateString()}</dd>
+                  <dd className="mt-0.5 text-primary">{formatDate(finding.created_at)}</dd>
                 </div>
               </dl>
             </CardContent>

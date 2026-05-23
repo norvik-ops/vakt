@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from '../../components/ui/dialog'
 import { Button } from '../../components/ui/button'
-import { formatLocale } from '../utils/locale'
+import { useFormatDate } from '../hooks/useFormatDate'
 
 interface RecoveryCodesDialogProps {
   open: boolean
@@ -20,6 +20,7 @@ interface RecoveryCodesDialogProps {
  * regeneration. Provides a "Download as .txt" button and a confirmation close.
  */
 export function RecoveryCodesDialog({ open, codes, onClose }: RecoveryCodesDialogProps) {
+  const { formatDateTime } = useFormatDate()
   function downloadCodes() {
     const content = [
       'Vakt — Wiederherstellungscodes',
@@ -28,7 +29,7 @@ export function RecoveryCodesDialog({ open, codes, onClose }: RecoveryCodesDialo
       '',
       ...codes,
       '',
-      `Generiert am: ${new Date().toLocaleString(formatLocale())}`,
+      `Generiert am: ${formatDateTime(new Date())}`,
     ].join('\n')
 
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
