@@ -293,11 +293,11 @@ function GanttChart({ milestones }: { milestones: AuditMilestone[] }) {
         <line
           x1={`${todayPct}%`} y1="0"
           x2={`${todayPct}%`} y2={svgH}
-          stroke="#6366f1" strokeWidth="2" strokeDasharray="4 2"
+          stroke="#4f46e5" strokeWidth="2" strokeDasharray="4 2"
         />
         <text
           x={`${todayPct}%`} y={headerH - 4}
-          fontSize="9" fill="#6366f1" textAnchor="middle"
+          fontSize="9" fill="#4f46e5" textAnchor="middle"
         >
           Heute
         </text>

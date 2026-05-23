@@ -71,14 +71,14 @@ export default function AuthorityDirectoryPage() {
         {/* GDPR authority note */}
         <Card className="border-dashed">
           <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               <Badge variant="outline" className="mr-2 text-xs">DSGVO Art. 33</Badge>
               Bei Datenpannen mit personenbezogenen Daten muss zusätzlich die zuständige
               Landesdatenschutzbehörde innerhalb von 72h informiert werden.
               {sectorSettings?.federal_state
                 ? ` Konfiguriertes Bundesland: ${sectorSettings.federal_state}.`
                 : ' Bundesland kann in den Organisationseinstellungen konfiguriert werden.'}
-            </p>
+            </div>
           </CardContent>
         </Card>
       </div>

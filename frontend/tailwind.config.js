@@ -8,8 +8,8 @@ export default {
   theme: {
     extend: {
       colors: {
-        brand: '#6366f1',
-        'brand-hover': '#818cf8',
+        brand: '#4f46e5',
+        'brand-hover': '#6366f1',
         // semantic tokens — map to CSS variables
         bg:        'var(--color-bg)',
         surface:   'var(--color-surface)',
@@ -36,7 +36,7 @@ export default {
         },
       },
       boxShadow: {
-        brand: '0 0 24px rgba(99,102,241,0.35)',
+        brand: '0 0 24px rgba(79,70,229,0.35)',
       },
     },
   },
