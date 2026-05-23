@@ -7,7 +7,10 @@ const BASE = '/secreflex'
 export function useCampaigns() {
   return useQuery<Campaign[]>({
     queryKey: ['secreflex', 'campaigns'],
-    queryFn: () => apiFetch<Campaign[]>(`${BASE}/campaigns`),
+    queryFn: async () => {
+      const resp = await apiFetch<{ data: Campaign[] } | Campaign[]>(`${BASE}/campaigns`)
+      return Array.isArray(resp) ? resp : (resp.data ?? [])
+    },
     staleTime: 30_000,
   })
 }
