@@ -24,7 +24,7 @@ import { toast } from '../../../shared/hooks/useToast'
 import { Skeleton } from '../../../components/ui/skeleton'
 import { ErrorState } from '../../../shared/components/ErrorState'
 import { CSVImportDialog } from '../../../shared/components/CSVImportDialog'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const CRITICALITY_ORDER: Record<Asset['criticality'], number> = {
   critical: 4, high: 3, medium: 2, low: 1,
@@ -62,7 +62,7 @@ const emptyForm: CreateAssetInput = {
   tags: [],
 }
 
-function ASSET_COLUMNS(t: (key: string) => string): Column<SortableAsset>[] {
+function ASSET_COLUMNS(t: (key: string) => string, formatDate: (v: string) => string): Column<SortableAsset>[] {
   return [
     {
       key: 'name',
@@ -112,7 +112,7 @@ function ASSET_COLUMNS(t: (key: string) => string): Column<SortableAsset>[] {
       label: t('common.date'),
       render: (row) => (
         <span className="text-sm text-secondary">
-          {new Date(row.created_at).toLocaleDateString(formatLocale())}
+          {formatDate(row.created_at)}
         </span>
       ),
     },
@@ -121,6 +121,7 @@ function ASSET_COLUMNS(t: (key: string) => string): Column<SortableAsset>[] {
 
 export default function AssetsPage() {
   const { t } = useTranslation()
+  const { formatDate } = useFormatDate()
   const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const { data: rawAssets, isLoading, isError, error, pagination, refetch } = useAssets(page)
@@ -259,7 +260,7 @@ export default function AssetsPage() {
             keyField="id"
             data={sortedAssetsForRender}
             onRowClick={(asset) => { navigate(`/secpulse/assets/${asset.id}`); }}
-            columns={ASSET_COLUMNS(t)}
+            columns={ASSET_COLUMNS(t, formatDate)}
           />
         )}
         <Pagination

@@ -12,6 +12,7 @@ import { Label } from '../../../components/ui/label'
 import { useGitScans, useTriggerGitScan, useGitScanResults, useDismissScanResult } from '../hooks/useGitScans'
 import type { GitScan } from '../types'
 import { jobStatusVariant } from '../../../lib/statusMapping'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const statusVariant = jobStatusVariant
 
@@ -100,6 +101,7 @@ function ScanResultsPanel({ scanId }: { scanId: string }) {
 
 function ScanRow({ scan }: { scan: GitScan }) {
   const [expanded, setExpanded] = useState(false)
+  const { formatDate } = useFormatDate()
 
   return (
     <div className="border border-border rounded-lg bg-surface overflow-hidden">
@@ -113,7 +115,7 @@ function ScanRow({ scan }: { scan: GitScan }) {
         {scan.result_count != null && scan.result_count > 0 && (
           <Badge variant="destructive">{scan.result_count} finding{scan.result_count !== 1 ? 's' : ''}</Badge>
         )}
-        <span className="text-xs text-secondary">{new Date(scan.created_at).toLocaleDateString()}</span>
+        <span className="text-xs text-secondary">{formatDate(scan.created_at)}</span>
         {expanded ? <ChevronUp className="w-4 h-4 text-secondary" /> : <ChevronDown className="w-4 h-4 text-secondary" />}
       </div>
       {expanded && scan.status === 'completed' && (

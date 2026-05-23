@@ -13,6 +13,7 @@ import { Label } from '../../../components/ui/label'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/ui/table'
 import { useTokens, useCreateToken, useDeleteToken } from '../hooks/useTokens'
 import { ProGate } from '../../../shared/components/ProGate'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const AVAILABLE_SCOPES = ['secrets:read', 'secrets:write', 'scans:trigger', 'tokens:read']
 
@@ -41,6 +42,7 @@ function CopyButton({ text }: { text: string }) {
 
 export default function TokensPage() {
   const { t } = useTranslation()
+  const { formatDate } = useFormatDate()
   const { data: tokens, isLoading, error: tokensError } = useTokens()
   const createToken = useCreateToken()
   const deleteToken = useDeleteToken()
@@ -133,10 +135,10 @@ export default function TokensPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-secondary">
-                      {token.last_used_at ? new Date(token.last_used_at).toLocaleDateString() : t('secvault.tokensPage.never')}
+                      {token.last_used_at ? formatDate(token.last_used_at) : t('secvault.tokensPage.never')}
                     </TableCell>
                     <TableCell className="text-sm text-secondary">
-                      {new Date(token.created_at).toLocaleDateString()}
+                      {formatDate(token.created_at)}
                     </TableCell>
                     <TableCell>
                       <Button

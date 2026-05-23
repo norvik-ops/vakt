@@ -14,7 +14,7 @@ import { Label } from '../../../components/ui/label'
 import { useProject, useProjectHealth } from '../hooks/useProjects'
 import { useEnvironments, useCreateEnvironment, useSecretKeys, useUpsertSecret, useDeleteSecret, useSecretValue, useProjectAccessLog } from '../hooks/useSecrets'
 import type { Environment } from '../types'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 function healthScoreColor(score: number) {
   if (score >= 80) return 'text-green-600'
@@ -192,6 +192,7 @@ function EnvTab({ projectId, env }: { projectId: string; env: Environment }) {
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { formatDateTime } = useFormatDate()
   const projectId = id ?? ''
 
   const { data: project, isLoading, error } = useProject(projectId)
@@ -338,10 +339,7 @@ export default function ProjectDetailPage() {
                           <Badge variant="outline" className="text-xs">{entry.access_via}</Badge>
                         </TableCell>
                         <TableCell className="text-sm text-secondary">
-                          {new Date(entry.accessed_at).toLocaleString(formatLocale(), {
-                            dateStyle: 'short',
-                            timeStyle: 'short',
-                          })}
+                          {formatDateTime(entry.accessed_at, { dateStyle: 'short', timeStyle: 'short' })}
                         </TableCell>
                         <TableCell className="text-xs text-secondary font-mono">
                           {entry.ip_address ?? '—'}

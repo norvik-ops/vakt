@@ -21,7 +21,7 @@ import { toast } from '../../../shared/hooks/useToast'
 import { useVVT, useCreateVVT, useUpdateVVT, useDeleteVVT, useExportVVT } from '../hooks/useVVT'
 import { ComplianceTooltip } from '../../../shared/components/ComplianceTooltip'
 import type { VVTEntry, CreateVVTInput, UpdateVVTInput } from '../types'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const LEGAL_BASIS_OPTIONS = [
   { value: 'Art. 6 Abs. 1 lit. a DSGVO', label: 'Einwilligung (Art. 6 I a)' },
@@ -105,7 +105,8 @@ function VVTCard({
   onDelete: (id: string) => void
 }) {
   const { t } = useTranslation()
-  const date = new Date(entry.created_at).toLocaleDateString(formatLocale(), {
+  const { formatDate } = useFormatDate()
+  const date = formatDate(entry.created_at, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

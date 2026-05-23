@@ -1,6 +1,7 @@
-import { Clock, Sparkles } from 'lucide-react'
+import { ExternalLink, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { FeatureLockedError } from '../../api/client'
+import { VAKT_PRO_CHECKOUT_URL } from '../../lib/constants'
 
 interface ProGateProps {
   error: unknown
@@ -25,10 +26,15 @@ export function ProGate({ error, children }: ProGateProps) {
           <p className="text-secondary text-sm leading-relaxed mb-2">
             {t('errors.pro.description')}
           </p>
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand">
-            <Clock className="w-3.5 h-3.5" />
-            {t('errors.pro.soon')}
-          </span>
+          <a
+            href={VAKT_PRO_CHECKOUT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand hover:underline"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            {t('errors.pro.upgrade')}
+          </a>
         </div>
       </div>
     )

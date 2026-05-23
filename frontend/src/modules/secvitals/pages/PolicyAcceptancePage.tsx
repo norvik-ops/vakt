@@ -13,7 +13,7 @@ import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { apiFetch } from '../../../api/client'
 import type { Policy } from '../types'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import {
   useCampaigns,
   useCreateCampaign,
@@ -52,12 +52,10 @@ function CampaignStatsRow({ campaignId }: { campaignId: string }) {
 }
 
 function RequestRow({ req }: { req: PolicyAcceptanceRequest }) {
+  const { formatDateTime } = useFormatDate()
   const isAccepted = !!req.accepted_at
   const acceptedDate = req.accepted_at
-    ? new Date(req.accepted_at).toLocaleString(formatLocale(), {
-        day: '2-digit', month: '2-digit', year: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-      })
+    ? formatDateTime(req.accepted_at)
     : null
 
   return (
@@ -111,10 +109,8 @@ function CampaignDetails({ campaignId }: { campaignId: string }) {
 
 function CampaignCard({ campaign }: { campaign: PolicyAcceptanceCampaign }) {
   const [open, setOpen] = useState(false)
-
-  const createdAt = new Date(campaign.created_at).toLocaleDateString(formatLocale(), {
-    day: '2-digit', month: 'short', year: 'numeric',
-  })
+  const { formatDate } = useFormatDate()
+  const createdAt = formatDate(campaign.created_at, { day: '2-digit', month: 'short', year: 'numeric' })
 
   return (
     <Card>

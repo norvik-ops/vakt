@@ -13,7 +13,7 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { useAVVTemplates, useCreateAVVFromTemplate } from '../hooks/useAVVTemplates'
 import type { AVVTemplate } from '../types'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 interface AVVTemplatePickerDialogProps {
   open: boolean
@@ -31,11 +31,11 @@ interface VarFormState {
   [key: string]: string
 }
 
-function emptyVars(tpl: AVVTemplate): VarFormState {
+function emptyVars(tpl: AVVTemplate, formatDate: (v: Date) => string): VarFormState {
   const state: VarFormState = {
     auftraggeber: '',
     auftragnehmer: '',
-    datum: new Date().toLocaleDateString(formatLocale()),
+    datum: formatDate(new Date()),
     zweck: '',
   }
   for (const v of tpl.variables) {
@@ -62,10 +62,11 @@ export function AVVTemplatePickerDialog({
 
   const { data: templates, isLoading } = useAVVTemplates()
   const createFromTemplate = useCreateAVVFromTemplate()
+  const { formatDate } = useFormatDate()
 
   function handleSelectTemplate(tpl: AVVTemplate) {
     setSelected(tpl)
-    setVars(emptyVars(tpl))
+    setVars(emptyVars(tpl, (d) => formatDate(d)))
     setStep('fill')
   }
 

@@ -7,6 +7,7 @@ import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { useCampaign, useCampaignStats, useLaunchCampaign, useAbortCampaign, useDownloadCampaignReport } from '../hooks/useCampaigns'
 import { campaignStatusVariant } from '../../../lib/statusMapping'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const statusVariant = campaignStatusVariant
 
@@ -25,6 +26,7 @@ function StatCard({ label, value, pct }: { label: string; value: number; pct?: n
 export default function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { formatDate, formatDateTime } = useFormatDate()
   const campaignId = id ?? ''
 
   const { data: campaign, isLoading, error } = useCampaign(campaignId)
@@ -95,12 +97,12 @@ export default function CampaignDetailPage() {
               <div>
                 <dt className="text-secondary">Scheduled</dt>
                 <dd className="mt-0.5 text-primary">
-                  {campaign.scheduled_at ? new Date(campaign.scheduled_at).toLocaleString() : 'Not scheduled'}
+                  {campaign.scheduled_at ? formatDateTime(campaign.scheduled_at) : 'Not scheduled'}
                 </dd>
               </div>
               <div>
                 <dt className="text-secondary">Created</dt>
-                <dd className="mt-0.5 text-primary">{new Date(campaign.created_at).toLocaleDateString()}</dd>
+                <dd className="mt-0.5 text-primary">{formatDate(campaign.created_at)}</dd>
               </div>
             </dl>
           </CardContent>

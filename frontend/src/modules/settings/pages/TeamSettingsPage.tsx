@@ -26,7 +26,7 @@ import {
 import { UserPermissionsEditor } from '../../../components/UserPermissionsEditor'
 import { toast } from '../../../shared/hooks/useToast'
 import { ErrorState } from '../../../shared/components/ErrorState'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -55,12 +55,6 @@ function initials(name: string, email: string) {
 function daysUntil(iso: string) {
   const diff = new Date(iso).getTime() - Date.now()
   return Math.max(0, Math.round(diff / 86_400_000))
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(formatLocale(), {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-  })
 }
 
 // ---------------------------------------------------------------------------
@@ -175,6 +169,7 @@ function PermissionsDialog({ member, onClose }: PermissionsDialogProps) {
 
 function MembersTable({ members, currentUserID }: { members: TeamMember[]; currentUserID: string }) {
   const { t } = useTranslation()
+  const { formatDate } = useFormatDate()
   const updateRole = useUpdateRole()
   const removeUser = useRemoveUser()
   const [removeTarget, setRemoveTarget] = useState<TeamMember | null>(null)

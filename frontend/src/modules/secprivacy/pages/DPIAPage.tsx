@@ -19,7 +19,7 @@ import { toast } from '../../../shared/hooks/useToast'
 import { useDPIAs, useCreateDPIA, useUpdateDPIA, useApproveDPIA, useDeleteDPIA, useExportDPIA } from '../hooks/useDPIAs'
 import { useVVT } from '../hooks/useVVT'
 import type { DPIA, CreateDPIAInput, UpdateDPIAInput } from '../types'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const STATUS_LABELS: Record<DPIA['status'], string> = {
   draft: 'Entwurf',
@@ -81,7 +81,8 @@ function DPIACard({
   onDelete: (id: string) => void
   onApprove: (id: string) => void
 }) {
-  const date = new Date(dpia.created_at).toLocaleDateString(formatLocale(), {
+  const { formatDate } = useFormatDate()
+  const date = formatDate(dpia.created_at, {
     year: 'numeric', month: 'short', day: 'numeric',
   })
   return (

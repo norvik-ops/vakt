@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useAISystem } from '../hooks/useAISystems'
 import { useAIDocumentation, useAIDocumentationVersions, useSaveAIDocumentation } from '../hooks/useAISystems'
 import type { UpsertAIDocumentationInput } from '../types'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 function emptyForm(): UpsertAIDocumentationInput {
   return {
@@ -44,6 +44,7 @@ const SECTIONS: Array<{ key: keyof UpsertAIDocumentationInput; label: string; ar
 
 export default function AIDocumentationPage() {
   const { id } = useParams<{ id: string }>()
+  const { formatDate } = useFormatDate()
   const { data: system } = useAISystem(id ?? '')
   const { data: latestDoc, isLoading: docLoading } = useAIDocumentation(id ?? '')
   const { data: versions } = useAIDocumentationVersions(id ?? '')
@@ -150,7 +151,7 @@ export default function AIDocumentationPage() {
                 <div key={v.id} className="flex items-center gap-3 text-xs text-muted-foreground">
                   <span className="font-mono">v{v.version}</span>
                   <Badge variant="outline" className="text-xs">{v.status}</Badge>
-                  <span>{new Date(v.created_at).toLocaleDateString(formatLocale())}</span>
+                  <span>{formatDate(v.created_at)}</span>
                   {v.authored_by && <span>von {v.authored_by}</span>}
                 </div>
               ))}

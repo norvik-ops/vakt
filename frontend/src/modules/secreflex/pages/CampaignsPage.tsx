@@ -17,11 +17,13 @@ import { useTemplates } from '../hooks/useTemplates'
 import { useTargetGroups } from '../hooks/useTargetGroups'
 import { ProGate } from '../../../shared/components/ProGate'
 import { campaignStatusVariant } from '../../../lib/statusMapping'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const statusVariant = campaignStatusVariant
 
 export default function CampaignsPage() {
   const navigate = useNavigate()
+  const { formatDate, formatDateTime } = useFormatDate()
   const { data: campaigns, isLoading, error: campaignsError } = useCampaigns()
   const { data: templates } = useTemplates()
   const { data: groups } = useTargetGroups()
@@ -136,10 +138,10 @@ export default function CampaignsPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-secondary">
-                        {c.scheduled_at ? new Date(c.scheduled_at).toLocaleString() : '—'}
+                        {c.scheduled_at ? formatDateTime(c.scheduled_at) : '—'}
                       </TableCell>
                       <TableCell className="text-sm text-secondary">
-                        {new Date(c.created_at).toLocaleDateString()}
+                        {formatDate(c.created_at)}
                       </TableCell>
                     </TableRow>
                   ))}

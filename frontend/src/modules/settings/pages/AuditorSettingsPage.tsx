@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../../../components/ui/alert-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/ui/table'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import {
   useAuditorInvites,
   useCreateAuditorInvite,
@@ -21,13 +21,6 @@ import {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString(formatLocale(), {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
-}
 
 function inviteStatus(invite: AuditorInvite): { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' } {
   if (invite.accepted_at) return { label: 'Aktiviert', variant: 'default' }
@@ -165,6 +158,7 @@ export default function AuditorSettingsPage() {
   const [revokeTarget, setRevokeTarget] = useState<{ id: string; email: string } | null>(null)
   const { data: invites = [], isLoading } = useAuditorInvites()
   const revoke = useRevokeAuditorInvite()
+  const { formatDateTime } = useFormatDate()
 
   function handleRevoke(id: string, email: string) {
     setRevokeTarget({ id, email })
@@ -228,13 +222,13 @@ export default function AuditorSettingsPage() {
                     <Badge variant={variant}>{label}</Badge>
                   </TableCell>
                   <TableCell className="text-secondary text-sm">
-                    {formatDate(invite.created_at)}
+                    {formatDateTime(invite.created_at, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </TableCell>
                   <TableCell className="text-secondary text-sm">
-                    {formatDate(invite.expires_at)}
+                    {formatDateTime(invite.expires_at, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </TableCell>
                   <TableCell className="text-secondary text-sm">
-                    {invite.accepted_at ? formatDate(invite.accepted_at) : '—'}
+                    {invite.accepted_at ? formatDateTime(invite.accepted_at, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                   </TableCell>
                   <TableCell>
                     <Button

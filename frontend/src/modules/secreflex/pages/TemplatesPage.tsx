@@ -10,8 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { useTemplates, useCreateTemplate, useDeleteTemplate } from '../hooks/useTemplates'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 export default function TemplatesPage() {
+  const { formatDate } = useFormatDate()
   const { data: templates, isLoading } = useTemplates()
   const createTemplate = useCreateTemplate()
   const deleteTemplate = useDeleteTemplate()
@@ -93,7 +95,7 @@ export default function TemplatesPage() {
                     From: {t.from_name} &lt;{t.from_email}&gt;
                   </p>
                   <p className="text-xs text-secondary">
-                    Created {new Date(t.created_at).toLocaleDateString()}
+                    Created {formatDate(t.created_at)}
                   </p>
                   {!t.is_preset && (
                     <div className="mt-3 flex justify-end">

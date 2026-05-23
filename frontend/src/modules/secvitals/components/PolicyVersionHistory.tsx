@@ -6,7 +6,7 @@ import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { usePolicyVersions, type PolicyVersion } from '../hooks/usePolicyVersions'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 interface Props {
   policyId: string
@@ -26,6 +26,7 @@ function VersionDetailDialog({
   version: PolicyVersion | null
   onClose: () => void
 }) {
+  const { formatDate } = useFormatDate()
   if (!version) return null
   return (
     <Dialog open={!!version} onOpenChange={(open) => { if (!open) onClose() }}>
@@ -39,9 +40,7 @@ function VersionDetailDialog({
         <div className="space-y-4 py-2">
           <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
             <span>
-              Gespeichert: {new Date(version.created_at).toLocaleDateString(formatLocale(), {
-                year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-              })}
+              Gespeichert: {formatDate(version.created_at, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </span>
             {version.updated_by && <span>· Von: {version.updated_by}</span>}
             {version.status && <span>· Status: {STATUS_LABELS[version.status] ?? version.status}</span>}
@@ -76,6 +75,7 @@ function VersionDetailDialog({
 
 export default function PolicyVersionHistory({ policyId, currentVersion }: Props) {
   const { data: versions, isLoading, isError } = usePolicyVersions(policyId)
+  const { formatDate } = useFormatDate()
   const [selected, setSelected] = useState<PolicyVersion | null>(null)
 
   return (
@@ -122,9 +122,7 @@ export default function PolicyVersionHistory({ policyId, currentVersion }: Props
                         v{v.version}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(v.created_at).toLocaleDateString(formatLocale(), {
-                          year: 'numeric', month: 'short', day: 'numeric',
-                        })}
+                        {formatDate(v.created_at, { year: 'numeric', month: 'short', day: 'numeric' })}
                       </span>
                       {v.updated_by && (
                         <span className="text-xs text-muted-foreground">· {v.updated_by}</span>

@@ -25,7 +25,7 @@ import { handleApiError } from '../../../shared/utils/errorMessages'
 import { SkeletonCardGrid } from '../../../shared/components/SkeletonLoaders'
 import { ComplianceTooltip } from '../../../shared/components/ComplianceTooltip'
 import type { SortDir } from '../../../shared/hooks/useSortableTable'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import { ClassifyReportingWizard } from '../components/ClassifyReportingWizard'
 
 const SEVERITY_NUM: Record<Incident['severity'], number> = { critical: 4, high: 3, medium: 2, low: 1 }
@@ -65,6 +65,7 @@ function getWorstDeadline(incident: Incident) {
 
 function IncidentCard({ incident, onClick }: { incident: Incident; onClick: () => void }) {
   const { t } = useTranslation()
+  const { formatDate } = useFormatDate()
   const SEVERITY_LABELS: Record<Incident['severity'], string> = {
     low: t('secvitals.incidentsPage.severityLow'),
     medium: t('secvitals.incidentsPage.severityMedium'),
@@ -77,9 +78,7 @@ function IncidentCard({ incident, onClick }: { incident: Incident; onClick: () =
     resolved: t('secvitals.incidentsPage.statusResolved'),
     closed: t('secvitals.incidentsPage.statusClosed'),
   }
-  const date = new Date(incident.discovered_at).toLocaleDateString(formatLocale(), {
-    year: 'numeric', month: 'short', day: 'numeric',
-  })
+  const date = formatDate(incident.discovered_at, { year: 'numeric', month: 'short', day: 'numeric' })
   const worstDeadline = getWorstDeadline(incident)
   const { data: capas } = useCAPAsForSource('incident', incident.id)
 

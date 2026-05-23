@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useRisk, useUpdateRisk } from '../hooks/useRisks'
 import RiskTreatmentPanel from '../components/RiskTreatmentPanel'
 import type { Risk, UpdateRiskInput } from '../types'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const SCORE_COLOR = (score: number) => {
   if (score >= 15) return 'bg-red-500/20 text-red-400 border-red-500/30'
@@ -33,6 +33,7 @@ const TREATMENT_LABELS: Record<Risk['treatment'], string> = {
 export default function RiskDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { formatDate } = useFormatDate()
   const { data: risk, isLoading, isError } = useRisk(id ?? '')
   const update = useUpdateRisk(id ?? '')
 
@@ -191,8 +192,8 @@ export default function RiskDetailPage() {
 
             <Card>
               <CardContent className="pt-4 space-y-1 text-xs text-muted-foreground">
-                <p>Erstellt: {new Date(risk.created_at).toLocaleDateString(formatLocale())}</p>
-                <p>Geändert: {new Date(risk.updated_at).toLocaleDateString(formatLocale())}</p>
+                <p>Erstellt: {formatDate(risk.created_at)}</p>
+                <p>Geändert: {formatDate(risk.updated_at)}</p>
               </CardContent>
             </Card>
           </div>

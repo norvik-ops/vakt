@@ -7,7 +7,7 @@ import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Badge } from '../../../components/ui/badge'
 import { useControlReviews, useRecordControlReview } from '../hooks/useControlReviews'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 interface ControlReviewPanelProps {
   controlId: string
@@ -16,15 +16,6 @@ interface ControlReviewPanelProps {
   isOverdue?: boolean
   reviewIntervalDays?: number
   lastReviewedBy?: string
-}
-
-function formatDate(iso?: string): string {
-  if (!iso) return '–'
-  return new Date(iso).toLocaleDateString(formatLocale(), {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
 }
 
 function intervalLabel(days?: number): string {
@@ -51,6 +42,11 @@ export function ControlReviewPanel({
   reviewIntervalDays,
   lastReviewedBy,
 }: ControlReviewPanelProps) {
+  const { formatDate: fmtDate } = useFormatDate()
+  function formatDate(iso?: string): string {
+    if (!iso) return '–'
+    return fmtDate(iso, { day: '2-digit', month: '2-digit', year: 'numeric' })
+  }
   const [showForm, setShowForm] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [reviewedBy, setReviewedBy] = useState('')

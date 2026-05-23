@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useAuditRecord, useUpdateAuditRecord } from '../hooks/useAudits'
 import { useCreateCAPA } from '../hooks/useCAPAs'
 import type { AuditRecord, UpdateAuditRecordInput } from '../types'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const STATUS_LABELS: Record<AuditRecord['status'], string> = {
   planned: 'Geplant', in_progress: 'Laufend', completed: 'Abgeschlossen',
@@ -22,6 +22,7 @@ const STATUS_LABELS: Record<AuditRecord['status'], string> = {
 export default function AuditDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { formatDate } = useFormatDate()
   const { data: record, isLoading, isError } = useAuditRecord(id ?? '')
   const update = useUpdateAuditRecord(id ?? '')
   const createCAPA = useCreateCAPA()
@@ -154,8 +155,8 @@ export default function AuditDetailPage() {
 
             <Card>
               <CardContent className="pt-4 space-y-1 text-xs text-muted-foreground">
-                <p>Erstellt: {new Date(record.created_at).toLocaleDateString(formatLocale())}</p>
-                <p>Geändert: {new Date(record.updated_at).toLocaleDateString(formatLocale())}</p>
+                <p>Erstellt: {formatDate(record.created_at)}</p>
+                <p>Geändert: {formatDate(record.updated_at)}</p>
               </CardContent>
             </Card>
           </div>

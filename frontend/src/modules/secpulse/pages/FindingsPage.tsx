@@ -36,7 +36,7 @@ import { toast } from '../../../shared/hooks/useToast'
 import { Skeleton } from '../../../components/ui/skeleton'
 import { exportToCSV } from '../../../lib/csv'
 import { ErrorState } from '../../../shared/components/ErrorState'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 // ── Inline editable status cell ──────────────────────────────────────────────
 
@@ -187,6 +187,7 @@ type SortableFinding = Finding & { severity_order: number }
 
 export default function FindingsPage() {
   const { t } = useTranslation()
+  const { formatDate } = useFormatDate()
   const navigate = useNavigate()
   const [filters, setFilters] = useSavedFilters('findings', {
     severityFilter: 'all',
@@ -482,7 +483,7 @@ export default function FindingsPage() {
                 }}
                 meta={[
                   { label: 'Status', value: f.status.replace(/_/g, ' ') },
-                  { label: 'Erstellt', value: new Date(f.created_at).toLocaleDateString(formatLocale()) },
+                  { label: 'Erstellt', value: formatDate(f.created_at) },
                   ...(f.cve_id ? [{ label: 'CVE', value: f.cve_id }] : []),
                   ...(f.cvss_score != null ? [{ label: 'CVSS', value: f.cvss_score.toFixed(1) }] : []),
                 ]}
@@ -607,7 +608,7 @@ export default function FindingsPage() {
                       {f.cvss_score != null ? f.cvss_score.toFixed(1) : '—'}
                     </TableCell>
                     <TableCell className="text-sm text-secondary" onClick={() => { navigate(`/secpulse/findings/${f.id}`); }}>
-                      {new Date(f.created_at).toLocaleDateString(formatLocale())}
+                      {formatDate(f.created_at)}
                     </TableCell>
                   </TableRow>
                 ))}

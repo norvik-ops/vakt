@@ -18,10 +18,12 @@ import {
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { useProjects, useCreateProject, useDeleteProject } from '../hooks/useProjects'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 export default function ProjectsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { formatDate } = useFormatDate()
   const { data: projects, isLoading } = useProjects()
   const createProject = useCreateProject()
   const deleteProject = useDeleteProject()
@@ -112,11 +114,7 @@ export default function ProjectsPage() {
                   )}
                   <p className="text-xs text-secondary">
                     {t('secvault.projectsPage.createdOn')}{' '}
-                    {new Date(project.created_at).toLocaleDateString(undefined, {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    })}
+                    {formatDate(project.created_at, { year: 'numeric', month: 'short', day: 'numeric' })}
                   </p>
                 </CardContent>
               </Card>

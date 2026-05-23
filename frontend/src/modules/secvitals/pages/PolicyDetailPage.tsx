@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { usePolicy, useUpdatePolicy } from '../hooks/usePolicies'
 import PolicyVersionHistory from '../components/PolicyVersionHistory'
 import type { Policy, UpdatePolicyInput } from '../types'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const STATUS_LABELS: Record<Policy['status'], string> = {
   draft: 'Entwurf', active: 'Aktiv', archived: 'Archiviert',
@@ -26,6 +26,7 @@ function toDateInput(ts?: string): string {
 export default function PolicyDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { formatDate } = useFormatDate()
   const { data: policy, isLoading, isError } = usePolicy(id ?? '')
   const update = useUpdatePolicy(id ?? '')
 
@@ -203,13 +204,13 @@ export default function PolicyDetailPage() {
 
             <Card>
               <CardContent className="pt-4 space-y-1 text-xs text-muted-foreground">
-                <p>Erstellt: {new Date(policy.created_at).toLocaleDateString(formatLocale())}</p>
-                <p>Geändert: {new Date(policy.updated_at).toLocaleDateString(formatLocale())}</p>
+                <p>Erstellt: {formatDate(policy.created_at)}</p>
+                <p>Geändert: {formatDate(policy.updated_at)}</p>
                 {policy.reviewed_at && (
-                  <p>Zuletzt geprüft: {new Date(policy.reviewed_at).toLocaleDateString(formatLocale())}</p>
+                  <p>Zuletzt geprüft: {formatDate(policy.reviewed_at)}</p>
                 )}
                 {policy.next_review_due && (
-                  <p>Nächste Prüfung: {new Date(policy.next_review_due).toLocaleDateString(formatLocale())}</p>
+                  <p>Nächste Prüfung: {formatDate(policy.next_review_due)}</p>
                 )}
                 {policy.last_updated_by && (
                   <p>Bearbeitet von: {policy.last_updated_by}</p>

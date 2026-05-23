@@ -51,7 +51,7 @@ import {
 import type { ControlException, CreateControlExceptionInput } from '../hooks/useExceptions'
 import { useEvidenceHistory } from '../hooks/useEvidenceHistory'
 import type { EvidenceHistoryEntry } from '../hooks/useEvidenceHistory'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 // ── Status config ────────────────────────────────────────────────────────────
 
@@ -96,14 +96,8 @@ function fieldLabel(field: string): string {
   return map[field] ?? field
 }
 
-function formatDate(isoString: string): string {
-  return new Date(isoString).toLocaleString(formatLocale(), {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit',
-  })
-}
-
 function ChangeLogTab({ controlId }: { controlId: string }) {
+  const { formatDateTime } = useFormatDate()
   const { data: changes } = useQuery<ChangeLogEntry[]>({
     queryKey: ['control-changelog', controlId],
     queryFn: async () => {
@@ -139,7 +133,7 @@ function ChangeLogTab({ controlId }: { controlId: string }) {
               )}
               <span className="font-medium text-primary">{entry.new_value}</span>
             </p>
-            <p className="text-xs text-secondary mt-0.5">{formatDate(entry.changed_at)}</p>
+            <p className="text-xs text-secondary mt-0.5">{formatDateTime(entry.changed_at)}</p>
           </div>
         </div>
       ))}
@@ -171,13 +165,7 @@ function EvidenceHistoryDialog({
   onClose: () => void
 }) {
   const { data: history, isLoading } = useEvidenceHistory(evidenceId)
-
-  function formatDateTime(iso: string): string {
-    return new Date(iso).toLocaleString(formatLocale(), {
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit',
-    })
-  }
+  const { formatDateTime } = useFormatDate()
 
   function describeEntry(entry: EvidenceHistoryEntry): string {
     if (entry.change_note) return entry.change_note
@@ -292,6 +280,7 @@ function NotApplicableDialog({
 
 export default function ControlDetailPage() {
   const { t } = useTranslation()
+  const { formatDate } = useFormatDate()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -981,7 +970,7 @@ export default function ControlDetailPage() {
                         <span>Genehmigt von: <span className="text-primary">{ex.approved_by}</span></span>
                       )}
                       {ex.expires_at && (
-                        <span>Gültig bis: <span className="text-primary">{new Date(ex.expires_at).toLocaleDateString(formatLocale())}</span></span>
+                        <span>Gültig bis: <span className="text-primary">{formatDate(ex.expires_at)}</span></span>
                       )}
                     </div>
                   </div>
@@ -1034,7 +1023,7 @@ export default function ControlDetailPage() {
                         <EvidenceExpiryBadge expiresAt={ev.expires_at} />
                       </TableCell>
                       <TableCell className="text-sm text-secondary">
-                        {new Date(ev.created_at).toLocaleDateString(formatLocale())}
+                        {formatDate(ev.created_at)}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">

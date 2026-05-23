@@ -30,7 +30,7 @@ import { toast } from '../../../shared/hooks/useToast'
 import { handleApiError } from '../../../shared/utils/errorMessages'
 import { SkeletonCardGrid } from '../../../shared/components/SkeletonLoaders'
 import { UserPicker } from '../../../shared/components/UserPicker'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const POLICY_TYPES = [
   'Informationssicherheitsrichtlinie (ISO 27001 A.5.1)',
@@ -61,13 +61,14 @@ const STATUS_CLASS: Record<Policy['status'], string> = {
 
 function PolicyCard({ policy, onClick }: { policy: Policy; onClick: () => void }) {
   const { t } = useTranslation()
+  const { formatDate } = useFormatDate()
   const STATUS_LABELS: Record<Policy['status'], string> = {
     draft: t('secvitals.policiesPage.statusDraft'),
     active: t('secvitals.policiesPage.statusActive'),
     archived: t('secvitals.policiesPage.statusArchived'),
   }
   const reviewDate = policy.review_date
-    ? new Date(policy.review_date).toLocaleDateString(formatLocale(), { year: 'numeric', month: 'short', day: 'numeric' })
+    ? formatDate(policy.review_date, { year: 'numeric', month: 'short', day: 'numeric' })
     : null
   const isOverdue = policy.review_date && new Date(policy.review_date) < new Date()
 

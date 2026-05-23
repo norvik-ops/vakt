@@ -16,7 +16,7 @@ import { InfoBanner } from '../../../shared/components/InfoBanner'
 import { useDSRs, useCreateDSR, useUpdateDSR, useDeleteDSR } from '../hooks/useDSRs'
 import { ComplianceTooltip } from '../../../shared/components/ComplianceTooltip'
 import type { DSR, DSRType, DSRStatus, CreateDSRInput, UpdateDSRInput } from '../types'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 /**
  * Human-readable German labels for each DSR type, including the governing DSGVO article.
@@ -106,12 +106,9 @@ function DSRCard({
   onDelete: (id: string) => void
   onErasure?: (id: string) => void
 }) {
+  const { formatDate } = useFormatDate()
   const overdue = isOverdue(dsr.due_date)
-  const receivedDate = new Date(dsr.received_at).toLocaleDateString(formatLocale(), {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
+  const receivedDate = formatDate(dsr.received_at, { year: 'numeric', month: 'short', day: 'numeric' })
 
   return (
     <Card className={overdue && dsr.status === 'open' ? 'border-red-500/30' : ''}>
@@ -137,9 +134,9 @@ function DSRCard({
           {dsr.due_date && (
             <span className={overdue && dsr.status !== 'completed' && dsr.status !== 'rejected' ? 'text-red-400 font-medium' : ''}>
               {overdue && dsr.status !== 'completed' && dsr.status !== 'rejected' ? (
-                <><AlertTriangle className="w-3 h-3 inline mr-0.5" />Frist abgelaufen: {new Date(dsr.due_date).toLocaleDateString(formatLocale())}</>
+                <><AlertTriangle className="w-3 h-3 inline mr-0.5" />Frist abgelaufen: {formatDate(dsr.due_date)}</>
               ) : (
-                <>Frist: {new Date(dsr.due_date).toLocaleDateString(formatLocale())}</>
+                <>Frist: {formatDate(dsr.due_date)}</>
               )}
             </span>
           )}

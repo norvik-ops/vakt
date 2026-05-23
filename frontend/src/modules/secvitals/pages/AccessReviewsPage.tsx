@@ -32,7 +32,7 @@ import {
   TableRow,
 } from '../../../components/ui/table'
 import { useAuthStore } from '../../../shared/stores/auth'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import {
   useAccessReviewCampaigns,
   useCreateAccessReviewCampaign,
@@ -258,6 +258,7 @@ function CampaignRow({
   onActivate: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
+  const { formatDate } = useFormatDate()
 
   return (
     <Card>
@@ -284,7 +285,7 @@ function CampaignRow({
                 {campaign.scope && <span>Scope: {campaign.scope}</span>}
                 {campaign.due_date && (
                   <span>
-                    Fällig: {new Date(campaign.due_date).toLocaleDateString(formatLocale())}
+                    Fällig: {formatDate(campaign.due_date)}
                   </span>
                 )}
               </div>

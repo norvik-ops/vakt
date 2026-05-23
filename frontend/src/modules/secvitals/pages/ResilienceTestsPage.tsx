@@ -33,7 +33,7 @@ import {
   useLinkResilienceTestAsEvidence,
 } from '../hooks/useResilienceTests'
 import type { ResilienceTest, CreateResilienceTestInput } from '../types'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 // ─── Type helpers ─────────────────────────────────────────────────────────────
 
@@ -102,6 +102,7 @@ function ResilienceTestRow({
   onDelete: () => void
   onLinkEvidence: () => void
 }) {
+  const { formatDate } = useFormatDate()
   return (
     <Card>
       <CardContent className="pt-5 space-y-2">
@@ -119,7 +120,7 @@ function ResilienceTestRow({
               </Badge>
             </div>
             <p className="text-sm font-medium">
-              {new Date(test.test_date).toLocaleDateString(formatLocale())}
+              {formatDate(test.test_date)}
               {test.provider ? ` · ${test.provider}` : ''}
             </p>
             {test.scope && (

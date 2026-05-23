@@ -18,7 +18,7 @@ import { SkeletonCardGrid } from '../../../shared/components/SkeletonLoaders'
 import { FieldError } from '../../../shared/components/FieldError'
 import { useFormValidation } from '../../../shared/hooks/useFormValidation'
 import { toast } from '../../../shared/hooks/useToast'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 // ─── Toast (minimal inline) ───────────────────────────────────────────────────
 
@@ -137,6 +137,7 @@ function SupplierStatusBadge({ supplierId }: { supplierId: string }) {
 }
 
 function SupplierCard({ supplier, onEdit, onDelete }: { supplier: Supplier; onEdit: () => void; onDelete: () => void }) {
+  const { formatDate } = useFormatDate()
   return (
     <Card>
       <CardContent className="pt-5 space-y-2">
@@ -161,7 +162,7 @@ function SupplierCard({ supplier, onEdit, onDelete }: { supplier: Supplier; onEd
         </div>
         <div className="text-xs text-muted-foreground space-y-0.5">
           {supplier.contact_name && <p>Kontakt: {supplier.contact_name}{supplier.contact_email ? ` · ${supplier.contact_email}` : ''}</p>}
-          {supplier.contract_end && <p>Vertragsende: {new Date(supplier.contract_end).toLocaleDateString(formatLocale())}</p>}
+          {supplier.contract_end && <p>Vertragsende: {formatDate(supplier.contract_end)}</p>}
         </div>
       </CardContent>
     </Card>

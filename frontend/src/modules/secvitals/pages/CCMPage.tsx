@@ -33,7 +33,7 @@ import {
 import { ProGate } from '../../../shared/components/ProGate'
 import { useFrameworks } from '../hooks/useFrameworks'
 import type { CCMCheck, CCMCheckType, CCMStatus, CreateCCMCheckInput } from '../types'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -75,6 +75,7 @@ function ResultsDialog({
   onClose: () => void
 }) {
   const { data: results, isLoading } = useCCMResults(check.id)
+  const { formatDateTime } = useFormatDate()
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -102,7 +103,7 @@ function ResultsDialog({
                     {STATUS_LABEL[r.status] ?? r.status}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    {new Date(r.ran_at).toLocaleString(formatLocale())}
+                    {formatDateTime(r.ran_at)}
                   </span>
                 </div>
                 {r.output && (
@@ -139,6 +140,7 @@ function CCMCheckRow({
   onShowResults: () => void
   isRunning: boolean
 }) {
+  const { formatDateTime } = useFormatDate()
   const status = (check.last_status ?? 'unknown')
 
   return (
@@ -165,7 +167,7 @@ function CCMCheckRow({
             </p>
             {check.last_run_at && (
               <p className="text-xs text-muted-foreground">
-                Zuletzt: {new Date(check.last_run_at).toLocaleString(formatLocale())}
+                Zuletzt: {formatDateTime(check.last_run_at)}
                 {check.last_output ? ` — ${check.last_output}` : ''}
               </p>
             )}

@@ -4,11 +4,11 @@ import { Spinner } from '../../../components/Spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { useComments, useCreateComment, useDeleteComment } from '../hooks/useTasks'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 // ── Relative time helper ──────────────────────────────────────────────────────
 
-function relativeTime(dateStr: string): string {
+function relativeTime(dateStr: string, fallbackFormat: (v: string) => string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const minutes = Math.floor(diff / 60_000)
   if (minutes < 1) return 'Gerade eben'
@@ -17,7 +17,7 @@ function relativeTime(dateStr: string): string {
   if (hours < 24) return `vor ${hours.toString()} Std.`
   const days = Math.floor(hours / 24)
   if (days < 7) return `vor ${days.toString()} Tag${days === 1 ? '' : 'en'}`
-  return new Date(dateStr).toLocaleDateString(formatLocale())
+  return fallbackFormat(dateStr)
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -32,6 +32,7 @@ export function CommentThread({
   const { data: comments, isLoading } = useComments(entityType, entityId)
   const createComment = useCreateComment(entityType, entityId)
   const deleteComment = useDeleteComment(entityType, entityId)
+  const { formatDate, formatDateTime } = useFormatDate()
 
   const [body, setBody] = useState('')
   const [authorEmail, setAuthorEmail] = useState('')
@@ -78,8 +79,8 @@ export function CommentThread({
                     <span className="text-xs font-medium text-primary">
                       {comment.author_email || 'Anonym'}
                     </span>
-                    <span className="text-xs text-secondary" title={new Date(comment.created_at).toLocaleString(formatLocale())}>
-                      {relativeTime(comment.created_at)}
+                    <span className="text-xs text-secondary" title={formatDateTime(comment.created_at)}>
+                      {relativeTime(comment.created_at, formatDate)}
                     </span>
                   </div>
                   <p className="text-sm text-primary leading-relaxed whitespace-pre-wrap break-words">

@@ -26,7 +26,7 @@ import { useExportData } from '../../../hooks/useDataExport'
 import { useAuditReport } from '../../../modules/secvitals/hooks/useAuditReport'
 import { ProGate } from '../../../shared/components/ProGate'
 import { useUpdateCheck } from '../../../shared/hooks/useUpdateCheck'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 // ─── Retention / Digest hooks (used by DigestToggleSection) ──────────────────
 
@@ -202,6 +202,7 @@ function daysUntilExpiry(expiresAt: string): number {
 
 function LicenseSection() {
   const { t } = useTranslation()
+  const { formatDate } = useFormatDate()
   const { data: lic, isLoading } = useLicense()
   const activate = useActivateLicense()
   const [licKey, setLicKey] = useState('')
@@ -261,7 +262,7 @@ function LicenseSection() {
 
         {lic?.expires_at && (
           <p className="text-xs text-secondary">
-            Gültig bis {new Date(lic.expires_at).toLocaleDateString(formatLocale())}
+            Gültig bis {formatDate(lic.expires_at)}
           </p>
         )}
 

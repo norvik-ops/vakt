@@ -16,6 +16,7 @@ import type { Asset } from '../types'
 import { cn } from '../../../lib/utils'
 import { findingSeverityClass } from '../../../lib/statusMapping'
 import { useState, useRef, useEffect } from 'react'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const criticalityClass: Record<Asset['criticality'], string> = {
   low:      'border-transparent bg-surface2 text-muted',
@@ -37,6 +38,7 @@ const assetTypeLabels: Record<Asset['type'], string> = {
 export default function AssetDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { formatDate } = useFormatDate()
   const [scanTriggered, setScanTriggered] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const { data: asset, isLoading, error } = useAsset(id ?? '')
@@ -185,7 +187,7 @@ export default function AssetDetailPage() {
                   <div>
                     <dt className="text-secondary font-medium">Created</dt>
                     <dd className="mt-1 text-primary">
-                      {new Date(asset.created_at).toLocaleDateString()}
+                      {formatDate(asset.created_at)}
                     </dd>
                   </div>
                   <div className="col-span-2">

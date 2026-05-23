@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import {
   Shield,
   ChevronRight,
@@ -115,18 +116,11 @@ function deltaBadge(delta: number | null) {
   )
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
-
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function HistoryTable({ runs }: { runs: AssessmentRun[] }) {
   const [expanded, setExpanded] = useState<string | null>(null)
+  const { formatDate } = useFormatDate()
 
   // Für den Diff brauchen wir die Runs in chronologischer Reihenfolge.
   const chronological = [...runs].reverse()
@@ -371,6 +365,7 @@ function ReassessmentWizard({ runId, onComplete, onCancel }: WizardProps) {
 export default function NIS2ReassessmentPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { formatDate } = useFormatDate()
   const [activeRunId, setActiveRunId] = useState<string | null>(null)
   const [cooldownMsg, setCooldownMsg] = useState<string | null>(null)
 

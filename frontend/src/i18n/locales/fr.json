@@ -1136,9 +1136,9 @@
       "home": "Retour à l'accueil"
     },
     "pro": {
-      "title": "Fonctionnalité Pro",
-      "description": "Cette fonctionnalité n'est pas disponible dans l'édition Community. Vakt Pro avec TISAX, DORA, EU AI Act, assistant de notification NIS2, export PDF d'audit, SSO, accès API, permissions de modules granulaires et plus encore est en préparation.",
-      "soon": "Bientôt disponible"
+      "title": "Vakt Pro",
+      "description": "Cette fonctionnalité n'est pas disponible dans l'édition Community. Vakt Pro inclut TISAX, DORA, EU AI Act, assistant de notification NIS2, export PDF d'audit, SSO, clés API, permissions de modules granulaires et plus encore.",
+      "upgrade": "Passer à Pro →"
     }
   },
   "validation": {

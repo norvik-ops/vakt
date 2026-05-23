@@ -19,7 +19,7 @@ import {
 } from '../../../components/ui/select'
 import { useAutoEvidence, useAssignEvidence, type AutoEvidence } from '../hooks/useEvidenceAuto'
 import { useFrameworks, useFrameworkControls } from '../hooks/useFrameworks'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 // --- Source helpers ---
 
@@ -40,17 +40,6 @@ function SourceBadge({ type }: { type: AutoEvidence['auto_source_type'] }) {
       {labels[type]}
     </Badge>
   )
-}
-
-function formatDate(iso?: string): string {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString(formatLocale(), {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 // --- Assign Dialog ---
@@ -160,6 +149,11 @@ function AssignDialog({ evidence, onClose }: AssignDialogProps) {
 export default function EvidenceAutoPage() {
   const { data: items = [], isLoading } = useAutoEvidence()
   const [assigning, setAssigning] = useState<AutoEvidence | null>(null)
+  const { formatDate: fmtDate } = useFormatDate()
+  function formatDate(iso?: string): string {
+    if (!iso) return '—'
+    return fmtDate(iso, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  }
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/ui/table'
 import { cn } from '../../../lib/utils'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import {
   ALERT_EVENTS,
   useAlertChannels,
@@ -38,13 +38,6 @@ const TYPE_LABELS: Record<AlertChannel['type'], string> = {
   teams:   'Teams',
   webhook: 'Webhook',
   email:   'E-Mail',
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString(formatLocale(), {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
 }
 
 // ─── Quick Setup: Slack & Teams ───────────────────────────────────────────────
@@ -361,6 +354,7 @@ function AddChannelDialog({ open, onClose }: { open: boolean; onClose: () => voi
 function ChannelDeliveryHistory({ channelId }: { channelId: string }) {
   const [expanded, setExpanded] = useState(false)
   const { data: entries = [], isLoading } = useChannelDeliveries(channelId, expanded)
+  const { formatDateTime } = useFormatDate()
 
   return (
     <div className="border-t border-border">
@@ -402,7 +396,7 @@ function ChannelDeliveryHistory({ channelId }: { channelId: string }) {
               <tbody>
                 {entries.slice(0, 50).map((e) => (
                   <tr key={e.id} className="border-b border-border/50 last:border-0">
-                    <td className="py-1 pr-3 text-secondary whitespace-nowrap">{formatDate(e.sent_at)}</td>
+                    <td className="py-1 pr-3 text-secondary whitespace-nowrap">{formatDateTime(e.sent_at, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                     <td className="py-1 pr-3 font-mono text-secondary">{e.event}</td>
                     <td className="py-1 pr-3">
                       {e.status === 'sent'
@@ -564,6 +558,7 @@ function ChannelsSection() {
 function DeliveryHistorySection() {
   const [expanded, setExpanded] = useState(false)
   const { data: entries = [], isLoading } = useAlertDeliveryLog()
+  const { formatDateTime } = useFormatDate()
 
   return (
     <div className="bg-surface border border-border rounded-xl overflow-x-auto">
@@ -623,7 +618,7 @@ function DeliveryHistorySection() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs text-secondary">{formatDate(entry.sent_at)}</span>
+                      <span className="text-xs text-secondary">{formatDateTime(entry.sent_at, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                     </TableCell>
                   </TableRow>
                 ))}

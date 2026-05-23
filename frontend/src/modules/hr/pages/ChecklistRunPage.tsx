@@ -5,16 +5,12 @@ import { apiFetch } from '../../../api/client'
 import { Button } from '../../../components/ui/button'
 import { Skeleton } from '../../../components/ui/skeleton'
 import type { ChecklistRun, Checklist, Employee } from '../types'
-import { formatLocale } from '../../../shared/utils/locale'
-
-function fmtDate(iso: string): string {
-  const d = new Date(iso)
-  return d.toLocaleDateString(formatLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 export default function ChecklistRunPage() {
   const { id } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
+  const { formatDate } = useFormatDate()
 
   const {
     data: run,
@@ -142,7 +138,7 @@ export default function ChecklistRunPage() {
           <div>
             <p className="text-[13px] font-semibold text-green-400">Checkliste abgeschlossen</p>
             {run.completed_at && (
-              <p className="text-[11px] text-secondary">am {fmtDate(run.completed_at)}</p>
+              <p className="text-[11px] text-secondary">am {formatDate(run.completed_at, { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
             )}
           </div>
         </div>

@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { useAuthStore } from '../../../shared/stores/auth'
 import { toast } from '../../../shared/hooks/useToast'
 import { handleApiError } from '../../../shared/utils/errorMessages'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import {
   usePendingApprovals, useApproveApproval, useRejectApproval,
   type ApprovalWithDetails,
@@ -121,6 +121,7 @@ function ReviewDialog({ approval, mode, onClose }: ReviewDialogProps) {
 
 export default function ApprovalsPage() {
   const { user } = useAuthStore()
+  const { formatDate } = useFormatDate()
   const isAdmin = user?.roles?.includes('Admin') ?? false
 
   const { data: approvals = [], isLoading } = usePendingApprovals()
@@ -205,7 +206,7 @@ export default function ApprovalsPage() {
                   </TableCell>
                   <TableCell>
                     <span className="text-xs text-secondary">
-                      {new Date(a.created_at).toLocaleDateString(formatLocale())}
+                      {formatDate(a.created_at)}
                     </span>
                   </TableCell>
                   <TableCell className="text-right">

@@ -1136,9 +1136,9 @@
       "home": "Terug naar home"
     },
     "pro": {
-      "title": "Pro-functie",
-      "description": "Deze functie is niet beschikbaar in de Community-editie. Vakt Pro met TISAX, DORA, EU AI Act, NIS2-meldingsassistent, Audit PDF-export, SSO, API-toegang, granulaire modulerechten en meer is binnenkort beschikbaar.",
-      "soon": "Binnenkort beschikbaar"
+      "title": "Vakt Pro",
+      "description": "Deze functie is niet beschikbaar in de Community-editie. Vakt Pro bevat TISAX, DORA, EU AI Act, NIS2-meldingsassistent, Audit PDF-export, SSO, API-sleutels, granulaire modulerechten en meer.",
+      "upgrade": "Nu upgraden →"
     }
   },
   "validation": {

@@ -1,5 +1,5 @@
 import { Badge } from '../../../components/ui/badge'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 interface EvidenceExpiryBadgeProps {
   expiresAt?: string | null
@@ -13,6 +13,7 @@ interface EvidenceExpiryBadgeProps {
  * - Red:       already expired            — "Abgelaufen: DD.MM.YYYY"
  */
 export function EvidenceExpiryBadge({ expiresAt }: EvidenceExpiryBadgeProps) {
+  const { formatDate } = useFormatDate()
   if (!expiresAt) return null
 
   const expiry = new Date(expiresAt)
@@ -20,7 +21,7 @@ export function EvidenceExpiryBadge({ expiresAt }: EvidenceExpiryBadgeProps) {
   const diffMs = expiry.getTime() - now.getTime()
   const diffDays = diffMs / (1000 * 60 * 60 * 24)
 
-  const dateStr = expiry.toLocaleDateString(formatLocale())
+  const dateStr = formatDate(expiresAt)
 
   if (diffMs < 0) {
     // Already expired

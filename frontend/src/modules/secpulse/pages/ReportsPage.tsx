@@ -14,11 +14,13 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import { useRiskTrend, useReports, useCreateReport, useDownloadReport } from '../hooks/useReports'
 import { ProGate } from '../../../shared/components/ProGate'
 import { jobStatusVariant } from '../../../lib/statusMapping'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const statusVariant = jobStatusVariant
 
 export default function ReportsPage() {
   const { t } = useTranslation()
+  const { formatDate } = useFormatDate()
   const { data: trend } = useRiskTrend()
   const { data: reports, isLoading, error: reportsError } = useReports()
   const createReport = useCreateReport()
@@ -105,10 +107,10 @@ export default function ReportsPage() {
                           <Badge variant={statusVariant[r.status]} className="capitalize">{r.status}</Badge>
                         </TableCell>
                         <TableCell className="text-sm text-secondary">
-                          {new Date(r.created_at).toLocaleDateString()}
+                          {formatDate(r.created_at)}
                         </TableCell>
                         <TableCell className="text-sm text-secondary">
-                          {r.expires_at ? new Date(r.expires_at).toLocaleDateString() : '—'}
+                          {r.expires_at ? formatDate(r.expires_at) : '—'}
                         </TableCell>
                         <TableCell>
                           {r.status === 'completed' && (

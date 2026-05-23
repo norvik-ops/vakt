@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { ProGate } from '../../../shared/components/ProGate'
 import { FeatureLockedError } from '../../../api/client'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const REPORT_TYPES = [
   {
@@ -29,6 +29,7 @@ const REPORT_TYPES = [
 ]
 
 export default function AIReportPage() {
+  const { formatDateTime } = useFormatDate()
   const [available, setAvailable] = useState<boolean | null>(null)
   const [aiModel, setAiModel] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
@@ -96,7 +97,7 @@ export default function AIReportPage() {
     if (!report) return
     const selectedType = REPORT_TYPES.find((r) => r.type === selected)
     const filename = `${selected ?? 'bericht'}_${new Date().toISOString().slice(0, 10)}.txt`
-    const header = selectedType ? `${selectedType.title}\nErstellt: ${new Date().toLocaleString(formatLocale())}\n\n` : ''
+    const header = selectedType ? `${selectedType.title}\nErstellt: ${formatDateTime(new Date())}\n\n` : ''
     const blob = new Blob([header + report], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -252,7 +253,7 @@ SHIELDSTACK_AI_MODEL=mistral-small-latest`}</pre>
                     </div>
                   </div>
                   <p className="text-xs text-secondary">
-                    Erstellt am {new Date().toLocaleString(formatLocale())}{aiModel ? ` — Modell: ${aiModel}` : ''}
+                    Erstellt am {formatDateTime(new Date())}{aiModel ? ` — Modell: ${aiModel}` : ''}
                   </p>
                 </CardHeader>
                 <CardContent>

@@ -58,7 +58,7 @@ docker compose up -d
 
 Open [http://localhost](http://localhost) in your browser.
 
-Demo login (requires `VAKT_DEMO=true`): `admin@vakt.local` / `admin1234`
+> When `VAKT_DEMO=true` is set, the login screen automatically shows a set of fresh, ephemeral credentials. These credentials are randomly generated per session and expire after 4 hours — there are no static demo passwords.
 
 > **Migrations** run automatically on every `docker compose up -d` — a dedicated `migrate` container applies all pending migrations before the API and worker start.
 
@@ -89,7 +89,7 @@ Vakt Community is free for self-hosting and includes the **AI advisor** out-of-t
 - Advanced phishing simulation campaigns
 - Supplier portal and granular module permissions
 
-Purchase at [vakt.dev/pricing](https://vakt.dev/pricing). After purchase, enter your
+Purchase at [vakt.io/pricing](https://vakt.io/pricing). After purchase, enter your
 license key in **Settings → License**.
 
 ---
@@ -180,12 +180,14 @@ make lint
 
 ## Deployment
 
-See `docs/setup.md` for:
+See [`docs/wiki/installation.md`](docs/wiki/installation.md) for:
 
 - HTTPS with Let's Encrypt (included Nginx configuration)
 - PostgreSQL backup strategies
 - Kubernetes deployment via Helm chart (`/helm/vakt`)
 - Upgrade procedure between versions
+
+For MSPs deploying Vakt per customer, see [`docs/wiki/msp-onboarding.md`](docs/wiki/msp-onboarding.md).
 
 ---
 
@@ -194,7 +196,7 @@ See `docs/setup.md` for:
 Issues and pull requests are welcome.
 
 - Run `make lint` before opening a PR
-- Write tests for all service-layer functions (target: 80% coverage for `internal/`)
+- Write tests for service-layer functions with domain invariants — especially auth, crypto, compliance, and migration logic (see ADR-0012)
 - Do not commit secrets — use `.env.example` as a template
 - Follow the module isolation rules described in `CLAUDE.md`
 

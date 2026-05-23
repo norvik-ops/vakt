@@ -18,7 +18,7 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { useFormValidation } from '../../../shared/hooks/useFormValidation'
 import { toast } from '../../../shared/hooks/useToast'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import {
   useCAPAs, useCreateCAPA, useUpdateCAPA, useDeleteCAPA, useBulkUpdateCAPAs,
   type CAPA, type CreateCAPAInput, type UpdateCAPAInput,
@@ -239,6 +239,7 @@ function CAPACard({
 }) {
   const [expanded, setExpanded] = useState(false)
   const del = useDeleteCAPA()
+  const { formatDate } = useFormatDate()
 
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation()
@@ -287,7 +288,7 @@ function CAPACard({
                   ? 'text-red-400 font-medium'
                   : ''
               }>
-                Fällig: {new Date(capa.due_date).toLocaleDateString(formatLocale())}
+                Fällig: {formatDate(capa.due_date)}
               </span>
             )}
           </div>

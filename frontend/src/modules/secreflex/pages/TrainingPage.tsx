@@ -11,6 +11,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import { useTrainingModules, useAssignments, useAssignModule } from '../hooks/useTraining'
 import type { TrainingModule } from '../types'
 import { assignmentStatusVariant } from '../../../lib/statusMapping'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 async function downloadCertificate(assignmentId: string) {
   const response = await fetch(`/api/v1/secreflex/assignments/${assignmentId}/certificate`, {
@@ -33,6 +34,7 @@ function ModuleRow({ module }: { module: TrainingModule }) {
   const [emails, setEmails] = useState('')
   const { data: assignments, isLoading } = useAssignments(expanded ? module.id : '')
   const assignModule = useAssignModule(module.id)
+  const { formatDate } = useFormatDate()
 
   function handleAssign(e: React.FormEvent) {
     e.preventDefault()
@@ -101,10 +103,10 @@ function ModuleRow({ module }: { module: TrainingModule }) {
                       {a.score != null ? `${a.score}%` : '—'}
                     </TableCell>
                     <TableCell className="text-sm text-secondary">
-                      {new Date(a.assigned_at).toLocaleDateString()}
+                      {formatDate(a.assigned_at)}
                     </TableCell>
                     <TableCell className="text-sm text-secondary">
-                      {a.completed_at ? new Date(a.completed_at).toLocaleDateString() : '—'}
+                      {a.completed_at ? formatDate(a.completed_at) : '—'}
                     </TableCell>
                     <TableCell>
                       {a.status === 'completed' && (

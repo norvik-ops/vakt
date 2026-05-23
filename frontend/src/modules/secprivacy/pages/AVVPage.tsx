@@ -19,7 +19,7 @@ import { useAVVs, useCreateAVV, useUpdateAVV, useDeleteAVV } from '../hooks/useA
 import { useDownloadAVVPDF } from '../hooks/useAVVTemplates'
 import { AVVTemplatePickerDialog } from '../components/AVVTemplatePickerDialog'
 import type { AVV, CreateAVVInput, UpdateAVVInput } from '../types'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const STATUS_CLASS: Record<AVV['status'], string> = {
   active: 'bg-green-500/20 text-green-400 border-green-500/30',
@@ -70,16 +70,17 @@ function AVVCard({
   onDownloadPDF: (id: string) => void
 }) {
   const { t } = useTranslation()
+  const { formatDate } = useFormatDate()
   const STATUS_LABELS: Record<AVV['status'], string> = {
     active: t('secprivacy.avvPage.statusActive'),
     expired: t('secprivacy.avvPage.statusExpired'),
     terminated: t('secprivacy.avvPage.statusTerminated'),
   }
   const contractDate = avv.contract_date
-    ? new Date(avv.contract_date).toLocaleDateString(formatLocale(), { year: 'numeric', month: 'short', day: 'numeric' })
+    ? formatDate(avv.contract_date, { year: 'numeric', month: 'short', day: 'numeric' })
     : null
   const reviewDate = avv.review_date
-    ? new Date(avv.review_date).toLocaleDateString(formatLocale(), { year: 'numeric', month: 'short', day: 'numeric' })
+    ? formatDate(avv.review_date, { year: 'numeric', month: 'short', day: 'numeric' })
     : null
 
   return (

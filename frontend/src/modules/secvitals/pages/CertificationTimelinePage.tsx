@@ -19,7 +19,7 @@ import {
 } from '../hooks/useMilestones'
 import { useFrameworks } from '../hooks/useFrameworks'
 import type { AuditMilestone, MilestoneStatus, MilestoneType, CreateMilestoneInput } from '../types'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 // ---- constants ----
 
@@ -242,6 +242,7 @@ const GANTT_STATUS_COLORS: Record<MilestoneStatus, string> = {
 }
 
 function GanttChart({ milestones }: { milestones: AuditMilestone[] }) {
+  const { formatDate: fmtDate } = useFormatDate()
   if (milestones.length === 0) return null
 
   const now = new Date()
@@ -283,7 +284,7 @@ function GanttChart({ milestones }: { milestones: AuditMilestone[] }) {
                 x={`${x}%`} y={headerH - 4}
                 fontSize="10" fill="#9ca3af" textAnchor="middle"
               >
-                {d.toLocaleDateString(formatLocale(), { month: 'short', year: '2-digit' })}
+                {fmtDate(d, { month: 'short', year: '2-digit' })}
               </text>
             </g>
           )

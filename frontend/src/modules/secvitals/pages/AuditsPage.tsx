@@ -15,7 +15,7 @@ import { EmptyState } from '../../../shared/components/EmptyState'
 import { ComplianceTooltip } from '../../../shared/components/ComplianceTooltip'
 import { useAuditRecords, useCreateAuditRecord } from '../hooks/useAudits'
 import type { AuditRecord, CreateAuditRecordInput } from '../types'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const STATUS_CLASS: Record<AuditRecord['status'], string> = {
   planned: 'bg-secondary text-secondary-foreground',
@@ -25,14 +25,13 @@ const STATUS_CLASS: Record<AuditRecord['status'], string> = {
 
 function AuditCard({ record, onClick }: { record: AuditRecord; onClick: () => void }) {
   const { t } = useTranslation()
+  const { formatDate } = useFormatDate()
   const STATUS_LABELS: Record<AuditRecord['status'], string> = {
     planned: t('secvitals.auditsPage.statusPlanned'),
     in_progress: t('secvitals.auditsPage.statusInProgress'),
     completed: t('secvitals.auditsPage.statusCompleted'),
   }
-  const date = new Date(record.audit_date).toLocaleDateString(formatLocale(), {
-    year: 'numeric', month: 'short', day: 'numeric',
-  })
+  const date = formatDate(record.audit_date, { year: 'numeric', month: 'short', day: 'numeric' })
   return (
     <Card className="cursor-pointer hover:border-brand/50 transition-colors" onClick={onClick}>
       <CardContent className="pt-5 space-y-2">

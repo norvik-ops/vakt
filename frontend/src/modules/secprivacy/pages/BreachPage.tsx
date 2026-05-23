@@ -16,7 +16,7 @@ import { Pagination } from '../../../shared/components/Pagination'
 import { Skeleton } from '../../../components/ui/skeleton'
 import { useBreaches, useCreateBreach, useUpdateBreach, useDeleteBreach, useMarkAuthorityNotified, useExportBreachNotification } from '../hooks/useBreaches'
 import type { Breach, CreateBreachInput, UpdateBreachInput } from '../types'
-import { formatLocale } from '../../../shared/utils/locale'
+import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const STATUS_CLASS: Record<Breach['status'], string> = {
   open: 'bg-red-500/20 text-red-400 border-red-500/30',
@@ -65,6 +65,7 @@ function formFromEntry(b: Breach): BreachFormState {
 
 function DeadlineIndicator({ deadline }: { deadline: string }) {
   const { t } = useTranslation()
+  const { formatDate } = useFormatDate()
   const now = new Date()
   const dl = new Date(deadline)
   const hoursLeft = (dl.getTime() - now.getTime()) / 1000 / 3600
@@ -74,8 +75,8 @@ function DeadlineIndicator({ deadline }: { deadline: string }) {
     <div className={`flex items-center gap-1 text-xs ${overdue ? 'text-red-400' : hoursLeft < 24 ? 'text-amber-400' : 'text-muted-foreground'}`}>
       <Clock className="w-3 h-3" />
       {overdue
-        ? `${t('secprivacy.breachPage.deadlineOverdue')} (${dl.toLocaleDateString(formatLocale())})`
-        : `${t('secprivacy.breachPage.deadline')}: ${dl.toLocaleDateString(formatLocale(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`}
+        ? `${t('secprivacy.breachPage.deadlineOverdue')} (${formatDate(deadline)})`
+        : `${t('secprivacy.breachPage.deadline')}: ${formatDate(deadline, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`}
     </div>
   )
 }
@@ -94,12 +95,13 @@ function BreachCard({
   onExportPDF: (id: string) => void
 }) {
   const { t } = useTranslation()
+  const { formatDate, bcp47 } = useFormatDate()
   const STATUS_LABELS: Record<Breach['status'], string> = {
     open: t('secprivacy.breachPage.statusOpen'),
     authority_notified: t('secprivacy.breachPage.statusNotified'),
     closed: t('secprivacy.breachPage.statusClosed'),
   }
-  const discoveredDate = new Date(breach.discovered_at).toLocaleDateString(formatLocale(), {
+  const discoveredDate = formatDate(breach.discovered_at, {
     year: 'numeric', month: 'short', day: 'numeric',
   })
 
@@ -115,7 +117,7 @@ function BreachCard({
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>{t('secprivacy.breachPage.discovered')}: {discoveredDate}</span>
           {breach.affected_count != null && (
-            <span>{breach.affected_count.toLocaleString(formatLocale())} {t('secprivacy.breachPage.affected')}</span>
+            <span>{breach.affected_count.toLocaleString(bcp47)} {t('secprivacy.breachPage.affected')}</span>
           )}
         </div>
         {breach.data_categories.length > 0 && (
