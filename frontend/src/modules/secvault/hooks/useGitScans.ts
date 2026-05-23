@@ -7,7 +7,10 @@ const BASE = '/secvault'
 export function useGitScans() {
   return useQuery<GitScan[]>({
     queryKey: ['secvault', 'git-scans'],
-    queryFn: () => apiFetch<GitScan[]>(`${BASE}/git-scans`),
+    queryFn: async () => {
+      const resp = await apiFetch<{ data: GitScan[] } | GitScan[]>(`${BASE}/git-scans`)
+      return Array.isArray(resp) ? resp : (resp.data ?? [])
+    },
     staleTime: 15_000,
   })
 }

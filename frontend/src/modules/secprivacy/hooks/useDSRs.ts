@@ -9,7 +9,10 @@ import type { DSR, CreateDSRInput, UpdateDSRInput } from '../types'
 export function useDSRs() {
   return useQuery<DSR[]>({
     queryKey: ['secprivacy', 'dsr'],
-    queryFn: () => apiFetch<DSR[]>('/secprivacy/dsr'),
+    queryFn: async () => {
+      const resp = await apiFetch<{ data: DSR[] } | DSR[]>('/secprivacy/dsr')
+      return Array.isArray(resp) ? resp : (resp.data ?? [])
+    },
     staleTime: 5 * 60 * 1000,
   })
 }
