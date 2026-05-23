@@ -83,6 +83,10 @@ test.describe('SessionsPage', () => {
     const revokeBtn = page.locator('button', { hasText: /widerrufen/i }).nth(1)
     await revokeBtn.waitFor({ state: 'visible', timeout: 8000 })
     await revokeBtn.click()
+    // Confirmation dialog (AlertDialog is Dialog under the hood → role="dialog").
+    const confirmBtn = page.getByRole('dialog', { name: /session widerrufen/i }).getByRole('button', { name: /widerrufen/i })
+    await confirmBtn.waitFor({ state: 'visible', timeout: 5000 })
+    await confirmBtn.click()
     await deletePromise
   })
 })
