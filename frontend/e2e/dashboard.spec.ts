@@ -41,7 +41,7 @@ test.describe('Dashboard', () => {
 
   test('renders dashboard with score widget', async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('text=72').first().or(page.getByRole('heading', { name: /compliance/i }).first())).toBeVisible({ timeout: 8000 })
+    await expect(page.locator('text=72').first().or(page.getByRole('heading', { name: /compliance/i }).first()).first()).toBeVisible({ timeout: 8000 })
   })
 
   test('opens global search with Ctrl+K', async ({ page }) => {

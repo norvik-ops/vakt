@@ -42,6 +42,13 @@ export const test = base.extend({
             { status: 200, headers: { 'Content-Type': 'application/json' } },
           )
         }
+        // OnboardingWizard reads status.steps — catch-all {} causes "steps is undefined" crash
+        if (url.includes('/api/v1/onboarding/status')) {
+          return new Response(
+            JSON.stringify({ completed: true, dismissed: true, steps: { org_configured: true, framework_selected: true, first_control_reviewed: true, first_risk_created: true } }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          )
+        }
         // NotificationBell calls .filter() on this — must be array, not paginated object
         if (url.includes('/api/v1/dashboard/notifications')) {
           return new Response(JSON.stringify([]), {

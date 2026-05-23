@@ -16,7 +16,7 @@ test.describe('SecPrivacy — DSR', () => {
   })
 
   test('DSR list page renders', async ({ page }) => {
-    await expect(page.getByText(/betroffenenanfragen|dsr/i)).toBeVisible()
+    await expect(page.getByRole('heading', { name: /betroffenenanfragen|dsr/i })).toBeVisible()
   })
 
   test('can open create DSR dialog', async ({ page }) => {
