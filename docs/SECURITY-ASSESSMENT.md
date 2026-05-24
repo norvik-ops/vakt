@@ -4,7 +4,10 @@
 
 Diese Selbstbewertung dokumentiert den Sicherheitsstand von Vakt für Kunden, die ein Sicherheits-Assessment vor der Einführung durchführen.
 
-## Zuletzt überprüft: 2026-05-24 (statische Code-Verifikation — alle TOM-Claims gegen Implementierung geprüft)
+## Zuletzt überprüft: 2026-05-24
+
+- **Statische Code-Verifikation** — alle TOM-Claims gegen Implementierung geprüft
+- **Interner Pentest (Live)** — Black-Box-Test gegen secdemo.norvikops.de; 14 Checks, 13 OK, 1 Infra-Finding (CF-Demo); Details: `docs/security/pentest-intern.md`
 
 ## Authentifizierung & Session-Management
 
@@ -28,7 +31,7 @@ Diese Selbstbewertung dokumentiert den Sicherheitsstand von Vakt für Kunden, di
 | Org-Isolation | OK | Alle Queries filtern nach org_id |
 | RBAC | OK | Admin / SecurityAnalyst / Viewer / AuditorReadOnly |
 | CSP | OK | `script-src 'self'`; `style-src-elem 'self'`; `style-src-attr 'unsafe-inline'` (Inline-Styles für UI-Framework, keine Inline-Scripts) |
-| Security Headers | OK | HSTS (1 Jahr + preload), X-Frame-Options DENY, X-Content-Type-Options, Referrer-Policy |
+| Security Headers | OK | HSTS (1 Jahr + preload), X-Frame-Options DENY (App-Code ✓; Demo-CF-Proxy sendet SAMEORIGIN — CF-Dashboard-Fix ausstehend), X-Content-Type-Options, Referrer-Policy |
 | SQL Injection | OK | Parameterisierte Queries (pgx/sqlc), kein String-Concatenation bei Werten |
 | XSS | OK | React escaping + CSP `script-src 'self'`, keine `dangerouslySetInnerHTML` |
 | SSRF | OK | Scanner-Targets werden gegen RFC-1918- und Loopback-Ranges geprüft; opt-out via `VAKT_SCAN_ALLOW_PRIVATE=true` |
@@ -79,17 +82,23 @@ Alle Aussagen im TOM-Dokument (`docs/security/tom.md`) wurden gegen die Go-Imple
 | CSRF Double-Submit-Cookie | ✅ Bestätigt | `shared/middleware/csrf.go` → `X-CSRF-Token` Header-Vergleich |
 | nonroot Container (UID 65532) | ✅ Bestätigt | `Dockerfile` → `USER nonroot:nonroot`, distroless base |
 
-**Nicht statisch verifikationsfähig** (erfordern laufende Instanz — für internen Pentest documentiert in `docs/security/pentest-intern.md`):
+**Dynamisch verifiziert (interner Pentest 2026-05-24)** — Details in `docs/security/pentest-intern.md`:
+- Brute-Force-Lockout: ✅ 429 nach ~10 Versuchen live bestätigt
+- Paseto v4 Token-Format: ✅ live bestätigt (`v4.local.…`)
+- Mass Assignment (`org_id`): ✅ live bestätigt (Body-Wert ignoriert)
+- SQL Injection Query-Param: ✅ live bestätigt (kein 500)
+
+**Noch nicht live verifiziert** (Cloudflare blockierte weitere Requests; statisch abgedeckt):
 - CORS-Header-Konfiguration (kein `Access-Control-Allow-Origin: *`)
-- Brute-Force-Lockout in der Praxis (15 curl-Loops)
 - Token-Invalidierung nach Logout (Ende-zu-Ende)
 - IDOR-Isolation zwischen Orgs (zwei echte Sessions)
+- Privilege Escalation Analyst→Admin
 
 ## Bekannte Einschränkungen
 
 | Punkt | Status |
 |-------|--------|
-| Externer Pentest | Noch nicht durchgeführt — geplant Q3 2026 (RFP: `docs/security/pentest-rfp.md`). Internes Review Mai 2026 abgeschlossen: 17/17 Findings behoben; statische Verifikation 2026-05-24: alle TOM-Claims bestätigt. |
+| Externer Pentest | Noch nicht durchgeführt — geplant Q3 2026 (RFP: `docs/security/pentest-rfp.md`). Internes Review Mai 2026 abgeschlossen: 17/17 Findings behoben; statische Verifikation + Live-Pentest 2026-05-24: alle TOM-Claims bestätigt, 13/14 Checks OK, 1 Infra-Finding (CF-Demo, kein App-Bug). |
 | SOC 2 | Nicht anwendbar (self-hosted) |
 | Bug-Bounty-Programm | In Planung |
 
