@@ -53,7 +53,7 @@ func RenderAssessmentPDF(orgName string, run *Run) ([]byte, error) {
 		pdf.SetFont("Helvetica", "I", 7)
 		pdf.SetTextColor(pdfSubtleR, pdfSubtleG, pdfSubtleB)
 		pdf.CellFormat(0, 5,
-			fmt.Sprintf("Erstellt mit Vakt · vakt.io — NIS2-Assessment — %s — Seite %d/{nb}", orgName, pdf.PageNo()),
+			fmt.Sprintf("Erstellt mit Vakt · sec.norvikops.de — NIS2-Assessment — %s — Seite %d/{nb}", orgName, pdf.PageNo()),
 			"", 0, "C", false, 0, "")
 	})
 	pdf.AliasNbPages("{nb}")

@@ -917,7 +917,7 @@
     "orSeparator": "or",
     "demoCredentials": "Demo Credentials",
     "demoHint": "Click on an account to auto-fill the form.",
-    "demoDisclaimer": "This is a public demo instance. Please do not enter real or sensitive data. Vakt accepts no liability for data entered.",
+    "demoDisclaimer": "All data is automatically reset after 4 hours. Please do not enter real or sensitive data.",
     "demoPreparing": "Preparing demo…",
     "demoUnavailable": "Demo is currently unavailable — please try again in a minute.",
     "forgotPasswordTitle": "Reset Password",

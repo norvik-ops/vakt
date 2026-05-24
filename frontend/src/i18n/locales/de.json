@@ -917,7 +917,7 @@
     "orSeparator": "oder",
     "demoCredentials": "Demo-Zugangsdaten",
     "demoHint": "Einfach auf einen Account klicken — das Formular wird automatisch ausgefüllt.",
-    "demoDisclaimer": "Dies ist eine öffentliche Demo-Instanz. Bitte keine echten oder sensiblen Daten eingeben. Vakt übernimmt keine Haftung für eingegebene Daten.",
+    "demoDisclaimer": "Alle Daten werden nach 4 Stunden automatisch zurückgesetzt. Bitte keine echten oder sensiblen Daten eingeben.",
     "demoPreparing": "Demo wird vorbereitet…",
     "demoUnavailable": "Demo ist gerade nicht verfügbar — bitte in einer Minute erneut versuchen.",
     "forgotPasswordTitle": "Passwort zurücksetzen",

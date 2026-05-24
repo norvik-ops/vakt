@@ -53,6 +53,5 @@ Cross-Modul-Kommunikation läuft ausschließlich über **Interfaces in `shared/`
 
 ## Referenzen
 
-- `CLAUDE.md` Sektion „Module isolation"
 - `backend/internal/modules/*/`
 - ADR-0005 (sqlc + pg_-Problem)

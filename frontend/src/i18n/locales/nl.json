@@ -917,7 +917,7 @@
     "orSeparator": "of",
     "demoCredentials": "Demo-inloggegevens",
     "demoHint": "Klik op een account om het formulier automatisch in te vullen.",
-    "demoDisclaimer": "Dit is een openbare demo-instantie. Voer geen echte of gevoelige gegevens in. Vakt aanvaardt geen aansprakelijkheid voor ingevoerde gegevens.",
+    "demoDisclaimer": "Alle gegevens worden na 4 uur automatisch teruggezet. Voer geen echte of gevoelige gegevens in.",
     "demoPreparing": "Demo wordt voorbereid…",
     "demoUnavailable": "Demo is momenteel niet beschikbaar — probeer het over een minuut opnieuw.",
     "forgotPasswordTitle": "Wachtwoord opnieuw instellen",

@@ -37,6 +37,5 @@ Vakt ist ausschließlich self-hosted. Jede Instanz läuft komplett in der Infras
 
 ## Referenzen
 
-- `CLAUDE.md` Sektion „Datenschutz-Grundsatz: Kein Datenabfluss"
 - `docs/architecture.md`
 - ADR-0008 (MSP-Portal-Verzicht — direkte Konsequenz)

@@ -5,7 +5,7 @@
 
 ## Kontext
 
-`CLAUDE.md` schreibt vor: „Use sqlc for all database queries — no raw string concatenation." Die Realität war bis Mai 2026: 1 sqlc-Query-File, ~609 Zeilen embedded SQL über das Codebase verteilt. Eine externe Code-Analyse markierte das als P0-Tech-Debt.
+Die Projekt-Konvention lautet: „Use sqlc for all database queries — no raw string concatenation." Die Realität war bis Mai 2026: 1 sqlc-Query-File, ~609 Zeilen embedded SQL über das Codebase verteilt. Eine externe Code-Analyse markierte das als P0-Tech-Debt.
 
 Eine Vollmigration aller ~30 Repositories in einem Pass ist 6–10 Sprints und birgt erhebliches Regressionsrisiko (touche jede Datenbank-Operation). Zugleich blockiert die `pg_`-Tabellen-Konvention (Vakt Aware, Package `secreflex`) den sqlc-Parser: PostgreSQL behandelt `pg_*` als reservierten System-Katalog-Namespace, sqlc kann hier Spalten-Referenzen nicht zuverlässig disambiguieren („column reference 'org_id' is ambiguous" bei Single-Table-INSERT).
 
@@ -23,7 +23,7 @@ Eine Vollmigration aller ~30 Repositories in einem Pass ist 6–10 Sprints und b
 
 - **Big-Bang-Vollmigration in 6 Sprints** — verworfen: blockiert alle anderen Sprints, hohes Regressionsrisiko, kein Kundennutzen heute.
 - **Pflicht-Tabellen-Rename `pg_` → `sr_`** — erwogen, aber Migration auf jeder Kunden-Instanz mit Rollback-Risiko. Aufgeschoben bis sqlc-Upstream entscheidet.
-- **Anderes Tool als sqlc** (z.B. squirrel als Query-Builder, oder gen) — verworfen: sqlc ist im Codebase + CLAUDE.md verankert, Tool-Wechsel würde Wissen vernichten.
+- **Anderes Tool als sqlc** (z.B. squirrel als Query-Builder, oder gen) — verworfen: sqlc ist als Projekt-Standard verankert, Tool-Wechsel würde bestehendes Wissen vernichten.
 
 ## Konsequenzen
 
@@ -48,4 +48,4 @@ Eine Vollmigration aller ~30 Repositories in einem Pass ist 6–10 Sprints und b
 - `backend/db/migrations/122_rename_pg_tables_to_sr.up.sql` (Tabellen-Rename)
 - `backend/sqlc.yaml`
 - `docs/sqlc-migration-plan.md` (vollständiger Migrationsstatus)
-- Backlog `.forgehive/PRODUKTREIFE-BACKLOG.md` (Sprint 11 — Abschluss-Migration)
+- sqlc-Migration vollständig abgeschlossen: alle Module migriert (Stand: Mai 2026)

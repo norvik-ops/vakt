@@ -40,5 +40,4 @@ Das wäre kommerziell attraktiv — der DACH-MSP-Markt ist groß und MSPs schät
 ## Referenzen
 
 - ADR-0001 (Phone-Home-Verbot)
-- `.forgehive/PRODUKTREIFE-BACKLOG.md` (#38 MSP-Portal explizit gestrichen)
-- Memory `project_roadmap_decisions.md`
+- Roadmap-Entscheidung 2026: MSP-Portal dauerhaft ausgeschlossen (Phone-Home-Prinzip)

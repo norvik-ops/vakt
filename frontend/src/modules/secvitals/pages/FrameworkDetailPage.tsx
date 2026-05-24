@@ -219,7 +219,6 @@ function AuditorLinksTab({ frameworkId }: { frameworkId: string }) {
                 <TableRow key={link.id}>
                   <TableCell className="font-medium">{link.label ?? '—'}</TableCell>
                   <TableCell>
-                    {/* eslint-disable-next-line @typescript-eslint/no-deprecated */}
                     {formatDate(link.expires_at)}
                   </TableCell>
                   <TableCell>{link.access_count}</TableCell>

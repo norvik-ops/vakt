@@ -77,9 +77,9 @@ gerade nicht verfügbar ist. Das Login-Formular bleibt benutzbar.
 ```
 Vakt ist ein self-hosted Produkt. Diese Demo läuft auf
 einem öffentlichen Testserver — niemals echte Daten eingeben.
-Mehr: vakt.io
+Mehr: sec.norvikops.de
 ```
-Styling: `text-xs text-secondary text-center`. Link auf `https://vakt.io` (underline).
+Styling: `text-xs text-secondary text-center`. Link auf `https://sec.norvikops.de` (underline).
 
 ### Reihenfolge im DOM
 ```

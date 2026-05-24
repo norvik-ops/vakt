@@ -523,11 +523,8 @@ export default function IncidentDetailPage() {
 
             <Card>
               <CardContent className="pt-4 space-y-1 text-xs text-muted-foreground">
-                {/* eslint-disable-next-line @typescript-eslint/no-deprecated */}
                 <p>Entdeckt: {formatDateTime(incident.discovered_at)}</p>
-                {/* eslint-disable-next-line @typescript-eslint/no-deprecated */}
                 {incident.resolved_at && <p>Gelöst: {formatDateTime(incident.resolved_at)}</p>}
-                {/* eslint-disable-next-line @typescript-eslint/no-deprecated */}
                 <p>Erstellt: {formatDate(incident.created_at)}</p>
               </CardContent>
             </Card>

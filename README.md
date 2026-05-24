@@ -89,7 +89,7 @@ Vakt Community is free for self-hosting and includes the **AI advisor** out-of-t
 - Advanced phishing simulation campaigns
 - Supplier portal and granular module permissions
 
-Purchase at [vakt.io/pricing](https://vakt.io/pricing). After purchase, enter your
+Purchase at [sec.norvikops.de/pricing](https://sec.norvikops.de/pricing). After purchase, enter your
 license key in **Settings → License**.
 
 ---

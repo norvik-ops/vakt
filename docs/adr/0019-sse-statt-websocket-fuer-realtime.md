@@ -6,7 +6,7 @@
 
 ## Kontext
 
-Die zweite Elite-Review (`docs/reviews/2026-05-elite-review/`) markierte das Fehlen von Realtime-Updates als „Premium-UX-Hebel": Notifications, Scan-Progress und Demo-Status werden heute mit Polling geholt, was bei vielen Browser-Tabs Server-Load erzeugt und für den User ein „2018"-Erlebnis liefert.
+Ein internes Code-Review markierte das Fehlen von Realtime-Updates als „Premium-UX-Hebel": Notifications, Scan-Progress und Demo-Status werden heute mit Polling geholt, was bei vielen Browser-Tabs Server-Load erzeugt und für den User ein „2018"-Erlebnis liefert.
 
 In Sprint 15 (S15-5) wurde ein Server-Sent-Events-Endpoint für AI-Streaming gebaut (`POST /ai/chat/stream`). Beim Wiring fielen die Fragen an: nutzen wir das gleiche Transport-Pattern (SSE) für die geplante Realtime-Welle in Q3 2026 — oder nehmen wir WebSockets, die der Bericht eher implizit voraussetzt?
 

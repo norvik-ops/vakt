@@ -36,6 +36,7 @@ export default function Login() {
   const [ssoEnabled, setSsoEnabled] = useState(false)
   const [demoUsers, setDemoUsers] = useState<DemoUser[] | null>(null)
   const [demoStarting, setDemoStarting] = useState(false)
+  const [demoError, setDemoError] = useState(false)
 
   useEffect(() => {
     document.title = isDemo ? 'Vakt Demo' : 'Vakt'
@@ -78,10 +79,8 @@ export default function Login() {
         ])
       })
       .catch(() => {
-        // S13-26: Demo-Start fehlgeschlagen — kein Fallback auf Pseudo-Credentials,
-        // weil die nirgends echt funktionieren wuerden. Stattdessen sichtbarer
-        // Toast statt stillem UI-Zerfall + setDemoUsers(null) als visuelles Signal.
         setDemoUsers(null)
+        setDemoError(true)
         toast(t('auth.demoUnavailable'), { variant: 'error', duration: 10000 })
       })
       .finally(() => { setDemoStarting(false); })
@@ -200,13 +199,6 @@ export default function Login() {
 
         {isDemo && (
           <>
-            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-center">
-              <p className="text-xs font-semibold text-amber-400 uppercase tracking-wide">Demo-Umgebung</p>
-              <p className="text-[11px] text-amber-300/80 mt-0.5">
-                Alle Daten werden nach 4 Stunden automatisch zurückgesetzt.
-              </p>
-            </div>
-
             <Card className="border-brand/30 bg-brand/5">
               <CardContent className="pt-4 pb-4 space-y-3">
                 <p className="text-xs font-semibold text-brand uppercase tracking-wide">{t('auth.demoCredentials')}</p>
@@ -228,13 +220,19 @@ export default function Login() {
                     <span className="text-xs text-secondary font-mono">{u.email}</span>
                   </button>
                 ))}
+                {!demoStarting && demoError && (
+                  <p className="text-xs text-red-500">{t('auth.demoUnavailable')}</p>
+                )}
               </CardContent>
             </Card>
 
-            <p className="text-xs text-secondary text-center px-2">
-              {t('auth.demoDisclaimer')}{' '}
-              <a href="https://vakt.io" className="underline hover:text-primary">vakt.io</a>
-            </p>
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-center">
+              <p className="text-xs font-semibold text-amber-400 uppercase tracking-wide">Demo-Umgebung</p>
+              <p className="text-[11px] text-amber-300/80 mt-1">
+                {t('auth.demoDisclaimer')}{' '}
+                <a href="https://sec.norvikops.de" className="underline hover:text-amber-200">sec.norvikops.de</a>
+              </p>
+            </div>
           </>
         )}
       </div>

@@ -917,7 +917,7 @@
     "orSeparator": "ou",
     "demoCredentials": "Identifiants de démo",
     "demoHint": "Cliquez sur un compte pour remplir automatiquement le formulaire.",
-    "demoDisclaimer": "Ceci est une instance de démo publique. Veuillez ne pas saisir de données réelles ou sensibles. Vakt décline toute responsabilité pour les données saisies.",
+    "demoDisclaimer": "Toutes les données sont réinitialisées automatiquement après 4 heures. Veuillez ne pas saisir de données réelles ou sensibles.",
     "demoPreparing": "Préparation de la démo…",
     "demoUnavailable": "La démo est temporairement indisponible — veuillez réessayer dans une minute.",
     "forgotPasswordTitle": "Réinitialiser le mot de passe",

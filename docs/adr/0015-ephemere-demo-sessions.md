@@ -73,4 +73,4 @@ Diese Punkte sind das, was in der Vergangenheit mehrfach falsch dokumentiert wur
 - Frontend: `frontend/src/pages/Login.tsx`
 - Wiki: `docs/wiki/demo-mode.md`
 - CHANGELOG: `[v0.6.2] — Behoben` Abschnitt
-- CLAUDE.md: Abschnitt „Demo-Modus — wie er wirklich funktioniert"
+- Wiki: Demo-Betrieb in `docs/wiki/demo-mode.md` beschrieben

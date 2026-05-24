@@ -74,5 +74,4 @@ Nur User-relevante Docs sind im Mirror: `docs/setup.md`, `docs/configuration.md`
 
 - Script: `scripts/build-public-mirror.sh`
 - Workflow: `.github/workflows/sync-public-repo.yml`
-- Maintainer-Doku: `docs/dev/public-repo-sync.md`
 - Trigger-Bug v0.6.1: siehe CHANGELOG.md `[v0.6.2]` Abschnitt „Behoben"

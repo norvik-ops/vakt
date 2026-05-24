@@ -6,12 +6,12 @@
 
 ## Kontext
 
-Die zweite Elite-Review (Mai 2026, `docs/reviews/2026-05-elite-review/kompletter_bericht.md`) identifizierte zwei strukturelle Stabilitätsrisiken im Backend:
+Ein internes Code-Review (Mai 2026) identifizierte zwei strukturelle Stabilitätsrisiken im Backend:
 
 1. **`context.Background()` in Goroutinen statt Parent-Context** — beim Shutdown laufen Webhook-Verarbeitung, Report-Generation und Evidence-Collection weiter. Bei `docker compose down` / Kubernetes-Rolling-Restart können Tasks in inkonsistente Zustände kommen (halb-geschriebene Audit-Einträge, doppelt abgesetzte Webhook-Calls).
 2. **`recover()` ohne Eskalation** — Goroutinen schlucken Panics, schreiben sie höchstens in zerolog. Im Produktivbetrieb verschwinden so Bugs in Webhooks, AI-Calls, Cross-Module-Bridges — niemand sieht es, bis ein Kunde fragt warum eine Evidence fehlt.
 
-Der Verify-Pass (`docs/reviews/2026-05-bericht-verify.md`) korrigierte die Bericht-Zahlen auf ≤16 kritische `context.Background()`-Stellen und 20 `recover()`-Stellen — das Pattern stimmt, das Volumen ist überschaubar.
+Eine Verifikations-Runde korrigierte die Befund-Zahlen auf ≤16 kritische `context.Background()`-Stellen und 20 `recover()`-Stellen — das Pattern stimmt, das Volumen ist überschaubar.
 
 Es gab bisher keine codifizierte Regel, wie Goroutinen Context erben und wie Panics nach außen kommuniziert werden sollen. Sprint 14 (Reife-Sanierung Welle 2) sanierte diese Stellen — ohne ADR wäre das ad-hoc und der nächste Pull Request hätte das alte Pattern wieder eingeschleppt.
 
@@ -39,7 +39,7 @@ Direkte `go func() { … }()`-Aufrufe in `internal/` sind verboten, ausgenommen 
 
 ### Positive
 
-- Graceful Shutdown wird testbar: ein dokumentierter SIGTERM-Test (`docs/dev/graceful-shutdown.md`) zeigt, dass laufende Hintergrund-Tasks innerhalb von 30 s ihre Arbeit beenden oder kontrolliert abbrechen.
+- Graceful Shutdown wird testbar: laufende Hintergrund-Tasks beenden ihre Arbeit innerhalb von 30 s oder brechen kontrolliert ab, wenn der Parent-Context cancelt.
 - Panics in Hintergrund-Tasks erscheinen in Grafana-Tempo + zerolog + (optional) Sentry — keine Silent-Failures mehr.
 - Code-Review wird einfacher: `go func()` in einem Diff ist ein klares Stopp-Signal.
 - Onboarding wird klarer: neue Engineers lernen ein Pattern statt 20 Variationen.
@@ -57,8 +57,5 @@ Direkte `go func() { … }()`-Aufrufe in `internal/` sind verboten, ausgenommen 
 
 ## Referenzen
 
-- Bericht: `docs/reviews/2026-05-elite-review/kompletter_bericht.md` §4.2 + §5.1 + §11.6/7
-- Verify-Pass: `docs/reviews/2026-05-bericht-verify.md` §4
-- Backlog-Items: `.forgehive/PRODUKTREIFE-BACKLOG.md` Sprint 14, S14-1 – S14-4
 - Verwandte ADRs: ADR-0011 (OpenTelemetry opt-in), ADR-0004 (Modul-Isolation)
 - Code (nach Implementierung): `backend/internal/shared/safego/safego.go`

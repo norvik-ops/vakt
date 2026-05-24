@@ -1,8 +1,23 @@
 # ADR-0031: Phase-1-Release-Strategie (v0.22.0 → v1.0)
 
-**Status:** Akzeptiert
+**Status:** Akzeptiert (Amendment 2026-05-23: Pre-v1.0-Scope auf 4 Sprints erweitert)
 **Datum:** 2026-05-23
 **Entscheider:** Stefan Moseler
+
+## Amendment 2026-05-23: v1.0 muss genuinely good sein
+
+Die ursprüngliche Entscheidung sah einen einzigen Pre-v1.0-Sprint (v0.23.0) vor. Nach Diskussion wurde das als zu dünn erkannt: First impressions in Open Source sind permanent. Ein v1.0 mit fehlenden Metriken, inkonsistenten UX-Zuständen oder veralteter Dokumentation ist kein "wir bessern nach" — es ist eine Absage an Nutzer die keine zweite Chance geben.
+
+**Geänderte Entscheidung:** Pre-v1.0-Scope wird auf 4 Sprints (S45–S48) ausgeweitet:
+
+| Sprint | Fokus | Milestone |
+|--------|-------|-----------|
+| S45 | Infra-Hygiene: sechealth→vakt, SBOM, cosign, lint-Gates | v0.23.0 |
+| S46 | Observability: `/metrics`, Startup-Diagnostics, Graceful-Shutdown-Test, Runbook | — |
+| S47 | UX-Qualität: Empty States, Onboarding-Wizard, Error-Messages, Mobile | — |
+| S48 | Trust+Docs: README, Getting-Started, Operator-Runbook, ADR-Index, SECURITY.md | **→ v1.0.0** |
+
+Die 9 Quality-Gates aus der ursprünglichen Entscheidung bleiben gültig und werden durch Sprint-48-Akzeptanzkriterien erweitert. Details in `.forgehive/PRODUKTREIFE-BACKLOG.md` Sprints 45–48.
 
 ## Kontext
 
