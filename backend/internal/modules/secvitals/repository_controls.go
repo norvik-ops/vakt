@@ -56,7 +56,7 @@ func (r *Repository) UpdateControl(ctx context.Context, orgID, controlID string,
 		return fmt.Errorf("update control: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("control not found")
+		return ErrNotFound
 	}
 	return nil
 }
@@ -115,7 +115,7 @@ func (r *Repository) UpdateSoAMetadata(ctx context.Context, orgID, controlID, ju
 		return fmt.Errorf("update soa metadata: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("control not found")
+		return ErrNotFound
 	}
 	return nil
 }

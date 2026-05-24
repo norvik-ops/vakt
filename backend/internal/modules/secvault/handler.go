@@ -5,12 +5,14 @@ package secvault
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -180,6 +182,9 @@ func (h *Handler) SetSecret(c echo.Context) error {
 
 	secret, err := h.service.SetSecret(c.Request().Context(), orgID, envID, userID, key, req.Value)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return notFound(c, "environment not found")
+		}
 		log.Error().Err(err).Msg("SetSecret failed")
 		return serverError(c, err)
 	}
@@ -242,6 +247,9 @@ func (h *Handler) ListSecretKeys(c echo.Context) error {
 
 	secrets, err := h.service.ListSecretKeys(c.Request().Context(), orgID, envID)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return notFound(c, "environment not found")
+		}
 		log.Error().Err(err).Msg("ListSecretKeys failed")
 		return serverError(c, err)
 	}

@@ -73,8 +73,8 @@ export default function NIS2WizardPage() {
         const qData = await qResp.json()
         setQuestions(qData.questions)
 
-        // Token aus localStorage wiederverwenden (für Wiederbesuch).
-        const existing = localStorage.getItem('vakt_nis2_token')
+        // Token aus sessionStorage wiederverwenden (für Wiederbesuch innerhalb der Sitzung).
+        const existing = sessionStorage.getItem('vakt_nis2_token')
         if (existing) {
           const rResp = await fetch(`/api/v1/public/nis2-assessment/result?token=${existing}`)
           if (rResp.ok) {
@@ -98,7 +98,7 @@ export default function NIS2WizardPage() {
           body: JSON.stringify({ referrer: document.referrer || '' }),
         })
         const sData: Run = await sResp.json()
-        localStorage.setItem('vakt_nis2_token', sData.token)
+        sessionStorage.setItem('vakt_nis2_token', sData.token)
         setRun(sData)
       } catch {
         // Stream-Fehler unkritisch — User sieht Loading-State + Retry-Button.

@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"net/http"
 	"os"
 	"os/signal"
@@ -239,11 +240,14 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	e.Use(middleware.BodyLimit("10MB"))
 	e.Use(middleware.ContextTimeoutWithConfig(middleware.ContextTimeoutConfig{
 		Timeout: 30 * time.Second,
-		ErrorHandler: func(_ error, c echo.Context) error {
-			return c.JSON(http.StatusServiceUnavailable, map[string]string{
-				"error": "request timeout",
-				"code":  "REQUEST_TIMEOUT",
-			})
+		ErrorHandler: func(err error, c echo.Context) error {
+			if err != nil && errors.Is(err, context.DeadlineExceeded) {
+				return c.JSON(http.StatusServiceUnavailable, map[string]string{
+					"error": "request timeout",
+					"code":  "REQUEST_TIMEOUT",
+				})
+			}
+			return err
 		},
 	}))
 	e.Use(demo.Guard(cfg.DemoSeed))

@@ -92,6 +92,9 @@ func (h *Handler) UpdateControl(c echo.Context) error {
 		if errors.Is(err, ErrInvalidMaturityScore) {
 			return errResp(c, http.StatusUnprocessableEntity, err.Error(), "CK_VALIDATION_ERROR")
 		}
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "control not found", "CK_CONTROL_NOT_FOUND")
+		}
 		log.Error().Err(err).Msg("update control")
 		return errResp(c, http.StatusInternalServerError, "failed to update control", "CK_UPDATE_CONTROL_FAILED")
 	}

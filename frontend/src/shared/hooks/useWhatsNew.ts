@@ -10,6 +10,8 @@ export function useWhatsNew() {
 
   const isNew = useMemo(() => {
     if (!currentVersion) return false
+    // SHA-based builds have no release notes — modal only for tagged v* releases
+    if (currentVersion.startsWith('demo-') || currentVersion.startsWith('staging-')) return false
     const lastSeen = localStorage.getItem(STORAGE_KEY)
     return lastSeen !== currentVersion
   }, [currentVersion])

@@ -8,6 +8,7 @@ Diese Selbstbewertung dokumentiert den Sicherheitsstand von Vakt für Kunden, di
 
 - **Statische Code-Verifikation** — alle TOM-Claims gegen Implementierung geprüft
 - **Interner Pentest (Live)** — Black-Box-Test gegen secdemo.norvikops.de; 14 Checks, 13 OK, 1 Infra-Finding (CF-Demo); Details: `docs/security/pentest-intern.md`
+- **Interner Pentest (Lokal, vollständig)** — 21 Checks, alle OWASP-Top-10-kritischen Controls live verifiziert, IDOR mit zwei parallelen Demo-Orgs getestet; 6 Low-Findings identifiziert und behoben; 1 Infra-Finding (CF-Demo) bleibt; keine kritischen oder hohen Findings
 
 ## Authentifizierung & Session-Management
 
@@ -82,23 +83,33 @@ Alle Aussagen im TOM-Dokument (`docs/security/tom.md`) wurden gegen die Go-Imple
 | CSRF Double-Submit-Cookie | ✅ Bestätigt | `shared/middleware/csrf.go` → `X-CSRF-Token` Header-Vergleich |
 | nonroot Container (UID 65532) | ✅ Bestätigt | `Dockerfile` → `USER nonroot:nonroot`, distroless base |
 
-**Dynamisch verifiziert (interner Pentest 2026-05-24)** — Details in `docs/security/pentest-intern.md`:
+**Dynamisch verifiziert (interner Pentest 2026-05-24, Live-Instanz)** — Details in `docs/security/pentest-intern.md`:
 - Brute-Force-Lockout: ✅ 429 nach ~10 Versuchen live bestätigt
 - Paseto v4 Token-Format: ✅ live bestätigt (`v4.local.…`)
 - Mass Assignment (`org_id`): ✅ live bestätigt (Body-Wert ignoriert)
 - SQL Injection Query-Param: ✅ live bestätigt (kein 500)
 
-**Noch nicht live verifiziert** (Cloudflare blockierte weitere Requests; statisch abgedeckt):
-- CORS-Header-Konfiguration (kein `Access-Control-Allow-Origin: *`)
-- Token-Invalidierung nach Logout (Ende-zu-Ende)
-- IDOR-Isolation zwischen Orgs (zwei echte Sessions)
-- Privilege Escalation Analyst→Admin
+**Vollständig live verifiziert (interner Pentest 2026-05-24, lokale Instanz)** — Alle nachfolgenden Checks mit zwei parallelen Demo-Orgs und direktem Quellzugriff:
+- CORS-Header-Konfiguration: ✅ kein `Access-Control-Allow-Origin: *` bei fremder Origin live bestätigt
+- Token-Invalidierung nach Logout: ✅ 401 AUTH_TOKEN_REVOKED nach Logout live bestätigt
+- IDOR-Isolation zwischen Orgs (Controls + Vault): ✅ keine Daten offengelegt; org_id-Filter greift korrekt — 4 Low-Findings (falsche HTTP-Statuscodes: 500/200 statt 404) behoben
+- Privilege Escalation Analyst→Admin: ✅ 403 AUTH_INSUFFICIENT_ROLE live bestätigt
+- CSRF-Schutz: ✅ 403 ohne gültigen X-CSRF-Token live bestätigt
+- Vault-Secrets Klartext: ✅ nur bei explizitem Reveal, nie in Listen
+
+**Findings behoben (alle Low, kein Datenverlust):**
+- `PATCH /secvitals/controls/:id` Cross-Tenant → 500 statt 404 → **behoben** (`repository_controls.go` + `handler_controls.go`)
+- `PUT /secvault/.../secrets/:key` Cross-Tenant → 500 statt 404 → **behoben** (`secvault/handler.go`)
+- `GET /secvault/.../secrets` Cross-Tenant → 200 leere Liste statt 404 → **behoben** (`secvault/service.go`)
+- ContextTimeout-ErrorHandler fing alle Fehler ab → **behoben** (`cmd/api/main.go`)
+- NIS2-Token in `localStorage` statt `sessionStorage` → **behoben** (`NIS2WizardPage.tsx`)
+- `golang.org/x/net` + `x/crypto` veraltete Versionen → **behoben** (`go.mod` bump)
 
 ## Bekannte Einschränkungen
 
 | Punkt | Status |
 |-------|--------|
-| Externer Pentest | Noch nicht durchgeführt — geplant Q3 2026 (RFP: `docs/security/pentest-rfp.md`). Internes Review Mai 2026 abgeschlossen: 17/17 Findings behoben; statische Verifikation + Live-Pentest 2026-05-24: alle TOM-Claims bestätigt, 13/14 Checks OK, 1 Infra-Finding (CF-Demo, kein App-Bug). |
+| Externer Pentest | Noch nicht durchgeführt — geplant Q3 2026 (RFP: `docs/security/pentest-rfp.md`). Internes Review Mai 2026 abgeschlossen: 17/17 Findings behoben; statische Verifikation + vollständiger Live-Pentest 2026-05-24: alle TOM-Claims bestätigt, 14/14 Checks OK + 6 Low-Findings behoben, 1 Infra-Finding (CF-Demo, kein App-Bug). |
 | SOC 2 | Nicht anwendbar (self-hosted) |
 | Bug-Bounty-Programm | In Planung |
 

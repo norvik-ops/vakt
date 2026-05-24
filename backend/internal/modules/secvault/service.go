@@ -136,7 +136,11 @@ func (s *Service) GetSecret(ctx context.Context, orgID, envID, key, accessVia, i
 }
 
 // ListSecretKeys returns metadata for all secrets in an environment (values omitted).
+// Returns an error wrapping pgx.ErrNoRows when the environment does not belong to orgID.
 func (s *Service) ListSecretKeys(ctx context.Context, orgID, envID string) ([]Secret, error) {
+	if _, err := s.getProjectIDForEnv(ctx, envID, orgID); err != nil {
+		return nil, err
+	}
 	return s.repo.ListSecretKeys(ctx, orgID, envID)
 }
 
