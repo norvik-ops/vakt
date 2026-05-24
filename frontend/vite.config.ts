@@ -29,7 +29,7 @@ export default defineConfig({
         categories: ['business', 'productivity'],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,svg,png,woff2}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         runtimeCaching: [
           {
             urlPattern: /^\/api\/v1\/(license|health)/,
@@ -40,6 +40,8 @@ export default defineConfig({
             },
           },
         ],
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//],
       },
       devOptions: {
         enabled: false, // don't run SW in dev
