@@ -167,7 +167,7 @@ func Load() (*Config, error) {
 		RedisUrl:            getEnv("VAKT_REDIS_URL", ""),
 		SecretKey:           getEnv("VAKT_SECRET_KEY", ""),
 		APIPort:             getEnv("VAKT_API_PORT", "8080"),
-		ModulesEnabled:      getEnv("VAKT_MODULES_ENABLED", "secpulse,secvitals,secvault,secreflex,secprivacy"),
+		ModulesEnabled:      getEnv("VAKT_MODULES_ENABLED", "secpulse,secvitals,secvault,secreflex,secprivacy,hr"),
 		AutoMigrate:         getEnv("AUTO_MIGRATE", "false") == "true",
 		DemoSeed:            getEnv("VAKT_DEMO", "false") == "true",
 		Version:             getEnv("APP_VERSION", "0.1.0"),
