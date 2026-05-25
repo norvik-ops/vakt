@@ -248,7 +248,7 @@ export default function EmployeesPage() {
   }
 
   function handleDelete(employee: Employee) {
-    scheduleDelete(employee, () => setHiddenIds((prev) => new Set(prev).add(employee.id)))
+    scheduleDelete(employee, () => { setHiddenIds((prev) => new Set(prev).add(employee.id)) })
   }
 
   const isPending = createEmployee.isPending || updateEmployee.isPending

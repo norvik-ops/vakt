@@ -160,7 +160,7 @@ export default function ChecklistsPage() {
   }
 
   function handleDelete(checklist: Checklist) {
-    scheduleDelete(checklist, () => setHiddenIds((prev) => new Set(prev).add(checklist.id)))
+    scheduleDelete(checklist, () => { setHiddenIds((prev) => new Set(prev).add(checklist.id)) })
   }
 
   return (
