@@ -6,7 +6,6 @@ package main
 
 import (
 	"github.com/hibiken/asynq"
-	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/admin"
@@ -28,22 +27,12 @@ import (
 )
 
 func buildScheduler(cfg *config.Config) *asynq.Scheduler {
-	// Parse the full Redis URL into individual fields — asynq expects "host:port".
-	redisOpt := asynq.RedisClientOpt{Addr: "localhost:6379"}
-	if cfg != nil && cfg.RedisUrl != "" {
-		if parsed, err := redis.ParseURL(cfg.RedisUrl); err == nil {
-			redisOpt = asynq.RedisClientOpt{
-				Addr:     parsed.Addr,
-				Password: parsed.Password,
-				DB:       parsed.DB,
-			}
-		} else {
-			log.Warn().Err(err).Str("url", cfg.RedisUrl).Msg("scheduler: invalid Redis URL, falling back to localhost:6379")
-		}
+	var redisURL string
+	if cfg != nil {
+		redisURL = cfg.RedisUrl
 	}
-
 	scheduler := asynq.NewScheduler(
-		redisOpt,
+		asynqRedisOpt(redisURL),
 		&asynq.SchedulerOpts{},
 	)
 

@@ -51,23 +51,27 @@ func workerConcurrency() int {
 	return 8
 }
 
+// asynqRedisOpt converts VAKT_REDIS_URL to an asynq.RedisClientOpt.
+// Accepts both full URLs (redis://host:port) and bare addr (host:port).
+func asynqRedisOpt(redisURL string) asynq.RedisClientOpt {
+	if redisURL == "" {
+		return asynq.RedisClientOpt{Addr: "localhost:6379"}
+	}
+	if parsed, err := redis.ParseURL(redisURL); err == nil {
+		return asynq.RedisClientOpt{
+			Addr:     parsed.Addr,
+			Password: parsed.Password,
+			DB:       parsed.DB,
+		}
+	}
+	// Bare host:port (no scheme) — pass through directly.
+	return asynq.RedisClientOpt{Addr: redisURL}
+}
+
 func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	cfg, _ := config.Load()
 
-	// Parse the full Redis URL (redis://:password@host:port) into individual
-	// fields — asynq.RedisClientOpt.Addr expects "host:port", not a URL.
-	redisOpt := asynq.RedisClientOpt{Addr: "localhost:6379"}
-	if cfg != nil && cfg.RedisUrl != "" {
-		if parsed, err := redis.ParseURL(cfg.RedisUrl); err == nil {
-			redisOpt = asynq.RedisClientOpt{
-				Addr:     parsed.Addr,
-				Password: parsed.Password,
-				DB:       parsed.DB,
-			}
-		} else {
-			log.Warn().Err(err).Str("url", cfg.RedisUrl).Msg("worker: invalid Redis URL, falling back to localhost:6379")
-		}
-	}
+	redisOpt := asynqRedisOpt(cfg.RedisUrl)
 
 	srv := asynq.NewServer(
 		redisOpt,
