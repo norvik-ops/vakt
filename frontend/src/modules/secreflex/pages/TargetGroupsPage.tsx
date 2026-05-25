@@ -153,6 +153,7 @@ export default function TargetGroupsPage() {
       <PageHeader
         title="Target Groups"
         description="Zielgruppen für Phishing-Simulationen verwalten."
+        tier="pro"
         actions={
           <Button onClick={() => { setOpen(true); }}>
             <Plus className="w-4 h-4 mr-1" />New Group

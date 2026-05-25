@@ -59,6 +59,7 @@ export default function ProjectsPage() {
       <PageHeader
         title={t('secvault.projectsPage.title')}
         description={t('secvault.projectsPage.description')}
+        tier="pro"
         actions={
           <Button onClick={() => { setShowCreate(true); }}>
             <Plus className="w-4 h-4" />

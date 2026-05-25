@@ -378,6 +378,7 @@ export default function FindingsPage() {
       <PageHeader
         title={t('secpulse.findingsPage.title')}
         description={data ? t('secpulse.findingsPage.total', { count: data.pagination.total }) : undefined}
+        tier="pro"
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => { setCsvImportOpen(true); }}>

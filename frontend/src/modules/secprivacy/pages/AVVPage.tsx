@@ -282,6 +282,7 @@ export default function AVVPage() {
       <PageHeader
         title={t('secprivacy.avvPage.title')}
         description={t('secprivacy.avvPage.description')}
+        tier="pro"
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => { setTemplatePickerOpen(true); }}>
