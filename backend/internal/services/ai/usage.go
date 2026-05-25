@@ -20,6 +20,9 @@ var ErrRateLimited = errors.New("ai: rate limit exceeded for organization")
 // Org erschoepft ist (`VAKT_AI_DAILY_TOKEN_LIMIT_PER_ORG`).
 var ErrQuotaExceeded = errors.New("ai: daily token quota exceeded for organization")
 
+// CEMonthlyLimit is the number of AI requests allowed per month for Community Edition orgs.
+const CEMonthlyLimit = 25
+
 // UsageTracker buendelt Rate-Limit, Tages-Quota, Response-Cache und
 // Usage-Persistierung. Der Tracker ist optional: wenn rdb oder db nil ist,
 // faellt der jeweilige Pfad auf "always allow" / "no cache" / "no persist"
@@ -184,4 +187,26 @@ func (u *UsageTracker) Record(ctx context.Context, r UsageRecord) {
 	if err != nil {
 		log.Warn().Err(err).Str("org_id", r.OrgID).Msg("ai: usage record insert failed")
 	}
+}
+
+// CEMonthlyUsage returns how many AI requests the org has made this calendar month.
+// Only successful, non-cached requests are counted (status = 'ok').
+// Returns 0 and logs on DB error so callers degrade gracefully.
+func (u *UsageTracker) CEMonthlyUsage(ctx context.Context, orgID string) int {
+	if u.db == nil || orgID == "" {
+		return 0
+	}
+	var count int
+	err := u.db.QueryRow(ctx, `
+		SELECT COUNT(*)::int
+		FROM ai_usage
+		WHERE org_id = $1::uuid
+		  AND status = 'ok'
+		  AND created_at >= date_trunc('month', NOW() AT TIME ZONE 'UTC')
+	`, orgID).Scan(&count)
+	if err != nil {
+		log.Warn().Err(err).Str("org_id", orgID).Msg("ai: CE monthly usage lookup failed — treating as 0")
+		return 0
+	}
+	return count
 }

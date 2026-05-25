@@ -79,20 +79,63 @@ The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key requi
 
 ---
 
-## Pro License
+## Pricing
 
-Vakt Community is free for self-hosting and includes the **AI advisor** out-of-the-box (since v0.6.x). Pro unlocks additional Premium-Compliance features:
-- TISAX, DORA, EU AI Act, CRA compliance frameworks
-- PDF audit exports and audit packages
-- NIS2 reporting assistant
-- SSO (OIDC/SAML) integration
-- API access tokens
-- Advanced scanner features (SBOM, EOL tracking)
-- Advanced phishing simulation campaigns
-- Supplier portal and granular module permissions
+| | **Community** | **Pro** | **Enterprise** |
+|---|:---:|:---:|:---:|
+| **Price** | Free | €199/month · €1,990/year | Contact us |
+| **Self-hosted** | ✅ | ✅ | ✅ |
+| **No phone-home** | ✅ | ✅ | ✅ |
+| **Unlimited users** | ✅ | ✅ | ✅ |
 
-Purchase at [vakt.io/pricing](https://vakt.io/pricing). After purchase, enter your
-license key in **Settings → License**.
+### Compliance Frameworks
+
+| Framework | Community | Pro | Enterprise |
+|---|:---:|:---:|:---:|
+| NIS2 | ✅ | ✅ | ✅ |
+| ISO 27001 | ✅ | ✅ | ✅ |
+| BSI IT-Grundschutz | — | ✅ | ✅ |
+| EU AI Act | — | ✅ | ✅ |
+| EU CRA | — | ✅ | ✅ |
+| DORA | — | — | ✅ |
+| TISAX | — | — | ✅ |
+| ISO 42001 | — | — | ✅ |
+| Custom frameworks | — | — | ✅ |
+
+### Modules
+
+| Module | Community | Pro | Enterprise |
+|---|:---:|:---:|:---:|
+| Vakt Comply (controls, risks, incidents, policies) | ✅ | ✅ | ✅ |
+| Vakt HR (onboarding/offboarding checklists) | ✅ | ✅ | ✅ |
+| Vakt Scan (Trivy, Nuclei, OpenVAS) | — | ✅ | ✅ |
+| Vakt Vault (secrets storage, Git scanning) | — | ✅ | ✅ |
+| Vakt Aware (phishing simulations, trainings) | — | ✅ | ✅ |
+| Vakt Privacy (VVT, DPIA, AVV, breach records) | — | ✅ | ✅ |
+
+### Features
+
+| Feature | Community | Pro | Enterprise |
+|---|:---:|:---:|:---:|
+| AI Compliance Advisor | 25 req/month | Unlimited | Unlimited |
+| PDF audit exports | ✅ | ✅ | ✅ |
+| Advanced PDF (branding, executive summary) | — | ✅ | ✅ |
+| Evidence versioning | — | ✅ | ✅ |
+| Custom controls | — | ✅ | ✅ |
+| SSO / OIDC | — | ✅ | ✅ |
+| Webhook integrations | — | ✅ | ✅ |
+| NIS2 reporting assistant | — | ✅ | ✅ |
+| Supplier portal | — | ✅ | ✅ |
+| SCIM provisioning | — | — | ✅ |
+| White-label | — | — | ✅ |
+| Multi-entity / group structures | — | — | ✅ |
+| Dedicated onboarding | — | — | ✅ |
+| SLA with response time guarantee | — | — | ✅ |
+| Audit API (read-only, for SIEM/GRC) | — | — | ✅ |
+
+**Get a license key:** [buy.polar.sh](https://buy.polar.sh/polar_cl_3evwYMHJEFIS6SAIBbO3QFHCPwDwvLNbW29cH30tlfr) — purchase and receive your key by email. Activate in **Settings → License**.
+
+**Enterprise:** Contact [hello@norvikops.de](mailto:hello@norvikops.de) for SCIM, TISAX, DORA, white-label, or custom SLA requirements.
 
 ---
 

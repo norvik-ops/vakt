@@ -55,6 +55,8 @@ func RegisterWithOptions(g *echo.Group, db *pgxpool.Pool, provider, baseURL, api
 	}
 	h := NewHandler(svc)
 	g.GET("/ai/status", h.Status)
+	// CE monthly usage counter — used by frontend to show "18/25 Anfragen diesen Monat".
+	g.GET("/ai/usage", h.Usage)
 	// S32-3: Ollama model list for org settings model dropdown.
 	g.GET("/ai/models", h.ListOllamaModels)
 	g.POST("/ai/report", h.GenerateReport)

@@ -61,8 +61,10 @@ type Config struct {
 	// License key (base64url payload + "." + base64url signature).
 	// Leave empty for Community Edition. Set VAKT_DEMO=true to enable all features without a key.
 	LicenseKey string
-	// LemonSqueezy webhook signing secret (VAKT_LS_WEBHOOK_SECRET).
+	// LemonSqueezy webhook signing secret (VAKT_LS_WEBHOOK_SECRET). Kept for backward compat.
 	LSWebhookSecret string
+	// Polar.sh webhook signing secret (VAKT_POLAR_WEBHOOK_SECRET).
+	PolarWebhookSecret string
 	// ECDSA private key PEM for signing license keys on purchase (VAKT_LICENSE_PRIVATE_KEY).
 	LicensePrivateKey string
 	// UpdateCheck — opt-in check against GitHub releases API once per day.
@@ -200,6 +202,7 @@ func Load() (*Config, error) {
 		UploadDir:           getEnv("VAKT_UPLOAD_DIR", "./data/uploads"),
 		LicenseKey:          getEnv("VAKT_LICENSE_KEY", ""),
 		LSWebhookSecret:     getEnv("VAKT_LS_WEBHOOK_SECRET", ""),
+		PolarWebhookSecret:  getEnv("VAKT_POLAR_WEBHOOK_SECRET", ""),
 		LicensePrivateKey:   getEnv("VAKT_LICENSE_PRIVATE_KEY", ""),
 		UpdateCheck:         getEnv("VAKT_UPDATE_CHECK", "false") == "true",
 		Staging:             getEnv("VAKT_STAGING", "false") == "true",

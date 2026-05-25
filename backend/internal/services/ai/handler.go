@@ -9,6 +9,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/license"
 )
 
 type Handler struct {
@@ -17,6 +19,40 @@ type Handler struct {
 
 func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
+}
+
+// ceLimitResponse is the standard body returned when a CE org exceeds the monthly AI limit.
+type ceLimitResponse struct {
+	Error     string `json:"error"`
+	Code      string `json:"code"`
+	Used      int    `json:"used"`
+	Limit     int    `json:"limit"`
+	ResetHint string `json:"reset_hint"`
+}
+
+// checkCELimit returns HTTP 402 when a Community-tier org has reached the 25-request monthly cap.
+// For Pro/Enterprise orgs (or when usage tracking is unavailable) it is a no-op and returns nil.
+func (h *Handler) checkCELimit(c echo.Context) error {
+	lic, _ := c.Get("license").(*license.License)
+	if lic == nil || lic.IsPro() {
+		return nil
+	}
+	// CE org — check monthly request count.
+	if h.svc.usage == nil {
+		return nil
+	}
+	orgID, _ := c.Get("org_id").(string)
+	used := h.svc.usage.CEMonthlyUsage(c.Request().Context(), orgID)
+	if used >= CEMonthlyLimit {
+		return c.JSON(http.StatusPaymentRequired, ceLimitResponse{
+			Error:     "AI-Limit für Community Edition erreicht",
+			Code:      "AI_CE_MONTHLY_LIMIT",
+			Used:      used,
+			Limit:     CEMonthlyLimit,
+			ResetHint: "Limit wird am 1. des nächsten Monats zurückgesetzt. Upgrade auf Vakt Pro für unbegrenzte AI-Anfragen.",
+		})
+	}
+	return nil
 }
 
 // Status checks if the configured AI provider is reachable.
@@ -29,6 +65,31 @@ func (h *Handler) Status(c echo.Context) error {
 	})
 }
 
+// Usage returns the current CE monthly AI usage for the authenticated org.
+// Pro/Enterprise orgs always get {"used":0,"limit":-1,"is_pro":true}.
+// This endpoint is used by the frontend to display "18/25 Anfragen diesen Monat".
+func (h *Handler) Usage(c echo.Context) error {
+	lic, _ := c.Get("license").(*license.License)
+	isPro := lic != nil && lic.IsPro()
+	if isPro {
+		return c.JSON(http.StatusOK, map[string]any{
+			"used":   0,
+			"limit":  -1,
+			"is_pro": true,
+		})
+	}
+	orgID, _ := c.Get("org_id").(string)
+	used := 0
+	if h.svc.usage != nil && orgID != "" {
+		used = h.svc.usage.CEMonthlyUsage(c.Request().Context(), orgID)
+	}
+	return c.JSON(http.StatusOK, map[string]any{
+		"used":   used,
+		"limit":  CEMonthlyLimit,
+		"is_pro": false,
+	})
+}
+
 // ComplianceAdvice handles POST /secvitals/ai/advice.
 // It collects the org's current compliance gaps and asks the LLM for a
 // prioritized weekly action plan. Returns {"advice": "1. ...\n2. ..."}.
@@ -36,6 +97,9 @@ func (h *Handler) ComplianceAdvice(c echo.Context) error {
 	orgID, ok := c.Get("org_id").(string)
 	if !ok || orgID == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+	}
+	if err := h.checkCELimit(c); err != nil {
+		return err
 	}
 
 	advice, err := h.svc.ComplianceAdvice(c.Request().Context(), orgID)
@@ -51,6 +115,9 @@ func (h *Handler) ComplianceAdvice(c echo.Context) error {
 // Body: { topic: string, framework?: string }
 // Returns: { draft: string } — Markdown policy draft for the admin to review.
 func (h *Handler) DraftPolicy(c echo.Context) error {
+	if err := h.checkCELimit(c); err != nil {
+		return err
+	}
 	var input struct {
 		Topic     string `json:"topic"`
 		Framework string `json:"framework"`
@@ -70,6 +137,9 @@ func (h *Handler) DraftPolicy(c echo.Context) error {
 // Body: { summary: string, type?: string }
 // Returns: { guide: string } — numbered checklist with response steps + deadline hints.
 func (h *Handler) IncidentResponseGuide(c echo.Context) error {
+	if err := h.checkCELimit(c); err != nil {
+		return err
+	}
 	var input struct {
 		Summary string `json:"summary"`
 		Type    string `json:"type"`
@@ -130,6 +200,9 @@ func (h *Handler) GenerateReport(c echo.Context) error {
 // Sprint 15 / S15-5. Vor dem Streaming-Start läuft Rate-Limit + Quota durch
 // gateAndStream — analog zu gateAndGenerate für nicht-streaming-Calls.
 func (h *Handler) ChatStream(c echo.Context) error {
+	if err := h.checkCELimit(c); err != nil {
+		return err
+	}
 	orgID, _ := c.Get("org_id").(string)
 	if orgID == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
@@ -225,6 +298,9 @@ func (h *Handler) ChatStream(c echo.Context) error {
 // It streams an explanation of why a control is still open and suggests 3 next steps.
 // S52-2.
 func (h *Handler) GapExplain(c echo.Context) error {
+	if err := h.checkCELimit(c); err != nil {
+		return err
+	}
 	orgID, _ := c.Get("org_id").(string)
 	if orgID == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
@@ -301,6 +377,9 @@ func (h *Handler) GapExplain(c echo.Context) error {
 // It generates a 2–3 sentence audit narrative for the risk and persists it.
 // S52-3.
 func (h *Handler) RiskNarrative(c echo.Context) error {
+	if err := h.checkCELimit(c); err != nil {
+		return err
+	}
 	orgID, _ := c.Get("org_id").(string)
 	if orgID == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})

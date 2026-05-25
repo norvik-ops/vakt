@@ -7,6 +7,7 @@ import { ProGate } from '../../../shared/components/ProGate'
 import { useAIStream } from '../../../shared/hooks/useAIStream'
 import { LocalLLMBadge } from '../../../shared/components/LocalLLMBadge'
 import { TokenCostIndicator } from '../../../shared/components/TokenCostIndicator'
+import { CEAICounter } from '../../../shared/components/CEAICounter'
 
 interface SourceRef {
   label: string
@@ -92,18 +93,22 @@ export function AIAdvisor({ aiAvailable, providerHost, model }: Props) {
     const code = (error as Error & { code?: string }).code
     if (code === 'AI_RATE_LIMITED') return t('ai.stream.rateLimited')
     if (code === 'AI_QUOTA_EXCEEDED') return t('ai.stream.quotaExceeded')
+    if (code === 'AI_CE_MONTHLY_LIMIT') return 'KI-Monatslimit (25 Anfragen) erreicht. Upgrade auf Pro für unbegrenzte Anfragen.'
     return null
   })()
 
   return (
     <div className="rounded-xl border border-border bg-surface p-5 space-y-4">
       {/* Header mit Badge */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-brand shrink-0" />
           <h2 className="text-sm font-semibold text-primary">KI-Compliance-Berater</h2>
         </div>
-        {aiAvailable && <LocalLLMBadge providerHost={providerHost} model={model} />}
+        <div className="flex items-center gap-2">
+          <CEAICounter />
+          {aiAvailable && <LocalLLMBadge providerHost={providerHost} model={model} />}
+        </div>
       </div>
 
       {/* Not configured */}

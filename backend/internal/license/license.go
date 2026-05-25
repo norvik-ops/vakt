@@ -123,12 +123,20 @@ func (l *License) Has(feature string) bool {
 	return false
 }
 
-// IsPro reports whether the license is a Pro-tier license.
+// IsPro reports whether the license is at least Pro-tier.
 func (l *License) IsPro() bool {
 	if l == nil {
 		return false
 	}
-	return l.Demo || l.Tier == "pro"
+	return l.Demo || l.Tier == "pro" || l.Tier == "enterprise"
+}
+
+// IsEnterprise reports whether the license is Enterprise-tier.
+func (l *License) IsEnterprise() bool {
+	if l == nil {
+		return false
+	}
+	return l.Demo || l.Tier == "enterprise"
 }
 
 func communityLicense() *License {
@@ -141,7 +149,7 @@ func communityLicense() *License {
 
 func demoLicense() *License {
 	return &License{
-		Tier:     "pro",
+		Tier:     "enterprise",
 		Features: allFeatures,
 		OrgName:  "Demo",
 		IssuedAt: time.Now(),

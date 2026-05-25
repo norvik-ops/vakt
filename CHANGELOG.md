@@ -9,6 +9,64 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.33.0] — 2026-05-25
+
+Monetarisierung Phase 4 — Pricing-Dokumentation + Public README
+
+### Changed
+
+- **README Pricing-Section** — Vollständige CE/Pro/Enterprise Tier-Tabelle mit Framework-Matrix (NIS2/ISO 27001 ✅ Community; BSI/EU AI Act/CRA ✅ Pro; DORA/TISAX/ISO 42001 ✅ Enterprise), Modul-Verfügbarkeit und Feature-Vergleich (AI: 25 req/month CE vs. Unlimited Pro/Enterprise). Checkout-Links auf Polar.sh aktualisiert.
+
+---
+
+## [0.32.0] — 2026-05-25
+
+Monetarisierung Phase 3 — In-App UX vollständig
+
+### Added
+
+- **CE AI-Counter-Anzeige** — `CEAICounter`-Component zeigt "18 / 25 KI-Anfragen diesen Monat" mit Fortschrittsbalken im KI-Berater-Widget. Warnung bei ≤5 verbleibenden Anfragen (Amber), Erschöpft-State mit Upgrade-Link (Rot).
+- **`useAIUsage` Hook** — ruft `GET /api/v1/secvitals/ai/usage` ab, liefert `{used, limit, is_pro}`. Pro-Orgs: `is_pro=true`, Counter ausgeblendet.
+- **`AI_CE_MONTHLY_LIMIT` Error-Handling** — KI-Berater zeigt deutschen Hinweis statt generischem Fehler wenn das CE-Monatslimit erreicht ist.
+
+### Changed
+
+- **Checkout/Portal-URLs auf Polar.sh migriert** — `frontend/src/lib/constants.ts`: `VAKT_PRO_CHECKOUT_URL` → `buy.polar.sh/norvik-ops/vakt-pro-monthly`, `VAKT_POLAR_PORTAL_URL` neu. `VAKT_LS_PORTAL_URL` als Alias erhalten.
+
+### Notes
+
+Folgende Phase-3-Elemente waren bereits implementiert: License-Key-Eingabe (Settings → Lizenz), ProGate-Upgrade-Prompt, 30-Tage-Ablauf-Banner (LicenseExpiryBanner), Post-Expiry-Hint mit Renewal-Link.
+
+---
+
+## [0.31.0] — 2026-05-25
+
+Monetarisierung Phase 2 — Gate Enforcement vollständig, CE AI-Counter
+
+### Added
+
+- **CE AI-Monatslimit (25 Anfragen)** — Community-Edition-Orgs können AI-Features (Gap-Analyse, Policy-Draft, Incident-Guide, Chat, GapExplain, RiskNarrative) bis zu 25-mal pro Monat verwenden. Ab Anfrage 26 folgt HTTP 402 mit `AI_CE_MONTHLY_LIMIT`. Pro/Enterprise: unbegrenzt.
+- **`GET /api/v1/secvitals/ai/usage`** — gibt `{used, limit, is_pro}` zurück. Frontend nutzt das zum Anzeigen von "18/25 Anfragen diesen Monat".
+
+### Notes
+
+Feature-Gates für alle Module und Frameworks (TISAX, DORA, CRA, EU AI Act, SCIM, SSO) waren bereits vollständig implementiert (106 aktive `features.Require()`-Gates). Phase 2 war deshalb auf den fehlenden CE-AI-Counter reduziert.
+
+---
+
+## [0.30.0] — 2026-05-25
+
+Monetarisierung Phase 1 — Polar.sh Webhook, Demo-Tier Enterprise, License-Infrastruktur vollständig
+
+### Added
+
+- **Polar.sh Webhook** — `POST /api/v1/billing/webhook` empfängt Polar.sh-Subscription-Events und stellt automatisch Pro-Lizenzschlüssel aus. HMAC-SHA256-Signaturverifikation, Replay-Schutz via `polar_webhook_events`, idempotente Subscription-Speicherung in `polar_subscriptions`. Migration 148.
+- **Demo → Enterprise-Tier** — `VAKT_DEMO=true` erteilt jetzt Enterprise-Tier statt Pro. Alle Features inkl. SCIM, TISAX, DORA sichtbar für Interessenten auf der Demo-Instanz.
+- **`IsEnterprise()` auf License** — neue Hilfsmethode für Enterprise-Gate-Checks. `IsPro()` gibt auch für Enterprise `true` zurück (Enterprise ⊇ Pro).
+- **`VAKT_POLAR_WEBHOOK_SECRET`** — neue Umgebungsvariable für Polar-Webhook-Signaturprüfung, dokumentiert in `.env.example`.
+
+---
+
 ## [0.29.0] — 2026-05-25
 
 Pre-v1.0 Sprint D — HKDF-Schlüsseltrennung, SCIM-Token-Ablauf, Pentest-Dokumentation
