@@ -1,8 +1,12 @@
 package scim
 
 import (
+	"time"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"golang.org/x/time/rate"
 
 	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
@@ -25,9 +29,15 @@ func Register(g *echo.Group, db *pgxpool.Pool) {
 	// is the global one set at startup.  Pro enforcement here uses the platform
 	// license, which is the correct behaviour for a self-hosted single-tenant
 	// deployment.
+	// 5 req/s burst 10 per token — prevents credential stuffing and runaway IdP sync loops.
+	scimLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
+		middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(5), Burst: 10, ExpiresIn: 5 * time.Minute},
+	))
+
 	scim := g.Group("",
 		features.Require(features.FeatureSCIMProvisioning),
 		SCIMAuthMiddleware(db),
+		scimLimiter,
 	)
 
 	// ServiceProviderConfig — discovery endpoint, no auth required by spec but
