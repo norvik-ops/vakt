@@ -518,7 +518,10 @@ func (s *Service) SendCampaignEmails(ctx context.Context, orgID, campaignID stri
 		return fmt.Errorf("parse template body: %w", err)
 	}
 
-	type pendingMsg struct{ from, to string; body []byte }
+	type pendingMsg struct {
+		from, to string
+		body     []byte
+	}
 	var msgs []pendingMsg
 	failed := 0
 
@@ -606,13 +609,13 @@ func (s *Service) openSMTPClient(from string) (*smtp.Client, func(), error) {
 			return nil, nil, fmt.Errorf("smtp dial: %w", err)
 		}
 		if err := conn.StartTLS(&tls.Config{ServerName: s.smtpCfg.Host}); err != nil {
-			conn.Close()
+			_ = conn.Close()
 			return nil, nil, fmt.Errorf("starttls: %w", err)
 		}
 		if s.smtpCfg.User != "" {
 			auth := smtp.PlainAuth("", s.smtpCfg.User, s.smtpCfg.Pass, s.smtpCfg.Host)
 			if err := conn.Auth(auth); err != nil {
-				conn.Close()
+				_ = conn.Close()
 				return nil, nil, fmt.Errorf("smtp auth: %w", err)
 			}
 		}
@@ -625,13 +628,13 @@ func (s *Service) openSMTPClient(from string) (*smtp.Client, func(), error) {
 		}
 		c, err := smtp.NewClient(tlsConn, s.smtpCfg.Host)
 		if err != nil {
-			tlsConn.Close()
+			_ = tlsConn.Close()
 			return nil, nil, fmt.Errorf("smtp client: %w", err)
 		}
 		if s.smtpCfg.User != "" {
 			auth := smtp.PlainAuth("", s.smtpCfg.User, s.smtpCfg.Pass, s.smtpCfg.Host)
 			if err := c.Auth(auth); err != nil {
-				c.Close()
+				_ = c.Close()
 				return nil, nil, fmt.Errorf("smtp auth: %w", err)
 			}
 		}
@@ -646,7 +649,7 @@ func (s *Service) openSMTPClient(from string) (*smtp.Client, func(), error) {
 		if s.smtpCfg.User != "" {
 			auth := smtp.PlainAuth("", s.smtpCfg.User, s.smtpCfg.Pass, s.smtpCfg.Host)
 			if err := conn.Auth(auth); err != nil {
-				conn.Close()
+				_ = conn.Close()
 				return nil, nil, fmt.Errorf("smtp auth: %w", err)
 			}
 		}
