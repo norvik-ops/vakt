@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next'
 import { apiFetch, FeatureLockedError } from '../../../api/client'
 import { useAuthStore } from '../../../shared/stores/auth'
 import { cn } from '../../../lib/utils'
-import { VAKT_LS_PORTAL_URL } from '../../../lib/constants'
+import { VAKT_POLAR_PORTAL_URL } from '../../../lib/constants'
 import { useOrgSector, useUpdateOrgSector } from '../../../modules/secvitals/hooks/useOrgSector'
 import { useApprovalSetting, useUpdateApprovalSetting } from '../../../modules/secvitals/hooks/useApprovals'
 import { SECTOR_LABELS } from '../../../modules/secvitals/types'
@@ -275,7 +275,7 @@ function LicenseSection() {
         )}
 
         {isPro && !lic?.demo && (
-          <a href={VAKT_LS_PORTAL_URL} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
+          <a href={VAKT_POLAR_PORTAL_URL} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
             {t('settingsPage.manageSubscription')}
           </a>
         )}

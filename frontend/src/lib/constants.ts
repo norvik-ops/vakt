@@ -10,5 +10,3 @@ export const VAKT_PRO_ANNUAL_URL = VAKT_PRO_CHECKOUT_URL
 /** Polar.sh customer portal for managing subscriptions and downloading license keys. */
 export const VAKT_POLAR_PORTAL_URL = 'https://polar.sh/norvik-ops/portal'
 
-/** @deprecated Kept for backward compat — use VAKT_POLAR_PORTAL_URL. */
-export const VAKT_LS_PORTAL_URL = VAKT_POLAR_PORTAL_URL

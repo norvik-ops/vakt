@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../../api/client'
 import { useAuthStore } from '../stores/auth'
-import { VAKT_LS_PORTAL_URL } from '../../lib/constants'
+import { VAKT_POLAR_PORTAL_URL } from '../../lib/constants'
 import { useFormatDate } from '../hooks/useFormatDate'
 
 interface LicenseInfo {
@@ -89,7 +89,7 @@ export function LicenseExpiryBanner() {
             : `Deine Pro-Lizenz läuft am ${formattedDate} ab — noch ${String(days)} Tag${days === 1 ? '' : 'e'}.`}
           {' '}
           <a
-            href={VAKT_LS_PORTAL_URL}
+            href={VAKT_POLAR_PORTAL_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="underline font-medium hover:text-red-900 dark:hover:text-red-200"
@@ -114,7 +114,7 @@ export function LicenseExpiryBanner() {
       <span className="text-amber-800 dark:text-amber-300">
         Deine Pro-Lizenz läuft am {formattedDate} ab.{' '}
         <a
-          href={VAKT_LS_PORTAL_URL}
+          href={VAKT_POLAR_PORTAL_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="underline font-medium hover:text-amber-900 dark:hover:text-amber-200"
