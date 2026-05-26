@@ -150,7 +150,7 @@ export default function ReportsPage() {
                 />
               </div>
               {createReport.isError && (
-                <p className="text-sm text-red-500">{createReport.error?.message ?? 'Report creation failed'}</p>
+                <p className="text-sm text-red-500">{createReport.error.message}</p>
               )}
             </div>
             <DialogFooter>
