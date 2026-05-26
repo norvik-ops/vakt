@@ -44,15 +44,17 @@ const EMPLOYEE: Employee = {
 
 const mockMutateAsync = vi.fn().mockResolvedValue({ id: 'emp-new' })
 
+type R<T> = T extends (...args: unknown[]) => infer U ? U : never
+
 beforeEach(() => {
-  vi.mocked(useEmployees).mockReturnValue({ data: [], isLoading: false, pagination: undefined } as any)
-  vi.mocked(useCreateEmployee).mockReturnValue({ mutateAsync: mockMutateAsync, isPending: false } as any)
-  vi.mocked(useUpdateEmployee).mockReturnValue({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false } as any)
-  vi.mocked(useDeleteEmployee).mockReturnValue({ mutateAsync: vi.fn().mockResolvedValue(undefined), isPending: false } as any)
-  vi.mocked(useChecklists).mockReturnValue({ data: [] } as any)
-  vi.mocked(useChecklistRuns).mockReturnValue({ data: [] } as any)
-  vi.mocked(useStartChecklistRun).mockReturnValue({ mutateAsync: vi.fn(), isPending: false } as any)
-  vi.mocked(useUpdateChecklistRun).mockReturnValue({ mutate: vi.fn(), isPending: false } as any)
+  vi.mocked(useEmployees).mockReturnValue({ data: [], isLoading: false, pagination: undefined } as unknown as R<typeof useEmployees>)
+  vi.mocked(useCreateEmployee).mockReturnValue({ mutateAsync: mockMutateAsync, isPending: false } as unknown as R<typeof useCreateEmployee>)
+  vi.mocked(useUpdateEmployee).mockReturnValue({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false } as unknown as R<typeof useUpdateEmployee>)
+  vi.mocked(useDeleteEmployee).mockReturnValue({ mutateAsync: vi.fn().mockResolvedValue(undefined), isPending: false } as unknown as R<typeof useDeleteEmployee>)
+  vi.mocked(useChecklists).mockReturnValue({ data: [] } as unknown as R<typeof useChecklists>)
+  vi.mocked(useChecklistRuns).mockReturnValue({ data: [] } as unknown as R<typeof useChecklistRuns>)
+  vi.mocked(useStartChecklistRun).mockReturnValue({ mutateAsync: vi.fn(), isPending: false } as unknown as R<typeof useStartChecklistRun>)
+  vi.mocked(useUpdateChecklistRun).mockReturnValue({ mutate: vi.fn(), isPending: false } as unknown as R<typeof useUpdateChecklistRun>)
   mockMutateAsync.mockClear()
 })
 
@@ -60,7 +62,7 @@ beforeEach(() => {
 
 describe('EmployeesPage — loading state', () => {
   it('shows skeleton table while employees are loading', () => {
-    vi.mocked(useEmployees).mockReturnValue({ data: [], isLoading: true, pagination: undefined } as any)
+    vi.mocked(useEmployees).mockReturnValue({ data: [], isLoading: true, pagination: undefined } as unknown as R<typeof useEmployees>)
     renderWithProviders(<EmployeesPage />)
     expect(screen.getByText('Mitarbeiter')).toBeInTheDocument()
     expect(screen.queryByText('Noch keine Mitarbeiter')).not.toBeInTheDocument()
@@ -81,7 +83,7 @@ describe('EmployeesPage — empty state', () => {
 
 describe('EmployeesPage — data rendering', () => {
   it('renders employee name, email, and status', () => {
-    vi.mocked(useEmployees).mockReturnValue({ data: [EMPLOYEE], isLoading: false, pagination: undefined } as any)
+    vi.mocked(useEmployees).mockReturnValue({ data: [EMPLOYEE], isLoading: false, pagination: undefined } as unknown as R<typeof useEmployees>)
     renderWithProviders(<EmployeesPage />)
     expect(screen.getByText('Anna Muster')).toBeInTheDocument()
     expect(screen.getByText('anna.muster@example.com')).toBeInTheDocument()
@@ -95,7 +97,7 @@ describe('EmployeesPage — data rendering', () => {
 describe('EmployeesPage — create mutation', () => {
   it('opens dialog and calls mutateAsync with form data on submit', async () => {
     // Use existing employee so empty state button does not appear → only one "Hinzufügen" button
-    vi.mocked(useEmployees).mockReturnValue({ data: [EMPLOYEE], isLoading: false, pagination: undefined } as any)
+    vi.mocked(useEmployees).mockReturnValue({ data: [EMPLOYEE], isLoading: false, pagination: undefined } as unknown as R<typeof useEmployees>)
     renderWithProviders(<EmployeesPage />)
 
     fireEvent.click(screen.getByRole('button', { name: /mitarbeiter hinzufügen/i }))
@@ -121,7 +123,7 @@ describe('EmployeesPage — create mutation', () => {
   })
 
   it('shows validation errors and does NOT call mutateAsync when required fields are empty', async () => {
-    vi.mocked(useEmployees).mockReturnValue({ data: [EMPLOYEE], isLoading: false, pagination: undefined } as any)
+    vi.mocked(useEmployees).mockReturnValue({ data: [EMPLOYEE], isLoading: false, pagination: undefined } as unknown as R<typeof useEmployees>)
     renderWithProviders(<EmployeesPage />)
 
     fireEvent.click(screen.getByRole('button', { name: /mitarbeiter hinzufügen/i }))
