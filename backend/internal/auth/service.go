@@ -17,10 +17,10 @@ import (
 
 	"aidanwoods.dev/go-paseto"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/matharnica/vakt/internal/shared/logsafe"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
-	"github.com/matharnica/vakt/internal/shared/logsafe"
 )
 
 // ErrWeakPassword is returned when a supplied password does not satisfy the
