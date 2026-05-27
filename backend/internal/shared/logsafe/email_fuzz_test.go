@@ -33,14 +33,22 @@ func FuzzRedactEmail(f *testing.F) {
 			t.Errorf("empty input must return empty output, got %q", out)
 		}
 
-		// Invariant 2: the FULL input email must never appear verbatim in
-		// the output (that would mean redaction did nothing). We do not
-		// check substring-of-local-part because the local can coincidentally
-		// equal the domain ("ce@ce") — the meaningful security property is
-		// "the whole address is not echoed back".
-		if len(input) >= 4 && strings.Contains(input, "@") && strings.Contains(out, input) {
-			t.Errorf("full input %q echoed back in output %q — redaction failed",
-				input, out)
+		// Invariant 2: the redacted local-part must be either "" or "***".
+		// We don't substring-check against the input because the local-part
+		// can coincidentally equal the domain ("ce@ce" → "***@ce" trips a
+		// naive contains check). The semantically correct invariant: any
+		// segment of `out` to the left of "@" comes from the redaction
+		// alphabet, not from input.
+		outAt := strings.LastIndexByte(out, '@')
+		var outLocal string
+		if outAt < 0 {
+			outLocal = out // "***" or ""
+		} else {
+			outLocal = out[:outAt]
+		}
+		if outLocal != "" && outLocal != "***" {
+			t.Errorf("redacted local-part must be empty or \"***\", got %q (input=%q, full out=%q)",
+				outLocal, input, out)
 		}
 	})
 }
