@@ -127,7 +127,7 @@ func (h *Handler) ServeMetrics(c echo.Context) error {
 	fmt.Fprintln(w, "# HELP vakt_organizations_total Total number of organizations")
 	fmt.Fprintln(w, "# TYPE vakt_organizations_total gauge")
 	var orgsTotal int64
-	err = h.db.QueryRow(ctx, `SELECT COUNT(*) FROM organisations`).Scan(&orgsTotal)
+	err = h.db.QueryRow(ctx, `SELECT COUNT(*) FROM organizations`).Scan(&orgsTotal)
 	if err != nil {
 		log.Error().Err(err).Msg("metrics: query organizations_total")
 		orgsTotal = 0
@@ -247,9 +247,9 @@ type businessMetrics struct {
 	controlsImplemented map[orgFrameworkKey]int64
 }
 
-// listOrgIDs returns all organisation IDs from the organisations table.
+// listOrgIDs returns all organisation IDs from the organizations table.
 func (h *Handler) listOrgIDs(ctx context.Context) ([]string, error) {
-	rows, err := h.db.Query(ctx, `SELECT id::text FROM organisations ORDER BY id`)
+	rows, err := h.db.Query(ctx, `SELECT id::text FROM organizations ORDER BY id`)
 	if err != nil {
 		return nil, fmt.Errorf("query org ids: %w", err)
 	}

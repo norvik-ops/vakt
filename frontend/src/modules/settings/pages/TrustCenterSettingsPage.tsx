@@ -9,6 +9,7 @@ import { Label } from '../../../components/ui/label'
 import { Card } from '../../../components/ui/card'
 import { apiFetch } from '../../../api/client'
 import type { Policy } from '../../../modules/secvitals/types'
+import type { PaginatedResponse } from '../../../shared/types/pagination'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -118,7 +119,15 @@ function useUnpublishPolicy() {
 function usePolicies() {
   return useQuery<Policy[]>({
     queryKey: ['secvitals', 'policies'],
-    queryFn: () => apiFetch<Policy[]>('/secvitals/policies'),
+    queryFn: async () => {
+      const resp = await apiFetch<PaginatedResponse<Policy> | Policy[]>(
+        '/secvitals/policies?page=1&limit=200',
+      )
+      // ListPolicies returns the paginated envelope {data, pagination}; older
+      // callers fell back to a flat array, so we accept either shape.
+      if (Array.isArray(resp)) return resp
+      return resp.data
+    },
     staleTime: 5 * 60 * 1000,
     retry: false,
   })

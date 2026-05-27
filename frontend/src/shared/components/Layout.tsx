@@ -479,7 +479,7 @@ export default function Layout() {
 
           {!sidebarCollapsed && (
             <a
-              href="https://github.com/norvik-ops/vakt/wiki"
+              href="https://github.com/norvik-ops/vatk/wiki"
               target="_blank"
               rel="noopener noreferrer"
               className="w-full flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] text-secondary hover:bg-muted/50 hover:text-primary transition-all duration-150"
@@ -492,7 +492,7 @@ export default function Layout() {
           )}
           {sidebarCollapsed && (
             <a
-              href="https://github.com/norvik-ops/vakt/wiki"
+              href="https://github.com/norvik-ops/vatk/wiki"
               target="_blank"
               rel="noopener noreferrer"
               title="Dokumentation"

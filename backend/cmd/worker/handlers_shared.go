@@ -149,10 +149,30 @@ func handleWeeklyDigest(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFun
 	}
 }
 
+// handleBSIFeedSync syncs the BSI CERT-Bund RSS feed. The feed is external and
+// occasionally unreachable (DNS hiccups, BSI maintenance windows, IPv6 routing
+// drama on the BSI side). We treat such transient failures as soft errors:
+// log a warning and return nil so Asynq does not enqueue a retry storm that
+// flips the worker's queue_health to unhealthy. The job is scheduled daily,
+// so the next run picks up automatically.
+//
+// Hard errors — DB unreachable, schema drift, panic — still propagate.
 func handleBSIFeedSync(pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
 		svc := bsi.NewBSIService(pool)
-		return svc.SyncFeed(ctx)
+		err := svc.SyncFeed(ctx)
+		if err == nil {
+			return nil
+		}
+		// SyncFeed wraps FetchAdvisories errors with the "bsi: fetch advisories"
+		// prefix when the upstream HTTP call fails or the response is non-200.
+		// Those are exactly the cases we want to swallow.
+		msg := err.Error()
+		if strings.Contains(msg, "bsi: fetch advisories") {
+			log.Warn().Err(err).Msg("bsi: feed sync skipped — external feed unreachable; will retry on next schedule")
+			return nil
+		}
+		return err
 	}
 }
 

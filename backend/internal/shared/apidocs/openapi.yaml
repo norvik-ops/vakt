@@ -1157,6 +1157,69 @@ paths:
         '503':
           description: Not ready
 
+  # ── Demo ──────────────────────────────────────────────────────────────────
+  /demo/start:
+    post:
+      summary: Start an ephemeral demo session (returns one-time credentials)
+      description: |
+        Only registered when `VAKT_DEMO=true`. Each call creates a fresh, isolated
+        demo organisation with a random slug and two seed accounts (admin +
+        analyst). The cleartext passwords are returned **once**; the database
+        stores only bcrypt hashes. An Asynq cleanup job purges ephemeral orgs
+        after 4 hours.
+
+        Rate-limited to 10 req/min per IP (burst 10, 5-minute reset window) to
+        prevent abuse of the public demo deployment. Repeated calls beyond the
+        limit return `429 rate limit exceeded`.
+      tags: [admin]
+      security: []
+      responses:
+        '200':
+          description: New ephemeral demo session
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - admin_email
+                  - admin_password
+                  - analyst_email
+                  - analyst_password
+                  - expires_in
+                properties:
+                  admin_email:
+                    type: string
+                    format: email
+                    example: "admin@demo-a3f2b1c9.demo"
+                  admin_password:
+                    type: string
+                    description: Cleartext password, returned exactly once.
+                    example: "f4a9b7e2c1d80356"
+                  analyst_email:
+                    type: string
+                    format: email
+                    example: "analyst@demo-a3f2b1c9.demo"
+                  analyst_password:
+                    type: string
+                    description: Cleartext password, returned exactly once.
+                    example: "1e7c2bd930f48a16"
+                  expires_in:
+                    type: integer
+                    description: Lifetime of the demo org in seconds (currently 14400 = 4 h).
+                    example: 14400
+        '429':
+          description: Rate limit exceeded (10 req/min per IP).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Demo seed failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   # ── Auth ──────────────────────────────────────────────────────────────────
   /auth/login:
     post:

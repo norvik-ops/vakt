@@ -28,8 +28,8 @@ export default function ReportsPage() {
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
 
-  const chartData = trend
-    ? trend.labels.map((label, i) => ({ date: label, score: trend.scores[i] }))
+  const chartData = Array.isArray(trend)
+    ? trend.map((p) => ({ date: p.date, score: p.total_risk_score }))
     : []
 
   async function handleCreate(e: React.FormEvent) {

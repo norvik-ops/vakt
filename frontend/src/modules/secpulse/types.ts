@@ -56,7 +56,11 @@ export interface FindingsListResponse {
   }
 }
 
-export interface RiskTrendResponse {
-  labels: string[]
-  scores: number[]
+export interface RiskTrendPoint {
+  date: string
+  total_risk_score: number
+  open_count: number
+  critical_count: number
 }
+
+export type RiskTrendResponse = RiskTrendPoint[]

@@ -26,8 +26,6 @@ import { test, expect } from './fixtures'
 // Review the diff carefully, then commit the .png files. Once baselines
 // exist, remove the test.fixme() line below to enable the suite in CI.
 test.describe('Visual regression', () => {
-  test.fixme(true, 'baseline screenshots not yet committed — see comment in visual.spec.ts')
-
   test.use({
     // Fixed viewport so screenshots don't drift between machines.
     viewport: { width: 1280, height: 800 },
@@ -39,7 +37,7 @@ test.describe('Visual regression', () => {
     await page.goto('/login')
     // Wait for the form to settle. The auto-demo flow may show a spinner
     // briefly on demo-mode instances; in unit-mode it goes straight to form.
-    await expect(page.getByRole('button', { name: /einloggen|login/i })).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('button', { name: /anmelden|einloggen|sign in/i })).toBeVisible({ timeout: 10_000 })
     // Let any spinners / fade-in animations finish.
     await page.waitForTimeout(500)
 

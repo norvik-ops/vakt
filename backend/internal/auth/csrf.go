@@ -35,6 +35,12 @@ func GenerateCSRFToken() string {
 // SetCSRFCookie writes the CSRF token cookie on the response.
 // Not HttpOnly (must be readable by frontend JS) but SameSite=Strict + Secure
 // limit exposure to first-party same-origin contexts.
+//
+// Path is "/" — not "/api/v1" — because document.cookie path-matching (RFC 6265
+// §5.4) only returns cookies whose path is a prefix of the current document URL.
+// The SPA is served from "/", "/secvitals/...", etc.; a cookie with Path=/api/v1
+// would be invisible to JS there, so the double-submit header could never be
+// echoed and every state-changing request would 403 with "CSRF header missing".
 func SetCSRFCookie(c echo.Context, token string) {
 	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
 	c.SetCookie(&http.Cookie{
@@ -43,7 +49,7 @@ func SetCSRFCookie(c echo.Context, token string) {
 		HttpOnly: false,
 		Secure:   secure,
 		SameSite: http.SameSiteStrictMode,
-		Path:     "/api/v1",
+		Path:     "/",
 		MaxAge:   3600,
 	})
 }
@@ -57,7 +63,7 @@ func ClearCSRFCookie(c echo.Context) {
 		HttpOnly: false,
 		Secure:   secure,
 		SameSite: http.SameSiteStrictMode,
-		Path:     "/api/v1",
+		Path:     "/",
 		MaxAge:   -1,
 	})
 }
