@@ -23,7 +23,7 @@ func FuzzDecodeCursor(f *testing.F) {
 	f.Add("")
 	f.Add("garbage")
 	f.Add("?!@#$%^&*()")
-	f.Add("AAA")  // base64 valid but JSON nonsense
+	f.Add("AAA")                                                // base64 valid but JSON nonsense
 	f.Add("eyJpZCI6IiIsInRzIjoiMjAyNi0wMS0wMVQwMDowMDowMFoifQ") // valid round-trip
 	f.Add(EncodeCursor("00000000-0000-0000-0000-000000000000", time.Unix(0, 0).UTC()))
 	f.Add(EncodeCursor("a-b-c-d", time.Now().UTC()))
