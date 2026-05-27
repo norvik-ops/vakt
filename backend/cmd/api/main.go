@@ -23,6 +23,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 	"golang.org/x/time/rate"
 
 	"github.com/matharnica/vakt/internal/admin"
@@ -175,10 +176,16 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	e.HidePort = true
 
 	// Trust X-Forwarded-For from the reverse proxy (nginx in the compose stack).
-	// If VAKT_TRUSTED_PROXIES is empty, fall back to direct IP to prevent header spoofing.
+	// VAKT_TRUSTED_PROXIES is a comma-separated CIDR list — each range becomes
+	// an echo.TrustIPRange so XFF entries originating from outside the trusted
+	// set are ignored. Echo's bare ExtractIPFromXFFHeader() with no options
+	// trusts every hop in the chain, which lets an external client spoof a
+	// trusted IP by sending its own XFF header. Audit finding "XFF without
+	// TrustOption" — see docs/market-readiness-strategy.md.
 	if trustedProxies := os.Getenv("VAKT_TRUSTED_PROXIES"); trustedProxies != "" {
-		e.IPExtractor = echo.ExtractIPFromXFFHeader()
-		log.Info().Str("trusted_proxies", trustedProxies).Msg("IPExtractor configured for reverse proxy")
+		opts := buildXFFTrustOptions(trustedProxies, &log)
+		e.IPExtractor = echo.ExtractIPFromXFFHeader(opts...)
+		log.Info().Str("trusted_proxies", trustedProxies).Int("trust_options", len(opts)).Msg("IPExtractor configured for reverse proxy with explicit trust options")
 	} else {
 		e.IPExtractor = echo.ExtractIPDirect()
 		log.Info().Msg("IPExtractor set to direct — admin IP allowlist won't work behind a proxy unless VAKT_TRUSTED_PROXIES is set")
@@ -186,6 +193,18 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 
 	// X-Request-ID — applied first so every subsequent log entry can reference it.
 	e.Use(sharedmw.RequestID())
+
+	// OpenTelemetry HTTP instrumentation — wraps every request in a span when
+	// telemetry.Init() configured an exporter. No-op when OTEL_EXPORTER_OTLP_ENDPOINT
+	// is unset (still safe to register; the global tracer provider is the noop one).
+	e.Use(otelecho.Middleware("vakt-api",
+		otelecho.WithSkipper(func(c echo.Context) bool {
+			// Don't span on /metrics (Prometheus polls every 30s — would dominate
+			// the trace volume) or on /health (likewise scraped by Zabbix).
+			p := c.Request().URL.Path
+			return p == "/metrics" || p == "/health"
+		}),
+	))
 
 	// Trace ID — unique per request, emitted as X-Trace-ID response header and
 	// enriched into the zerolog context for structured log correlation.
@@ -435,6 +454,14 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	))
 	redisAuthRL := sharedmw.AuthRateLimit(rdb)
 	authSvc := auth.NewService(pool, rdb, pasetoKey)
+	// ADR-0044: default fail-closed on Redis outage. Operators can opt back
+	// into the legacy fail-open behaviour by setting
+	// VAKT_AUTH_FAIL_OPEN_ON_REDIS_OUTAGE=true. This accepts a short
+	// brute-force window during a Redis outage in exchange for availability.
+	if os.Getenv("VAKT_AUTH_FAIL_OPEN_ON_REDIS_OUTAGE") == "true" {
+		authSvc = authSvc.WithFailOpenOnRedisOutage(true)
+		log.Warn().Msg("auth: VAKT_AUTH_FAIL_OPEN_ON_REDIS_OUTAGE=true — lockout checks will fail open during Redis outages (audit-relevant choice)")
+	}
 	authHandler := auth.NewHandler(authSvc, cfg)
 	authGroup := api.Group("/auth", authRateLimiter)
 	auth.Register(authGroup, authHandler)
@@ -514,6 +541,14 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	// Outgoing webhooks — created before modules so event triggers can be wired in.
 	// The webhookSvc is also registered as routes below (after module routes).
 	webhookSvc := sharedwebhooks.NewWebhookService(pool, webhookKey)
+	// One-time, idempotent migration of legacy plaintext secrets to the
+	// enc:v1: format.  See ADR-0043 — sprint 58 closure on the
+	// "webhooks.secret stored as plaintext" audit subnote.
+	if migrated, err := webhookSvc.MigrateLegacyPlaintextSecrets(lifecycleCtx); err != nil {
+		log.Warn().Err(err).Msg("webhooks: legacy plaintext migration encountered errors")
+	} else if migrated > 0 {
+		log.Info().Int("migrated", migrated).Msg("webhooks: legacy plaintext secrets upgraded to enc:v1:")
+	}
 
 	// Module routes — all behind auth middleware, sharing the same DB pool
 	if cfg.IsModuleEnabled("secpulse") {

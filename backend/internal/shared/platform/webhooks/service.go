@@ -123,6 +123,62 @@ func (s *WebhookService) decryptSecret(stored string) (string, error) {
 	return string(plain), nil
 }
 
+// MigrateLegacyPlaintextSecrets walks every webhooks row, detects rows
+// whose `secret` column is still stored as legacy plaintext (no
+// "enc:v1:" prefix), and re-writes them encrypted under the configured
+// master key.  Idempotent: rows already prefixed are skipped without
+// touching the row, so it is safe to invoke on every API boot.
+//
+// Returns the number of rows migrated and any persistent error.  A
+// single-row failure does NOT abort the migration — webhook delivery
+// would otherwise be permanently broken if one bad row blocked all
+// others.  See ADR-0043.
+func (s *WebhookService) MigrateLegacyPlaintextSecrets(ctx context.Context) (int, error) {
+	if len(s.masterKey) == 0 {
+		// No master key — nothing we can encrypt with. The dev-mode path
+		// is intentional; we surface nothing here.
+		return 0, nil
+	}
+	rows, err := s.db.Query(ctx, `
+		SELECT id::text, secret FROM webhooks
+		WHERE secret IS NOT NULL AND secret != ''
+		  AND secret NOT LIKE $1`, encSecretPrefix+"%")
+	if err != nil {
+		return 0, fmt.Errorf("scan legacy webhook secrets: %w", err)
+	}
+	type record struct {
+		id, secret string
+	}
+	var recs []record
+	for rows.Next() {
+		var r record
+		if scanErr := rows.Scan(&r.id, &r.secret); scanErr != nil {
+			rows.Close()
+			return 0, fmt.Errorf("scan webhook row: %w", scanErr)
+		}
+		recs = append(recs, r)
+	}
+	rows.Close()
+
+	migrated := 0
+	for _, r := range recs {
+		enc, err := s.encryptSecret(r.secret)
+		if err != nil {
+			log.Warn().Err(err).Str("webhook_id", r.id).Msg("webhooks: encrypt legacy secret failed — skipping")
+			continue
+		}
+		if _, err := s.db.Exec(ctx, `UPDATE webhooks SET secret = $1 WHERE id = $2::uuid`, enc, r.id); err != nil {
+			log.Warn().Err(err).Str("webhook_id", r.id).Msg("webhooks: persist migrated secret failed — skipping")
+			continue
+		}
+		migrated++
+	}
+	if migrated > 0 {
+		log.Info().Int("count", migrated).Msg("webhooks: migrated legacy plaintext secrets to enc:v1:")
+	}
+	return migrated, nil
+}
+
 // ListWebhooks returns all webhooks for the given org.
 func (s *WebhookService) ListWebhooks(ctx context.Context, orgID string) ([]Webhook, error) {
 	rows, err := s.db.Query(ctx, `

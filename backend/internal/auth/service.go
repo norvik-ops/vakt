@@ -20,6 +20,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
+	"github.com/matharnica/vakt/internal/shared/logsafe"
 )
 
 // ErrWeakPassword is returned when a supplied password does not satisfy the
@@ -62,7 +63,31 @@ type Service struct {
 	redis    *redis.Client
 	key      paseto.V4SymmetricKey
 	denyFall *denyListFallback // PostgreSQL fallback when Redis is unavailable
+	// failOpenOnRedisOutage controls how lockout checks behave when Redis is
+	// unreachable. Default false (= fail closed): if we cannot read the
+	// counter we treat the request as locked and return a 503-shaped error
+	// to the handler, denying the login attempt. This closes the brute-force
+	// window that the audit flagged. Operators who would rather accept the
+	// risk to stay available during a Redis outage can flip the flag by
+	// setting VAKT_AUTH_FAIL_OPEN_ON_REDIS_OUTAGE=true and calling
+	// svc.WithFailOpenOnRedisOutage(true).
+	failOpenOnRedisOutage bool
 }
+
+// WithFailOpenOnRedisOutage flips the lockout-check behaviour to "fail
+// open" — i.e., let requests through when Redis is unreachable. Use only
+// when the deployment explicitly accepts the brute-force-during-outage
+// trade-off in favour of availability. See ADR-0044.
+func (s *Service) WithFailOpenOnRedisOutage(b bool) *Service {
+	s.failOpenOnRedisOutage = b
+	return s
+}
+
+// ErrLockoutCheckUnavailable is returned by the lockout helpers when Redis
+// is unreachable AND the service is configured to fail closed. The login
+// handler maps this to HTTP 503 to surface the dependency outage to the
+// caller instead of letting them brute-force during it.
+var ErrLockoutCheckUnavailable = errors.New("auth: lockout check unavailable (redis outage, fail-closed)")
 
 // RegisterInput holds validated data for the registration endpoint.
 type RegisterInput struct {
@@ -461,9 +486,11 @@ func (s *Service) checkAccountLocked(ctx context.Context, email string) (bool, e
 		return false, nil
 	}
 	if err != nil {
-		// Redis unavailable — fail open to avoid blocking legitimate logins.
-		log.Warn().Err(err).Str("email", email).Msg("login lockout check skipped — Redis unavailable")
-		return false, nil
+		log.Warn().Err(err).Str("email_redacted", logsafe.RedactEmail(email)).Bool("fail_open", s.failOpenOnRedisOutage).Msg("login lockout check: Redis unavailable")
+		if s.failOpenOnRedisOutage {
+			return false, nil
+		}
+		return true, ErrLockoutCheckUnavailable
 	}
 	return val >= loginFailMax, nil
 }
@@ -480,10 +507,10 @@ func (s *Service) recordLoginFailure(ctx context.Context, email string) {
 	incrCmd := pipe.Incr(ctx, key)
 	pipe.Expire(ctx, key, loginLockoutTTL)
 	if _, err := pipe.Exec(ctx); err != nil {
-		log.Warn().Err(err).Str("email", email).Msg("login: failed to record login failure")
+		log.Warn().Err(err).Str("email_redacted", logsafe.RedactEmail(email)).Msg("login: failed to record login failure")
 		return
 	}
-	log.Debug().Str("email", email).Int64("count", incrCmd.Val()).Msg("login: recorded failure")
+	log.Debug().Str("email_redacted", logsafe.RedactEmail(email)).Int64("count", incrCmd.Val()).Msg("login: recorded failure")
 }
 
 // clearLoginFailures deletes the login failure counter for the given email.
@@ -491,7 +518,7 @@ func (s *Service) clearLoginFailures(ctx context.Context, email string) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	if err := s.redis.Del(ctx, loginFailKey(email)).Err(); err != nil && err != redis.Nil {
-		log.Warn().Err(err).Str("email", email).Msg("login: failed to clear login failures")
+		log.Warn().Err(err).Str("email_redacted", logsafe.RedactEmail(email)).Msg("login: failed to clear login failures")
 	}
 }
 
@@ -505,8 +532,11 @@ func (s *Service) checkIPLocked(ctx context.Context, ip string) (bool, error) {
 		return false, nil
 	}
 	if err != nil {
-		log.Warn().Err(err).Str("ip", ip).Msg("ip lockout check skipped — Redis unavailable")
-		return false, nil
+		log.Warn().Err(err).Str("ip", ip).Bool("fail_open", s.failOpenOnRedisOutage).Msg("ip lockout check: Redis unavailable")
+		if s.failOpenOnRedisOutage {
+			return false, nil
+		}
+		return true, ErrLockoutCheckUnavailable
 	}
 	return val >= ipLockoutFailMax, nil
 }
