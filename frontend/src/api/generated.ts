@@ -97,6 +97,97 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/demo/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start an ephemeral demo session (returns one-time credentials)
+         * @description Only registered when `VAKT_DEMO=true`. Each call creates a fresh, isolated
+         *     demo organisation with a random slug and two seed accounts (admin +
+         *     analyst). The cleartext passwords are returned **once**; the database
+         *     stores only bcrypt hashes. An Asynq cleanup job purges ephemeral orgs
+         *     after 4 hours.
+         *
+         *     Rate-limited to 10 req/min per IP (burst 10, 5-minute reset window) to
+         *     prevent abuse of the public demo deployment. Repeated calls beyond the
+         *     limit return `429 rate limit exceeded`.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description New ephemeral demo session */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * Format: email
+                             * @example admin@demo-a3f2b1c9.demo
+                             */
+                            admin_email: string;
+                            /**
+                             * @description Cleartext password, returned exactly once.
+                             * @example f4a9b7e2c1d80356
+                             */
+                            admin_password: string;
+                            /**
+                             * Format: email
+                             * @example analyst@demo-a3f2b1c9.demo
+                             */
+                            analyst_email: string;
+                            /**
+                             * @description Cleartext password, returned exactly once.
+                             * @example 1e7c2bd930f48a16
+                             */
+                            analyst_password: string;
+                            /**
+                             * @description Lifetime of the demo org in seconds (currently 14400 = 4 h).
+                             * @example 14400
+                             */
+                            expires_in: number;
+                        };
+                    };
+                };
+                /** @description Rate limit exceeded (10 req/min per IP). */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Demo seed failed. */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
