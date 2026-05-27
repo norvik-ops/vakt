@@ -18,8 +18,17 @@ package telemetry
 import (
 	"context"
 	"os"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
 // Config captures the OTel environment knobs we honour. All fields are
@@ -69,16 +78,84 @@ func Init(cfg Config) Shutdown {
 		return func(context.Context) error { return nil }
 	}
 
-	// Real OTel SDK initialisation goes here. For now we log the intent so
-	// operators see at startup that OTel is configured.
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// OTLP/HTTP exporter — simpler than gRPC, no separate TLS config needed
+	// when targeting an internal Tempo/Otel collector.
+	exporterOpts := []otlptracehttp.Option{
+		otlptracehttp.WithEndpoint(strings.TrimPrefix(strings.TrimPrefix(cfg.Endpoint, "https://"), "http://")),
+	}
+	if strings.HasPrefix(cfg.Endpoint, "http://") {
+		exporterOpts = append(exporterOpts, otlptracehttp.WithInsecure())
+	}
+	if cfg.HeadersRaw != "" {
+		exporterOpts = append(exporterOpts, otlptracehttp.WithHeaders(parseHeaders(cfg.HeadersRaw)))
+	}
+	exp, err := otlptrace.New(ctx, otlptracehttp.NewClient(exporterOpts...))
+	if err != nil {
+		log.Error().Err(err).Msg("telemetry: OTLP exporter init failed — falling back to noop")
+		return func(context.Context) error { return nil }
+	}
+
+	res, _ := resource.Merge(
+		resource.Default(),
+		resource.NewSchemaless(append(parseAttrs(cfg.ResourceAttrs),
+			attribute.String("service.name", cfg.ServiceName))...),
+	)
+
+	sampleRate, _ := strconv.ParseFloat(cfg.SamplerArg, 64)
+	if sampleRate <= 0 || sampleRate > 1 {
+		sampleRate = 0.1
+	}
+
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exp,
+			sdktrace.WithMaxQueueSize(2048),
+			sdktrace.WithBatchTimeout(5*time.Second),
+		),
+		sdktrace.WithResource(res),
+		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(sampleRate))),
+	)
+	otel.SetTracerProvider(tp)
+
 	log.Info().
 		Str("service", cfg.ServiceName).
 		Str("endpoint", cfg.Endpoint).
-		Str("sampler_arg", cfg.SamplerArg).
-		Msg("telemetry: OpenTelemetry endpoint configured — full SDK wire-up pending")
+		Float64("sample_rate", sampleRate).
+		Msg("telemetry: OpenTelemetry initialised, exporting via OTLP/HTTP")
 
-	return func(context.Context) error {
-		log.Info().Msg("telemetry: shutdown")
+	return func(ctx context.Context) error {
+		log.Info().Msg("telemetry: shutting down, flushing pending spans")
+		shutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		return tp.Shutdown(shutCtx)
+	}
+}
+
+// parseHeaders converts OTEL_EXPORTER_OTLP_HEADERS ("k1=v1,k2=v2") to a map.
+func parseHeaders(raw string) map[string]string {
+	out := map[string]string{}
+	for _, kv := range strings.Split(raw, ",") {
+		kv = strings.TrimSpace(kv)
+		if eq := strings.IndexByte(kv, '='); eq > 0 {
+			out[kv[:eq]] = kv[eq+1:]
+		}
+	}
+	return out
+}
+
+// parseAttrs converts OTEL_RESOURCE_ATTRIBUTES ("k1=v1,k2=v2") to OTel attrs.
+func parseAttrs(raw string) []attribute.KeyValue {
+	if raw == "" {
 		return nil
 	}
+	var out []attribute.KeyValue
+	for _, kv := range strings.Split(raw, ",") {
+		kv = strings.TrimSpace(kv)
+		if eq := strings.IndexByte(kv, '='); eq > 0 {
+			out = append(out, attribute.String(kv[:eq], kv[eq+1:]))
+		}
+	}
+	return out
 }
