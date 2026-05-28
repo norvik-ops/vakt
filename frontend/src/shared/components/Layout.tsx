@@ -178,7 +178,7 @@ export default function Layout() {
   )
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const { data: updateInfo } = useUpdateCheck()
-  const isAdminOrOwner = user?.roles.includes('admin') || user?.roles.includes('owner')
+  const isAdminOrOwner = user?.roles.some((r) => r.toLowerCase() === 'admin' || r.toLowerCase() === 'owner') ?? false
   const demoMode = useDemoMode()
   const { data: overdueControls } = useOverdueControls()
   const overdueCount = overdueControls?.length ?? 0

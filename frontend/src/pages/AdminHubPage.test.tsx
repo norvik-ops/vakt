@@ -40,4 +40,17 @@ describe('AdminHubPage', () => {
     renderWithProviders(<AdminHubPage />, { initialPath: '/admin' })
     expect(screen.getByRole('heading', { name: /Administration/i })).toBeTruthy()
   })
+
+  // The backend emits role names as "Admin" / "Owner" (capitalized) — see
+  // backend/internal/shared/demoseed/seed.go and auth/service.go. The role
+  // check must be case-insensitive so the sidebar/admin-hub renders for the
+  // demo-seeded admin user.
+  it('renders for backend-canonical "Admin" capitalisation', () => {
+    useAuthStore.setState({
+      user: { id: '1', email: 'real@b.de', display_name: 'Real', roles: ['Admin'] },
+      hydrating: false,
+    })
+    renderWithProviders(<AdminHubPage />, { initialPath: '/admin' })
+    expect(screen.getByRole('heading', { name: /Administration/i })).toBeTruthy()
+  })
 })

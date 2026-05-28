@@ -41,7 +41,9 @@ const TILES: AdminTile[] = [
 
 export default function AdminHubPage() {
   const { user } = useAuthStore()
-  const isAdminOrOwner = user?.roles.includes('admin') || user?.roles.includes('owner')
+  const isAdminOrOwner = user?.roles.some(
+    (r) => r.toLowerCase() === 'admin' || r.toLowerCase() === 'owner',
+  ) ?? false
 
   if (!isAdminOrOwner) {
     return <Navigate to="/" replace />
