@@ -56,27 +56,27 @@ func TestTenantIsolation_OrgIDInQueries(t *testing.T) {
 	// post-marketreife backlog. Adding entries here REQUIRES updating the
 	// matching audit ticket in docs/post-rls-tenant-lint-backlog.md.
 	allowList := map[string]bool{
-		"MarkExpiredPPAVVs":                       true, // bulk status update; PK-bound elsewhere
-		"BatchUpdateSPComponentEOL":               true, // FK chain via vb_sboms
-		"ListSPComponentsBySBOM":                  true, // FK chain via vb_sboms
-		"ListSPComponentsBySBOMFull":              true, // FK chain via vb_sboms
-		"StoreSPReportContent":                    true, // PK update by id
-		"UpdateSPComponentEOL":                    true, // PK update by id
-		"UpdateSPReport":                          true, // PK update by id
-		"UpdateSPScanStatus":                      true, // PK update by id
-		"GetSVSecretProjectID":                    true, // PK lookup by id
-		"GetSVShareLink":                          true, // PK lookup by share-token
-		"UpdateSVSecretAccess":                    true, // PK update by id
-		"GetCKPolicyAcceptanceCampaignStats":      true, // aggregate via campaign_id FK
-		"IncrementCKAuditorLinkUsage":             true, // PK update by id
-		"ListCKPolicyAcceptanceRequests":          true, // FK chain via campaign_id
-		"MarkCKEvidenceExpiryNotified":            true, // PK update by id
-		"MarkCKPolicyAcceptanceRequestSent":       true, // PK update by id
-		"RecordCKPolicyAcceptance":                true, // PK update by request_id
-		"UpdateCKAssessmentStatus":                true, // PK update by id
-		"UpdateCKAuditorLinkAccess":               true, // PK update by id
-		"UpdateCKCCMCheckEnabled":                 true, // PK update by id
-		"UpdateCKCCMCheckLastRun":                 true, // PK update by id
+		"MarkExpiredPPAVVs":                  true, // bulk status update; PK-bound elsewhere
+		"BatchUpdateSPComponentEOL":          true, // FK chain via vb_sboms
+		"ListSPComponentsBySBOM":             true, // FK chain via vb_sboms
+		"ListSPComponentsBySBOMFull":         true, // FK chain via vb_sboms
+		"StoreSPReportContent":               true, // PK update by id
+		"UpdateSPComponentEOL":               true, // PK update by id
+		"UpdateSPReport":                     true, // PK update by id
+		"UpdateSPScanStatus":                 true, // PK update by id
+		"GetSVSecretProjectID":               true, // PK lookup by id
+		"GetSVShareLink":                     true, // PK lookup by share-token
+		"UpdateSVSecretAccess":               true, // PK update by id
+		"GetCKPolicyAcceptanceCampaignStats": true, // aggregate via campaign_id FK
+		"IncrementCKAuditorLinkUsage":        true, // PK update by id
+		"ListCKPolicyAcceptanceRequests":     true, // FK chain via campaign_id
+		"MarkCKEvidenceExpiryNotified":       true, // PK update by id
+		"MarkCKPolicyAcceptanceRequestSent":  true, // PK update by id
+		"RecordCKPolicyAcceptance":           true, // PK update by request_id
+		"UpdateCKAssessmentStatus":           true, // PK update by id
+		"UpdateCKAuditorLinkAccess":          true, // PK update by id
+		"UpdateCKCCMCheckEnabled":            true, // PK update by id
+		"UpdateCKCCMCheckLastRun":            true, // PK update by id
 	}
 
 	var unexpected []string
