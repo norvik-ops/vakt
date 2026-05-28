@@ -104,7 +104,7 @@ func (h *Handler) StreamNotifications(c echo.Context) error {
 // nächste Aufruf strikt darüber liest und nichts doppelt sendet).
 func (h *Handler) fetchNotificationsSince(ctx context.Context, orgID string, since time.Time) ([]UserNotification, time.Time, error) {
 	rows, err := h.svc.db.Query(ctx, `
-		SELECT id::text, title, body, type, module, created_at, read_at
+		SELECT id::text, title, body, type, module, created_at, read
 		FROM user_notifications
 		WHERE org_id = $1::uuid AND created_at > $2
 		ORDER BY created_at ASC
@@ -120,11 +120,9 @@ func (h *Handler) fetchNotificationsSince(ctx context.Context, orgID string, sin
 	newCursor := since
 	for rows.Next() {
 		var n UserNotification
-		var readAt *time.Time
-		if err := rows.Scan(&n.ID, &n.Title, &n.Body, &n.Type, &n.Module, &n.CreatedAt, &readAt); err != nil {
+		if err := rows.Scan(&n.ID, &n.Title, &n.Body, &n.Type, &n.Module, &n.CreatedAt, &n.Read); err != nil {
 			return nil, since, fmt.Errorf("scan notification: %w", err)
 		}
-		n.Read = readAt != nil
 		out = append(out, n)
 		if n.CreatedAt.After(newCursor) {
 			newCursor = n.CreatedAt

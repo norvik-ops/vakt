@@ -72,8 +72,8 @@ func (h *Handler) ServeMetrics(c echo.Context) error {
 	var score float64
 	err = h.db.QueryRow(ctx, `
 		SELECT COALESCE(AVG(score), 0)
-		FROM   ck_score_snapshots
-		WHERE  taken_at = (SELECT MAX(taken_at) FROM ck_score_snapshots)`).Scan(&score)
+		FROM   ck_score_history
+		WHERE  recorded_at = (SELECT MAX(recorded_at) FROM ck_score_history)`).Scan(&score)
 	if err != nil {
 		log.Error().Err(err).Msg("metrics: query score")
 		score = 0
@@ -197,8 +197,8 @@ func (h *Handler) ServeMetrics(c echo.Context) error {
 	fmt.Fprintln(w, "# TYPE vakt_active_sessions_total gauge")
 	var activeSessions int64
 	err = h.db.QueryRow(ctx, `
-		SELECT COUNT(*) FROM user_sessions
-		WHERE expires_at > NOW()`).Scan(&activeSessions)
+		SELECT COUNT(*) FROM sessions
+		WHERE expires_at > NOW() AND revoked_at IS NULL`).Scan(&activeSessions)
 	if err != nil {
 		log.Error().Err(err).Msg("metrics: query active_sessions")
 		activeSessions = 0
