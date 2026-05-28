@@ -49,12 +49,27 @@ test.describe('Demo Mode', () => {
     await expect(page.locator('button', { hasText: 'Analyst' })).toBeVisible()
   })
 
-  test('pre-fills credentials when clicking a demo user button', async ({ page }) => {
+  test('one-click demo login navigates to dashboard (F041)', async ({ page }) => {
+    // F041: clicking a demo-user button no longer pre-fills the form;
+    // it POSTs to /demo/login server-side and navigates home. Mock the
+    // endpoint to return the standard LoginResponse shape and assert the
+    // SPA actually navigates away from /login.
+    await page.route('**/api/v1/demo/login', route =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          access_token: 'v4.local.demo-test',
+          refresh_token: 'demo-refresh',
+          expires_in: 3600,
+          session_id: 'demo-session-1',
+          user: { id: 'demo-1', email: DEMO_CREDS.admin_email, display_name: 'Demo Admin', roles: ['Admin'] },
+        }),
+      })
+    )
     await page.goto('/login')
     await expect(page.locator('button', { hasText: 'Admin' })).toBeVisible({ timeout: 5000 })
     await page.locator('button', { hasText: 'Admin' }).click()
-
-    await expect(page.locator('input[type="email"]')).toHaveValue(DEMO_CREDS.admin_email)
-    await expect(page.locator('input[type="password"]')).toHaveValue(DEMO_CREDS.admin_password)
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 5000 })
   })
 })
