@@ -2,6 +2,19 @@ import { test, expect } from './fixtures'
 
 test.describe('Authentication', () => {
   test('redirects unauthenticated users to /login', async ({ page }) => {
+    // F032: hydrate is gated on /auth/me. The fixture's default mock
+    // returns 200 (most specs need an authenticated user), so to exercise
+    // the redirect we need to override that with 401 first.
+    await page.addInitScript(() => {
+      const orig = window.fetch.bind(window)
+      window.fetch = async (input, init) => {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+        if (url.includes('/api/v1/auth/me')) {
+          return new Response('{}', { status: 401, headers: { 'Content-Type': 'application/json' } })
+        }
+        return orig(input, init)
+      }
+    })
     await page.goto('/')
     await expect(page).toHaveURL(/\/login/)
   })
