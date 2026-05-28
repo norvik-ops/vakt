@@ -8,7 +8,7 @@ import {
   Shield, FlaskConical,
   Building2, Bot, PackageX, Mail, GraduationCap, Target, Flag, LayoutTemplate, UserCog, UserCheck,
   Plug, ClipboardCheck, CalendarClock, Inbox, Menu, X, ArrowUpCircle, ScrollText, CalendarDays,
-  ChevronLeft, ChevronRight, Cpu, Landmark, ListChecks, Cloud, Banknote, ChevronUp,
+  ChevronLeft, ChevronRight, Cpu, Landmark, ListChecks, Cloud, Banknote, ChevronUp, ChevronDown,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../stores/auth'
@@ -177,6 +177,24 @@ export default function Layout() {
     () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true',
   )
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  // Accordion state for the Vakt Comply childGroups. Exactly zero or one
+  // group is rendered open at any time. The group that contains the active
+  // path is auto-opened; clicking a group header swaps to that group (or
+  // closes it if it's already open). The lazy initializer prevents the
+  // one-frame flash where the active group would otherwise render closed.
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    const path = window.location.pathname
+    for (const mod of MODULES_NAV) {
+      if (!mod.childGroups) continue
+      for (const g of mod.childGroups) {
+        if (g.items.some((c) => path === c.path || path.startsWith(c.path + '/'))) {
+          return g.label
+        }
+      }
+    }
+    return null
+  })
   const { data: updateInfo } = useUpdateCheck()
   const isAdminOrOwner = user?.roles.some((r) => r.toLowerCase() === 'admin' || r.toLowerCase() === 'owner') ?? false
   const demoMode = useDemoMode()
@@ -209,6 +227,34 @@ export default function Layout() {
     if (exact) return location.pathname === path
     return location.pathname === path || location.pathname.startsWith(path + '/')
   }
+
+  /**
+   * Returns the label of the childGroup that contains a child whose path
+   * matches the current location, scanning all MODULES_NAV entries. Returns
+   * null when on a hub root (e.g. /secvitals) or on a module without groups.
+   */
+  function findAutoActiveGroup(): string | null {
+    for (const mod of MODULES_NAV) {
+      if (!mod.childGroups) continue
+      for (const group of mod.childGroups) {
+        if (group.items.some((c) => location.pathname === c.path || location.pathname.startsWith(c.path + '/'))) {
+          return group.label
+        }
+      }
+    }
+    return null
+  }
+
+  // Resync the open group whenever navigation happens. If the user is now
+  // on a page inside a group, open that group. Otherwise (hub root, other
+  // module) leave the manual choice in place but null is the safe default.
+  useEffect(() => {
+    const auto = findAutoActiveGroup()
+    if (auto) setExpandedGroup(auto)
+    // We intentionally don't reset to null on hub roots — that way the last
+    // expanded group stays open while the user is on /secvitals itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname])
 
   function renderChildLink(c: NavChild) {
     const childActive = location.pathname === c.path || location.pathname.startsWith(c.path + '/')
@@ -409,14 +455,34 @@ export default function Layout() {
                   {expanded && !sidebarCollapsed && (
                     <div className="ml-3 mt-0.5 mb-1 pl-3 border-l border-border space-y-[1px]">
                       {children?.map(renderChildLink)}
-                      {childGroups?.map((group) => (
-                        <div key={group.label} className="pt-1.5 first:pt-0">
-                          <p className="px-2 pb-0.5 text-[9px] font-semibold text-secondary uppercase tracking-wider opacity-50">
-                            {group.label}
-                          </p>
-                          {group.items.map(renderChildLink)}
-                        </div>
-                      ))}
+                      {childGroups?.map((group) => {
+                        const open = expandedGroup === group.label
+                        return (
+                          <div key={group.label} className="pt-1 first:pt-0">
+                            <button
+                              type="button"
+                              onClick={() => { setExpandedGroup(open ? null : group.label); }}
+                              aria-expanded={open}
+                              className="w-full flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-semibold text-secondary uppercase tracking-wider opacity-70 hover:opacity-100 hover:bg-muted/30 transition-colors"
+                            >
+                              {open
+                                ? <ChevronDown className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />
+                                : <ChevronRight className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />}
+                              <span>{group.label}</span>
+                              {!open && (
+                                <span className="ml-auto opacity-50 normal-case tracking-normal font-medium text-[9px]">
+                                  {group.items.length}
+                                </span>
+                              )}
+                            </button>
+                            {open && (
+                              <div className="mt-0.5">
+                                {group.items.map(renderChildLink)}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
                 </div>
