@@ -42,6 +42,17 @@ export const test = base.extend({
             { status: 200, headers: { 'Content-Type': 'application/json' } },
           )
         }
+        // F032: hydrate replaced the vakt_user localStorage snapshot with a
+        // server-side fetch on app boot. Without this mock the SPA waits on
+        // ECONNREFUSED, AuthGuard renders the spinner forever and every test
+        // that doesn't explicitly visit /login times out. Mirror the same
+        // identity that specs used to inject via localStorage.
+        if (url.includes('/api/v1/auth/me')) {
+          return new Response(
+            JSON.stringify({ id: 'user-1', email: 'admin@example.com', display_name: 'Test Admin', roles: ['Admin'] }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          )
+        }
         // OnboardingWizard reads status.steps — catch-all {} causes "steps is undefined" crash
         if (url.includes('/api/v1/onboarding/status')) {
           return new Response(
