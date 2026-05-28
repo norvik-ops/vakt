@@ -193,7 +193,7 @@ export default function NIS2WizardPage() {
                 <span className="text-sm font-medium text-gray-900">
                   <span className="inline-block w-6 text-indigo-600 font-bold">{value}</span> {label}
                 </span>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
+                <ChevronRight className="w-4 h-4 text-gray-500" />
               </button>
             ))}
           </div>
@@ -215,7 +215,7 @@ export default function NIS2WizardPage() {
           >
             <ChevronLeft className="w-4 h-4" /> Zurück
           </button>
-          <span className="text-xs text-gray-400">Antworten werden anonym gespeichert · 7 Tage Lebensdauer</span>
+          <span className="text-xs text-gray-500">Antworten werden anonym gespeichert · 7 Tage Lebensdauer</span>
         </div>
       </main>
     </div>

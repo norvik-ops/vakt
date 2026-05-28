@@ -94,7 +94,7 @@ function PolicyItem({ policy }: { policy: PublicPolicy }) {
           <FileText className="h-4 w-4 text-indigo-500 shrink-0" />
           <span className="font-medium text-gray-900">{policy.title}</span>
         </div>
-        <span className="text-gray-400 text-xs">{open ? '▲' : '▼'}</span>
+        <span className="text-gray-500 text-xs">{open ? '▲' : '▼'}</span>
       </button>
       {open && policy.body && (
         <div className="px-5 pb-5 border-t bg-gray-50">
@@ -240,7 +240,7 @@ export default function TrustPage() {
                     <div>
                       <span className="font-semibold text-gray-900">{fw.name}</span>
                       {fw.version && (
-                        <span className="ml-2 text-xs text-gray-400">{fw.version}</span>
+                        <span className="ml-2 text-xs text-gray-500">{fw.version}</span>
                       )}
                     </div>
                   </div>
@@ -267,7 +267,7 @@ export default function TrustPage() {
                 {cert.issuer && (
                   <div className="text-xs text-gray-500">Aussteller: {cert.issuer}</div>
                 )}
-                <div className="flex gap-4 text-xs text-gray-400 mt-1">
+                <div className="flex gap-4 text-xs text-gray-500 mt-1">
                   {cert.issued_at && <span>Ausgestellt: {cert.issued_at}</span>}
                   {cert.expires_at && <span>Gültig bis: {cert.expires_at}</span>}
                 </div>
@@ -309,7 +309,7 @@ export default function TrustPage() {
         )}
 
         {/* Footer */}
-        <div className="mt-8 text-center text-xs text-gray-400">
+        <div className="mt-8 text-center text-xs text-gray-500">
           <p>Zuletzt aktualisiert: {formatDate(data.published_at)}</p>
           <p className="mt-1">
             Powered by{' '}

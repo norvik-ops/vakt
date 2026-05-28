@@ -15,4 +15,17 @@ add_header X-Content-Type-Options "nosniff" always;
 add_header X-XSS-Protection "0" always;
 add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
-add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none';" always;
+# Modern Cross-Origin isolation. CORP=same-origin blocks other origins from
+# loading our assets/JSON via <img>/<script>/fetch; COOP=same-origin gives
+# us cross-origin isolation for any future SharedArrayBuffer usage.
+add_header Cross-Origin-Resource-Policy "same-origin" always;
+add_header Cross-Origin-Opener-Policy "same-origin" always;
+# CSP:
+#   script-src 'self' — Vite production build has no inline scripts and no
+#     eval(); 'unsafe-inline' was a holdover that defeated XSS hardening.
+#   style-src-elem 'self' — <style> + <link rel="stylesheet"> are bundled by Vite.
+#   style-src-attr 'unsafe-inline' — React / Tailwind set element.style at
+#     runtime (e.g. Recharts dimensions). Cannot eliminate without an SSR
+#     rewrite. Inline style="…" cannot execute JS, so the residual XSS
+#     surface is small.
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self';" always;

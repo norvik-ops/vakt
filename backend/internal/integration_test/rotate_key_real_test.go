@@ -80,9 +80,10 @@ func TestRotateKey_EndToEnd(t *testing.T) {
 		INSERT INTO organizations (name, slug) VALUES ('RotateTest', 'rotatetest')
 		RETURNING id::text`).Scan(&orgID))
 	require.NoError(t, pool.QueryRow(ctx, `
-		INSERT INTO users (org_id, email, password_hash, name)
-		VALUES ($1::uuid, 'rotate@example.org', '$2a$10$abcdefghijklmnopqrstuv', 'Rotate Tester')
-		RETURNING id::text`, orgID).Scan(&userID))
+		INSERT INTO users (email, password_hash, display_name)
+		VALUES ('rotate@example.org', '$2a$10$abcdefghijklmnopqrstuv', 'Rotate Tester')
+		RETURNING id::text`).Scan(&userID))
+	require.NoError(t, ensureMember(ctx, pool, userID, orgID))
 	require.NoError(t, pool.QueryRow(ctx, `
 		INSERT INTO so_projects (org_id, name, slug, created_by)
 		VALUES ($1::uuid, 'P', 'p', $2::uuid)

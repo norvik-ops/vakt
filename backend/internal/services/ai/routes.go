@@ -19,6 +19,10 @@ type RegisterOptions struct {
 	CacheTTLSeconds  int
 	CostPerMTokenIn  int64
 	CostPerMTokenOut int64
+	// FailOpenOnOutage flips rate-limit / quota / CE-counter behaviour to
+	// allow traffic when the backend (Redis or Postgres) is unreachable.
+	// Default false — fail-closed, consistent with ADR-0044 (auth lockout).
+	FailOpenOnOutage bool
 }
 
 // Register mounts AI report endpoints.
@@ -45,13 +49,14 @@ func RegisterWithOptions(g *echo.Group, db *pgxpool.Pool, provider, baseURL, api
 	}
 	svc := NewService(db, baseURL, apiKey, model)
 	if opts.Redis != nil {
-		svc.WithUsageTracker(NewUsageTracker(opts.Redis, db, UsageTrackerConfig{
+		tracker := NewUsageTracker(opts.Redis, db, UsageTrackerConfig{
 			RateLimitRPM:     opts.RateLimitRPM,
 			DailyTokenLimit:  opts.DailyTokenLimit,
 			CacheTTLSeconds:  opts.CacheTTLSeconds,
 			CostPerMTokenIn:  opts.CostPerMTokenIn,
 			CostPerMTokenOut: opts.CostPerMTokenOut,
-		}))
+		}).WithFailOpenOnOutage(opts.FailOpenOnOutage)
+		svc.WithUsageTracker(tracker)
 	}
 	h := NewHandler(svc)
 

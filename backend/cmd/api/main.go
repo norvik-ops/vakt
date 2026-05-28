@@ -228,6 +228,12 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 			c.Response().Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 			c.Response().Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()")
 			c.Response().Header().Set("Cross-Origin-Opener-Policy", "same-origin")
+			// Cross-Origin-Resource-Policy: prevent other origins from loading
+			// our JSON/asset responses via <img>/<script>/fetch — completes the
+			// COOP/CORP/COEP triple that gives modern Spectre-class isolation.
+			// API responses are same-origin only by design; no third-party
+			// consumer exists.
+			c.Response().Header().Set("Cross-Origin-Resource-Policy", "same-origin")
 			return next(c)
 		}
 	})
@@ -474,6 +480,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 
 	// All subsequent routes require a valid Paseto token
 	protected := api.Group("", auth.AuthMiddleware(pasetoKey, pool, rdb))
+	protected.GET("/auth/me", authHandler.Me)
 
 	// CSRF protection: double-submit-cookie pattern on state-changing methods.
 	// API-key requests (Bearer sk_/vakt_) are exempt because they are not
@@ -626,6 +633,10 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		// Sprint 15 (S15-1/2/3/5): Rate-Limit + Daily-Quota + Response-Cache
 		// + Streaming-SSE-Endpoint laufen über RegisterWithOptions, sofern
 		// Redis verfügbar ist.
+		aiFailOpen := os.Getenv("VAKT_AI_FAIL_OPEN_ON_OUTAGE") == "true"
+		if aiFailOpen {
+			log.Warn().Msg("ai: VAKT_AI_FAIL_OPEN_ON_OUTAGE=true — rate-limit + quota checks will fail open during Redis/Postgres outages (audit-relevant choice)")
+		}
 		ai.RegisterWithOptions(protected.Group("/secvitals"), pool, cfg.AIProvider, cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel, ai.RegisterOptions{
 			Redis:            rdb,
 			RateLimitRPM:     cfg.AIRateLimitRPM,
@@ -633,6 +644,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 			CacheTTLSeconds:  cfg.AICacheTTLSeconds,
 			CostPerMTokenIn:  cfg.AICostPerMTokenIn,
 			CostPerMTokenOut: cfg.AICostPerMTokenOut,
+			FailOpenOnOutage: aiFailOpen,
 		})
 		// Auditor portal — read-only secvitals access via session token (no Bearer auth)
 		secvitals.RegisterAuditor(api.Group("/auditor/secvitals", auditorRateLimiter, auditor.AuditorAuth(pool)), ckHandler)
@@ -826,7 +838,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		demoStartRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
 			middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(10.0 / 60.0), Burst: 10, ExpiresIn: 5 * time.Minute},
 		))
-		demoStartHandler := demo.NewStartHandler(pool, cfg.SecretKey)
+		demoStartHandler := demo.NewStartHandler(pool, cfg.SecretKey, authSvc)
 		demo.RegisterStart(api.Group("/demo", demoStartRateLimiter), demoStartHandler)
 		log.Info().Msg("demo start route registered")
 	}

@@ -27,7 +27,7 @@ import {
 } from '../components/ui/alert-dialog'
 import { Skeleton } from '../components/ui/skeleton'
 import { useToast } from '../shared/hooks/useToast'
-import { setAuthToken } from '../api/client'
+import { useAuthStore } from '../shared/stores/auth'
 import { useFormatDate } from '../shared/hooks/useFormatDate'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -167,6 +167,7 @@ export default function AdminTenantsPage() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const { formatDate } = useFormatDate()
+  const clearAuth = useAuthStore((s) => s.clearAuth)
   const [search, setSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [deactivateTarget, setDeactivateTarget] = useState<ManagedOrg | null>(null)
@@ -195,8 +196,9 @@ export default function AdminTenantsPage() {
       }),
     onSuccess: () => {
       // Cookie-based auth: the backend sets the impersonation token as an httpOnly
-      // cookie in the response. Clear local user info and reload to tenant context.
-      setAuthToken(null)
+      // cookie in the response. Clear in-memory auth state and reload — the
+      // store will re-hydrate from /auth/me with the new tenant context.
+      clearAuth()
       window.location.href = '/'
     },
     onError: (e: Error) => {

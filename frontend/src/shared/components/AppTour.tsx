@@ -187,6 +187,29 @@ export function AppTour() {
     }
   }
 
+  // Esc closes the tour. Tour is aria-modal="false" so we don't trap focus,
+  // but Esc-to-dismiss matches WCAG/Aria Authoring Practices for popovers.
+  useEffect(() => {
+    if (!active) return
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        complete()
+      }
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => { document.removeEventListener('keydown', handleKey); }
+  }, [active])
+
+  // Move keyboard focus onto the tooltip when the tour opens / steps change,
+  // so screen-reader users land in the panel and Tab cycles through its
+  // controls (Skip / Weiter).
+  useEffect(() => {
+    if (!active) return
+    const t = requestAnimationFrame(() => { tooltipRef.current?.focus(); })
+    return () => { cancelAnimationFrame(t); }
+  }, [active, step])
+
   if (!active) return null
 
   const currentStep = TOUR_STEPS[step]
@@ -223,7 +246,8 @@ export function AppTour() {
         role="dialog"
         aria-modal="false"
         aria-label={currentStep.title}
-        className="fixed z-[9002] w-72 bg-surface border border-border rounded-xl shadow-2xl p-4"
+        tabIndex={-1}
+        className="fixed z-[9002] w-72 bg-surface border border-border rounded-xl shadow-2xl p-4 focus:outline-none"
         style={{
           top: tooltipPos.top,
           left: tooltipPos.left,

@@ -96,7 +96,7 @@ function scoreColor(score: number): string {
 }
 
 function deltaBadge(delta: number | null) {
-  if (delta === null) return <span className="text-gray-400 text-xs">—</span>
+  if (delta === null) return <span className="text-gray-500 text-xs">—</span>
   if (delta > 0)
     return (
       <span className="inline-flex items-center gap-0.5 text-green-600 text-xs font-semibold">
@@ -168,9 +168,9 @@ function HistoryTable({ runs }: { runs: AssessmentRun[] }) {
                     ? deltaBadge(null)
                     : null}
                   {isExpanded ? (
-                    <ChevronLeft className="w-4 h-4 text-gray-400 rotate-90" />
+                    <ChevronLeft className="w-4 h-4 text-gray-500 rotate-90" />
                   ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-400 rotate-90" />
+                    <ChevronRight className="w-4 h-4 text-gray-500 rotate-90" />
                   )}
                 </div>
               </div>
@@ -203,7 +203,7 @@ function HistoryTable({ runs }: { runs: AssessmentRun[] }) {
                               {score !== undefined ? (
                                 <span className={`font-semibold ${scoreColor(score)}`}>{score}</span>
                               ) : (
-                                <span className="text-gray-400">—</span>
+                                <span className="text-gray-500">—</span>
                               )}
                             </td>
                             <td className="py-2 text-right">{deltaBadge(delta)}</td>
@@ -327,7 +327,7 @@ function ReassessmentWizard({ runId, onComplete, onCancel }: WizardProps) {
               <span className="text-sm font-medium text-gray-900">
                 <span className="inline-block w-6 text-indigo-600 font-bold">{value}</span> {label}
               </span>
-              <ChevronRight className="w-4 h-4 text-gray-400" />
+              <ChevronRight className="w-4 h-4 text-gray-500" />
             </button>
           ))}
         </div>
@@ -489,7 +489,7 @@ export default function NIS2ReassessmentPage() {
           <CardContent className="py-12 text-center space-y-3">
             <Shield className="w-10 h-10 text-gray-300 mx-auto" />
             <p className="text-sm font-medium text-gray-600">Noch keine Re-Assessments</p>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-500">
               Starten Sie Ihr erstes Re-Assessment, um Ihre NIS2-Compliance zu messen.
             </p>
             <Button
@@ -548,7 +548,7 @@ export default function NIS2ReassessmentPage() {
       <div className="text-center">
         <button
           onClick={() => { navigate('/nis2-check'); }}
-          className="text-xs text-gray-400 hover:text-gray-600 underline"
+          className="text-xs text-gray-500 hover:text-gray-600 underline"
         >
           Zum öffentlichen NIS2-Wizard →
         </button>

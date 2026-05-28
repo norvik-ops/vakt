@@ -60,7 +60,7 @@ const STATUS_COLORS: Record<string, string> = {
   implemented: 'bg-green-100 text-green-800',
   in_progress: 'bg-blue-100 text-blue-800',
   not_started: 'bg-gray-100 text-gray-700',
-  not_applicable: 'bg-gray-100 text-gray-400',
+  not_applicable: 'bg-gray-100 text-gray-500',
   partial: 'bg-yellow-100 text-yellow-800',
 }
 
@@ -169,7 +169,7 @@ export default function SoAPage() {
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-gray-400 py-8">
+                <TableCell colSpan={5} className="text-center text-gray-500 py-8">
                   Keine Einträge
                 </TableCell>
               </TableRow>

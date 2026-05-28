@@ -51,7 +51,7 @@ function RiskMatrixHeatmap({ risks }: { risks: Risk[] }) {
       <div className="flex gap-2">
         {/* Y-axis label */}
         <div
-          className="flex flex-col justify-between text-xs text-gray-400 py-1"
+          className="flex flex-col justify-between text-xs text-gray-500 py-1"
           style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', height: `${5 * 44}px` }}
         >
           Auswirkung →
@@ -60,7 +60,7 @@ function RiskMatrixHeatmap({ risks }: { risks: Risk[] }) {
           {/* Grid: impact 5 (top) to 1 (bottom), likelihood 1 (left) to 5 (right) */}
           {[5, 4, 3, 2, 1].map(impact => (
             <div key={impact} className="flex">
-              <span className="text-xs text-gray-400 w-4 flex items-center justify-center">{impact}</span>
+              <span className="text-xs text-gray-500 w-4 flex items-center justify-center">{impact}</span>
               {[1, 2, 3, 4, 5].map(likelihood => {
                 const count = counts[`${likelihood}-${impact}`] ?? 0
                 return (
@@ -79,10 +79,10 @@ function RiskMatrixHeatmap({ risks }: { risks: Risk[] }) {
           {/* X-axis */}
           <div className="flex mt-1 pl-4">
             {[1, 2, 3, 4, 5].map(l => (
-              <span key={l} className="w-10 m-0.5 text-center text-xs text-gray-400">{l}</span>
+              <span key={l} className="w-10 m-0.5 text-center text-xs text-gray-500">{l}</span>
             ))}
           </div>
-          <div className="text-xs text-gray-400 text-center mt-1 pl-4">← Eintrittswahrscheinlichkeit</div>
+          <div className="text-xs text-gray-500 text-center mt-1 pl-4">← Eintrittswahrscheinlichkeit</div>
         </div>
         {/* Legend */}
         <div className="ml-4 flex flex-col gap-1 justify-center text-xs">
@@ -94,7 +94,7 @@ function RiskMatrixHeatmap({ risks }: { risks: Risk[] }) {
           ].map(({ color, label }) => (
             <div key={label} className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} />
-              <span className="text-gray-600 dark:text-gray-400">{label}</span>
+              <span className="text-gray-600 dark:text-gray-500">{label}</span>
             </div>
           ))}
         </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react'
-import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { Spinner } from '../components/Spinner'
 import { Building2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -22,21 +22,26 @@ import type { components } from '../api/generated'
 
 type LoginResponse = components['schemas']['LoginResponse']
 type HealthResponse = components['schemas']['HealthResponse']
-type DemoStartResponse = components['schemas']['DemoStartResponse']
 
-type DemoUser = { label: string; email: string; password: string }
+type DemoRole = { label: string; role: 'admin' | 'analyst' }
 
 export default function Login() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const location = useLocation()
   const setAuth = useAuthStore((s) => s.setAuth)
   const isDemo = useDemoMode()
   const [email, setEmail] = useState('')
   const [ssoEnabled, setSsoEnabled] = useState(false)
-  const [demoUsers, setDemoUsers] = useState<DemoUser[] | null>(null)
-  const [demoStarting, setDemoStarting] = useState(false)
+  const [demoStarting, setDemoStarting] = useState<DemoRole['role'] | null>(null)
   const [demoError, setDemoError] = useState(false)
+
+  // Demo roles are static — no need to fetch /demo/start on mount any more.
+  // The actual session is created server-side when the user clicks the role
+  // button (audit F041: password never enters the DOM).
+  const demoRoles: DemoRole[] = [
+    { label: 'Admin', role: 'admin' },
+    { label: 'Analyst', role: 'analyst' },
+  ]
 
   useEffect(() => {
     document.title = isDemo ? 'Vakt Demo' : 'Vakt'
@@ -49,42 +54,26 @@ export default function Login() {
       .catch(() => { /* SSO-Button bleibt ausgeblendet wenn Health-Check fehlschlägt */ })
   }, [])
 
-  // Auto-start ephemeral demo session when in demo mode.
-  // Jeder Visitor bekommt eine eigene Demo-Org mit Random-Slug + Random-
-  // Passwörtern (16 hex chars). Die Klartext-Passwörter kommen einmalig
-  // aus /api/v1/demo/start zurück und werden hier zur Anzeige/Vorbelegung
-  // verwendet — keine hardcoded Defaults mehr (Min-Length-Validierung
-  // 10 Zeichen würde "admin1234" ohnehin ablehnen). Cleanup-Job löscht
-  // die Org nach 4 Stunden (siehe demo/cleanup.go).
-  useEffect(() => {
-    if (!isDemo) return
-    const passed = (location.state as { demoCreds?: { admin: { email: string; password: string }; analyst: { email: string; password: string } } } | null)?.demoCreds
-    if (passed) {
-      setDemoUsers([
-        { label: 'Admin', email: passed.admin.email, password: passed.admin.password },
-        { label: 'Analyst', email: passed.analyst.email, password: passed.analyst.password },
-      ])
-      return
+  async function handleDemoLogin(role: DemoRole['role']) {
+    setDemoStarting(role)
+    setDemoError(false)
+    try {
+      const data = await apiFetch<LoginResponse>('/demo/login', {
+        method: 'POST',
+        body: JSON.stringify({ role }),
+      })
+      setAuth(data.user)
+      if ('session_id' in data && typeof data.session_id === 'string') {
+        setSessionId(data.session_id)
+      }
+      navigate('/')
+    } catch {
+      setDemoError(true)
+      toast(t('auth.demoUnavailable'), { variant: 'error', duration: 10000 })
+    } finally {
+      setDemoStarting(null)
     }
-    setDemoStarting(true)
-    fetch('/api/v1/demo/start', { method: 'POST' })
-      .then((r) => {
-        if (!r.ok) throw new Error(`demo/start ${r.status}`)
-        return r.json() as Promise<DemoStartResponse>
-      })
-      .then((d) => {
-        setDemoUsers([
-          { label: 'Admin', email: d.admin_email, password: d.admin_password },
-          { label: 'Analyst', email: d.analyst_email, password: d.analyst_password },
-        ])
-      })
-      .catch(() => {
-        setDemoUsers(null)
-        setDemoError(true)
-        toast(t('auth.demoUnavailable'), { variant: 'error', duration: 10000 })
-      })
-      .finally(() => { setDemoStarting(false); })
-  }, [isDemo, t])
+  }
 
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -209,24 +198,19 @@ export default function Login() {
               <CardContent className="pt-4 pb-4 space-y-3">
                 <p className="text-xs font-semibold text-brand uppercase tracking-wide">{t('auth.demoCredentials')}</p>
                 <p className="text-xs text-secondary">{t('auth.demoHint')}</p>
-                {demoStarting && (
-                  <div className="flex items-center gap-2 py-2">
-                    <Spinner size="sm" className="w-3.5 h-3.5" />
-                    <span className="text-xs text-secondary">{t('auth.demoPreparing')}</span>
-                  </div>
-                )}
-                {!demoStarting && demoUsers && demoUsers.map((u) => (
+                {demoRoles.map((r) => (
                   <button
-                    key={u.email}
+                    key={r.role}
                     type="button"
-                    onClick={() => { setEmail(u.email ?? ''); setPassword(u.password ?? '') }}
-                    className="w-full text-left rounded-md border border-border bg-surface px-3 py-2 hover:bg-muted transition-colors"
+                    onClick={() => { void handleDemoLogin(r.role) }}
+                    disabled={demoStarting !== null}
+                    className="w-full text-left rounded-md border border-border bg-surface px-3 py-2 hover:bg-muted transition-colors disabled:opacity-60 disabled:cursor-wait flex items-center justify-between"
                   >
-                    <span className="text-xs font-medium block">{u.label}</span>
-                    <span className="text-xs text-secondary font-mono">{u.email}</span>
+                    <span className="text-xs font-medium">{r.label}</span>
+                    {demoStarting === r.role && <Spinner size="sm" className="w-3.5 h-3.5" />}
                   </button>
                 ))}
-                {!demoStarting && demoError && (
+                {demoError && (
                   <div className="space-y-1.5">
                     <p className="text-xs text-red-500">{t('auth.demoUnavailable')}</p>
                     <a

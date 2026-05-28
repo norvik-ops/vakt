@@ -142,7 +142,7 @@ export default function DSRPortalSettingsPage() {
             Portal-Slug
           </label>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400 shrink-0">/dsr/</span>
+            <span className="text-sm text-gray-500 shrink-0">/dsr/</span>
             <input
               type="text"
               value={slug}
@@ -151,7 +151,7 @@ export default function DSRPortalSettingsPage() {
               placeholder="mein-unternehmen"
             />
           </div>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-gray-500 mt-1">
             Nur Kleinbuchstaben, Ziffern und Bindestriche. Muss eindeutig sein.
           </p>
         </div>
@@ -167,7 +167,7 @@ export default function DSRPortalSettingsPage() {
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="datenschutz@beispiel.de"
           />
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-gray-500 mt-1">
             Diese Adresse wird für interne Benachrichtigungen bei neuen DSR-Einreichungen genutzt.
           </p>
         </div>
@@ -183,7 +183,7 @@ export default function DSRPortalSettingsPage() {
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             placeholder="Willkommen auf unserem Datenschutz-Portal. Hier können Sie Ihre Rechte nach DSGVO wahrnehmen…"
           />
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-gray-500 mt-1">
             Wird oben auf dem öffentlichen Portal angezeigt.
           </p>
         </div>

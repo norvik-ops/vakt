@@ -281,6 +281,51 @@ func (h *Handler) Refresh(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
+// Me handles GET /api/v1/auth/me. Returns the current user's identity for
+// the front-end to hydrate its auth store after a page reload, replacing the
+// previous localStorage-based snapshot (audit F032: no PII in localStorage).
+// Requires authentication — mounted on the `protected` group in cmd/api.
+func (h *Handler) Me(c echo.Context) error {
+	userID, _ := c.Get("user_id").(string)
+	if userID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "unauthenticated",
+			"code":  "AUTH_UNAUTHENTICATED",
+		})
+	}
+	ctx := c.Request().Context()
+	var user AuthUser
+	err := h.service.db.QueryRow(ctx, `
+		SELECT id::text, email, COALESCE(display_name, email)
+		FROM users WHERE id = $1::uuid`, userID).
+		Scan(&user.ID, &user.Email, &user.DisplayName)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "unauthenticated",
+			"code":  "AUTH_UNAUTHENTICATED",
+		})
+	}
+	if rolesAny, ok := c.Get("roles").([]string); ok && len(rolesAny) > 0 {
+		user.Roles = rolesAny
+	} else {
+		rows, qErr := h.service.db.Query(ctx, `
+			SELECT r.name FROM org_members om
+			JOIN roles r ON r.id = om.role_id
+			WHERE om.user_id = $1::uuid
+			ORDER BY om.joined_at ASC`, userID)
+		if qErr == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var name string
+				if scanErr := rows.Scan(&name); scanErr == nil {
+					user.Roles = append(user.Roles, name)
+				}
+			}
+		}
+	}
+	return c.JSON(http.StatusOK, user)
+}
+
 // OIDCInitiate handles GET /api/v1/auth/oidc/initiate.
 // Generates a cryptographically random state, stores it in Redis with a 10-minute TTL,
 // and returns the Casdoor authorization URL with the state embedded (OAuth2 CSRF protection).

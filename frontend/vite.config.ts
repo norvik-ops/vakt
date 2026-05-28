@@ -2,10 +2,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import sri from 'vite-plugin-subresource-integrity'
 
 export default defineConfig({
   plugins: [
     react(),
+    // Subresource Integrity (SRI) for the production bundle. Audit response
+    // F[1]: closes the supply-chain path that strict CSP alone cannot block —
+    // if dist/assets/index-*.js is swapped at the CDN/proxy layer, browsers
+    // will refuse to execute it because the hash in index.html no longer
+    // matches. SHA-384 is the default and matches modern browser support.
+    sri(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['logo.svg', 'manifest.json'],

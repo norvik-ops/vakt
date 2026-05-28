@@ -1,7 +1,10 @@
 const API_BASE = '/api/v1'
 
-// User info stored in localStorage — does NOT include the access token.
-// The access token lives in an httpOnly cookie managed by the backend.
+// User identity for client-side use. Source of truth lives on the server;
+// after page reload the SPA fetches /auth/me to rehydrate. We no longer
+// persist this object in localStorage (audit F032 — no PII at rest in the
+// browser). Auth presence is signalled by the httpOnly cookie set by the
+// backend on login.
 export interface UserInfo {
   id: string
   email: string
@@ -10,27 +13,23 @@ export interface UserInfo {
   roles?: string[]
 }
 
-export function getUserInfo(): UserInfo | null {
+export interface AuthMe {
+  id: string
+  email: string
+  display_name: string
+  roles: string[]
+}
+
+export async function fetchMe(): Promise<AuthMe | null> {
   try {
-    const raw = localStorage.getItem('vakt_user')
-    if (!raw) return null
-    return JSON.parse(raw) as UserInfo
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    })
+    if (!res.ok) return null
+    return (await res.json()) as AuthMe
   } catch {
     return null
-  }
-}
-
-export function setUserInfo(user: UserInfo | null): void {
-  if (user) localStorage.setItem('vakt_user', JSON.stringify(user))
-  else localStorage.removeItem('vakt_user')
-}
-
-// Legacy compatibility shim — callers that still invoke setAuthToken(null) on
-// logout will clear vakt_user.  New callers should prefer setUserInfo().
-export function setAuthToken(token: string | null): void {
-  if (!token) {
-    setUserInfo(null)
-    setSessionId(null)
   }
 }
 
@@ -49,12 +48,6 @@ export function getSessionId(): string | null {
 export function setSessionId(id: string | null): void {
   if (id) localStorage.setItem('vakt_session_id', id)
   else localStorage.removeItem('vakt_session_id')
-}
-
-// Returns true when a user session exists (cookie is managed by the browser;
-// we track session presence via the vakt_user key in localStorage).
-export function getAuthToken(): boolean {
-  return getUserInfo() !== null
 }
 
 export class FeatureLockedError extends Error {
@@ -113,6 +106,14 @@ function parseRetryAfter(headerValue: string | null): number {
   return 1
 }
 
+// onUnauthorized is called by apiFetch when the server returns 401, so the
+// auth store can clear in-memory state before the redirect. Wired up in
+// shared/stores/auth.ts to avoid a static import cycle.
+let onUnauthorized: (() => void) | null = null
+export function registerUnauthorizedHandler(fn: () => void): void {
+  onUnauthorized = fn
+}
+
 export async function apiFetch<T>(
   path: string,
   options?: Omit<RequestInit, 'headers'> & { headers?: Record<string, string> },
@@ -163,7 +164,8 @@ export async function apiFetch<T>(
     }
 
     if (res.status === 401) {
-      setUserInfo(null)
+      onUnauthorized?.()
+      setSessionId(null)
       window.location.href = '/login'
       throw new Error('Unauthorized')
     }

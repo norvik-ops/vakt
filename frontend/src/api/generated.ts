@@ -188,6 +188,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/demo/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start an ephemeral demo session and log in server-side
+         * @description Like `/demo/start`, but the random password is consumed internally and
+         *     never returned to the client. The server creates the ephemeral org,
+         *     runs the real login flow with the role's seed user, and returns the
+         *     standard `LoginResponse` (with httpOnly `access_token` cookie set).
+         *
+         *     Use this from any UI that would otherwise display the demo password
+         *     in the DOM (audit F041).
+         *
+         *     Rate-limited together with `/demo/start` (10/min per IP).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Which seed account to log in as. Defaults to admin.
+                         * @example admin
+                         * @enum {string}
+                         */
+                        role?: "admin" | "analyst";
+                    };
+                };
+            };
+            responses: {
+                /** @description Successful demo login */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LoginResponse"];
+                    };
+                };
+                /** @description Rate limit exceeded (10 req/min per IP). */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Demo seed or login failed. */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Demo login not configured on this instance. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -428,6 +513,57 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Return the authenticated user's identity for client-side rehydration
+         * @description Replaces the previous localStorage-based user snapshot in the SPA
+         *     (audit F032 — no PII in localStorage). The cookie/Paseto session is
+         *     the source of truth; this endpoint just lets the front-end ask
+         *     "who am I?" after a page reload.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Current user */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["User"];
+                    };
+                };
+                /** @description Not authenticated */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;

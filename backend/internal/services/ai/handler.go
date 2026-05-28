@@ -247,6 +247,12 @@ func (h *Handler) ChatStream(c echo.Context) error {
 	// Rate-Limit + Quota vor dem Stream-Start.
 	if h.svc.usage != nil {
 		if err := h.svc.usage.CheckRateLimit(c.Request().Context(), orgID); err != nil {
+			if errors.Is(err, ErrUsageCheckUnavailable) {
+				return c.JSON(http.StatusServiceUnavailable, map[string]string{
+					"error": "AI temporarily unavailable. Please retry shortly.",
+					"code":  "AI_USAGE_CHECK_UNAVAILABLE",
+				})
+			}
 			h.svc.usage.Record(c.Request().Context(), UsageRecord{
 				OrgID: orgID, Model: h.svc.model, Status: "rate_limited", RequestID: "chat.stream",
 			})
@@ -256,6 +262,12 @@ func (h *Handler) ChatStream(c echo.Context) error {
 			return c.JSON(http.StatusTooManyRequests, map[string]string{"error": err.Error(), "code": "AI_RATE_LIMITED"})
 		}
 		if err := h.svc.usage.CheckDailyQuota(c.Request().Context(), orgID); err != nil {
+			if errors.Is(err, ErrUsageCheckUnavailable) {
+				return c.JSON(http.StatusServiceUnavailable, map[string]string{
+					"error": "AI temporarily unavailable. Please retry shortly.",
+					"code":  "AI_USAGE_CHECK_UNAVAILABLE",
+				})
+			}
 			h.svc.usage.Record(c.Request().Context(), UsageRecord{
 				OrgID: orgID, Model: h.svc.model, Status: "rate_limited", RequestID: "chat.stream",
 			})

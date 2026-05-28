@@ -277,7 +277,7 @@ export default function MultiFrameworkWizardPage() {
                 +{FRAMEWORK_LABELS[cf] ?? cf}
               </span>
             ))}
-            <span className="text-xs text-gray-400 ml-auto">{q.ref}</span>
+            <span className="text-xs text-gray-500 ml-auto">{q.ref}</span>
           </div>
 
           <h2 className="text-xl font-semibold text-gray-900">{q.text}</h2>
@@ -300,7 +300,7 @@ export default function MultiFrameworkWizardPage() {
                     <span className="inline-block w-6 text-indigo-600 font-bold">{value}</span>
                     {' '}{label}
                   </span>
-                  <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />
                 </button>
               )
             })}
@@ -323,7 +323,7 @@ export default function MultiFrameworkWizardPage() {
           >
             <ChevronLeft className="w-4 h-4" /> Zurück
           </button>
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-gray-500">
             Antworten werden sicher gespeichert · 7 Tage Lebensdauer
           </span>
         </div>
@@ -428,7 +428,7 @@ function ResultView({ result }: { result: MultiRun }) {
               {score.top_gaps.map((gap, i) => (
                 <li key={`${gap.framework}-${gap.area}`} className="flex items-start justify-between gap-2 text-sm">
                   <div className="flex items-start gap-2">
-                    <span className="text-gray-400 font-mono shrink-0 w-4">{i + 1}.</span>
+                    <span className="text-gray-500 font-mono shrink-0 w-4">{i + 1}.</span>
                     <div>
                       <span className="text-gray-700">{gap.area_title}</span>
                       <span className={`ml-2 text-xs font-medium ${FRAMEWORK_COLORS[gap.framework] ?? 'text-gray-500'}`}>

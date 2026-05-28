@@ -20,6 +20,14 @@ var ErrRateLimited = errors.New("ai: rate limit exceeded for organization")
 // Org erschoepft ist (`VAKT_AI_DAILY_TOKEN_LIMIT_PER_ORG`).
 var ErrQuotaExceeded = errors.New("ai: daily token quota exceeded for organization")
 
+// ErrUsageCheckUnavailable is returned by CheckRateLimit / CheckDailyQuota
+// when their backend (Redis or Postgres) is unreachable AND the tracker is
+// configured to fail closed. Handlers should map this to HTTP 503 — the
+// same shape we return for AUTH_LOCKOUT_UNAVAILABLE (ADR-0044). Inconsistent
+// fail-open/fail-closed across security-adjacent counters was the audit
+// finding (Sprint-60 / final_audit.md Top-3 #2).
+var ErrUsageCheckUnavailable = errors.New("ai: usage check unavailable (backend outage, fail-closed)")
+
 // CEMonthlyLimit is the number of AI requests allowed per month for Community Edition orgs.
 const CEMonthlyLimit = 25
 
@@ -38,6 +46,23 @@ type UsageTracker struct {
 	cacheTTLSeconds  int
 	costPerMTokenIn  int64
 	costPerMTokenOut int64
+	// failOpenOnOutage controls how rate-limit / quota checks behave when
+	// their backend is unreachable. Default false (= fail closed): on
+	// Redis/DB error the check returns ErrUsageCheckUnavailable and the
+	// handler responds 503 rather than letting unlimited AI calls through
+	// during an outage. Operators who prefer availability over the AI
+	// rate-limit guarantee can flip the flag via
+	// VAKT_AI_FAIL_OPEN_ON_OUTAGE=true (mirrors the auth toggle in ADR-0044).
+	failOpenOnOutage bool
+}
+
+// WithFailOpenOnOutage flips the rate-limit / quota check behaviour to
+// "fail open" — i.e., allow AI calls when Redis or Postgres is unreachable.
+// Only use when the deployment explicitly accepts unlimited AI usage during
+// an outage in favour of availability. See ADR-0044 / final_audit.md Top-3 #2.
+func (u *UsageTracker) WithFailOpenOnOutage(b bool) *UsageTracker {
+	u.failOpenOnOutage = b
+	return u
 }
 
 // UsageTrackerConfig sammelt die Konstruktor-Parameter, damit die Konfig nicht
@@ -76,9 +101,12 @@ func (u *UsageTracker) CheckRateLimit(ctx context.Context, orgID string) error {
 	key := fmt.Sprintf("ai:rl:%s:%d", orgID, time.Now().UTC().Unix()/60)
 	count, err := u.rdb.Incr(ctx, key).Result()
 	if err != nil {
-		// Bei Redis-Fehler nicht blockieren (verfuegbarkeitsvorrang).
-		log.Warn().Err(err).Str("org_id", orgID).Msg("ai: rate-limit INCR failed — allowing")
-		return nil
+		log.Warn().Err(err).Str("org_id", orgID).Bool("fail_open", u.failOpenOnOutage).
+			Msg("ai: rate-limit INCR failed")
+		if u.failOpenOnOutage {
+			return nil
+		}
+		return ErrUsageCheckUnavailable
 	}
 	if count == 1 {
 		// First request in the window — set expiry.
@@ -106,8 +134,12 @@ func (u *UsageTracker) CheckDailyQuota(ctx context.Context, orgID string) error 
 		  AND created_at >= date_trunc('day', NOW() AT TIME ZONE 'UTC')
 	`, orgID).Scan(&total)
 	if err != nil {
-		log.Warn().Err(err).Str("org_id", orgID).Msg("ai: quota lookup failed — allowing")
-		return nil
+		log.Warn().Err(err).Str("org_id", orgID).Bool("fail_open", u.failOpenOnOutage).
+			Msg("ai: quota lookup failed")
+		if u.failOpenOnOutage {
+			return nil
+		}
+		return ErrUsageCheckUnavailable
 	}
 	if total >= u.dailyTokenLimit {
 		return ErrQuotaExceeded
@@ -191,7 +223,12 @@ func (u *UsageTracker) Record(ctx context.Context, r UsageRecord) {
 
 // CEMonthlyUsage returns how many AI requests the org has made this calendar month.
 // Only successful, non-cached requests are counted (status = 'ok').
-// Returns 0 and logs on DB error so callers degrade gracefully.
+//
+// On DB error: returns CEMonthlyLimit when failOpenOnOutage is false (default
+// fail-closed — the middleware then responds 402 and we don't let unlimited
+// CE traffic through during a DB outage). When failOpenOnOutage is true the
+// old behaviour (return 0, allow through) is preserved for operators who
+// opt in via VAKT_AI_FAIL_OPEN_ON_OUTAGE=true.
 func (u *UsageTracker) CEMonthlyUsage(ctx context.Context, orgID string) int {
 	if u.db == nil || orgID == "" {
 		return 0
@@ -205,8 +242,12 @@ func (u *UsageTracker) CEMonthlyUsage(ctx context.Context, orgID string) int {
 		  AND created_at >= date_trunc('month', NOW() AT TIME ZONE 'UTC')
 	`, orgID).Scan(&count)
 	if err != nil {
-		log.Warn().Err(err).Str("org_id", orgID).Msg("ai: CE monthly usage lookup failed — treating as 0")
-		return 0
+		log.Warn().Err(err).Str("org_id", orgID).Bool("fail_open", u.failOpenOnOutage).
+			Msg("ai: CE monthly usage lookup failed")
+		if u.failOpenOnOutage {
+			return 0
+		}
+		return CEMonthlyLimit
 	}
 	return count
 }

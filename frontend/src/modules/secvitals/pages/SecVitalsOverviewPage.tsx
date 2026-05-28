@@ -21,7 +21,7 @@ import { useDORADashboard } from '../hooks/useDORADashboard'
 import { useAIStatus } from '../hooks/useAIAdvisor'
 import { useAuditReport } from '../hooks/useAuditReport'
 import { useScoreHistory } from '../hooks/useScoreHistory'
-import { FeatureLockedError, getAuthToken } from '../../../api/client'
+import { FeatureLockedError } from '../../../api/client'
 import { ProGate } from '../../../shared/components/ProGate'
 import { cn } from '../../../lib/utils'
 import { ExpiringEvidenceWidget } from '../components/ExpiringEvidenceWidget'
@@ -73,7 +73,7 @@ function ScoreBenchmark({ currentScore }: { currentScore: number }) {
   return (
     <div className="bg-white border border-border rounded-lg p-4">
       <h3 className="text-sm font-semibold text-gray-700 mb-1">Score-Orientierung</h3>
-      <p className="text-xs text-gray-400 mb-3">Ungefähre Richtwerte zur Einordnung Ihres Fortschritts</p>
+      <p className="text-xs text-gray-500 mb-3">Ungefähre Richtwerte zur Einordnung Ihres Fortschritts</p>
       <div className="space-y-2">
         <div className="flex items-center gap-3">
           <span className="text-xs text-gray-500 w-44 flex-shrink-0">Ihr aktueller Score</span>
@@ -89,7 +89,7 @@ function ScoreBenchmark({ currentScore }: { currentScore: number }) {
           const diff = currentScore - b.score
           return (
             <div key={b.label} className="flex items-center gap-3">
-              <span className="text-xs text-gray-400 w-44 flex-shrink-0">{b.label}</span>
+              <span className="text-xs text-gray-500 w-44 flex-shrink-0">{b.label}</span>
               <div className="flex-1 bg-gray-100 rounded-full h-3">
                 <div
                   className="h-3 rounded-full bg-gray-300 transition-all"
@@ -105,7 +105,7 @@ function ScoreBenchmark({ currentScore }: { currentScore: number }) {
           )
         })}
       </div>
-      <p className="text-xs text-gray-400 mt-3">
+      <p className="text-xs text-gray-500 mt-3">
         * Richtwerte zur Orientierung — keine verifizierten Branchen-Benchmarks.
       </p>
     </div>
@@ -185,7 +185,7 @@ function DashboardOrderPopover({
         <span className="text-xs font-semibold text-gray-700">Widgets anpassen</span>
         <button
           onClick={reset}
-          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
+          className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-600"
           title="Zurücksetzen"
         >
           <RotateCcw className="w-3 h-3" />
@@ -213,7 +213,7 @@ function DashboardOrderPopover({
           </li>
         ))}
       </ul>
-      <p className="text-[10px] text-gray-400 mt-2 text-center">Reihenfolge gespeichert</p>
+      <p className="text-[10px] text-gray-500 mt-2 text-center">Reihenfolge gespeichert</p>
       <button
         onClick={onClose}
         className="mt-2 w-full text-xs text-center text-gray-500 hover:text-gray-700"
@@ -317,9 +317,8 @@ export default function SecVitalsOverviewPage() {
     setIsGeneratingExec(true)
     setExecError(null)
     try {
-      const token = getAuthToken() ?? ''
       const res = await fetch('/api/v1/secvitals/reports/executive-summary', {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       })
       if (res.status === 402) throw new FeatureLockedError('audit-pdf')
       if (!res.ok) throw new Error('Executive Summary konnte nicht erstellt werden.')

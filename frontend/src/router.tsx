@@ -101,6 +101,11 @@ function SetupPageGuard() {
 
 function AuthGuard() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated())
+  const hydrating = useAuthStore((s) => s.hydrating)
+  // While the initial /auth/me query is in flight, render the spinner instead
+  // of bouncing to /login — the user IS logged in (cookie present), we just
+  // haven't confirmed identity yet (audit F032: no localStorage snapshot).
+  if (hydrating) return <LoadingSpinner />
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }

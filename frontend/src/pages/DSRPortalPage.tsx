@@ -187,7 +187,7 @@ export default function DSRPortalPage() {
                 {n}
               </div>
               <span
-                className={`text-sm ${step >= n ? 'text-gray-800 font-medium' : 'text-gray-400'}`}
+                className={`text-sm ${step >= n ? 'text-gray-800 font-medium' : 'text-gray-500'}`}
               >
                 {label}
               </span>
@@ -297,7 +297,7 @@ export default function DSRPortalPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Beschreibung{' '}
-                  <span className="text-gray-400 font-normal">(optional)</span>
+                  <span className="text-gray-500 font-normal">(optional)</span>
                 </label>
                 <textarea
                   value={description}
@@ -374,7 +374,7 @@ export default function DSRPortalPage() {
       </main>
 
       {/* Footer */}
-      <footer className="py-4 text-center text-xs text-gray-400">
+      <footer className="py-4 text-center text-xs text-gray-500">
         Datenschutz-Self-Service · Powered by Vakt
       </footer>
     </div>

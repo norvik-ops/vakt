@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { getUserInfo, setUserInfo, setAuthToken } from '../../api/client'
+import { fetchMe, registerUnauthorizedHandler, setSessionId } from '../../api/client'
 
 interface User {
   id: string
@@ -10,38 +10,49 @@ interface User {
 
 interface AuthState {
   user: User | null
+  // hydrating is true on app start until /auth/me has been queried at least
+  // once. Route guards use it to render a loading state instead of
+  // bouncing the user to /login while we're still finding out who they are.
+  hydrating: boolean
   setAuth: (user: User) => void
   clearAuth: () => void
+  hydrate: () => Promise<void>
   isAuthenticated: () => boolean
 }
 
-// Hydrate from localStorage on store creation so page refreshes stay logged in.
-function hydrateUser(): User | null {
-  const info = getUserInfo()
-  if (!info) return null
-  return {
-    id: info.id,
-    email: info.email,
-    display_name: info.display_name ?? info.email,
-    roles: info.roles ?? (info.role ? [info.role] : []),
-  }
-}
-
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user: hydrateUser(),
-  setAuth: (user) => {
-    setUserInfo({
-      id: user.id,
-      email: user.email,
-      display_name: user.display_name,
-      roles: user.roles,
-      role: user.roles[0] ?? '',
-    })
-    set({ user })
-  },
+  user: null,
+  hydrating: true,
+  setAuth: (user) => { set({ user, hydrating: false }) },
   clearAuth: () => {
-    setAuthToken(null) // clears vakt_user from localStorage
-    set({ user: null })
+    setSessionId(null)
+    set({ user: null, hydrating: false })
   },
-  isAuthenticated: () => !!get().user || getUserInfo() !== null,
+  hydrate: async () => {
+    // One-time cleanup of the deprecated localStorage snapshot (audit F032).
+    // Safe to remove unconditionally — never read any more.
+    try { localStorage.removeItem('vakt_user') } catch { /* SSR / private mode */ }
+    const me = await fetchMe()
+    if (me) {
+      set({
+        user: {
+          id: me.id,
+          email: me.email,
+          display_name: me.display_name,
+          roles: me.roles,
+        },
+        hydrating: false,
+      })
+    } else {
+      set({ user: null, hydrating: false })
+    }
+  },
+  isAuthenticated: () => !!get().user,
 }))
+
+// Wire apiFetch → store so a 401 anywhere clears the in-memory user before
+// the redirect to /login. Done at module import time; no static cycle since
+// client.ts does not import the store.
+registerUnauthorizedHandler(() => {
+  useAuthStore.setState({ user: null, hydrating: false })
+})

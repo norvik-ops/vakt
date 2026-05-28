@@ -76,10 +76,10 @@ func TestOIDC_EmailVerified_LinkingGate(t *testing.T) {
 		RETURNING id::text
 	`).Scan(&orgID))
 	require.NoError(t, pool.QueryRow(ctx, `
-		INSERT INTO users (org_id, email, password_hash, name)
-		VALUES ($1::uuid, 'victim@example.org', '$2a$10$abcdefghijklmnopqrstuvwxyz', 'Victim')
+		INSERT INTO users (email, password_hash, display_name)
+		VALUES ('victim@example.org', '$2a$10$abcdefghijklmnopqrstuvwxyz', 'Victim')
 		RETURNING id::text
-	`, orgID).Scan(&victimID))
+	`).Scan(&victimID))
 
 	// Memberships entry — provisionOIDCUser reads org_members on the link path,
 	// but the gate triggers BEFORE the membership lookup, so this is optional.
@@ -158,10 +158,10 @@ func TestOIDC_EmailVerified_LinksOnVerified(t *testing.T) {
 		RETURNING id::text
 	`).Scan(&orgID))
 	require.NoError(t, pool.QueryRow(ctx, `
-		INSERT INTO users (org_id, email, password_hash, name)
-		VALUES ($1::uuid, 'alice@example.org', '$2a$10$abcdefghijklmnopqrstuvwxyz', 'Alice')
+		INSERT INTO users (email, password_hash, display_name)
+		VALUES ('alice@example.org', '$2a$10$abcdefghijklmnopqrstuvwxyz', 'Alice')
 		RETURNING id::text
-	`, orgID).Scan(&localID))
+	`).Scan(&localID))
 	require.NoError(t, ensureMember(ctx, pool, localID, orgID))
 
 	casdoor := newMockCasdoor(t, casdoorProfileResponse{
