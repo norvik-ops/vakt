@@ -3,6 +3,7 @@ package dashboard
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -73,6 +74,9 @@ func (h *Handler) StreamNotifications(c echo.Context) error {
 		case <-pollTicker.C:
 			items, newCursor, err := h.fetchNotificationsSince(streamCtx, orgID, cursor)
 			if err != nil {
+				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+					return nil
+				}
 				log.Warn().Err(err).Str("org_id", orgID).Msg("notification-stream poll failed")
 				continue
 			}
