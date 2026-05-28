@@ -31,9 +31,11 @@ func TestAuditLog_PartitionedAfterMigration(t *testing.T) {
 	defer cleanup()
 	ctx := context.Background()
 
+	// relkind is a single-char column (pg type "char"); cast to text so
+	// pgx can scan it into a Go string.
 	var relkind string
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT relkind FROM pg_class WHERE relname='audit_log'`,
+		`SELECT relkind::text FROM pg_class WHERE relname='audit_log'`,
 	).Scan(&relkind))
 	assert.Equal(t, "p", relkind, "audit_log must be a partitioned table after migration 151")
 
