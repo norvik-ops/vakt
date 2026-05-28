@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Badge } from '../../../components/ui/badge'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, Sparkles } from 'lucide-react'
 
 interface NIS2Requirement {
   id: string
@@ -129,6 +129,15 @@ export default function NIS2ChecklistPage() {
       <PageHeader
         title="NIS2-Anforderungen (Art. 21 Abs. 2)"
         description="Ubersicht der 10 Cybersicherheitsmaßnahmen nach NIS2-Richtlinie (EU) 2022/2555 Artikel 21 Absatz 2. Klicke auf ein Modul um den Status zu prufen."
+        actions={
+          <Link
+            to="/secvitals/nis2-assistant"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-brand text-white text-sm font-medium hover:bg-brand/90 transition-colors"
+          >
+            <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+            NIS2-Assistent öffnen
+          </Link>
+        }
       />
 
       <div className="p-6 space-y-3">

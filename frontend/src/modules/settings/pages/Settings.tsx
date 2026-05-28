@@ -5,7 +5,9 @@ import { Link } from 'react-router-dom'
 import {
   Building2, Layers, Bell, Trash2, Plus, Check, X,
   Webhook, Globe, Mail, Server, MapPin, Download, ShieldCheck, Shield, FileText, ExternalLink, Sparkles, Rocket, Key, Clock, ArrowUpCircle, RefreshCw, Zap, FileBarChart2, Radio,
+  Siren, UserCheck, Users, Palette, Sliders,
 } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
@@ -1655,135 +1657,220 @@ function StagingSection() {
   )
 }
 
+// ─── Link-only cards for sub-pages reached via Settings hub ─────────────────
+
+function LinkCard({
+  title, icon: Icon, to, description, linkLabel,
+}: {
+  title: string
+  icon: React.ElementType
+  to: string
+  description: string
+  linkLabel: string
+}) {
+  return (
+    <SectionCard title={title} icon={Icon}>
+      <div className="space-y-3">
+        <p className="text-xs text-secondary leading-relaxed">{description}</p>
+        <Link to={to} className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+          {linkLabel} <ExternalLink className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+    </SectionCard>
+  )
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+
+const SETTINGS_TABS = [
+  { id: 'platform',      label: 'Plattform' },
+  { id: 'access',        label: 'Zugriff & SSO' },
+  { id: 'notifications', label: 'Benachrichtigungen' },
+  { id: 'integrations',  label: 'Integrationen' },
+  { id: 'privacy',       label: 'Daten & Privacy' },
+  { id: 'ai',            label: 'KI' },
+  { id: 'public',        label: 'Trust Center' },
+  { id: 'system',        label: 'System' },
+] as const
+
+type TabId = typeof SETTINGS_TABS[number]['id']
+
+function isTabId(s: string): s is TabId {
+  return SETTINGS_TABS.some((t) => t.id === s)
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Settings() {
   const { t } = useTranslation()
+
+  // Deep-linking via URL hash (#access, #integrations, …)
+  const initialHash = typeof window !== 'undefined' ? window.location.hash.replace('#', '') : ''
+  const [tab, setTab] = useState<TabId>(isTabId(initialHash) ? initialHash : 'platform')
+
+  useEffect(() => {
+    function syncFromHash() {
+      const h = window.location.hash.replace('#', '')
+      if (isTabId(h)) setTab(h)
+    }
+    window.addEventListener('hashchange', syncFromHash)
+    return () => { window.removeEventListener('hashchange', syncFromHash); }
+  }, [])
+
+  function changeTab(next: string) {
+    if (!isTabId(next)) return
+    setTab(next)
+    if (window.location.hash.replace('#', '') !== next) {
+      window.history.replaceState(null, '', `#${next}`)
+    }
+  }
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader title={t('settingsPage.title')} description={t('settingsPage.description')} />
       <div className="flex-1 p-6 overflow-auto">
-        <div className="max-w-5xl space-y-6">
-          {/* Row 1: Organisation + Module + Sector + Lizenz */}
-          <div>
-            <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">{t('settingsPage.sectionPlatform')}</h3>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              <OrgSection />
-              <ModulesSection />
-              <SectorSection />
-              <LicenseSection />
-            </div>
-          </div>
+        <div className="max-w-5xl">
+          <Tabs value={tab} onValueChange={changeTab}>
+            <TabsList className="flex flex-wrap mb-6 w-full justify-start">
+              {SETTINGS_TABS.map((t) => (
+                <TabsTrigger key={t.id} value={t.id}>{t.label}</TabsTrigger>
+              ))}
+            </TabsList>
 
-          {/* Row 2: Integrations — interactive, needs more visual weight */}
-          <div>
-            <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">{t('settingsPage.sectionIntegrations')}</h3>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              <SmtpSection />
-              <NotificationsSection />
-              <DigestToggleSection />
-              <SectionCard title="Webhooks" icon={Zap}>
-                <div className="space-y-3">
-                  <p className="text-xs text-secondary leading-relaxed">
-                    {t('settingsPage.webhooksDesc')}
-                  </p>
-                  <Link to="/settings/webhooks" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-                    {t('settingsPage.webhooksManage')} <ExternalLink className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-              </SectionCard>
-              <SectionCard title="Benachrichtigungseinstellungen" icon={Bell}>
-                <div className="space-y-3">
-                  <p className="text-xs text-secondary leading-relaxed">
-                    Steuere welche Ereignisse du per E-Mail oder In-App erhältst — Digest, Findings, Vorfälle, Genehmigungen.
-                  </p>
-                  <Link to="/settings/notifications" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-                    Benachrichtigungen konfigurieren <ExternalLink className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-              </SectionCard>
-              <SectionCard title={t('settingsPage.scheduledReportsPlan')} icon={FileBarChart2}>
-                <div className="space-y-3">
-                  <p className="text-xs text-secondary leading-relaxed">
-                    {t('settingsPage.scheduledReportsDesc')}
-                  </p>
-                  <Link to="/settings/reports" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-                    {t('settingsPage.scheduledReportsPlan')} <ExternalLink className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-              </SectionCard>
-            </div>
-          </div>
+            <TabsContent value="platform">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <OrgSection />
+                <ModulesSection />
+                <SectorSection />
+                <LicenseSection />
+                <LinkCard
+                  title="Branding"
+                  icon={Palette}
+                  to="/settings/branding"
+                  description="Logo, Farben und Org-Identität für PDF-Berichte und Trust-Center anpassen."
+                  linkLabel="Branding bearbeiten"
+                />
+                <LinkCard
+                  title="Score-Konfiguration"
+                  icon={Sliders}
+                  to="/settings/score-config"
+                  description="Gewichtung der Compliance- und Risk-Scores für deine Organisation justieren."
+                  linkLabel="Score-Konfiguration öffnen"
+                />
+              </div>
+            </TabsContent>
 
-          {/* Row 3: Data & Privacy export + Audit Report + API Keys */}
-          <div>
-            <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">{t('settingsPage.sectionPrivacy')}</h3>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 max-w-2xl">
-              <DataExportSection />
-              <AuditReportSection />
-              <SectionCard title={t('settingsPage.apiKeysTitle')} icon={Key}>
-                <div className="space-y-3">
-                  <p className="text-xs text-secondary leading-relaxed">
-                    {t('settingsPage.apiKeysDesc')}
-                  </p>
-                  <Link to="/settings/api-keys" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-                    {t('settingsPage.apiKeysManage')} <ExternalLink className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-              </SectionCard>
-            </div>
-          </div>
+            <TabsContent value="access">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <LinkCard
+                  title="Team"
+                  icon={Users}
+                  to="/settings/team"
+                  description="Nutzer einladen, Rollen vergeben, MFA-Status überprüfen."
+                  linkLabel="Team verwalten"
+                />
+                <LinkCard
+                  title="Auditoren"
+                  icon={UserCheck}
+                  to="/settings/auditors"
+                  description="Externe Auditoren mit zeitlich begrenztem Lese-Zugriff einladen."
+                  linkLabel="Auditoren verwalten"
+                />
+                <SAMLSetupSection />
+              </div>
+            </TabsContent>
 
-          {/* Row 4: Trust Center */}
-          <div>
-            <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">{t('settingsPage.sectionPublicPages')}</h3>
-            <div className="max-w-sm">
-              <SectionCard title={t('settingsPage.trustCenterTitle')} icon={Globe}>
-                <p className="text-sm text-muted-foreground mb-3">
-                  {t('settingsPage.trustCenterDesc2')}
-                </p>
-                <Link to="/settings/trust-center" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-                  {t('settingsPage.trustCenterConfigure2')} <ExternalLink className="h-3.5 w-3.5" />
-                </Link>
-              </SectionCard>
-            </div>
-          </div>
+            <TabsContent value="notifications">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <SmtpSection />
+                <NotificationsSection />
+                <DigestToggleSection />
+                <LinkCard
+                  title="Alarm-Regeln"
+                  icon={Siren}
+                  to="/settings/alerting"
+                  description="Routing-Regeln für Slack/Teams/Webhook/E-Mail bei kritischen Ereignissen (neue Vorfälle, überfällige Kontrollen, etc.)."
+                  linkLabel="Regeln konfigurieren"
+                />
+                <LinkCard
+                  title="Persönliche Benachrichtigungen"
+                  icon={Bell}
+                  to="/settings/notifications"
+                  description="Was du persönlich per E-Mail und In-App bekommst — Wochendigest, Findings, Vorfälle, Genehmigungen."
+                  linkLabel="Präferenzen öffnen"
+                />
+                <LinkCard
+                  title={t('settingsPage.scheduledReportsPlan')}
+                  icon={FileBarChart2}
+                  to="/settings/reports"
+                  description={t('settingsPage.scheduledReportsDesc')}
+                  linkLabel={t('settingsPage.scheduledReportsPlan')}
+                />
+              </div>
+            </TabsContent>
 
-          {/* Staging-only: promote to demo — StagingSection renders null on non-staging instances */}
-          <StagingSection />
+            <TabsContent value="integrations">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <LinkCard
+                  title="Webhooks"
+                  icon={Zap}
+                  to="/settings/webhooks"
+                  description={t('settingsPage.webhooksDesc')}
+                  linkLabel={t('settingsPage.webhooksManage')}
+                />
+                <LinkCard
+                  title={t('settingsPage.apiKeysTitle')}
+                  icon={Key}
+                  to="/settings/api-keys"
+                  description={t('settingsPage.apiKeysDesc')}
+                  linkLabel={t('settingsPage.apiKeysManage')}
+                />
+                <SIEMSection />
+              </div>
+            </TabsContent>
 
-          {/* AI Model Settings (S32-3) */}
-          <div>
-            <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">KI-Einstellungen</h3>
-            <div className="max-w-sm">
-              <AISettingsSection />
-            </div>
-          </div>
+            <TabsContent value="privacy">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <DataExportSection />
+                <AuditReportSection />
+                <LinkCard
+                  title="Aufbewahrung & Löschung"
+                  icon={Trash2}
+                  to="/settings/retention"
+                  description="Datenpflege-Regeln: wann automatisierte Berichte, Audit-Einträge und Findings gelöscht werden."
+                  linkLabel="Aufbewahrung konfigurieren"
+                />
+              </div>
+            </TabsContent>
 
-          {/* SAML 2.0 SSO Setup (S21-1, S21-2) */}
-          <div>
-            <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">Single Sign-On (SAML)</h3>
-            <div className="max-w-sm">
-              <SAMLSetupSection />
-            </div>
-          </div>
+            <TabsContent value="ai">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <AISettingsSection />
+              </div>
+            </TabsContent>
 
-          {/* SIEM Integration (S21-7, S21-8) */}
-          <div>
-            <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">SIEM-Integration</h3>
-            <div className="max-w-sm">
-              <SIEMSection />
-            </div>
-          </div>
+            <TabsContent value="public">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <LinkCard
+                  title={t('settingsPage.trustCenterTitle')}
+                  icon={Globe}
+                  to="/settings/trust-center"
+                  description={t('settingsPage.trustCenterDesc2')}
+                  linkLabel={t('settingsPage.trustCenterConfigure2')}
+                />
+              </div>
+            </TabsContent>
 
-          {/* Row 4: System info — read-only reference, visually de-emphasized */}
-          <div>
-            <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">{t('settingsPage.sectionSystem')}</h3>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 max-w-2xl">
-              <UpdateSection />
-              <ServerSection />
-            </div>
-          </div>
+            <TabsContent value="system">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <UpdateSection />
+                <ServerSection />
+              </div>
+              <div className="mt-5">
+                <StagingSection />
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

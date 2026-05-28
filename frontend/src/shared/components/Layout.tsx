@@ -1,20 +1,19 @@
-import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
+import { Link, useLocation, Outlet } from 'react-router-dom'
 import { useState, useEffect, Suspense } from 'react'
 import {
-  Bug, FileCheck, Key, Fish, Eye, LayoutDashboard, LogOut, Sun, Moon, Monitor, Settings,
+  Bug, FileCheck, Key, Fish, Eye, LayoutDashboard, Sun, Moon, Monitor, Settings,
   ShieldCheck, ShieldAlert, Siren, BookOpen, ClipboardList,
   FileText, FileSearch, Handshake, AlertTriangle, Users,
-  Server, ScanSearch, BarChart2, Clock, Search, Bell,
-  User, Trash2, MonitorSmartphone, Palette, Shield, FlaskConical,
-  Building2, Bot, PackageX, Mail, GraduationCap, Target, Flag, LayoutTemplate, UserCog, Activity, UserCheck,
-  Plug, ClipboardCheck, CalendarClock, Inbox, ExternalLink, Menu, X, ArrowUpCircle, ScrollText, HeartPulse, CalendarDays,
-  ChevronLeft, ChevronRight, HelpCircle, Webhook, FileBarChart2,
+  Server, ScanSearch, BarChart2, Clock, Search,
+  Shield, FlaskConical,
+  Building2, Bot, PackageX, Mail, GraduationCap, Target, Flag, LayoutTemplate, UserCog, UserCheck,
+  Plug, ClipboardCheck, CalendarClock, Inbox, Menu, X, ArrowUpCircle, ScrollText, CalendarDays,
+  ChevronLeft, ChevronRight, Cpu, Landmark, ListChecks, Cloud, Banknote, ChevronUp,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import { cn } from '../../lib/utils'
-import { NotificationBell } from './NotificationBell'
 import { FeedbackWidget } from './FeedbackWidget'
 import { useBackupStatus } from '../../hooks/useDashboard'
 import { useDemoMode } from '../hooks/useDemoMode'
@@ -33,14 +32,26 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal'
 import { AppTour } from './AppTour'
 import { Spinner } from '../../components/Spinner'
-import { ChangelogPopover } from './ChangelogPopover'
+import { TopBar } from './TopBar'
+
+interface NavChild {
+  path: string
+  label: string
+  icon: React.ElementType
+}
+
+interface NavGroup {
+  label: string
+  items: NavChild[]
+}
 
 interface NavItem {
   path: string
   label: string
   icon: React.ElementType
   exact?: boolean
-  children?: { path: string; label: string; icon: React.ElementType }[]
+  children?: NavChild[]
+  childGroups?: NavGroup[]
 }
 
 const MODULES_NAV: NavItem[] = [
@@ -61,41 +72,69 @@ const MODULES_NAV: NavItem[] = [
     path: '/secvitals',
     label: 'Vakt Comply',
     icon: FileCheck,
-    children: [
-      { path: '/secvitals/frameworks', label: 'Frameworks',      icon: ShieldCheck },
-      { path: '/secvitals/risks',      label: 'Risiken',         icon: ShieldAlert },
-      { path: '/secvitals/incidents',  label: 'Vorfälle',        icon: Siren },
-      { path: '/secvitals/policies',   label: 'Richtlinien',     icon: BookOpen },
-      { path: '/secvitals/soa',        label: 'Statement of Applicability', icon: FileCheck },
-      { path: '/secvitals/audits',     label: 'Audits',          icon: ClipboardList },
-      { path: '/secvitals/suppliers',       label: 'Lieferanten',       icon: Building2 },
-      { path: '/secvitals/ai-systems',        label: 'KI-Systeme',           icon: Bot },
-      { path: '/secvitals/resilience-tests', label: 'Resilience-Tests',    icon: FlaskConical },
-      { path: '/secvitals/eu-ai-act/dashboard', label: 'EU AI Act',          icon: Bot },
-      { path: '/secvitals/dora/dashboard',   label: 'DORA Dashboard',       icon: ShieldCheck },
-      { path: '/secvitals/nis2',             label: 'NIS2-Anforderungen',  icon: ShieldCheck },
-      { path: '/secvitals/nis2-assistant', label: 'NIS2-Assistent',    icon: Shield },
-      { path: '/secvitals/iso27001',       label: 'ISO 27001 Annex A', icon: Shield },
-      { path: '/secvitals/grundschutz',    label: 'BSI Grundschutz',   icon: Shield },
-      { path: '/secvitals/cis-controls',  label: 'CIS Controls v8',    icon: Shield },
-      { path: '/secvitals/ccm',            label: 'CCM',               icon: Activity },
-      { path: '/secvitals/capas',          label: 'Korrekturmaßnahmen', icon: ClipboardCheck },
-      { path: '/secvitals/overdue-reviews', label: 'Überfällige Kontrollen', icon: CalendarClock },
-      { path: '/secvitals/evidence/auto', label: 'Nachweise-Eingang', icon: Inbox },
-      { path: '/secvitals/approvals',     label: 'Genehmigungen',     icon: UserCheck },
-      { path: '/secvitals/certification-timeline', label: 'Zertifizierungs-Timeline', icon: CalendarDays },
+    childGroups: [
+      {
+        label: 'Frameworks',
+        items: [
+          { path: '/secvitals/frameworks',         label: 'Übersicht',  icon: ShieldCheck },
+          { path: '/secvitals/nis2',               label: 'NIS2',       icon: Shield },
+          { path: '/secvitals/iso27001',           label: 'ISO 27001',  icon: FileCheck },
+          { path: '/secvitals/grundschutz',        label: 'BSI',        icon: Landmark },
+          { path: '/secvitals/cis-controls',       label: 'CIS v8',     icon: ListChecks },
+          { path: '/secvitals/ccm',                label: 'CCM',        icon: Cloud },
+          { path: '/secvitals/dora/dashboard',     label: 'DORA',       icon: Banknote },
+          { path: '/secvitals/eu-ai-act/dashboard', label: 'EU AI Act', icon: Bot },
+        ],
+      },
+      {
+        label: 'Operations',
+        items: [
+          { path: '/secvitals/risks',              label: 'Risiken',      icon: ShieldAlert },
+          { path: '/secvitals/incidents',          label: 'Vorfälle',     icon: Siren },
+          { path: '/secvitals/audits',             label: 'Audits',       icon: ClipboardList },
+          { path: '/secvitals/capas',              label: 'Maßnahmen',    icon: ClipboardCheck },
+          { path: '/secvitals/approvals',          label: 'Genehmigungen', icon: UserCheck },
+          { path: '/secvitals/overdue-reviews',    label: 'Überfällig',   icon: CalendarClock },
+        ],
+      },
+      {
+        label: 'Dokumentation',
+        items: [
+          { path: '/secvitals/policies',           label: 'Richtlinien',   icon: BookOpen },
+          { path: '/secvitals/soa',                label: 'SoA',           icon: ScrollText },
+          { path: '/secvitals/evidence/auto',      label: 'Nachweise',     icon: Inbox },
+          { path: '/secvitals/certification-timeline', label: 'Zert.-Plan', icon: CalendarDays },
+        ],
+      },
+      {
+        label: 'Drittparteien',
+        items: [
+          { path: '/secvitals/suppliers',          label: 'Lieferanten',   icon: Building2 },
+          { path: '/secvitals/ai-systems',         label: 'KI-Systeme',    icon: Cpu },
+          { path: '/secvitals/resilience-tests',   label: 'Resilience',    icon: FlaskConical },
+        ],
+      },
     ],
   },
-  { path: '/secvault',   label: 'Vakt Vault',    icon: Key },
+  {
+    path: '/secvault',
+    label: 'Vakt Vault',
+    icon: Key,
+    children: [
+      { path: '/secvault/projects',  label: 'Projekte',  icon: Key },
+      { path: '/secvault/tokens',    label: 'Tokens',    icon: Shield },
+      { path: '/secvault/git-scans', label: 'Git-Scans', icon: ScanSearch },
+    ],
+  },
   {
     path: '/secreflex',
     label: 'Vakt Aware',
     icon: Fish,
     children: [
-      { path: '/secreflex/campaigns',     label: 'Kampagnen',     icon: Mail },
-      { path: '/secreflex/templates',     label: 'Vorlagen',      icon: LayoutTemplate },
-      { path: '/secreflex/target-groups', label: 'Zielgruppen',   icon: Target },
-      { path: '/secreflex/training',      label: 'Training',      icon: GraduationCap },
+      { path: '/secreflex/campaigns',     label: 'Kampagnen',      icon: Mail },
+      { path: '/secreflex/templates',     label: 'Vorlagen',       icon: LayoutTemplate },
+      { path: '/secreflex/target-groups', label: 'Zielgruppen',    icon: Target },
+      { path: '/secreflex/training',      label: 'Training',       icon: GraduationCap },
       { path: '/secreflex/phish-reports', label: 'Phish-Berichte', icon: Flag },
     ],
   },
@@ -113,14 +152,13 @@ const MODULES_NAV: NavItem[] = [
   },
   {
     path: '/hr',
-    label: 'HR',
+    label: 'Vakt HR',
     icon: UserCog,
     children: [
       { path: '/hr/employees',  label: 'Mitarbeiter', icon: Users },
       { path: '/hr/checklists', label: 'Checklisten', icon: ClipboardList },
     ],
   },
-  { path: '/integrations', label: 'Integrationen', icon: Plug },
 ]
 
 const SIDEBAR_COLLAPSED_KEY = 'vakt_sidebar_collapsed'
@@ -128,8 +166,7 @@ const SIDEBAR_COLLAPSED_KEY = 'vakt_sidebar_collapsed'
 export default function Layout() {
   const { t } = useTranslation()
   const location = useLocation()
-  const navigate = useNavigate()
-  const { user, clearAuth } = useAuthStore()
+  const { user } = useAuthStore()
   const { theme, toggle } = useThemeStore()
   const { data: backupStatus } = useBackupStatus()
   const [backupDismissed, setBackupDismissed] = useState(false)
@@ -160,19 +197,73 @@ export default function Layout() {
     })
   }
 
+  function openSearch() {
+    window.dispatchEvent(new CustomEvent('vakt:open-search'))
+  }
+
   useEffect(() => {
     if (demoMode === true) document.title = 'Vakt Demo'
   }, [demoMode])
-
-  function logout() {
-    clearAuth()
-    navigate('/login')
-  }
 
   function isActive(path: string, exact?: boolean) {
     if (exact) return location.pathname === path
     return location.pathname === path || location.pathname.startsWith(path + '/')
   }
+
+  function renderChildLink(c: NavChild) {
+    const childActive = location.pathname === c.path || location.pathname.startsWith(c.path + '/')
+    const isOverduePath = c.path === '/secvitals/overdue-reviews'
+    const isAutoEvidencePath = c.path === '/secvitals/evidence/auto'
+    const isApprovalsPath = c.path === '/secvitals/approvals'
+    const CIcon = c.icon
+    return (
+      <Link
+        key={c.path}
+        to={c.path}
+        onClick={() => { setSidebarOpen(false); }}
+        aria-current={childActive ? 'page' : undefined}
+        className={cn(
+          'flex items-center gap-2 px-2 py-[6px] rounded-md text-[12px] font-medium transition-all duration-150',
+          childActive
+            ? 'text-brand bg-brand/10 dark:bg-muted/50'
+            : 'text-secondary hover:text-primary hover:bg-muted/50',
+        )}
+      >
+        <CIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+        <span className="flex-1 truncate">{c.label}</span>
+        {isOverduePath && overdueCount > 0 && (
+          <span
+            className="ml-auto text-[10px] font-semibold bg-destructive text-destructive-foreground rounded-full px-1.5 py-0.5 leading-none"
+            aria-label={`${String(overdueCount)} überfällige Kontrollen`}
+          >
+            {overdueCount}
+          </span>
+        )}
+        {isAutoEvidencePath && autoEvidenceCount > 0 && (
+          <span
+            className="ml-auto text-[10px] font-semibold bg-brand text-white rounded-full px-1.5 py-0.5 leading-none"
+            aria-label={`${String(autoEvidenceCount)} neue Nachweise`}
+          >
+            {autoEvidenceCount}
+          </span>
+        )}
+        {isApprovalsPath && pendingApprovalCount > 0 && (
+          <span
+            className="ml-auto text-[10px] font-semibold bg-amber-500 text-white rounded-full px-1.5 py-0.5 leading-none"
+            aria-label={`${String(pendingApprovalCount)} ausstehende Genehmigungen`}
+          >
+            {pendingApprovalCount}
+          </span>
+        )}
+      </Link>
+    )
+  }
+
+  const systemNav: { to: string; icon: React.ElementType; label: string; exact?: boolean }[] = [
+    { to: '/settings',     icon: Settings, label: t('nav.settings'), exact: true },
+    { to: '/integrations', icon: Plug,     label: 'Integrationen' },
+    ...(isAdminOrOwner ? [{ to: '/admin', icon: ShieldAlert, label: 'Administration' }] : []),
+  ]
 
   return (
     <div className="flex flex-col h-screen bg-bg">
@@ -235,8 +326,6 @@ export default function Layout() {
       <div className="flex flex-1 min-h-0">
       {/* Mobile backdrop */}
       {sidebarOpen && (
-        /* WCAG 2.1.1: keyboard-accessible dismiss — tabIndex={-1} keeps it out of tab order
-           but allows Escape to close via the document-level keydown listener */
         <div
           className="fixed inset-0 z-20 bg-black/40 lg:hidden"
           onClick={() => { setSidebarOpen(false); }}
@@ -272,29 +361,14 @@ export default function Layout() {
           {!sidebarCollapsed && <p className="text-[11px] text-secondary px-2">Security Platform</p>}
         </div>
 
-        {/* Search trigger */}
-        {!sidebarCollapsed && (
-          <div className="px-3 pb-2">
-            <button
-              type="button"
-              aria-label="Globale Suche öffnen (Cmd+K)"
-              onClickCapture={() => window.dispatchEvent(new CustomEvent('vakt:open-search'))}
-              className="w-full flex items-center gap-2 text-xs text-secondary border border-border rounded-md px-3 py-1.5 hover:border-brand/40 transition-colors"
-            >
-              {/* WCAG 1.1.1: search icon is decorative, button is named by aria-label */}
-              <Search className="w-3 h-3" aria-hidden="true" />
-              <span>{t('nav.search')}</span>
-              <kbd className="ml-auto opacity-60" aria-hidden="true">⌘K</kbd>
-            </button>
-          </div>
-        )}
+        {/* Search trigger — only when sidebar is collapsed (TopBar covers expanded case) */}
         {sidebarCollapsed && (
-          <div className="px-2 pb-2">
+          <div className="px-2 pb-2 hidden lg:block">
             <button
               type="button"
               aria-label="Globale Suche öffnen (Cmd+K)"
               title="Suche (⌘K)"
-              onClickCapture={() => window.dispatchEvent(new CustomEvent('vakt:open-search'))}
+              onClickCapture={openSearch}
               className="w-full flex items-center justify-center p-2 text-secondary border border-border rounded-md hover:border-brand/40 transition-colors"
             >
               <Search className="w-4 h-4" aria-hidden="true" />
@@ -310,12 +384,12 @@ export default function Layout() {
             </p>
           )}
           <div className="space-y-[2px] mb-4">
-            {MODULES_NAV.map(({ path, label, icon: Icon, exact, children }) => {
+            {MODULES_NAV.map(({ path, label, icon: Icon, exact, children, childGroups }) => {
               const active = isActive(path, exact)
-              const expanded = active && children && children.length > 0
+              const hasChildren = (children?.length ?? 0) > 0 || (childGroups?.length ?? 0) > 0
+              const expanded = active && hasChildren
               return (
                 <div key={path}>
-                  {/* WCAG 2.4.4 + 4.1.2: aria-current="page" identifies the active link */}
                   <Link
                     to={path}
                     onClick={() => { setSidebarOpen(false); }}
@@ -329,59 +403,20 @@ export default function Layout() {
                         : 'text-secondary hover:bg-muted/50 hover:text-primary',
                     )}
                   >
-                    {/* WCAG 1.1.1: nav icons are decorative — label comes from text */}
                     <Icon className={cn('w-4 h-4 shrink-0', active ? 'text-brand' : '')} aria-hidden="true" />
                     {!sidebarCollapsed && label}
                   </Link>
                   {expanded && !sidebarCollapsed && (
                     <div className="ml-3 mt-0.5 mb-1 pl-3 border-l border-border space-y-[1px]">
-                      {children.map(({ path: cp, label: cl, icon: CIcon }) => {
-                        const childActive = location.pathname === cp || location.pathname.startsWith(cp + '/')
-                        const isOverduePath = cp === '/secvitals/overdue-reviews'
-                        const isAutoEvidencePath = cp === '/secvitals/evidence/auto'
-                        const isApprovalsPath = cp === '/secvitals/approvals'
-                        return (
-                          <Link
-                            key={cp}
-                            to={cp}
-                            onClick={() => { setSidebarOpen(false); }}
-                            aria-current={childActive ? 'page' : undefined}
-                            className={cn(
-                              'flex items-center gap-2 px-2 py-[6px] rounded-md text-[12px] font-medium transition-all duration-150',
-                              childActive
-                                ? 'text-brand bg-brand/10 dark:bg-muted/50'
-                                : 'text-secondary hover:text-primary hover:bg-muted/50',
-                            )}
-                          >
-                            <CIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                            <span className="flex-1">{cl}</span>
-                            {isOverduePath && overdueCount > 0 && (
-                              <span
-                                className="ml-auto text-[10px] font-semibold bg-destructive text-destructive-foreground rounded-full px-1.5 py-0.5 leading-none"
-                                aria-label={`${String(overdueCount)} überfällige Kontrollen`}
-                              >
-                                {overdueCount}
-                              </span>
-                            )}
-                            {isAutoEvidencePath && autoEvidenceCount > 0 && (
-                              <span
-                                className="ml-auto text-[10px] font-semibold bg-brand text-white rounded-full px-1.5 py-0.5 leading-none"
-                                aria-label={`${String(autoEvidenceCount)} neue Nachweise`}
-                              >
-                                {autoEvidenceCount}
-                              </span>
-                            )}
-                            {isApprovalsPath && pendingApprovalCount > 0 && (
-                              <span
-                                className="ml-auto text-[10px] font-semibold bg-amber-500 text-white rounded-full px-1.5 py-0.5 leading-none"
-                                aria-label={`${String(pendingApprovalCount)} ausstehende Genehmigungen`}
-                              >
-                                {pendingApprovalCount}
-                              </span>
-                            )}
-                          </Link>
-                        )
-                      })}
+                      {children?.map(renderChildLink)}
+                      {childGroups?.map((group) => (
+                        <div key={group.label} className="pt-1.5 first:pt-0">
+                          <p className="px-2 pb-0.5 text-[9px] font-semibold text-secondary uppercase tracking-wider opacity-50">
+                            {group.label}
+                          </p>
+                          {group.items.map(renderChildLink)}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -394,28 +429,8 @@ export default function Layout() {
               {t('nav.system')}
             </p>
           )}
-          {/* WCAG 2.4.4 + 4.1.2: aria-current="page" on each active system link */}
           <div className="space-y-[2px]">
-            {[
-              { to: '/settings', icon: Settings, label: t('nav.settings'), exact: true },
-              { to: '/settings/alerting', icon: Bell, label: t('nav.alerting') },
-              { to: '/settings/retention', icon: Trash2, label: t('nav.retention') },
-              { to: '/settings/branding', icon: Palette, label: 'Branding' },
-              { to: '/settings/trust-center', icon: Shield, label: 'Trust Center' },
-              { to: '/settings/auditors', icon: UserCheck, label: 'Auditoren' },
-              { to: '/settings/team', icon: Users, label: 'Team' },
-              { to: '/settings/webhooks', icon: Webhook, label: 'Webhooks' },
-              { to: '/settings/reports', icon: FileBarChart2, label: 'Geplante Berichte' },
-              { to: '/settings/notifications', icon: Bell, label: 'Benachrichtigungen' },
-              ...(isAdminOrOwner ? [
-                { to: '/settings/audit-log', icon: ScrollText, label: 'Audit-Log' },
-                { to: '/admin/health', icon: HeartPulse, label: 'System-Status' },
-                { to: '/admin/tenants', icon: Building2, label: 'Mandanten' },
-                { to: '/admin/security', icon: ShieldAlert, label: 'Sicherheitsereignisse' },
-              ] : []),
-              { to: '/account', icon: User, label: t('nav.account') },
-              { to: '/account/sessions', icon: MonitorSmartphone, label: t('nav.sessions') },
-            ].map(({ to, icon: Icon, label, exact }) => {
+            {systemNav.map(({ to, icon: Icon, label, exact }) => {
               const active = exact ? location.pathname === to : isActive(to)
               return (
                 <Link
@@ -440,9 +455,8 @@ export default function Layout() {
           </div>
         </nav>
 
-        {/* Bottom */}
+        {/* Bottom — minimal: collapse + © */}
         <div className={cn('pb-4 border-t border-border pt-3 space-y-[2px]', sidebarCollapsed ? 'px-2' : 'px-3')}>
-          {/* Collapse toggle */}
           <button
             onClick={toggleSidebarCollapsed}
             aria-label={sidebarCollapsed ? 'Sidebar ausklappen' : 'Sidebar einklappen'}
@@ -457,92 +471,8 @@ export default function Layout() {
               : <><ChevronLeft className="w-4 h-4 shrink-0" aria-hidden="true" /><span>Einklappen</span></>
             }
           </button>
-
-          {/* Help / keyboard shortcuts */}
-          <button
-            onClick={() => { setShortcutsOpen(true); }}
-            aria-label="Tastaturkürzel anzeigen"
-            title="Tastaturkürzel (?)"
-            className={cn(
-              'w-full flex items-center rounded-md text-[13px] text-secondary hover:bg-muted/50 hover:text-primary transition-all duration-150',
-              sidebarCollapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-[9px]',
-            )}
-          >
-            <HelpCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
-            {!sidebarCollapsed && 'Tastaturkürzel'}
-          </button>
-
-          <div className={cn('flex items-center gap-1 py-[9px]', sidebarCollapsed ? 'justify-center' : 'px-3')}>
-            <NotificationBell />
-            <ChangelogPopover />
-          </div>
-
           {!sidebarCollapsed && (
-            <a
-              href="https://github.com/norvik-ops/vatk/wiki"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full flex items-center gap-2.5 px-3 py-[9px] rounded-md text-[13px] text-secondary hover:bg-muted/50 hover:text-primary transition-all duration-150"
-            >
-              <BookOpen className="w-4 h-4 shrink-0" aria-hidden="true" />
-              {t('nav.documentation')}
-              {/* WCAG 2.4.4: external-link icon is decorative; label names the link */}
-              <ExternalLink className="w-3 h-3 ml-auto opacity-40" aria-hidden="true" />
-            </a>
-          )}
-          {sidebarCollapsed && (
-            <a
-              href="https://github.com/norvik-ops/vatk/wiki"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Dokumentation"
-              className="w-full flex items-center justify-center p-2 rounded-md text-secondary hover:bg-muted/50 hover:text-primary transition-all duration-150"
-            >
-              <BookOpen className="w-4 h-4 shrink-0" aria-hidden="true" />
-            </a>
-          )}
-
-          <button
-            onClick={toggle}
-            aria-label={
-              theme === 'light'
-                ? 'Zu dunklem Modus wechseln'
-                : theme === 'dark'
-                ? 'Zu System-Modus wechseln'
-                : 'Zu hellem Modus wechseln'
-            }
-            title={theme === 'light' ? 'Dunkel' : theme === 'dark' ? 'System' : 'Hell'}
-            className={cn(
-              'w-full flex items-center rounded-md text-[13px] text-secondary hover:bg-muted/50 hover:text-primary transition-all duration-150',
-              sidebarCollapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-[9px]',
-            )}
-          >
-            {theme === 'light' ? (
-              <><Moon className="w-4 h-4 shrink-0" aria-hidden="true" />{!sidebarCollapsed && t('theme.dark')}</>
-            ) : theme === 'dark' ? (
-              <><Monitor className="w-4 h-4 shrink-0" aria-hidden="true" />{!sidebarCollapsed && 'System'}</>
-            ) : (
-              <><Sun className="w-4 h-4 shrink-0" aria-hidden="true" />{!sidebarCollapsed && t('theme.light')}</>
-            )}
-          </button>
-          {!sidebarCollapsed && user?.email && (
-            <div className="px-3 py-1">
-              <p className="text-[11px] text-secondary truncate">{user.email}</p>
-            </div>
-          )}
-          <button
-            onClick={logout}
-            title="Abmelden"
-            className={cn(
-              'w-full flex items-center rounded-md text-[13px] text-secondary hover:bg-muted/50 hover:text-red-500 transition-all duration-150',
-              sidebarCollapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-[9px]',
-            )}
-          >
-            <LogOut className="w-4 h-4 shrink-0" aria-hidden="true" />
-            {!sidebarCollapsed && t('auth.logout')}
-          </button>
-          {!sidebarCollapsed && (
-            <div className="px-3 py-2 border-t border-border mt-1">
+            <div className="px-3 pt-2">
               <p className="text-[10px] text-secondary/50">© 2026 NorvikOps · ELv2</p>
             </div>
           )}
@@ -551,23 +481,28 @@ export default function Layout() {
 
       {/* Main */}
       <main id="main-content" role="main" className="flex-1 overflow-auto bg-bg flex flex-col min-w-0 pb-16 md:pb-0">
-        {/* Mobile top bar with hamburger */}
+        {/* Mobile top bar with hamburger + search */}
         <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-border bg-surface shrink-0">
           <button
             onClick={() => { setSidebarOpen(true); }}
             aria-label={t('nav.openMenu')}
             className="text-secondary hover:text-primary p-1 rounded"
           >
-            {/* WCAG 1.1.1: icon is decorative, button is named by aria-label */}
             <Menu className="w-5 h-5" aria-hidden="true" />
           </button>
           <div className="flex items-center gap-2 flex-1">
             <img src="/logo.svg" alt="Vakt" className="w-5 h-5 shrink-0" />
             <span className="font-bold text-[15px] text-brand leading-none">Vakt</span>
           </div>
-          {/* Changelog — mobile only */}
-          <ChangelogPopover />
-          {/* Theme toggle — mobile only */}
+          {/* Search trigger — mobile */}
+          <button
+            type="button"
+            onClick={openSearch}
+            aria-label="Globale Suche öffnen"
+            className="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface2"
+          >
+            <Search className="w-4 h-4" aria-hidden="true" />
+          </button>
           <button
             onClick={toggle}
             aria-label={
@@ -589,10 +524,14 @@ export default function Layout() {
             )}
           </button>
         </div>
+
+        {/* Desktop TopBar */}
+        <TopBar
+          onOpenSearch={openSearch}
+          onOpenShortcuts={() => { setShortcutsOpen(true); }}
+        />
+
         <div className="flex-1 overflow-auto">
-          {/* Sprint 16 S16-3: Suspense für lazy-geladene Page-Components.
-              Modulen-Routes haben ihren eigenen ModuleShell-Wrapper mit
-              Suspense; hier ist's für die Settings/Admin-Pages aus router.tsx. */}
           <Suspense
             fallback={
               <div className="flex items-center justify-center h-64">
@@ -607,18 +546,18 @@ export default function Layout() {
         </div>
       </main>
       </div>
-      {/* Mobile bottom navigation */}
+      {/* Mobile bottom navigation — 4 core modules + More-Drawer */}
       <nav
         aria-label="Mobile Navigation"
         className="md:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-border z-30 flex"
       >
         {[
-          { label: 'Comply', path: '/secvitals', icon: ShieldCheck },
-          { label: 'Scan', path: '/secpulse', icon: Bug },
+          { label: 'Home',    path: '/',           icon: LayoutDashboard, exact: true },
+          { label: 'Comply',  path: '/secvitals',  icon: ShieldCheck },
+          { label: 'Scan',    path: '/secpulse',   icon: Bug },
           { label: 'Privacy', path: '/secprivacy', icon: Eye },
-          { label: 'HR', path: '/hr', icon: Users },
-        ].map(({ label, path, icon: Icon }) => {
-          const active = isActive(path)
+        ].map(({ label, path, icon: Icon, exact }) => {
+          const active = isActive(path, exact)
           return (
             <Link
               key={path}
@@ -633,6 +572,15 @@ export default function Layout() {
             </Link>
           )
         })}
+        <button
+          type="button"
+          onClick={() => { setSidebarOpen(true); }}
+          aria-label="Weitere Module öffnen"
+          className="flex-1 flex flex-col items-center py-2 text-xs transition-colors text-secondary hover:text-brand"
+        >
+          <ChevronUp className="h-5 w-5 mb-1" aria-hidden="true" />
+          Mehr
+        </button>
       </nav>
       <GlobalSearch />
       <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => { setShortcutsOpen(false); }} />

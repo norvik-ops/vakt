@@ -45,6 +45,7 @@ const ApiKeysPage                = lazy(() => import('./pages/ApiKeysPage'))
 const AdminHealthPage            = lazy(() => import('./pages/AdminHealthPage'))
 const AdminTenantsPage           = lazy(() => import('./pages/AdminTenantsPage'))
 const AdminSecurityPage          = lazy(() => import('./pages/AdminSecurityPage'))
+const AdminHubPage               = lazy(() => import('./pages/AdminHubPage'))
 const WebhooksPage               = lazy(() => import('./pages/WebhooksPage'))
 const ScheduledReportsPage       = lazy(() => import('./pages/ScheduledReportsPage'))
 const NotificationPreferencesPage = lazy(() => import('./pages/NotificationPreferencesPage'))
@@ -207,6 +208,7 @@ export const router = createBrowserRouter([
           { path: '/settings/webhooks', element: <WebhooksPage /> },
           { path: '/settings/reports', element: <ScheduledReportsPage /> },
           { path: '/settings/notifications', element: <NotificationPreferencesPage /> },
+          { path: '/admin', element: <AdminHubPage /> },
           { path: '/admin/health', element: <AdminHealthPage /> },
           { path: '/admin/tenants', element: <AdminTenantsPage /> },
           { path: '/admin/security', element: <AdminSecurityPage /> },
