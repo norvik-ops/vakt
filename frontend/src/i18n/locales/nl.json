@@ -1045,7 +1045,7 @@
     "ssoButton": "Inloggen met SSO",
     "orSeparator": "of",
     "demoCredentials": "Demo-inloggegevens",
-    "demoHint": "Klik op een account om het formulier automatisch in te vullen.",
+    "demoHint": "Klik op een account om direct in te loggen.",
     "demoDisclaimer": "Dit is een openbare demo-instantie. Alle gegevens worden na 4 uur teruggezet. Voer geen echte of gevoelige gegevens in. Vakt aanvaardt geen aansprakelijkheid voor ingevoerde gegevens.",
     "demoPreparing": "Demo wordt voorbereid…",
     "demoUnavailable": "Demo momenteel niet beschikbaar — probeer het binnenkort opnieuw of installeer Vakt lokaal.",

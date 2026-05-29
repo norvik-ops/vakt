@@ -1045,7 +1045,7 @@
     "ssoButton": "Se connecter avec SSO",
     "orSeparator": "ou",
     "demoCredentials": "Identifiants de démo",
-    "demoHint": "Cliquez sur un compte pour remplir automatiquement le formulaire.",
+    "demoHint": "Cliquez sur un compte pour vous connecter instantanément.",
     "demoDisclaimer": "Il s'agit d'une instance de démonstration publique. Toutes les données sont réinitialisées après 4 heures. Veuillez ne pas saisir de données réelles ou sensibles. Vakt décline toute responsabilité pour les données saisies.",
     "demoPreparing": "Préparation de la démo…",
     "demoUnavailable": "Démo temporairement indisponible — réessayez dans un moment ou installez Vakt localement.",

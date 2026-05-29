@@ -1045,7 +1045,7 @@
     "ssoButton": "Sign in with SSO",
     "orSeparator": "or",
     "demoCredentials": "Demo Credentials",
-    "demoHint": "Click on an account to auto-fill the form.",
+    "demoHint": "Click on an account to log in instantly.",
     "demoDisclaimer": "This is a public demo instance. All data is reset after 4 hours. Please do not enter real or sensitive data. Vakt accepts no liability for data entered.",
     "demoPreparing": "Preparing demo…",
     "demoUnavailable": "Demo currently unavailable — please try again shortly or install Vakt locally.",
