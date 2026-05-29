@@ -22,7 +22,7 @@ test.describe('Compliance (SecVitals)', () => {
       })
     )
 
-    await page.goto('/vaktcomply')
+    await page.goto('/vaktcomply/frameworks')
     await expect(page.locator('text=ISO 27001').or(page.locator('text=NIS2')).first()).toBeVisible({ timeout: 8000 })
   })
 

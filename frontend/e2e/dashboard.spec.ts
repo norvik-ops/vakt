@@ -46,6 +46,8 @@ test.describe('Dashboard', () => {
 
   test('opens global search with Ctrl+K', async ({ page }) => {
     await page.goto('/settings')
+    // Wait for layout to mount and register keyboard handlers
+    await page.waitForSelector('button[aria-label="Tastaturkürzel anzeigen"]')
     await page.keyboard.press('Control+k')
     await expect(page.locator('[role="dialog"][aria-label="Suche"]').or(page.locator('input[aria-label="Globale Suche"]')).first()).toBeVisible({ timeout: 3000 })
   })

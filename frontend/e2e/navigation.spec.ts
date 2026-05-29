@@ -15,6 +15,8 @@ test.describe('Navigation', () => {
 
   test('shows keyboard shortcuts modal on ?', async ({ page }) => {
     await page.goto('/settings')
+    // Wait for layout to mount and register keyboard handlers
+    await page.waitForSelector('button[aria-label="Tastaturkürzel anzeigen"]')
     await page.keyboard.press('?')
     await expect(
       page.locator('[role="dialog"]').filter({ hasText: /shortcut|Tastaturkürzel|Tastenkürzel|Cmd\+K/i })

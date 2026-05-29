@@ -22,6 +22,9 @@ import { test as base } from '@playwright/test'
 export const test = base.extend({
   page: async ({ page }, use) => {
     await page.addInitScript(() => {
+      // Suppress the AppTour so it doesn't block keyboard shortcuts in tests
+      localStorage.setItem('vakt_tour_completed', '1')
+
       const origFetch = window.fetch.bind(window)
       window.fetch = async (input, init) => {
         const url =
@@ -104,6 +107,13 @@ export const test = base.extend({
         }
         // SecPrivacyOverviewPage calls avvs?.filter() — must be array
         if (url.includes('/api/v1/vaktprivacy/avvs')) {
+          return new Response(JSON.stringify([]), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+        // ExpiringEvidenceWidget calls .slice() — must be array, not paginated object
+        if (url.includes('/api/v1/vaktcomply/evidence/expiring')) {
           return new Response(JSON.stringify([]), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
