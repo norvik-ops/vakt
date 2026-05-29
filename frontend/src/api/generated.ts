@@ -2564,7 +2564,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vakthr/employees": {
+    "/hr/employees": {
         parameters: {
             query?: never;
             header?: never;
@@ -2630,7 +2630,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vakthr/employees/{id}": {
+    "/hr/employees/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2721,7 +2721,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vakthr/employees/{id}/checklist-runs": {
+    "/hr/employees/{id}/checklist-runs": {
         parameters: {
             query?: never;
             header?: never;
@@ -2762,7 +2762,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vakthr/checklists": {
+    "/hr/checklists": {
         parameters: {
             query?: never;
             header?: never;
@@ -2825,7 +2825,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vakthr/checklists/{id}": {
+    "/hr/checklists/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2861,7 +2861,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vakthr/checklist-runs": {
+    "/hr/checklist-runs": {
         parameters: {
             query?: never;
             header?: never;
@@ -2901,7 +2901,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vakthr/checklist-runs/{id}": {
+    "/hr/checklist-runs/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -6499,7 +6499,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vakthr/employees/{id}/onboard": {
+    "/hr/employees/{id}/onboard": {
         parameters: {
             query?: never;
             header?: never;
@@ -6544,7 +6544,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vakthr/employees/{id}/offboard": {
+    "/hr/employees/{id}/offboard": {
         parameters: {
             query?: never;
             header?: never;
@@ -6589,7 +6589,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vakthr/checklist-runs/{id}/steps/{step_id}": {
+    "/hr/checklist-runs/{id}/steps/{step_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -6639,7 +6639,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vakthr/checklist-runs/{id}/events": {
+    "/hr/checklist-runs/{id}/events": {
         parameters: {
             query?: never;
             header?: never;

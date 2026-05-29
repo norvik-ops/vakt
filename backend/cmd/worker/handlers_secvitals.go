@@ -16,8 +16,8 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/matharnica/vakt/internal/config"
-	"github.com/matharnica/vakt/internal/modules/vaktscan"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
+	"github.com/matharnica/vakt/internal/modules/vaktscan"
 	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/shared/controltests"
 	"github.com/matharnica/vakt/internal/shared/notify"
@@ -75,7 +75,7 @@ func handleAutoEvidence(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFun
 func handleRecordEvidence(pool *pgxpool.Pool) asynq.HandlerFunc {
 	// keywords per source module → relevant SecVitals control domains
 	sourceKeywords := map[string][]string{
-		"vaktaware":  {"training", "awareness", "schulung", "bewusstsein"},
+		"vaktaware":   {"training", "awareness", "schulung", "bewusstsein"},
 		"vaktprivacy": {"datenschutz", "privacy", "dsar", "betroffene"},
 		"vaktvault":   {"access", "password", "secret", "rotation", "credential"},
 	}
