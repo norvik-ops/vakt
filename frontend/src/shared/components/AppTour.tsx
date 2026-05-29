@@ -20,19 +20,19 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     id: 'frameworks',
-    selector: 'a[href="/secvitals/frameworks"]',
+    selector: 'a[href="/vaktcomply/frameworks"]',
     title: 'Frameworks (Vakt Comply)',
     text: 'Wähle dein Framework und dokumentiere Controls — NIS2, ISO 27001, BSI und mehr.',
   },
   {
     id: 'findings',
-    selector: 'a[href="/secpulse/findings"]',
+    selector: 'a[href="/vaktscan/findings"]',
     title: 'Findings (Vakt Scan)',
     text: 'Scanner-Ergebnisse landen hier zur Priorisierung und Nachverfolgung.',
   },
   {
     id: 'policies',
-    selector: 'a[href="/secvitals/policies"]',
+    selector: 'a[href="/vaktcomply/policies"]',
     title: 'Richtlinien',
     text: 'Erstelle und versioniere Sicherheitsrichtlinien — mit KI-Unterstützung und Vorlagen.',
   },

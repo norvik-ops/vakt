@@ -1,4 +1,4 @@
-# Vakt Privacy (`secprivacy`) — DSGVO-Dokumentation
+# Vakt Privacy (`vaktprivacy`) — DSGVO-Dokumentation
 
 ## Übersicht
 
@@ -9,7 +9,7 @@ Vakt Privacy ist die zentrale DSGVO-Dokumentationsplattform innerhalb von Vakt. 
 Das Modul ist standardmäßig aktiviert. Zum Deaktivieren:
 
 ```env
-VAKT_MODULES_ENABLED=secvitals,secpulse,secvault,secreflex  # secprivacy weglassen
+VAKT_MODULES_ENABLED=vaktcomply,vaktscan,vaktvault,vaktaware  # vaktprivacy weglassen
 ```
 
 ## Features
@@ -28,56 +28,56 @@ Alle Endpunkte erfordern `Authorization: Bearer <token>`.
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secprivacy/vvt` | Alle VVT-Einträge auflisten |
-| POST | `/api/v1/secprivacy/vvt` | VVT-Eintrag anlegen |
-| GET | `/api/v1/secprivacy/vvt/export` | VVT als CSV exportieren |
-| GET | `/api/v1/secprivacy/vvt/:id` | Einzelnen VVT-Eintrag abrufen |
-| PUT | `/api/v1/secprivacy/vvt/:id` | VVT-Eintrag aktualisieren |
-| DELETE | `/api/v1/secprivacy/vvt/:id` | VVT-Eintrag löschen |
+| GET | `/api/v1/vaktprivacy/vvt` | Alle VVT-Einträge auflisten |
+| POST | `/api/v1/vaktprivacy/vvt` | VVT-Eintrag anlegen |
+| GET | `/api/v1/vaktprivacy/vvt/export` | VVT als CSV exportieren |
+| GET | `/api/v1/vaktprivacy/vvt/:id` | Einzelnen VVT-Eintrag abrufen |
+| PUT | `/api/v1/vaktprivacy/vvt/:id` | VVT-Eintrag aktualisieren |
+| DELETE | `/api/v1/vaktprivacy/vvt/:id` | VVT-Eintrag löschen |
 
 ### DPIA (Art. 35 DSGVO)
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secprivacy/dpias` | Alle DPIAs auflisten |
-| POST | `/api/v1/secprivacy/dpias` | DPIA anlegen |
-| GET | `/api/v1/secprivacy/dpias/export` | DPIAs exportieren |
-| GET | `/api/v1/secprivacy/dpias/:id` | Einzelne DPIA abrufen |
-| PUT | `/api/v1/secprivacy/dpias/:id` | DPIA aktualisieren |
-| POST | `/api/v1/secprivacy/dpias/:id/approve` | DPIA genehmigen |
-| DELETE | `/api/v1/secprivacy/dpias/:id` | DPIA löschen |
+| GET | `/api/v1/vaktprivacy/dpias` | Alle DPIAs auflisten |
+| POST | `/api/v1/vaktprivacy/dpias` | DPIA anlegen |
+| GET | `/api/v1/vaktprivacy/dpias/export` | DPIAs exportieren |
+| GET | `/api/v1/vaktprivacy/dpias/:id` | Einzelne DPIA abrufen |
+| PUT | `/api/v1/vaktprivacy/dpias/:id` | DPIA aktualisieren |
+| POST | `/api/v1/vaktprivacy/dpias/:id/approve` | DPIA genehmigen |
+| DELETE | `/api/v1/vaktprivacy/dpias/:id` | DPIA löschen |
 
 ### AVV (Art. 28 DSGVO)
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secprivacy/avvs` | Alle AVVs auflisten |
-| POST | `/api/v1/secprivacy/avvs` | AVV anlegen |
-| GET | `/api/v1/secprivacy/avvs/:id` | Einzelnen AVV abrufen |
-| PUT | `/api/v1/secprivacy/avvs/:id` | AVV aktualisieren |
-| DELETE | `/api/v1/secprivacy/avvs/:id` | AVV löschen |
+| GET | `/api/v1/vaktprivacy/avvs` | Alle AVVs auflisten |
+| POST | `/api/v1/vaktprivacy/avvs` | AVV anlegen |
+| GET | `/api/v1/vaktprivacy/avvs/:id` | Einzelnen AVV abrufen |
+| PUT | `/api/v1/vaktprivacy/avvs/:id` | AVV aktualisieren |
+| DELETE | `/api/v1/vaktprivacy/avvs/:id` | AVV löschen |
 
 ### Datenpannenmeldungen (Art. 33/34 DSGVO)
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secprivacy/breaches` | Alle Breach-Records auflisten |
-| POST | `/api/v1/secprivacy/breaches` | Breach anlegen (startet automatisch Vorfallseintrag in Vakt Comply) |
-| GET | `/api/v1/secprivacy/breaches/:id` | Einzelnen Breach abrufen |
-| PUT | `/api/v1/secprivacy/breaches/:id` | Breach aktualisieren |
-| DELETE | `/api/v1/secprivacy/breaches/:id` | Breach löschen |
-| POST | `/api/v1/secprivacy/breaches/:id/notify-authority` | Behördenbenachrichtigung als erledigt markieren |
-| GET | `/api/v1/secprivacy/breaches/:id/notification-pdf` | Meldung als PDF exportieren |
+| GET | `/api/v1/vaktprivacy/breaches` | Alle Breach-Records auflisten |
+| POST | `/api/v1/vaktprivacy/breaches` | Breach anlegen (startet automatisch Vorfallseintrag in Vakt Comply) |
+| GET | `/api/v1/vaktprivacy/breaches/:id` | Einzelnen Breach abrufen |
+| PUT | `/api/v1/vaktprivacy/breaches/:id` | Breach aktualisieren |
+| DELETE | `/api/v1/vaktprivacy/breaches/:id` | Breach löschen |
+| POST | `/api/v1/vaktprivacy/breaches/:id/notify-authority` | Behördenbenachrichtigung als erledigt markieren |
+| GET | `/api/v1/vaktprivacy/breaches/:id/notification-pdf` | Meldung als PDF exportieren |
 
 ### DSR — Betroffenenrechts-Anfragen (Art. 15–21 DSGVO)
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secprivacy/dsr` | Alle DSRs auflisten |
-| POST | `/api/v1/secprivacy/dsr` | DSR anlegen (30-Tage-Frist wird automatisch gesetzt) |
-| GET | `/api/v1/secprivacy/dsrs/export.csv` | DSRs als CSV exportieren |
-| PUT | `/api/v1/secprivacy/dsr/:id` | DSR-Status aktualisieren |
-| DELETE | `/api/v1/secprivacy/dsr/:id` | DSR löschen |
+| GET | `/api/v1/vaktprivacy/dsr` | Alle DSRs auflisten |
+| POST | `/api/v1/vaktprivacy/dsr` | DSR anlegen (30-Tage-Frist wird automatisch gesetzt) |
+| GET | `/api/v1/vaktprivacy/dsrs/export.csv` | DSRs als CSV exportieren |
+| PUT | `/api/v1/vaktprivacy/dsr/:id` | DSR-Status aktualisieren |
+| DELETE | `/api/v1/vaktprivacy/dsr/:id` | DSR löschen |
 
 ## Datenmodelle
 
@@ -139,8 +139,8 @@ Alle Endpunkte erfordern `Authorization: Bearer <token>`.
 
 | Job | Zeitplan | Beschreibung |
 |-----|----------|--------------|
-| `secprivacy:avv_expiry_check` | Täglich | Abgelaufene AVVs als "expired" markieren und Alerts versenden |
-| `secprivacy:breach_incident_create` | Bei Breach-Erstellung | Verknüpften Vorfall im Vakt Comply-Vorfallsregister anlegen |
+| `vaktprivacy:avv_expiry_check` | Täglich | Abgelaufene AVVs als "expired" markieren und Alerts versenden |
+| `vaktprivacy:breach_incident_create` | Bei Breach-Erstellung | Verknüpften Vorfall im Vakt Comply-Vorfallsregister anlegen |
 
 ## Compliance-Mapping
 

@@ -68,42 +68,42 @@ export const test = base.extend({
           })
         }
         // Dashboard scoreTrend guard uses .length which is undefined on objects → crash
-        if (url.includes('/api/v1/secvitals/score-history')) {
+        if (url.includes('/api/v1/vaktcomply/score-history')) {
           return new Response(JSON.stringify([]), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
           })
         }
         // QuickWinsCard calls .filter() on controls — must be array
-        if (url.includes('/api/v1/secvitals/controls')) {
+        if (url.includes('/api/v1/vaktcomply/controls')) {
           return new Response(JSON.stringify([]), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
           })
         }
         // MyTasksWidget uses tasks.slice() — must be array
-        if (url.includes('/api/v1/secvitals/my-tasks')) {
+        if (url.includes('/api/v1/vaktcomply/my-tasks')) {
           return new Response(JSON.stringify([]), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
           })
         }
         // SLADashboardPage calls all.filter() — must be array
-        if (url.includes('/api/v1/secpulse/sla-dashboard')) {
+        if (url.includes('/api/v1/vaktscan/sla-dashboard')) {
           return new Response(JSON.stringify([]), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
           })
         }
         // SecPrivacyOverviewPage calls dpias?.filter() — must be array
-        if (url.includes('/api/v1/secprivacy/dpias')) {
+        if (url.includes('/api/v1/vaktprivacy/dpias')) {
           return new Response(JSON.stringify([]), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
           })
         }
         // SecPrivacyOverviewPage calls avvs?.filter() — must be array
-        if (url.includes('/api/v1/secprivacy/avvs')) {
+        if (url.includes('/api/v1/vaktprivacy/avvs')) {
           return new Response(JSON.stringify([]), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },

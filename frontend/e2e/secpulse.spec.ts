@@ -12,7 +12,7 @@ async function authenticate(page: import('@playwright/test').Page) {
 test.describe('SecPulse — SLA Dashboard', () => {
   test.beforeEach(async ({ page }) => {
     await authenticate(page)
-    await page.goto('/secpulse/sla')
+    await page.goto('/vaktscan/sla')
   })
 
   test('SLA dashboard renders with filter tabs', async ({ page }) => {

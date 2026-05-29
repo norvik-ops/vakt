@@ -207,7 +207,7 @@ func AuditMiddleware(logger *Logger) echo.MiddlewareFunc {
 }
 
 // resourceTypeFromPath derives a short resource type label from an Echo route path.
-// e.g. "/api/v1/secpulse/assets/:id" → "secpulse/assets"
+// e.g. "/api/v1/vaktscan/assets/:id" → "vaktscan/assets"
 func resourceTypeFromPath(path string) string {
 	// Strip leading /api/v1/ prefix if present
 	path = strings.TrimPrefix(path, "/api/v1/")

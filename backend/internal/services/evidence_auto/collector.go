@@ -95,7 +95,7 @@ func CollectSecReflexEvidence(ctx context.Context, db *pgxpool.Pool, orgID, camp
 		campaignID, orgID,
 	).Scan(&campaignName, &participantCount)
 	if err != nil {
-		return fmt.Errorf("load secreflex campaign: %w", err)
+		return fmt.Errorf("load vaktaware campaign: %w", err)
 	}
 
 	title := fmt.Sprintf("Sicherheitsschulung abgeschlossen — %s", campaignName)
@@ -103,7 +103,7 @@ func CollectSecReflexEvidence(ctx context.Context, db *pgxpool.Pool, orgID, camp
 		"Die Phishing-Simulationskampagne '%s' wurde abgeschlossen. Teilnehmer: %d.",
 		campaignName, participantCount,
 	)
-	sourceRef := fmt.Sprintf("secreflex:campaign:%s", campaignID)
+	sourceRef := fmt.Sprintf("vaktaware:campaign:%s", campaignID)
 	now := time.Now().UTC()
 
 	_, err = db.Exec(ctx, `
@@ -111,13 +111,13 @@ func CollectSecReflexEvidence(ctx context.Context, db *pgxpool.Pool, orgID, camp
 			(org_id, control_id, title, description, source, status,
 			 auto_source_type, auto_source_ref, auto_collected_at)
 		VALUES
-			($1::uuid, NULL, $2, $3, 'secreflex', 'pending',
-			 'secreflex', $4, $5)
+			($1::uuid, NULL, $2, $3, 'vaktaware', 'pending',
+			 'vaktaware', $4, $5)
 		ON CONFLICT DO NOTHING`,
 		orgID, title, description, sourceRef, now,
 	)
 	if err != nil {
-		return fmt.Errorf("insert secreflex evidence: %w", err)
+		return fmt.Errorf("insert vaktaware evidence: %w", err)
 	}
 	return nil
 }
@@ -133,7 +133,7 @@ func CollectSecPulseEvidence(ctx context.Context, db *pgxpool.Pool, orgID, findi
 		findingID, orgID,
 	).Scan(&title, &severity)
 	if err != nil {
-		return fmt.Errorf("load secpulse finding: %w", err)
+		return fmt.Errorf("load vaktscan finding: %w", err)
 	}
 
 	evTitle := fmt.Sprintf("Schwachstelle behoben — %s (%s)", title, severity)
@@ -141,7 +141,7 @@ func CollectSecPulseEvidence(ctx context.Context, db *pgxpool.Pool, orgID, findi
 		"Das Finding '%s' mit Schweregrad '%s' wurde als behoben markiert.",
 		title, severity,
 	)
-	sourceRef := fmt.Sprintf("secpulse:finding:%s", findingID)
+	sourceRef := fmt.Sprintf("vaktscan:finding:%s", findingID)
 	now := time.Now().UTC()
 
 	_, err = db.Exec(ctx, `
@@ -149,13 +149,13 @@ func CollectSecPulseEvidence(ctx context.Context, db *pgxpool.Pool, orgID, findi
 			(org_id, control_id, title, description, source, status,
 			 auto_source_type, auto_source_ref, auto_collected_at)
 		VALUES
-			($1::uuid, NULL, $2, $3, 'secpulse', 'pending',
-			 'secpulse', $4, $5)
+			($1::uuid, NULL, $2, $3, 'vaktscan', 'pending',
+			 'vaktscan', $4, $5)
 		ON CONFLICT DO NOTHING`,
 		orgID, evTitle, description, sourceRef, now,
 	)
 	if err != nil {
-		return fmt.Errorf("insert secpulse evidence: %w", err)
+		return fmt.Errorf("insert vaktscan evidence: %w", err)
 	}
 	return nil
 }

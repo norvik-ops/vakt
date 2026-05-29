@@ -19,7 +19,7 @@ Effekt: Das Badge zeigt „Lokal" selbst wenn der Admin `VAKT_AI_PROVIDER=openai
 
 ## Entscheidung
 
-1. **Backend** liefert `provider_host` in `GET /api/v1/secvitals/ai/status`. Die Information wird aus `client.baseURL` extrahiert (`url.Parse(...).Hostname()`). Bei leerem oder ungültigem URL ist `provider_host` ein Leer-String — das Frontend interpretiert das als „unbekannt" und zeigt zur Sicherheit das Cloud-Badge.
+1. **Backend** liefert `provider_host` in `GET /api/v1/vaktcomply/ai/status`. Die Information wird aus `client.baseURL` extrahiert (`url.Parse(...).Hostname()`). Bei leerem oder ungültigem URL ist `provider_host` ein Leer-String — das Frontend interpretiert das als „unbekannt" und zeigt zur Sicherheit das Cloud-Badge.
 2. **Frontend** erweitert `AIStatus` um `provider_host: string` und reicht den Wert von `useAIStatus()` in `SecVitalsOverviewPage` an `<AIAdvisor>` weiter, das ihn unverändert an `<LocalLLMBadge>` durchreicht.
 3. **LocalLLMBadge** bleibt unverändert in seiner Logik: positiv-listet die bekannten Local-Container-Namen (`ollama`, `ai-llm`, `llm-proxy`, `lm-studio`) und schaltet auf „Lokal"; alles andere → „Cloud". Der „kein providerHost → Lokal"-Fallback bleibt als Sicherheitsnetz für Legacy-Callers, aber wird durch den Frontend-Fix nicht mehr aktiv erreicht.
 
@@ -40,7 +40,7 @@ Effekt: Das Badge zeigt „Lokal" selbst wenn der Admin `VAKT_AI_PROVIDER=openai
   - Cloud-Hosts (api.openai.com, api.mistral.ai, api.groq.com) → Cloud
   - Undefined (Legacy) → Lokal (Verhalten gepinnt)
 - Backend-Test: `ai.providerHostFromBaseURL` ist mit dem Status-Handler verkettet, Build verifiziert die Pipeline (`go build ./...`).
-- Smoke: nach Deploy `curl /api/v1/secvitals/ai/status | jq` muss `provider_host` enthalten. Mit `VAKT_AI_BASE_URL=https://api.openai.com/v1` wird `provider_host` = `"api.openai.com"` → Frontend zeigt Cloud-Badge.
+- Smoke: nach Deploy `curl /api/v1/vaktcomply/ai/status | jq` muss `provider_host` enthalten. Mit `VAKT_AI_BASE_URL=https://api.openai.com/v1` wird `provider_host` = `"api.openai.com"` → Frontend zeigt Cloud-Badge.
 
 ## Abgelehnte Alternativen
 

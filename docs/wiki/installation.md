@@ -91,7 +91,7 @@ Die vollständige Referenz aller Variablen findest du in der [Konfigurationsrefe
 | `VAKT_SMTP_PORT` | `1025` | SMTP-Port |
 | `VAKT_SMTP_USER` | — | Benutzername (erforderlich für Port 587/465) |
 | `VAKT_SMTP_PASS` | — | Passwort (erforderlich für Port 587/465) |
-| `VAKT_SMTP_FROM` | `secreflex@vakt.local` | Absenderadresse |
+| `VAKT_SMTP_FROM` | `vaktaware@vakt.local` | Absenderadresse |
 
 ---
 

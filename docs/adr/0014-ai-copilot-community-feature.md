@@ -5,8 +5,8 @@
 
 ## Kontext
 
-Vor v0.6.x war der AI Copilot (5 Endpoints unter `/secvitals/ai/*` plus
-`/secvitals/policies/generate-draft`) durch `license.Require(license.FeatureAIAdvisor)`
+Vor v0.6.x war der AI Copilot (5 Endpoints unter `/vaktcomply/ai/*` plus
+`/vaktcomply/policies/generate-draft`) durch `license.Require(license.FeatureAIAdvisor)`
 hinter dem Pro-Plan-Gate. Die ursprüngliche Annahme: AI braucht GPU oder API-Key
 für ein Cloud-LLM und ist damit ein kostenintensives Feature, das den Pro-Plan
 rechtfertigt.
@@ -28,7 +28,7 @@ Effekt: Das Gate war Marketing-Limitierung ohne echten Schutz.
 
 1. `license.Require(license.FeatureAIAdvisor)` wurde aus den AI-Routes entfernt
    (`backend/internal/shared/ai/routes.go`,
-   `backend/internal/modules/secvitals/routes.go`).
+   `backend/internal/modules/vaktcomply/routes.go`).
 2. Die `FeatureAIAdvisor`-Konstante bleibt erhalten — ausgegebene Lizenzen alter
    Kunden führen sie noch im `features`-Array, und die Lizenz-Validierung soll
    weiterhin erfolgreich bleiben.

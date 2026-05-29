@@ -26,7 +26,7 @@ func NewJobsHandler(redisAddr string) *JobsHandler {
 func (h *JobsHandler) GetQueueStats(c echo.Context) error {
 	queues, err := h.inspector.Queues()
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to list job queues"})
 	}
 
 	type QueueStat struct {

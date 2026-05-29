@@ -4,7 +4,7 @@ import { CheckCircle2, Circle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../../api/client'
-import { useFrameworks } from '../../modules/secvitals/hooks/useFrameworks'
+import { useFrameworks } from '../../modules/vaktcomply/hooks/useFrameworks'
 import { useTeamMembers } from '../../hooks/useTeam'
 
 const DISMISS_KEY = 'vakt_onboarding_dismissed'
@@ -24,7 +24,7 @@ export function useHasEvidence() {
     queryFn: async () => {
       // A small proof-of-evidence query — we just need to know if any exists.
       // We re-use the auto-evidence endpoint since it surfaces pending uploads.
-      const data = await apiFetch<{ count?: number; data?: unknown[] }>('/secvitals/evidence/auto?limit=1')
+      const data = await apiFetch<{ count?: number; data?: unknown[] }>('/vaktcomply/evidence/auto?limit=1')
       const count = data.count ?? (Array.isArray((data as { data?: unknown[] }).data) ? (data as { data: unknown[] }).data.length : 0)
       return count > 0
     },
@@ -37,7 +37,7 @@ export function useHasVvt() {
   return useQuery<boolean>({
     queryKey: ['checklist', 'vvt'],
     queryFn: async () => {
-      const data = await apiFetch<{ count?: number; data?: unknown[] }>('/secprivacy/vvt?limit=1')
+      const data = await apiFetch<{ count?: number; data?: unknown[] }>('/vaktprivacy/vvt?limit=1')
       const count = data.count ?? (Array.isArray((data as { data?: unknown[] }).data) ? (data as { data: unknown[] }).data.length : 0)
       return count > 0
     },
@@ -70,19 +70,19 @@ export function GettingStartedChecklist() {
       id: 'framework',
       labelKey: 'framework',
       done: (frameworks?.length ?? 0) > 0,
-      to: '/secvitals/frameworks',
+      to: '/vaktcomply/frameworks',
     },
     {
       id: 'control',
       labelKey: 'control',
       done: hasEvidence ?? false,
-      to: '/secvitals/controls',
+      to: '/vaktcomply/controls',
     },
     {
       id: 'vvt',
       labelKey: 'vvt',
       done: hasVvt ?? false,
-      to: '/secprivacy/vvt',
+      to: '/vaktprivacy/vvt',
     },
     {
       id: 'org',

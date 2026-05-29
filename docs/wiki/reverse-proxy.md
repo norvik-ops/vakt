@@ -94,8 +94,8 @@ Stand: Sprint 17 (v0.10.0). Pfad-Pattern matcht `^/api/v1/.+/stream$` im nginx-B
 | Endpoint | Modul | Eingeführt in |
 |---|---|---|
 | `GET /api/v1/dashboard/notifications/stream` | Cross-Module | Sprint 17 S17-1 |
-| `GET /api/v1/secpulse/scans/:id/progress/stream` | Vakt Scan | Sprint 17 S17-2 |
-| `POST /api/v1/secvitals/ai/chat/stream` | Vakt Comply (AI) | Sprint 15 S15-5 |
+| `GET /api/v1/vaktscan/scans/:id/progress/stream` | Vakt Scan | Sprint 17 S17-2 |
+| `POST /api/v1/vaktcomply/ai/chat/stream` | Vakt Comply (AI) | Sprint 15 S15-5 |
 
 Weitere geplant in Sprint 18+ (Agent-Run-Stream).
 

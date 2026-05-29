@@ -21,7 +21,7 @@ type ControlMatch struct {
 	Title string
 }
 
-// noopEvidenceWriter is a no-op implementation used when the secvitals module is disabled.
+// noopEvidenceWriter is a no-op implementation used when the vaktcomply module is disabled.
 type noopEvidenceWriter struct{}
 
 func (noopEvidenceWriter) FindControlsByKeywords(_ context.Context, _ string, _ []string) ([]ControlMatch, error) {
@@ -33,7 +33,7 @@ func (noopEvidenceWriter) AddCollectorEvidence(_ context.Context, _, _, _, _, _ 
 }
 
 // NoopEvidenceWriter returns an EvidenceWriter that silently discards all calls.
-// Use this when the secvitals module is disabled.
+// Use this when the vaktcomply module is disabled.
 func NoopEvidenceWriter() EvidenceWriter {
 	return noopEvidenceWriter{}
 }

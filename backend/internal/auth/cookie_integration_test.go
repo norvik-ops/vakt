@@ -136,7 +136,7 @@ func TestMiddlewareAcceptsCookie(t *testing.T) {
 	require.NoError(t, err)
 
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/secvitals/dashboard", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/vaktcomply/dashboard", nil)
 	// Present the token as an httpOnly cookie (no Authorization header).
 	req.AddCookie(&http.Cookie{
 		Name:  "access_token",
@@ -169,7 +169,7 @@ func TestMiddlewareRejectsNoCookieNoHeader(t *testing.T) {
 	require.NoError(t, err)
 
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/secvitals/dashboard", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/vaktcomply/dashboard", nil)
 	// Intentionally no cookie and no Authorization header.
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)

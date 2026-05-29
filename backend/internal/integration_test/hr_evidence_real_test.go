@@ -17,8 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 
-	"github.com/matharnica/vakt/internal/modules/hr"
-	"github.com/matharnica/vakt/internal/modules/secvitals"
+	"github.com/matharnica/vakt/internal/modules/vakthr"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	shareddb "github.com/matharnica/vakt/internal/shared/db"
 )
 
@@ -89,29 +89,29 @@ func TestHRChecklistCompletion_CreatesEvidence(t *testing.T) {
 		RETURNING id::text
 	`).Scan(&orgID))
 
-	hrRepo := hr.NewRepository(pool)
-	hrEvidence := secvitals.NewHREvidenceWriter(pool)
-	hrSvc := hr.NewService(hrRepo).WithEvidenceWriter(hrEvidence)
+	hrRepo := vakthr.NewRepository(pool)
+	hrEvidence := vaktcomply.NewHREvidenceWriter(pool)
+	hrSvc := vakthr.NewService(hrRepo).WithEvidenceWriter(hrEvidence)
 
-	actor := hr.Actor{OrgID: orgID, UserID: "", UserEmail: "test@acme.de", IPAddress: "127.0.0.1"}
+	actor := vakthr.Actor{OrgID: orgID, UserID: "", UserEmail: "test@acme.de", IPAddress: "127.0.0.1"}
 
-	emp, err := hrSvc.CreateEmployee(ctx, actor, hr.CreateEmployeeInput{
+	emp, err := hrSvc.CreateEmployee(ctx, actor, vakthr.CreateEmployeeInput{
 		FirstName: "Max",
 		LastName:  "Mustermann",
 		Email:     "max@acme.de",
 	})
 	require.NoError(t, err)
 
-	checklist, err := hrSvc.CreateChecklist(ctx, actor, hr.CreateChecklistInput{
+	checklist, err := hrSvc.CreateChecklist(ctx, actor, vakthr.CreateChecklistInput{
 		Type: "onboarding",
 		Name: "Standard-Onboarding",
-		Items: []hr.ChecklistItem{
+		Items: []vakthr.ChecklistItem{
 			{ID: "step-1", Label: "Account erstellen", Required: true},
 		},
 	})
 	require.NoError(t, err)
 
-	run, err := hrSvc.StartChecklistRun(ctx, actor, hr.StartChecklistRunInput{
+	run, err := hrSvc.StartChecklistRun(ctx, actor, vakthr.StartChecklistRunInput{
 		EmployeeID:  emp.ID,
 		ChecklistID: checklist.ID,
 	})

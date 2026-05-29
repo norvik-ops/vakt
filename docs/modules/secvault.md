@@ -1,4 +1,4 @@
-# Vakt Vault (`secvault`) — Secrets-Management
+# Vakt Vault (`vaktvault`) — Secrets-Management
 
 ## Übersicht
 
@@ -9,7 +9,7 @@ Vakt Vault speichert Secrets verschlüsselt mit AES-256-GCM (Master-Key aus Umge
 Das Modul ist standardmäßig aktiviert. Zum Deaktivieren:
 
 ```env
-VAKT_MODULES_ENABLED=secvitals,secpulse,secreflex,secprivacy  # secvault weglassen
+VAKT_MODULES_ENABLED=vaktcomply,vaktscan,vaktaware,vaktprivacy  # vaktvault weglassen
 ```
 
 ## Konfiguration
@@ -41,61 +41,61 @@ Alle Endpunkte erfordern `Authorization: Bearer <token>` oder einen gültigen AP
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secvault/projects` | Alle Projekte auflisten |
-| POST | `/api/v1/secvault/projects` | Projekt anlegen |
-| DELETE | `/api/v1/secvault/projects/:id` | Projekt löschen |
-| GET | `/api/v1/secvault/projects/:project_id/health` | Health-Score des Projekts abrufen |
-| GET | `/api/v1/secvault/projects/:project_id/access-log` | Projekt-weites Zugriffs-Log abrufen |
+| GET | `/api/v1/vaktvault/projects` | Alle Projekte auflisten |
+| POST | `/api/v1/vaktvault/projects` | Projekt anlegen |
+| DELETE | `/api/v1/vaktvault/projects/:id` | Projekt löschen |
+| GET | `/api/v1/vaktvault/projects/:project_id/health` | Health-Score des Projekts abrufen |
+| GET | `/api/v1/vaktvault/projects/:project_id/access-log` | Projekt-weites Zugriffs-Log abrufen |
 
 ### Umgebungen
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secvault/projects/:project_id/envs` | Umgebungen eines Projekts auflisten |
-| POST | `/api/v1/secvault/projects/:project_id/envs` | Umgebung anlegen |
+| GET | `/api/v1/vaktvault/projects/:project_id/envs` | Umgebungen eines Projekts auflisten |
+| POST | `/api/v1/vaktvault/projects/:project_id/envs` | Umgebung anlegen |
 
 ### Secrets
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secvault/projects/:project_id/envs/:env_id/secrets` | Secret-Keys auflisten (ohne Values) |
-| PUT | `/api/v1/secvault/projects/:project_id/envs/:env_id/secrets/:key` | Secret anlegen oder aktualisieren |
-| GET | `/api/v1/secvault/projects/:project_id/envs/:env_id/secrets/:key` | Secret-Value abrufen (wird im Audit-Log vermerkt) |
-| DELETE | `/api/v1/secvault/projects/:project_id/envs/:env_id/secrets/:key` | Secret löschen |
-| GET | `/api/v1/secvault/projects/:project_id/envs/:env_id/secrets/:key/log` | Zugriffs-Log für ein Secret abrufen |
-| POST | `/api/v1/secvault/projects/:project_id/envs/:env_id/secrets/:key/rotate` | Secret rotieren |
-| POST | `/api/v1/secvault/projects/:project_id/envs/:env_id/secrets/:key/share` | Share-Link erstellen |
+| GET | `/api/v1/vaktvault/projects/:project_id/envs/:env_id/secrets` | Secret-Keys auflisten (ohne Values) |
+| PUT | `/api/v1/vaktvault/projects/:project_id/envs/:env_id/secrets/:key` | Secret anlegen oder aktualisieren |
+| GET | `/api/v1/vaktvault/projects/:project_id/envs/:env_id/secrets/:key` | Secret-Value abrufen (wird im Audit-Log vermerkt) |
+| DELETE | `/api/v1/vaktvault/projects/:project_id/envs/:env_id/secrets/:key` | Secret löschen |
+| GET | `/api/v1/vaktvault/projects/:project_id/envs/:env_id/secrets/:key/log` | Zugriffs-Log für ein Secret abrufen |
+| POST | `/api/v1/vaktvault/projects/:project_id/envs/:env_id/secrets/:key/rotate` | Secret rotieren |
+| POST | `/api/v1/vaktvault/projects/:project_id/envs/:env_id/secrets/:key/share` | Share-Link erstellen |
 
 ### Import / Export
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| POST | `/api/v1/secvault/projects/:project_id/import` | Secrets importieren (.env / Vault / AWS) |
-| GET | `/api/v1/secvault/projects/:project_id/envs/:env_id/export` | Alle Secrets einer Umgebung exportieren |
+| POST | `/api/v1/vaktvault/projects/:project_id/import` | Secrets importieren (.env / Vault / AWS) |
+| GET | `/api/v1/vaktvault/projects/:project_id/envs/:env_id/export` | Alle Secrets einer Umgebung exportieren |
 
 ### Share-Links (kein Bearer-Token erforderlich)
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secvault/share/:token` | Einmaligen Share-Link einlösen |
+| GET | `/api/v1/vaktvault/share/:token` | Einmaligen Share-Link einlösen |
 
 ### API-Token
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secvault/tokens` | API-Tokens auflisten |
-| POST | `/api/v1/secvault/tokens` | API-Token erstellen (Raw-Key einmalig in Antwort) |
-| DELETE | `/api/v1/secvault/tokens/:id` | API-Token widerrufen |
+| GET | `/api/v1/vaktvault/tokens` | API-Tokens auflisten |
+| POST | `/api/v1/vaktvault/tokens` | API-Token erstellen (Raw-Key einmalig in Antwort) |
+| DELETE | `/api/v1/vaktvault/tokens/:id` | API-Token widerrufen |
 
 ### Git-Scanner
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| POST | `/api/v1/secvault/git-scans` | Git-Repository-Scan starten |
-| GET | `/api/v1/secvault/git-scans` | Alle Scan-Läufe auflisten |
-| GET | `/api/v1/secvault/git-scans/:id` | Einzelnen Scan abrufen |
-| GET | `/api/v1/secvault/git-scans/:id/results` | Scan-Ergebnisse abrufen |
-| POST | `/api/v1/secvault/git-scans/results/:result_id/dismiss` | Einzelnes Ergebnis verwerfen |
+| POST | `/api/v1/vaktvault/git-scans` | Git-Repository-Scan starten |
+| GET | `/api/v1/vaktvault/git-scans` | Alle Scan-Läufe auflisten |
+| GET | `/api/v1/vaktvault/git-scans/:id` | Einzelnen Scan abrufen |
+| GET | `/api/v1/vaktvault/git-scans/:id/results` | Scan-Ergebnisse abrufen |
+| POST | `/api/v1/vaktvault/git-scans/results/:result_id/dismiss` | Einzelnes Ergebnis verwerfen |
 
 ## Datenmodelle
 
@@ -150,7 +150,7 @@ Alle Endpunkte erfordern `Authorization: Bearer <token>` oder einen gültigen AP
 
 | Job | Auslöser | Beschreibung |
 |-----|----------|--------------|
-| `secvault:git_scan` | API-Aufruf | Git-Repository asynchron scannen |
+| `vaktvault:git_scan` | API-Aufruf | Git-Repository asynchron scannen |
 
 ## Compliance-Mapping
 

@@ -291,12 +291,12 @@ func mfaEnforceMiddleware(db mfaDB) echo.MiddlewareFunc {
 // scopePathPrefixes maps an API key scope to the URL path prefixes it is
 // authorised to access. A scope of "admin" grants full access.
 var scopePathPrefixes = map[string][]string{
-	"secvault":   {"/api/v1/secvault/"},
-	"secpulse":   {"/api/v1/secpulse/"},
-	"secvitals":  {"/api/v1/secvitals/"},
-	"secreflex":  {"/api/v1/secreflex/"},
-	"secprivacy": {"/api/v1/secprivacy/"},
-	"hr":         {"/api/v1/hr/"},
+	"vaktvault":   {"/api/v1/vaktvault/"},
+	"vaktscan":   {"/api/v1/vaktscan/"},
+	"vaktcomply":  {"/api/v1/vaktcomply/"},
+	"vaktaware":  {"/api/v1/vaktaware/"},
+	"vaktprivacy": {"/api/v1/vaktprivacy/"},
+	"vakthr":       {"/api/v1/vakthr/"},
 }
 
 // handleAPIKey looks up the raw API key in the database by its SHA-256 hash,

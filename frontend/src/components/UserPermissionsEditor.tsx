@@ -11,14 +11,14 @@ import { useUserPermissions, useUpdateUserPermissions, type ModulePermission } f
 
 type ModuleKey = ModulePermission['module']
 
-const MODULES: ModuleKey[] = ['secpulse', 'secvitals', 'secvault', 'secreflex', 'secprivacy']
+const MODULES: ModuleKey[] = ['vaktscan', 'vaktcomply', 'vaktvault', 'vaktaware', 'vaktprivacy']
 
 const MODULE_LABELS: Record<ModuleKey, string> = {
-  secpulse:   'Vakt Scan',
-  secvitals:  'Vakt Comply',
-  secvault:   'Vakt Vault',
-  secreflex:  'Vakt Aware',
-  secprivacy: 'Vakt Privacy',
+  vaktscan:   'Vakt Scan',
+  vaktcomply:  'Vakt Comply',
+  vaktvault:   'Vakt Vault',
+  vaktaware:  'Vakt Aware',
+  vaktprivacy: 'Vakt Privacy',
 }
 
 const DEFAULT_PERMISSIONS: ModulePermission[] = MODULES.map((module) => ({

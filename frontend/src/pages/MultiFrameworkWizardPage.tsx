@@ -10,9 +10,9 @@ import { apiFetch, FeatureLockedError } from '../api/client'
 //
 // Flow:
 //   1. GET /api/v1/public/nis2-assessment/multi/questions (public)
-//   2. POST /api/v1/secvitals/nis2-assessment/multi/start (authenticated, ProGate)
-//   3. POST /api/v1/secvitals/nis2-assessment/multi/:token/answer (authenticated)
-//   4. GET  /api/v1/secvitals/nis2-assessment/multi/:token/result (authenticated)
+//   2. POST /api/v1/vaktcomply/nis2-assessment/multi/start (authenticated, ProGate)
+//   3. POST /api/v1/vaktcomply/nis2-assessment/multi/:token/answer (authenticated)
+//   4. GET  /api/v1/vaktcomply/nis2-assessment/multi/:token/result (authenticated)
 
 interface MultiFrameworkQuestion {
   id: string
@@ -118,7 +118,7 @@ export default function MultiFrameworkWizardPage() {
         if (existing) {
           try {
             const rResp = await apiFetch<MultiRun>(
-              `/secvitals/nis2-assessment/multi/${existing}/result`
+              `/vaktcomply/nis2-assessment/multi/${existing}/result`
             )
             setRun(rResp)
             if (rResp.completed_at) {
@@ -137,7 +137,7 @@ export default function MultiFrameworkWizardPage() {
         }
 
         // 3. Neuen Run starten (authenticated, ProGate).
-        const startResp = await apiFetch<MultiRun>('/secvitals/nis2-assessment/multi/start', {
+        const startResp = await apiFetch<MultiRun>('/vaktcomply/nis2-assessment/multi/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ referrer: document.referrer || '' }),
@@ -162,7 +162,7 @@ export default function MultiFrameworkWizardPage() {
     const q = questions[stepIdx]
     try {
       const updated = await apiFetch<MultiRun>(
-        `/secvitals/nis2-assessment/multi/${run.token}/answer`,
+        `/vaktcomply/nis2-assessment/multi/${run.token}/answer`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -174,7 +174,7 @@ export default function MultiFrameworkWizardPage() {
 
       if (updated.completed_at) {
         const finalResult = await apiFetch<MultiRun>(
-          `/secvitals/nis2-assessment/multi/${run.token}/result`
+          `/vaktcomply/nis2-assessment/multi/${run.token}/result`
         )
         setResult(finalResult)
         setFinished(true)
@@ -464,7 +464,7 @@ function ResultView({ result }: { result: MultiRun }) {
             systematisch — mit Roadmap, Evidence-Tracking und Audit-Export.
           </p>
           <a
-            href="/secvitals"
+            href="/vaktcomply"
             className="inline-block bg-indigo-600 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-indigo-700"
           >
             Zu Vakt Comply →

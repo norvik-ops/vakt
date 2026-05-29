@@ -89,10 +89,10 @@ func TestReadiness_FailsOnQueue(t *testing.T) {
 // asserts the JSON shape used by dashboards.
 func TestQueueStats_RendersCounts(t *testing.T) {
 	mux := buildHealthHandlers(fakePinger{}, &fakeInspector{
-		queues: []string{"default", "secpulse:scans"},
+		queues: []string{"default", "vaktscan:scans"},
 		infos: map[string]*asynq.QueueInfo{
 			"default":        {Size: 5, Pending: 3, Active: 2, Retry: 0, Archived: 0, Scheduled: 0},
-			"secpulse:scans": {Size: 12, Pending: 10, Active: 2, Retry: 1, Archived: 4, Scheduled: 0},
+			"vaktscan:scans": {Size: 12, Pending: 10, Active: 2, Retry: 1, Archived: 4, Scheduled: 0},
 		},
 	})
 	req := httptest.NewRequest(http.MethodGet, "/health/queue", nil)
@@ -103,8 +103,8 @@ func TestQueueStats_RendersCounts(t *testing.T) {
 	var got map[string]map[string]int
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 	assert.Equal(t, 3, got["default"]["pending"])
-	assert.Equal(t, 10, got["secpulse:scans"]["pending"])
-	assert.Equal(t, 1, got["secpulse:scans"]["retry"])
+	assert.Equal(t, 10, got["vaktscan:scans"]["pending"])
+	assert.Equal(t, 1, got["vaktscan:scans"]["retry"])
 }
 
 // TestQueueStats_FailsOnUnreachable: when the inspector cannot enumerate

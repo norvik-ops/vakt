@@ -1,4 +1,4 @@
-# Vakt Scan (`secpulse`) — Schwachstellenmanagement
+# Vakt Scan (`vaktscan`) — Schwachstellenmanagement
 
 ## Übersicht
 
@@ -9,7 +9,7 @@ Vakt Scan orchestriert bestehende Open-Source-Scanner (Trivy, Nuclei, OpenVAS) u
 Das Modul ist standardmäßig aktiviert. Zum Deaktivieren:
 
 ```env
-VAKT_MODULES_ENABLED=secvitals,secvault,secreflex,secprivacy  # secpulse weglassen
+VAKT_MODULES_ENABLED=vaktcomply,vaktvault,vaktaware,vaktprivacy  # vaktscan weglassen
 ```
 
 ## Features
@@ -27,7 +27,7 @@ VAKT_MODULES_ENABLED=secvitals,secvault,secreflex,secprivacy  # secpulse weglass
 - **Scan-Reports** — Asynchron generierte Executive-Reports (PDF/JSON) mit konfigurierbarem Scope
 - **Findings-Export** — CSV- oder JSON-Export mit Filter nach Severity und Status
 - **Findings-Import** — Bulk-Import von Findings aus externen Quellen
-- **Automatische Vakt Comply-Evidence** — Asynq-Job `secpulse:auto_evidence` erstellt bei Finding-Schließung einen Nachweis im Patch-Management-Control
+- **Automatische Vakt Comply-Evidence** — Asynq-Job `vaktscan:auto_evidence` erstellt bei Finding-Schließung einen Nachweis im Patch-Management-Control
 
 ## Rollen
 
@@ -44,59 +44,59 @@ Alle Endpunkte erfordern `Authorization: Bearer <token>`.
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secpulse/assets` | Assets auflisten (Query: `?page`, `?limit`, `?tag`) |
-| POST | `/api/v1/secpulse/assets` | Asset anlegen |
-| GET | `/api/v1/secpulse/assets/:id` | Einzelnes Asset abrufen |
-| PUT | `/api/v1/secpulse/assets/:id` | Asset aktualisieren |
-| DELETE | `/api/v1/secpulse/assets/:id` | Asset löschen |
-| POST | `/api/v1/secpulse/assets/import` | Assets per CSV importieren (multipart/form-data, Feld: `file`) |
+| GET | `/api/v1/vaktscan/assets` | Assets auflisten (Query: `?page`, `?limit`, `?tag`) |
+| POST | `/api/v1/vaktscan/assets` | Asset anlegen |
+| GET | `/api/v1/vaktscan/assets/:id` | Einzelnes Asset abrufen |
+| PUT | `/api/v1/vaktscan/assets/:id` | Asset aktualisieren |
+| DELETE | `/api/v1/vaktscan/assets/:id` | Asset löschen |
+| POST | `/api/v1/vaktscan/assets/import` | Assets per CSV importieren (multipart/form-data, Feld: `file`) |
 
 ### Scans
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| POST | `/api/v1/secpulse/assets/:id/scans` | Scan auslösen (scanner: trivy / nuclei / openvas) |
-| GET | `/api/v1/secpulse/scans/:id` | Scan-Status abrufen |
-| GET | `/api/v1/secpulse/assets/:id/schedules` | Scan-Schedules eines Assets auflisten |
-| POST | `/api/v1/secpulse/assets/:id/schedules` | Scan-Schedule anlegen |
-| DELETE | `/api/v1/secpulse/assets/:id/schedules/:schedule_id` | Scan-Schedule löschen |
+| POST | `/api/v1/vaktscan/assets/:id/scans` | Scan auslösen (scanner: trivy / nuclei / openvas) |
+| GET | `/api/v1/vaktscan/scans/:id` | Scan-Status abrufen |
+| GET | `/api/v1/vaktscan/assets/:id/schedules` | Scan-Schedules eines Assets auflisten |
+| POST | `/api/v1/vaktscan/assets/:id/schedules` | Scan-Schedule anlegen |
+| DELETE | `/api/v1/vaktscan/assets/:id/schedules/:schedule_id` | Scan-Schedule löschen |
 
 ### Findings
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secpulse/findings` | Findings auflisten (Filter: `severity`, `status`, `asset_id`, `sort`, `order`, `page`, `limit`) |
-| GET | `/api/v1/secpulse/findings/:id` | Einzelnes Finding abrufen |
-| PATCH | `/api/v1/secpulse/findings/:id` | Finding-Status, Zuweisung oder Justifikation setzen |
-| GET | `/api/v1/secpulse/findings/bulk` | Findings auflisten (Bulk-Ansicht) |
-| POST | `/api/v1/secpulse/findings/bulk` | Status oder Zuweisung für mehrere Findings setzen |
-| GET | `/api/v1/secpulse/findings/export` | Findings exportieren (Query: `?format=csv\|json`, `?severity`, `?status`) |
-| POST | `/api/v1/secpulse/findings/import` | Findings importieren |
+| GET | `/api/v1/vaktscan/findings` | Findings auflisten (Filter: `severity`, `status`, `asset_id`, `sort`, `order`, `page`, `limit`) |
+| GET | `/api/v1/vaktscan/findings/:id` | Einzelnes Finding abrufen |
+| PATCH | `/api/v1/vaktscan/findings/:id` | Finding-Status, Zuweisung oder Justifikation setzen |
+| GET | `/api/v1/vaktscan/findings/bulk` | Findings auflisten (Bulk-Ansicht) |
+| POST | `/api/v1/vaktscan/findings/bulk` | Status oder Zuweisung für mehrere Findings setzen |
+| GET | `/api/v1/vaktscan/findings/export` | Findings exportieren (Query: `?format=csv\|json`, `?severity`, `?status`) |
+| POST | `/api/v1/vaktscan/findings/import` | Findings importieren |
 
 ### Unterdrückungsregeln
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secpulse/suppressions` | Alle Unterdrückungsregeln auflisten |
-| POST | `/api/v1/secpulse/suppressions` | Regel anlegen (nach CVE-ID oder Asset-Tag) |
-| DELETE | `/api/v1/secpulse/suppressions/:id` | Regel löschen |
+| GET | `/api/v1/vaktscan/suppressions` | Alle Unterdrückungsregeln auflisten |
+| POST | `/api/v1/vaktscan/suppressions` | Regel anlegen (nach CVE-ID oder Asset-Tag) |
+| DELETE | `/api/v1/vaktscan/suppressions/:id` | Regel löschen |
 
 ### SLA
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secpulse/sla-dashboard` | SLA-Dashboard (offene Findings mit Fristenstatus) |
-| GET | `/api/v1/secpulse/sla-config` | SLA-Konfiguration abrufen |
-| PUT | `/api/v1/secpulse/sla-config` | SLA-Konfiguration aktualisieren (nur Admin) |
+| GET | `/api/v1/vaktscan/sla-dashboard` | SLA-Dashboard (offene Findings mit Fristenstatus) |
+| GET | `/api/v1/vaktscan/sla-config` | SLA-Konfiguration abrufen |
+| PUT | `/api/v1/vaktscan/sla-config` | SLA-Konfiguration aktualisieren (nur Admin) |
 
 ### Reports
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secpulse/reports/risk-trend` | Risk-Trend abrufen (Query: `?days=90`) |
-| POST | `/api/v1/secpulse/reports` | Report asynchron generieren |
-| GET | `/api/v1/secpulse/reports` | Alle Reports auflisten |
-| GET | `/api/v1/secpulse/reports/:id` | Einzelnen Report abrufen |
+| GET | `/api/v1/vaktscan/reports/risk-trend` | Risk-Trend abrufen (Query: `?days=90`) |
+| POST | `/api/v1/vaktscan/reports` | Report asynchron generieren |
+| GET | `/api/v1/vaktscan/reports` | Alle Reports auflisten |
+| GET | `/api/v1/vaktscan/reports/:id` | Einzelnen Report abrufen |
 
 ## Datenmodelle
 
@@ -142,12 +142,12 @@ Alle Endpunkte erfordern `Authorization: Bearer <token>`.
 
 | Job | Auslöser | Beschreibung |
 |-----|----------|--------------|
-| `secpulse:scan:trivy` | API-Aufruf / Schedule | Trivy-Scan ausführen |
-| `secpulse:scan:nuclei` | API-Aufruf / Schedule | Nuclei-Scan ausführen |
-| `secpulse:scan:openvas` | API-Aufruf / Schedule | OpenVAS-Scan ausführen |
-| `secpulse:epss_enrich` | Nach Scan | EPSS-Scores für neue Findings nachladen |
-| `secpulse:auto_evidence` | Finding-Schließung | Compliance-Nachweis in Vakt Comply erstellen |
-| `secpulse:generate_report` | API-Aufruf | Report asynchron generieren |
+| `vaktscan:scan:trivy` | API-Aufruf / Schedule | Trivy-Scan ausführen |
+| `vaktscan:scan:nuclei` | API-Aufruf / Schedule | Nuclei-Scan ausführen |
+| `vaktscan:scan:openvas` | API-Aufruf / Schedule | OpenVAS-Scan ausführen |
+| `vaktscan:epss_enrich` | Nach Scan | EPSS-Scores für neue Findings nachladen |
+| `vaktscan:auto_evidence` | Finding-Schließung | Compliance-Nachweis in Vakt Comply erstellen |
+| `vaktscan:generate_report` | API-Aufruf | Report asynchron generieren |
 
 ## Compliance-Mapping
 

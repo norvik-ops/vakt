@@ -21,11 +21,11 @@ import { apiFetch, FeatureLockedError } from '../../../api/client'
 import { useAuthStore } from '../../../shared/stores/auth'
 import { cn } from '../../../lib/utils'
 import { VAKT_POLAR_PORTAL_URL } from '../../../lib/constants'
-import { useOrgSector, useUpdateOrgSector } from '../../../modules/secvitals/hooks/useOrgSector'
-import { useApprovalSetting, useUpdateApprovalSetting } from '../../../modules/secvitals/hooks/useApprovals'
-import { SECTOR_LABELS } from '../../../modules/secvitals/types'
+import { useOrgSector, useUpdateOrgSector } from '../../../modules/vaktcomply/hooks/useOrgSector'
+import { useApprovalSetting, useUpdateApprovalSetting } from '../../../modules/vaktcomply/hooks/useApprovals'
+import { SECTOR_LABELS } from '../../../modules/vaktcomply/types'
 import { useExportData } from '../../../hooks/useDataExport'
-import { useAuditReport } from '../../../modules/secvitals/hooks/useAuditReport'
+import { useAuditReport } from '../../../modules/vaktcomply/hooks/useAuditReport'
 import { ProGate } from '../../../shared/components/ProGate'
 import { useUpdateCheck } from '../../../shared/hooks/useUpdateCheck'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
@@ -144,11 +144,11 @@ function useDeleteChannel() {
 // ─── Module labels ────────────────────────────────────────────────────────────
 
 const MODULE_META: Record<string, { label: string; desc: string }> = {
-  secpulse:   { label: 'Vakt Scan',     desc: 'Scanner-Orchestrierung & Schwachstellenmanagement' },
-  secvitals:  { label: 'Vakt Comply',   desc: 'Compliance Frameworks, Risiken & Governance' },
-  secvault:   { label: 'Vakt Vault',    desc: 'Secrets-Verwaltung & Git-Scanning' },
-  secreflex:  { label: 'Vakt Aware',    desc: 'Phishing-Simulationen & Awareness-Training' },
-  secprivacy: { label: 'Vakt Privacy',  desc: 'DSGVO-Dokumentation (VVT, DSFA, AVV, Datenpannen)' },
+  vaktscan:   { label: 'Vakt Scan',     desc: 'Scanner-Orchestrierung & Schwachstellenmanagement' },
+  vaktcomply:  { label: 'Vakt Comply',   desc: 'Compliance Frameworks, Risiken & Governance' },
+  vaktvault:   { label: 'Vakt Vault',    desc: 'Secrets-Verwaltung & Git-Scanning' },
+  vaktaware:  { label: 'Vakt Aware',    desc: 'Phishing-Simulationen & Awareness-Training' },
+  vaktprivacy: { label: 'Vakt Privacy',  desc: 'DSGVO-Dokumentation (VVT, DSFA, AVV, Datenpannen)' },
 }
 
 // ─── License ─────────────────────────────────────────────────────────────────
@@ -172,8 +172,8 @@ const FEATURE_LABELS: Record<string, string> = {
   audit_pdf: 'Audit-PDF Export',
   sso: 'SSO (OIDC/SAML)',
   api_access: 'API-Zugang',
-  secreflex_advanced: 'Vakt Aware Pro',
-  secpulse_advanced: 'Vakt Scan Pro',
+  vaktaware_advanced: 'Vakt Aware Pro',
+  vaktscan_advanced: 'Vakt Scan Pro',
   granular_permissions: 'Granulare Modul-Berechtigungen pro Benutzer',
 }
 
@@ -1110,7 +1110,7 @@ function useOrgAISettings() {
 function useOllamaModels() {
   return useQuery<{ models: string[] }>({
     queryKey: ['ollama-models'],
-    queryFn: () => apiFetch<{ models: string[] }>('/secvitals/ai/models'),
+    queryFn: () => apiFetch<{ models: string[] }>('/vaktcomply/ai/models'),
     staleTime: 60_000,
   })
 }

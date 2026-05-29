@@ -11,9 +11,9 @@ import (
 	"github.com/matharnica/vakt/internal/admin"
 	"github.com/matharnica/vakt/internal/auth"
 	"github.com/matharnica/vakt/internal/config"
-	"github.com/matharnica/vakt/internal/modules/secprivacy"
-	"github.com/matharnica/vakt/internal/modules/secpulse"
-	"github.com/matharnica/vakt/internal/modules/secvitals"
+	"github.com/matharnica/vakt/internal/modules/vaktprivacy"
+	"github.com/matharnica/vakt/internal/modules/vaktscan"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/services/alerting"
 	"github.com/matharnica/vakt/internal/services/siem"
 	"github.com/matharnica/vakt/internal/shared/bsi"
@@ -38,7 +38,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 
 	// Daily at 08:00 UTC: check AVV expiry and send alerts.
 	if _, err := scheduler.Register("0 8 * * *",
-		asynq.NewTask(secprivacy.TaskAVVExpiryCheck, nil),
+		asynq.NewTask(vaktprivacy.TaskAVVExpiryCheck, nil),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register AVV expiry cron")
 	}
@@ -88,7 +88,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 
 	// Daily at 01:00 UTC: enrich all findings with EPSS scores from FIRST.org.
 	if _, err := scheduler.Register("0 1 * * *",
-		asynq.NewTask(secpulse.TaskEPSSEnrich, nil),
+		asynq.NewTask(vaktscan.TaskEPSSEnrich, nil),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register EPSS enrich cron")
 	}
@@ -97,7 +97,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// The dashboard reads from vb_risk_trend_snapshots instead of running
 	// generate_series × vb_findings at request time.
 	if _, err := scheduler.Register("30 2 * * *",
-		asynq.NewTask(secpulse.TaskRiskTrendSnapshot, nil),
+		asynq.NewTask(vaktscan.TaskRiskTrendSnapshot, nil),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register risk trend snapshot cron")
 	}
@@ -118,49 +118,49 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 
 	// Daily at 09:00 UTC: alert on evidence expiring within 30 days.
 	if _, err := scheduler.Register("0 9 * * *",
-		secvitals.NewEvidenceExpiryAlertTask(),
+		vaktcomply.NewEvidenceExpiryAlertTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register evidence expiry alert cron")
 	}
 
 	// Every 4 hours: check for overdue DORA/NIS2 incident deadlines.
 	if _, err := scheduler.Register("0 */4 * * *",
-		secvitals.NewIncidentDeadlineCheckTask(),
+		vaktcomply.NewIncidentDeadlineCheckTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register incident deadline check cron")
 	}
 
 	// Daily at 08:30 UTC: check NIS2-classified incidents (obligation = "probably") for deadline alerts (S39-2).
 	if _, err := scheduler.Register("30 8 * * *",
-		secvitals.NewNIS2ObligationCheckTask(),
+		vaktcomply.NewNIS2ObligationCheckTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register nis2 obligation check cron")
 	}
 
 	// Every 5 minutes: update DORA IKT-incident Ampel-Status (S37-4).
 	if _, err := scheduler.Register("*/5 * * * *",
-		secvitals.NewDORADeadlineStatusTask(),
+		vaktcomply.NewDORADeadlineStatusTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register DORA deadline status cron")
 	}
 
 	// Daily at 07:00 UTC: check supplier certificate expiry.
 	if _, err := scheduler.Register("0 7 * * *",
-		secvitals.NewCertExpiryCheckTask(),
+		vaktcomply.NewCertExpiryCheckTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register cert expiry check cron")
 	}
 
 	// Daily at 10:00 UTC: run all due CCM checks.
 	if _, err := scheduler.Register("0 10 * * *",
-		secvitals.NewCCMRunDueTask(),
+		vaktcomply.NewCCMRunDueTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register CCM run-due cron")
 	}
 
 	// Daily at 23:00 UTC: capture compliance score snapshot for trend charts.
 	if _, err := scheduler.Register("0 23 * * *",
-		secvitals.NewScoreSnapshotTask(),
+		vaktcomply.NewScoreSnapshotTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register score snapshot cron")
 	}
@@ -251,14 +251,14 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 
 	// S52-1: daily at 08:30 UTC — evidence freshness AI insight generation.
 	if _, err := scheduler.Register("30 8 * * *",
-		secvitals.NewEvidenceFreshnessCheckTask(),
+		vaktcomply.NewEvidenceFreshnessCheckTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register evidence freshness check cron")
 	}
 
 	// S52-4: every Monday at 08:00 UTC — AI compliance weekly digest (opt-in orgs only).
 	if _, err := scheduler.Register("0 8 * * 1",
-		secvitals.NewAIWeeklyDigestTask(),
+		vaktcomply.NewAIWeeklyDigestTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register AI weekly digest cron")
 	}
@@ -269,7 +269,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 const taskQueueHealthCheck = "queue:health:check"
 
 // taskControlTestCheck is the Asynq task name for the daily overdue control test CAPA check.
-const taskControlTestCheck = "secvitals:control_test_check"
+const taskControlTestCheck = "vaktcomply:control_test_check"
 
 // taskErrorBudgetReport is the Asynq task name for the weekly SLO error budget report.
 const taskErrorBudgetReport = "errorbudget:weekly_report"

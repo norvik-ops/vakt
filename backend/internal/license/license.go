@@ -31,10 +31,10 @@ const (
 	FeatureAPI       = "api_access"
 	// FeatureSecReflex gates advanced phishing campaign management, detailed analytics,
 	// template management, and target group management. Basic training assignment is Community.
-	FeatureSecReflex = "secreflex_advanced"
+	FeatureSecReflex = "vaktaware_advanced"
 	// FeatureSecPulse gates SBOM scanning, EOL tracking, and report generation/export.
 	// Basic findings listing and the vulnerability dashboard remain Community.
-	FeatureSecPulse = "secpulse_advanced"
+	FeatureSecPulse = "vaktscan_advanced"
 	// FeatureGranularPermissions gates the per-user module permission management API.
 	// Admins on Community may still see permissions; only writing (PUT) is gated.
 	FeatureGranularPermissions = "granular_permissions"

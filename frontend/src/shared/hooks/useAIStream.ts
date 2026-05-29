@@ -22,7 +22,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
  */
 
 export interface AIStreamRequest {
-  /** Relative API-Pfad ohne /api/v1 prefix, z.B. "/secvitals/ai/chat/stream". */
+  /** Relative API-Pfad ohne /api/v1 prefix, z.B. "/vaktcomply/ai/chat/stream". */
   endpoint: string
   /** System-Prompt — bleibt deterministisch, niemals von User-Input geprägt. */
   system?: string

@@ -21,9 +21,9 @@ import { GlobalSearch } from './GlobalSearch'
 import { VersionBanner } from './VersionBanner'
 import { LicenseExpiryBanner } from './LicenseExpiryBanner'
 import { WhatsNewModal } from './WhatsNewModal'
-import { useOverdueControls } from '../../modules/secvitals/hooks/useControlReviews'
-import { useAutoEvidence } from '../../modules/secvitals/hooks/useEvidenceAuto'
-import { usePendingApprovalCount } from '../../modules/secvitals/hooks/useApprovals'
+import { useOverdueControls } from '../../modules/vaktcomply/hooks/useControlReviews'
+import { useAutoEvidence } from '../../modules/vaktcomply/hooks/useEvidenceAuto'
+import { usePendingApprovalCount } from '../../modules/vaktcomply/hooks/useApprovals'
 import { useUpdateCheck } from '../hooks/useUpdateCheck'
 import { Toaster } from './Toaster'
 import { PWAInstallPrompt } from './PWAInstallPrompt'
@@ -57,106 +57,106 @@ interface NavItem {
 const MODULES_NAV: NavItem[] = [
   { path: '/',            label: 'Dashboard',  icon: LayoutDashboard, exact: true },
   {
-    path: '/secpulse',
+    path: '/vaktscan',
     label: 'Vakt Scan',
     icon: Bug,
     children: [
-      { path: '/secpulse/assets',   label: 'Assets',        icon: Server },
-      { path: '/secpulse/findings', label: 'Findings',      icon: ScanSearch },
-      { path: '/secpulse/sla',      label: 'SLA-Dashboard', icon: Clock },
-      { path: '/secpulse/reports',  label: 'Berichte',      icon: BarChart2 },
-      { path: '/secpulse/eol',      label: 'EOL-Dashboard', icon: PackageX },
+      { path: '/vaktscan/assets',   label: 'Assets',        icon: Server },
+      { path: '/vaktscan/findings', label: 'Findings',      icon: ScanSearch },
+      { path: '/vaktscan/sla',      label: 'SLA-Dashboard', icon: Clock },
+      { path: '/vaktscan/reports',  label: 'Berichte',      icon: BarChart2 },
+      { path: '/vaktscan/eol',      label: 'EOL-Dashboard', icon: PackageX },
     ],
   },
   {
-    path: '/secvitals',
+    path: '/vaktcomply',
     label: 'Vakt Comply',
     icon: FileCheck,
     childGroups: [
       {
         label: 'Frameworks',
         items: [
-          { path: '/secvitals/frameworks',         label: 'Übersicht',  icon: ShieldCheck },
-          { path: '/secvitals/nis2',               label: 'NIS2',       icon: Shield },
-          { path: '/secvitals/iso27001',           label: 'ISO 27001',  icon: FileCheck },
-          { path: '/secvitals/grundschutz',        label: 'BSI',        icon: Landmark },
-          { path: '/secvitals/cis-controls',       label: 'CIS v8',     icon: ListChecks },
-          { path: '/secvitals/ccm',                label: 'CCM',        icon: Cloud },
-          { path: '/secvitals/dora/dashboard',     label: 'DORA',       icon: Banknote },
-          { path: '/secvitals/eu-ai-act/dashboard', label: 'EU AI Act', icon: Bot },
+          { path: '/vaktcomply/frameworks',         label: 'Übersicht',  icon: ShieldCheck },
+          { path: '/vaktcomply/nis2',               label: 'NIS2',       icon: Shield },
+          { path: '/vaktcomply/iso27001',           label: 'ISO 27001',  icon: FileCheck },
+          { path: '/vaktcomply/grundschutz',        label: 'BSI',        icon: Landmark },
+          { path: '/vaktcomply/cis-controls',       label: 'CIS v8',     icon: ListChecks },
+          { path: '/vaktcomply/ccm',                label: 'CCM',        icon: Cloud },
+          { path: '/vaktcomply/dora/dashboard',     label: 'DORA',       icon: Banknote },
+          { path: '/vaktcomply/eu-ai-act/dashboard', label: 'EU AI Act', icon: Bot },
         ],
       },
       {
         label: 'Operations',
         items: [
-          { path: '/secvitals/risks',              label: 'Risiken',      icon: ShieldAlert },
-          { path: '/secvitals/incidents',          label: 'Vorfälle',     icon: Siren },
-          { path: '/secvitals/audits',             label: 'Audits',       icon: ClipboardList },
-          { path: '/secvitals/capas',              label: 'Maßnahmen',    icon: ClipboardCheck },
-          { path: '/secvitals/approvals',          label: 'Genehmigungen', icon: UserCheck },
-          { path: '/secvitals/overdue-reviews',    label: 'Überfällig',   icon: CalendarClock },
+          { path: '/vaktcomply/risks',              label: 'Risiken',      icon: ShieldAlert },
+          { path: '/vaktcomply/incidents',          label: 'Vorfälle',     icon: Siren },
+          { path: '/vaktcomply/audits',             label: 'Audits',       icon: ClipboardList },
+          { path: '/vaktcomply/capas',              label: 'Maßnahmen',    icon: ClipboardCheck },
+          { path: '/vaktcomply/approvals',          label: 'Genehmigungen', icon: UserCheck },
+          { path: '/vaktcomply/overdue-reviews',    label: 'Überfällig',   icon: CalendarClock },
         ],
       },
       {
         label: 'Dokumentation',
         items: [
-          { path: '/secvitals/policies',           label: 'Richtlinien',   icon: BookOpen },
-          { path: '/secvitals/soa',                label: 'SoA',           icon: ScrollText },
-          { path: '/secvitals/evidence/auto',      label: 'Nachweise',     icon: Inbox },
-          { path: '/secvitals/certification-timeline', label: 'Zert.-Plan', icon: CalendarDays },
+          { path: '/vaktcomply/policies',           label: 'Richtlinien',   icon: BookOpen },
+          { path: '/vaktcomply/soa',                label: 'SoA',           icon: ScrollText },
+          { path: '/vaktcomply/evidence/auto',      label: 'Nachweise',     icon: Inbox },
+          { path: '/vaktcomply/certification-timeline', label: 'Zert.-Plan', icon: CalendarDays },
         ],
       },
       {
         label: 'Drittparteien',
         items: [
-          { path: '/secvitals/suppliers',          label: 'Lieferanten',   icon: Building2 },
-          { path: '/secvitals/ai-systems',         label: 'KI-Systeme',    icon: Cpu },
-          { path: '/secvitals/resilience-tests',   label: 'Resilience',    icon: FlaskConical },
+          { path: '/vaktcomply/suppliers',          label: 'Lieferanten',   icon: Building2 },
+          { path: '/vaktcomply/ai-systems',         label: 'KI-Systeme',    icon: Cpu },
+          { path: '/vaktcomply/resilience-tests',   label: 'Resilience',    icon: FlaskConical },
         ],
       },
     ],
   },
   {
-    path: '/secvault',
+    path: '/vaktvault',
     label: 'Vakt Vault',
     icon: Key,
     children: [
-      { path: '/secvault/projects',  label: 'Projekte',  icon: Key },
-      { path: '/secvault/tokens',    label: 'Tokens',    icon: Shield },
-      { path: '/secvault/git-scans', label: 'Git-Scans', icon: ScanSearch },
+      { path: '/vaktvault/projects',  label: 'Projekte',  icon: Key },
+      { path: '/vaktvault/tokens',    label: 'Tokens',    icon: Shield },
+      { path: '/vaktvault/git-scans', label: 'Git-Scans', icon: ScanSearch },
     ],
   },
   {
-    path: '/secreflex',
+    path: '/vaktaware',
     label: 'Vakt Aware',
     icon: Fish,
     children: [
-      { path: '/secreflex/campaigns',     label: 'Kampagnen',      icon: Mail },
-      { path: '/secreflex/templates',     label: 'Vorlagen',       icon: LayoutTemplate },
-      { path: '/secreflex/target-groups', label: 'Zielgruppen',    icon: Target },
-      { path: '/secreflex/training',      label: 'Training',       icon: GraduationCap },
-      { path: '/secreflex/phish-reports', label: 'Phish-Berichte', icon: Flag },
+      { path: '/vaktaware/campaigns',     label: 'Kampagnen',      icon: Mail },
+      { path: '/vaktaware/templates',     label: 'Vorlagen',       icon: LayoutTemplate },
+      { path: '/vaktaware/target-groups', label: 'Zielgruppen',    icon: Target },
+      { path: '/vaktaware/training',      label: 'Training',       icon: GraduationCap },
+      { path: '/vaktaware/phish-reports', label: 'Phish-Berichte', icon: Flag },
     ],
   },
   {
-    path: '/secprivacy',
+    path: '/vaktprivacy',
     label: 'Vakt Privacy',
     icon: Eye,
     children: [
-      { path: '/secprivacy/vvt',    label: 'VVT',         icon: FileText },
-      { path: '/secprivacy/dpia',   label: 'DPIA',        icon: FileSearch },
-      { path: '/secprivacy/avv',    label: 'AVV',         icon: Handshake },
-      { path: '/secprivacy/breach', label: 'Datenpannen', icon: AlertTriangle },
-      { path: '/secprivacy/dsr',    label: 'DSR',         icon: Users },
+      { path: '/vaktprivacy/vvt',    label: 'VVT',         icon: FileText },
+      { path: '/vaktprivacy/dpia',   label: 'DPIA',        icon: FileSearch },
+      { path: '/vaktprivacy/avv',    label: 'AVV',         icon: Handshake },
+      { path: '/vaktprivacy/breach', label: 'Datenpannen', icon: AlertTriangle },
+      { path: '/vaktprivacy/dsr',    label: 'DSR',         icon: Users },
     ],
   },
   {
-    path: '/hr',
+    path: '/vakthr',
     label: 'Vakt HR',
     icon: UserCog,
     children: [
-      { path: '/hr/employees',  label: 'Mitarbeiter', icon: Users },
-      { path: '/hr/checklists', label: 'Checklisten', icon: ClipboardList },
+      { path: '/vakthr/employees',  label: 'Mitarbeiter', icon: Users },
+      { path: '/vakthr/checklists', label: 'Checklisten', icon: ClipboardList },
     ],
   },
 ]
@@ -231,7 +231,7 @@ export default function Layout() {
   /**
    * Returns the label of the childGroup that contains a child whose path
    * matches the current location, scanning all MODULES_NAV entries. Returns
-   * null when on a hub root (e.g. /secvitals) or on a module without groups.
+   * null when on a hub root (e.g. /vaktcomply) or on a module without groups.
    */
   function findAutoActiveGroup(): string | null {
     for (const mod of MODULES_NAV) {
@@ -252,15 +252,15 @@ export default function Layout() {
     const auto = findAutoActiveGroup()
     if (auto) setExpandedGroup(auto)
     // We intentionally don't reset to null on hub roots — that way the last
-    // expanded group stays open while the user is on /secvitals itself.
+    // expanded group stays open while the user is on /vaktcomply itself.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname])
 
   function renderChildLink(c: NavChild) {
     const childActive = location.pathname === c.path || location.pathname.startsWith(c.path + '/')
-    const isOverduePath = c.path === '/secvitals/overdue-reviews'
-    const isAutoEvidencePath = c.path === '/secvitals/evidence/auto'
-    const isApprovalsPath = c.path === '/secvitals/approvals'
+    const isOverduePath = c.path === '/vaktcomply/overdue-reviews'
+    const isAutoEvidencePath = c.path === '/vaktcomply/evidence/auto'
+    const isApprovalsPath = c.path === '/vaktcomply/approvals'
     const CIcon = c.icon
     return (
       <Link
@@ -619,9 +619,9 @@ export default function Layout() {
       >
         {[
           { label: 'Home',    path: '/',           icon: LayoutDashboard, exact: true },
-          { label: 'Comply',  path: '/secvitals',  icon: ShieldCheck },
-          { label: 'Scan',    path: '/secpulse',   icon: Bug },
-          { label: 'Privacy', path: '/secprivacy', icon: Eye },
+          { label: 'Comply',  path: '/vaktcomply',  icon: ShieldCheck },
+          { label: 'Scan',    path: '/vaktscan',   icon: Bug },
+          { label: 'Privacy', path: '/vaktprivacy', icon: Eye },
         ].map(({ label, path, icon: Icon, exact }) => {
           const active = isActive(path, exact)
           return (

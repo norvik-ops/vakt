@@ -127,9 +127,9 @@ func (h *Handler) CreateComment(c echo.Context) error {
 	}
 
 	// Send in-app notification — non-fatal, comment was already persisted.
-	module := "secpulse"
+	module := "vaktscan"
 	if in.EntityType == "control" {
-		module = "secvitals"
+		module = "vaktcomply"
 	}
 	userName := cmt.AuthorName
 	if userName == "" {

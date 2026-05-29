@@ -31,12 +31,12 @@ var BlockedRoutes = []BlockedRoute{
 	{Method: "POST", Prefix: "/api/v1/alerting/webhooks"},
 	{Method: "DELETE", Prefix: "/api/v1/alerting/webhooks"},
 	// SecVault — no creating/deleting real secrets
-	{Method: "POST", Prefix: "/api/v1/secvault/secrets"},
-	{Method: "DELETE", Prefix: "/api/v1/secvault/secrets"},
-	{Method: "PUT", Prefix: "/api/v1/secvault/secrets"},
+	{Method: "POST", Prefix: "/api/v1/vaktvault/secrets"},
+	{Method: "DELETE", Prefix: "/api/v1/vaktvault/secrets"},
+	{Method: "PUT", Prefix: "/api/v1/vaktvault/secrets"},
 	// Retention & score config
 	{Method: "PUT", Prefix: "/api/v1/retention"},
-	{Method: "PUT", Prefix: "/api/v1/secvitals/score-config"},
+	{Method: "PUT", Prefix: "/api/v1/vaktcomply/score-config"},
 }
 
 type BlockedRoute struct {

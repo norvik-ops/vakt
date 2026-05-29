@@ -33,11 +33,11 @@ type APIKey = {
 // Key vollen Zugriff auf das Modul; `*` ist Admin und sollte nur in seltenen
 // Ausnahmefällen gesetzt werden.
 const SCOPE_GROUPS: Array<{ label: string; description: string; scope: string }> = [
-  { label: 'Vakt Comply', description: 'Controls, Evidence, NIS2/ISO/BSI', scope: 'secvitals.*' },
-  { label: 'Vakt Scan', description: 'Scanner-Orchestrierung, Findings', scope: 'secpulse.*' },
-  { label: 'Vakt Vault', description: 'Secrets, Git-Scan, Rotation', scope: 'secvault.*' },
-  { label: 'Vakt Aware', description: 'Phishing-Sim, Trainings', scope: 'secreflex.*' },
-  { label: 'Vakt Privacy', description: 'VVT, DPIA, AVV, Breaches', scope: 'secprivacy.*' },
+  { label: 'Vakt Comply', description: 'Controls, Evidence, NIS2/ISO/BSI', scope: 'vaktcomply.*' },
+  { label: 'Vakt Scan', description: 'Scanner-Orchestrierung, Findings', scope: 'vaktscan.*' },
+  { label: 'Vakt Vault', description: 'Secrets, Git-Scan, Rotation', scope: 'vaktvault.*' },
+  { label: 'Vakt Aware', description: 'Phishing-Sim, Trainings', scope: 'vaktaware.*' },
+  { label: 'Vakt Privacy', description: 'VVT, DPIA, AVV, Breaches', scope: 'vaktprivacy.*' },
   { label: 'Vakt HR', description: 'Onboarding / Offboarding', scope: 'hr.*' },
 ]
 

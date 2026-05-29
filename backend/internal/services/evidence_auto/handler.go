@@ -54,7 +54,7 @@ func NewHandler(db *pgxpool.Pool) *Handler {
 	return &Handler{db: db}
 }
 
-// ListAutoEvidence handles GET /secvitals/evidence/auto.
+// ListAutoEvidence handles GET /vaktcomply/evidence/auto.
 // Returns all unassigned auto-collected evidence (control_id IS NULL AND auto_source_type IS NOT NULL).
 func (h *Handler) ListAutoEvidence(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
@@ -94,7 +94,7 @@ func (h *Handler) ListAutoEvidence(c echo.Context) error {
 			log.Error().Err(err).Msg("scan auto evidence row")
 			continue
 		}
-		if ev.AutoSourceType == "hr" {
+		if ev.AutoSourceType == "vakthr" {
 			ev.SuggestedControlHint = hrControlHint(collectorData)
 		}
 		items = append(items, ev)
@@ -110,7 +110,7 @@ func (h *Handler) ListAutoEvidence(c echo.Context) error {
 	return c.JSON(http.StatusOK, items)
 }
 
-// AssignAutoEvidence handles POST /secvitals/evidence/auto/:id/assign.
+// AssignAutoEvidence handles POST /vaktcomply/evidence/auto/:id/assign.
 // Body: {"control_id": "<uuid>"}. Sets control_id on the evidence row.
 func (h *Handler) AssignAutoEvidence(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)

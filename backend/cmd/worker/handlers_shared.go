@@ -18,7 +18,7 @@ import (
 	"github.com/matharnica/vakt/internal/admin"
 	"github.com/matharnica/vakt/internal/auth"
 	"github.com/matharnica/vakt/internal/config"
-	"github.com/matharnica/vakt/internal/modules/secvitals"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/services/ai"
 	"github.com/matharnica/vakt/internal/services/alerting"
 	"github.com/matharnica/vakt/internal/services/siem"
@@ -211,9 +211,9 @@ func handleProcessScheduledReports(cfg *config.Config, pool *pgxpool.Pool) asynq
 			smtpCfg.From = cfg.SMTPFrom
 		}
 		svc := scheduledreports.NewService(pool, smtpCfg)
-		// Wire the secvitals service as the board report provider so that
+		// Wire the vaktcomply service as the board report provider so that
 		// scheduled reports of type "board_report" can generate a PDF attachment.
-		svc.WithBoardReportProvider(secvitals.NewService(pool))
+		svc.WithBoardReportProvider(vaktcomply.NewService(pool))
 		if err := svc.ProcessDue(ctx); err != nil {
 			log.Error().Err(err).Msg("scheduled_reports: process_due failed")
 			return err
@@ -334,7 +334,7 @@ func handleAIWeeklyDigest(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerF
 		}
 
 		client := ai.NewAIClient(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel)
-		repo := secvitals.NewRepository(pool)
+		repo := vaktcomply.NewRepository(pool)
 
 		smtpCfg := emaildigest.SMTPConfig{}
 		if cfg != nil {
@@ -367,7 +367,7 @@ func handleAIWeeklyDigest(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerF
 func generateAndSendAIDigest(
 	ctx context.Context,
 	pool *pgxpool.Pool,
-	repo *secvitals.Repository,
+	repo *vaktcomply.Repository,
 	client *ai.AIClient,
 	orgID, orgName string,
 	smtpCfg emaildigest.SMTPConfig,
@@ -401,7 +401,7 @@ func generateAndSendAIDigest(
 	if err != nil {
 		insights = nil
 	}
-	var staleInsights []secvitals.AIInsight
+	var staleInsights []vaktcomply.AIInsight
 	for _, ins := range insights {
 		if ins.Type == "evidence_stale" {
 			staleInsights = append(staleInsights, ins)
@@ -454,7 +454,7 @@ func generateAndSendAIDigest(
 	}
 
 	// Send in-app notification.
-	notify.Send(ctx, pool, orgID, "Dein KI-Compliance-Digest", narrative, "info", "secvitals")
+	notify.Send(ctx, pool, orgID, "Dein KI-Compliance-Digest", narrative, "info", "vaktcomply")
 
 	// Send email if SMTP is configured.
 	if smtpCfg.Host != "" {

@@ -8,12 +8,12 @@ import "time"
 
 // Source identifies which Vakt module emitted the event.
 const (
-	SourceSecpulse   = "secpulse"
-	SourceSecprivacy = "secprivacy"
-	SourceSecvault   = "secvault"
-	SourceSecreflex  = "secreflex"
-	SourceSecvitals  = "secvitals"
-	SourceHR         = "hr"
+	SourceSecpulse   = "vaktscan"
+	SourceSecprivacy = "vaktprivacy"
+	SourceSecvault   = "vaktvault"
+	SourceSecreflex  = "vaktaware"
+	SourceSecvitals  = "vaktcomply"
+	SourceHR         = "vakthr"
 )
 
 // ResourceType identifies what kind of event occurred.
@@ -120,7 +120,7 @@ func IncidentCreated(orgID, incidentID, title string) CrossModuleEvent {
 
 // ChecklistCompletionEvidence is the payload written to the compliance evidence
 // store when an HR checklist run reaches the "completed" state.
-// Defined here (shared) so neither secvitals nor hr imports the other. See ADR-0004.
+// Defined here (shared) so neither vaktcomply nor hr imports the other. See ADR-0004.
 type ChecklistCompletionEvidence struct {
 	OrgID         string
 	EmployeeName  string

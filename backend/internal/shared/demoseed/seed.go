@@ -753,10 +753,10 @@ func runSeed(ctx context.Context, db *pgxpool.Pool, masterKeyHex, orgName, orgSl
 
 	// ── Notifications ─────────────────────────────────────────────────────────
 	notifications := []struct{ title, body, typ, module string }{
-		{"2 kritische Findings offen", "OpenSSL- und Log4j-Schwachstellen überschreiten SLA-Frist in 4 Tagen.", "error", "secpulse"},
-		{"DSR-Frist läuft ab", "Die Auskunftsanfrage von Hans Müller muss in 15 Tagen beantwortet sein.", "warning", "secprivacy"},
-		{"AVV abgelaufen", "Der Auftragsverarbeitungsvertrag mit Mailchimp ist seit 11 Monaten abgelaufen.", "warning", "secprivacy"},
-		{"Hardcodierte Credentials gefunden", "Im Haupt-Repository wurden potenzielle Zugangsdaten in der Commit-History entdeckt.", "error", "secvault"},
+		{"2 kritische Findings offen", "OpenSSL- und Log4j-Schwachstellen überschreiten SLA-Frist in 4 Tagen.", "error", "vaktscan"},
+		{"DSR-Frist läuft ab", "Die Auskunftsanfrage von Hans Müller muss in 15 Tagen beantwortet sein.", "warning", "vaktprivacy"},
+		{"AVV abgelaufen", "Der Auftragsverarbeitungsvertrag mit Mailchimp ist seit 11 Monaten abgelaufen.", "warning", "vaktprivacy"},
+		{"Hardcodierte Credentials gefunden", "Im Haupt-Repository wurden potenzielle Zugangsdaten in der Commit-History entdeckt.", "error", "vaktvault"},
 		{"Willkommen bei Vakt", "Demo-Daten wurden erfolgreich geladen. Erkunde alle Module über die linke Navigation.", "info", "system"},
 	}
 	for _, n := range notifications {

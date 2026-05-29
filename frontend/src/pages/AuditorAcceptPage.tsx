@@ -91,7 +91,7 @@ export default function AuditorAcceptPage() {
             </pre>
             <p className="text-secondary">
               Read-only Endpunkte sind erreichbar unter{' '}
-              <code className="bg-muted px-1 rounded text-xs">/api/v1/auditor/secvitals/</code>
+              <code className="bg-muted px-1 rounded text-xs">/api/v1/auditor/vaktcomply/</code>
             </p>
           </div>
         </div>

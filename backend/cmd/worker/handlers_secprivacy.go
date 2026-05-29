@@ -15,17 +15,17 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/matharnica/vakt/internal/config"
-	"github.com/matharnica/vakt/internal/modules/secprivacy"
-	"github.com/matharnica/vakt/internal/modules/secvitals"
+	"github.com/matharnica/vakt/internal/modules/vaktprivacy"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/services/alerting"
 )
 
-// handleAVVExpiryCheck handles secprivacy:avv_expiry_check jobs.
+// handleAVVExpiryCheck handles vaktprivacy:avv_expiry_check jobs.
 // Marks overdue AVVs as expired and fires avv.expired alerts per org.
 // Uses errgroup with limit 5 to process orgs in parallel.
 func handleAVVExpiryCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
-		svc := secprivacy.NewService(pool, asynq.RedisClientOpt{})
+		svc := vaktprivacy.NewService(pool, asynq.RedisClientOpt{})
 		if err := svc.CheckAVVExpiry(ctx); err != nil {
 			log.Error().Err(err).Msg("avv expiry check failed")
 			return err
@@ -91,14 +91,14 @@ func handleAVVExpiryCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerF
 // This is the integration point between SecPrivacy (breach) and SecVitals (incident register).
 func handleBreachIncidentCreate(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, t *asynq.Task) error {
-		var payload secprivacy.BreachIncidentPayload
+		var payload vaktprivacy.BreachIncidentPayload
 		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
 			return fmt.Errorf("parse breach_incident payload: %w", err)
 		}
 
-		repo := secvitals.NewRepository(pool)
+		repo := vaktcomply.NewRepository(pool)
 		breachID := payload.BreachID
-		input := secvitals.CreateIncidentInput{
+		input := vaktcomply.CreateIncidentInput{
 			Title:           "[Datenschutzverletzung] " + payload.Title,
 			Description:     payload.Description,
 			Severity:        "critical",
@@ -117,7 +117,7 @@ func handleBreachIncidentCreate(cfg *config.Config, pool *pgxpool.Pool) asynq.Ha
 			Str("breach_id", payload.BreachID).
 			Str("incident_id", incident.ID).
 			Str("org_id", payload.OrgID).
-			Msg("secprivacy→secvitals: incident created from breach")
+			Msg("vaktprivacy→vaktcomply: incident created from breach")
 		return nil
 	}
 }

@@ -5,7 +5,7 @@ CREATE TABLE user_module_permissions (
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id      UUID        NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   user_id     UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  module      TEXT        NOT NULL CHECK (module IN ('secpulse','secvitals','secvault','secreflex','secprivacy')),
+  module      TEXT        NOT NULL CHECK (module IN ('vaktscan','vaktcomply','vaktvault','vaktaware','vaktprivacy')),
   can_read    BOOLEAN     NOT NULL DEFAULT true,
   can_write   BOOLEAN     NOT NULL DEFAULT false,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),

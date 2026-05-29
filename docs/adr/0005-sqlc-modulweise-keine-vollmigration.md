@@ -7,7 +7,7 @@
 
 Die Projekt-Konvention lautet: „Use sqlc for all database queries — no raw string concatenation." Die Realität war bis Mai 2026: 1 sqlc-Query-File, ~609 Zeilen embedded SQL über das Codebase verteilt. Eine externe Code-Analyse markierte das als P0-Tech-Debt.
 
-Eine Vollmigration aller ~30 Repositories in einem Pass ist 6–10 Sprints und birgt erhebliches Regressionsrisiko (touche jede Datenbank-Operation). Zugleich blockiert die `pg_`-Tabellen-Konvention (Vakt Aware, Package `secreflex`) den sqlc-Parser: PostgreSQL behandelt `pg_*` als reservierten System-Katalog-Namespace, sqlc kann hier Spalten-Referenzen nicht zuverlässig disambiguieren („column reference 'org_id' is ambiguous" bei Single-Table-INSERT).
+Eine Vollmigration aller ~30 Repositories in einem Pass ist 6–10 Sprints und birgt erhebliches Regressionsrisiko (touche jede Datenbank-Operation). Zugleich blockiert die `pg_`-Tabellen-Konvention (Vakt Aware, Package `vaktaware`) den sqlc-Parser: PostgreSQL behandelt `pg_*` als reservierten System-Katalog-Namespace, sqlc kann hier Spalten-Referenzen nicht zuverlässig disambiguieren („column reference 'org_id' is ambiguous" bei Single-Table-INSERT).
 
 ## Entscheidung
 
@@ -44,7 +44,7 @@ Eine Vollmigration aller ~30 Repositories in einem Pass ist 6–10 Sprints und b
 ## Referenzen
 
 - `backend/internal/modules/hr/repository.go` (Referenz-Implementierung)
-- `backend/internal/modules/secreflex/repository.go` (sqlc-Migration seit Mai 2026)
+- `backend/internal/modules/vaktaware/repository.go` (sqlc-Migration seit Mai 2026)
 - `backend/db/migrations/122_rename_pg_tables_to_sr.up.sql` (Tabellen-Rename)
 - `backend/sqlc.yaml`
 - `docs/sqlc-migration-plan.md` (vollständiger Migrationsstatus)

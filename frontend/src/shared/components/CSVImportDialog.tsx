@@ -15,7 +15,7 @@ import { Progress } from '../../components/ui/progress'
 export interface CSVImportDialogProps {
   open: boolean
   onClose: () => void
-  /** Backend endpoint, e.g. "/api/v1/secpulse/findings/import/csv" */
+  /** Backend endpoint, e.g. "/api/v1/vaktscan/findings/import/csv" */
   endpoint: string
   entityLabel: string
   /** Column names for template generation and header validation */

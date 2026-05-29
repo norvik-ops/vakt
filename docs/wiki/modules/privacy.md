@@ -11,7 +11,7 @@ Datenpannenmeldungen werden automatisch mit dem Vorfallsregister in Vakt Comply 
 Das Modul ist standardmäßig aktiv. Zum Deaktivieren:
 
 ```env
-VAKT_MODULES_ENABLED=secvitals,secpulse,secvault,secreflex
+VAKT_MODULES_ENABLED=vaktcomply,vaktscan,vaktvault,vaktaware
 ```
 
 ---
@@ -119,6 +119,6 @@ CSV-Export aller DSRs für Reporting und Audit.
 
 | Job | Zeitplan | Beschreibung |
 |-----|----------|--------------|
-| `secprivacy:avv_expiry_check` | Täglich | Abgelaufene AVVs auf `expired` setzen und Alerts versenden |
-| `secprivacy:breach_incident_create` | Bei Breach-Erstellung | Verknüpften Vorfall in Vakt Comply anlegen |
-| `secprivacy:dsr_overdue_check` | Täglich | Überfällige DSRs prüfen und Alerts versenden |
+| `vaktprivacy:avv_expiry_check` | Täglich | Abgelaufene AVVs auf `expired` setzen und Alerts versenden |
+| `vaktprivacy:breach_incident_create` | Bei Breach-Erstellung | Verknüpften Vorfall in Vakt Comply anlegen |
+| `vaktprivacy:dsr_overdue_check` | Täglich | Überfällige DSRs prüfen und Alerts versenden |

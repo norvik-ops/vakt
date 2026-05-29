@@ -1,5 +1,5 @@
 # NIS2 / BSIG-neu Meldebehörden-Verzeichnis (S39-4)
-# Diese Datei wird von GET /api/v1/secvitals/authorities ausgelesen.
+# Diese Datei wird von GET /api/v1/vaktcomply/authorities ausgelesen.
 authorities:
   - key: BSI
     name: "Bundesamt für Sicherheit in der Informationstechnik (BSI)"

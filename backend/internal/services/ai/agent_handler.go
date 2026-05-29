@@ -14,7 +14,7 @@ import (
 
 // Sprint 18 S18-3: AgentRunHandler ist der SSE-Endpoint für Agent-Runs.
 //
-// POST /api/v1/secvitals/ai/agent/run mit Body:
+// POST /api/v1/vaktcomply/ai/agent/run mit Body:
 //   { "goal": "...", "context_hints": [...] }
 //
 // Response: text/event-stream mit Frames:
@@ -27,8 +27,8 @@ import (
 //   data: [DONE]
 //
 // S32-2: Approve/Reject-Endpoints für Write-Tool-Freigabe.
-//   POST /api/v1/secvitals/ai/agent/runs/:run_id/approve
-//   POST /api/v1/secvitals/ai/agent/runs/:run_id/reject
+//   POST /api/v1/vaktcomply/ai/agent/runs/:run_id/approve
+//   POST /api/v1/vaktcomply/ai/agent/runs/:run_id/reject
 //
 // Permissions kommen aus dem User-Context (org_id + user_id + perms). Tools
 // werden nur ausgeführt, wenn der User die zugehörigen Scopes hat (ADR-0020).
@@ -108,7 +108,7 @@ func (h *AgentHandler) AgentRun(c echo.Context) error {
 // authenticated user could approve a write-tool call in another org's
 // agent run by guessing the run_id (audit finding F11/Cross-Org-Hijack).
 //
-// POST /api/v1/secvitals/ai/agent/runs/:run_id/approve
+// POST /api/v1/vaktcomply/ai/agent/runs/:run_id/approve
 func (h *AgentHandler) ApproveRun(c echo.Context) error {
 	return h.decideRun(c, true)
 }
@@ -116,7 +116,7 @@ func (h *AgentHandler) ApproveRun(c echo.Context) error {
 // RejectRun lehnt einen wartenden Write-Tool-Call ab. Owner-Check analog
 // zu ApproveRun.
 //
-// POST /api/v1/secvitals/ai/agent/runs/:run_id/reject
+// POST /api/v1/vaktcomply/ai/agent/runs/:run_id/reject
 func (h *AgentHandler) RejectRun(c echo.Context) error {
 	return h.decideRun(c, false)
 }

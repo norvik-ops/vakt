@@ -1085,7 +1085,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secpulse/assets": {
+    "/vaktscan/assets": {
         parameters: {
             query?: never;
             header?: never;
@@ -1158,7 +1158,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secpulse/assets/{id}": {
+    "/vaktscan/assets/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1247,7 +1247,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secpulse/assets/import/csv": {
+    "/vaktscan/assets/import/csv": {
         parameters: {
             query?: never;
             header?: never;
@@ -1294,7 +1294,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secpulse/findings": {
+    "/vaktscan/findings": {
         parameters: {
             query?: never;
             header?: never;
@@ -1339,7 +1339,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secpulse/findings/{id}": {
+    "/vaktscan/findings/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1405,7 +1405,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/frameworks": {
+    "/vaktcomply/frameworks": {
         parameters: {
             query?: never;
             header?: never;
@@ -1441,7 +1441,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/frameworks/{id}": {
+    "/vaktcomply/frameworks/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1499,7 +1499,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/frameworks/{name}/enable": {
+    "/vaktcomply/frameworks/{name}/enable": {
         parameters: {
             query?: never;
             header?: never;
@@ -1535,7 +1535,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/frameworks/{id}/controls": {
+    "/vaktcomply/frameworks/{id}/controls": {
         parameters: {
             query?: never;
             header?: never;
@@ -1579,7 +1579,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/frameworks/{id}/report": {
+    "/vaktcomply/frameworks/{id}/report": {
         parameters: {
             query?: never;
             header?: never;
@@ -1615,7 +1615,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/frameworks/{id}/export-pdf": {
+    "/vaktcomply/frameworks/{id}/export-pdf": {
         parameters: {
             query?: never;
             header?: never;
@@ -1653,7 +1653,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/controls/{id}": {
+    "/vaktcomply/controls/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1691,7 +1691,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/controls/export/xlsx": {
+    "/vaktcomply/controls/export/xlsx": {
         parameters: {
             query?: never;
             header?: never;
@@ -1727,7 +1727,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/risks": {
+    "/vaktcomply/risks": {
         parameters: {
             query?: never;
             header?: never;
@@ -1791,7 +1791,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/risks/export/xlsx": {
+    "/vaktcomply/risks/export/xlsx": {
         parameters: {
             query?: never;
             header?: never;
@@ -1825,7 +1825,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/incidents": {
+    "/vaktcomply/incidents": {
         parameters: {
             query?: never;
             header?: never;
@@ -1889,7 +1889,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/incidents/{id}": {
+    "/vaktcomply/incidents/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1949,7 +1949,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secprivacy/vvt": {
+    "/vaktprivacy/vvt": {
         parameters: {
             query?: never;
             header?: never;
@@ -2010,7 +2010,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secprivacy/vvt/{id}": {
+    "/vaktprivacy/vvt/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2090,7 +2090,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secprivacy/breaches": {
+    "/vaktprivacy/breaches": {
         parameters: {
             query?: never;
             header?: never;
@@ -2151,7 +2151,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secprivacy/breaches/{id}/notify-authority": {
+    "/vaktprivacy/breaches/{id}/notify-authority": {
         parameters: {
             query?: never;
             header?: never;
@@ -2187,7 +2187,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvault/projects": {
+    "/vaktvault/projects": {
         parameters: {
             query?: never;
             header?: never;
@@ -2245,7 +2245,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvault/projects/{project_id}/envs/{env_id}/secrets/{key}": {
+    "/vaktvault/projects/{project_id}/envs/{env_id}/secrets/{key}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2564,7 +2564,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/hr/employees": {
+    "/vakthr/employees": {
         parameters: {
             query?: never;
             header?: never;
@@ -2630,7 +2630,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/hr/employees/{id}": {
+    "/vakthr/employees/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2721,7 +2721,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/hr/employees/{id}/checklist-runs": {
+    "/vakthr/employees/{id}/checklist-runs": {
         parameters: {
             query?: never;
             header?: never;
@@ -2762,7 +2762,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/hr/checklists": {
+    "/vakthr/checklists": {
         parameters: {
             query?: never;
             header?: never;
@@ -2825,7 +2825,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/hr/checklists/{id}": {
+    "/vakthr/checklists/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2861,7 +2861,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/hr/checklist-runs": {
+    "/vakthr/checklist-runs": {
         parameters: {
             query?: never;
             header?: never;
@@ -2901,7 +2901,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/hr/checklist-runs/{id}": {
+    "/vakthr/checklist-runs/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2965,7 +2965,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/templates": {
+    "/vaktaware/templates": {
         parameters: {
             query?: never;
             header?: never;
@@ -3028,7 +3028,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/templates/presets": {
+    "/vaktaware/templates/presets": {
         parameters: {
             query?: never;
             header?: never;
@@ -3064,7 +3064,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/groups": {
+    "/vaktaware/groups": {
         parameters: {
             query?: never;
             header?: never;
@@ -3130,7 +3130,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/groups/{id}/targets": {
+    "/vaktaware/groups/{id}/targets": {
         parameters: {
             query?: never;
             header?: never;
@@ -3171,7 +3171,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/groups/{id}/targets/import": {
+    "/vaktaware/groups/{id}/targets/import": {
         parameters: {
             query?: never;
             header?: never;
@@ -3219,7 +3219,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/landing-pages": {
+    "/vaktaware/landing-pages": {
         parameters: {
             query?: never;
             header?: never;
@@ -3285,7 +3285,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/campaigns": {
+    "/vaktaware/campaigns": {
         parameters: {
             query?: never;
             header?: never;
@@ -3351,7 +3351,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/campaigns/{id}": {
+    "/vaktaware/campaigns/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -3389,7 +3389,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/campaigns/{id}/launch": {
+    "/vaktaware/campaigns/{id}/launch": {
         parameters: {
             query?: never;
             header?: never;
@@ -3425,7 +3425,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/campaigns/{id}/abort": {
+    "/vaktaware/campaigns/{id}/abort": {
         parameters: {
             query?: never;
             header?: never;
@@ -3461,7 +3461,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/campaigns/{id}/stats": {
+    "/vaktaware/campaigns/{id}/stats": {
         parameters: {
             query?: never;
             header?: never;
@@ -3499,7 +3499,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/campaigns/{id}/report": {
+    "/vaktaware/campaigns/{id}/report": {
         parameters: {
             query?: never;
             header?: never;
@@ -3537,7 +3537,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/training-modules": {
+    "/vaktaware/training-modules": {
         parameters: {
             query?: never;
             header?: never;
@@ -3604,7 +3604,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/assignments": {
+    "/vaktaware/assignments": {
         parameters: {
             query?: never;
             header?: never;
@@ -3643,7 +3643,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/assignments/{id}/complete": {
+    "/vaktaware/assignments/{id}/complete": {
         parameters: {
             query?: never;
             header?: never;
@@ -3679,7 +3679,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/phish-reports": {
+    "/vaktaware/phish-reports": {
         parameters: {
             query?: never;
             header?: never;
@@ -3718,7 +3718,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/phish-reports/stats": {
+    "/vaktaware/phish-reports/stats": {
         parameters: {
             query?: never;
             header?: never;
@@ -3757,7 +3757,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/phish-report-token/regenerate": {
+    "/vaktaware/phish-report-token/regenerate": {
         parameters: {
             query?: never;
             header?: never;
@@ -3795,7 +3795,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/policies": {
+    "/vaktcomply/policies": {
         parameters: {
             query?: never;
             header?: never;
@@ -3870,7 +3870,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/policies/{id}": {
+    "/vaktcomply/policies/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -3958,7 +3958,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/audits": {
+    "/vaktcomply/audits": {
         parameters: {
             query?: never;
             header?: never;
@@ -4032,7 +4032,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/audits/{id}": {
+    "/vaktcomply/audits/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -4098,7 +4098,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/capas": {
+    "/vaktcomply/capas": {
         parameters: {
             query?: never;
             header?: never;
@@ -4180,7 +4180,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/capas/{id}": {
+    "/vaktcomply/capas/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -4268,7 +4268,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/approvals": {
+    "/vaktcomply/approvals": {
         parameters: {
             query?: never;
             header?: never;
@@ -4315,7 +4315,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/approvals/{id}/approve": {
+    "/vaktcomply/approvals/{id}/approve": {
         parameters: {
             query?: never;
             header?: never;
@@ -4366,7 +4366,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/approvals/{id}/reject": {
+    "/vaktcomply/approvals/{id}/reject": {
         parameters: {
             query?: never;
             header?: never;
@@ -4410,7 +4410,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/access-reviews": {
+    "/vaktcomply/access-reviews": {
         parameters: {
             query?: never;
             header?: never;
@@ -4483,7 +4483,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/access-reviews/{id}": {
+    "/vaktcomply/access-reviews/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -4569,7 +4569,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/access-reviews/{id}/items": {
+    "/vaktcomply/access-reviews/{id}/items": {
         parameters: {
             query?: never;
             header?: never;
@@ -4635,7 +4635,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/exceptions": {
+    "/vaktcomply/exceptions": {
         parameters: {
             query?: never;
             header?: never;
@@ -4684,7 +4684,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/controls/{controlId}/exceptions": {
+    "/vaktcomply/controls/{controlId}/exceptions": {
         parameters: {
             query?: never;
             header?: never;
@@ -4732,7 +4732,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/exceptions/{id}": {
+    "/vaktcomply/exceptions/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -4800,7 +4800,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/board-report": {
+    "/vaktcomply/board-report": {
         parameters: {
             query?: never;
             header?: never;
@@ -4847,7 +4847,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/score-history": {
+    "/vaktcomply/score-history": {
         parameters: {
             query?: never;
             header?: never;
@@ -4893,7 +4893,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/suppliers": {
+    "/vaktcomply/suppliers": {
         parameters: {
             query?: never;
             header?: never;
@@ -4970,7 +4970,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/suppliers/{id}": {
+    "/vaktcomply/suppliers/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -5058,7 +5058,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secprivacy/dpias": {
+    "/vaktprivacy/dpias": {
         parameters: {
             query?: never;
             header?: never;
@@ -5133,7 +5133,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secprivacy/dpias/{id}": {
+    "/vaktprivacy/dpias/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -5219,7 +5219,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secprivacy/avvs": {
+    "/vaktprivacy/avvs": {
         parameters: {
             query?: never;
             header?: never;
@@ -5294,7 +5294,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secprivacy/avvs/{id}": {
+    "/vaktprivacy/avvs/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -5361,7 +5361,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secprivacy/avvs/{id}/pdf": {
+    "/vaktprivacy/avvs/{id}/pdf": {
         parameters: {
             query?: never;
             header?: never;
@@ -5401,7 +5401,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secprivacy/dsr": {
+    "/vaktprivacy/dsr": {
         parameters: {
             query?: never;
             header?: never;
@@ -5480,7 +5480,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secprivacy/dsr/{id}": {
+    "/vaktprivacy/dsr/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -5547,7 +5547,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/ccm/checks": {
+    "/vaktcomply/ccm/checks": {
         parameters: {
             query?: never;
             header?: never;
@@ -5617,7 +5617,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/ccm/checks/{id}": {
+    "/vaktcomply/ccm/checks/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -5706,7 +5706,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/ccm/checks/{id}/run": {
+    "/vaktcomply/ccm/checks/{id}/run": {
         parameters: {
             query?: never;
             header?: never;
@@ -5744,7 +5744,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/ccm/checks/{id}/results": {
+    "/vaktcomply/ccm/checks/{id}/results": {
         parameters: {
             query?: never;
             header?: never;
@@ -5785,7 +5785,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/dora/dashboard": {
+    "/vaktcomply/dora/dashboard": {
         parameters: {
             query?: never;
             header?: never;
@@ -5825,7 +5825,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/dora/report-pdf": {
+    "/vaktcomply/dora/report-pdf": {
         parameters: {
             query?: never;
             header?: never;
@@ -5861,7 +5861,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/eu-ai-act/dashboard": {
+    "/vaktcomply/eu-ai-act/dashboard": {
         parameters: {
             query?: never;
             header?: never;
@@ -5902,7 +5902,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/eu-ai-act/report-pdf": {
+    "/vaktcomply/eu-ai-act/report-pdf": {
         parameters: {
             query?: never;
             header?: never;
@@ -5938,7 +5938,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/frameworks/tisax/iso-mapping": {
+    "/vaktcomply/frameworks/tisax/iso-mapping": {
         parameters: {
             query?: never;
             header?: never;
@@ -5975,7 +5975,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/frameworks/tisax/coverage-after-iso": {
+    "/vaktcomply/frameworks/tisax/coverage-after-iso": {
         parameters: {
             query?: never;
             header?: never;
@@ -6011,7 +6011,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/controls/{controlId}/evidence": {
+    "/vaktcomply/controls/{controlId}/evidence": {
         parameters: {
             query?: never;
             header?: never;
@@ -6080,7 +6080,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/controls/{controlId}/evidence/upload": {
+    "/vaktcomply/controls/{controlId}/evidence/upload": {
         parameters: {
             query?: never;
             header?: never;
@@ -6126,7 +6126,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/controls/{controlId}/measures": {
+    "/vaktcomply/controls/{controlId}/measures": {
         parameters: {
             query?: never;
             header?: never;
@@ -6197,7 +6197,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/controls/{controlId}/measures/{mid}": {
+    "/vaktcomply/controls/{controlId}/measures/{mid}": {
         parameters: {
             query?: never;
             header?: never;
@@ -6271,7 +6271,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/suppliers/{id}/assessments": {
+    "/vaktcomply/suppliers/{id}/assessments": {
         parameters: {
             query?: never;
             header?: never;
@@ -6499,7 +6499,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/hr/employees/{id}/onboard": {
+    "/vakthr/employees/{id}/onboard": {
         parameters: {
             query?: never;
             header?: never;
@@ -6544,7 +6544,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/hr/employees/{id}/offboard": {
+    "/vakthr/employees/{id}/offboard": {
         parameters: {
             query?: never;
             header?: never;
@@ -6589,7 +6589,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/hr/checklist-runs/{id}/steps/{step_id}": {
+    "/vakthr/checklist-runs/{id}/steps/{step_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -6639,7 +6639,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/hr/checklist-runs/{id}/events": {
+    "/vakthr/checklist-runs/{id}/events": {
         parameters: {
             query?: never;
             header?: never;
@@ -6677,7 +6677,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secreflex/training-modules/presets": {
+    "/vaktaware/training-modules/presets": {
         parameters: {
             query?: never;
             header?: never;
@@ -6799,7 +6799,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/dora/third-parties": {
+    "/vaktcomply/dora/third-parties": {
         parameters: {
             query?: never;
             header?: never;
@@ -6817,7 +6817,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/dora/third-parties/{id}": {
+    "/vaktcomply/dora/third-parties/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -6838,7 +6838,7 @@ export interface paths {
         patch: operations["updateDORAThirdParty"];
         trace?: never;
     };
-    "/secvitals/dora/third-parties/{id}/controls": {
+    "/vaktcomply/dora/third-parties/{id}/controls": {
         parameters: {
             query?: never;
             header?: never;
@@ -6857,7 +6857,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/dora/third-parties/{id}/controls/{controlId}": {
+    "/vaktcomply/dora/third-parties/{id}/controls/{controlId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -6877,7 +6877,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/resilience-tests": {
+    "/vaktcomply/resilience-tests": {
         parameters: {
             query?: never;
             header?: never;
@@ -6895,7 +6895,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/resilience-tests/{id}": {
+    "/vaktcomply/resilience-tests/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -6916,7 +6916,7 @@ export interface paths {
         patch: operations["updateResilienceTest"];
         trace?: never;
     };
-    "/secvitals/resilience-tests/{id}/attachment": {
+    "/vaktcomply/resilience-tests/{id}/attachment": {
         parameters: {
             query?: never;
             header?: never;
@@ -6935,7 +6935,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/resilience-tests/{id}/link-evidence": {
+    "/vaktcomply/resilience-tests/{id}/link-evidence": {
         parameters: {
             query?: never;
             header?: never;
@@ -6954,7 +6954,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/incidents/{id}/classify-reporting": {
+    "/vaktcomply/incidents/{id}/classify-reporting": {
         parameters: {
             query?: never;
             header?: never;
@@ -6973,7 +6973,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/authorities": {
+    "/vaktcomply/authorities": {
         parameters: {
             query?: never;
             header?: never;
@@ -6990,7 +6990,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/org-sector": {
+    "/vaktcomply/org-sector": {
         parameters: {
             query?: never;
             header?: never;
@@ -7007,7 +7007,7 @@ export interface paths {
         patch: operations["updateOrgSector"];
         trace?: never;
     };
-    "/secvitals/frameworks/{id}/tisax-controls": {
+    "/vaktcomply/frameworks/{id}/tisax-controls": {
         parameters: {
             query?: never;
             header?: never;
@@ -7026,7 +7026,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/frameworks/{id}/tisax-gaps": {
+    "/vaktcomply/frameworks/{id}/tisax-gaps": {
         parameters: {
             query?: never;
             header?: never;
@@ -7045,7 +7045,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/frameworks/{id}/tisax-report-pdf": {
+    "/vaktcomply/frameworks/{id}/tisax-report-pdf": {
         parameters: {
             query?: never;
             header?: never;
@@ -7064,7 +7064,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/ai-systems": {
+    "/vaktcomply/ai-systems": {
         parameters: {
             query?: never;
             header?: never;
@@ -7082,7 +7082,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/ai-systems/{id}": {
+    "/vaktcomply/ai-systems/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -7103,7 +7103,7 @@ export interface paths {
         patch: operations["updateAISystem"];
         trace?: never;
     };
-    "/secvitals/ai-systems/{id}/classifications": {
+    "/vaktcomply/ai-systems/{id}/classifications": {
         parameters: {
             query?: never;
             header?: never;
@@ -7122,7 +7122,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/ai-systems/{id}/classify": {
+    "/vaktcomply/ai-systems/{id}/classify": {
         parameters: {
             query?: never;
             header?: never;
@@ -7141,7 +7141,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/ai-systems/{id}/documentation": {
+    "/vaktcomply/ai-systems/{id}/documentation": {
         parameters: {
             query?: never;
             header?: never;
@@ -7161,7 +7161,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/ai-systems/{id}/documentation/versions": {
+    "/vaktcomply/ai-systems/{id}/documentation/versions": {
         parameters: {
             query?: never;
             header?: never;
@@ -7180,7 +7180,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/ai-systems/{id}/documentation/export-pdf": {
+    "/vaktcomply/ai-systems/{id}/documentation/export-pdf": {
         parameters: {
             query?: never;
             header?: never;
@@ -7275,7 +7275,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/suppliers/{id}/incidents": {
+    "/vaktcomply/suppliers/{id}/incidents": {
         parameters: {
             query?: never;
             header?: never;
@@ -7294,7 +7294,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/suppliers/{id}/risks": {
+    "/vaktcomply/suppliers/{id}/risks": {
         parameters: {
             query?: never;
             header?: never;
@@ -7314,7 +7314,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/suppliers/{id}/risks/{riskId}": {
+    "/vaktcomply/suppliers/{id}/risks/{riskId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -7334,7 +7334,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/suppliers/{id}/status": {
+    "/vaktcomply/suppliers/{id}/status": {
         parameters: {
             query?: never;
             header?: never;
@@ -7353,7 +7353,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/suppliers/export": {
+    "/vaktcomply/suppliers/export": {
         parameters: {
             query?: never;
             header?: never;
@@ -7370,7 +7370,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/secvitals/suppliers/import-csv": {
+    "/vaktcomply/suppliers/import-csv": {
         parameters: {
             query?: never;
             header?: never;

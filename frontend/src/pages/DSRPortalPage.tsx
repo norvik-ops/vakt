@@ -29,7 +29,7 @@ interface PortalDSRInput {
 // ---------------------------------------------------------------------------
 
 async function fetchPortalInfo(slug: string): Promise<DSRPortalInfo> {
-  const res = await fetch(`/api/v1/secprivacy/dsr-portal/${slug}/info`, {
+  const res = await fetch(`/api/v1/vaktprivacy/dsr-portal/${slug}/info`, {
     headers: { Accept: 'application/json' },
   })
   if (!res.ok) throw new Error('PORTAL_NOT_FOUND')
@@ -37,7 +37,7 @@ async function fetchPortalInfo(slug: string): Promise<DSRPortalInfo> {
 }
 
 async function submitDSR(slug: string, input: PortalDSRInput): Promise<{ token: string }> {
-  const res = await fetch(`/api/v1/secprivacy/dsr-portal/${slug}/submit`, {
+  const res = await fetch(`/api/v1/vaktprivacy/dsr-portal/${slug}/submit`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),

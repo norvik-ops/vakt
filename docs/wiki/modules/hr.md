@@ -9,7 +9,7 @@ Vakt HR verwaltet den Mitarbeiter-Lebenszyklus aus Security-Perspektive: Onboard
 Das Modul ist standardmäßig aktiv. Zum Deaktivieren:
 
 ```env
-VAKT_MODULES_ENABLED=secvitals,secpulse,secvault,secreflex,secprivacy
+VAKT_MODULES_ENABLED=vaktcomply,vaktscan,vaktvault,vaktaware,vaktprivacy
 ```
 
 ---

@@ -16,8 +16,8 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/matharnica/vakt/internal/config"
-	"github.com/matharnica/vakt/internal/modules/secpulse"
-	"github.com/matharnica/vakt/internal/modules/secvitals"
+	"github.com/matharnica/vakt/internal/modules/vaktscan"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/shared/controltests"
 	"github.com/matharnica/vakt/internal/shared/notify"
@@ -27,12 +27,12 @@ import (
 // controls when a SecPulse finding is resolved.
 func handleAutoEvidence(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, t *asynq.Task) error {
-		var payload secpulse.AutoEvidencePayload
+		var payload vaktscan.AutoEvidencePayload
 		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
 			return fmt.Errorf("parse auto_evidence payload: %w", err)
 		}
 
-		repo := secvitals.NewRepository(pool)
+		repo := vaktcomply.NewRepository(pool)
 		controls, err := repo.FindPatchControls(ctx, payload.OrgID)
 		if err != nil || len(controls) == 0 {
 			// No patch controls found — not an error, nothing to do.
@@ -47,7 +47,7 @@ func handleAutoEvidence(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFun
 		collectorData, _ := json.Marshal(map[string]string{
 			"finding_id": payload.FindingID,
 			"cve":        payload.CVE,
-			"source":     "secpulse",
+			"source":     "vaktscan",
 		})
 
 		for _, ctrl := range controls {
@@ -64,20 +64,20 @@ func handleAutoEvidence(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFun
 			Str("finding_id", payload.FindingID).
 			Str("org_id", payload.OrgID).
 			Int("controls_updated", len(controls)).
-			Msg("secpulse→secvitals: auto-evidence created for resolved finding")
+			Msg("vaktscan→vaktcomply: auto-evidence created for resolved finding")
 
 		return nil
 	}
 }
 
 // handleRecordEvidence records cross-module compliance evidence in SecVitals.
-// Triggered by secreflex (training), secprivacy (DSR), and secvault (rotation) events.
+// Triggered by vaktaware (training), vaktprivacy (DSR), and vaktvault (rotation) events.
 func handleRecordEvidence(pool *pgxpool.Pool) asynq.HandlerFunc {
 	// keywords per source module → relevant SecVitals control domains
 	sourceKeywords := map[string][]string{
-		"secreflex":  {"training", "awareness", "schulung", "bewusstsein"},
-		"secprivacy": {"datenschutz", "privacy", "dsar", "betroffene"},
-		"secvault":   {"access", "password", "secret", "rotation", "credential"},
+		"vaktaware":  {"training", "awareness", "schulung", "bewusstsein"},
+		"vaktprivacy": {"datenschutz", "privacy", "dsar", "betroffene"},
+		"vaktvault":   {"access", "password", "secret", "rotation", "credential"},
 	}
 	return func(ctx context.Context, t *asynq.Task) error {
 		var payload crossevidence.EvidencePayload
@@ -90,7 +90,7 @@ func handleRecordEvidence(pool *pgxpool.Pool) asynq.HandlerFunc {
 			return nil
 		}
 
-		repo := secvitals.NewRepository(pool)
+		repo := vaktcomply.NewRepository(pool)
 		controls, err := repo.FindControlsByKeywords(ctx, payload.OrgID, keywords)
 		if err != nil || len(controls) == 0 {
 			log.Info().
@@ -152,7 +152,7 @@ func handleEvidenceExpiryAlert(pool *pgxpool.Pool) asynq.HandlerFunc {
 			return err
 		}
 
-		repo := secvitals.NewRepository(pool)
+		repo := vaktcomply.NewRepository(pool)
 		threshold := time.Now().UTC().AddDate(0, 0, 30)
 
 		g, gCtx := errgroup.WithContext(ctx)
@@ -174,7 +174,7 @@ func handleEvidenceExpiryAlert(pool *pgxpool.Pool) asynq.HandlerFunc {
 						"Evidence für Control '%s' läuft am %s ab und muss erneuert werden.",
 						item.ControlTitle, dateStr,
 					)
-					notify.Send(gCtx, pool, orgID, "Nachweis läuft ab", msg, "warning", "secvitals")
+					notify.Send(gCtx, pool, orgID, "Nachweis läuft ab", msg, "warning", "vaktcomply")
 					notifiedIDs = append(notifiedIDs, item.ID)
 				}
 				// Mark all notified items so we do not re-notify on subsequent runs.
@@ -212,7 +212,7 @@ func handleIncidentDeadlineCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
 			return err
 		}
 
-		svc := secvitals.NewService(pool)
+		svc := vaktcomply.NewService(pool)
 
 		g, gCtx := errgroup.WithContext(ctx)
 		sem := make(chan struct{}, 5)
@@ -257,7 +257,7 @@ func handleCertExpiryCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
 			return err
 		}
 
-		repo := secvitals.NewRepository(pool)
+		repo := vaktcomply.NewRepository(pool)
 		threshold := time.Now().UTC().AddDate(0, 0, 30)
 
 		g, gCtx := errgroup.WithContext(ctx)
@@ -272,7 +272,7 @@ func handleCertExpiryCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
 					return nil
 				}
 				msg := fmt.Sprintf("%d Lieferanten-Zertifikate laufen in den nächsten 30 Tagen ab.", len(items))
-				notify.Send(gCtx, pool, o.id, "Lieferanten-Zertifikate laufen ab", msg, "warning", "secvitals")
+				notify.Send(gCtx, pool, o.id, "Lieferanten-Zertifikate laufen ab", msg, "warning", "vaktcomply")
 				log.Info().Str("org_id", o.id).Int("count", len(items)).Msg("cert_expiry_check: sent")
 				return nil
 			})
@@ -284,7 +284,7 @@ func handleCertExpiryCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
 // handleCCMRunDue runs all enabled CCM checks that are past their interval.
 func handleCCMRunDue(pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
-		svc := secvitals.NewService(pool)
+		svc := vaktcomply.NewService(pool)
 		if err := svc.RunDueCCMChecks(ctx); err != nil {
 			log.Error().Err(err).Msg("ccm_run_due: failed")
 			return err
@@ -297,7 +297,7 @@ func handleCCMRunDue(pool *pgxpool.Pool) asynq.HandlerFunc {
 // The snapshots power the trend chart on the dashboard.
 func handleScoreSnapshot(pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
-		svc := secvitals.NewService(pool)
+		svc := vaktcomply.NewService(pool)
 		if err := svc.RecordScoreSnapshotForAllOrgs(ctx); err != nil {
 			log.Error().Err(err).Msg("score_snapshot: failed")
 			return err
@@ -336,7 +336,7 @@ func handleDORADeadlineStatus(pool *pgxpool.Pool) asynq.HandlerFunc {
 			orgIDs = append(orgIDs, id)
 		}
 
-		svc := secvitals.NewService(pool)
+		svc := vaktcomply.NewService(pool)
 		g, gCtx := errgroup.WithContext(ctx)
 		sem := make(chan struct{}, 5)
 		for _, orgID := range orgIDs {
@@ -377,7 +377,7 @@ func handleNIS2ObligationCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
 			return err
 		}
 
-		svc := secvitals.NewService(pool)
+		svc := vaktcomply.NewService(pool)
 		g, gCtx := errgroup.WithContext(ctx)
 		sem := make(chan struct{}, 5)
 		for _, orgID := range orgIDs {
@@ -419,7 +419,7 @@ func handleEvidenceFreshnessCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.
 			return err
 		}
 
-		repo := secvitals.NewRepository(pool)
+		repo := vaktcomply.NewRepository(pool)
 		totalInsights := 0
 
 		for _, orgID := range orgIDs {
@@ -480,7 +480,7 @@ func handleAIEvidenceSuggestion(cfg *config.Config, pool *pgxpool.Pool) asynq.Ha
 			keywords = []string{"vulnerability", "patch"}
 		}
 
-		repo := secvitals.NewRepository(pool)
+		repo := vaktcomply.NewRepository(pool)
 		controls, err := repo.FindControlsByKeywords(ctx, payload.OrgID, keywords)
 		if err != nil {
 			return fmt.Errorf("ai_evidence_suggestion: find controls: %w", err)

@@ -20,7 +20,7 @@ Naive Lösung: pro Row-Type einen eigenen Mapper schreiben. Ergebnis: 6× diesel
 
 **Pro Tabelle ein expliziter Feld-Container (`<entity>Fields`) plus ein einziger Mapper (`<entity>FromFields`).** Jede Call-Site listet die Felder einmal als Struct-Literal auf — das ist mechanisch (`row.X` → `f.X`), kostet 12-15 Zeilen pro Aufruf, aber zentralisiert die Domain-Mapping-Logik an einer einzigen Stelle.
 
-Beispiel aus Vakt Privacy (`secprivacy/repository.go`):
+Beispiel aus Vakt Privacy (`vaktprivacy/repository.go`):
 
 ```go
 type avvFields struct {
@@ -63,10 +63,10 @@ Wenn alle Queries der Tabelle den `PoAvvs`-Struct zurückgeben (z.B. weil sie `S
 
 ### Neutrale
 
-- Pattern etabliert in Vakt Privacy (`secprivacy/repository.go`, `avvFields`).
+- Pattern etabliert in Vakt Privacy (`vaktprivacy/repository.go`, `avvFields`).
 - Bei nächsten Migrationen prüfen, ob `<entity>Fields` nötig — wenn die Tabelle bei allen Queries denselben Row-Type liefert (wie `PoDpias`), reicht direktes Mapping.
 
 ## Referenzen
 
 - ADR-0005 (sqlc inkrementelle Migration)
-- `backend/internal/modules/secprivacy/repository.go` — `avvFields` + `avvFromFields`
+- `backend/internal/modules/vaktprivacy/repository.go` — `avvFields` + `avvFromFields`

@@ -44,7 +44,7 @@ const STEPS: WizardStep[] = [
     title: 'Framework auswählen',
     description: 'Wählen Sie, welche Compliance-Standards für Sie gelten.',
     actionLabel: 'Framework hinzufügen',
-    actionPath: '/secvitals',
+    actionPath: '/vaktcomply',
     icon: Shield,
     roles: ['Admin'],
   },
@@ -53,7 +53,7 @@ const STEPS: WizardStep[] = [
     title: 'Ersten Control überprüfen',
     description: 'Schauen Sie sich einen Control an und markieren Sie ihn als überprüft.',
     actionLabel: 'Controls ansehen',
-    actionPath: '/secvitals',
+    actionPath: '/vaktcomply',
     icon: ClipboardList,
     roles: ['Admin', 'SecurityAnalyst'],
   },
@@ -62,7 +62,7 @@ const STEPS: WizardStep[] = [
     title: 'Erstes Risiko erfassen',
     description: 'Dokumentieren Sie Ihr erstes bekanntes Risiko.',
     actionLabel: 'Risiko erstellen',
-    actionPath: '/secvitals/risks',
+    actionPath: '/vaktcomply/risks',
     icon: AlertTriangle,
     roles: ['Admin', 'SecurityAnalyst'],
   },
@@ -83,11 +83,11 @@ function filterStepsForRole(role: Role): WizardStep[] {
 // ── Framework cards (step 2 detail) ─────────────────────────────────────────
 
 const FRAMEWORKS = [
-  { label: 'ISO 27001', path: '/secvitals?framework=iso27001' },
-  { label: 'NIS2',      path: '/secvitals?framework=nis2' },
-  { label: 'BSI-Grundschutz', path: '/secvitals?framework=bsi' },
-  { label: 'TISAX',     path: '/secvitals?framework=tisax' },
-  { label: 'DORA',      path: '/secvitals?framework=dora' },
+  { label: 'ISO 27001', path: '/vaktcomply?framework=iso27001' },
+  { label: 'NIS2',      path: '/vaktcomply?framework=nis2' },
+  { label: 'BSI-Grundschutz', path: '/vaktcomply?framework=bsi' },
+  { label: 'TISAX',     path: '/vaktcomply?framework=tisax' },
+  { label: 'DORA',      path: '/vaktcomply?framework=dora' },
 ]
 
 // ── Wizard modal ─────────────────────────────────────────────────────────────

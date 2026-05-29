@@ -71,18 +71,18 @@ func TestSpec_DocumentsCoreEndpoints(t *testing.T) {
 		"/hr/checklists",
 		"/hr/checklist-runs",
 		// SecVitals (core compliance)
-		"/secvitals/frameworks",
-		"/secvitals/controls/{id}",
+		"/vaktcomply/frameworks",
+		"/vaktcomply/controls/{id}",
 		// SecPulse
-		"/secpulse/assets",
-		"/secpulse/findings",
+		"/vaktscan/assets",
+		"/vaktscan/findings",
 		// SecPrivacy
-		"/secprivacy/dsr",
+		"/vaktprivacy/dsr",
 		// SecVault
-		"/secvault/projects",
+		"/vaktvault/projects",
 		// SecReflex
-		"/secreflex/campaigns",
-		"/secreflex/templates/presets",
+		"/vaktaware/campaigns",
+		"/vaktaware/templates/presets",
 		// Cross-module
 		"/search",
 		"/dashboard/score",

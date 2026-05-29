@@ -55,7 +55,7 @@ type secretKeyResponse struct {
 // Get retrieves a secret value by key.
 // projectID and envID are the UUIDs of the project and environment respectively.
 func (sc *SecretsClient) Get(ctx context.Context, projectID, envID, key string) (string, error) {
-	path := fmt.Sprintf("/api/v1/secvault/projects/%s/envs/%s/secrets/%s", projectID, envID, key)
+	path := fmt.Sprintf("/api/v1/vaktvault/projects/%s/envs/%s/secrets/%s", projectID, envID, key)
 
 	var resp secretResponse
 	if err := sc.c.doGet(ctx, path, &resp); err != nil {
@@ -66,7 +66,7 @@ func (sc *SecretsClient) Get(ctx context.Context, projectID, envID, key string) 
 
 // List returns all secret keys for a project+environment (values are not included).
 func (sc *SecretsClient) List(ctx context.Context, projectID, envID string) ([]string, error) {
-	path := fmt.Sprintf("/api/v1/secvault/projects/%s/envs/%s/secrets", projectID, envID)
+	path := fmt.Sprintf("/api/v1/vaktvault/projects/%s/envs/%s/secrets", projectID, envID)
 
 	var resp []secretKeyResponse
 	if err := sc.c.doGet(ctx, path, &resp); err != nil {

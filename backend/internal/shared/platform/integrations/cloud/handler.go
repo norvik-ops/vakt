@@ -86,7 +86,7 @@ func (h *Handler) TestAWSConnection(c echo.Context) error {
 	orgID := mustString(c, "org_id")
 	if err := h.svc.TestAWSConnection(c.Request().Context(), orgID); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("TestAWSConnection failed")
-		return c.JSON(http.StatusOK, map[string]any{"ok": false, "error": err.Error()})
+		return c.JSON(http.StatusOK, map[string]any{"ok": false, "error": "cloud connection test failed"})
 	}
 	return c.JSON(http.StatusOK, map[string]any{"ok": true})
 }
@@ -97,7 +97,7 @@ func (h *Handler) SyncAWS(c echo.Context) error {
 	count, err := h.svc.SyncAWS(c.Request().Context(), orgID)
 	if err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Msg("SyncAWS failed")
-		return c.JSON(http.StatusOK, map[string]any{"ok": false, "error": err.Error(), "evidence_created": 0})
+		return c.JSON(http.StatusOK, map[string]any{"ok": false, "error": "cloud sync failed", "evidence_created": 0})
 	}
 	return c.JSON(http.StatusOK, map[string]any{"ok": true, "evidence_created": count})
 }
@@ -164,7 +164,7 @@ func (h *Handler) TestAzureConnection(c echo.Context) error {
 	orgID := mustString(c, "org_id")
 	if err := h.svc.TestAzureConnection(c.Request().Context(), orgID); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("TestAzureConnection failed")
-		return c.JSON(http.StatusOK, map[string]any{"ok": false, "error": err.Error()})
+		return c.JSON(http.StatusOK, map[string]any{"ok": false, "error": "cloud connection test failed"})
 	}
 	return c.JSON(http.StatusOK, map[string]any{"ok": true})
 }
@@ -175,7 +175,7 @@ func (h *Handler) SyncAzure(c echo.Context) error {
 	count, err := h.svc.SyncAzure(c.Request().Context(), orgID)
 	if err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Msg("SyncAzure failed")
-		return c.JSON(http.StatusOK, map[string]any{"ok": false, "error": err.Error(), "evidence_created": 0})
+		return c.JSON(http.StatusOK, map[string]any{"ok": false, "error": "cloud sync failed", "evidence_created": 0})
 	}
 	return c.JSON(http.StatusOK, map[string]any{"ok": true, "evidence_created": count})
 }

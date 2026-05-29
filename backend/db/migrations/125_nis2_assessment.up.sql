@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS nis2_anonymous_runs (
 CREATE INDEX IF NOT EXISTS idx_nis2_anon_expires
     ON nis2_anonymous_runs (expires_at);
 
--- ck_nis2_assessments lebt unter dem secvitals ck_-Prefix, weil die
+-- ck_nis2_assessments lebt unter dem vaktcomply ck_-Prefix, weil die
 -- Assessment-Antworten dort logisch zur Compliance-Story der Org gehören.
 -- Bei Sign-up wird ein anonymer Run in diese Tabelle migriert.
 CREATE TABLE IF NOT EXISTS ck_nis2_assessments (

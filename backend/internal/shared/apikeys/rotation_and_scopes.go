@@ -25,8 +25,8 @@ import (
 // Wildcards in api_keys.scopes:
 //
 //	"*"               → erlaubt alles
-//	"secvitals.*"     → erlaubt alle secvitals-Scopes
-//	"secvault.secrets.read" → exakt
+//	"vaktcomply.*"     → erlaubt alle vaktcomply-Scopes
+//	"vaktvault.secrets.read" → exakt
 func RequireScope(required string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {

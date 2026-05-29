@@ -121,7 +121,7 @@ umgelenkt.
 
 **Reverse-Path**
 Rückbau möglich, indem `TopBar`-Komponente entfernt, Bottom-Stack der
-Sidebar wiederhergestellt und `MODULES_NAV.secvitals.childGroups` zu
+Sidebar wiederhergestellt und `MODULES_NAV.vaktcomply.childGroups` zu
 flachem `children` zurückkonvertiert wird. Settings-Tabs lassen sich
 durch Entfernen des `Tabs`-Wrappers wieder als flat-Cards rendern.
 

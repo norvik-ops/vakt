@@ -5,7 +5,7 @@
 
 ## Kontext
 
-Vakt Aware (Package `secreflex`) führt Phishing-Simulationen mit Mitarbeitern durch. §87 BetrVG Abs. 1 Nr. 6 verlangt Mitbestimmung des Betriebsrats bei „Einführung und Anwendung von technischen Einrichtungen, die dazu bestimmt sind, das Verhalten oder die Leistung der Arbeitnehmer zu überwachen".
+Vakt Aware (Package `vaktaware`) führt Phishing-Simulationen mit Mitarbeitern durch. §87 BetrVG Abs. 1 Nr. 6 verlangt Mitbestimmung des Betriebsrats bei „Einführung und Anwendung von technischen Einrichtungen, die dazu bestimmt sind, das Verhalten oder die Leistung der Arbeitnehmer zu überwachen".
 
 Viele DACH-Kunden brauchen daher eine **anonyme** Variante der Phishing-Simulation, in der weder Klickdaten noch IP-Adressen einzelnen Mitarbeitern zugeordnet werden können.
 
@@ -45,8 +45,8 @@ Eine spätere Umstellung des Betriebsrat-Modus kann keine Daten zurückholen, di
 
 ## Referenzen
 
-- `backend/internal/modules/secreflex/service.go` — `anonymizeForBetriebsrat()`
-- `backend/internal/modules/secreflex/service_test.go` — Tests für on/off/empty
+- `backend/internal/modules/vaktaware/service.go` — `anonymizeForBetriebsrat()`
+- `backend/internal/modules/vaktaware/service_test.go` — Tests für on/off/empty
 - `docs/wiki/modules/aware.md` — Kunden-Dokumentation der Garantie
 - §87 BetrVG Abs. 1 Nr. 6
 - DSGVO Art. 5 (1c)

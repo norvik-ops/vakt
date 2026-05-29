@@ -3,7 +3,7 @@
 
 // Package crypto provides shared AES-256-GCM encryption primitives and
 // HKDF-based key derivation used across modules that need cryptographic
-// operations without depending on the secvault module.
+// operations without depending on the vaktvault module.
 package crypto
 
 import (

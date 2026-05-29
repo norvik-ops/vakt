@@ -9,7 +9,7 @@ Vakt Aware ermöglicht interne Phishing-Simulationen und Micro-Trainings für Mi
 Das Modul ist standardmäßig aktiv. Zum Deaktivieren:
 
 ```env
-VAKT_MODULES_ENABLED=secvitals,secpulse,secvault,secprivacy
+VAKT_MODULES_ENABLED=vaktcomply,vaktscan,vaktvault,vaktprivacy
 ```
 
 ---
@@ -24,7 +24,7 @@ Vakt Aware benötigt einen SMTP-Server, um Phishing-Simulations-E-Mails zu verse
 | `VAKT_SMTP_PORT` | `1025` | Port — `1025` für Mailpit (Entwicklung), `587` für STARTTLS, `465` für SSL |
 | `VAKT_SMTP_USER` | — | Benutzername (erforderlich für Port 587/465) |
 | `VAKT_SMTP_PASS` | — | Passwort (erforderlich für Port 587/465) |
-| `VAKT_SMTP_FROM` | `secreflex@vakt.local` | Absenderadresse für Kampagnen |
+| `VAKT_SMTP_FROM` | `vaktaware@vakt.local` | Absenderadresse für Kampagnen |
 
 Für lokale Entwicklung und Tests ist [Mailpit](https://github.com/axllent/mailpit) bereits in der Dev-Compose-Konfiguration enthalten.
 
@@ -49,9 +49,9 @@ Für lokale Entwicklung und Tests ist [Mailpit](https://github.com/axllent/mailp
 | `usb` | USB-Drop-Angriffssimulation |
 | `smishing` | SMS-basierter Angriff |
 
-10+ vorgefertigte DACH-spezifische Vorlagen sind eingebaut — alle in Deutsch, mit realistischen Mustern aus BSI-/CERT-Bund-Phishing-Reports. Abrufbar über `GET /api/v1/secreflex/templates/presets`. Beispiele: CEO-Fraud (deutsche Anrede), IT-Helpdesk Passwort-Reset, DHL-Paket-Zustellung, Microsoft-365-MFA-Warnung, Mahnung-PDF, OneDrive-Share, Sparkasse-SMS, USB-Köder-Szenario.
+10+ vorgefertigte DACH-spezifische Vorlagen sind eingebaut — alle in Deutsch, mit realistischen Mustern aus BSI-/CERT-Bund-Phishing-Reports. Abrufbar über `GET /api/v1/vaktaware/templates/presets`. Beispiele: CEO-Fraud (deutsche Anrede), IT-Helpdesk Passwort-Reset, DHL-Paket-Zustellung, Microsoft-365-MFA-Warnung, Mahnung-PDF, OneDrive-Share, Sparkasse-SMS, USB-Köder-Szenario.
 
-Zusätzlich verfügbar: 5+ vorgefertigte **Trainings-Module** (`GET /api/v1/secreflex/training-modules/presets`) — Phishing-Grundlagen, MFA-Aufklärung, Smishing, USB-Köder, Vishing.
+Zusätzlich verfügbar: 5+ vorgefertigte **Trainings-Module** (`GET /api/v1/vaktaware/training-modules/presets`) — Phishing-Grundlagen, MFA-Aufklärung, Smishing, USB-Köder, Vishing.
 
 ---
 
@@ -168,5 +168,5 @@ Kampagnen können als einmalig, monatlich oder quartalsweise konfiguriert werden
 
 | Job | Auslöser | Beschreibung |
 |-----|----------|--------------|
-| `secreflex:send_campaign` | Kampagnen-Launch | E-Mails an alle Zielgruppen-Empfänger versenden |
-| `secreflex:training_reminder` | Täglich | Erinnerung an überfällige Trainings-Zuweisungen |
+| `vaktaware:send_campaign` | Kampagnen-Launch | E-Mails an alle Zielgruppen-Empfänger versenden |
+| `vaktaware:training_reminder` | Täglich | Erinnerung an überfällige Trainings-Zuweisungen |

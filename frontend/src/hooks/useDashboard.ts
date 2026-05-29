@@ -86,7 +86,7 @@ export interface UserNotification {
   body: string
   /** Severity level; drives the icon and colour shown in the notification list. */
   type: 'info' | 'warning' | 'error'
-  /** Source module identifier (e.g. `"secpulse"`, `"secvitals"`). */
+  /** Source module identifier (e.g. `"vaktscan"`, `"vaktcomply"`). */
   module: string
   /** Whether the current user has already seen the notification. */
   read: boolean

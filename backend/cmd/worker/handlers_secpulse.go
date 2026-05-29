@@ -16,13 +16,13 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/config"
-	"github.com/matharnica/vakt/internal/modules/secpulse"
+	"github.com/matharnica/vakt/internal/modules/vaktscan"
 	"github.com/matharnica/vakt/internal/services/alerting"
 )
 
 func handleScanJob(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, t *asynq.Task) error {
-		var payload secpulse.ScanPayload
+		var payload vaktscan.ScanPayload
 		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
 			return fmt.Errorf("parse scan payload: %w", err)
 		}
@@ -42,24 +42,24 @@ func handleScanJob(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 				defer rdb.Close()
 			}
 		}
-		secpulse.PublishProgress(ctx, rdb, secpulse.ProgressEvent{
+		vaktscan.PublishProgress(ctx, rdb, vaktscan.ProgressEvent{
 			ScanID: payload.ScanID, Phase: "started", Message: payload.Scanner + " scan started",
 		})
 
 		var scanErr error
 		switch t.Type() {
-		case secpulse.TaskScanTrivy:
-			scanErr = secpulse.RunTrivyScan(ctx, pool, payload)
+		case vaktscan.TaskScanTrivy:
+			scanErr = vaktscan.RunTrivyScan(ctx, pool, payload)
 			if scanErr != nil {
 				log.Error().Err(scanErr).Str("scan_id", payload.ScanID).Msg("trivy scan failed")
 			}
-		case secpulse.TaskScanNuclei:
-			scanErr = secpulse.RunNucleiScan(ctx, pool, payload)
+		case vaktscan.TaskScanNuclei:
+			scanErr = vaktscan.RunNucleiScan(ctx, pool, payload)
 			if scanErr != nil {
 				log.Error().Err(scanErr).Str("scan_id", payload.ScanID).Msg("nuclei scan failed")
 			}
-		case secpulse.TaskScanOpenVAS:
-			scanErr = secpulse.RunOpenVASScan(ctx, pool, payload)
+		case vaktscan.TaskScanOpenVAS:
+			scanErr = vaktscan.RunOpenVASScan(ctx, pool, payload)
 			if scanErr != nil {
 				log.Error().Err(scanErr).Str("scan_id", payload.ScanID).Msg("openvas scan failed")
 			}
@@ -72,7 +72,7 @@ func handleScanJob(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 		if scanErr != nil {
 			finalPhase = "failed"
 		}
-		secpulse.PublishProgress(ctx, rdb, secpulse.ProgressEvent{
+		vaktscan.PublishProgress(ctx, rdb, vaktscan.ProgressEvent{
 			ScanID: payload.ScanID, Phase: finalPhase, Percent: 100,
 			Message: payload.Scanner + " scan " + finalPhase,
 		})
@@ -124,12 +124,12 @@ func handleScanJob(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 
 func handleGenerateReport(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, t *asynq.Task) error {
-		var payload secpulse.GenerateReportPayload
+		var payload vaktscan.GenerateReportPayload
 		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
 			return fmt.Errorf("parse report payload: %w", err)
 		}
 
-		repo := secpulse.NewRepository(pool)
+		repo := vaktscan.NewRepository(pool)
 
 		if err := repo.UpdateReport(ctx, payload.ReportID, "", "processing", nil); err != nil {
 			return fmt.Errorf("mark report processing: %w", err)
@@ -139,7 +139,7 @@ func handleGenerateReport(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerF
 
 		log.Info().Str("report_id", payload.ReportID).Str("org_id", payload.OrgID).Msg("generating PDF report")
 
-		pdfBytes, err := secpulse.GenerateReportPDF(ctx, pool, payload.OrgID, title)
+		pdfBytes, err := vaktscan.GenerateReportPDF(ctx, pool, payload.OrgID, title)
 		if err != nil {
 			_ = repo.UpdateReport(ctx, payload.ReportID, "", "failed", nil)
 			return fmt.Errorf("generate PDF: %w", err)
@@ -187,7 +187,7 @@ func handleEPSSEnrich(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc 
 		}
 
 		for _, orgID := range orgIDs {
-			if err := secpulse.UpdateEPSSScores(ctx, pool, orgID); err != nil {
+			if err := vaktscan.UpdateEPSSScores(ctx, pool, orgID); err != nil {
 				log.Error().Err(err).Str("org_id", orgID).Msg("epss_enrich: org failed")
 			}
 		}
@@ -196,16 +196,16 @@ func handleEPSSEnrich(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc 
 	}
 }
 
-// handleSBOMGenerate handles secpulse:sbom:generate jobs.
+// handleSBOMGenerate handles vaktscan:sbom:generate jobs.
 // It calls RunSyftScan to generate a CycloneDX SBOM and persist it in the DB.
 func handleSBOMGenerate(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, t *asynq.Task) error {
-		var payload secpulse.SBOMGeneratePayload
+		var payload vaktscan.SBOMGeneratePayload
 		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
 			return fmt.Errorf("parse sbom generate payload: %w", err)
 		}
 
-		if err := secpulse.RunSyftScan(ctx, pool, payload.OrgID, payload.AssetID, payload.Target); err != nil {
+		if err := vaktscan.RunSyftScan(ctx, pool, payload.OrgID, payload.AssetID, payload.Target); err != nil {
 			log.Error().Err(err).
 				Str("org_id", payload.OrgID).
 				Str("asset_id", payload.AssetID).
@@ -270,16 +270,16 @@ func handleRiskTrendSnapshot(pool *pgxpool.Pool) asynq.HandlerFunc {
 	}
 }
 
-// handleEOLCheck handles secpulse:eol:check jobs.
+// handleEOLCheck handles vaktscan:eol:check jobs.
 // It calls EOLChecker.CheckComponents to resolve EOL status for all SBOM components.
 func handleEOLCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, t *asynq.Task) error {
-		var payload secpulse.EOLCheckPayload
+		var payload vaktscan.EOLCheckPayload
 		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
 			return fmt.Errorf("parse eol check payload: %w", err)
 		}
 
-		checker := secpulse.NewEOLChecker(pool)
+		checker := vaktscan.NewEOLChecker(pool)
 		if err := checker.CheckComponents(ctx, payload.OrgID, payload.SBOMID); err != nil {
 			log.Error().Err(err).
 				Str("org_id", payload.OrgID).

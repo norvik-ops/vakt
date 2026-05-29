@@ -27,7 +27,7 @@ interface DSR {
 // ---------------------------------------------------------------------------
 
 async function fetchDSRStatus(token: string): Promise<DSR> {
-  const res = await fetch(`/api/v1/secprivacy/dsr-portal/status/${token}`, {
+  const res = await fetch(`/api/v1/vaktprivacy/dsr-portal/status/${token}`, {
     headers: { Accept: 'application/json' },
   })
   if (res.status === 404) throw new Error('NOT_FOUND')

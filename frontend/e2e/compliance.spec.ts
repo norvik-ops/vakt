@@ -11,7 +11,7 @@ test.describe('Compliance (SecVitals)', () => {
   })
 
   test('lists compliance frameworks', async ({ page }) => {
-    await page.route('**/api/v1/secvitals/frameworks**', route =>
+    await page.route('**/api/v1/vaktcomply/frameworks**', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -22,12 +22,12 @@ test.describe('Compliance (SecVitals)', () => {
       })
     )
 
-    await page.goto('/secvitals')
+    await page.goto('/vaktcomply')
     await expect(page.locator('text=ISO 27001').or(page.locator('text=NIS2')).first()).toBeVisible({ timeout: 8000 })
   })
 
   test('navigates to controls list', async ({ page }) => {
-    await page.route('**/api/v1/secvitals/frameworks**', route =>
+    await page.route('**/api/v1/vaktcomply/frameworks**', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -37,7 +37,7 @@ test.describe('Compliance (SecVitals)', () => {
       })
     )
 
-    await page.goto('/secvitals/fw-1/controls')
-    await expect(page).toHaveURL(/secvitals/)
+    await page.goto('/vaktcomply/fw-1/controls')
+    await expect(page).toHaveURL(/vaktcomply/)
   })
 })

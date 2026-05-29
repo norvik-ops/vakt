@@ -11,7 +11,7 @@ Vakt Scan bringt keine eigenen Scanner mit — es orchestriert Scanner, die bere
 Das Modul ist standardmäßig aktiv. Zum Deaktivieren:
 
 ```env
-VAKT_MODULES_ENABLED=secvitals,secvault,secreflex,secprivacy
+VAKT_MODULES_ENABLED=vaktcomply,vaktvault,vaktaware,vaktprivacy
 ```
 
 ---
@@ -46,7 +46,7 @@ Assets können einzeln angelegt oder per CSV-Massenimport hinzugefügt werden.
 Scans können manuell über die API oder die UI ausgelöst werden:
 
 ```
-POST /api/v1/secpulse/assets/:id/scans
+POST /api/v1/vaktscan/assets/:id/scans
 Body: { "scanner": "trivy" }
 ```
 
@@ -151,9 +151,9 @@ Findings können als CSV oder JSON exportiert werden, gefiltert nach Schweregrad
 
 | Job | Auslöser | Beschreibung |
 |-----|----------|--------------|
-| `secpulse:scan:trivy` | API / Schedule | Trivy-Scan ausführen |
-| `secpulse:scan:nuclei` | API / Schedule | Nuclei-Scan ausführen |
-| `secpulse:scan:openvas` | API / Schedule | OpenVAS-Scan ausführen |
-| `secpulse:epss_enrich` | Nach Scan | EPSS-Scores für neue Findings nachladen |
-| `secpulse:auto_evidence` | Finding-Schließung | Compliance-Nachweis in Vakt Comply erstellen |
-| `secpulse:generate_report` | API-Aufruf | Report asynchron generieren |
+| `vaktscan:scan:trivy` | API / Schedule | Trivy-Scan ausführen |
+| `vaktscan:scan:nuclei` | API / Schedule | Nuclei-Scan ausführen |
+| `vaktscan:scan:openvas` | API / Schedule | OpenVAS-Scan ausführen |
+| `vaktscan:epss_enrich` | Nach Scan | EPSS-Scores für neue Findings nachladen |
+| `vaktscan:auto_evidence` | Finding-Schließung | Compliance-Nachweis in Vakt Comply erstellen |
+| `vaktscan:generate_report` | API-Aufruf | Report asynchron generieren |

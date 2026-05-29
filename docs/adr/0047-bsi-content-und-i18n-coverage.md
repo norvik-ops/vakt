@@ -4,15 +4,15 @@
 **Datum:** 2026-05-27
 **Entscheider:** Stefan Moseler
 **Sprint:** 59 (Marktreife-Welle 4)
-**Related:** Audit-Befund „BSI-Grundschutz = Stub", „i18n in 14% der secvitals-Pages"
+**Related:** Audit-Befund „BSI-Grundschutz = Stub", „i18n in 14% der vaktcomply-Pages"
 
 ## Kontext
 
 Zwei Audit-Drift-Befunde aus dem Auditos-Singularity-9-Agent-Audit waren mit Sprint 58 noch nicht adressiert:
 
-1. **BSI IT-Grundschutz war ein Stub.** `secvitals/service_helpers.go:bsiControls()` lieferte sieben Titel ohne Beschreibung, ohne Domain-Bezug zu den BSI-Schichten, ohne Evidence-Type-Differenzierung. Marketing-seitig war BSI als gleichwertig zu NIS2 (88 Controls mit Description) und TISAX (59 Controls) positioniert. Pen-Tester sehen das beim ersten Page-Load.
+1. **BSI IT-Grundschutz war ein Stub.** `vaktcomply/service_helpers.go:bsiControls()` lieferte sieben Titel ohne Beschreibung, ohne Domain-Bezug zu den BSI-Schichten, ohne Evidence-Type-Differenzierung. Marketing-seitig war BSI als gleichwertig zu NIS2 (88 Controls mit Description) und TISAX (59 Controls) positioniert. Pen-Tester sehen das beim ersten Page-Load.
 
-2. **i18n-Coverage war ungleichmäßig.** Audit behauptete „14% der secvitals-Pages haben i18n" — Re-Check zeigte 68% (30/44 Pages), aber mit 14 Lücken-Pages und ~61 hardcoded deutschen Strings, davon ~40 auf zwei Pages (AISystems 27, AccessReviews 13).
+2. **i18n-Coverage war ungleichmäßig.** Audit behauptete „14% der vaktcomply-Pages haben i18n" — Re-Check zeigte 68% (30/44 Pages), aber mit 14 Lücken-Pages und ~61 hardcoded deutschen Strings, davon ~40 auf zwei Pages (AISystems 27, AccessReviews 13).
 
 ## Entscheidung
 
@@ -39,15 +39,15 @@ Fünf strukturelle Tests (`bsi_controls_test.go`) verhindern Regression:
 ### i18n-Sweep — P0 + P1
 
 **P0** (große hardcoded-Mengen):
-- `AccessReviewsPage.tsx` — 13 Strings → 30 i18n-Keys mit `secvitals.accessReviews.*`
-- `AISystemsPage.tsx` — 27 Strings → 30 i18n-Keys mit `secvitals.aiSystems.*`
+- `AccessReviewsPage.tsx` — 13 Strings → 30 i18n-Keys mit `vaktcomply.accessReviews.*`
+- `AISystemsPage.tsx` — 27 Strings → 30 i18n-Keys mit `vaktcomply.aiSystems.*`
 
 **P1** (kleinere Mengen, weniger sichtbar):
-- `ResilienceTestsPage.tsx` — 5 Status-/Kind-Strings → `secvitals.resilienceTests.*`
-- `ExceptionsPage.tsx` — 4 Strings, plus Module-Level-`statusBadge` zu Component refaktoriert → `secvitals.exceptions.*`
-- `EvidenceAutoPage.tsx` — 3 Label-Strings → `secvitals.evidenceAuto.*`
-- `TISAXMappingPage.tsx` — 2 Strings → `secvitals.tisaxMapping.*`
-- `DSGVOTOMPage.tsx` — 2 Strings → `secvitals.dsgvoTom.*`
+- `ResilienceTestsPage.tsx` — 5 Status-/Kind-Strings → `vaktcomply.resilienceTests.*`
+- `ExceptionsPage.tsx` — 4 Strings, plus Module-Level-`statusBadge` zu Component refaktoriert → `vaktcomply.exceptions.*`
+- `EvidenceAutoPage.tsx` — 3 Label-Strings → `vaktcomply.evidenceAuto.*`
+- `TISAXMappingPage.tsx` — 2 Strings → `vaktcomply.tisaxMapping.*`
+- `DSGVOTOMPage.tsx` — 2 Strings → `vaktcomply.dsgvoTom.*`
 
 Alle Keys in **vier Locales** (de, en, fr, nl) gepflegt.
 
@@ -76,20 +76,20 @@ Alle Keys in **vier Locales** (de, en, fr, nl) gepflegt.
 
 ## Verifikation
 
-- **Backend**: `go test ./internal/modules/secvitals/ -run TestBSIControls` — 5 Tests grün
+- **Backend**: `go test ./internal/modules/vaktcomply/ -run TestBSIControls` — 5 Tests grün
 - **Frontend**: `npm test` — 482 Tests grün (242 vorher + 240 neue i18n-Contract-Tests)
 - **TypeScript**: `tsc --noEmit -p tsconfig.app.json` clean
 - **Smoke-Test** (post-deploy):
   ```bash
   # 1. BSI-Framework installieren, dashboard prüfen
-  curl -sX POST http://localhost/api/v1/secvitals/frameworks \
+  curl -sX POST http://localhost/api/v1/vaktcomply/frameworks \
     -H "Authorization: Bearer $TOKEN" -d '{"name":"BSI"}'
-  curl -s "http://localhost/api/v1/secvitals/frameworks?name=BSI" \
+  curl -s "http://localhost/api/v1/vaktcomply/frameworks?name=BSI" \
     | jq '.controls | length'
   # Erwartet: 34
 
-  # 2. Browser: /secvitals/access-reviews mit Sprachumschaltung
-  # Erwartet: Volltext-Übersetzung in de/en/fr/nl, keine "secvitals.X.Y"-Strings sichtbar
+  # 2. Browser: /vaktcomply/access-reviews mit Sprachumschaltung
+  # Erwartet: Volltext-Übersetzung in de/en/fr/nl, keine "vaktcomply.X.Y"-Strings sichtbar
 
   # 3. AISystemsPage analog
   ```

@@ -1,4 +1,4 @@
-# Vakt Aware (`secreflex`) — Security Awareness & Phishing-Simulation
+# Vakt Aware (`vaktaware`) — Security Awareness & Phishing-Simulation
 
 ## Übersicht
 
@@ -9,7 +9,7 @@ Vakt Aware ermöglicht interne Phishing-Simulationen und ordnet Mitarbeitern nac
 Das Modul ist standardmäßig aktiviert. Zum Deaktivieren:
 
 ```env
-VAKT_MODULES_ENABLED=secvitals,secpulse,secvault,secprivacy  # secreflex weglassen
+VAKT_MODULES_ENABLED=vaktcomply,vaktscan,vaktvault,vaktprivacy  # vaktaware weglassen
 ```
 
 ## Konfiguration
@@ -52,57 +52,57 @@ Alle Endpunkte erfordern `Authorization: Bearer <token>`, sofern nicht anders an
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secreflex/templates` | Alle benutzerdefinierten Vorlagen auflisten |
-| GET | `/api/v1/secreflex/templates/presets` | Eingebaute Preset-Vorlagen auflisten |
-| POST | `/api/v1/secreflex/templates` | Neue Vorlage anlegen |
+| GET | `/api/v1/vaktaware/templates` | Alle benutzerdefinierten Vorlagen auflisten |
+| GET | `/api/v1/vaktaware/templates/presets` | Eingebaute Preset-Vorlagen auflisten |
+| POST | `/api/v1/vaktaware/templates` | Neue Vorlage anlegen |
 
 ### Zielgruppen
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secreflex/groups` | Alle Zielgruppen auflisten |
-| POST | `/api/v1/secreflex/groups` | Zielgruppe anlegen |
-| GET | `/api/v1/secreflex/groups/:id/targets` | Empfänger einer Gruppe auflisten |
-| POST | `/api/v1/secreflex/groups/:id/targets/import` | Empfänger per CSV importieren |
+| GET | `/api/v1/vaktaware/groups` | Alle Zielgruppen auflisten |
+| POST | `/api/v1/vaktaware/groups` | Zielgruppe anlegen |
+| GET | `/api/v1/vaktaware/groups/:id/targets` | Empfänger einer Gruppe auflisten |
+| POST | `/api/v1/vaktaware/groups/:id/targets/import` | Empfänger per CSV importieren |
 
 ### Landing Pages
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secreflex/landing-pages` | Alle Landing Pages auflisten |
-| POST | `/api/v1/secreflex/landing-pages` | Landing Page anlegen |
+| GET | `/api/v1/vaktaware/landing-pages` | Alle Landing Pages auflisten |
+| POST | `/api/v1/vaktaware/landing-pages` | Landing Page anlegen |
 
 ### Kampagnen
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secreflex/campaigns` | Alle Kampagnen auflisten |
-| POST | `/api/v1/secreflex/campaigns` | Kampagne anlegen |
-| GET | `/api/v1/secreflex/campaigns/:id` | Einzelne Kampagne abrufen |
-| POST | `/api/v1/secreflex/campaigns/:id/launch` | Kampagne starten (E-Mails versenden) |
-| POST | `/api/v1/secreflex/campaigns/:id/abort` | Kampagne abbrechen |
-| GET | `/api/v1/secreflex/campaigns/:id/stats` | Kampagnen-Statistiken abrufen |
+| GET | `/api/v1/vaktaware/campaigns` | Alle Kampagnen auflisten |
+| POST | `/api/v1/vaktaware/campaigns` | Kampagne anlegen |
+| GET | `/api/v1/vaktaware/campaigns/:id` | Einzelne Kampagne abrufen |
+| POST | `/api/v1/vaktaware/campaigns/:id/launch` | Kampagne starten (E-Mails versenden) |
+| POST | `/api/v1/vaktaware/campaigns/:id/abort` | Kampagne abbrechen |
+| GET | `/api/v1/vaktaware/campaigns/:id/stats` | Kampagnen-Statistiken abrufen |
 
 ### Trainingsmodule
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secreflex/training-modules` | Alle Trainingsmodule auflisten |
-| POST | `/api/v1/secreflex/training-modules` | Trainingsmodul anlegen |
+| GET | `/api/v1/vaktaware/training-modules` | Alle Trainingsmodule auflisten |
+| POST | `/api/v1/vaktaware/training-modules` | Trainingsmodul anlegen |
 
 ### Zuweisungen
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secreflex/assignments` | Alle Zuweisungen auflisten |
-| POST | `/api/v1/secreflex/assignments/:id/complete` | Zuweisung als abgeschlossen markieren (Quiz-Antworten einreichen) |
+| GET | `/api/v1/vaktaware/assignments` | Alle Zuweisungen auflisten |
+| POST | `/api/v1/vaktaware/assignments/:id/complete` | Zuweisung als abgeschlossen markieren (Quiz-Antworten einreichen) |
 
 ### Tracking (kein Bearer-Token erforderlich)
 
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
-| GET | `/api/v1/secreflex/t/:token` | Klick-Event aufzeichnen (Tracking-Pixel / Link) |
-| POST | `/api/v1/secreflex/t/:token/submit` | Formular-Submission-Event aufzeichnen |
+| GET | `/api/v1/vaktaware/t/:token` | Klick-Event aufzeichnen (Tracking-Pixel / Link) |
+| POST | `/api/v1/vaktaware/t/:token/submit` | Formular-Submission-Event aufzeichnen |
 
 ## Datenmodelle
 
@@ -150,8 +150,8 @@ Alle Endpunkte erfordern `Authorization: Bearer <token>`, sofern nicht anders an
 
 | Job | Auslöser | Beschreibung |
 |-----|----------|--------------|
-| `secreflex:send_campaign` | Kampagnen-Launch | E-Mails an alle Zielgruppen-Empfänger versenden |
-| `secreflex:training_reminder` | Täglich | Erinnerung an überfällige Trainings-Zuweisungen |
+| `vaktaware:send_campaign` | Kampagnen-Launch | E-Mails an alle Zielgruppen-Empfänger versenden |
+| `vaktaware:training_reminder` | Täglich | Erinnerung an überfällige Trainings-Zuweisungen |
 
 ## Compliance-Mapping
 

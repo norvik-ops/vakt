@@ -124,7 +124,7 @@ func TestMFAEnforce_ExemptPaths_AllowThrough(t *testing.T) {
 // before AuthMiddleware has populated the context.
 func TestMFAEnforce_NoOrgID_AllowsThrough(t *testing.T) {
 	db := &fakeMFADB{orgRow: &fakeRow{err: errors.New("must not reach DB")}}
-	c, rec := mfaRequest(t, "/api/v1/secvitals/controls", "", "user-1")
+	c, rec := mfaRequest(t, "/api/v1/vaktcomply/controls", "", "user-1")
 	mw := auth.MFAEnforceMiddlewareForTest(db)
 	require.NoError(t, mw(okHandler)(c))
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -134,7 +134,7 @@ func TestMFAEnforce_NoOrgID_AllowsThrough(t *testing.T) {
 // passes through — same guard as the org_id check.
 func TestMFAEnforce_NoUserID_AllowsThrough(t *testing.T) {
 	db := &fakeMFADB{orgRow: &fakeRow{err: errors.New("must not reach DB")}}
-	c, rec := mfaRequest(t, "/api/v1/secvitals/controls", "org-1", "")
+	c, rec := mfaRequest(t, "/api/v1/vaktcomply/controls", "org-1", "")
 	mw := auth.MFAEnforceMiddlewareForTest(db)
 	require.NoError(t, mw(okHandler)(c))
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -149,7 +149,7 @@ func TestMFAEnforce_OrgRequireMFAFalse_AllowsThrough(t *testing.T) {
 		orgRow:  &fakeRow{val: false}, // require_mfa = false
 		totpRow: &fakeRow{err: errors.New("totp must not be queried when mfa not required")},
 	}
-	c, rec := mfaRequest(t, "/api/v1/secvitals/controls", "org-1", "user-1")
+	c, rec := mfaRequest(t, "/api/v1/vaktcomply/controls", "org-1", "user-1")
 	mw := auth.MFAEnforceMiddlewareForTest(db)
 	require.NoError(t, mw(okHandler)(c))
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -162,7 +162,7 @@ func TestMFAEnforce_OrgRequiresMFA_UserHasTOTP_AllowsThrough(t *testing.T) {
 		orgRow:  &fakeRow{val: true}, // require_mfa = true
 		totpRow: &fakeRow{val: true}, // totp enabled = true
 	}
-	c, rec := mfaRequest(t, "/api/v1/secvitals/controls", "org-1", "user-1")
+	c, rec := mfaRequest(t, "/api/v1/vaktcomply/controls", "org-1", "user-1")
 	mw := auth.MFAEnforceMiddlewareForTest(db)
 	require.NoError(t, mw(okHandler)(c))
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -175,7 +175,7 @@ func TestMFAEnforce_OrgRequiresMFA_UserNoTOTP_Returns403(t *testing.T) {
 		orgRow:  &fakeRow{val: true},  // require_mfa = true
 		totpRow: &fakeRow{val: false}, // totp enabled = false
 	}
-	c, rec := mfaRequest(t, "/api/v1/secvitals/controls", "org-1", "user-1")
+	c, rec := mfaRequest(t, "/api/v1/vaktcomply/controls", "org-1", "user-1")
 	mw := auth.MFAEnforceMiddlewareForTest(db)
 	require.NoError(t, mw(okHandler)(c))
 	assert.Equal(t, http.StatusForbidden, rec.Code)
@@ -189,7 +189,7 @@ func TestMFAEnforce_DBError_OrgLookup_Returns503(t *testing.T) {
 	db := &fakeMFADB{
 		orgRow: &fakeRow{err: errors.New("connection refused")},
 	}
-	c, rec := mfaRequest(t, "/api/v1/secvitals/controls", "org-1", "user-1")
+	c, rec := mfaRequest(t, "/api/v1/vaktcomply/controls", "org-1", "user-1")
 	mw := auth.MFAEnforceMiddlewareForTest(db)
 	require.NoError(t, mw(okHandler)(c))
 	assert.Equal(t, http.StatusServiceUnavailable, rec.Code,
@@ -205,7 +205,7 @@ func TestMFAEnforce_DBError_TOTPLookup_Returns403(t *testing.T) {
 		orgRow:  &fakeRow{val: true}, // require_mfa = true
 		totpRow: &fakeRow{err: errors.New("totp table missing")},
 	}
-	c, rec := mfaRequest(t, "/api/v1/secvitals/controls", "org-1", "user-1")
+	c, rec := mfaRequest(t, "/api/v1/vaktcomply/controls", "org-1", "user-1")
 	mw := auth.MFAEnforceMiddlewareForTest(db)
 	require.NoError(t, mw(okHandler)(c))
 	assert.Equal(t, http.StatusForbidden, rec.Code,

@@ -118,7 +118,7 @@ Ja. Jedes Modul kann unabhängig über die Umgebungsvariable `VAKT_MODULES_ENABL
 
 ```env
 # Nur Vakt Comply und Vakt Vault aktiv
-VAKT_MODULES_ENABLED=secvitals,secvault
+VAKT_MODULES_ENABLED=vaktcomply,vaktvault
 ```
 
 Deaktivierte Module registrieren keine API-Routen und verbrauchen keine Ressourcen.

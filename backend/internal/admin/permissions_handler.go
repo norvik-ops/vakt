@@ -28,7 +28,7 @@ type UserModulePermission struct {
 
 // ModulePermissionInput is one entry in the PUT request body.
 type ModulePermissionInput struct {
-	Module   string `json:"module"   validate:"required,oneof=secpulse secvitals secvault secreflex secprivacy"`
+	Module   string `json:"module"   validate:"required,oneof=vaktscan vaktcomply vaktvault vaktaware vaktprivacy"`
 	CanRead  bool   `json:"can_read"`
 	CanWrite bool   `json:"can_write"`
 }

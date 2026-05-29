@@ -15,14 +15,14 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/config"
-	"github.com/matharnica/vakt/internal/modules/secvault"
+	"github.com/matharnica/vakt/internal/modules/vaktvault"
 	cloudintegration "github.com/matharnica/vakt/internal/shared/platform/integrations/cloud"
 	ghintegration "github.com/matharnica/vakt/internal/shared/platform/integrations/github"
 )
 
 const taskGitHubCISync = "github:ci_evidence:sync"
 
-// handleGitScan handles secvault:git_scan jobs.
+// handleGitScan handles vaktvault:git_scan jobs.
 // Credentials stored in the payload are AES-256-GCM-encrypted; they are
 // decrypted here using the master key from config before the scan runs.
 func handleGitScan(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
@@ -39,29 +39,29 @@ func handleGitScan(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 		}
 
 		// Decrypt credentials if present.
-		var creds *secvault.GitScanCredentials
+		var creds *vaktvault.GitScanCredentials
 		if payload.EncryptedCredentials != "" {
 			if cfg == nil || cfg.SecretKey == "" {
 				return fmt.Errorf("git_scan: master key not configured, cannot decrypt credentials")
 			}
-			plainJSON, decErr := secvault.DecryptPayloadField(payload.EncryptedCredentials, workerKey(cfg, "vakt-vault-v1"))
+			plainJSON, decErr := vaktvault.DecryptPayloadField(payload.EncryptedCredentials, workerKey(cfg, "vakt-vault-v1"))
 			if decErr != nil {
 				return fmt.Errorf("git_scan: decrypt credentials: %w", decErr)
 			}
-			var c secvault.GitScanCredentials
+			var c vaktvault.GitScanCredentials
 			if jsonErr := json.Unmarshal([]byte(plainJSON), &c); jsonErr != nil {
 				return fmt.Errorf("git_scan: unmarshal credentials: %w", jsonErr)
 			}
 			creds = &c
 		}
 
-		repo := secvault.NewRepository(pool)
+		repo := vaktvault.NewRepository(pool)
 
 		if err := repo.UpdateGitScanStatus(ctx, payload.ScanID, payload.OrgID, "running", 0, 0, 0, "", nil); err != nil {
 			return fmt.Errorf("mark scan running: %w", err)
 		}
 
-		results, scanErr := secvault.RunGitScan(ctx, secvault.TriggerGitScanInput{
+		results, scanErr := vaktvault.RunGitScan(ctx, vaktvault.TriggerGitScanInput{
 			RepoURL:     payload.RepoURL,
 			Branch:      payload.Branch,
 			Credentials: creds,

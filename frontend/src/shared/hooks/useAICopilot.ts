@@ -23,7 +23,7 @@ import { apiFetch } from '../../api/client'
 export function useAICopilot() {
   const draftPolicy = useMutation({
     mutationFn: async (input: { topic: string; framework?: string }) =>
-      apiFetch<{ draft: string }>('/secvitals/ai/draft-policy', {
+      apiFetch<{ draft: string }>('/vaktcomply/ai/draft-policy', {
         method: 'POST',
         body: JSON.stringify(input),
       }),
@@ -31,7 +31,7 @@ export function useAICopilot() {
 
   const incidentGuide = useMutation({
     mutationFn: async (input: { summary: string; type?: string }) =>
-      apiFetch<{ guide: string }>('/secvitals/ai/incident-guide', {
+      apiFetch<{ guide: string }>('/vaktcomply/ai/incident-guide', {
         method: 'POST',
         body: JSON.stringify(input),
       }),

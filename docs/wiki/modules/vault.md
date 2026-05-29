@@ -9,7 +9,7 @@ Vakt Vault speichert Secrets verschlüsselt mit AES-256-GCM und protokolliert je
 Das Modul ist standardmäßig aktiv. Zum Deaktivieren:
 
 ```env
-VAKT_MODULES_ENABLED=secvitals,secpulse,secreflex,secprivacy
+VAKT_MODULES_ENABLED=vaktcomply,vaktscan,vaktaware,vaktprivacy
 ```
 
 ---
@@ -103,7 +103,7 @@ Beispiel für eine CI/CD-Pipeline:
 
 ```bash
 curl -H "Authorization: Bearer $VAKT_API_TOKEN" \
-  https://vakt.meine-firma.de/api/v1/secvault/projects/backend/envs/prod/secrets/DATABASE_URL
+  https://vakt.meine-firma.de/api/v1/vaktvault/projects/backend/envs/prod/secrets/DATABASE_URL
 ```
 
 ---
@@ -157,4 +157,4 @@ Einzelne Ergebnisse können als False Positive verworfen werden.
 
 | Job | Auslöser | Beschreibung |
 |-----|----------|--------------|
-| `secvault:git_scan` | API-Aufruf | Git-Repository asynchron mit gitleaks scannen |
+| `vaktvault:git_scan` | API-Aufruf | Git-Repository asynchron mit gitleaks scannen |

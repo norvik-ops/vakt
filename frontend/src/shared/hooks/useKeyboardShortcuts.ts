@@ -64,13 +64,13 @@ export function useKeyboardShortcuts({ onOpenHelp }: UseKeyboardShortcutsOptions
           navigate('/')
         } else if (e.key === 'f') {
           e.preventDefault()
-          navigate('/secpulse/findings')
+          navigate('/vaktscan/findings')
         } else if (e.key === 'r') {
           e.preventDefault()
-          navigate('/secvitals/risks')
+          navigate('/vaktcomply/risks')
         } else if (e.key === 'i') {
           e.preventDefault()
-          navigate('/secvitals/incidents')
+          navigate('/vaktcomply/incidents')
         }
       }
     }

@@ -4,7 +4,7 @@ import { CheckCircle2, Circle, Rocket } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog'
 import { Button } from '../../components/ui/button'
-import { useFrameworks } from '../../modules/secvitals/hooks/useFrameworks'
+import { useFrameworks } from '../../modules/vaktcomply/hooks/useFrameworks'
 import { useTeamMembers } from '../../hooks/useTeam'
 import { useTOTPStatus, useHasEvidence, useHasVvt } from './GettingStartedChecklist'
 
@@ -21,9 +21,9 @@ export function GettingStartedModal() {
   const { data: hasVvt } = useHasVvt()
 
   const steps = [
-    { id: 'framework', done: (frameworks?.length ?? 0) > 0,    to: '/secvitals/frameworks', labelKey: 'framework' },
-    { id: 'control',   done: hasEvidence ?? false,             to: '/secvitals/controls',   labelKey: 'control' },
-    { id: 'vvt',       done: hasVvt ?? false,                  to: '/secprivacy/vvt',       labelKey: 'vvt' },
+    { id: 'framework', done: (frameworks?.length ?? 0) > 0,    to: '/vaktcomply/frameworks', labelKey: 'framework' },
+    { id: 'control',   done: hasEvidence ?? false,             to: '/vaktcomply/controls',   labelKey: 'control' },
+    { id: 'vvt',       done: hasVvt ?? false,                  to: '/vaktprivacy/vvt',       labelKey: 'vvt' },
     { id: 'org',       done: (members?.length ?? 0) > 1,       to: '/settings',             labelKey: 'org' },
     { id: '2fa',       done: totpStatus?.enabled ?? false,      to: '/account',             labelKey: 'mfa' },
   ] as const

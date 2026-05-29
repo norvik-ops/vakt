@@ -23,7 +23,7 @@ LOCAL_DB  := postgres://vakt:vakt@localhost:5432/vakt?sslmode=disable
 LOCAL_ENV := VAKT_DB_URL="$(LOCAL_DB)" \
              VAKT_REDIS_URL="redis://localhost:6379" \
              VAKT_SECRET_KEY="d7463ee089bc65fac0efe91ee13b88413e256de2151228eeebee4787e5d276f7" \
-             VAKT_MODULES_ENABLED="secpulse,secvitals,secvault,secreflex,secprivacy" \
+             VAKT_MODULES_ENABLED="vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy" \
              AUTO_MIGRATE=true \
              APP_VERSION=0.1.0 \
              VAKT_API_PORT=8080

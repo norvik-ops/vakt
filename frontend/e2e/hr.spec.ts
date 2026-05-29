@@ -36,10 +36,10 @@ async function login(page: import('@playwright/test').Page) {
   await page.addInitScript((u) => { localStorage.setItem('vakt_user', JSON.stringify(u)) }, FAKE_USER)
   await page.route('**/api/v1/**', route => {
     const url = route.request().url()
-    if (url.includes('/hr/employees') && !url.includes('/checklist-runs')) {
+    if (url.includes('/vakthr/employees') && !url.includes('/checklist-runs')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: EMPLOYEES, pagination: { page: 1, limit: 25, total: 2, total_pages: 1 } }) })
     }
-    if (url.includes('/hr/checklists')) {
+    if (url.includes('/vakthr/checklists')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([CHECKLIST]) })
     }
     if (url.includes('/checklist-runs')) {
@@ -52,7 +52,7 @@ async function login(page: import('@playwright/test').Page) {
 test.describe('SecHR — Employees', () => {
   test.beforeEach(async ({ page }) => {
     await login(page)
-    await page.goto('/hr/employees')
+    await page.goto('/vakthr/employees')
   })
 
   test('shows employee list with status badges', async ({ page }) => {
@@ -76,7 +76,7 @@ test.describe('SecHR — Employees', () => {
 test.describe('SecHR — Checklists', () => {
   test.beforeEach(async ({ page }) => {
     await login(page)
-    await page.goto('/hr/checklists')
+    await page.goto('/vakthr/checklists')
   })
 
   test('shows checklist template list', async ({ page }) => {
@@ -87,14 +87,14 @@ test.describe('SecHR — Checklists', () => {
 test.describe('SecHR — Navigation', () => {
   test('HR module is accessible from sidebar', async ({ page }) => {
     await login(page)
-    await page.goto('/hr/employees')
+    await page.goto('/vakthr/employees')
     const hrLink = page.getByRole('link', { name: /hr|mitarbeiter|personal/i })
     await expect(hrLink.first()).toBeVisible()
   })
 
   test('employee detail page renders', async ({ page }) => {
     await login(page)
-    await page.goto('/hr/employees')
+    await page.goto('/vakthr/employees')
     await expect(page.getByText('Anna').or(page.getByText('a.mueller@example.com')).first()).toBeVisible()
   })
 })

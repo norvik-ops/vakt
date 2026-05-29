@@ -58,7 +58,7 @@ Ein neuer Integration-Test in `backend/cmd/api/openapi_contract_test.go` lädt d
 
 - **Initialer Aufwand**: OpenAPI auf realistischen Stand bringen, openapi-typescript einbauen, Backend-Contract-Test schreiben. Schätzung: 4–6 Stunden für die initiale Welle, danach inkrementell pro neuem Endpoint.
 - **CI-Step mehr**: zwei zusätzliche Checks (Backend Contract-Test, Frontend `openapi-types`-Diff). Beide schnell, aber müssen grün bleiben.
-- **Coverage-Aufwand**: Nicht jedes Backend-Endpoint hat heute ein vollständiges Spec-Schema. Initiale Welle deckt nur die kritischen ab (auth, health, demo, dashboard, secvitals-listing); der Rest kommt nach Bedarf.
+- **Coverage-Aufwand**: Nicht jedes Backend-Endpoint hat heute ein vollständiges Spec-Schema. Initiale Welle deckt nur die kritischen ab (auth, health, demo, dashboard, vaktcomply-listing); der Rest kommt nach Bedarf.
 
 ### Neutrale
 

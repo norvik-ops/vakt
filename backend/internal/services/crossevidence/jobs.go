@@ -13,10 +13,10 @@ import (
 // It is enqueued by SecReflex, SecPrivacy, and SecVault when compliance-relevant
 // events occur, and processed by the worker which calls the SecVitals evidence API.
 const (
-	TaskRecordEvidence = "secvitals:record_evidence"
+	TaskRecordEvidence = "vaktcomply:record_evidence"
 
 	// Queue is the dedicated Asynq queue for cross-module evidence and compliance jobs.
-	Queue = "secvitals"
+	Queue = "vaktcomply"
 )
 
 // EvidencePayload is an alias for events.CrossModuleEvent.

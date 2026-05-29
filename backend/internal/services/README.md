@@ -24,7 +24,7 @@ hat.
   rechtfertigt (z.B. `evidence_auto → ai` für AI-gestützte Klassifikation).
 - Module (`internal/modules/*`) dürfen Services importieren.
 - Services dürfen Module **nicht** importieren — sonst entsteht ein Zyklus.
-  Cross-Module-Hooks laufen über Interfaces (siehe `secprivacy → secvitals`
+  Cross-Module-Hooks laufen über Interfaces (siehe `vaktprivacy → vaktcomply`
   via Asynq-Job-Bridge).
 
 ## Welche Pakete bleiben in `internal/shared/`?

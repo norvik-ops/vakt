@@ -29,7 +29,7 @@ test.describe('Navigation', () => {
 
   test('sidebar links are reachable', async ({ page }) => {
     await page.goto('/settings')
-    const sidebarLinks = ['/secvitals', '/secpulse', '/secprivacy']
+    const sidebarLinks = ['/vaktcomply', '/vaktscan', '/vaktprivacy']
     for (const link of sidebarLinks) {
       const anchor = page.locator(`nav a[href="${link}"]`)
       if (await anchor.count() > 0) {

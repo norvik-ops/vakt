@@ -21,7 +21,7 @@
     "version": "0.5.0",
     "date": "2026-04-01",
     "entries": [
-      { "type": "feat", "text": "DSGVO Art. 32 TOM-Mapping für secvitals" },
+      { "type": "feat", "text": "DSGVO Art. 32 TOM-Mapping für vaktcomply" },
       { "type": "feat", "text": "TISAX und EU AI Act Compliance-Module" },
       { "type": "feat", "text": "NIS2-Meldungsassistent" },
       { "type": "feat", "text": "DORA-Dashboard und Resilienztest-Tracking" },

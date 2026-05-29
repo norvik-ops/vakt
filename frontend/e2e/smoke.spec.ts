@@ -10,12 +10,12 @@ import { test, expect } from '@playwright/test'
 
 const MODULES = [
   { name: 'Dashboard',    path: '/' },
-  { name: 'Vakt Comply',  path: '/secvitals' },
-  { name: 'Vakt Scan',    path: '/secpulse' },
-  { name: 'Vakt Vault',   path: '/secvault' },
-  { name: 'Vakt Aware',   path: '/secreflex' },
-  { name: 'Vakt Privacy', path: '/secprivacy' },
-  { name: 'Vakt HR',      path: '/hr' },
+  { name: 'Vakt Comply',  path: '/vaktcomply' },
+  { name: 'Vakt Scan',    path: '/vaktscan' },
+  { name: 'Vakt Vault',   path: '/vaktvault' },
+  { name: 'Vakt Aware',   path: '/vaktaware' },
+  { name: 'Vakt Privacy', path: '/vaktprivacy' },
+  { name: 'Vakt HR',      path: '/vakthr' },
   { name: 'Settings',     path: '/settings' },
 ]
 

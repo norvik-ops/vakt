@@ -12,7 +12,7 @@ async function authenticate(page: import('@playwright/test').Page) {
 test.describe('SecPrivacy — DSR', () => {
   test.beforeEach(async ({ page }) => {
     await authenticate(page)
-    await page.goto('/secprivacy/dsr')
+    await page.goto('/vaktprivacy/dsr')
   })
 
   test('DSR list page renders', async ({ page }) => {

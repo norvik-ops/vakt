@@ -18,16 +18,16 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/config"
-	"github.com/matharnica/vakt/internal/modules/secreflex"
+	"github.com/matharnica/vakt/internal/modules/vaktaware"
 )
 
 // taskControlOwnerReminder is the Asynq task name for the daily control-owner reminder.
-const taskControlOwnerReminder = "secvitals:control_owner_reminder"
+const taskControlOwnerReminder = "vaktcomply:control_owner_reminder"
 
 // reEmail matches a basic e-mail address to decide whether to send a reminder.
 var reEmail = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
 
-// handleSendCampaign handles secreflex:send_campaign jobs.
+// handleSendCampaign handles vaktaware:send_campaign jobs.
 func handleSendCampaign(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, t *asynq.Task) error {
 		var payload struct {
@@ -38,7 +38,7 @@ func handleSendCampaign(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFun
 			return fmt.Errorf("parse send_campaign payload: %w", err)
 		}
 
-		smtpCfg := secreflex.SMTPConfig{}
+		smtpCfg := vaktaware.SMTPConfig{}
 		if cfg != nil {
 			smtpCfg.Host = cfg.SMTPHost
 			smtpCfg.Port = cfg.SMTPPort
@@ -48,12 +48,12 @@ func handleSendCampaign(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFun
 			smtpCfg.AppURL = cfg.FrontendURL
 		}
 
-		svc := secreflex.NewService(pool, smtpCfg)
+		svc := vaktaware.NewService(pool, smtpCfg)
 		return svc.SendCampaignEmails(ctx, payload.OrgID, payload.CampaignID)
 	}
 }
 
-// handleTrainingReminder handles secreflex:training_reminder jobs.
+// handleTrainingReminder handles vaktaware:training_reminder jobs.
 // It queries members who have not completed any training in the last 14 days
 // and sends them a reminder email via the configured SMTP server.
 func handleTrainingReminder(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
@@ -113,7 +113,7 @@ func handleTrainingReminder(cfg *config.Config, pool *pgxpool.Pool) asynq.Handle
 			return nil
 		}
 
-		smtpCfg := secreflex.SMTPConfig{
+		smtpCfg := vaktaware.SMTPConfig{
 			Host:   cfg.SMTPHost,
 			Port:   cfg.SMTPPort,
 			User:   cfg.SMTPUser,
@@ -121,7 +121,7 @@ func handleTrainingReminder(cfg *config.Config, pool *pgxpool.Pool) asynq.Handle
 			From:   cfg.SMTPFrom,
 			AppURL: cfg.FrontendURL,
 		}
-		svc := secreflex.NewService(pool, smtpCfg)
+		svc := vaktaware.NewService(pool, smtpCfg)
 
 		sent := 0
 		for _, target := range targets {
@@ -231,7 +231,7 @@ func handleControlOwnerReminder(cfg *config.Config, pool *pgxpool.Pool) asynq.Ha
 			}
 
 			subject := fmt.Sprintf("Erinnerung: Control %s fällig in 7 Tagen", r.ControlID)
-			link := fmt.Sprintf("%s/secvitals/controls/%s", frontendURL, r.ControlDBID)
+			link := fmt.Sprintf("%s/vaktcomply/controls/%s", frontendURL, r.ControlDBID)
 			dueDateStr := r.DueDate.Format("02.01.2006")
 
 			var buf bytes.Buffer

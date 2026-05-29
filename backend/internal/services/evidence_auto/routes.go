@@ -6,7 +6,7 @@ import (
 )
 
 // RegisterRoutes registers the auto-evidence inbox endpoints under the given
-// Echo group (expected: the /secvitals protected group).
+// Echo group (expected: the /vaktcomply protected group).
 func RegisterRoutes(g *echo.Group, db *pgxpool.Pool) {
 	h := NewHandler(db)
 	g.GET("/evidence/auto", h.ListAutoEvidence)

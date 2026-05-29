@@ -11,7 +11,7 @@ test.describe('Assets (SecPulse)', () => {
     await page.route('**/api/v1/**', route =>
       route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
     )
-    await page.route('**/api/v1/secpulse/assets**', route =>
+    await page.route('**/api/v1/vaktscan/assets**', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -19,7 +19,7 @@ test.describe('Assets (SecPulse)', () => {
       })
     )
 
-    await page.goto('/secpulse/assets')
+    await page.goto('/vaktscan/assets')
     await expect(page.getByText('Noch kein Asset angelegt').or(page.getByText('No Asset').or(page.getByText(/asset angelegt/i)))).toBeVisible({ timeout: 8000 })
   })
 
@@ -27,7 +27,7 @@ test.describe('Assets (SecPulse)', () => {
     await page.route('**/api/v1/**', route =>
       route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
     )
-    await page.route('**/api/v1/secpulse/assets**', route =>
+    await page.route('**/api/v1/vaktscan/assets**', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -35,7 +35,7 @@ test.describe('Assets (SecPulse)', () => {
       })
     )
 
-    await page.goto('/secpulse/assets')
+    await page.goto('/vaktscan/assets')
     await page.getByRole('button', { name: /neues asset|new asset|asset anlegen/i }).first().click()
     await expect(page.getByRole('dialog', { name: 'Neues Asset' })).toBeVisible({ timeout: 3000 })
     await expect(page.locator('input[id="asset-name"]')).toBeVisible()

@@ -24,11 +24,11 @@ React 18 + TypeScript + Vite + Tailwind + shadcn/ui. Spricht über `/api/v1/*` m
 ```
 src/
 ├── modules/         # eine Folder pro Modul
-│   ├── secvitals/   # Vakt Comply
-│   ├── secpulse/    # Vakt Scan
-│   ├── secvault/    # Vakt Vault
-│   ├── secreflex/   # Vakt Aware
-│   ├── secprivacy/  # Vakt Privacy
+│   ├── vaktcomply/   # Vakt Comply
+│   ├── vaktscan/    # Vakt Scan
+│   ├── vaktvault/    # Vakt Vault
+│   ├── vaktaware/   # Vakt Aware
+│   ├── vaktprivacy/  # Vakt Privacy
 │   └── hr/          # Vakt HR
 ├── shared/          # Layout, Auth, Notifications, Hooks (useFocusTrap, useKeyboardShortcuts, ...)
 ├── pages/           # Top-Level-Routes (Login, TrustPage, ...)

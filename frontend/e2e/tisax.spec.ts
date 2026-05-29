@@ -37,7 +37,7 @@ const TISAX_MAPPING = [
   },
 ]
 
-test.describe('TISAX (secvitals)', () => {
+test.describe('TISAX (vaktcomply)', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript((u) => { localStorage.setItem('vakt_user', JSON.stringify(u)) }, FAKE_USER)
     await page.route('**/api/v1/**', route =>
@@ -46,52 +46,52 @@ test.describe('TISAX (secvitals)', () => {
   })
 
   test('TISAX-Übersicht lädt', async ({ page }) => {
-    await page.route('**/api/v1/secvitals/frameworks', route =>
+    await page.route('**/api/v1/vaktcomply/frameworks', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([TISAX_FRAMEWORK]),
       })
     )
-    await page.route('**/api/v1/secvitals/frameworks/fw-tisax-1', route =>
+    await page.route('**/api/v1/vaktcomply/frameworks/fw-tisax-1', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(TISAX_FRAMEWORK),
       })
     )
-    await page.goto('/secvitals/frameworks/fw-tisax-1/tisax')
-    await expect(page).toHaveURL(/secvitals\/frameworks\/fw-tisax-1\/tisax/)
+    await page.goto('/vaktcomply/frameworks/fw-tisax-1/tisax')
+    await expect(page).toHaveURL(/vaktcomply\/frameworks\/fw-tisax-1\/tisax/)
   })
 
   test('TISAX-Controls-Liste sichtbar', async ({ page }) => {
-    await page.route('**/api/v1/secvitals/frameworks/fw-tisax-1/controls**', route =>
+    await page.route('**/api/v1/vaktcomply/frameworks/fw-tisax-1/controls**', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: TISAX_CONTROLS, pagination: { page: 1, limit: 25, total: 1, total_pages: 1 } }),
       })
     )
-    await page.route('**/api/v1/secvitals/frameworks/fw-tisax-1', route =>
+    await page.route('**/api/v1/vaktcomply/frameworks/fw-tisax-1', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(TISAX_FRAMEWORK),
       })
     )
-    await page.goto('/secvitals/frameworks/fw-tisax-1/tisax')
-    await expect(page).toHaveURL(/secvitals/)
+    await page.goto('/vaktcomply/frameworks/fw-tisax-1/tisax')
+    await expect(page).toHaveURL(/vaktcomply/)
   })
 
   test('TISAX-Reifegrad-Ansicht', async ({ page }) => {
-    await page.route('**/api/v1/secvitals/tisax-mapping**', route =>
+    await page.route('**/api/v1/vaktcomply/tisax-mapping**', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(TISAX_MAPPING),
       })
     )
-    await page.goto('/secvitals/tisax-mapping')
-    await expect(page).toHaveURL(/secvitals\/tisax-mapping/)
+    await page.goto('/vaktcomply/tisax-mapping')
+    await expect(page).toHaveURL(/vaktcomply\/tisax-mapping/)
   })
 })

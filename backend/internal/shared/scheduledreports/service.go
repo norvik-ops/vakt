@@ -65,9 +65,9 @@ type UpdateScheduledReportInput struct {
 	Active     *bool    `json:"active"`
 }
 
-// BoardReportProvider is implemented by the secvitals Service to generate board
+// BoardReportProvider is implemented by the vaktcomply Service to generate board
 // report PDFs. Using an interface avoids a circular import between scheduledreports
-// and secvitals.
+// and vaktcomply.
 type BoardReportProvider interface {
 	GetBoardReportPDF(ctx context.Context, orgID string) ([]byte, error)
 }
@@ -85,7 +85,7 @@ func NewService(db *pgxpool.Pool, smtpCfg SMTPConfig) *Service {
 }
 
 // WithBoardReportProvider attaches a board report provider to the service.
-// Call this after NewService when the secvitals service is available.
+// Call this after NewService when the vaktcomply service is available.
 func (s *Service) WithBoardReportProvider(p BoardReportProvider) *Service {
 	s.boardReport = p
 	return s

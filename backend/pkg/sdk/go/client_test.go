@@ -15,7 +15,7 @@ import (
 func TestSecretsClient_Get(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "Bearer sk_so_testtoken", r.Header.Get("Authorization"))
-		assert.Equal(t, "/api/v1/secvault/projects/proj1/envs/env1/secrets/MY_KEY", r.URL.Path)
+		assert.Equal(t, "/api/v1/vaktvault/projects/proj1/envs/env1/secrets/MY_KEY", r.URL.Path)
 
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{
@@ -34,7 +34,7 @@ func TestSecretsClient_Get(t *testing.T) {
 
 func TestSecretsClient_List(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/api/v1/secvault/projects/proj1/envs/env1/secrets", r.URL.Path)
+		assert.Equal(t, "/api/v1/vaktvault/projects/proj1/envs/env1/secrets", r.URL.Path)
 
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode([]map[string]string{

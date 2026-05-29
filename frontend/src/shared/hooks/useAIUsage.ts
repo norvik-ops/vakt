@@ -11,7 +11,7 @@ interface AIUsage {
 export function useAIUsage() {
   return useQuery<AIUsage>({
     queryKey: ['ai-usage'],
-    queryFn: () => apiFetch<AIUsage>('/secvitals/ai/usage'),
+    queryFn: () => apiFetch<AIUsage>('/vaktcomply/ai/usage'),
     staleTime: 60 * 1000, // refresh every minute
     retry: false,
   })

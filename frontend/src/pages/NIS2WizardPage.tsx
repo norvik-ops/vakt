@@ -233,7 +233,7 @@ function ResultView({ result, isAuthenticated }: { result: ResultResponse; isAut
     setPdfError(null)
     try {
       const resp = await fetch(
-        `/api/v1/secvitals/nis2-assessment/pdf?token=${encodeURIComponent(result.token)}`,
+        `/api/v1/vaktcomply/nis2-assessment/pdf?token=${encodeURIComponent(result.token)}`,
         { method: 'POST' },
       )
       if (!resp.ok) {

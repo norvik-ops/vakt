@@ -22,7 +22,7 @@ Konsequenz: jeder Operator mit Log-Zugriff sieht jede Customer-Email. Jeder exte
 2. **Alle bestehenden Call-Sites umgestellt** auf:
    - Schema vorher: `Str("email", x)` / `Str("to", y)`
    - Schema nachher: `Str("email_redacted", logsafe.RedactEmail(x))` / `Str("to_redacted", logsafe.RedactEmail(y))`
-3. **Neue Call-Sites** in `internal/auth/`, `internal/admin/`, `internal/modules/hr/`, `internal/modules/secvitals/`, `internal/services/scim/`, `internal/shared/emaildigest/`, `internal/shared/notifications/`, `internal/webhooks/polar/`, `internal/webhooks/lemonsqueezy/` müssen den Helper ebenfalls verwenden.
+3. **Neue Call-Sites** in `internal/auth/`, `internal/admin/`, `internal/modules/hr/`, `internal/modules/vaktcomply/`, `internal/services/scim/`, `internal/shared/emaildigest/`, `internal/shared/notifications/`, `internal/webhooks/polar/`, `internal/webhooks/lemonsqueezy/` müssen den Helper ebenfalls verwenden.
 4. **Tests** in `internal/shared/logsafe/email_test.go` decken Edge-Cases (kein `@`, leeres String, multi-`@`, Unicode-Domains) ab und fixieren das Kern-Invariant: **der Local-Part darf in keinem Output auftauchen**.
 
 ### Was bewusst nicht geändert wurde

@@ -44,7 +44,7 @@ Die Entscheidung fällt jetzt, weil:
 
 ### Neutrale
 
-- Existierender `POST /ai/chat/stream` (Sprint 15) wird zum Template. Erste Folge-Endpoints (`GET /notifications/stream`, `GET /secpulse/scans/:id/progress/stream`) kommen in einer eigenen Realtime-Welle, voraussichtlich Sprint 17 oder Q3 2026.
+- Existierender `POST /ai/chat/stream` (Sprint 15) wird zum Template. Erste Folge-Endpoints (`GET /notifications/stream`, `GET /vaktscan/scans/:id/progress/stream`) kommen in einer eigenen Realtime-Welle, voraussichtlich Sprint 17 oder Q3 2026.
 - OTel-Tracing für SSE-Streams: jeder Stream-Open ist ein eigener Span; der Span endet bei Stream-Close. Tempo-Visualisierung bleibt damit klar zuordenbar.
 
 ## Referenzen

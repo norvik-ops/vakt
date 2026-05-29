@@ -40,7 +40,7 @@ Zwei NULL-bare Spalten in `organizations`:
 ### UI
 
 Org-Einstellungen → Abschnitt "KI-Modell" zeigt:
-- Dropdown der verfügbaren Ollama-Modelle (`GET /api/v1/secvitals/ai/models`)
+- Dropdown der verfügbaren Ollama-Modelle (`GET /api/v1/vaktcomply/ai/models`)
 - Optionales Freitext-Feld für Custom-Modell-Name (für BYOK-Provider)
 - Pro-Badge + Custom-Endpoint-Feld (nur bei `FeatureAIAdvisor`)
 

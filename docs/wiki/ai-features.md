@@ -10,10 +10,10 @@ Vakt enthält einen **lokalen KI-Berater**, der auf deiner eigenen Infrastruktur
 
 | Funktion | Endpoint | Wofür |
 |---|---|---|
-| **Compliance-Berater** | `POST /secvitals/ai/advice` | „Was sollte ich diese Woche tun?" — analysiert offene Controls, überfällige Tasks, kritische Risiken und gibt eine priorisierte Wochenplan-Empfehlung. |
-| **Bericht-Generator** | `POST /secvitals/ai/report` | Generiert Gap-Analyse, Risiko-Übersicht oder Executive Summary als Markdown — als Vorbereitung für Audit-Termine oder Management-Reviews. |
-| **Policy-Drafting** *(neu)* | `POST /secvitals/ai/draft-policy` | „Erstelle eine Passwort-Richtlinie für ISO 27001 A.5.17" — generiert einen Markdown-Entwurf in deutscher Sprache mit Standard-Abschnitten (Zweck, Geltungsbereich, Anforderungen, Verantwortlichkeiten). Admin reviewt und veröffentlicht. |
-| **Incident-Response-Guide** *(neu)* | `POST /secvitals/ai/incident-guide` | Aus einer Vorfalls-Beschreibung erzeugt die KI eine nummerierte Sofort-Checkliste mit gesetzlichen Fristen-Hinweisen (NIS2 T+24h / T+72h, DSGVO Art. 33 72 h, DORA T+4h). Direkt im UI per „KI-Sofortmaßnahmen"-Button anwendbar. |
+| **Compliance-Berater** | `POST /vaktcomply/ai/advice` | „Was sollte ich diese Woche tun?" — analysiert offene Controls, überfällige Tasks, kritische Risiken und gibt eine priorisierte Wochenplan-Empfehlung. |
+| **Bericht-Generator** | `POST /vaktcomply/ai/report` | Generiert Gap-Analyse, Risiko-Übersicht oder Executive Summary als Markdown — als Vorbereitung für Audit-Termine oder Management-Reviews. |
+| **Policy-Drafting** *(neu)* | `POST /vaktcomply/ai/draft-policy` | „Erstelle eine Passwort-Richtlinie für ISO 27001 A.5.17" — generiert einen Markdown-Entwurf in deutscher Sprache mit Standard-Abschnitten (Zweck, Geltungsbereich, Anforderungen, Verantwortlichkeiten). Admin reviewt und veröffentlicht. |
+| **Incident-Response-Guide** *(neu)* | `POST /vaktcomply/ai/incident-guide` | Aus einer Vorfalls-Beschreibung erzeugt die KI eine nummerierte Sofort-Checkliste mit gesetzlichen Fristen-Hinweisen (NIS2 T+24h / T+72h, DSGVO Art. 33 72 h, DORA T+4h). Direkt im UI per „KI-Sofortmaßnahmen"-Button anwendbar. |
 | **AI-System-Dokumentation** | (UI in EU AI Act-Modul) | Hilft beim Ausfüllen der technischen Dokumentation nach EU AI Act Art. 11 / Annex IV. |
 
 ---

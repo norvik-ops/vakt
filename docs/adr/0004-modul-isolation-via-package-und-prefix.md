@@ -19,11 +19,11 @@ Wir hätten getrennte Microservices nehmen können. Bei self-hosted KMU-Setups i
 
 1. **Go-Package-Boundary**: jedes Modul lebt unter `backend/internal/modules/<name>/`. Cross-Modul-Imports sind verboten (CI-Lint).
 2. **DB-Tabellen-Prefix**: jedes Modul hat seinen eigenen Tabellen-Prefix:
-   - `ck_` Vakt Comply (Package `secvitals`, compliance kit)
-   - `vb_` / `secpulse_` Vakt Scan (Package `secpulse`, vulnerability board)
-   - `so_` Vakt Vault (Package `secvault`, secret ops)
-   - `pg_` Vakt Aware (Package `secreflex`, phishguard — siehe ADR-0005 für Folgeproblem)
-   - `po_` Vakt Privacy (Package `secprivacy`, privacy ops)
+   - `ck_` Vakt Comply (Package `vaktcomply`, compliance kit)
+   - `vb_` / `vaktscan_` Vakt Scan (Package `vaktscan`, vulnerability board)
+   - `so_` Vakt Vault (Package `vaktvault`, secret ops)
+   - `pg_` Vakt Aware (Package `vaktaware`, phishguard — siehe ADR-0005 für Folgeproblem)
+   - `po_` Vakt Privacy (Package `vaktprivacy`, privacy ops)
    - `hr_` Vakt HR (Package `hr`)
 
 Cross-Modul-Kommunikation läuft ausschließlich über **Interfaces in `shared/`** (siehe `EvidenceWriter` für Vakt HR → Vakt Comply).

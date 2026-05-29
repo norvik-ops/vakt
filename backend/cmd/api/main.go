@@ -30,12 +30,12 @@ import (
 	"github.com/matharnica/vakt/internal/auth"
 	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/license"
-	"github.com/matharnica/vakt/internal/modules/hr"
-	"github.com/matharnica/vakt/internal/modules/secprivacy"
-	"github.com/matharnica/vakt/internal/modules/secpulse"
-	"github.com/matharnica/vakt/internal/modules/secreflex"
-	"github.com/matharnica/vakt/internal/modules/secvault"
-	"github.com/matharnica/vakt/internal/modules/secvitals"
+	"github.com/matharnica/vakt/internal/modules/vakthr"
+	"github.com/matharnica/vakt/internal/modules/vaktprivacy"
+	"github.com/matharnica/vakt/internal/modules/vaktscan"
+	"github.com/matharnica/vakt/internal/modules/vaktaware"
+	"github.com/matharnica/vakt/internal/modules/vaktvault"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/services/ai"
 	"github.com/matharnica/vakt/internal/services/alerting"
 	"github.com/matharnica/vakt/internal/services/evidence_auto"
@@ -188,7 +188,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		log.Info().Str("trusted_proxies", trustedProxies).Int("trust_options", len(opts)).Msg("IPExtractor configured for reverse proxy with explicit trust options")
 	} else {
 		e.IPExtractor = echo.ExtractIPDirect()
-		log.Info().Msg("IPExtractor set to direct — admin IP allowlist won't work behind a proxy unless VAKT_TRUSTED_PROXIES is set")
+		log.Warn().Msg("VAKT_TRUSTED_PROXIES not set — running in direct IP mode. If this instance is behind a reverse proxy, IP-based rate limits and admin allowlists will see the proxy IP instead of the client IP. Set VAKT_TRUSTED_PROXIES to the proxy CIDR to fix.")
 	}
 
 	// X-Request-ID — applied first so every subsequent log entry can reference it.
@@ -507,6 +507,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	if rdb != nil {
 		protected.Use(sharedmw.OrgRateLimitRedis(rdb))
 	} else {
+		log.Warn().Msg("Redis not configured — using in-memory per-org rate limiter. This is NOT multi-replica safe: the effective limit scales with replica count. Configure VAKT_REDIS_URL for production deployments.")
 		protected.Use(sharedmw.OrgRateLimit())
 	}
 
@@ -558,12 +559,12 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	}
 
 	// Module routes — all behind auth middleware, sharing the same DB pool
-	if cfg.IsModuleEnabled("secpulse") {
-		vbSvc := secpulse.NewService(pool, asynq.RedisClientOpt{Addr: redisOpt.Addr})
+	if cfg.IsModuleEnabled("vaktscan") {
+		vbSvc := vaktscan.NewService(pool, asynq.RedisClientOpt{Addr: redisOpt.Addr})
 		vbSvc.WithRedis(rdb)
 		vbSvc.WithWebhooks(webhookSvc)
-		secpulse.Register(protected.Group("/secpulse"), secpulse.NewHandler(vbSvc))
-		log.Info().Msg("secpulse routes registered")
+		vaktscan.Register(protected.Group("/vaktscan"), vaktscan.NewHandler(vbSvc))
+		log.Info().Msg("vaktscan routes registered")
 	}
 
 	auditorRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
@@ -573,34 +574,34 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(10.0 / 60.0), Burst: 10, ExpiresIn: 5 * time.Minute},
 	))
 
-	// cloudEvidence bridges secvitals → cloud integration without a direct import.
-	// It is set inside the secvitals block and falls back to a no-op when secvitals is disabled.
+	// cloudEvidence bridges vaktcomply → cloud integration without a direct import.
+	// It is set inside the vaktcomply block and falls back to a no-op when vaktcomply is disabled.
 	var cloudEvidence = cloudintegration.NoopEvidenceWriter()
 
-	// hrEvidence bridges hr → secvitals without a direct import.
-	// Set inside the secvitals block; falls back to a no-op when secvitals is disabled.
-	hrEvidence := hr.EvidenceWriter(hr.NoopEvidenceWriter())
+	// hrEvidence bridges hr → vaktcomply without a direct import.
+	// Set inside the vaktcomply block; falls back to a no-op when vaktcomply is disabled.
+	hrEvidence := vakthr.EvidenceWriter(vakthr.NoopEvidenceWriter())
 
-	if cfg.IsModuleEnabled("secvitals") {
-		ckSvc := secvitals.NewService(pool)
+	if cfg.IsModuleEnabled("vaktcomply") {
+		ckSvc := vaktcomply.NewService(pool)
 		ckSvc.WithRedis(rdb)
 		ckSvc.WithNotifyService(notify.NewService(pool, cfg))
 		ckSvc.WithWebhooks(webhookSvc)
 		if cfg.AIProvider != "disabled" && cfg.AIProvider != "" && cfg.AIBaseURL != "" {
 			ckSvc.WithAIClient(ai.NewAIClient(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel))
 		}
-		cloudEvidence = secvitals.NewCloudEvidenceWriter(ckSvc.Repo())
-		hrEvidence = secvitals.NewHREvidenceWriter(pool)
+		cloudEvidence = vaktcomply.NewCloudEvidenceWriter(ckSvc.Repo())
+		hrEvidence = vaktcomply.NewHREvidenceWriter(pool)
 		ckSvc.ReseedBuiltinControls(ctx)
 		ckSvc.SeedBuiltinMeasures(ctx)
 		if err := ckSvc.SeedFrameworkMappings(ctx); err != nil {
 			log.Warn().Err(err).Msg("seed framework mappings failed (non-critical)")
 		}
-		if err := secvitals.SeedPolicyTemplates(ctx, pool); err != nil {
+		if err := vaktcomply.SeedPolicyTemplates(ctx, pool); err != nil {
 			log.Warn().Err(err).Msg("seed policy templates failed (non-critical)")
 		}
-		ckHandler := secvitals.NewHandler(ckSvc).WithDB(pool)
-		ckHandler.WithPolicyAcceptanceConfig(secvitals.PolicyAcceptanceHandlerConfig{
+		ckHandler := vaktcomply.NewHandler(ckSvc).WithDB(pool)
+		ckHandler.WithPolicyAcceptanceConfig(vaktcomply.PolicyAcceptanceHandlerConfig{
 			SMTPHost:    cfg.SMTPHost,
 			SMTPPort:    cfg.SMTPPort,
 			SMTPUser:    cfg.SMTPUser,
@@ -612,23 +613,23 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		if err := os.MkdirAll(filepath.Join(cfg.UploadDir, "evidence"), 0o755); err != nil {
 			log.Warn().Err(err).Msg("could not create evidence upload dir")
 		}
-		efSvc := secvitals.NewEvidenceFileService(ckSvc.Repo(), cfg.UploadDir)
+		efSvc := vaktcomply.NewEvidenceFileService(ckSvc.Repo(), cfg.UploadDir)
 		ckHandler.WithEvidenceFileService(efSvc)
-		secvitals.Register(protected.Group("/secvitals"), ckHandler)
+		vaktcomply.Register(protected.Group("/vaktcomply"), ckHandler)
 		// Sprint 22 / S22-6: authentifizierter NIS2-Wizard-Migrate-Endpoint
-		// (POST /secvitals/nis2-assessment/migrate-from-anonymous).
-		nis2wizard.RegisterAuthenticated(protected.Group("/secvitals"), nis2wizardHandler)
+		// (POST /vaktcomply/nis2-assessment/migrate-from-anonymous).
+		nis2wizard.RegisterAuthenticated(protected.Group("/vaktcomply"), nis2wizardHandler)
 		// Auditor portal uses URL token — exempt from Bearer auth; rate-limited to 30 req/min per IP
 		portalRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
 			middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(30.0 / 60.0), Burst: 30, ExpiresIn: 5 * time.Minute},
 		))
-		secvitals.RegisterPublic(api.Group("/secvitals", portalRateLimiter), ckHandler)
+		vaktcomply.RegisterPublic(api.Group("/vaktcomply", portalRateLimiter), ckHandler)
 		// Policy acceptance — public token routes (no Bearer auth), rate-limited
-		secvitals.RegisterPolicyAcceptPublic(api.Group("", portalRateLimiter), ckHandler)
+		vaktcomply.RegisterPolicyAcceptPublic(api.Group("", portalRateLimiter), ckHandler)
 		// Audit package export
-		audit.RegisterExport(protected.Group("/secvitals"), pool)
+		audit.RegisterExport(protected.Group("/vaktcomply"), pool)
 		// One-click audit report PDF
-		audit.RegisterReport(protected.Group("/secvitals"), pool)
+		audit.RegisterReport(protected.Group("/vaktcomply"), pool)
 		// AI-generated reports via OpenAI-compatible provider.
 		// Sprint 15 (S15-1/2/3/5): Rate-Limit + Daily-Quota + Response-Cache
 		// + Streaming-SSE-Endpoint laufen über RegisterWithOptions, sofern
@@ -637,7 +638,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		if aiFailOpen {
 			log.Warn().Msg("ai: VAKT_AI_FAIL_OPEN_ON_OUTAGE=true — rate-limit + quota checks will fail open during Redis/Postgres outages (audit-relevant choice)")
 		}
-		ai.RegisterWithOptions(protected.Group("/secvitals"), pool, cfg.AIProvider, cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel, ai.RegisterOptions{
+		ai.RegisterWithOptions(protected.Group("/vaktcomply"), pool, cfg.AIProvider, cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel, ai.RegisterOptions{
 			Redis:            rdb,
 			RateLimitRPM:     cfg.AIRateLimitRPM,
 			DailyTokenLimit:  cfg.AIDailyTokenLimit,
@@ -646,26 +647,26 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 			CostPerMTokenOut: cfg.AICostPerMTokenOut,
 			FailOpenOnOutage: aiFailOpen,
 		})
-		// Auditor portal — read-only secvitals access via session token (no Bearer auth)
-		secvitals.RegisterAuditor(api.Group("/auditor/secvitals", auditorRateLimiter, auditor.AuditorAuth(pool)), ckHandler)
+		// Auditor portal — read-only vaktcomply access via session token (no Bearer auth)
+		vaktcomply.RegisterAuditor(api.Group("/auditor/vaktcomply", auditorRateLimiter, auditor.AuditorAuth(pool)), ckHandler)
 		// Auto-evidence inbox — GitHub, SecReflex, SecPulse
-		evidence_auto.RegisterRoutes(protected.Group("/secvitals"), pool)
-		log.Info().Msg("secvitals routes registered")
+		evidence_auto.RegisterRoutes(protected.Group("/vaktcomply"), pool)
+		log.Info().Msg("vaktcomply routes registered")
 	}
 
-	if cfg.IsModuleEnabled("secvault") && cfg.SecretKey != "" {
-		soSvc := secvault.NewService(pool, vaultKey, asynqClient)
-		secvault.Register(protected.Group("/secvault"), secvault.NewHandler(soSvc))
-		log.Info().Msg("secvault routes registered")
+	if cfg.IsModuleEnabled("vaktvault") && cfg.SecretKey != "" {
+		soSvc := vaktvault.NewService(pool, vaultKey, asynqClient)
+		vaktvault.Register(protected.Group("/vaktvault"), vaktvault.NewHandler(soSvc))
+		log.Info().Msg("vaktvault routes registered")
 	}
 
-	if cfg.IsModuleEnabled("secreflex") {
-		pgSvc := secreflex.NewService(pool, secreflex.SMTPConfig{
+	if cfg.IsModuleEnabled("vaktaware") {
+		pgSvc := vaktaware.NewService(pool, vaktaware.SMTPConfig{
 			Host: cfg.SMTPHost, Port: cfg.SMTPPort,
 			User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
 		}, asynq.RedisClientOpt{Addr: redisOpt.Addr})
-		secreflex.Register(protected.Group("/secreflex"), secreflex.NewHandler(pgSvc))
-		log.Info().Msg("secreflex routes registered")
+		vaktaware.Register(protected.Group("/vaktaware"), vaktaware.NewHandler(pgSvc))
+		log.Info().Msg("vaktaware routes registered")
 	}
 
 	// External alerting & webhooks (cross-module) — created before modules that fire events.
@@ -685,26 +686,26 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		log.Info().Msg("alerting routes registered")
 	}
 
-	if cfg.IsModuleEnabled("secprivacy") {
-		poSvc := secprivacy.NewService(pool, asynq.RedisClientOpt{Addr: redisOpt.Addr})
-		poHandler := secprivacy.NewHandler(poSvc).WithDB(pool)
+	if cfg.IsModuleEnabled("vaktprivacy") {
+		poSvc := vaktprivacy.NewService(pool, asynq.RedisClientOpt{Addr: redisOpt.Addr})
+		poHandler := vaktprivacy.NewHandler(poSvc).WithDB(pool)
 		if alertSvc != nil {
 			poHandler.WithAlerting(alertSvc.Fire)
 		}
-		secprivacy.Register(protected.Group("/secprivacy"), poHandler)
+		vaktprivacy.Register(protected.Group("/vaktprivacy"), poHandler)
 		// DSR portal uses URL slug/token — exempt from Bearer auth; rate-limited to 30 req/min per IP
 		dsrPortalRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
 			middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(30.0 / 60.0), Burst: 30, ExpiresIn: 5 * time.Minute},
 		))
-		secprivacy.RegisterPublic(api.Group("/secprivacy", dsrPortalRateLimiter), poHandler)
-		log.Info().Msg("secprivacy routes registered")
+		vaktprivacy.RegisterPublic(api.Group("/vaktprivacy", dsrPortalRateLimiter), poHandler)
+		log.Info().Msg("vaktprivacy routes registered")
 	}
 
 	// HR module — onboarding and offboarding workflows
-	hrSvc := hr.NewService(hr.NewRepository(pool)).WithEvidenceWriter(hrEvidence)
-	hrHandler := hr.NewHandler(hrSvc)
-	hr.Register(protected.Group("/hr"), hrHandler)
-	log.Info().Msg("hr routes registered")
+	hrSvc := vakthr.NewService(vakthr.NewRepository(pool)).WithEvidenceWriter(hrEvidence)
+	hrHandler := vakthr.NewHandler(hrSvc)
+	vakthr.Register(protected.Group("/vakthr"), hrHandler)
+	log.Info().Msg("vakthr routes registered")
 
 	// Account self-service: DSGVO Art. 17 (delete) and Art. 20 (export).
 	accountHandler := account.NewHandler(account.NewService(pool))

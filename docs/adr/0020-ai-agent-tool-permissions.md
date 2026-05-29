@@ -20,7 +20,7 @@ Vakt braucht eine codifizierte Regel, BEVOR der erste mutierende Tool-Call hinzu
 
 **Der AI-Agent darf nur Tools aufrufen, die der initiierende User direkt aufrufen könnte.** Konkret:
 
-1. Jedes `AgentTool` deklariert via `RequireScope() string` einen Permission-String (z.B. `secpulse.findings.read`, `secvitals.controls.write`).
+1. Jedes `AgentTool` deklariert via `RequireScope() string` einen Permission-String (z.B. `vaktscan.findings.read`, `vaktcomply.controls.write`).
 2. Beim Agent-Run wird die User-Permission-Liste aus dem Echo-Context geladen (gleicher Pfad wie `RequirePermission`-Middleware).
 3. Der `AgentRunner` filtert die Tool-Liste, BEVOR sie dem LLM im Plan-Prompt präsentiert wird — der Agent „sieht" Tools, die er nicht nutzen darf, gar nicht erst.
 4. Vor jedem `Tool.Execute` läuft ein zweiter Scope-Check, defensiv: wenn der LLM trotz Filter ein nicht-erlaubtes Tool wählt, blockt der Runner mit `ErrToolNotAllowed`.
@@ -46,7 +46,7 @@ Vakt braucht eine codifizierte Regel, BEVOR der erste mutierende Tool-Call hinzu
 ### Negative
 
 - Tool-Implementierung wird leicht komplexer: jedes neue Tool muss `RequireScope()` explizit deklarieren. Verhindert auch, dass jemand ein Tool ohne RBAC-Markierung commits — golangci-Linter-Custom-Rule planen (`forbidigo` mit Pattern `RequireScope.*return ""`-Detector).
-- Multi-Step-Workflows können an einer einzigen fehlenden Permission scheitern. Frontend muss klare Fehler-UX liefern: „Workflow stoppt — User braucht zusätzlich `secvitals.controls.write` für Schritt 3".
+- Multi-Step-Workflows können an einer einzigen fehlenden Permission scheitern. Frontend muss klare Fehler-UX liefern: „Workflow stoppt — User braucht zusätzlich `vaktcomply.controls.write` für Schritt 3".
 
 ### Neutrale
 

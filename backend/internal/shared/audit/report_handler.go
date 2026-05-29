@@ -21,7 +21,7 @@ func NewReportHandler(db *pgxpool.Pool) *ReportHandler {
 	return &ReportHandler{db: db}
 }
 
-// GenerateAuditReport handles GET /api/v1/secvitals/audit-report.
+// GenerateAuditReport handles GET /api/v1/vaktcomply/audit-report.
 // It collects all compliance data for the organisation and renders a PDF.
 func (h *ReportHandler) GenerateAuditReport(c echo.Context) error {
 	orgID, ok := c.Get("org_id").(string)

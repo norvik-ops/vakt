@@ -160,7 +160,7 @@ func searchControls(ctx context.Context, db *pgxpool.Pool, orgID, pattern string
 			continue
 		}
 		r.EntityType = "control"
-		r.URL = "/secvitals/frameworks/" + frameworkID
+		r.URL = "/vaktcomply/frameworks/" + frameworkID
 		results = append(results, r)
 	}
 	return results
@@ -181,7 +181,7 @@ func searchRisks(ctx context.Context, db *pgxpool.Pool, orgID, pattern string, l
 			continue
 		}
 		r.EntityType = "risk"
-		r.URL = "/secvitals/risks"
+		r.URL = "/vaktcomply/risks"
 		results = append(results, r)
 	}
 	return results
@@ -202,7 +202,7 @@ func searchPolicies(ctx context.Context, db *pgxpool.Pool, orgID, pattern string
 			continue
 		}
 		r.EntityType = "policy"
-		r.URL = "/secvitals/policies"
+		r.URL = "/vaktcomply/policies"
 		results = append(results, r)
 	}
 	return results
@@ -223,7 +223,7 @@ func searchIncidents(ctx context.Context, db *pgxpool.Pool, orgID, pattern strin
 			continue
 		}
 		r.EntityType = "incident"
-		r.URL = "/secvitals/incidents"
+		r.URL = "/vaktcomply/incidents"
 		results = append(results, r)
 	}
 	return results
@@ -244,7 +244,7 @@ func searchCAPAs(ctx context.Context, db *pgxpool.Pool, orgID, pattern string, l
 			continue
 		}
 		r.EntityType = "capa"
-		r.URL = "/secvitals/capas"
+		r.URL = "/vaktcomply/capas"
 		results = append(results, r)
 	}
 	return results
@@ -266,7 +266,7 @@ func searchAssets(ctx context.Context, db *pgxpool.Pool, orgID, pattern string, 
 		}
 		r.EntityType = "asset"
 		r.Subtitle = "Asset"
-		r.URL = "/secpulse/assets/" + r.ID
+		r.URL = "/vaktscan/assets/" + r.ID
 		results = append(results, r)
 	}
 	return results
@@ -288,7 +288,7 @@ func searchFindings(ctx context.Context, db *pgxpool.Pool, orgID, pattern string
 		}
 		r.EntityType = "finding"
 		r.Subtitle = "Finding"
-		r.URL = "/secpulse/findings/" + r.ID
+		r.URL = "/vaktscan/findings/" + r.ID
 		results = append(results, r)
 	}
 	return results
@@ -310,7 +310,7 @@ func searchDSRs(ctx context.Context, db *pgxpool.Pool, orgID, pattern string, li
 		}
 		r.EntityType = "dsr"
 		r.Subtitle = "DSR"
-		r.URL = "/secprivacy/dsr"
+		r.URL = "/vaktprivacy/dsr"
 		results = append(results, r)
 	}
 	return results
@@ -332,7 +332,7 @@ func searchBreaches(ctx context.Context, db *pgxpool.Pool, orgID, pattern string
 		}
 		r.EntityType = "breach"
 		r.Subtitle = "Datenpanne"
-		r.URL = "/secprivacy/breach"
+		r.URL = "/vaktprivacy/breach"
 		results = append(results, r)
 	}
 	return results

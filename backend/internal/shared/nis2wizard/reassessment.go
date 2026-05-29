@@ -3,10 +3,10 @@ package nis2wizard
 // Sprint 28 / S28-3: Re-Assessment-History für eingeloggte Orgs.
 //
 // Flow:
-//   1. POST /secvitals/reassess         → CreateReassessmentRun (ProGate: FeatureNIS2Reporting)
-//   2. POST /secvitals/reassess/:id/answer → SaveReassessmentAnswer
-//   3. GET  /secvitals/reassess/:id/result → GetReassessmentResult
-//   4. GET  /secvitals/history          → GetReassessmentHistory (ProGate: FeatureNIS2Reporting)
+//   1. POST /vaktcomply/reassess         → CreateReassessmentRun (ProGate: FeatureNIS2Reporting)
+//   2. POST /vaktcomply/reassess/:id/answer → SaveReassessmentAnswer
+//   3. GET  /vaktcomply/reassess/:id/result → GetReassessmentResult
+//   4. GET  /vaktcomply/history          → GetReassessmentHistory (ProGate: FeatureNIS2Reporting)
 //
 // 90-Tage-Cooldown: eine Org kann keinen neuen Run starten, wenn der letzte
 // Run weniger als 90 Tage alt ist. Fehler: 409 CONFLICT mit Fehlermeldung.

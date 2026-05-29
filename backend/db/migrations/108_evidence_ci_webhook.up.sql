@@ -5,4 +5,4 @@ ALTER TABLE ck_evidence DROP CONSTRAINT IF EXISTS ck_evidence_auto_source_type_c
 
 ALTER TABLE ck_evidence
   ADD CONSTRAINT ck_evidence_auto_source_type_check
-  CHECK (auto_source_type IN ('github', 'secreflex', 'secpulse', 'ci_pipeline', 'ci_webhook'));
+  CHECK (auto_source_type IN ('github', 'vaktaware', 'vaktscan', 'ci_pipeline', 'ci_webhook'));

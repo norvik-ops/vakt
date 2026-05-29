@@ -14,15 +14,15 @@ func TestScopeAllows(t *testing.T) {
 		required string
 		want     bool
 	}{
-		{"wildcard all", []string{"*"}, "secvault.secrets.read", true},
-		{"exact match", []string{"secvault.secrets.read"}, "secvault.secrets.read", true},
-		{"module wildcard match", []string{"secvault.*"}, "secvault.secrets.read", true},
-		{"module wildcard mismatch", []string{"secpulse.*"}, "secvault.secrets.read", false},
-		{"empty scopes", []string{}, "secvault.secrets.read", false},
-		{"non-matching scope", []string{"secpulse.findings.read"}, "secvault.secrets.read", false},
-		{"multiple scopes one matches", []string{"secpulse.findings.read", "secvault.secrets.read"}, "secvault.secrets.read", true},
-		{"wildcard combined with specific", []string{"secvault.*", "secpulse.findings.read"}, "secpulse.findings.write", false},
-		{"wildcard combined match", []string{"secvault.*", "secpulse.findings.read"}, "secvault.secrets.write", true},
+		{"wildcard all", []string{"*"}, "vaktvault.secrets.read", true},
+		{"exact match", []string{"vaktvault.secrets.read"}, "vaktvault.secrets.read", true},
+		{"module wildcard match", []string{"vaktvault.*"}, "vaktvault.secrets.read", true},
+		{"module wildcard mismatch", []string{"vaktscan.*"}, "vaktvault.secrets.read", false},
+		{"empty scopes", []string{}, "vaktvault.secrets.read", false},
+		{"non-matching scope", []string{"vaktscan.findings.read"}, "vaktvault.secrets.read", false},
+		{"multiple scopes one matches", []string{"vaktscan.findings.read", "vaktvault.secrets.read"}, "vaktvault.secrets.read", true},
+		{"wildcard combined with specific", []string{"vaktvault.*", "vaktscan.findings.read"}, "vaktscan.findings.write", false},
+		{"wildcard combined match", []string{"vaktvault.*", "vaktscan.findings.read"}, "vaktvault.secrets.write", true},
 	}
 
 	for _, tc := range tests {

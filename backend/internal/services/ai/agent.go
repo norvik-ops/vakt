@@ -372,7 +372,7 @@ func hasScope(perms []string, required string) bool {
 		if p == "*" || p == required {
 			return true
 		}
-		// Wildcard: secvitals.*
+		// Wildcard: vaktcomply.*
 		if len(p) > 2 && p[len(p)-1] == '*' && p[len(p)-2] == '.' {
 			prefix := p[:len(p)-1]
 			if len(required) >= len(prefix) && required[:len(prefix)] == prefix {

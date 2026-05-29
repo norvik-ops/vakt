@@ -2,7 +2,7 @@
 // regulatory incident reporting (DORA, NIS2, DSGVO/GDPR).
 //
 // It eliminates duplication between the per-module deadline helpers in
-// secvitals/service_incidents.go and any future module that needs the same
+// vaktcomply/service_incidents.go and any future module that needs the same
 // traffic-light (Ampel) logic.
 package compliance_reporting
 

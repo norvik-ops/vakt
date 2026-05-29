@@ -91,7 +91,7 @@ func (h *Handler) MigrateFromAnonymous(c echo.Context) error {
 	assessmentID, mapped, err := h.svc.MigrateAndAutoMap(c.Request().Context(), input.Token, orgID, userID)
 	if err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Msg("nis2: migrate-from-anonymous failed")
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "migration failed"})
 	}
 	return c.JSON(http.StatusOK, map[string]any{
 		"assessment_id":   assessmentID,
@@ -157,8 +157,10 @@ func (h *Handler) StartReassessment(c echo.Context) error {
 	runID, err := h.svc.CreateReassessmentRun(c.Request().Context(), orgID)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "cooldown:") {
+			// The cooldown suffix (e.g. "cooldown:30 days remaining") is
+			// intentionally user-facing — it tells the frontend how long to wait.
 			return c.JSON(http.StatusConflict, map[string]string{
-				"error": err.Error(),
+				"error": strings.TrimPrefix(err.Error(), "cooldown:"),
 				"code":  "REASSESSMENT_COOLDOWN",
 			})
 		}
@@ -191,7 +193,8 @@ func (h *Handler) AnswerReassessment(c echo.Context) error {
 	}
 	run, err := h.svc.SaveReassessmentAnswer(c.Request().Context(), orgID, runID, input.QuestionID, input.Value, input.Comment)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		log.Error().Err(err).Str("org_id", orgID).Str("run_id", runID).Msg("nis2: save reassessment answer failed")
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid answer"})
 	}
 	return c.JSON(http.StatusOK, run)
 }
@@ -282,7 +285,8 @@ func (h *Handler) AnswerMultiFramework(c echo.Context) error {
 	}
 	run, err := h.svc.AnswerMulti(c.Request().Context(), token, input.QuestionID, input.Value, input.Comment)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		log.Error().Err(err).Str("run_id", runID).Msg("nis2: answer multi-framework failed")
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid answer"})
 	}
 	return c.JSON(http.StatusOK, run)
 }
@@ -329,7 +333,8 @@ func (h *Handler) Answer(c echo.Context) error {
 	}
 	run, err := h.svc.Answer(c.Request().Context(), input.Token, input.QuestionID, input.Value, input.Comment)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		log.Error().Err(err).Msg("nis2wizard: answer failed")
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid answer"})
 	}
 	return c.JSON(http.StatusOK, run)
 }

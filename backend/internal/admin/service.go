@@ -268,7 +268,7 @@ func (s *Service) UpdateUserRole(ctx context.Context, orgID, targetUserID string
 
 // ListModules returns the enabled/disabled state for each known module.
 func (s *Service) ListModules() []ModuleStatus {
-	known := []string{"secpulse", "secvitals", "secvault", "secreflex", "secprivacy"}
+	known := []string{"vaktscan", "vaktcomply", "vaktvault", "vaktaware", "vaktprivacy"}
 	result := make([]ModuleStatus, 0, len(known))
 
 	for _, name := range known {

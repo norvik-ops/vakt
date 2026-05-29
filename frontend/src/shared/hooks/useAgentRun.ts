@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 // Sprint 18 / S22-8: Hook zur Konsumierung des Agent-Run-SSE-Endpoints
-// POST /api/v1/secvitals/ai/agent/run. Backend streamt strukturierte
+// POST /api/v1/vaktcomply/ai/agent/run. Backend streamt strukturierte
 // AgentEvent-Frames (plan, tool_call, tool_result, reflect, final, error)
 // und schließt mit "data: [DONE]\n\n".
 //
@@ -86,7 +86,7 @@ export function useAgentRun() {
     if (csrf) headers['X-CSRF-Token'] = csrf
 
     try {
-      const res = await fetch('/api/v1/secvitals/ai/agent/run', {
+      const res = await fetch('/api/v1/vaktcomply/ai/agent/run', {
         method: 'POST',
         credentials: 'include',
         headers,
@@ -172,7 +172,7 @@ export function useAgentRun() {
     const csrf = readCsrfToken()
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (csrf) headers['X-CSRF-Token'] = csrf
-    await fetch(`/api/v1/secvitals/ai/agent/runs/${rid}/approve`, {
+    await fetch(`/api/v1/vaktcomply/ai/agent/runs/${rid}/approve`, {
       method: 'POST',
       credentials: 'include',
       headers,
@@ -183,7 +183,7 @@ export function useAgentRun() {
     const csrf = readCsrfToken()
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (csrf) headers['X-CSRF-Token'] = csrf
-    await fetch(`/api/v1/secvitals/ai/agent/runs/${rid}/reject`, {
+    await fetch(`/api/v1/vaktcomply/ai/agent/runs/${rid}/reject`, {
       method: 'POST',
       credentials: 'include',
       headers,

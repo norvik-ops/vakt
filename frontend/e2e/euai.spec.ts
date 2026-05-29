@@ -14,7 +14,7 @@ const EU_AI_DASHBOARD = {
 
 const AI_SYSTEMS_LIST = { data: [], pagination: { page: 1, limit: 25, total: 0, total_pages: 1 } }
 
-test.describe('EU AI Act (secvitals)', () => {
+test.describe('EU AI Act (vaktcomply)', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript((u) => { localStorage.setItem('vakt_user', JSON.stringify(u)) }, FAKE_USER)
     await page.route('**/api/v1/**', route =>
@@ -23,26 +23,26 @@ test.describe('EU AI Act (secvitals)', () => {
   })
 
   test('EU AI Act Inventar lädt', async ({ page }) => {
-    await page.route('**/api/v1/secvitals/ai-systems**', route =>
+    await page.route('**/api/v1/vaktcomply/ai-systems**', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(AI_SYSTEMS_LIST),
       })
     )
-    await page.goto('/secvitals/ai-systems')
-    await expect(page).toHaveURL(/secvitals\/ai-systems/)
+    await page.goto('/vaktcomply/ai-systems')
+    await expect(page).toHaveURL(/vaktcomply\/ai-systems/)
   })
 
   test('KI-System anlegen Navigation', async ({ page }) => {
-    await page.route('**/api/v1/secvitals/ai-systems**', route =>
+    await page.route('**/api/v1/vaktcomply/ai-systems**', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(AI_SYSTEMS_LIST),
       })
     )
-    await page.goto('/secvitals/ai-systems')
+    await page.goto('/vaktcomply/ai-systems')
     // Expect a button or link to create new AI system
     await expect(
       page.locator('button, a').filter({ hasText: /Neues|System|Anlegen|Hinzufügen|New/i }).first()
@@ -50,14 +50,14 @@ test.describe('EU AI Act (secvitals)', () => {
   })
 
   test('EU AI Act Dashboard navigierbar', async ({ page }) => {
-    await page.route('**/api/v1/secvitals/eu-ai-act/dashboard**', route =>
+    await page.route('**/api/v1/vaktcomply/eu-ai-act/dashboard**', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(EU_AI_DASHBOARD),
       })
     )
-    await page.goto('/secvitals/eu-ai-act/dashboard')
-    await expect(page).toHaveURL(/secvitals\/eu-ai-act\/dashboard/)
+    await page.goto('/vaktcomply/eu-ai-act/dashboard')
+    await expect(page).toHaveURL(/vaktcomply\/eu-ai-act\/dashboard/)
   })
 })

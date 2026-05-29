@@ -369,9 +369,9 @@ type Querier interface {
 	ListActiveOrgIDs(ctx context.Context) ([]string, error)
 	ListAllBuiltinCKFrameworks(ctx context.Context) ([]CkFrameworks, error)
 	ListAllCKControlExceptions(ctx context.Context, orgID string) ([]CkControlExceptions, error)
-	// ── Org Helpers (verwendet von secvitals; touchen organizations/users) ────
+	// ── Org Helpers (verwendet von vaktcomply; touchen organizations/users) ────
 	// Auch wenn diese Tabellen nicht unter dem ck_-Prefix laufen, gehören sie zu
-	// den verschiedenen Aggregaten, die der secvitals-Service benötigt
+	// den verschiedenen Aggregaten, die der vaktcomply-Service benötigt
 	// (Sector-Settings, Admin-Mailings, Cross-Org-Seeding).
 	ListAllOrgIDs(ctx context.Context) ([]string, error)
 	ListCKAIClassifications(ctx context.Context, arg ListCKAIClassificationsParams) ([]CkAiClassifications, error)

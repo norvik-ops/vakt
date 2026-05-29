@@ -6,7 +6,7 @@
 
 ## Context
 
-Vakt modules emit compliance-relevant events to Vakt Comply (secvitals) via an Asynq background queue. Before this ADR, all three emitting modules (secvault, secprivacy, secreflex) built `crossevidence.EvidencePayload` structs by hand, using unvalidated `string` fields for `Source` and `ResourceType`. This led to:
+Vakt modules emit compliance-relevant events to Vakt Comply (vaktcomply) via an Asynq background queue. Before this ADR, all three emitting modules (vaktvault, vaktprivacy, vaktaware) built `crossevidence.EvidencePayload` structs by hand, using unvalidated `string` fields for `Source` and `ResourceType`. This led to:
 
 - **Typo risk**: `"vakt-aware/training-completion"` vs `"vakt-aware/training-completed"` — silent divergence
 - **No discovery**: no central list of which events exist across the platform
@@ -24,7 +24,7 @@ Module callers replace raw struct literals with typed constructor calls:
 
 ```go
 // Before
-crossevidence.EvidencePayload{OrgID: orgID, Source: "secvault", ResourceType: "vakt-vault/secret-rotated", ...}
+crossevidence.EvidencePayload{OrgID: orgID, Source: "vaktvault", ResourceType: "vakt-vault/secret-rotated", ...}
 
 // After
 events.SecretRotated(orgID, secretKey)
@@ -34,5 +34,5 @@ events.SecretRotated(orgID, secretKey)
 
 - Adding a new event type requires one typed constructor in `platform/events` — discoverable and reviewable in one place
 - The Asynq worker handler (`cmd/worker/handlers.go`) is unchanged — `EvidencePayload` is wire-format compatible
-- `ProgressEvent` (scan progress SSE) remains in `secpulse` — it is not a compliance event and uses a different transport (Redis Pub/Sub, not Asynq)
-- Future: IncidentCreated and FindingCreated constructors are ready; callers in secvitals and secpulse can adopt them when those create-paths are refactored
+- `ProgressEvent` (scan progress SSE) remains in `vaktscan` — it is not a compliance event and uses a different transport (Redis Pub/Sub, not Asynq)
+- Future: IncidentCreated and FindingCreated constructors are ready; callers in vaktcomply and vaktscan can adopt them when those create-paths are refactored

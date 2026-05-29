@@ -17,13 +17,13 @@
     "closeMenu": "Fermer le menu"
   },
   "modules": {
-    "secpulse": "SecPulse",
-    "secvitals": "SecVitals",
-    "secvault": "SecVault",
-    "secreflex": "SecReflex",
-    "secprivacy": "SecPrivacy"
+    "vaktscan": "SecPulse",
+    "vaktcomply": "SecVitals",
+    "vaktvault": "SecVault",
+    "vaktaware": "SecReflex",
+    "vaktprivacy": "SecPrivacy"
   },
-  "secpulse": {
+  "vaktscan": {
     "assets": "Actifs",
     "findings": "Vulnérabilités",
     "sla": "Tableau de bord SLA",
@@ -147,7 +147,7 @@
       "resolved": "Résolu"
     }
   },
-  "secvitals": {
+  "vaktcomply": {
     "frameworks": "Référentiels",
     "risks": "Risques",
     "incidents": "Incidents",
@@ -591,7 +591,7 @@
       "open": "Ouvert"
     }
   },
-  "secprivacy": {
+  "vaktprivacy": {
     "vvt": "RoPA",
     "dpia": "AIPD",
     "avv": "DPA",
@@ -707,7 +707,7 @@
       "saving": "Enregistrement…"
     }
   },
-  "secvault": {
+  "vaktvault": {
     "projectsPage": {
       "title": "Projets",
       "description": "Gérer les projets de secrets et leurs environnements",
@@ -1223,23 +1223,23 @@
     "finishing": "Configuration…",
     "setupFailed": "Échec de la configuration. Veuillez réessayer.",
     "modules": {
-      "secpulse": {
+      "vaktscan": {
         "label": "Vakt Scan — Gestion des vulnérabilités",
         "description": "Orchestre les scanners existants (Trivy, Nuclei, OpenVAS), déduplique les vulnérabilités et les priorise par risque. Les résultats sont automatiquement intégrés comme preuves de conformité dans Vakt Comply."
       },
-      "secvitals": {
+      "vaktcomply": {
         "label": "Vakt Comply — Conformité & Gouvernance",
         "description": "Guide à travers NIS2, ISO 27001 et la protection de base BSI. Gère les contrôles, les lacunes et la progression. Stocke les preuves versionnées et produit une documentation prête pour l'audit."
       },
-      "secvault": {
+      "vaktvault": {
         "label": "Vakt Vault — Secrets & Analyse Git",
         "description": "Gestion sécurisée des secrets avec chiffrement AES-256-GCM. Analyse les dépôts Git à la recherche d'identifiants exposés et supporte la rotation automatique."
       },
-      "secreflex": {
+      "vaktaware": {
         "label": "Vakt Aware — Simulations de phishing",
         "description": "Simulations de phishing internes et micro-formations pour les employés. Conforme au comité d'entreprise via des rapports anonymisés. Les formations terminées sont intégrées comme preuves dans Vakt Comply."
       },
-      "secprivacy": {
+      "vaktprivacy": {
         "label": "Vakt Privacy — Documentation RGPD",
         "description": "Documentation RGPD complète : Registre des activités de traitement (Art. 30), Analyses d'impact relatives à la protection des données (Art. 35), contrats DPA (Art. 28), et registre des violations de données avec obligation de notification 72h (Art. 33/34)."
       }

@@ -4,8 +4,8 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { Skeleton } from '../components/ui/skeleton'
-import { useScoreHistory } from '../modules/secvitals/hooks/useScoreHistory'
-import type { ScoreHistoryEntry } from '../modules/secvitals/hooks/useScoreHistory'
+import { useScoreHistory } from '../modules/vaktcomply/hooks/useScoreHistory'
+import type { ScoreHistoryEntry } from '../modules/vaktcomply/hooks/useScoreHistory'
 
 function linearForecast(points: { x: number; y: number }[], futureX: number): number {
   const n = points.length

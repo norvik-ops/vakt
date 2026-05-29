@@ -35,7 +35,7 @@ test.describe('AgentRunPanel', () => {
   test('renders input textarea and start button', async ({ page }) => {
     await mockStoreAuth(page)
     await mockAgentStream(page)
-    await page.goto('/secvitals/ai/agent')
+    await page.goto('/vaktcomply/ai/agent')
     await expect(page.locator('textarea').or(page.locator('[placeholder*="Erstelle"]'))).toBeVisible({ timeout: 8000 })
     await expect(page.locator('button', { hasText: /starten|start|agent/i }).first()).toBeVisible({ timeout: 8000 })
   })
@@ -43,7 +43,7 @@ test.describe('AgentRunPanel', () => {
   test('shows plan and tool-call cards after starting agent run', async ({ page }) => {
     await mockStoreAuth(page)
     await mockAgentStream(page)
-    await page.goto('/secvitals/ai/agent')
+    await page.goto('/vaktcomply/ai/agent')
 
     const textarea = page.locator('textarea').first()
     await textarea.waitFor({ state: 'visible', timeout: 8000 })
@@ -61,7 +61,7 @@ test.describe('AgentRunPanel', () => {
   test('tool_call card expand/collapse toggle works', async ({ page }) => {
     await mockStoreAuth(page)
     await mockAgentStream(page)
-    await page.goto('/secvitals/ai/agent')
+    await page.goto('/vaktcomply/ai/agent')
 
     const textarea = page.locator('textarea').first()
     await textarea.waitFor({ state: 'visible', timeout: 8000 })
@@ -99,7 +99,7 @@ test.describe('AgentRunPanel', () => {
       return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
     })
 
-    await page.goto('/secvitals/ai/agent')
+    await page.goto('/vaktcomply/ai/agent')
 
     const textarea = page.locator('textarea').first()
     await textarea.waitFor({ state: 'visible', timeout: 8000 })

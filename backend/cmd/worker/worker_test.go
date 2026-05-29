@@ -9,11 +9,11 @@ import (
 
 	"github.com/matharnica/vakt/internal/admin"
 	"github.com/matharnica/vakt/internal/auth"
-	"github.com/matharnica/vakt/internal/modules/secprivacy"
-	"github.com/matharnica/vakt/internal/modules/secpulse"
-	"github.com/matharnica/vakt/internal/modules/secreflex"
-	"github.com/matharnica/vakt/internal/modules/secvault"
-	"github.com/matharnica/vakt/internal/modules/secvitals"
+	"github.com/matharnica/vakt/internal/modules/vaktprivacy"
+	"github.com/matharnica/vakt/internal/modules/vaktscan"
+	"github.com/matharnica/vakt/internal/modules/vaktaware"
+	"github.com/matharnica/vakt/internal/modules/vaktvault"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/services/alerting"
 	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/shared/bsi"
@@ -70,28 +70,28 @@ func TestWorkerConcurrency_NegativeEnv(t *testing.T) {
 // removing a constant will cause a compilation failure here.
 func TestWorkerTaskConstantsRegistered(t *testing.T) {
 	// SecPulse scan handlers.
-	assert.Equal(t, "secpulse:scan:trivy", secpulse.TaskScanTrivy)
-	assert.Equal(t, "secpulse:scan:nuclei", secpulse.TaskScanNuclei)
-	assert.Equal(t, "secpulse:scan:openvas", secpulse.TaskScanOpenVAS)
-	assert.Equal(t, "secpulse:epss_enrich", secpulse.TaskEPSSEnrich)
-	assert.Equal(t, "secpulse:generate_report", secpulse.TaskGenerateReport)
-	assert.Equal(t, "secpulse:auto_evidence", secpulse.TaskAutoEvidence)
-	assert.Equal(t, "secpulse:sbom:generate", secpulse.TaskSBOMGenerate)
-	assert.Equal(t, "secpulse:eol:check", secpulse.TaskEOLCheck)
+	assert.Equal(t, "vaktscan:scan:trivy", vaktscan.TaskScanTrivy)
+	assert.Equal(t, "vaktscan:scan:nuclei", vaktscan.TaskScanNuclei)
+	assert.Equal(t, "vaktscan:scan:openvas", vaktscan.TaskScanOpenVAS)
+	assert.Equal(t, "vaktscan:epss_enrich", vaktscan.TaskEPSSEnrich)
+	assert.Equal(t, "vaktscan:generate_report", vaktscan.TaskGenerateReport)
+	assert.Equal(t, "vaktscan:auto_evidence", vaktscan.TaskAutoEvidence)
+	assert.Equal(t, "vaktscan:sbom:generate", vaktscan.TaskSBOMGenerate)
+	assert.Equal(t, "vaktscan:eol:check", vaktscan.TaskEOLCheck)
 
 	// SecReflex.
-	assert.Equal(t, "secreflex:send_campaign", secreflex.TaskSendCampaign)
-	assert.Equal(t, "secreflex:training_reminder", secreflex.TaskTrainingReminder)
+	assert.Equal(t, "vaktaware:send_campaign", vaktaware.TaskSendCampaign)
+	assert.Equal(t, "vaktaware:training_reminder", vaktaware.TaskTrainingReminder)
 
 	// SecVault.
-	assert.Equal(t, "secvault:git_scan", secvault.TaskGitScan)
+	assert.Equal(t, "vaktvault:git_scan", vaktvault.TaskGitScan)
 
 	// Admin.
 	assert.Equal(t, "admin:org:delete", admin.TaskDeleteOrg)
 
 	// SecPrivacy.
-	assert.Equal(t, "secprivacy:avv_expiry_check", secprivacy.TaskAVVExpiryCheck)
-	assert.Equal(t, "secprivacy:breach_incident_create", secprivacy.TaskBreachIncidentCreate)
+	assert.Equal(t, "vaktprivacy:avv_expiry_check", vaktprivacy.TaskAVVExpiryCheck)
+	assert.Equal(t, "vaktprivacy:breach_incident_create", vaktprivacy.TaskBreachIncidentCreate)
 
 	// Alerting.
 	assert.NotEmpty(t, alerting.TaskSLAOverdueCheck)
@@ -113,11 +113,11 @@ func TestWorkerTaskConstantsRegistered(t *testing.T) {
 	assert.NotEmpty(t, crossevidence.TaskRecordEvidence)
 
 	// SecVitals.
-	assert.NotEmpty(t, secvitals.TaskEvidenceExpiryAlert)
-	assert.NotEmpty(t, secvitals.TaskIncidentDeadlineCheck)
-	assert.NotEmpty(t, secvitals.TaskCertExpiryCheck)
-	assert.NotEmpty(t, secvitals.TaskCCMRunDue)
-	assert.NotEmpty(t, secvitals.TaskScoreSnapshot)
+	assert.NotEmpty(t, vaktcomply.TaskEvidenceExpiryAlert)
+	assert.NotEmpty(t, vaktcomply.TaskIncidentDeadlineCheck)
+	assert.NotEmpty(t, vaktcomply.TaskCertExpiryCheck)
+	assert.NotEmpty(t, vaktcomply.TaskCCMRunDue)
+	assert.NotEmpty(t, vaktcomply.TaskScoreSnapshot)
 
 	// Notifications.
 	assert.NotEmpty(t, notifications.TaskNotifyDeadlines)
@@ -132,7 +132,7 @@ func TestWorkerTaskConstantsRegistered(t *testing.T) {
 	assert.NotEmpty(t, scheduledreports.TaskProcessScheduledReports)
 
 	// Local constants.
-	assert.Equal(t, "secvitals:control_owner_reminder", taskControlOwnerReminder)
+	assert.Equal(t, "vaktcomply:control_owner_reminder", taskControlOwnerReminder)
 	assert.Equal(t, "github:ci_evidence:sync", taskGitHubCISync)
 	assert.Equal(t, "queue:health:check", taskQueueHealthCheck)
 }
@@ -195,13 +195,13 @@ func TestEnqueueScanTask_QueueSelection(t *testing.T) {
 		taskType  string
 		wantQueue string
 	}{
-		{secpulse.TaskScanTrivy, "default"},
-		{secpulse.TaskScanNuclei, "default"},
-		{secpulse.TaskScanOpenVAS, "low"},
+		{vaktscan.TaskScanTrivy, "default"},
+		{vaktscan.TaskScanNuclei, "default"},
+		{vaktscan.TaskScanOpenVAS, "low"},
 	}
 	for _, tc := range cases {
 		queue := "default"
-		if tc.taskType == secpulse.TaskScanOpenVAS {
+		if tc.taskType == vaktscan.TaskScanOpenVAS {
 			queue = "low"
 		}
 		assert.Equal(t, tc.wantQueue, queue, "task type %s should use queue %q", tc.taskType, tc.wantQueue)

@@ -56,7 +56,7 @@ VAKT_SECRET_KEY=$(openssl rand -hex 32)   # Beispiel — echten Wert generieren!
 |---|---|---|---|
 | `APP_VERSION` | – | `0.1.0` | Versionsnummer der Anwendung. Wird im `/health`-Endpunkt zurückgegeben. |
 | `VAKT_API_PORT` | – | `8080` | Port, auf dem der API-Server lauscht (innerhalb des Containers). |
-| `VAKT_MODULES_ENABLED` | – | alle aktiv | Kommaseparierte Liste der aktivierten Module. Mögliche Werte: `secpulse`, `secvitals`, `secvault`, `secreflex`, `secprivacy`. |
+| `VAKT_MODULES_ENABLED` | – | alle aktiv | Kommaseparierte Liste der aktivierten Module. Mögliche Werte: `vaktscan`, `vaktcomply`, `vaktvault`, `vaktaware`, `vaktprivacy`. |
 | `AUTO_MIGRATE` | – | `false` | Wenn `true`, führt der API-Container beim Start automatisch ausstehende Datenbankmigrationen aus. |
 | `VAKT_DEMO` | – | `false` | Wenn `true`, werden Beispieldaten eingespielt und der ephemere Demo-Flow aktiviert: jeder Login-Besucher bekommt eine eigene Demo-Org mit Random-Credentials, die für 4 Stunden gilt (siehe [Demo-Modus](wiki/demo-mode.md)). |
 | `VAKT_FRONTEND_URL` | – | `http://localhost:5173` | Öffentlich erreichbare URL des Frontends. Wird von Vakt Aware für Tracking-Pixel und Klick-Links in Kampagnen-E-Mails verwendet. In Produktion auf die echte Domain setzen. |
@@ -66,7 +66,7 @@ VAKT_SECRET_KEY=$(openssl rand -hex 32)   # Beispiel — echten Wert generieren!
 ```env
 APP_VERSION=0.1.0
 VAKT_API_PORT=8080
-VAKT_MODULES_ENABLED=secpulse,secvitals,secvault,secreflex,secprivacy
+VAKT_MODULES_ENABLED=vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy
 AUTO_MIGRATE=false
 VAKT_DEMO=false
 VAKT_FRONTEND_URL=https://vakt.meine-firma.de
@@ -92,14 +92,14 @@ Vakt Aware benötigt einen SMTP-Server, um Phishing-Simulations-E-Mails zu verse
 | `VAKT_SMTP_PORT` | – | `1025` | SMTP-Port. `1025` für Mailpit (Entwicklung), `587` für STARTTLS (Produktion), `465` für SSL/TLS. |
 | `VAKT_SMTP_USER` | – | – | SMTP-Benutzername. Erforderlich für Port 587/465 (Produktions-SMTP). |
 | `VAKT_SMTP_PASS` | – | – | SMTP-Passwort. Erforderlich für Port 587/465 (Produktions-SMTP). |
-| `VAKT_SMTP_FROM` | – | `secreflex@example.com` | Absenderadresse für alle Kampagnen-E-Mails. Muss eine gültige Adresse sein, die der SMTP-Server akzeptiert. |
+| `VAKT_SMTP_FROM` | – | `vaktaware@example.com` | Absenderadresse für alle Kampagnen-E-Mails. Muss eine gültige Adresse sein, die der SMTP-Server akzeptiert. |
 
 **Beispiel Entwicklung (Mailpit):**
 
 ```env
 VAKT_SMTP_HOST=localhost
 VAKT_SMTP_PORT=1025
-VAKT_SMTP_FROM=secreflex@example.com
+VAKT_SMTP_FROM=vaktaware@example.com
 ```
 
 **Beispiel Produktion:**
@@ -107,9 +107,9 @@ VAKT_SMTP_FROM=secreflex@example.com
 ```env
 VAKT_SMTP_HOST=smtp.mein-anbieter.de
 VAKT_SMTP_PORT=587
-VAKT_SMTP_USER=secreflex@meine-firma.de
+VAKT_SMTP_USER=vaktaware@meine-firma.de
 VAKT_SMTP_PASS=sicheres-passwort
-VAKT_SMTP_FROM=secreflex@meine-firma.de
+VAKT_SMTP_FROM=vaktaware@meine-firma.de
 ```
 
 ---

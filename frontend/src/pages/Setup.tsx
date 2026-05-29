@@ -21,7 +21,7 @@ interface SetupResponse {
   message: string
 }
 
-const ALL_MODULES = ['secpulse', 'secvitals', 'secvault', 'secreflex', 'secprivacy'] as const
+const ALL_MODULES = ['vaktscan', 'vaktcomply', 'vaktvault', 'vaktaware', 'vaktprivacy'] as const
 
 // ── Step components ───────────────────────────────────────────────────────────
 
@@ -253,7 +253,7 @@ export default function Setup() {
       if (nis2Token) {
         try {
           const migrateResp = await apiFetch<{ assessment_id: string; controls_mapped: number }>(
-            '/secvitals/nis2-assessment/migrate-from-anonymous',
+            '/vaktcomply/nis2-assessment/migrate-from-anonymous',
             { method: 'POST', body: JSON.stringify({ token: nis2Token }) },
           )
           localStorage.removeItem('vakt_nis2_token')

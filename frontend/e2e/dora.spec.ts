@@ -20,7 +20,7 @@ const DORA_INCIDENTS = { data: [], pagination: { page: 1, limit: 25, total: 0, t
 
 const DORA_THIRD_PARTIES = []
 
-test.describe('DORA (secvitals)', () => {
+test.describe('DORA (vaktcomply)', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript((u) => { localStorage.setItem('vakt_user', JSON.stringify(u)) }, FAKE_USER)
     // Catch-all for all API calls
@@ -30,14 +30,14 @@ test.describe('DORA (secvitals)', () => {
   })
 
   test('DORA-Übersicht lädt', async ({ page }) => {
-    await page.route('**/api/v1/secvitals/dora/dashboard', route =>
+    await page.route('**/api/v1/vaktcomply/dora/dashboard', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(DORA_DASHBOARD),
       })
     )
-    await page.goto('/secvitals/dora/dashboard')
+    await page.goto('/vaktcomply/dora/dashboard')
     // Expect a heading or key content element
     await expect(
       page.locator('h1, h2, [data-testid="dora-heading"]').or(page.locator('text=DORA')).first()
@@ -45,26 +45,26 @@ test.describe('DORA (secvitals)', () => {
   })
 
   test('IKT-Incident-Liste navigierbar', async ({ page }) => {
-    await page.route('**/api/v1/secvitals/incidents**', route =>
+    await page.route('**/api/v1/vaktcomply/incidents**', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(DORA_INCIDENTS),
       })
     )
-    await page.goto('/secvitals/incidents')
-    await expect(page).toHaveURL(/secvitals\/incidents/)
+    await page.goto('/vaktcomply/incidents')
+    await expect(page).toHaveURL(/vaktcomply\/incidents/)
   })
 
   test('Drittanbieter-Register öffnet', async ({ page }) => {
-    await page.route('**/api/v1/secvitals/dora/third-parties**', route =>
+    await page.route('**/api/v1/vaktcomply/dora/third-parties**', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(DORA_THIRD_PARTIES),
       })
     )
-    await page.goto('/secvitals/dora/third-parties')
-    await expect(page).toHaveURL(/secvitals\/dora\/third-parties/)
+    await page.goto('/vaktcomply/dora/third-parties')
+    await expect(page).toHaveURL(/vaktcomply\/dora\/third-parties/)
   })
 })

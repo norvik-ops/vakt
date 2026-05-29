@@ -56,7 +56,7 @@ VAKT_SECRET_KEY=$(openssl rand -hex 32)   # Beispiel — echten Wert generieren!
 |----------|---------|----------|--------------|
 | `VAKT_API_PORT` | — | `8080` | Port, auf dem der API-Server innerhalb des Containers lauscht. |
 | `APP_VERSION` | — | `0.1.0` | Versionsnummer. Wird im `/health`-Endpunkt zurückgegeben. |
-| `VAKT_MODULES_ENABLED` | — | alle | Kommagetrennte Liste aktiver Module. Mögliche Werte: `secpulse`, `secvitals`, `secvault`, `secreflex`, `secprivacy`, `sechr`. |
+| `VAKT_MODULES_ENABLED` | — | alle | Kommagetrennte Liste aktiver Module. Mögliche Werte: `vaktscan`, `vaktcomply`, `vaktvault`, `vaktaware`, `vaktprivacy`, `sechr`. |
 | `AUTO_MIGRATE` | — | `false` | Wenn `true`, führt der API-Container beim Start automatisch ausstehende Datenbankmigrationen aus. |
 | `VAKT_FRONTEND_URL` | — | `http://localhost:5173` | Öffentlich erreichbare URL des Frontends. Wird für E-Mail-Links in Benachrichtigungen, Vakt-Aware-Kampagnen und Policy-Akzeptanz-E-Mails verwendet. In Produktion auf die echte Domain setzen. |
 | `VAKT_UPLOAD_DIR` | — | `./data/uploads` | Verzeichnis für hochgeladene Dateien (Evidence-Anhänge). In Docker-Deployments als Volume mounten. |
@@ -66,7 +66,7 @@ VAKT_SECRET_KEY=$(openssl rand -hex 32)   # Beispiel — echten Wert generieren!
 ```env
 VAKT_API_PORT=8080
 APP_VERSION=1.0.0
-VAKT_MODULES_ENABLED=secpulse,secvitals,secvault,secreflex,secprivacy,sechr
+VAKT_MODULES_ENABLED=vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,sechr
 AUTO_MIGRATE=false
 VAKT_FRONTEND_URL=https://vakt.meine-firma.de
 VAKT_UPLOAD_DIR=/data/uploads
@@ -84,7 +84,7 @@ SMTP wird für Benachrichtigungs-E-Mails, Phishing-Simulations-Kampagnen (Vakt A
 | `VAKT_SMTP_PORT` | — | `1025` | SMTP-Port. `1025` für Mailpit (Entwicklung), `587` für STARTTLS, `465` für SSL/TLS. |
 | `VAKT_SMTP_USER` | — | — | SMTP-Benutzername. Erforderlich für Port 587/465. |
 | `VAKT_SMTP_PASS` | — | — | SMTP-Passwort. Erforderlich für Port 587/465. |
-| `VAKT_SMTP_FROM` | — | `secreflex@vakt.local` | Absenderadresse für alle E-Mails. Muss eine gültige Adresse sein, die der SMTP-Server akzeptiert. |
+| `VAKT_SMTP_FROM` | — | `vaktaware@vakt.local` | Absenderadresse für alle E-Mails. Muss eine gültige Adresse sein, die der SMTP-Server akzeptiert. |
 
 **Beispiel Entwicklung (Mailpit):**
 
@@ -246,7 +246,7 @@ POSTGRES_PASSWORD=passwort
 # ── Anwendung ──────────────────────────────────────────────────────────────────
 VAKT_API_PORT=8080
 APP_VERSION=1.0.0
-VAKT_MODULES_ENABLED=secpulse,secvitals,secvault,secreflex,secprivacy,sechr
+VAKT_MODULES_ENABLED=vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,sechr
 AUTO_MIGRATE=false
 VAKT_FRONTEND_URL=https://vakt.meine-firma.de
 VAKT_UPLOAD_DIR=/data/uploads
@@ -316,6 +316,6 @@ Jedes Modul kann unabhängig deaktiviert werden. Die Modul-Namen sind case-insen
 
 ```env
 # Nur Vakt Comply und Vakt Vault aktiv
-VAKT_MODULES_ENABLED=secvitals,secvault
+VAKT_MODULES_ENABLED=vaktcomply,vaktvault
 ```
 

@@ -2,12 +2,12 @@ import { useNavigate } from 'react-router-dom'
 import { ListTodo, TriangleAlert, Flame, Shield, Zap } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../api/client'
-import { useRisks } from '../modules/secvitals/hooks/useRisks'
-import { useIncidents } from '../modules/secvitals/hooks/useIncidents'
+import { useRisks } from '../modules/vaktcomply/hooks/useRisks'
+import { useIncidents } from '../modules/vaktcomply/hooks/useIncidents'
 import { useAuthStore } from '../shared/stores/auth'
 import { Skeleton } from '../components/ui/skeleton'
 import { Button } from '../components/ui/button'
-import type { Risk, Incident, Control } from '../modules/secvitals/types'
+import type { Risk, Incident, Control } from '../modules/vaktcomply/types'
 
 interface MyTask {
   id: string
@@ -19,8 +19,8 @@ interface MyTask {
 
 function useQuickWinsControls() {
   return useQuery<Control[]>({
-    queryKey: ['secvitals', 'controls', 'quick-wins'],
-    queryFn: () => apiFetch<Control[]>('/secvitals/controls?status=missing&limit=20'),
+    queryKey: ['vaktcomply', 'controls', 'quick-wins'],
+    queryFn: () => apiFetch<Control[]>('/vaktcomply/controls?status=missing&limit=20'),
     staleTime: 5 * 60 * 1000,
   })
 }
@@ -72,7 +72,7 @@ export function TodayWidget() {
                   <li key={r.id}>
                     <button
                       className="w-full flex items-center gap-2 text-left rounded-md px-2 py-1.5 hover:bg-border/50 transition-colors group"
-                      onClick={() => { navigate(`/secvitals/risks/${r.id}`) }}
+                      onClick={() => { navigate(`/vaktcomply/risks/${r.id}`) }}
                     >
                       <TriangleAlert className={`w-3.5 h-3.5 shrink-0 ${isOverdue ? 'text-severity-critical' : 'text-severity-medium'}`} aria-hidden="true" />
                       <span className="text-[12px] text-primary flex-1 truncate group-hover:text-brand">{r.title}</span>
@@ -94,7 +94,7 @@ export function TodayWidget() {
                 <li key={i.id}>
                   <button
                     className="w-full flex items-center gap-2 text-left rounded-md px-2 py-1.5 hover:bg-border/50 transition-colors group"
-                    onClick={() => { navigate(`/secvitals/incidents/${i.id}`) }}
+                    onClick={() => { navigate(`/vaktcomply/incidents/${i.id}`) }}
                   >
                     <Flame className="w-3.5 h-3.5 shrink-0 text-severity-critical" aria-hidden="true" />
                     <span className="text-[12px] text-primary flex-1 truncate group-hover:text-brand">{i.title}</span>
@@ -115,7 +115,7 @@ export function MyTasksWidget() {
   const user = useAuthStore((s) => s.user)
   const { data: tasks = [], isLoading } = useQuery<MyTask[]>({
     queryKey: ['my-tasks'],
-    queryFn: () => apiFetch<MyTask[]>('/secvitals/my-tasks'),
+    queryFn: () => apiFetch<MyTask[]>('/vaktcomply/my-tasks'),
     enabled: !!user,
     staleTime: 2 * 60 * 1000,
   })
@@ -144,9 +144,9 @@ export function MyTasksWidget() {
                 className="w-full flex items-center gap-2 text-left rounded-md px-2 py-1.5 hover:bg-border/50 transition-colors group"
                 onClick={() => {
                   if (task.type === 'control' && task.framework_id) {
-                    navigate(`/secvitals/frameworks/${task.framework_id}/controls/${task.id}`)
+                    navigate(`/vaktcomply/frameworks/${task.framework_id}/controls/${task.id}`)
                   } else if (task.type === 'risk') {
-                    navigate(`/secvitals/risks/${task.id}`)
+                    navigate(`/vaktcomply/risks/${task.id}`)
                   }
                 }}
               >
@@ -201,7 +201,7 @@ export function QuickWinsCard() {
               size="sm"
               variant="outline"
               className="h-7 text-xs shrink-0"
-              onClick={() => { navigate(`/secvitals/controls/${control.id}`) }}
+              onClick={() => { navigate(`/vaktcomply/controls/${control.id}`) }}
             >
               Öffnen
             </Button>

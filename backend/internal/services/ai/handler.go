@@ -114,7 +114,7 @@ func (h *Handler) Usage(c echo.Context) error {
 	})
 }
 
-// ComplianceAdvice handles POST /secvitals/ai/advice.
+// ComplianceAdvice handles POST /vaktcomply/ai/advice.
 // It collects the org's current compliance gaps and asks the LLM for a
 // prioritized weekly action plan. Returns {"advice": "1. ...\n2. ..."}.
 func (h *Handler) ComplianceAdvice(c echo.Context) error {
@@ -135,7 +135,7 @@ func (h *Handler) ComplianceAdvice(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"advice": advice})
 }
 
-// DraftPolicy handles POST /secvitals/ai/draft-policy.
+// DraftPolicy handles POST /vaktcomply/ai/draft-policy.
 // Body: { topic: string, framework?: string }
 // Returns: { draft: string } — Markdown policy draft for the admin to review.
 func (h *Handler) DraftPolicy(c echo.Context) error {
@@ -157,7 +157,7 @@ func (h *Handler) DraftPolicy(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"draft": draft})
 }
 
-// IncidentResponseGuide handles POST /secvitals/ai/incident-guide.
+// IncidentResponseGuide handles POST /vaktcomply/ai/incident-guide.
 // Body: { summary: string, type?: string }
 // Returns: { guide: string } — numbered checklist with response steps + deadline hints.
 func (h *Handler) IncidentResponseGuide(c echo.Context) error {
@@ -259,7 +259,7 @@ func (h *Handler) ChatStream(c echo.Context) error {
 			// Retry-After: Sekunden bis zum nächsten 60-Sekunden-Fenster.
 			retryAfter := 60 - (time.Now().UTC().Unix() % 60)
 			c.Response().Header().Set("Retry-After", fmt.Sprintf("%d", retryAfter))
-			return c.JSON(http.StatusTooManyRequests, map[string]string{"error": err.Error(), "code": "AI_RATE_LIMITED"})
+			return c.JSON(http.StatusTooManyRequests, map[string]string{"error": "AI rate limit exceeded", "code": "AI_RATE_LIMITED"})
 		}
 		if err := h.svc.usage.CheckDailyQuota(c.Request().Context(), orgID); err != nil {
 			if errors.Is(err, ErrUsageCheckUnavailable) {
@@ -271,7 +271,7 @@ func (h *Handler) ChatStream(c echo.Context) error {
 			h.svc.usage.Record(c.Request().Context(), UsageRecord{
 				OrgID: orgID, Model: h.svc.model, Status: "rate_limited", RequestID: "chat.stream",
 			})
-			return c.JSON(http.StatusForbidden, map[string]string{"error": err.Error(), "code": "AI_QUOTA_EXCEEDED"})
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "AI daily quota exceeded", "code": "AI_QUOTA_EXCEEDED"})
 		}
 	}
 
@@ -291,7 +291,7 @@ func (h *Handler) ChatStream(c echo.Context) error {
 				OrgID: orgID, Model: h.svc.model, Status: "provider_error", RequestID: "chat.stream",
 			})
 		}
-		_, _ = fmt.Fprintf(resp.Writer, "event: error\ndata: %s\n\n", err.Error())
+		_, _ = fmt.Fprintf(resp.Writer, "event: error\ndata: AI provider error\n\n")
 		resp.Flush()
 		return nil
 	}
@@ -330,7 +330,7 @@ func (h *Handler) ChatStream(c echo.Context) error {
 	return nil
 }
 
-// GapExplain handles POST /api/v1/secvitals/ai/controls/:id/explain.
+// GapExplain handles POST /api/v1/vaktcomply/ai/controls/:id/explain.
 // It streams an explanation of why a control is still open and suggests 3 next steps.
 // S52-2.
 func (h *Handler) GapExplain(c echo.Context) error {
@@ -386,7 +386,7 @@ func (h *Handler) GapExplain(c echo.Context) error {
 	stream, err := h.svc.client.StreamGenerate(c.Request().Context(), systemPrompt, userPrompt, 800)
 	if err != nil {
 		log.Error().Err(err).Str("control_id", controlID).Msg("gap_explain: stream error")
-		_, _ = fmt.Fprintf(resp.Writer, "event: error\ndata: %s\n\n", err.Error())
+		_, _ = fmt.Fprintf(resp.Writer, "event: error\ndata: AI provider error\n\n")
 		resp.Flush()
 		return nil
 	}
@@ -421,7 +421,7 @@ func (h *Handler) GapExplain(c echo.Context) error {
 	return nil
 }
 
-// RiskNarrative handles POST /api/v1/secvitals/ai/risks/:id/narrative.
+// RiskNarrative handles POST /api/v1/vaktcomply/ai/risks/:id/narrative.
 // It generates a 2–3 sentence audit narrative for the risk and persists it.
 // S52-3.
 func (h *Handler) RiskNarrative(c echo.Context) error {
@@ -520,7 +520,7 @@ type aiInsightResponse struct {
 	CreatedAt string  `json:"created_at"`
 }
 
-// ListInsights handles GET /api/v1/secvitals/ai/insights.
+// ListInsights handles GET /api/v1/vaktcomply/ai/insights.
 // Returns up to 5 active AI insights for the org. S52-6.
 func (h *Handler) ListInsights(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
@@ -569,7 +569,7 @@ func (h *Handler) ListInsights(c echo.Context) error {
 	return c.JSON(http.StatusOK, results)
 }
 
-// DismissInsight handles DELETE /api/v1/secvitals/ai/insights/:id.
+// DismissInsight handles DELETE /api/v1/vaktcomply/ai/insights/:id.
 // Sets dismissed_at on the insight, scoped to the org. S52-6.
 func (h *Handler) DismissInsight(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
@@ -596,7 +596,7 @@ func (h *Handler) DismissInsight(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-// ListOllamaModels handles GET /api/v1/secvitals/ai/models.
+// ListOllamaModels handles GET /api/v1/vaktcomply/ai/models.
 // Proxies the Ollama /api/tags endpoint and returns a simplified model list.
 // When the AI provider is not Ollama or is unavailable, returns an empty list.
 func (h *Handler) ListOllamaModels(c echo.Context) error {

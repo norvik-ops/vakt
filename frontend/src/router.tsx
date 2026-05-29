@@ -50,12 +50,12 @@ const WebhooksPage               = lazy(() => import('./pages/WebhooksPage'))
 const ScheduledReportsPage       = lazy(() => import('./pages/ScheduledReportsPage'))
 const NotificationPreferencesPage = lazy(() => import('./pages/NotificationPreferencesPage'))
 
-const SecPulse    = lazy(() => import('./modules/secpulse/SecPulseRoutes'))
-const SecVitals   = lazy(() => import('./modules/secvitals/SecVitalsRoutes'))
-const SecVault    = lazy(() => import('./modules/secvault/SecVaultRoutes'))
-const SecReflex   = lazy(() => import('./modules/secreflex/SecReflexRoutes'))
-const SecPrivacy  = lazy(() => import('./modules/secprivacy/SecPrivacyRoutes'))
-const HR          = lazy(() => import('./modules/hr/HRRoutes'))
+const SecPulse    = lazy(() => import('./modules/vaktscan/SecPulseRoutes'))
+const SecVitals   = lazy(() => import('./modules/vaktcomply/SecVitalsRoutes'))
+const SecVault    = lazy(() => import('./modules/vaktvault/SecVaultRoutes'))
+const SecReflex   = lazy(() => import('./modules/vaktaware/SecReflexRoutes'))
+const SecPrivacy  = lazy(() => import('./modules/vaktprivacy/SecPrivacyRoutes'))
+const HR          = lazy(() => import('./modules/vakthr/HRRoutes'))
 
 function LoadingSpinner() {
   return (
@@ -213,28 +213,28 @@ export const router = createBrowserRouter([
           { path: '/admin/tenants', element: <AdminTenantsPage /> },
           { path: '/admin/security', element: <AdminSecurityPage /> },
           {
-            path: '/secpulse/*',
-            element: <ModuleShell moduleKey="secpulse"><SecPulse /></ModuleShell>,
+            path: '/vaktscan/*',
+            element: <ModuleShell moduleKey="vaktscan"><SecPulse /></ModuleShell>,
           },
           {
-            path: '/secvitals/*',
-            element: <ModuleShell moduleKey="secvitals"><SecVitals /></ModuleShell>,
+            path: '/vaktcomply/*',
+            element: <ModuleShell moduleKey="vaktcomply"><SecVitals /></ModuleShell>,
           },
           {
-            path: '/secvault/*',
-            element: <ModuleShell moduleKey="secvault"><SecVault /></ModuleShell>,
+            path: '/vaktvault/*',
+            element: <ModuleShell moduleKey="vaktvault"><SecVault /></ModuleShell>,
           },
           {
-            path: '/secreflex/*',
-            element: <ModuleShell moduleKey="secreflex"><SecReflex /></ModuleShell>,
+            path: '/vaktaware/*',
+            element: <ModuleShell moduleKey="vaktaware"><SecReflex /></ModuleShell>,
           },
           {
-            path: '/secprivacy/*',
-            element: <ModuleShell moduleKey="secprivacy"><SecPrivacy /></ModuleShell>,
+            path: '/vaktprivacy/*',
+            element: <ModuleShell moduleKey="vaktprivacy"><SecPrivacy /></ModuleShell>,
           },
           {
-            path: '/hr/*',
-            element: <ModuleShell moduleKey="hr"><HR /></ModuleShell>,
+            path: '/vakthr/*',
+            element: <ModuleShell moduleKey="vakthr"><HR /></ModuleShell>,
           },
           { path: '/integrations', element: <IntegrationsPage /> },
           { path: '*', element: <NotFoundPage /> },

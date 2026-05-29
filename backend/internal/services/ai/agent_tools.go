@@ -30,7 +30,7 @@ func (t *listOpenFindingsTool) Description() string {
 func (t *listOpenFindingsTool) ArgumentsSchema() json.RawMessage {
 	return json.RawMessage(`{"type":"object","properties":{"severity":{"type":"string","enum":["critical","high","medium","low"]}}}`)
 }
-func (t *listOpenFindingsTool) RequireScope() string { return "secpulse.findings.read" }
+func (t *listOpenFindingsTool) RequireScope() string { return "vaktscan.findings.read" }
 func (t *listOpenFindingsTool) IsWriteTool() bool    { return false }
 func (t *listOpenFindingsTool) Execute(ctx context.Context, orgID string, _ json.RawMessage) (json.RawMessage, error) {
 	rows, err := t.db.Query(ctx, `
@@ -74,7 +74,7 @@ func (t *listStaleEvidenceTool) Description() string {
 func (t *listStaleEvidenceTool) ArgumentsSchema() json.RawMessage {
 	return json.RawMessage(`{"type":"object","properties":{}}`)
 }
-func (t *listStaleEvidenceTool) RequireScope() string { return "secvitals.evidence.read" }
+func (t *listStaleEvidenceTool) RequireScope() string { return "vaktcomply.evidence.read" }
 func (t *listStaleEvidenceTool) IsWriteTool() bool    { return false }
 func (t *listStaleEvidenceTool) Execute(ctx context.Context, orgID string, _ json.RawMessage) (json.RawMessage, error) {
 	rows, err := t.db.Query(ctx, `
@@ -123,7 +123,7 @@ func (t *listControlsWithoutEvidenceTool) ArgumentsSchema() json.RawMessage {
 	return json.RawMessage(`{"type":"object","properties":{}}`)
 }
 func (t *listControlsWithoutEvidenceTool) RequireScope() string {
-	return "secvitals.controls.read"
+	return "vaktcomply.controls.read"
 }
 func (t *listControlsWithoutEvidenceTool) IsWriteTool() bool { return false }
 func (t *listControlsWithoutEvidenceTool) Execute(ctx context.Context, orgID string, _ json.RawMessage) (json.RawMessage, error) {
@@ -168,7 +168,7 @@ func (t *addControlNoteTool) Description() string {
 func (t *addControlNoteTool) ArgumentsSchema() json.RawMessage {
 	return json.RawMessage(`{"type":"object","required":["control_id","note"],"properties":{"control_id":{"type":"string"},"note":{"type":"string"}}}`)
 }
-func (t *addControlNoteTool) RequireScope() string { return "secvitals.controls.write" }
+func (t *addControlNoteTool) RequireScope() string { return "vaktcomply.controls.write" }
 func (t *addControlNoteTool) IsWriteTool() bool    { return true }
 func (t *addControlNoteTool) Execute(ctx context.Context, orgID string, args json.RawMessage) (json.RawMessage, error) {
 	var a struct {

@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { Spinner } from '../components/Spinner'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { ShieldCheck, FileText, AlertCircle, CheckCircle2 } from 'lucide-react'
-import { fetchAcceptanceInfo, submitAcceptance } from '../modules/secvitals/hooks/usePolicyAcceptance'
+import { fetchAcceptanceInfo, submitAcceptance } from '../modules/vaktcomply/hooks/usePolicyAcceptance'
 import { useFormatDate } from '../shared/hooks/useFormatDate'
 
 // ---------------------------------------------------------------------------

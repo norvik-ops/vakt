@@ -9,7 +9,7 @@ Vakt Comply ist das zentrale Modul der Plattform. Es führt durch die Implementi
 Das Modul ist standardmäßig aktiv. Zum Deaktivieren:
 
 ```env
-VAKT_MODULES_ENABLED=secpulse,secvault,secreflex,secprivacy
+VAKT_MODULES_ENABLED=vaktscan,vaktvault,vaktaware,vaktprivacy
 ```
 
 ---
@@ -211,6 +211,6 @@ KI komplett deaktivieren: `VAKT_AI_PROVIDER=disabled`
 
 | Job | Zeitplan | Beschreibung |
 |-----|----------|--------------|
-| `secvitals:evidence_expiry_alert` | Täglich | Warnung 30 Tage vor Ablauf von Evidence |
-| `secvitals:incident_deadline_check` | Stündlich | Prüft NIS2/DORA-Meldefristen; E-Mail 12h vor Ablauf |
-| `secvitals:supplier_cert_expiry` | Täglich | Warnung bei Lieferanten-Zertifikaten, die in 30 Tagen ablaufen |
+| `vaktcomply:evidence_expiry_alert` | Täglich | Warnung 30 Tage vor Ablauf von Evidence |
+| `vaktcomply:incident_deadline_check` | Stündlich | Prüft NIS2/DORA-Meldefristen; E-Mail 12h vor Ablauf |
+| `vaktcomply:supplier_cert_expiry` | Täglich | Warnung bei Lieferanten-Zertifikaten, die in 30 Tagen ablaufen |

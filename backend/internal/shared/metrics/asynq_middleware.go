@@ -89,8 +89,8 @@ func recordAsynqMetric(ctx context.Context, rdb *redis.Client, taskType, result 
 	}
 }
 
-// sanitiseLabel turns "secvitals:dora_deadline_status" into
-// "secvitals_dora_deadline_status" so it is a valid Prometheus label value
+// sanitiseLabel turns "vaktcomply:dora_deadline_status" into
+// "vaktcomply_dora_deadline_status" so it is a valid Prometheus label value
 // when used inside curly braces (we still quote it, but this avoids ambiguity).
 func sanitiseLabel(s string) string {
 	r := strings.NewReplacer(":", "_", "-", "_", " ", "_", ".", "_")

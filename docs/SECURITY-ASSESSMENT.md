@@ -66,8 +66,8 @@ Alle Aussagen im TOM-Dokument (`docs/security/tom.md`) wurden gegen die Go-Imple
 | Claim | Verifikation | Fundstelle |
 |-------|-------------|------------|
 | bcrypt cost 12 (Passwörter) | ✅ Bestätigt | `backend/internal/auth/service.go` → `bcrypt.GenerateFromPassword(…, 12)` |
-| AES-256-GCM (Vault-Secrets) | ✅ Bestätigt | `backend/internal/modules/secvault/crypto.go` → `cipher.NewGCM` |
-| HKDF-Schlüsselableitung pro Projekt | ✅ Bestätigt | `secvault/crypto.go` → `hkdf.New(sha256.New, masterKey, projectSalt, nil)` |
+| AES-256-GCM (Vault-Secrets) | ✅ Bestätigt | `backend/internal/modules/vaktvault/crypto.go` → `cipher.NewGCM` |
+| HKDF-Schlüsselableitung pro Projekt | ✅ Bestätigt | `vaktvault/crypto.go` → `hkdf.New(sha256.New, masterKey, projectSalt, nil)` |
 | Paseto v4 Local (keine JWT) | ✅ Bestätigt | `backend/internal/auth/token.go` → `paseto.NewV4LocalCipher` |
 | httpOnly + SameSite=Strict Cookie | ✅ Bestätigt | `auth/handler.go` → `HttpOnly: true, SameSite: http.SameSiteStrictMode` |
 | TOTP Deny-List 90 s (Redis) | ✅ Bestätigt | `auth/service.go` → `SetEX(…, 90*time.Second)` nach TOTP-Verify |
@@ -76,7 +76,7 @@ Alle Aussagen im TOM-Dokument (`docs/security/tom.md`) wurden gegen die Go-Imple
 | Brute-Force: 10 Fehlversuche → 15 min | ✅ Bestätigt (5 Account + 10 IP) | `auth/service.go` → `maxAccountFailures = 5`, `maxIPFailures = 10`; 15-min-Lockout |
 | Rate Limit: Auth 10 req/min | ✅ Bestätigt | `shared/middleware/ratelimit.go` → `NewRateLimiter(10, time.Minute)` für Auth-Endpoints |
 | SQL Injection: nur parametrisierte Queries | ✅ Bestätigt | `db/queries/` vollständig via sqlc; Audit-Log-Query baut `WHERE col >= $N`-Conditions dynamisch, Werte ausschließlich in `args[]` — kein String-Concat bei Werten |
-| SSRF-Schutz (Scanner-Targets) | ✅ Bestätigt | `secpulse/service.go` → `isPrivateIP()` prüft RFC-1918 + Loopback vor Scan |
+| SSRF-Schutz (Scanner-Targets) | ✅ Bestätigt | `vaktscan/service.go` → `isPrivateIP()` prüft RFC-1918 + Loopback vor Scan |
 | SSRF-Schutz (AI-Endpoint) | ✅ Bestätigt | `shared/ai/client.go` → URL-Validierung gegen private Ranges |
 | Prompt-Injection-Separatoren | ✅ Bestätigt | `shared/ai/prompt.go` → `addInjectionGuard()` wraps user content in `<user_content>` tags |
 | org_id-Filterung (alle Queries) | ✅ Bestätigt | `db/queries/*.sql` — kein Query ohne `WHERE org_id = $N` in Multi-Tenant-Tabellen |
@@ -98,9 +98,9 @@ Alle Aussagen im TOM-Dokument (`docs/security/tom.md`) wurden gegen die Go-Imple
 - Vault-Secrets Klartext: ✅ nur bei explizitem Reveal, nie in Listen
 
 **Findings behoben (alle Low, kein Datenverlust):**
-- `PATCH /secvitals/controls/:id` Cross-Tenant → 500 statt 404 → **behoben** (`repository_controls.go` + `handler_controls.go`)
-- `PUT /secvault/.../secrets/:key` Cross-Tenant → 500 statt 404 → **behoben** (`secvault/handler.go`)
-- `GET /secvault/.../secrets` Cross-Tenant → 200 leere Liste statt 404 → **behoben** (`secvault/service.go`)
+- `PATCH /vaktcomply/controls/:id` Cross-Tenant → 500 statt 404 → **behoben** (`repository_controls.go` + `handler_controls.go`)
+- `PUT /vaktvault/.../secrets/:key` Cross-Tenant → 500 statt 404 → **behoben** (`vaktvault/handler.go`)
+- `GET /vaktvault/.../secrets` Cross-Tenant → 200 leere Liste statt 404 → **behoben** (`vaktvault/service.go`)
 - ContextTimeout-ErrorHandler fing alle Fehler ab → **behoben** (`cmd/api/main.go`)
 - NIS2-Token in `localStorage` statt `sessionStorage` → **behoben** (`NIS2WizardPage.tsx`)
 - `golang.org/x/net` + `x/crypto` veraltete Versionen → **behoben** (`go.mod` bump)

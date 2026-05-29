@@ -92,7 +92,7 @@ func proLicense() *license.License {
 // RequireAILimit, while GET endpoints (status/usage/models/insights) don't.
 func TestRequireAILimit_RouteWiringHasGateEverywhere(t *testing.T) {
 	e := echo.New()
-	g := e.Group("/api/v1/secvitals")
+	g := e.Group("/api/v1/vaktcomply")
 	svc := &Service{usage: &UsageTracker{}}
 	// Relative paths — Echo combines group prefix + path. Keep this list in
 	// sync with Register/RegisterWithOptions in routes.go: every entry here
@@ -114,12 +114,12 @@ func TestRequireAILimit_RouteWiringHasGateEverywhere(t *testing.T) {
 	got := e.Routes()
 	gatedPaths := make(map[string]bool, len(got))
 	for _, r := range got {
-		if r.Method == http.MethodPost && strings.HasPrefix(r.Path, "/api/v1/secvitals/ai/") {
+		if r.Method == http.MethodPost && strings.HasPrefix(r.Path, "/api/v1/vaktcomply/ai/") {
 			gatedPaths[r.Path] = true
 		}
 	}
 	for _, rel := range expectedGatedRelative {
-		want := "/api/v1/secvitals" + rel
+		want := "/api/v1/vaktcomply" + rel
 		assert.True(t, gatedPaths[want], "expected gated POST route %s to be registered", want)
 	}
 }

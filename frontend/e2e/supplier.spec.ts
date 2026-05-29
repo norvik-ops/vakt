@@ -29,7 +29,7 @@ const QUESTIONNAIRES_LIST = [
   },
 ]
 
-test.describe('Supplier Portal (secvitals)', () => {
+test.describe('Supplier Portal (vaktcomply)', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript((u) => { localStorage.setItem('vakt_user', JSON.stringify(u)) }, FAKE_USER)
     await page.route('**/api/v1/**', route =>
@@ -38,26 +38,26 @@ test.describe('Supplier Portal (secvitals)', () => {
   })
 
   test('Supplier-Portal-Übersicht lädt', async ({ page }) => {
-    await page.route('**/api/v1/secvitals/suppliers**', route =>
+    await page.route('**/api/v1/vaktcomply/suppliers**', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(SUPPLIERS_LIST),
       })
     )
-    await page.goto('/secvitals/suppliers')
-    await expect(page).toHaveURL(/secvitals\/suppliers/)
+    await page.goto('/vaktcomply/suppliers')
+    await expect(page).toHaveURL(/vaktcomply\/suppliers/)
   })
 
   test('Lieferanten-Liste sichtbar', async ({ page }) => {
-    await page.route('**/api/v1/secvitals/suppliers**', route =>
+    await page.route('**/api/v1/vaktcomply/suppliers**', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(SUPPLIERS_LIST),
       })
     )
-    await page.goto('/secvitals/suppliers')
+    await page.goto('/vaktcomply/suppliers')
     // Expect the supplier name to be visible in the list
     await expect(
       page.locator('text=Acme GmbH').or(page.locator('[data-testid="supplier-list"]')).first()
@@ -65,14 +65,14 @@ test.describe('Supplier Portal (secvitals)', () => {
   })
 
   test('Fragebogen-Navigation', async ({ page }) => {
-    await page.route('**/api/v1/secvitals/questionnaires**', route =>
+    await page.route('**/api/v1/vaktcomply/questionnaires**', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(QUESTIONNAIRES_LIST),
       })
     )
-    await page.route('**/api/v1/secvitals/suppliers**', route =>
+    await page.route('**/api/v1/vaktcomply/suppliers**', route =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -80,7 +80,7 @@ test.describe('Supplier Portal (secvitals)', () => {
       })
     )
     // Navigate to suppliers — questionnaire management is accessible from suppliers page
-    await page.goto('/secvitals/suppliers')
-    await expect(page).toHaveURL(/secvitals\/suppliers/)
+    await page.goto('/vaktcomply/suppliers')
+    await expect(page).toHaveURL(/vaktcomply\/suppliers/)
   })
 })

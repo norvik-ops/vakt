@@ -1092,15 +1092,15 @@ components:
 tags:
   - name: auth
     description: Authentication
-  - name: secpulse
+  - name: vaktscan
     description: Vakt Scan — asset and vulnerability management
-  - name: secvitals
+  - name: vaktcomply
     description: Vakt Comply — compliance frameworks and controls
-  - name: secprivacy
+  - name: vaktprivacy
     description: Vakt Privacy — GDPR documentation
-  - name: secreflex
+  - name: vaktaware
     description: Vakt Aware — phishing simulations
-  - name: secvault
+  - name: vaktvault
     description: Vakt Vault — secrets management
   - name: webhooks
     description: Outgoing webhook configuration
@@ -1649,10 +1649,10 @@ paths:
           description: OIDC not configured
 
   # ── SecPulse — Assets ─────────────────────────────────────────────────────
-  /secpulse/assets:
+  /vaktscan/assets:
     get:
       summary: List assets
-      tags: [secpulse]
+      tags: [vaktscan]
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/LimitParam'
@@ -1672,7 +1672,7 @@ paths:
                     $ref: '#/components/schemas/Pagination'
     post:
       summary: Create an asset
-      tags: [secpulse]
+      tags: [vaktscan]
       requestBody:
         required: true
         content:
@@ -1689,10 +1689,10 @@ paths:
         '400':
           description: Validation error
 
-  /secpulse/assets/{id}:
+  /vaktscan/assets/{id}:
     get:
       summary: Get an asset
-      tags: [secpulse]
+      tags: [vaktscan]
       parameters:
         - name: id
           in: path
@@ -1711,7 +1711,7 @@ paths:
           description: Not found
     put:
       summary: Update an asset
-      tags: [secpulse]
+      tags: [vaktscan]
       parameters:
         - name: id
           in: path
@@ -1730,7 +1730,7 @@ paths:
           description: Updated asset
     delete:
       summary: Delete an asset
-      tags: [secpulse]
+      tags: [vaktscan]
       parameters:
         - name: id
           in: path
@@ -1742,10 +1742,10 @@ paths:
         '204':
           description: Deleted
 
-  /secpulse/assets/import/csv:
+  /vaktscan/assets/import/csv:
     post:
       summary: Bulk-import assets from CSV
-      tags: [secpulse]
+      tags: [vaktscan]
       requestBody:
         required: true
         content:
@@ -1774,10 +1774,10 @@ paths:
                       type: string
 
   # ── SecPulse — Findings ───────────────────────────────────────────────────
-  /secpulse/findings:
+  /vaktscan/findings:
     get:
       summary: List findings
-      tags: [secpulse]
+      tags: [vaktscan]
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/LimitParam'
@@ -1809,10 +1809,10 @@ paths:
                   pagination:
                     $ref: '#/components/schemas/Pagination'
 
-  /secpulse/findings/{id}:
+  /vaktscan/findings/{id}:
     get:
       summary: Get a finding
-      tags: [secpulse]
+      tags: [vaktscan]
       parameters:
         - name: id
           in: path
@@ -1829,7 +1829,7 @@ paths:
                 $ref: '#/components/schemas/Finding'
     put:
       summary: Update a finding (status, severity, assignee)
-      tags: [secpulse]
+      tags: [vaktscan]
       parameters:
         - name: id
           in: path
@@ -1855,10 +1855,10 @@ paths:
           description: Updated finding
 
   # ── SecVitals — Frameworks ────────────────────────────────────────────────
-  /secvitals/frameworks:
+  /vaktcomply/frameworks:
     get:
       summary: List installed frameworks
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: Framework list
@@ -1869,10 +1869,10 @@ paths:
                 items:
                   $ref: '#/components/schemas/Framework'
 
-  /secvitals/frameworks/{id}:
+  /vaktcomply/frameworks/{id}:
     get:
       summary: Get a framework with score
-      tags: [secvitals]
+      tags: [vaktcomply]
       parameters:
         - name: id
           in: path
@@ -1889,7 +1889,7 @@ paths:
                 $ref: '#/components/schemas/Framework'
     delete:
       summary: Remove a framework
-      tags: [secvitals]
+      tags: [vaktcomply]
       parameters:
         - name: id
           in: path
@@ -1901,10 +1901,10 @@ paths:
         '204':
           description: Removed
 
-  /secvitals/frameworks/{name}/enable:
+  /vaktcomply/frameworks/{name}/enable:
     post:
       summary: Enable a framework by slug (e.g. ISO27001, NIS2, DORA, TISAX)
-      tags: [secvitals]
+      tags: [vaktcomply]
       parameters:
         - name: name
           in: path
@@ -1915,10 +1915,10 @@ paths:
         '201':
           description: Framework enabled
 
-  /secvitals/frameworks/{id}/controls:
+  /vaktcomply/frameworks/{id}/controls:
     get:
       summary: List controls for a framework
-      tags: [secvitals]
+      tags: [vaktcomply]
       parameters:
         - name: id
           in: path
@@ -1943,10 +1943,10 @@ paths:
                   pagination:
                     $ref: '#/components/schemas/Pagination'
 
-  /secvitals/frameworks/{id}/report:
+  /vaktcomply/frameworks/{id}/report:
     get:
       summary: Get readiness report for a framework
-      tags: [secvitals]
+      tags: [vaktcomply]
       parameters:
         - name: id
           in: path
@@ -1958,10 +1958,10 @@ paths:
         '200':
           description: Readiness report
 
-  /secvitals/frameworks/{id}/export-pdf:
+  /vaktcomply/frameworks/{id}/export-pdf:
     get:
       summary: Export framework readiness PDF (Pro)
-      tags: [secvitals]
+      tags: [vaktcomply]
       parameters:
         - name: id
           in: path
@@ -1978,10 +1978,10 @@ paths:
                 type: string
                 format: binary
 
-  /secvitals/controls/{id}:
+  /vaktcomply/controls/{id}:
     get:
       summary: Get a single control
-      tags: [secvitals]
+      tags: [vaktcomply]
       parameters:
         - name: id
           in: path
@@ -1997,10 +1997,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/Control'
 
-  /secvitals/controls/export/xlsx:
+  /vaktcomply/controls/export/xlsx:
     get:
       summary: Export all controls as XLSX
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: XLSX file
@@ -2011,10 +2011,10 @@ paths:
                 format: binary
 
   # ── SecVitals — Risks ─────────────────────────────────────────────────────
-  /secvitals/risks:
+  /vaktcomply/risks:
     get:
       summary: List risks
-      tags: [secvitals]
+      tags: [vaktcomply]
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/LimitParam'
@@ -2034,7 +2034,7 @@ paths:
                     $ref: '#/components/schemas/Pagination'
     post:
       summary: Create a risk
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -2045,19 +2045,19 @@ paths:
         '201':
           description: Risk created
 
-  /secvitals/risks/export/xlsx:
+  /vaktcomply/risks/export/xlsx:
     get:
       summary: Export risks as XLSX
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: XLSX file
 
   # ── SecVitals — Incidents ─────────────────────────────────────────────────
-  /secvitals/incidents:
+  /vaktcomply/incidents:
     get:
       summary: List incidents
-      tags: [secvitals]
+      tags: [vaktcomply]
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/LimitParam'
@@ -2077,7 +2077,7 @@ paths:
                     $ref: '#/components/schemas/Pagination'
     post:
       summary: Create an incident
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -2088,10 +2088,10 @@ paths:
         '201':
           description: Incident created
 
-  /secvitals/incidents/{id}:
+  /vaktcomply/incidents/{id}:
     get:
       summary: Get an incident
-      tags: [secvitals]
+      tags: [vaktcomply]
       parameters:
         - name: id
           in: path
@@ -2104,7 +2104,7 @@ paths:
           description: Incident
     put:
       summary: Update an incident
-      tags: [secvitals]
+      tags: [vaktcomply]
       parameters:
         - name: id
           in: path
@@ -2123,10 +2123,10 @@ paths:
           description: Updated
 
   # ── SecPrivacy — VVT ──────────────────────────────────────────────────────
-  /secprivacy/vvt:
+  /vaktprivacy/vvt:
     get:
       summary: List processing activities (VVT)
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/LimitParam'
@@ -2141,7 +2141,7 @@ paths:
                   $ref: '#/components/schemas/VVTEntry'
     post:
       summary: Create a VVT entry
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       requestBody:
         required: true
         content:
@@ -2152,10 +2152,10 @@ paths:
         '201':
           description: Created
 
-  /secprivacy/vvt/{id}:
+  /vaktprivacy/vvt/{id}:
     get:
       summary: Get VVT entry
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       parameters:
         - name: id
           in: path
@@ -2168,7 +2168,7 @@ paths:
           description: VVT entry
     put:
       summary: Update VVT entry
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       parameters:
         - name: id
           in: path
@@ -2187,7 +2187,7 @@ paths:
           description: Updated
     delete:
       summary: Delete VVT entry
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       parameters:
         - name: id
           in: path
@@ -2200,10 +2200,10 @@ paths:
           description: Deleted
 
   # ── SecPrivacy — Breaches ─────────────────────────────────────────────────
-  /secprivacy/breaches:
+  /vaktprivacy/breaches:
     get:
       summary: List breach records
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/LimitParam'
@@ -2218,7 +2218,7 @@ paths:
                   $ref: '#/components/schemas/Breach'
     post:
       summary: Create a breach record
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       requestBody:
         required: true
         content:
@@ -2229,10 +2229,10 @@ paths:
         '201':
           description: Created
 
-  /secprivacy/breaches/{id}/notify-authority:
+  /vaktprivacy/breaches/{id}/notify-authority:
     post:
       summary: Mark supervisory authority as notified
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       parameters:
         - name: id
           in: path
@@ -2245,16 +2245,16 @@ paths:
           description: Updated
 
   # ── SecVault ──────────────────────────────────────────────────────────────
-  /secvault/projects:
+  /vaktvault/projects:
     get:
       summary: List secret projects
-      tags: [secvault]
+      tags: [vaktvault]
       responses:
         '200':
           description: Project list
     post:
       summary: Create a project
-      tags: [secvault]
+      tags: [vaktvault]
       requestBody:
         required: true
         content:
@@ -2269,10 +2269,10 @@ paths:
         '201':
           description: Created
 
-  /secvault/projects/{project_id}/envs/{env_id}/secrets/{key}:
+  /vaktvault/projects/{project_id}/envs/{env_id}/secrets/{key}:
     get:
       summary: Retrieve a secret value (decrypted)
-      tags: [secvault]
+      tags: [vaktvault]
       parameters:
         - name: project_id
           in: path
@@ -2305,7 +2305,7 @@ paths:
                     type: string
     put:
       summary: Create or update a secret
-      tags: [secvault]
+      tags: [vaktvault]
       parameters:
         - name: project_id
           in: path
@@ -2339,7 +2339,7 @@ paths:
           description: Stored
     delete:
       summary: Delete a secret
-      tags: [secvault]
+      tags: [vaktvault]
       parameters:
         - name: project_id
           in: path
@@ -2731,10 +2731,10 @@ paths:
                 $ref: '#/components/schemas/ChecklistRun'
 
   # ── SecReflex — Templates ─────────────────────────────────────────────────
-  /secreflex/templates:
+  /vaktaware/templates:
     get:
       summary: List phishing email templates (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       responses:
         '200':
           description: Templates
@@ -2751,7 +2751,7 @@ paths:
                     $ref: '#/components/schemas/Pagination'
     post:
       summary: Create phishing template (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       requestBody:
         required: true
         content:
@@ -2766,10 +2766,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/PhishingTemplate'
 
-  /secreflex/templates/presets:
+  /vaktaware/templates/presets:
     get:
       summary: List built-in preset templates (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       responses:
         '200':
           description: Preset templates
@@ -2781,10 +2781,10 @@ paths:
                   $ref: '#/components/schemas/PhishingTemplate'
 
   # ── SecReflex — Target Groups ─────────────────────────────────────────────
-  /secreflex/groups:
+  /vaktaware/groups:
     get:
       summary: List target groups (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       responses:
         '200':
           description: Target groups
@@ -2801,7 +2801,7 @@ paths:
                     $ref: '#/components/schemas/Pagination'
     post:
       summary: Create target group (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       requestBody:
         required: true
         content:
@@ -2822,10 +2822,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/TargetGroup'
 
-  /secreflex/groups/{id}/targets:
+  /vaktaware/groups/{id}/targets:
     get:
       summary: List targets in a group (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       parameters:
         - name: id
           in: path
@@ -2848,10 +2848,10 @@ paths:
                   pagination:
                     $ref: '#/components/schemas/Pagination'
 
-  /secreflex/groups/{id}/targets/import:
+  /vaktaware/groups/{id}/targets/import:
     post:
       summary: Import targets from CSV (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       parameters:
         - name: id
           in: path
@@ -2886,10 +2886,10 @@ paths:
                       type: string
 
   # ── SecReflex — Landing Pages ─────────────────────────────────────────────
-  /secreflex/landing-pages:
+  /vaktaware/landing-pages:
     get:
       summary: List landing pages (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       responses:
         '200':
           description: Landing pages
@@ -2906,7 +2906,7 @@ paths:
                     $ref: '#/components/schemas/Pagination'
     post:
       summary: Create landing page (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       requestBody:
         required: true
         content:
@@ -2928,10 +2928,10 @@ paths:
                 $ref: '#/components/schemas/LandingPage'
 
   # ── SecReflex — Campaigns ─────────────────────────────────────────────────
-  /secreflex/campaigns:
+  /vaktaware/campaigns:
     get:
       summary: List campaigns (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/LimitParam'
@@ -2951,7 +2951,7 @@ paths:
                     $ref: '#/components/schemas/Pagination'
     post:
       summary: Create campaign (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       requestBody:
         required: true
         content:
@@ -2966,10 +2966,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/Campaign'
 
-  /secreflex/campaigns/{id}:
+  /vaktaware/campaigns/{id}:
     get:
       summary: Get campaign (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       parameters:
         - name: id
           in: path
@@ -2985,10 +2985,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/Campaign'
 
-  /secreflex/campaigns/{id}/launch:
+  /vaktaware/campaigns/{id}/launch:
     post:
       summary: Launch campaign — sends phishing emails to target group (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       parameters:
         - name: id
           in: path
@@ -3000,10 +3000,10 @@ paths:
         '200':
           description: Campaign launched
 
-  /secreflex/campaigns/{id}/abort:
+  /vaktaware/campaigns/{id}/abort:
     post:
       summary: Abort a running campaign (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       parameters:
         - name: id
           in: path
@@ -3015,10 +3015,10 @@ paths:
         '200':
           description: Campaign aborted
 
-  /secreflex/campaigns/{id}/stats:
+  /vaktaware/campaigns/{id}/stats:
     get:
       summary: Get campaign statistics (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       parameters:
         - name: id
           in: path
@@ -3034,10 +3034,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/CampaignStats'
 
-  /secreflex/campaigns/{id}/report:
+  /vaktaware/campaigns/{id}/report:
     get:
       summary: Export campaign report as PDF (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       parameters:
         - name: id
           in: path
@@ -3055,10 +3055,10 @@ paths:
                 format: binary
 
   # ── SecReflex — Training ──────────────────────────────────────────────────
-  /secreflex/training-modules:
+  /vaktaware/training-modules:
     get:
       summary: List training modules
-      tags: [secreflex]
+      tags: [vaktaware]
       responses:
         '200':
           description: Training modules
@@ -3075,7 +3075,7 @@ paths:
                     $ref: '#/components/schemas/Pagination'
     post:
       summary: Create training module
-      tags: [secreflex]
+      tags: [vaktaware]
       requestBody:
         required: true
         content:
@@ -3098,10 +3098,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/TrainingModule'
 
-  /secreflex/assignments:
+  /vaktaware/assignments:
     get:
       summary: List training assignments for current user
-      tags: [secreflex]
+      tags: [vaktaware]
       responses:
         '200':
           description: Assignments
@@ -3117,10 +3117,10 @@ paths:
                   pagination:
                     $ref: '#/components/schemas/Pagination'
 
-  /secreflex/assignments/{id}/complete:
+  /vaktaware/assignments/{id}/complete:
     post:
       summary: Mark training assignment as completed
-      tags: [secreflex]
+      tags: [vaktaware]
       parameters:
         - name: id
           in: path
@@ -3133,10 +3133,10 @@ paths:
           description: Assignment completed
 
   # ── SecReflex — Phish Reports ─────────────────────────────────────────────
-  /secreflex/phish-reports:
+  /vaktaware/phish-reports:
     get:
       summary: List phish reports (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       responses:
         '200':
           description: Phish reports
@@ -3152,10 +3152,10 @@ paths:
                   pagination:
                     $ref: '#/components/schemas/Pagination'
 
-  /secreflex/phish-reports/stats:
+  /vaktaware/phish-reports/stats:
     get:
       summary: Phish report aggregate statistics (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       responses:
         '200':
           description: Stats
@@ -3169,10 +3169,10 @@ paths:
                   by_campaign:
                     type: object
 
-  /secreflex/phish-report-token/regenerate:
+  /vaktaware/phish-report-token/regenerate:
     post:
       summary: Regenerate phish-report webhook token (Pro)
-      tags: [secreflex]
+      tags: [vaktaware]
       responses:
         '200':
           description: New token
@@ -3186,10 +3186,10 @@ paths:
 
   # ── SecVitals — Policies ──────────────────────────────────────────────────
 
-  /secvitals/policies:
+  /vaktcomply/policies:
     get:
       summary: List policies
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: List of policies
@@ -3209,7 +3209,7 @@ paths:
                     created_at: { type: string, format: date-time }
     post:
       summary: Create policy
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -3226,7 +3226,7 @@ paths:
         '201':
           description: Created policy
 
-  /secvitals/policies/{id}:
+  /vaktcomply/policies/{id}:
     parameters:
       - name: id
         in: path
@@ -3234,13 +3234,13 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: Get policy
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: Policy
     put:
       summary: Update policy
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -3257,17 +3257,17 @@ paths:
           description: Updated policy
     delete:
       summary: Delete policy
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '204':
           description: Deleted
 
   # ── SecVitals — Audits ────────────────────────────────────────────────────
 
-  /secvitals/audits:
+  /vaktcomply/audits:
     get:
       summary: List internal audits
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: List of audits
@@ -3286,7 +3286,7 @@ paths:
                     lead_auditor: { type: string }
     post:
       summary: Create internal audit
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -3304,7 +3304,7 @@ paths:
         '201':
           description: Created audit
 
-  /secvitals/audits/{id}:
+  /vaktcomply/audits/{id}:
     parameters:
       - name: id
         in: path
@@ -3312,13 +3312,13 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: Get audit
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: Audit
     put:
       summary: Update audit
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -3335,10 +3335,10 @@ paths:
 
   # ── SecVitals — CAPAs ────────────────────────────────────────────────────
 
-  /secvitals/capas:
+  /vaktcomply/capas:
     get:
       summary: List corrective/preventive actions (CAPAs)
-      tags: [secvitals]
+      tags: [vaktcomply]
       parameters:
         - name: status
           in: query
@@ -3362,7 +3362,7 @@ paths:
                     source_type: { type: string }
     post:
       summary: Create CAPA
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -3382,7 +3382,7 @@ paths:
         '201':
           description: Created CAPA
 
-  /secvitals/capas/{id}:
+  /vaktcomply/capas/{id}:
     parameters:
       - name: id
         in: path
@@ -3390,13 +3390,13 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: Get CAPA
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: CAPA
     put:
       summary: Update CAPA
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -3412,17 +3412,17 @@ paths:
           description: Updated CAPA
     delete:
       summary: Delete CAPA
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '204':
           description: Deleted
 
   # ── SecVitals — Approvals ─────────────────────────────────────────────────
 
-  /secvitals/approvals:
+  /vaktcomply/approvals:
     get:
       summary: List pending approvals
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: List of approval requests
@@ -3441,7 +3441,7 @@ paths:
                     requested_by: { type: string }
                     created_at: { type: string, format: date-time }
 
-  /secvitals/approvals/{id}/approve:
+  /vaktcomply/approvals/{id}/approve:
     parameters:
       - name: id
         in: path
@@ -3449,7 +3449,7 @@ paths:
         schema: { type: string, format: uuid }
     post:
       summary: Approve a pending approval request
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         content:
           application/json:
@@ -3463,7 +3463,7 @@ paths:
         '404':
           description: Not found
 
-  /secvitals/approvals/{id}/reject:
+  /vaktcomply/approvals/{id}/reject:
     parameters:
       - name: id
         in: path
@@ -3471,7 +3471,7 @@ paths:
         schema: { type: string, format: uuid }
     post:
       summary: Reject a pending approval request
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -3487,10 +3487,10 @@ paths:
 
   # ── SecVitals — Access Reviews ────────────────────────────────────────────
 
-  /secvitals/access-reviews:
+  /vaktcomply/access-reviews:
     get:
       summary: List access review campaigns
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: List of access review campaigns
@@ -3509,7 +3509,7 @@ paths:
                     reviewed_count: { type: integer }
     post:
       summary: Create access review campaign
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -3525,7 +3525,7 @@ paths:
         '201':
           description: Created campaign
 
-  /secvitals/access-reviews/{id}:
+  /vaktcomply/access-reviews/{id}:
     parameters:
       - name: id
         in: path
@@ -3533,13 +3533,13 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: Get access review campaign
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: Campaign
     put:
       summary: Update access review campaign
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -3554,12 +3554,12 @@ paths:
           description: Updated
     delete:
       summary: Delete access review campaign
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '204':
           description: Deleted
 
-  /secvitals/access-reviews/{id}/items:
+  /vaktcomply/access-reviews/{id}/items:
     parameters:
       - name: id
         in: path
@@ -3567,13 +3567,13 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: List items in access review campaign
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: List of items
     post:
       summary: Add item to access review campaign
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -3591,10 +3591,10 @@ paths:
 
   # ── SecVitals — Control Exceptions ───────────────────────────────────────
 
-  /secvitals/exceptions:
+  /vaktcomply/exceptions:
     get:
       summary: List control exceptions
-      tags: [secvitals]
+      tags: [vaktcomply]
       parameters:
         - name: status
           in: query
@@ -3617,7 +3617,7 @@ paths:
                     expires_at: { type: string, format: date }
                     approved_by: { type: string }
 
-  /secvitals/controls/{controlId}/exceptions:
+  /vaktcomply/controls/{controlId}/exceptions:
     parameters:
       - name: controlId
         in: path
@@ -3625,7 +3625,7 @@ paths:
         schema: { type: string, format: uuid }
     post:
       summary: Create exception for a control
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -3642,7 +3642,7 @@ paths:
         '201':
           description: Created exception
 
-  /secvitals/exceptions/{id}:
+  /vaktcomply/exceptions/{id}:
     parameters:
       - name: id
         in: path
@@ -3650,7 +3650,7 @@ paths:
         schema: { type: string, format: uuid }
     put:
       summary: Update exception (approve/reject/extend)
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -3666,20 +3666,20 @@ paths:
           description: Updated exception
     delete:
       summary: Delete exception
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '204':
           description: Deleted
 
   # ── SecVitals — Board Report & Score History ──────────────────────────────
 
-  /secvitals/board-report:
+  /vaktcomply/board-report:
     get:
       summary: Generate management board report PDF
       description: |
         Returns a PDF containing the compliance score, risk summary, CAPA status,
         and recent incident count. Intended for management review and audit trail.
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: Board report PDF
@@ -3691,11 +3691,11 @@ paths:
         '500':
           description: Report generation failed
 
-  /secvitals/score-history:
+  /vaktcomply/score-history:
     get:
       summary: Get compliance score history
       description: Returns daily compliance score snapshots for trend charts.
-      tags: [secvitals]
+      tags: [vaktcomply]
       parameters:
         - name: days
           in: query
@@ -3716,10 +3716,10 @@ paths:
 
   # ── SecVitals — Suppliers ─────────────────────────────────────────────────
 
-  /secvitals/suppliers:
+  /vaktcomply/suppliers:
     get:
       summary: List suppliers
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: List of suppliers
@@ -3738,7 +3738,7 @@ paths:
                     last_assessment: { type: string, format: date }
     post:
       summary: Create supplier
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -3756,7 +3756,7 @@ paths:
         '201':
           description: Created supplier
 
-  /secvitals/suppliers/{id}:
+  /vaktcomply/suppliers/{id}:
     parameters:
       - name: id
         in: path
@@ -3764,13 +3764,13 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: Get supplier
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: Supplier
     put:
       summary: Update supplier
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -3786,17 +3786,17 @@ paths:
           description: Updated supplier
     delete:
       summary: Delete supplier
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '204':
           description: Deleted
 
   # ── SecPrivacy — DPIA ────────────────────────────────────────────────────
 
-  /secprivacy/dpias:
+  /vaktprivacy/dpias:
     get:
       summary: List Data Protection Impact Assessments (DPIA, Art. 35 DSGVO)
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       responses:
         '200':
           description: List of DPIAs
@@ -3816,7 +3816,7 @@ paths:
                     created_at: { type: string, format: date-time }
     post:
       summary: Create DPIA
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       requestBody:
         required: true
         content:
@@ -3834,7 +3834,7 @@ paths:
         '201':
           description: Created DPIA
 
-  /secprivacy/dpias/{id}:
+  /vaktprivacy/dpias/{id}:
     parameters:
       - name: id
         in: path
@@ -3842,13 +3842,13 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: Get DPIA
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       responses:
         '200':
           description: DPIA
     put:
       summary: Update DPIA
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       requestBody:
         required: true
         content:
@@ -3864,17 +3864,17 @@ paths:
           description: Updated DPIA
     delete:
       summary: Delete DPIA
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       responses:
         '204':
           description: Deleted
 
   # ── SecPrivacy — AVV ─────────────────────────────────────────────────────
 
-  /secprivacy/avvs:
+  /vaktprivacy/avvs:
     get:
       summary: List Data Processing Agreements (AVV, Art. 28 DSGVO)
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       responses:
         '200':
           description: List of AVVs
@@ -3893,7 +3893,7 @@ paths:
                     data_categories: { type: array, items: { type: string } }
     post:
       summary: Create AVV
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       requestBody:
         required: true
         content:
@@ -3911,7 +3911,7 @@ paths:
         '201':
           description: Created AVV
 
-  /secprivacy/avvs/{id}:
+  /vaktprivacy/avvs/{id}:
     parameters:
       - name: id
         in: path
@@ -3919,13 +3919,13 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: Get AVV
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       responses:
         '200':
           description: AVV
     put:
       summary: Update AVV
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       requestBody:
         required: true
         content:
@@ -3939,7 +3939,7 @@ paths:
         '200':
           description: Updated AVV
 
-  /secprivacy/avvs/{id}/pdf:
+  /vaktprivacy/avvs/{id}/pdf:
     parameters:
       - name: id
         in: path
@@ -3947,7 +3947,7 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: Export AVV as PDF
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       responses:
         '200':
           description: AVV PDF
@@ -3959,10 +3959,10 @@ paths:
 
   # ── SecPrivacy — DSR ─────────────────────────────────────────────────────
 
-  /secprivacy/dsr:
+  /vaktprivacy/dsr:
     get:
       summary: List data subject requests (Art. 15–22 DSGVO)
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       parameters:
         - name: status
           in: query
@@ -3989,7 +3989,7 @@ paths:
                     deadline: { type: string, format: date }
     post:
       summary: Create DSR record
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       requestBody:
         required: true
         content:
@@ -4006,7 +4006,7 @@ paths:
         '201':
           description: Created DSR
 
-  /secprivacy/dsr/{id}:
+  /vaktprivacy/dsr/{id}:
     parameters:
       - name: id
         in: path
@@ -4014,13 +4014,13 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: Get DSR
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       responses:
         '200':
           description: DSR
     put:
       summary: Update DSR status
-      tags: [secprivacy]
+      tags: [vaktprivacy]
       requestBody:
         required: true
         content:
@@ -4037,10 +4037,10 @@ paths:
 
   # --- CCM (Continuous Control Monitoring) ---
 
-  /secvitals/ccm/checks:
+  /vaktcomply/ccm/checks:
     get:
       summary: List CCM checks
-      tags: [secvitals]
+      tags: [vaktcomply]
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/LimitParam'
@@ -4052,7 +4052,7 @@ paths:
           description: Paginated list of CCM checks
     post:
       summary: Create CCM check
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -4071,7 +4071,7 @@ paths:
         '201':
           description: Created CCM check
 
-  /secvitals/ccm/checks/{id}:
+  /vaktcomply/ccm/checks/{id}:
     parameters:
       - name: id
         in: path
@@ -4079,13 +4079,13 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: Get CCM check
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: CCM check
     put:
       summary: Update CCM check
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -4103,12 +4103,12 @@ paths:
           description: Updated CCM check
     delete:
       summary: Delete CCM check
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '204':
           description: Deleted
 
-  /secvitals/ccm/checks/{id}/run:
+  /vaktcomply/ccm/checks/{id}/run:
     parameters:
       - name: id
         in: path
@@ -4116,12 +4116,12 @@ paths:
         schema: { type: string, format: uuid }
     post:
       summary: Trigger manual CCM check run
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '202':
           description: Check run queued
 
-  /secvitals/ccm/checks/{id}/results:
+  /vaktcomply/ccm/checks/{id}/results:
     parameters:
       - name: id
         in: path
@@ -4129,7 +4129,7 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: Get CCM check run results
-      tags: [secvitals]
+      tags: [vaktcomply]
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/LimitParam'
@@ -4139,10 +4139,10 @@ paths:
 
   # --- DORA ---
 
-  /secvitals/dora/dashboard:
+  /vaktcomply/dora/dashboard:
     get:
       summary: DORA compliance dashboard
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: DORA dashboard data
@@ -4155,10 +4155,10 @@ paths:
                   articles: { type: array, items: { type: object } }
                   gaps: { type: array, items: { type: object } }
 
-  /secvitals/dora/report-pdf:
+  /vaktcomply/dora/report-pdf:
     get:
       summary: Download DORA readiness report PDF
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: PDF report
@@ -4170,10 +4170,10 @@ paths:
 
   # --- EU AI Act ---
 
-  /secvitals/eu-ai-act/dashboard:
+  /vaktcomply/eu-ai-act/dashboard:
     get:
       summary: EU AI Act compliance dashboard
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: EU AI Act dashboard data
@@ -4186,10 +4186,10 @@ paths:
                   overall_score: { type: number }
                   requirements: { type: array, items: { type: object } }
 
-  /secvitals/eu-ai-act/report-pdf:
+  /vaktcomply/eu-ai-act/report-pdf:
     get:
       summary: Download EU AI Act readiness report PDF
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: PDF report
@@ -4201,10 +4201,10 @@ paths:
 
   # --- TISAX ---
 
-  /secvitals/frameworks/tisax/iso-mapping:
+  /vaktcomply/frameworks/tisax/iso-mapping:
     get:
       summary: TISAX ↔ ISO 27001 control mapping
-      tags: [secvitals]
+      tags: [vaktcomply]
       parameters:
         - name: framework_id
           in: query
@@ -4214,10 +4214,10 @@ paths:
         '200':
           description: Mapping results
 
-  /secvitals/frameworks/tisax/coverage-after-iso:
+  /vaktcomply/frameworks/tisax/coverage-after-iso:
     get:
       summary: TISAX controls not covered by mapped ISO 27001 controls
-      tags: [secvitals]
+      tags: [vaktcomply]
       parameters:
         - name: framework_id
           in: query
@@ -4228,7 +4228,7 @@ paths:
 
   # --- Controls sub-routes ---
 
-  /secvitals/controls/{controlId}/evidence:
+  /vaktcomply/controls/{controlId}/evidence:
     parameters:
       - name: controlId
         in: path
@@ -4236,13 +4236,13 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: List evidence for a control
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: List of evidence items
     post:
       summary: Add evidence to a control (URL or text)
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -4259,7 +4259,7 @@ paths:
         '201':
           description: Evidence created
 
-  /secvitals/controls/{controlId}/evidence/upload:
+  /vaktcomply/controls/{controlId}/evidence/upload:
     parameters:
       - name: controlId
         in: path
@@ -4267,7 +4267,7 @@ paths:
         schema: { type: string, format: uuid }
     post:
       summary: Upload a file as evidence for a control
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -4284,7 +4284,7 @@ paths:
         '201':
           description: Evidence uploaded
 
-  /secvitals/controls/{controlId}/measures:
+  /vaktcomply/controls/{controlId}/measures:
     parameters:
       - name: controlId
         in: path
@@ -4292,13 +4292,13 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: List measures for a control
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: List of measures
     post:
       summary: Add a measure to a control
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -4316,7 +4316,7 @@ paths:
         '201':
           description: Measure created
 
-  /secvitals/controls/{controlId}/measures/{mid}:
+  /vaktcomply/controls/{controlId}/measures/{mid}:
     parameters:
       - name: controlId
         in: path
@@ -4328,7 +4328,7 @@ paths:
         schema: { type: string, format: uuid }
     put:
       summary: Update a measure
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -4346,14 +4346,14 @@ paths:
           description: Updated measure
     delete:
       summary: Delete a measure
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '204':
           description: Deleted
 
   # --- Suppliers sub-routes ---
 
-  /secvitals/suppliers/{id}/assessments:
+  /vaktcomply/suppliers/{id}/assessments:
     parameters:
       - name: id
         in: path
@@ -4361,13 +4361,13 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: List assessments for a supplier
-      tags: [secvitals]
+      tags: [vaktcomply]
       responses:
         '200':
           description: List of supplier assessments
     post:
       summary: Create a supplier assessment
-      tags: [secvitals]
+      tags: [vaktcomply]
       requestBody:
         required: true
         content:
@@ -4521,10 +4521,10 @@ paths:
 
   # --- SecReflex content library (Sprint 4) ---
 
-  /secreflex/training-modules/presets:
+  /vaktaware/training-modules/presets:
     get:
       summary: List bundled training-module presets (DACH-specific curriculum)
-      tags: [secreflex]
+      tags: [vaktaware]
       responses:
         '200':
           description: List of presets
@@ -4565,11 +4565,11 @@ paths:
 
   # ── DORA Third Parties (Sprint 38) ───────────────────────────────────────
 
-  /secvitals/dora/third-parties:
+  /vaktcomply/dora/third-parties:
     get:
       summary: List DORA IKT third-party providers
       operationId: listDORAThirdParties
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -4585,7 +4585,7 @@ paths:
     post:
       summary: Register a DORA IKT third-party provider
       operationId: createDORAThirdParty
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -4611,7 +4611,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/DORAThirdParty'
 
-  /secvitals/dora/third-parties/{id}:
+  /vaktcomply/dora/third-parties/{id}:
     parameters:
       - name: id
         in: path
@@ -4620,7 +4620,7 @@ paths:
     get:
       summary: Get a DORA IKT third-party provider
       operationId: getDORAThirdParty
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -4634,7 +4634,7 @@ paths:
     patch:
       summary: Update a DORA IKT third-party provider
       operationId: updateDORAThirdParty
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -4661,7 +4661,7 @@ paths:
     delete:
       summary: Delete a DORA IKT third-party provider
       operationId: deleteDORAThirdParty
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -4669,7 +4669,7 @@ paths:
         '204':
           description: Deleted
 
-  /secvitals/dora/third-parties/{id}/controls:
+  /vaktcomply/dora/third-parties/{id}/controls:
     parameters:
       - name: id
         in: path
@@ -4678,7 +4678,7 @@ paths:
     post:
       summary: Link a control to a DORA third-party provider
       operationId: linkDORAThirdPartyControl
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -4695,7 +4695,7 @@ paths:
         '201':
           description: Control linked
 
-  /secvitals/dora/third-parties/{id}/controls/{controlId}:
+  /vaktcomply/dora/third-parties/{id}/controls/{controlId}:
     parameters:
       - name: id
         in: path
@@ -4708,7 +4708,7 @@ paths:
     delete:
       summary: Unlink a control from a DORA third-party provider
       operationId: unlinkDORAThirdPartyControl
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -4718,11 +4718,11 @@ paths:
 
   # ── DORA Resilience Tests (Sprint 29) ────────────────────────────────────
 
-  /secvitals/resilience-tests:
+  /vaktcomply/resilience-tests:
     get:
       summary: List DORA resilience tests
       operationId: listResilienceTests
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -4738,7 +4738,7 @@ paths:
     post:
       summary: Create a DORA resilience test
       operationId: createResilienceTest
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -4763,7 +4763,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ResilienceTest'
 
-  /secvitals/resilience-tests/{id}:
+  /vaktcomply/resilience-tests/{id}:
     parameters:
       - name: id
         in: path
@@ -4772,7 +4772,7 @@ paths:
     get:
       summary: Get a DORA resilience test
       operationId: getResilienceTest
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -4786,7 +4786,7 @@ paths:
     patch:
       summary: Update a DORA resilience test
       operationId: updateResilienceTest
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -4813,7 +4813,7 @@ paths:
     delete:
       summary: Delete a DORA resilience test
       operationId: deleteResilienceTest
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -4821,7 +4821,7 @@ paths:
         '204':
           description: Deleted
 
-  /secvitals/resilience-tests/{id}/attachment:
+  /vaktcomply/resilience-tests/{id}/attachment:
     parameters:
       - name: id
         in: path
@@ -4830,7 +4830,7 @@ paths:
     post:
       summary: Upload an attachment to a resilience test
       operationId: uploadResilienceTestAttachment
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -4850,7 +4850,7 @@ paths:
         '201':
           description: Attachment uploaded
 
-  /secvitals/resilience-tests/{id}/link-evidence:
+  /vaktcomply/resilience-tests/{id}/link-evidence:
     parameters:
       - name: id
         in: path
@@ -4859,7 +4859,7 @@ paths:
     post:
       summary: Link a resilience test as compliance evidence
       operationId: linkResilienceTestEvidence
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -4878,7 +4878,7 @@ paths:
 
   # ── BSI Reporting Classification (Sprint 39) ─────────────────────────────
 
-  /secvitals/incidents/{id}/classify-reporting:
+  /vaktcomply/incidents/{id}/classify-reporting:
     parameters:
       - name: id
         in: path
@@ -4887,7 +4887,7 @@ paths:
     post:
       summary: BSI 3-question reporting obligation classification wizard
       operationId: classifyIncidentReporting
-      tags: [secvitals]
+      tags: [vaktcomply]
       security:
         - BearerAuth: []
       requestBody:
@@ -4911,11 +4911,11 @@ paths:
                   obligation: { type: string, enum: [probably, none, unclear] }
                   reasoning: { type: string }
 
-  /secvitals/authorities:
+  /vaktcomply/authorities:
     get:
       summary: List relevant regulatory authorities
       operationId: listAuthorities
-      tags: [secvitals]
+      tags: [vaktcomply]
       security:
         - BearerAuth: []
       responses:
@@ -4928,11 +4928,11 @@ paths:
                 items:
                   $ref: '#/components/schemas/Authority'
 
-  /secvitals/org-sector:
+  /vaktcomply/org-sector:
     patch:
       summary: Update organisation sector classification
       operationId: updateOrgSector
-      tags: [secvitals]
+      tags: [vaktcomply]
       security:
         - BearerAuth: []
       requestBody:
@@ -4952,7 +4952,7 @@ paths:
 
   # ── TISAX Framework Extensions (Sprint 33–34) ────────────────────────────
 
-  /secvitals/frameworks/{id}/tisax-controls:
+  /vaktcomply/frameworks/{id}/tisax-controls:
     parameters:
       - name: id
         in: path
@@ -4961,7 +4961,7 @@ paths:
     get:
       summary: List TISAX controls for a framework instance
       operationId: listTISAXControls
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -4981,7 +4981,7 @@ paths:
                     maturity_level: { type: integer, minimum: 1, maximum: 3 }
                     status: { type: string, enum: [not_assessed, in_progress, compliant, non_compliant] }
 
-  /secvitals/frameworks/{id}/tisax-gaps:
+  /vaktcomply/frameworks/{id}/tisax-gaps:
     parameters:
       - name: id
         in: path
@@ -4990,7 +4990,7 @@ paths:
     get:
       summary: Get TISAX gap analysis for a framework instance
       operationId: getTISAXGaps
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -5008,7 +5008,7 @@ paths:
                   not_assessed: { type: integer }
                   gaps: { type: array, items: { type: object } }
 
-  /secvitals/frameworks/{id}/tisax-report-pdf:
+  /vaktcomply/frameworks/{id}/tisax-report-pdf:
     parameters:
       - name: id
         in: path
@@ -5017,7 +5017,7 @@ paths:
     get:
       summary: Export TISAX readiness report as PDF
       operationId: exportTISAXReportPDF
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -5032,11 +5032,11 @@ paths:
 
   # ── EU AI Act — AI System Inventory (Sprint 30–32) ───────────────────────
 
-  /secvitals/ai-systems:
+  /vaktcomply/ai-systems:
     get:
       summary: List AI systems in the inventory
       operationId: listAISystems
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -5052,7 +5052,7 @@ paths:
     post:
       summary: Register an AI system
       operationId: createAISystem
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -5077,7 +5077,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/AISystem'
 
-  /secvitals/ai-systems/{id}:
+  /vaktcomply/ai-systems/{id}:
     parameters:
       - name: id
         in: path
@@ -5086,7 +5086,7 @@ paths:
     get:
       summary: Get an AI system
       operationId: getAISystem
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -5100,7 +5100,7 @@ paths:
     patch:
       summary: Update an AI system
       operationId: updateAISystem
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -5127,7 +5127,7 @@ paths:
     delete:
       summary: Delete an AI system
       operationId: deleteAISystem
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -5135,7 +5135,7 @@ paths:
         '204':
           description: Deleted
 
-  /secvitals/ai-systems/{id}/classifications:
+  /vaktcomply/ai-systems/{id}/classifications:
     parameters:
       - name: id
         in: path
@@ -5144,7 +5144,7 @@ paths:
     get:
       summary: List risk classifications for an AI system
       operationId: listAIClassifications
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -5158,7 +5158,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/AIClassification'
 
-  /secvitals/ai-systems/{id}/classify:
+  /vaktcomply/ai-systems/{id}/classify:
     parameters:
       - name: id
         in: path
@@ -5167,7 +5167,7 @@ paths:
     post:
       summary: Run EU AI Act risk classification for an AI system
       operationId: classifyAISystem
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -5190,7 +5190,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/AIClassification'
 
-  /secvitals/ai-systems/{id}/documentation:
+  /vaktcomply/ai-systems/{id}/documentation:
     parameters:
       - name: id
         in: path
@@ -5199,7 +5199,7 @@ paths:
     get:
       summary: Get the latest technical documentation for an AI system
       operationId: getAIDocumentation
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -5213,7 +5213,7 @@ paths:
     post:
       summary: Save (create or update) AI system technical documentation
       operationId: saveAIDocumentation
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -5237,7 +5237,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/AIDocumentation'
 
-  /secvitals/ai-systems/{id}/documentation/versions:
+  /vaktcomply/ai-systems/{id}/documentation/versions:
     parameters:
       - name: id
         in: path
@@ -5246,7 +5246,7 @@ paths:
     get:
       summary: List documentation versions for an AI system
       operationId: listAIDocumentationVersions
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -5265,7 +5265,7 @@ paths:
                     created_at: { type: string, format: date-time }
                     created_by: { type: string, format: uuid }
 
-  /secvitals/ai-systems/{id}/documentation/export-pdf:
+  /vaktcomply/ai-systems/{id}/documentation/export-pdf:
     parameters:
       - name: id
         in: path
@@ -5274,7 +5274,7 @@ paths:
     get:
       summary: Export AI system documentation as PDF
       operationId: exportAIDocumentationPDF
-      tags: [secvitals]
+      tags: [vaktcomply]
       x-pro-feature: true
       security:
         - BearerAuth: []
@@ -5298,7 +5298,7 @@ paths:
     get:
       summary: Get supplier portal assessment by token (public)
       operationId: portalGetAssessment
-      tags: [secvitals]
+      tags: [vaktcomply]
       security: []
       responses:
         '200':
@@ -5323,7 +5323,7 @@ paths:
     post:
       summary: Save (draft) supplier portal answers (public)
       operationId: portalSaveAnswers
-      tags: [secvitals]
+      tags: [vaktcomply]
       security: []
       requestBody:
         required: true
@@ -5346,7 +5346,7 @@ paths:
     post:
       summary: Submit final supplier portal answers (public)
       operationId: portalSubmitAssessment
-      tags: [secvitals]
+      tags: [vaktcomply]
       security: []
       requestBody:
         required: true
@@ -5369,7 +5369,7 @@ paths:
     post:
       summary: Upload a file in the supplier portal (public)
       operationId: portalUploadFile
-      tags: [secvitals]
+      tags: [vaktcomply]
       security: []
       requestBody:
         required: true
@@ -5396,7 +5396,7 @@ paths:
 
   # ── Supplier Extended Routes (Sprint 35–37) ───────────────────────────────
 
-  /secvitals/suppliers/{id}/incidents:
+  /vaktcomply/suppliers/{id}/incidents:
     parameters:
       - name: id
         in: path
@@ -5405,7 +5405,7 @@ paths:
     get:
       summary: List incidents linked to a supplier
       operationId: getSupplierIncidents
-      tags: [secvitals]
+      tags: [vaktcomply]
       security:
         - BearerAuth: []
       responses:
@@ -5418,7 +5418,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/Incident'
 
-  /secvitals/suppliers/{id}/risks:
+  /vaktcomply/suppliers/{id}/risks:
     parameters:
       - name: id
         in: path
@@ -5427,7 +5427,7 @@ paths:
     get:
       summary: List risks linked to a supplier
       operationId: listSupplierRisks
-      tags: [secvitals]
+      tags: [vaktcomply]
       security:
         - BearerAuth: []
       responses:
@@ -5442,7 +5442,7 @@ paths:
     post:
       summary: Link a risk to a supplier
       operationId: linkSupplierRisk
-      tags: [secvitals]
+      tags: [vaktcomply]
       security:
         - BearerAuth: []
       requestBody:
@@ -5458,7 +5458,7 @@ paths:
         '201':
           description: Risk linked
 
-  /secvitals/suppliers/{id}/risks/{riskId}:
+  /vaktcomply/suppliers/{id}/risks/{riskId}:
     parameters:
       - name: id
         in: path
@@ -5471,14 +5471,14 @@ paths:
     delete:
       summary: Unlink a risk from a supplier
       operationId: unlinkSupplierRisk
-      tags: [secvitals]
+      tags: [vaktcomply]
       security:
         - BearerAuth: []
       responses:
         '204':
           description: Unlinked
 
-  /secvitals/suppliers/{id}/status:
+  /vaktcomply/suppliers/{id}/status:
     parameters:
       - name: id
         in: path
@@ -5487,7 +5487,7 @@ paths:
     get:
       summary: Get aggregated compliance status for a supplier
       operationId: getSupplierStatus
-      tags: [secvitals]
+      tags: [vaktcomply]
       security:
         - BearerAuth: []
       responses:
@@ -5503,11 +5503,11 @@ paths:
                   open_incidents: { type: integer }
                   last_assessment_date: { type: string, format: date }
 
-  /secvitals/suppliers/export:
+  /vaktcomply/suppliers/export:
     get:
       summary: Export supplier register as CSV/Excel
       operationId: exportSuppliers
-      tags: [secvitals]
+      tags: [vaktcomply]
       security:
         - BearerAuth: []
       parameters:
@@ -5526,11 +5526,11 @@ paths:
                 type: string
                 format: binary
 
-  /secvitals/suppliers/import-csv:
+  /vaktcomply/suppliers/import-csv:
     post:
       summary: Import suppliers from CSV
       operationId: importSuppliersCSV
-      tags: [secvitals]
+      tags: [vaktcomply]
       security:
         - BearerAuth: []
       requestBody:

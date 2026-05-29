@@ -17,12 +17,12 @@ interface QuickNavItem {
 
 const QUICK_NAV: QuickNavItem[] = [
   { label: 'Dashboard',     path: '/',                       icon: <LayoutDashboard className="w-3.5 h-3.5 text-secondary shrink-0" /> },
-  { label: 'Controls',      path: '/secvitals/controls',     icon: <Shield className="w-3.5 h-3.5 text-brand shrink-0" /> },
-  { label: 'Risiken',       path: '/secvitals/risks',        icon: <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" /> },
-  { label: 'Vorfälle',      path: '/secvitals/incidents',    icon: <Siren className="w-3.5 h-3.5 text-red-500 shrink-0" /> },
-  { label: 'Richtlinien',   path: '/secvitals/policies',     icon: <BookOpen className="w-3.5 h-3.5 text-blue-500 shrink-0" /> },
-  { label: 'Findings',      path: '/secpulse/findings',      icon: <Bug className="w-3.5 h-3.5 text-orange-500 shrink-0" /> },
-  { label: 'Board-Bericht', path: '/secvitals/board-report', icon: <Eye className="w-3.5 h-3.5 text-purple-500 shrink-0" /> },
+  { label: 'Controls',      path: '/vaktcomply/controls',     icon: <Shield className="w-3.5 h-3.5 text-brand shrink-0" /> },
+  { label: 'Risiken',       path: '/vaktcomply/risks',        icon: <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" /> },
+  { label: 'Vorfälle',      path: '/vaktcomply/incidents',    icon: <Siren className="w-3.5 h-3.5 text-red-500 shrink-0" /> },
+  { label: 'Richtlinien',   path: '/vaktcomply/policies',     icon: <BookOpen className="w-3.5 h-3.5 text-blue-500 shrink-0" /> },
+  { label: 'Findings',      path: '/vaktscan/findings',      icon: <Bug className="w-3.5 h-3.5 text-orange-500 shrink-0" /> },
+  { label: 'Board-Bericht', path: '/vaktcomply/board-report', icon: <Eye className="w-3.5 h-3.5 text-purple-500 shrink-0" /> },
 ]
 
 const ENTITY_ICONS: Record<string, React.ReactNode> = {

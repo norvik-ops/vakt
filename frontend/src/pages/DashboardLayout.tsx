@@ -56,27 +56,27 @@ export function DashboardLayout({
     {
       label: 'Kritische Findings', value: fmt(critCount),
       icon: AlertTriangle, color: critCount ? 'text-severity-critical' : 'text-secondary',
-      path: '/secpulse/findings?severity=critical', loading: findingsLoading,
+      path: '/vaktscan/findings?severity=critical', loading: findingsLoading,
     },
     {
       label: 'Frameworks aktiv', value: fmt(fwCount),
       icon: CheckCircle, color: fwCount ? 'text-severity-low' : 'text-secondary',
-      path: '/secvitals', loading: fwLoading,
+      path: '/vaktcomply', loading: fwLoading,
     },
     {
       label: 'Vault-Projekte', value: fmt(projCount),
       icon: ShieldAlert, color: 'text-severity-medium',
-      path: '/secvault', loading: projLoading,
+      path: '/vaktvault', loading: projLoading,
     },
     {
       label: 'Aktive Kampagnen', value: fmt(activeCampaignCount),
       icon: Activity, color: activeCampaignCount ? 'text-brand-hover' : 'text-secondary',
-      path: '/secreflex', loading: campLoading,
+      path: '/vaktaware', loading: campLoading,
     },
     {
       label: 'Offene Datenpannen', value: fmt(openBreachCount),
       icon: Flame, color: openBreachCount ? 'text-severity-critical' : 'text-secondary',
-      path: '/secprivacy?filter=breach&status=open', loading: breachLoading,
+      path: '/vaktprivacy?filter=breach&status=open', loading: breachLoading,
     },
   ]
 

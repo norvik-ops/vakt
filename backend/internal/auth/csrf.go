@@ -38,7 +38,7 @@ func GenerateCSRFToken() string {
 //
 // Path is "/" — not "/api/v1" — because document.cookie path-matching (RFC 6265
 // §5.4) only returns cookies whose path is a prefix of the current document URL.
-// The SPA is served from "/", "/secvitals/...", etc.; a cookie with Path=/api/v1
+// The SPA is served from "/", "/vaktcomply/...", etc.; a cookie with Path=/api/v1
 // would be invisible to JS there, so the double-submit header could never be
 // echoed and every state-changing request would 403 with "CSRF header missing".
 func SetCSRFCookie(c echo.Context, token string) {

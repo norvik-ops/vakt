@@ -8,7 +8,7 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Card } from '../../../components/ui/card'
 import { apiFetch } from '../../../api/client'
-import type { Policy } from '../../../modules/secvitals/types'
+import type { Policy } from '../../../modules/vaktcomply/types'
 import type { PaginatedResponse } from '../../../shared/types/pagination'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -118,10 +118,10 @@ function useUnpublishPolicy() {
 
 function usePolicies() {
   return useQuery<Policy[]>({
-    queryKey: ['secvitals', 'policies'],
+    queryKey: ['vaktcomply', 'policies'],
     queryFn: async () => {
       const resp = await apiFetch<PaginatedResponse<Policy> | Policy[]>(
-        '/secvitals/policies?page=1&limit=200',
+        '/vaktcomply/policies?page=1&limit=200',
       )
       // ListPolicies returns the paginated envelope {data, pagination}; older
       // callers fell back to a flat array, so we accept either shape.

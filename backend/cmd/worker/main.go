@@ -22,11 +22,11 @@ import (
 	"github.com/matharnica/vakt/internal/admin"
 	"github.com/matharnica/vakt/internal/auth"
 	"github.com/matharnica/vakt/internal/config"
-	"github.com/matharnica/vakt/internal/modules/secprivacy"
-	"github.com/matharnica/vakt/internal/modules/secpulse"
-	"github.com/matharnica/vakt/internal/modules/secreflex"
-	"github.com/matharnica/vakt/internal/modules/secvault"
-	"github.com/matharnica/vakt/internal/modules/secvitals"
+	"github.com/matharnica/vakt/internal/modules/vaktprivacy"
+	"github.com/matharnica/vakt/internal/modules/vaktscan"
+	"github.com/matharnica/vakt/internal/modules/vaktaware"
+	"github.com/matharnica/vakt/internal/modules/vaktvault"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/services/alerting"
 	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/services/siem"
@@ -96,15 +96,15 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 			Queues: map[string]int{
 				// Module-dedicated queues (S31-3): each module has its own namespace so
 				// a long-running scan batch cannot starve breach-notification or evidence jobs.
-				secpulse.QueueScans: 8, // scanner jobs — highest module concurrency
-				secvitals.Queue:     5, // evidence collection, deadline checks
-				secprivacy.Queue:    5, // breach notifications, AVV checks
-				secreflex.Queue:     3, // campaign send, training reminders
+				vaktscan.QueueScans: 8, // scanner jobs — highest module concurrency
+				vaktcomply.Queue:     5, // evidence collection, deadline checks
+				vaktprivacy.Queue:    5, // breach notifications, AVV checks
+				vaktaware.Queue:     3, // campaign send, training reminders
 				// Generic queues kept for backward compat with external enqueues.
 				"critical":                10,
 				"default":                 5,
 				"low":                     3,
-				secpulse.QueueMaintenance: 2, // SBOM generation and EOL checks
+				vaktscan.QueueMaintenance: 2, // SBOM generation and EOL checks
 			},
 		},
 	)
@@ -119,9 +119,9 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	}
 
 	// ── SecPulse scan handlers ────────────────────────────────────────────────
-	mux.HandleFunc(secpulse.TaskScanTrivy, handleScanJob(cfg, pool))
-	mux.HandleFunc(secpulse.TaskScanNuclei, handleScanJob(cfg, pool))
-	mux.HandleFunc(secpulse.TaskScanOpenVAS, handleScanJob(cfg, pool))
+	mux.HandleFunc(vaktscan.TaskScanTrivy, handleScanJob(cfg, pool))
+	mux.HandleFunc(vaktscan.TaskScanNuclei, handleScanJob(cfg, pool))
+	mux.HandleFunc(vaktscan.TaskScanOpenVAS, handleScanJob(cfg, pool))
 
 	// ── SecVitals: daily control-owner due-date reminder ─────────────────────
 	mux.HandleFunc(taskControlOwnerReminder, handleControlOwnerReminder(cfg, pool))
@@ -130,35 +130,35 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	mux.HandleFunc(taskGitHubCISync, handleGitHubCISync(cfg, pool))
 
 	// ── SecPulse EPSS enrichment (daily) ─────────────────────────────────────
-	mux.HandleFunc(secpulse.TaskEPSSEnrich, handleEPSSEnrich(cfg, pool))
-	mux.HandleFunc(secpulse.TaskRiskTrendSnapshot, handleRiskTrendSnapshot(pool))
+	mux.HandleFunc(vaktscan.TaskEPSSEnrich, handleEPSSEnrich(cfg, pool))
+	mux.HandleFunc(vaktscan.TaskRiskTrendSnapshot, handleRiskTrendSnapshot(pool))
 
 	// ── SecPulse report generation ────────────────────────────────────────────
-	mux.HandleFunc(secpulse.TaskGenerateReport, handleGenerateReport(cfg, pool))
+	mux.HandleFunc(vaktscan.TaskGenerateReport, handleGenerateReport(cfg, pool))
 
 	// ── SecReflex campaign send ───────────────────────────────────────────────
-	mux.HandleFunc(secreflex.TaskSendCampaign, handleSendCampaign(cfg, pool))
+	mux.HandleFunc(vaktaware.TaskSendCampaign, handleSendCampaign(cfg, pool))
 
 	// ── SecReflex training reminder ───────────────────────────────────────────
-	mux.HandleFunc(secreflex.TaskTrainingReminder, handleTrainingReminder(cfg, pool))
+	mux.HandleFunc(vaktaware.TaskTrainingReminder, handleTrainingReminder(cfg, pool))
 
 	// ── SecVault git scanning ─────────────────────────────────────────────────
-	mux.HandleFunc(secvault.TaskGitScan, handleGitScan(cfg, pool))
+	mux.HandleFunc(vaktvault.TaskGitScan, handleGitScan(cfg, pool))
 
 	// ── SecPrivacy: AVV expiry check ──────────────────────────────────────────
-	mux.HandleFunc(secprivacy.TaskAVVExpiryCheck, handleAVVExpiryCheck(cfg, pool))
+	mux.HandleFunc(vaktprivacy.TaskAVVExpiryCheck, handleAVVExpiryCheck(cfg, pool))
 
 	// ── SecPrivacy→SecVitals: breach → incident ───────────────────────────────
-	mux.HandleFunc(secprivacy.TaskBreachIncidentCreate, handleBreachIncidentCreate(cfg, pool))
+	mux.HandleFunc(vaktprivacy.TaskBreachIncidentCreate, handleBreachIncidentCreate(cfg, pool))
 
 	// ── SecPulse→SecVitals: resolved finding → patch-control evidence ─────────
-	mux.HandleFunc(secpulse.TaskAutoEvidence, handleAutoEvidence(cfg, pool))
+	mux.HandleFunc(vaktscan.TaskAutoEvidence, handleAutoEvidence(cfg, pool))
 
 	// ── SecPulse SBOM generation (syft) ───────────────────────────────────────
-	mux.HandleFunc(secpulse.TaskSBOMGenerate, handleSBOMGenerate(cfg, pool))
+	mux.HandleFunc(vaktscan.TaskSBOMGenerate, handleSBOMGenerate(cfg, pool))
 
 	// ── SecPulse EOL check (endoflife.date) ───────────────────────────────────
-	mux.HandleFunc(secpulse.TaskEOLCheck, handleEOLCheck(cfg, pool))
+	mux.HandleFunc(vaktscan.TaskEOLCheck, handleEOLCheck(cfg, pool))
 
 	// ── Alerting: scheduled overdue checks ────────────────────────────────────
 	mux.HandleFunc(alerting.TaskSLAOverdueCheck, handleSLAOverdueCheck(cfg, pool))
@@ -180,19 +180,19 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	mux.HandleFunc(crossevidence.TaskRecordEvidence, handleRecordEvidence(pool))
 
 	// SecVitals: daily evidence expiry alert
-	mux.HandleFunc(secvitals.TaskEvidenceExpiryAlert, handleEvidenceExpiryAlert(pool))
+	mux.HandleFunc(vaktcomply.TaskEvidenceExpiryAlert, handleEvidenceExpiryAlert(pool))
 
 	// SecVitals: periodic DORA/NIS2 incident deadline check
-	mux.HandleFunc(secvitals.TaskIncidentDeadlineCheck, handleIncidentDeadlineCheck(pool))
+	mux.HandleFunc(vaktcomply.TaskIncidentDeadlineCheck, handleIncidentDeadlineCheck(pool))
 
 	// SecVitals: DORA Ampel-Status update every 5 minutes (S37-4)
-	mux.HandleFunc(secvitals.TaskDORADeadlineStatus, handleDORADeadlineStatus(pool))
+	mux.HandleFunc(vaktcomply.TaskDORADeadlineStatus, handleDORADeadlineStatus(pool))
 
 	// SecVitals: daily NIS2 classified-incident deadline check (S39-2)
-	mux.HandleFunc(secvitals.TaskNIS2ObligationCheck, handleNIS2ObligationCheck(pool))
+	mux.HandleFunc(vaktcomply.TaskNIS2ObligationCheck, handleNIS2ObligationCheck(pool))
 
 	// SecVitals: daily supplier certificate expiry check
-	mux.HandleFunc(secvitals.TaskCertExpiryCheck, handleCertExpiryCheck(pool))
+	mux.HandleFunc(vaktcomply.TaskCertExpiryCheck, handleCertExpiryCheck(pool))
 
 	// SecVitals: daily overdue control test CAPA creation
 	mux.HandleFunc(taskControlTestCheck, handleControlTestCheck(pool))
@@ -201,10 +201,10 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	mux.HandleFunc(taskErrorBudgetReport, handleErrorBudgetReport(pool))
 
 	// SecVitals: CCM — run all due automated control checks
-	mux.HandleFunc(secvitals.TaskCCMRunDue, handleCCMRunDue(pool))
+	mux.HandleFunc(vaktcomply.TaskCCMRunDue, handleCCMRunDue(pool))
 
 	// SecVitals: daily compliance score snapshot for trend charts
-	mux.HandleFunc(secvitals.TaskScoreSnapshot, handleScoreSnapshot(pool))
+	mux.HandleFunc(vaktcomply.TaskScoreSnapshot, handleScoreSnapshot(pool))
 
 	// Notifications: daily compliance deadline email alerts
 	mux.HandleFunc(notifications.TaskNotifyDeadlines, handleNotifyDeadlines(cfg, pool))
@@ -236,13 +236,13 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	mux.HandleFunc(siem.TaskSIEMForward, handleSIEMForward(pool))
 
 	// S52-1: daily evidence freshness AI insight generation
-	mux.HandleFunc(secvitals.TaskEvidenceFreshnessCheck, handleEvidenceFreshnessCheck(cfg, pool))
+	mux.HandleFunc(vaktcomply.TaskEvidenceFreshnessCheck, handleEvidenceFreshnessCheck(cfg, pool))
 
 	// S52-5: per-finding AI evidence suggestion (enqueued when finding resolved)
-	mux.HandleFunc(secvitals.TaskAIEvidenceSuggestion, handleAIEvidenceSuggestion(cfg, pool))
+	mux.HandleFunc(vaktcomply.TaskAIEvidenceSuggestion, handleAIEvidenceSuggestion(cfg, pool))
 
 	// S52-4: Monday AI compliance weekly digest
-	mux.HandleFunc(secvitals.TaskAIWeeklyDigest, handleAIWeeklyDigest(cfg, pool))
+	mux.HandleFunc(vaktcomply.TaskAIWeeklyDigest, handleAIWeeklyDigest(cfg, pool))
 
 	return srv, mux
 }
@@ -252,7 +252,7 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 
 func EnqueueScanTask(client *asynq.Client, taskType string, payload []byte) error {
 	queue := "default"
-	if taskType == secpulse.TaskScanOpenVAS {
+	if taskType == vaktscan.TaskScanOpenVAS {
 		queue = "low"
 	}
 	task := asynq.NewTask(taskType, payload,

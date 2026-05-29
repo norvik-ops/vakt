@@ -15,10 +15,10 @@ import { OnboardingBanner, OnboardingWizard } from '../components/OnboardingWiza
 import { GettingStartedChecklist } from '../shared/components/GettingStartedChecklist'
 import type { WidgetKey } from './WidgetConfigPanel'
 import type { DashboardAggregate } from '../hooks/useDashboard'
-import type { ScoreHistoryEntry } from '../modules/secvitals/hooks/useScoreHistory'
+import type { ScoreHistoryEntry } from '../modules/vaktcomply/hooks/useScoreHistory'
 import type { OnboardingStatus } from '../hooks/useOnboarding'
 import type { RecentPage } from '../shared/hooks/useRecentPages'
-import type { AuditMilestone } from '../modules/secvitals/types'
+import type { AuditMilestone } from '../modules/vaktcomply/types'
 
 interface WidgetGridProps {
   widgetOrder: string[]
@@ -58,35 +58,35 @@ export function WidgetGrid({
       icon: Bug, iconColor: 'text-severity-critical',
       badge: critCount != null ? `${String(critCount)} kritisch` : '—',
       badgeColor: critCount ? 'text-severity-critical' : 'text-secondary',
-      path: '/secpulse',
+      path: '/vaktscan',
     },
     {
       label: 'Vakt Comply', description: 'Compliance & Dokumentation — NIS2, ISO 27001, BSI',
       icon: FileCheck, iconColor: 'text-severity-low',
       badge: fwCount != null ? `${String(fwCount)} Framework${fwCount === 1 ? '' : 's'}` : '—',
       badgeColor: fwCount ? 'text-severity-low' : 'text-secondary',
-      path: '/secvitals',
+      path: '/vaktcomply',
     },
     {
       label: 'Vakt Vault', description: 'Secrets Management, Rotation & Git-Scanning',
       icon: Key, iconColor: 'text-severity-medium',
       badge: projCount != null ? `${String(projCount)} Projekt${projCount === 1 ? '' : 'e'}` : '—',
       badgeColor: 'text-secondary',
-      path: '/secvault',
+      path: '/vaktvault',
     },
     {
       label: 'Vakt Aware', description: 'Phishing-Simulation & Security Awareness',
       icon: Fish, iconColor: 'text-brand-hover',
       badge: activeCampaignCount != null ? `${String(activeCampaignCount)} aktiv` : '—',
       badgeColor: activeCampaignCount ? 'text-brand-hover' : 'text-secondary',
-      path: '/secreflex',
+      path: '/vaktaware',
     },
     {
       label: 'Vakt Privacy', description: 'DSGVO-Dokumentation — VVT, DPIA, AVV, Meldepflichten',
       icon: Eye, iconColor: 'text-severity-info',
       badge: openBreachCount != null ? `${String(openBreachCount)} offen` : '—',
       badgeColor: openBreachCount ? 'text-severity-critical' : 'text-secondary',
-      path: '/secprivacy',
+      path: '/vaktprivacy',
     },
   ]
 
@@ -139,17 +139,17 @@ export function WidgetGrid({
         <section>
           <h2 className="text-[14px] font-semibold text-primary mb-3">Compliance-Übersicht</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <KPICard label="Offene CAPAs" value={agg?.open_capas} icon={ClipboardList} to="/secvitals/capas" critical isLoading={kpiLoading} />
-            <KPICard label="Überfällige Controls" value={agg?.overdue_controls} icon={Clock} to="/secvitals/overdue-reviews" critical isLoading={kpiLoading} />
-            <KPICard label="Kritische Risiken" value={agg?.critical_risks} icon={TriangleAlert} to="/secvitals/risks" critical isLoading={kpiLoading} />
-            <KPICard label="Offene Aufgaben" value={agg?.overdue_tasks} icon={ListTodo} to="/secvitals/overdue-reviews" critical isLoading={kpiLoading} />
+            <KPICard label="Offene CAPAs" value={agg?.open_capas} icon={ClipboardList} to="/vaktcomply/capas" critical isLoading={kpiLoading} />
+            <KPICard label="Überfällige Controls" value={agg?.overdue_controls} icon={Clock} to="/vaktcomply/overdue-reviews" critical isLoading={kpiLoading} />
+            <KPICard label="Kritische Risiken" value={agg?.critical_risks} icon={TriangleAlert} to="/vaktcomply/risks" critical isLoading={kpiLoading} />
+            <KPICard label="Offene Aufgaben" value={agg?.overdue_tasks} icon={ListTodo} to="/vaktcomply/overdue-reviews" critical isLoading={kpiLoading} />
           </div>
         </section>
       )}
 
       {nextMilestone && (
         <Link
-          to="/secvitals/certification-timeline"
+          to="/vaktcomply/certification-timeline"
           className="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3 hover:border-brand/60 transition-colors"
         >
           <CalendarDays className={`w-5 h-5 shrink-0 ${
@@ -264,7 +264,7 @@ export function WidgetGrid({
                     <section className="rounded-lg border border-border bg-surface p-4">
                       <div className="flex items-center justify-between mb-3">
                         <h2 className="text-[13px] font-semibold text-primary">Top-5-Risiken</h2>
-                        <Link to="/secvitals/risks" className="text-[10px] text-brand hover:underline">Alle anzeigen</Link>
+                        <Link to="/vaktcomply/risks" className="text-[10px] text-brand hover:underline">Alle anzeigen</Link>
                       </div>
                       <TopRisksList risks={agg?.top_risks ?? []} />
                     </section>

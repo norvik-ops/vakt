@@ -48,25 +48,25 @@ const MODULES = [
 function mockHttp(page: import('@playwright/test').Page) {
   return page.route('**/api/v1/**', route => {
     const url = route.request().url()
-    if (url.includes('/secreflex/campaigns') && url.includes('camp-1/stats')) {
+    if (url.includes('/vaktaware/campaigns') && url.includes('camp-1/stats')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(STATS) })
     }
-    if (url.includes('/secreflex/campaigns/camp-1')) {
+    if (url.includes('/vaktaware/campaigns/camp-1')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CAMPAIGN) })
     }
-    if (url.includes('/secreflex/campaigns')) {
+    if (url.includes('/vaktaware/campaigns')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [CAMPAIGN], pagination: { page: 1, limit: 25, total: 1, total_pages: 1 } }) })
     }
-    if (url.includes('/secreflex/templates/presets')) {
+    if (url.includes('/vaktaware/templates/presets')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     }
-    if (url.includes('/secreflex/templates')) {
+    if (url.includes('/vaktaware/templates')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([TEMPLATE]) })
     }
-    if (url.includes('/secreflex/target-groups')) {
+    if (url.includes('/vaktaware/target-groups')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([GROUP]) })
     }
-    if (url.includes('/secreflex/training-modules')) {
+    if (url.includes('/vaktaware/training-modules')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: MODULES, pagination: { page: 1, limit: 25, total: 1, total_pages: 1 } }) })
     }
     return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
@@ -83,7 +83,7 @@ async function login(page: import('@playwright/test').Page) {
 test.describe('SecReflex — Campaigns', () => {
   test.beforeEach(async ({ page }) => {
     await login(page)
-    await page.goto('/secreflex/campaigns')
+    await page.goto('/vaktaware/campaigns')
   })
 
   test('shows campaign list', async ({ page }) => {
@@ -104,7 +104,7 @@ test.describe('SecReflex — Campaigns', () => {
 test.describe('SecReflex — Templates', () => {
   test.beforeEach(async ({ page }) => {
     await login(page)
-    await page.goto('/secreflex/templates')
+    await page.goto('/vaktaware/templates')
   })
 
   test('shows template list', async ({ page }) => {
@@ -115,7 +115,7 @@ test.describe('SecReflex — Templates', () => {
 test.describe('SecReflex — Training', () => {
   test.beforeEach(async ({ page }) => {
     await login(page)
-    await page.goto('/secreflex/training')
+    await page.goto('/vaktaware/training')
   })
 
   test('shows training module list', async ({ page }) => {

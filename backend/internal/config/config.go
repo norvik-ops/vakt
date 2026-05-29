@@ -114,10 +114,20 @@ func (c *Config) Validate() error {
 	if len(keyBytes) < 32 {
 		return fmt.Errorf("VAKT_SECRET_KEY must be at least 32 bytes (64 hex chars), got %d bytes — regenerate with: openssl rand -hex 32", len(keyBytes))
 	}
+	allSame := true
+	for _, b := range keyBytes[1:] {
+		if b != keyBytes[0] {
+			allSame = false
+			break
+		}
+	}
+	if allSame {
+		return fmt.Errorf("VAKT_SECRET_KEY is cryptographically weak: all %d bytes are identical (0x%02x) — regenerate with: openssl rand -hex 32", len(keyBytes), keyBytes[0])
+	}
 	return nil
 }
 
-// IsModuleEnabled reports whether the named module (e.g. "secpulse") appears in
+// IsModuleEnabled reports whether the named module (e.g. "vaktscan") appears in
 // the ModulesEnabled CSV list.  Comparison is case-insensitive.
 func (c *Config) IsModuleEnabled(name string) bool {
 	for _, mod := range strings.Split(c.ModulesEnabled, ",") {
@@ -169,7 +179,7 @@ func Load() (*Config, error) {
 		RedisUrl:            getEnv("VAKT_REDIS_URL", ""),
 		SecretKey:           getEnv("VAKT_SECRET_KEY", ""),
 		APIPort:             getEnv("VAKT_API_PORT", "8080"),
-		ModulesEnabled:      getEnv("VAKT_MODULES_ENABLED", "secpulse,secvitals,secvault,secreflex,secprivacy,hr"),
+		ModulesEnabled:      getEnv("VAKT_MODULES_ENABLED", "vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,hr"),
 		AutoMigrate:         getEnv("AUTO_MIGRATE", "false") == "true",
 		DemoSeed:            getEnv("VAKT_DEMO", "false") == "true",
 		Version:             getEnv("APP_VERSION", "0.1.0"),
