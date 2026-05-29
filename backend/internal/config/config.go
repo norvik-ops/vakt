@@ -150,7 +150,10 @@ func getEnv(key, def string) string {
 // production to keep plaintext secrets out of `docker inspect` output.
 func readEnvOrFile(envKey, fileKey string) (string, error) {
 	if f := os.Getenv(fileKey); f != "" {
-		b, err := os.ReadFile(f)
+		if !strings.HasPrefix(f, "/") {
+			return "", fmt.Errorf("%s must be an absolute path, got %q", fileKey, f)
+		}
+		b, err := os.ReadFile(f) // #nosec G703 — operator-controlled path, not user input
 		if err != nil {
 			return "", fmt.Errorf("cannot read %s=%q: %w", fileKey, f, err)
 		}
