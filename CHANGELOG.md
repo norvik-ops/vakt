@@ -9,6 +9,38 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.37.0] — 2026-05-29
+
+**Mega-Audit-Welle — VPS-Hardening, Code-Security-Fixes, CI-Hygiene.** Zweites Agent-Audit (2026-05-29) mit 5 VPS-Findings + 7 Code-Findings + 3 Hardening-Items. Alle Wave A/B/C-Items adressiert; CI durchgehend grün (Backend, Frontend, Integration, Deploy, E2E).
+
+> **Operative Hinweise:** `VAKT_SECRET_KEY` auf dem VPS rotiert — bestehende verschlüsselte DB-Einträge bleiben lesbar (HKDF-Migration ist idempotent; `cmd/rotate-key` war in 0.36.0 abgesichert). UFW aktiv auf dem VPS; Zabbix-Agent (Port 10050) und -Proxy (Port 10051) sind in den Allow-Rules explizit gesichert. `VAKT_PROMOTE_SECRET` aus der systemd-Unit in `/etc/vakt-promote.env` (chmod 600) ausgelagert.
+
+### Security
+
+- **VPS Secret-Key rotiert** — neuer kryptografisch zufälliger 32-Byte-Key; `docker compose up -d` propagiert den neuen Key ohne Downtime.
+- **Firewall aktiviert (UFW)** — Default deny-incoming, explizite Allows für SSH (22), HTTP/S (80/443), Zabbix-Agent (10050 von dirserver), Zabbix-Proxy (10051 von dirserver), Prometheus-Scrape.
+- **VAKT_PROMOTE_SECRET rotiert + gehärtet** — Secret aus systemd-Unit-inline in `EnvironmentFile=/etc/vakt-promote.env` (chmod 600) verschoben; kein Klartext mehr in `systemctl show`.
+- **`.env` Berechtigungen** — chmod 600 auf `.env`; war zuvor world-readable.
+- **Schwacher-Key-Guard** (`B1`) — `config.Validate()` verwirft Keys bei denen alle Bytes identisch sind (z.B. `0000…`). Fehler enthält Regenerierungshinweis.
+- **Scanner-Image-Pinning** (`B3`) — Trivy (`0.62.0`) und Nuclei (`v3.4.4`) im Dockerfile per SHA-256-Digest gepinnt; verhindert stilles Tag-Overschreiben.
+- **`err.Error()`-Leaks reduziert** (`B4`) — interne Fehlermeldungen in `cloud/handler.go`, `jobs_handler.go`, `vaktscan/handler.go`, `ai/handler.go`, `nis2wizard/handler.go` durch generische Meldungen ersetzt; Stack-Details nur im strukturierten Log.
+- **`html/template` für E-Mail-Templates** (`B5`) — `vaktaware/service.go` und `vaktcomply/policy_acceptance.go` nutzen jetzt `html/template` statt `text/template`; Auto-Escaping verhindert XSS in kampagnen-generierten E-Mails.
+- **TRUSTED_PROXIES-Warning** (`C3`) — Startup-Log-Warn wenn `VAKT_TRUSTED_PROXIES` nicht gesetzt; verhindert stilles IP-Spoofing hinter Reverse-Proxys.
+- **In-Memory-Ratelimit-Warning** (`C7`) — Startup-Log-Warn wenn Redis nicht konfiguriert und In-Memory-Fallback aktiv ist; Multi-Replica-Deployment mit gespiegelten Limits ist damit erkennbar.
+
+### CI / Tooling
+
+- **Trivy-Image-Scan im Deploy-Step** (`C2`) — nach `docker build` scannt Trivy das frisch gebaute API-Image auf CRITICAL/HIGH; nicht-blockierend (exit-code 0), Report im Summary.
+- **Fuzz `-parallel=1`** — Go 1.22+ gibt `context deadline exceeded` zurück wenn parallele Fuzz-Worker beim Budget-Ablauf nicht sauber stoppen. Einzel-Worker behebt das false-positive.
+- **Vollständiges Paket-Rename** (`secX → vaktX`) — alle verbleibenden Handler, Query-Dateien, SQL-Go-Dateien, Worker-Handler und Test-Fixtures auf die neuen Modul-Namen umgestellt.
+
+### Tests
+
+- **`config/validate_test.go`** (neu) — 5 Tests für Weak-Key-Guard: Zero-Key, Repeat-Byte, valid Key, zu kurzer Key, fehlende DB-URL.
+- **E2E-Fixes** — 3 Playwright-Tests repariert: `compliance` navigiert auf `/vaktcomply/frameworks` (Accordion versteckte Nav-Labels); `ExpiringEvidenceWidget`-Crash bei paginated Mock-Response durch Fixture-Mock behoben; Keyboard-Shortcut-Tests warten auf Layout-Mount vor Tastendruck.
+
+---
+
 ## [0.36.0] — 2026-05-27
 
 **Marktreife-Programm — Sprint 56–59 Sammel-Release.** Schließt die 11 Top-Findings aus dem Auditos-Singularity-9-Agent-Audit + alle daraus hervorgegangenen P1-Items und Content-Drifts. 15 neue ADRs (0033–0047), 3 Migrationen (149–151), Backend 33 Pakete + Frontend 482 Tests durchgehend grün.
