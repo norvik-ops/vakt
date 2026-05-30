@@ -2,6 +2,7 @@
 package scim
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
@@ -10,6 +11,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/safego"
 )
 
 // SCIMAuthMiddleware validates the Bearer token from the Authorization header
@@ -43,14 +46,16 @@ func SCIMAuthMiddleware(db *pgxpool.Pool) echo.MiddlewareFunc {
 			}
 
 			// Update last_used_at asynchronously — failures are non-fatal.
-			go func() {
-				if _, err := db.Exec(c.Request().Context(),
+			// context.WithoutCancel detaches from the request lifecycle so the
+			// DB write survives after the response is sent, while still inheriting
+			// the trace context for observability.
+			safego.Run(context.WithoutCancel(c.Request().Context()), "scim.update_last_used", func(ctx context.Context) error {
+				_, err := db.Exec(ctx,
 					`UPDATE scim_tokens SET last_used_at = NOW() WHERE token_hash = $1`,
 					tokenHash,
-				); err != nil {
-					log.Warn().Err(err).Msg("scim: failed to update last_used_at")
-				}
-			}()
+				)
+				return err
+			})
 
 			c.Set("scim_org_id", orgID)
 			return next(c)
