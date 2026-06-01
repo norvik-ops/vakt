@@ -29,7 +29,7 @@ type CreateChannelInput struct {
 // ListNotificationChannels returns all notification channels for the given org.
 func (s *Service) ListNotificationChannels(ctx context.Context, orgID string) ([]NotificationChannel, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT id::text, org_id::text, name, channel, config, is_active, created_at, updated_at
+		SELECT id::text, org_id::text, name, type, enabled, created_at, updated_at
 		FROM notification_channels
 		WHERE org_id = $1::uuid
 		ORDER BY created_at ASC`,
@@ -43,14 +43,13 @@ func (s *Service) ListNotificationChannels(ctx context.Context, orgID string) ([
 	var channels []NotificationChannel
 	for rows.Next() {
 		var ch NotificationChannel
-		var configRaw []byte
 		if err := rows.Scan(
 			&ch.ID, &ch.OrgID, &ch.Name, &ch.Channel,
-			&configRaw, &ch.IsActive, &ch.CreatedAt, &ch.UpdatedAt,
+			&ch.IsActive, &ch.CreatedAt, &ch.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan notification channel: %w", err)
 		}
-		ch.Config = json.RawMessage(configRaw)
+		ch.Config = json.RawMessage(`{}`)
 		channels = append(channels, ch)
 	}
 	if err := rows.Err(); err != nil {
@@ -67,20 +66,19 @@ func (s *Service) CreateNotificationChannel(ctx context.Context, orgID string, i
 	}
 
 	var ch NotificationChannel
-	var configRaw []byte
 	err = s.db.QueryRow(ctx, `
-		INSERT INTO notification_channels (org_id, name, channel, config)
-		VALUES ($1::uuid, $2, $3, $4::jsonb)
-		RETURNING id::text, org_id::text, name, channel, config, is_active, created_at, updated_at`,
-		orgID, input.Name, string(input.Channel), string(configJSON),
+		INSERT INTO notification_channels (org_id, name, type, url_encrypted, enabled)
+		VALUES ($1::uuid, $2, $3, $4, true)
+		RETURNING id::text, org_id::text, name, type, enabled, created_at, updated_at`,
+		orgID, input.Name, string(input.Channel), configJSON,
 	).Scan(
 		&ch.ID, &ch.OrgID, &ch.Name, &ch.Channel,
-		&configRaw, &ch.IsActive, &ch.CreatedAt, &ch.UpdatedAt,
+		&ch.IsActive, &ch.CreatedAt, &ch.UpdatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("insert notification channel: %w", err)
 	}
-	ch.Config = json.RawMessage(configRaw)
+	ch.Config = json.RawMessage(`{}`)
 	return &ch, nil
 }
 
