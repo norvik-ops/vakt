@@ -343,7 +343,7 @@ func CheckCertificationDeadlines(ctx context.Context, db *pgxpool.Pool, _ *Maile
 	// Step 1: find distinct orgs with approaching milestones.
 	orgRows, err := db.Query(ctx, `
 		SELECT DISTINCT org_id::text FROM ck_audit_milestones
-		WHERE target_date BETWEEN NOW() AND NOW() + INTERVAL '30 days'
+		WHERE milestone_date BETWEEN NOW() AND NOW() + INTERVAL '30 days'
 		  AND status != 'completed'
 	`)
 	if err != nil {
@@ -367,12 +367,12 @@ func CheckCertificationDeadlines(ctx context.Context, db *pgxpool.Pool, _ *Maile
 	// Step 2: for each org, load upcoming milestones and send in-app notifications.
 	for _, orgID := range orgIDs {
 		milestoneRows, err := db.Query(ctx, `
-			SELECT title, target_date, (target_date - NOW()::date)::int AS days_until
+			SELECT title, milestone_date, (milestone_date - NOW()::date)::int AS days_until
 			FROM ck_audit_milestones
 			WHERE org_id = $1::uuid
-			  AND target_date BETWEEN NOW() AND NOW() + INTERVAL '30 days'
+			  AND milestone_date BETWEEN NOW() AND NOW() + INTERVAL '30 days'
 			  AND status != 'completed'
-			ORDER BY target_date
+			ORDER BY milestone_date
 		`, orgID)
 		if err != nil {
 			log.Error().Err(err).Str("org_id", orgID).Msg("CheckCertificationDeadlines: milestone query")
