@@ -34,6 +34,18 @@ services:
           memory: 64m
           cpus: '0.25'
 
+  # Copies scanner binaries (Trivy, Nuclei) into the shared scanner_bins volume
+  # before the API/worker start. Runs on every compose-up so updates are picked up.
+  vakt-scanners:
+    image: ghcr.io/matharnica/vakt-scanners:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.scanners
+    network_mode: "none"
+    volumes:
+      - scanner_bins:/target
+    restart: "no"
+
   migrate:
     image: ghcr.io/matharnica/vakt-api:latest
     build:
@@ -57,6 +69,8 @@ services:
     environment:
       VAKT_DB_URL: "postgres://vakt:${POSTGRES_PASSWORD:?}@pgbouncer:5432/vakt?sslmode=disable"
     restart: unless-stopped
+    volumes:
+      - scanner_bins:/usr/local/bin:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -65,6 +79,8 @@ services:
       pgbouncer:
         condition: service_healthy
       migrate:
+        condition: service_completed_successfully
+      vakt-scanners:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "/healthcheck"]
@@ -89,12 +105,16 @@ services:
     environment:
       VAKT_DB_URL: "postgres://vakt:${POSTGRES_PASSWORD:?}@pgbouncer:5432/vakt?sslmode=disable"
     restart: unless-stopped
+    volumes:
+      - scanner_bins:/usr/local/bin:ro
     depends_on:
       redis:
         condition: service_healthy
       pgbouncer:
         condition: service_healthy
       migrate:
+        condition: service_completed_successfully
+      vakt-scanners:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "/healthcheck", "http://localhost:9090/health"]
@@ -240,3 +260,4 @@ volumes:
   redis_data:
   frontend_dist:
   ollama_models:
+  scanner_bins:

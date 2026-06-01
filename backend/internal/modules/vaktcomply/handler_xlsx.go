@@ -55,6 +55,9 @@ func (h *Handler) ExportControlsXLSX(c echo.Context) error {
 	ctx := c.Request().Context()
 	org := orgID(c)
 	frameworkID := c.QueryParam("framework_id")
+	if frameworkID == "" {
+		return errResp(c, http.StatusBadRequest, "framework_id is required", "CK_MISSING_PARAM")
+	}
 
 	controls, err := h.service.ListControls(ctx, org, frameworkID)
 	if err != nil {

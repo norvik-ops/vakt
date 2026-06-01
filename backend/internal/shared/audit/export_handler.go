@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
 )
 
 // Handler handles HTTP requests for the audit export endpoint.
@@ -29,6 +30,7 @@ func (h *ExportHandler) Export(c echo.Context) error {
 
 	pkg, err := GeneratePackage(c.Request().Context(), h.db, orgID)
 	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("audit export: generate package")
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "export failed"})
 	}
 
