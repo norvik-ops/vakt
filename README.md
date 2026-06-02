@@ -83,7 +83,7 @@ The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key requi
 
 | | **Community** | **Pro** | **Enterprise** |
 |---|:---:|:---:|:---:|
-| **Price** | Free |  | Contact us |
+| **Price** | Free | €199/month · €1,990/year | Contact us |
 | **Self-hosted** | ✅ | ✅ | ✅ |
 | **No phone-home** | ✅ | ✅ | ✅ |
 | **Unlimited users** | ✅ | ✅ | ✅ |
