@@ -166,22 +166,22 @@ Payloads are HMAC-SHA256 signed with the `X-Vakt-Signature` header when a secret
 | `GET` | `/notifications/preferences` | Get current user's preferences |
 | `PUT` | `/notifications/preferences` | Update preferences |
 
-### Vakt HR (`hr`)
+### Vakt HR (`vakthr`)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/hr/employees` | List employees (paginated) |
-| `POST` | `/hr/employees` | Create employee |
-| `GET` | `/hr/employees/:id` | Get employee |
-| `PUT` | `/hr/employees/:id` | Update employee (status, role, end date) |
-| `DELETE` | `/hr/employees/:id` | Delete employee |
-| `GET` | `/hr/employees/:id/checklist-runs` | List checklist runs for employee |
-| `GET` | `/hr/checklists` | List checklist templates |
-| `POST` | `/hr/checklists` | Create checklist template |
-| `DELETE` | `/hr/checklists/:id` | Delete checklist template |
-| `POST` | `/hr/checklist-runs` | Start checklist run |
-| `GET` | `/hr/checklist-runs/:id` | Get checklist run |
-| `PUT` | `/hr/checklist-runs/:id` | Update run progress / mark completed |
+| `GET` | `/vakthr/employees` | List employees (paginated) |
+| `POST` | `/vakthr/employees` | Create employee |
+| `GET` | `/vakthr/employees/:id` | Get employee |
+| `PUT` | `/vakthr/employees/:id` | Update employee (status, role, end date) |
+| `DELETE` | `/vakthr/employees/:id` | Delete employee |
+| `GET` | `/vakthr/employees/:id/checklist-runs` | List checklist runs for employee |
+| `GET` | `/vakthr/checklists` | List checklist templates |
+| `POST` | `/vakthr/checklists` | Create checklist template |
+| `DELETE` | `/vakthr/checklists/:id` | Delete checklist template |
+| `POST` | `/vakthr/checklist-runs` | Start checklist run |
+| `GET` | `/vakthr/checklist-runs/:id` | Get checklist run |
+| `PUT` | `/vakthr/checklist-runs/:id` | Update run progress / mark completed |
 
 ### Vakt Aware (`vaktaware`) — Pro
 

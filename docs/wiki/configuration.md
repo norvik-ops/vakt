@@ -56,7 +56,7 @@ VAKT_SECRET_KEY=$(openssl rand -hex 32)   # Beispiel — echten Wert generieren!
 |----------|---------|----------|--------------|
 | `VAKT_API_PORT` | — | `8080` | Port, auf dem der API-Server innerhalb des Containers lauscht. |
 | `APP_VERSION` | — | `0.1.0` | Versionsnummer. Wird im `/health`-Endpunkt zurückgegeben. |
-| `VAKT_MODULES_ENABLED` | — | alle | Kommagetrennte Liste aktiver Module. Mögliche Werte: `vaktscan`, `vaktcomply`, `vaktvault`, `vaktaware`, `vaktprivacy`, `sechr`. |
+| `VAKT_MODULES_ENABLED` | — | alle | Kommagetrennte Liste aktiver Module. Mögliche Werte: `vaktscan`, `vaktcomply`, `vaktvault`, `vaktaware`, `vaktprivacy`, `vakthr`. |
 | `AUTO_MIGRATE` | — | `false` | Wenn `true`, führt der API-Container beim Start automatisch ausstehende Datenbankmigrationen aus. |
 | `VAKT_FRONTEND_URL` | — | `http://localhost:5173` | Öffentlich erreichbare URL des Frontends. Wird für E-Mail-Links in Benachrichtigungen, Vakt-Aware-Kampagnen und Policy-Akzeptanz-E-Mails verwendet. In Produktion auf die echte Domain setzen. |
 | `VAKT_UPLOAD_DIR` | — | `./data/uploads` | Verzeichnis für hochgeladene Dateien (Evidence-Anhänge). In Docker-Deployments als Volume mounten. |
@@ -66,7 +66,7 @@ VAKT_SECRET_KEY=$(openssl rand -hex 32)   # Beispiel — echten Wert generieren!
 ```env
 VAKT_API_PORT=8080
 APP_VERSION=1.0.0
-VAKT_MODULES_ENABLED=vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,sechr
+VAKT_MODULES_ENABLED=vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,vakthr
 AUTO_MIGRATE=false
 VAKT_FRONTEND_URL=https://vakt.meine-firma.de
 VAKT_UPLOAD_DIR=/data/uploads
@@ -108,7 +108,7 @@ VAKT_SMTP_FROM=vakt@meine-firma.de
 
 ## KI-Berater (optional)
 
-Vakt kann Compliance-Berichte und Empfehlungen über einen OpenAI-kompatiblen KI-Provider generieren. Standardmäßig ist Ollama mit `llama3.2:3b` lokal konfiguriert — kein GPU, kein Cloud-API-Key nötig.
+Vakt kann Compliance-Berichte und Empfehlungen über einen OpenAI-kompatiblen KI-Provider generieren. Standardmäßig ist Ollama mit `qwen2.5:3b` lokal konfiguriert — kein GPU, kein Cloud-API-Key nötig.
 
 Unterstützte Provider: Ollama, Mistral AI, OpenAI, Groq, LM Studio, vLLM und jeder weitere OpenAI-kompatible Endpunkt.
 
@@ -117,19 +117,19 @@ Unterstützte Provider: Ollama, Mistral AI, OpenAI, Groq, LM Studio, vLLM und je
 | `VAKT_AI_PROVIDER` | — | `openai` | KI-Provider. `openai` aktiviert alle OpenAI-kompatiblen Endpunkte. `disabled` schaltet den Berater komplett ab. |
 | `VAKT_AI_BASE_URL` | — | `http://ollama:11434/v1` | API-Basisendpunkt des Providers. |
 | `VAKT_AI_API_KEY` | — | — | API-Key des Providers. Für lokale Provider (Ollama, LM Studio) leer lassen. |
-| `VAKT_AI_MODEL` | — | `llama3.2:3b` | Modellname. |
+| `VAKT_AI_MODEL` | — | `qwen2.5:3b` | Modellname. |
 
 **Beispiel Ollama (lokal, Standard):**
 
 ```env
 VAKT_AI_PROVIDER=openai
 VAKT_AI_BASE_URL=http://ollama:11434/v1
-VAKT_AI_MODEL=llama3.2:3b
+VAKT_AI_MODEL=qwen2.5:3b
 ```
 
 Modell einmalig laden:
 ```bash
-docker compose exec ollama ollama pull llama3.2:3b
+docker compose exec ollama ollama pull qwen2.5:3b
 ```
 
 **Beispiel Mistral AI (EU-Server, DSGVO-freundlich):**
@@ -246,7 +246,7 @@ POSTGRES_PASSWORD=passwort
 # ── Anwendung ──────────────────────────────────────────────────────────────────
 VAKT_API_PORT=8080
 APP_VERSION=1.0.0
-VAKT_MODULES_ENABLED=vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,sechr
+VAKT_MODULES_ENABLED=vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,vakthr
 AUTO_MIGRATE=false
 VAKT_FRONTEND_URL=https://vakt.meine-firma.de
 VAKT_UPLOAD_DIR=/data/uploads
@@ -263,7 +263,7 @@ VAKT_SMTP_FROM=vakt@meine-firma.de
 VAKT_AI_PROVIDER=openai
 VAKT_AI_BASE_URL=http://ollama:11434/v1
 VAKT_AI_API_KEY=
-VAKT_AI_MODEL=llama3.2:3b
+VAKT_AI_MODEL=qwen2.5:3b
 
 # ── OIDC / SSO (optional) ──────────────────────────────────────────────────────
 CASDOOR_URL=
