@@ -20,6 +20,9 @@ add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
 # us cross-origin isolation for any future SharedArrayBuffer usage.
 add_header Cross-Origin-Resource-Policy "same-origin" always;
 add_header Cross-Origin-Opener-Policy "same-origin" always;
+# COEP require-corp: all cross-origin resources must opt in via CORP header.
+# Safe for this app because all assets are loaded from 'self' (no external CDN).
+add_header Cross-Origin-Embedder-Policy "require-corp" always;
 # CSP:
 #   script-src 'self' — Vite production build has no inline scripts and no
 #     eval(); 'unsafe-inline' was a holdover that defeated XSS hardening.
@@ -28,4 +31,6 @@ add_header Cross-Origin-Opener-Policy "same-origin" always;
 #     runtime (e.g. Recharts dimensions). Cannot eliminate without an SSR
 #     rewrite. Inline style="…" cannot execute JS, so the residual XSS
 #     surface is small.
-add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self';" always;
+#   upgrade-insecure-requests — instructs browser to upgrade any http:// sub-
+#     resource requests to https://, preventing mixed content.
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; upgrade-insecure-requests;" always;

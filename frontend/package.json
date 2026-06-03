@@ -41,7 +41,7 @@
     "react-router-dom": "^6.30.3",
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.5.0",
-    "zustand": "^5.0.13"
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",
@@ -60,7 +60,7 @@
     "globals": "^15.11.0",
     "jsdom": "^29.1.1",
     "openapi-typescript": "^7.13.0",
-    "postcss": "^8.5.14",
+    "postcss": "^8.5.15",
     "tailwindcss": "^3.4.19",
     "typescript": "~5.6.2",
     "typescript-eslint": "^8.59.4",
