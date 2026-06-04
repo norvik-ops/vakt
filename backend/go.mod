@@ -1,6 +1,6 @@
 module github.com/matharnica/vakt
 
-go 1.26
+go 1.26.4
 
 require (
 	aidanwoods.dev/go-paseto v1.6.0

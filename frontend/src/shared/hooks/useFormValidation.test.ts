@@ -195,7 +195,7 @@ describe('useFormValidation — scrollToError', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     scrollSpy = vi.fn()
-    Element.prototype.scrollIntoView = scrollSpy
+    Element.prototype.scrollIntoView = scrollSpy as typeof Element.prototype.scrollIntoView
   })
   afterEach(() => {
     vi.restoreAllMocks()
