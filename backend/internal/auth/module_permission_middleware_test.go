@@ -83,11 +83,11 @@ func (r *fakePermRows) Err() error { return r.err }
 
 // pgx.Rows requires several additional interface methods — provide no-op
 // implementations so the compiler is satisfied.
-func (r *fakePermRows) CommandTag() pgconn.CommandTag         { return pgconn.CommandTag{} }
+func (r *fakePermRows) CommandTag() pgconn.CommandTag                { return pgconn.CommandTag{} }
 func (r *fakePermRows) FieldDescriptions() []pgconn.FieldDescription { return nil }
-func (r *fakePermRows) RawValues() [][]byte                   { return nil }
-func (r *fakePermRows) Values() ([]any, error)                { return nil, nil }
-func (r *fakePermRows) Conn() *pgx.Conn                       { return nil }
+func (r *fakePermRows) RawValues() [][]byte                          { return nil }
+func (r *fakePermRows) Values() ([]any, error)                       { return nil, nil }
+func (r *fakePermRows) Conn() *pgx.Conn                              { return nil }
 
 // ─── Test helpers ─────────────────────────────────────────────────────────────
 

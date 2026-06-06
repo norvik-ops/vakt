@@ -8,6 +8,16 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// sqlAuditLogSoftDelete is the retention query for audit_log. Exported as a
+// package-level constant so unit tests can assert it uses UPDATE (soft-delete)
+// rather than DELETE, protecting the SHA-256 hash chain (ADR-0040/ADR-0050).
+const sqlAuditLogSoftDelete = `
+			UPDATE audit_log
+			SET    deleted_at = NOW()
+			WHERE  org_id     = $1::uuid
+			  AND  created_at < NOW() - ($2::text || ' days')::INTERVAL
+			  AND  deleted_at IS NULL`
+
 // RunRetention deletes data that has exceeded the configured retention periods
 // for the given organisation.  A retention of 0 for any category means
 // "disabled" — that category is skipped.
@@ -24,12 +34,7 @@ func RunRetention(ctx context.Context, db *pgxpool.Pool, orgID string) error {
 		// to report all later rows as tampered. The chain verifier and the writer's
 		// SELECT-for-UPDATE tail query intentionally do NOT filter on deleted_at so
 		// the chain remains continuous. UI-facing read paths filter deleted_at IS NULL.
-		tag, err := db.Exec(ctx, `
-			UPDATE audit_log
-			SET    deleted_at = NOW()
-			WHERE  org_id     = $1::uuid
-			  AND  created_at < NOW() - ($2::text || ' days')::INTERVAL
-			  AND  deleted_at IS NULL`,
+		tag, err := db.Exec(ctx, sqlAuditLogSoftDelete,
 			orgID, fmt.Sprint(cfg.AuditLogDays),
 		)
 		if err != nil {

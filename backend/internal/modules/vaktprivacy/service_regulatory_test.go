@@ -357,8 +357,8 @@ func TestErasure_EvidenceNoteZeroCountsAllowed(t *testing.T) {
 // the erasure path would be a data-destruction bug.
 func TestErasure_OnlyErasureTypeRouted(t *testing.T) {
 	cases := []struct {
-		dsrType      string
-		shouldErase  bool
+		dsrType     string
+		shouldErase bool
 	}{
 		{"erasure", true},
 		{"access", false},
@@ -448,10 +448,7 @@ func TestErasure_CompletionAfterDeletion(t *testing.T) {
 
 	// Simulate a failure scenario: if deletion fails, status must NOT be set.
 	deletionFailedBeforeComplete := true
-	statusSetOnFailure := false
-	if !deletionFailedBeforeComplete {
-		statusSetOnFailure = true //nolint:ineffassign
-	}
+	statusSetOnFailure := !deletionFailedBeforeComplete
 	assert.False(t, statusSetOnFailure,
 		"status must not be set to completed if deletion failed (transaction rollback)")
 }
