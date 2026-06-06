@@ -46,10 +46,14 @@ fi
 echo "→ Decrypting encryption key (enter passphrase)..."
 RESTORED_KEY=$(openssl enc -d -aes-256-cbc -pbkdf2 -in "$WORK_DIR/secret.key.enc")
 
+KEY_FILE=$(mktemp /tmp/vakt-restored-key-XXXXXX.txt)
+chmod 600 "$KEY_FILE"
+echo "$RESTORED_KEY" > "$KEY_FILE"
+unset RESTORED_KEY
+
 echo ""
-echo "⚠  Restored VAKT_SECRET_KEY:"
-echo "   $RESTORED_KEY"
-echo ""
+echo "⚠  Restored VAKT_SECRET_KEY written to: $KEY_FILE"
+echo "   Set VAKT_SECRET_KEY from this file, then: rm -f $KEY_FILE"
 echo "   Set this in your .env before starting the application."
 echo ""
 

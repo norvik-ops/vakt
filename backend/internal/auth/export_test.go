@@ -14,3 +14,9 @@ import "github.com/labstack/echo/v4"
 func MFAEnforceMiddlewareForTest(db mfaDB) echo.MiddlewareFunc {
 	return mfaEnforceMiddleware(db)
 }
+
+// RequireModuleAccessForTest exposes requireModuleAccess so tests can
+// inject a lightweight fake DB instead of requiring a real Postgres connection.
+func RequireModuleAccessForTest(db modulePermDB, module string) echo.MiddlewareFunc {
+	return requireModuleAccess(db, module)
+}

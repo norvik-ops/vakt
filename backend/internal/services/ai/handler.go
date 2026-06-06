@@ -283,7 +283,7 @@ func (h *Handler) ChatStream(c echo.Context) error {
 	resp.Header().Set("X-Accel-Buffering", "no") // nginx: disable buffering
 	resp.WriteHeader(http.StatusOK)
 
-	stream, err := h.svc.client.StreamGenerate(c.Request().Context(), input.System, input.Prompt, input.MaxTokens)
+	stream, err := h.svc.client.StreamGenerate(c.Request().Context(), addInjectionGuard(input.System), input.Prompt, input.MaxTokens)
 	if err != nil {
 		log.Error().Err(err).Msg("ai stream: provider error")
 		if h.svc.usage != nil {

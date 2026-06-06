@@ -83,6 +83,16 @@ func (h *Handler) Logout(c echo.Context) error {
 		// Still return 200 — the token will expire naturally.
 	}
 
+	// Revoke all refresh sessions so a stolen refresh token cannot be used
+	// after logout (AUTH-001: refresh sessions were not cleaned up on logout).
+	userID, _ := c.Get("user_id").(string)
+	if userID != "" {
+		if err := h.service.RevokeAllSessions(c.Request().Context(), userID); err != nil {
+			log.Warn().Err(err).Msg("logout: revoke sessions failed")
+			// non-fatal: access token is already revoked
+		}
+	}
+
 	// Clear the httpOnly access token cookie.
 	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
 	c.SetCookie(&http.Cookie{

@@ -123,7 +123,7 @@ func buildZip(ctx context.Context, db *pgxpool.Pool, orgID, orgName string) ([]b
 
 	// Audit log — scoped to org.
 	auditData, err := queryToJSON(ctx, db, orgID,
-		`SELECT * FROM audit_log WHERE org_id = $1::uuid ORDER BY created_at`)
+		`SELECT * FROM audit_log WHERE org_id = $1::uuid AND deleted_at IS NULL ORDER BY created_at`)
 	if err != nil {
 		auditData = []byte("[]")
 	}

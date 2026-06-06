@@ -57,6 +57,7 @@ func List(ctx context.Context, db *pgxpool.Pool, orgID string, filters ListFilte
 
 	var conditions []string
 	conditions = append(conditions, "org_id = $1::uuid")
+	conditions = append(conditions, "deleted_at IS NULL")
 
 	if filters.From != nil {
 		conditions = append(conditions, fmt.Sprintf("created_at >= $%d", argIdx))

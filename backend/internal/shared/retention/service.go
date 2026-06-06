@@ -18,16 +18,24 @@ func RunRetention(ctx context.Context, db *pgxpool.Pool, orgID string) error {
 	}
 
 	if cfg.AuditLogDays > 0 {
+		// Soft-delete instead of hard-delete to preserve the SHA-256 hash chain
+		// (migration 149 / ADR-0040). Hard-deleting a row breaks the prev_hash
+		// link for every subsequent row in the same org, causing cmd/audit-verify
+		// to report all later rows as tampered. The chain verifier and the writer's
+		// SELECT-for-UPDATE tail query intentionally do NOT filter on deleted_at so
+		// the chain remains continuous. UI-facing read paths filter deleted_at IS NULL.
 		tag, err := db.Exec(ctx, `
-			DELETE FROM audit_log
-			WHERE  org_id = $1::uuid
-			  AND  created_at < NOW() - ($2::text || ' days')::INTERVAL`,
+			UPDATE audit_log
+			SET    deleted_at = NOW()
+			WHERE  org_id     = $1::uuid
+			  AND  created_at < NOW() - ($2::text || ' days')::INTERVAL
+			  AND  deleted_at IS NULL`,
 			orgID, fmt.Sprint(cfg.AuditLogDays),
 		)
 		if err != nil {
-			log.Error().Err(err).Str("org_id", orgID).Msg("retention: delete audit_log")
+			log.Error().Err(err).Str("org_id", orgID).Msg("retention: soft-delete audit_log")
 		} else {
-			log.Info().Str("org_id", orgID).Int64("deleted", tag.RowsAffected()).Msg("retention: audit_log pruned")
+			log.Info().Str("org_id", orgID).Int64("soft_deleted", tag.RowsAffected()).Msg("retention: audit_log pruned")
 		}
 	}
 

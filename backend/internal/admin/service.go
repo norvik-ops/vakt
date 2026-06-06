@@ -127,6 +127,7 @@ func (s *Service) ListAuditLogs(ctx context.Context, orgID string, page, limit i
 	if err := s.db.QueryRow(ctx, `
 		SELECT COUNT(*) FROM audit_log
 		WHERE org_id = $1::uuid
+		  AND deleted_at IS NULL
 		  AND ($2::uuid IS NULL OR user_id = $2::uuid)
 		  AND ($3 IS NULL OR action = $3)
 		  AND ($4 IS NULL OR resource_type = $4)`,
@@ -140,6 +141,7 @@ func (s *Service) ListAuditLogs(ctx context.Context, orgID string, page, limit i
 		       resource_id, ip_address, created_at
 		FROM audit_log
 		WHERE org_id = $1::uuid
+		  AND deleted_at IS NULL
 		  AND ($2::uuid IS NULL OR user_id = $2::uuid)
 		  AND ($3 IS NULL OR action = $3)
 		  AND ($4 IS NULL OR resource_type = $4)

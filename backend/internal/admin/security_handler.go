@@ -147,6 +147,7 @@ func (h *SecurityHandler) listRecentFailures(ctx context.Context, orgID string) 
 		WHERE action = 'login_failed'
 		  AND created_at > NOW() - INTERVAL '24 hours'
 		  AND ($1::text = '' OR org_id::text = $1)
+		  AND deleted_at IS NULL
 		GROUP BY user_email, ip_address
 		ORDER BY last_at DESC
 		LIMIT 100`, orgID)

@@ -580,6 +580,38 @@ func (s *Service) RevokeToken(ctx context.Context, rawToken string) error {
 	return nil
 }
 
+// RevokeAllSessions deletes all refresh sessions for the user from both the
+// refresh_sessions table and the corresponding Redis keys, ensuring that a
+// stolen refresh token cannot be used after the user logs out (AUTH-001).
+func (s *Service) RevokeAllSessions(ctx context.Context, userID string) error {
+	if s.db == nil {
+		return fmt.Errorf("revoke sessions: db not available")
+	}
+	rows, err := s.db.Query(ctx,
+		`DELETE FROM refresh_sessions WHERE user_id = $1::uuid RETURNING token_hash`,
+		userID,
+	)
+	if err != nil {
+		return fmt.Errorf("revoke sessions: %w", err)
+	}
+	defer rows.Close()
+
+	var keys []string
+	for rows.Next() {
+		var h string
+		if scanErr := rows.Scan(&h); scanErr == nil {
+			keys = append(keys, "refresh:"+h)
+		}
+	}
+
+	if s.redis != nil && len(keys) > 0 {
+		rCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+		_ = s.redis.Del(rCtx, keys...) // best-effort
+	}
+	return nil
+}
+
 // tokenDenyKey returns the Redis key used to blacklist an access token.
 func tokenDenyKey(rawToken string) string {
 	sum := sha256.Sum256([]byte(rawToken))

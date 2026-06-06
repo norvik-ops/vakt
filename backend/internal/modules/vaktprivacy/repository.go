@@ -769,19 +769,151 @@ func (r *Repository) DeleteDSR(ctx context.Context, orgID, id string) error {
 	return r.q.DeletePPDSR(ctx, db.DeletePPDSRParams{ID: id, OrgID: orgID})
 }
 
-// ExecuteErasure marks an erasure-type DSR as completed, stamps completed_at,
-// and appends an evidence note documenting the deletion actions taken.
-// Only affects DSRs of type "erasure" that are not yet completed, providing a
-// guard against double-execution.
-func (r *Repository) ExecuteErasure(ctx context.Context, orgID, id, evidenceNote string) (*DSR, error) {
-	row, err := r.q.ExecutePPDSRErasure(ctx, db.ExecutePPDSRErasureParams{
+// GetDSR returns a single DSR by ID, scoped to the organisation.
+func (r *Repository) GetDSR(ctx context.Context, orgID, id string) (*DSR, error) {
+	row, err := r.q.GetPPDSR(ctx, db.GetPPDSRParams{ID: id, OrgID: orgID})
+	if err != nil {
+		return nil, fmt.Errorf("get dsr %s: %w", id, err)
+	}
+	d := dsrFromFields(dsrFields{
+		ID: row.ID, OrgID: row.OrgID,
+		RequesterName: row.RequesterName, RequesterEmail: row.RequesterEmail,
+		Type: row.Type, Description: row.Description, Status: row.Status,
+		DueDate: row.DueDate, ReceivedAt: row.ReceivedAt,
+		CompletedAt: row.CompletedAt, Notes: row.Notes,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	})
+	return &d, nil
+}
+
+// ExecuteErasure performs an Art. 17 DSGVO erasure for the given DSR:
+//
+//  1. Fetches the DSR to get the requester_email and verify it is an
+//     erasure-type request that has not already been completed (idempotency guard).
+//  2. Opens a transaction and deletes PII records identified by that email:
+//     - hr_employees rows (Vakt HR)
+//     - sr_targets rows  (Vakt Aware campaign targets)
+//  3. Anonymises any matching users row in the same org (no hard-delete —
+//     see DeleteUserAccount in internal/shared/account for the rationale:
+//     audit-log rows stay intact, the human identity is replaced with
+//     "deleted-<uuid>@vakt.local" so foreign-key joins still work).
+//  4. Appends an evidence note to the DSR's notes field documenting how many
+//     rows were affected in each table.
+//  5. Marks the DSR as completed and stamps completed_at — AFTER all deletions
+//     commit, so the audit trail never claims completion before the work is done.
+//
+// The DSR record itself is never deleted; it is compliance evidence under
+// Art. 5 Abs. 2 DSGVO (accountability principle).
+func (r *Repository) ExecuteErasure(ctx context.Context, orgID, id string) (*DSR, error) {
+	// 1. Fetch the DSR — verify type and guard against double-execution.
+	dsr, err := r.GetDSR(ctx, orgID, id)
+	if err != nil {
+		return nil, fmt.Errorf("execute erasure: fetch dsr: %w", err)
+	}
+	if dsr.Type != "erasure" {
+		return nil, fmt.Errorf("execute erasure: dsr %s is type %q, not erasure", id, dsr.Type)
+	}
+	if dsr.Status == "completed" {
+		// Already completed — return the current record without side-effects.
+		return dsr, nil
+	}
+
+	requesterEmail := dsr.RequesterEmail
+
+	// 2. Open a transaction: all deletions + the DSR status update must be atomic.
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("execute erasure: begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// 3a. Delete from hr_employees.
+	hrTag, err := tx.Exec(ctx,
+		`DELETE FROM hr_employees WHERE org_id = $1 AND lower(email) = lower($2)`,
+		orgID, requesterEmail,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("execute erasure: delete hr_employees: %w", err)
+	}
+	hrDeleted := hrTag.RowsAffected()
+
+	// 3b. Delete from sr_targets.
+	srTag, err := tx.Exec(ctx,
+		`DELETE FROM sr_targets WHERE org_id = $1 AND lower(email) = lower($2)`,
+		orgID, requesterEmail,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("execute erasure: delete sr_targets: %w", err)
+	}
+	srDeleted := srTag.RowsAffected()
+
+	// 3c. Anonymise matching users row (same org), if any.
+	// We replace email with "deleted-<uuid>@vakt.local", wipe the password hash,
+	// clear OIDC mappings, and mark the account inactive — identical to the
+	// pattern in internal/shared/account.DeleteUserAccount.
+	var anonUserID string
+	_ = tx.QueryRow(ctx,
+		`SELECT u.id::text FROM users u
+		 JOIN org_members om ON om.user_id = u.id
+		 WHERE om.org_id = $1::uuid AND lower(u.email) = lower($2)
+		 LIMIT 1`,
+		orgID, requesterEmail,
+	).Scan(&anonUserID)
+
+	usersAnonymised := int64(0)
+	if anonUserID != "" {
+		anonEmail := fmt.Sprintf("deleted-%s@vakt.local", anonUserID)
+		tag, execErr := tx.Exec(ctx, `
+			UPDATE users
+			SET email         = $1,
+			    password_hash = NULL,
+			    display_name  = '[gelöscht]',
+			    avatar_url    = NULL,
+			    oidc_subject  = NULL,
+			    oidc_provider = NULL,
+			    is_active     = FALSE,
+			    updated_at    = NOW()
+			WHERE id = $2::uuid
+		`, anonEmail, anonUserID)
+		if execErr != nil {
+			return nil, fmt.Errorf("execute erasure: anonymise user: %w", execErr)
+		}
+		usersAnonymised = tag.RowsAffected()
+		// Revoke sessions + API keys (non-fatal if either table doesn't exist yet).
+		_, _ = tx.Exec(ctx,
+			`UPDATE refresh_sessions SET revoked_at = NOW() WHERE user_id = $1::uuid AND revoked_at IS NULL`,
+			anonUserID,
+		)
+		_, _ = tx.Exec(ctx,
+			`UPDATE api_keys SET revoked_at = NOW() WHERE created_by = $1::uuid AND revoked_at IS NULL`,
+			anonUserID,
+		)
+	}
+
+	// 4. Build evidence note summarising affected rows.
+	evidenceNote := fmt.Sprintf(
+		"Art. 17 DSGVO erasure executed at %s.\n"+
+			"hr_employees deleted: %d\n"+
+			"sr_targets deleted: %d\n"+
+			"users anonymised: %d",
+		time.Now().UTC().Format(time.RFC3339),
+		hrDeleted, srDeleted, usersAnonymised,
+	)
+
+	// 5. Mark the DSR as completed — AFTER all deletions, inside the same tx.
+	row, err := r.q.WithTx(tx).ExecutePPDSRErasure(ctx, db.ExecutePPDSRErasureParams{
 		ID:    id,
 		OrgID: orgID,
 		Notes: pgtype.Text{String: evidenceNote, Valid: true},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("execute erasure dsr %s: %w", id, err)
+		return nil, fmt.Errorf("execute erasure: mark completed: %w", err)
 	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("execute erasure: commit: %w", err)
+	}
+
 	d := dsrFromFields(dsrFields{
 		ID: row.ID, OrgID: row.OrgID,
 		RequesterName: row.RequesterName, RequesterEmail: row.RequesterEmail,

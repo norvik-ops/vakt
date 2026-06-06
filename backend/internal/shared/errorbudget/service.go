@@ -51,6 +51,7 @@ func WeeklyReport(ctx context.Context, db *pgxpool.Pool, cfg Config) error {
 			COUNT(*) FILTER (WHERE details->>'status_code' ~ '^5') AS failures
 		FROM audit_log
 		WHERE created_at >= NOW() - INTERVAL '7 days'
+		  AND deleted_at IS NULL
 	`).Scan(&total, &failures)
 	if err != nil {
 		return fmt.Errorf("errorbudget: query audit_log: %w", err)

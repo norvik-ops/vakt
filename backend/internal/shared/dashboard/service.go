@@ -319,6 +319,7 @@ func (s *Service) LoadAggregate(ctx context.Context, orgID string) (AggregateRes
 			       created_at
 			FROM audit_log
 			WHERE org_id = $1::uuid
+			  AND deleted_at IS NULL
 			ORDER BY created_at DESC
 			LIMIT 10`, orgID)
 		if err != nil {

@@ -128,6 +128,7 @@ func (s *Service) forwardOrgPending(ctx context.Context, orgID string, cfg OrgSI
 		 FROM audit_log
 		 WHERE org_id = $1::uuid
 		   AND forwarded_to_siem IS NULL
+		   AND deleted_at IS NULL
 		 ORDER BY created_at ASC
 		 LIMIT 100`,
 		orgID,

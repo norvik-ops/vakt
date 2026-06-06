@@ -44,7 +44,7 @@ while true; do
   fi
   break
 done
-echo "$SECRET_KEY" | openssl enc -aes-256-cbc -pbkdf2 -pass "pass:$PASSPHRASE" -out "$WORK_DIR/secret.key.enc"
+echo "$SECRET_KEY" | PASSPHRASE="$PASSPHRASE" openssl enc -aes-256-cbc -pbkdf2 -pass env:PASSPHRASE -out "$WORK_DIR/secret.key.enc"
 unset PASSPHRASE PASSPHRASE2
 
 # Write manifest
@@ -60,8 +60,10 @@ echo "→ Creating archive..."
 tar -czf "${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz" -C "$WORK_DIR" .
 
 echo "→ Signing archive..."
-openssl dgst -sha256 -hmac "$SECRET_KEY" "${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz" \
+HMAC_KEY=$(printf 'vakt-backup-hmac:%s' "$SECRET_KEY" | sha256sum | cut -d' ' -f1)
+openssl dgst -sha256 -hmac "$HMAC_KEY" "${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz" \
   | awk '{print $NF}' > "${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz.sig"
+unset HMAC_KEY
 
 echo "✓ Backup saved:    ${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz"
 echo "✓ Signature saved: ${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz.sig"

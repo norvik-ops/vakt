@@ -46,13 +46,16 @@ func NewService(db *pgxpool.Pool) *Service { return &Service{db: db} }
 // ExportUserData assembles a ZIP archive of all data the calling user owns or
 // is identified in. The archive contains:
 //
-//   - profile.json          — user record (no password hash)
-//   - sessions.json         — refresh-session metadata (no token hashes)
-//   - api_keys.json         — own API-key metadata (no key values)
-//   - notification_prefs    — notification preferences
-//   - audit_log.json        — audit-log entries where user_id = me
-//   - comments.json         — comments authored by me (across modules)
-//   - meta.json             — export metadata (date, app version, user id)
+//   - profile.json                    — user record (no password hash)
+//   - sessions.json                   — refresh-session metadata (no token hashes)
+//   - api_keys.json                   — own API-key metadata (no key values)
+//   - notification_preferences.json   — notification preferences
+//   - audit_log.json                  — audit-log entries where user_id = me
+//   - comments.json                   — comments authored by me (across modules)
+//   - hr_employee_records.json        — HR employee records linked to my email (Vakt HR)
+//   - awareness_targeting_records.json — phishing-simulation target records for my email (Vakt Aware)
+//   - privacy_dsr_requests.json       — DSR requests filed under my email (Vakt Privacy)
+//   - meta.json                       — export metadata (date, app version, user id)
 //
 // Returns the ZIP bytes ready to stream as application/zip.
 func (s *Service) ExportUserData(ctx context.Context, userID, userEmail, orgID string) ([]byte, error) {
@@ -100,7 +103,7 @@ func (s *Service) ExportUserData(ctx context.Context, userID, userEmail, orgID s
 		{"api_keys.json", `SELECT id::text, name, key_prefix, scopes, last_used_at, expires_at, revoked_at, created_at
 		                    FROM api_keys WHERE created_by = $1::uuid ORDER BY created_at`},
 		{"audit_log.json", `SELECT id::text, action, resource_type, resource_id, ip_address, created_at
-		                     FROM audit_log WHERE user_id = $1::uuid ORDER BY created_at`},
+		                     FROM audit_log WHERE user_id = $1::uuid AND deleted_at IS NULL ORDER BY created_at`},
 		{"notification_preferences.json", `SELECT * FROM notification_preferences WHERE user_id = $1::uuid`},
 	}
 	for _, e := range tableExports {
@@ -122,6 +125,56 @@ func (s *Service) ExportUserData(ctx context.Context, userID, userEmail, orgID s
 	}
 	if err := writeRaw(zw, "comments.json", commentsData); err != nil {
 		return nil, fmt.Errorf("comments: %w", err)
+	}
+
+	// DSGVO Art. 20: module tables keyed by email, not user_id.
+	// Each query is best-effort: a missing table (module disabled) produces [].
+
+	// Vakt HR — employee records where the user's email is the employee email.
+	hrData, err := queryByOrgAndEmail(ctx, s.db, orgID, userEmail, `
+		SELECT id::text, first_name, last_name, email, department, role,
+		       start_date, end_date, status, notes, created_at
+		FROM hr_employees
+		WHERE org_id = $1::uuid AND email = $2
+		ORDER BY created_at
+	`)
+	if err != nil {
+		log.Debug().Err(err).Msg("export: hr_employees skipped")
+		hrData = []byte("[]")
+	}
+	if err := writeRaw(zw, "hr_employee_records.json", hrData); err != nil {
+		return nil, fmt.Errorf("hr_employee_records: %w", err)
+	}
+
+	// Vakt Aware — phishing-simulation target records for this email.
+	awareData, err := queryByOrgAndEmail(ctx, s.db, orgID, userEmail, `
+		SELECT id::text, email, first_name, last_name, department, created_at
+		FROM sr_targets
+		WHERE org_id = $1::uuid AND email = $2
+		ORDER BY created_at
+	`)
+	if err != nil {
+		log.Debug().Err(err).Msg("export: sr_targets skipped")
+		awareData = []byte("[]")
+	}
+	if err := writeRaw(zw, "awareness_targeting_records.json", awareData); err != nil {
+		return nil, fmt.Errorf("awareness_targeting_records: %w", err)
+	}
+
+	// Vakt Privacy — DSR (data-subject request) records filed under this email.
+	dsrData, err := queryByOrgAndEmail(ctx, s.db, orgID, userEmail, `
+		SELECT id::text, type, status, description, due_date, received_at,
+		       completed_at, notes, created_at
+		FROM po_dsr
+		WHERE org_id = $1::uuid AND requester_email = $2
+		ORDER BY created_at
+	`)
+	if err != nil {
+		log.Debug().Err(err).Msg("export: po_dsr skipped")
+		dsrData = []byte("[]")
+	}
+	if err := writeRaw(zw, "privacy_dsr_requests.json", dsrData); err != nil {
+		return nil, fmt.Errorf("privacy_dsr_requests: %w", err)
 	}
 
 	// meta.json with export-time metadata.
@@ -290,6 +343,38 @@ func (s *Service) guardLastAdmin(ctx context.Context, userID string) error {
 
 func queryToJSON(ctx context.Context, db *pgxpool.Pool, userID, query string) ([]byte, error) {
 	rows, err := db.Query(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	fields := rows.FieldDescriptions()
+	results := []map[string]any{}
+	for rows.Next() {
+		vals, err := rows.Values()
+		if err != nil {
+			return nil, err
+		}
+		row := make(map[string]any, len(fields))
+		for i, f := range fields {
+			row[string(f.Name)] = vals[i]
+		}
+		results = append(results, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return json.Marshal(results)
+}
+
+// queryByOrgAndEmail runs a SELECT query with two parameters: ($1 orgID, $2 email).
+// It is the email-keyed counterpart to queryToJSON for module tables that identify
+// users by email rather than user_id (hr_employees, sr_targets, po_dsr).
+func queryByOrgAndEmail(ctx context.Context, db *pgxpool.Pool, orgID, email, query string) ([]byte, error) {
+	if db == nil {
+		return nil, fmt.Errorf("queryByOrgAndEmail: nil db pool")
+	}
+	rows, err := db.Query(ctx, query, orgID, email)
 	if err != nil {
 		return nil, err
 	}

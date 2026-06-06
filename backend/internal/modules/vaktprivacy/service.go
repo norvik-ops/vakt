@@ -395,8 +395,44 @@ func (s *Service) CreateDSR(ctx context.Context, orgID string, in CreateDSRInput
 
 // UpdateDSR changes the status and notes of a DSR, stamping completed_at when
 // the status moves to "completed" or "rejected".
+//
+// Special case — erasure DSRs (Art. 17 DSGVO):
+// When an erasure-type DSR is transitioned to "completed", the service calls
+// Repository.ExecuteErasure instead of the plain UpdateDSR repository method.
+// ExecuteErasure deletes PII from hr_employees and sr_targets, anonymises any
+// matching users row, and only then marks the DSR as completed — all inside a
+// single transaction, so the audit trail never claims completion before the
+// actual deletion has been committed.
 func (s *Service) UpdateDSR(ctx context.Context, orgID, id string, in UpdateDSRInput) (*DSR, error) {
-	dsr, err := s.repo.UpdateDSR(ctx, orgID, id, in)
+	var (
+		dsr *DSR
+		err error
+	)
+
+	if in.Status == "completed" {
+		// Fetch the DSR to determine its type before deciding the execution path.
+		existing, fetchErr := s.repo.GetDSR(ctx, orgID, id)
+		if fetchErr != nil {
+			return nil, fmt.Errorf("update dsr: fetch for type check: %w", fetchErr)
+		}
+		if existing.Type == "erasure" {
+			// Erasure path: delete PII first, then mark completed — atomically.
+			dsr, err = s.repo.ExecuteErasure(ctx, orgID, id)
+			if err != nil {
+				return nil, err
+			}
+			// Enqueue cross-module evidence.
+			if s.asynqClient != nil {
+				if task, taskErr := crossevidence.NewRecordEvidenceTask(events.DSRCompleted(orgID, id)); taskErr == nil {
+					_, _ = s.asynqClient.EnqueueContext(ctx, task)
+				}
+			}
+			return dsr, nil
+		}
+	}
+
+	// Non-erasure DSRs (or non-completed transitions): standard update path.
+	dsr, err = s.repo.UpdateDSR(ctx, orgID, id, in)
 	if err != nil {
 		return nil, err
 	}

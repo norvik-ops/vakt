@@ -563,7 +563,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		vbSvc := vaktscan.NewService(pool, asynq.RedisClientOpt{Addr: redisOpt.Addr})
 		vbSvc.WithRedis(rdb)
 		vbSvc.WithWebhooks(webhookSvc)
-		vaktscan.Register(protected.Group("/vaktscan"), vaktscan.NewHandler(vbSvc))
+		vaktscan.Register(protected.Group("/vaktscan", auth.RequireModuleAccess(pool, "vaktscan")), vaktscan.NewHandler(vbSvc))
 		log.Info().Msg("vaktscan routes registered")
 	}
 
@@ -615,10 +615,10 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		}
 		efSvc := vaktcomply.NewEvidenceFileService(ckSvc.Repo(), cfg.UploadDir)
 		ckHandler.WithEvidenceFileService(efSvc)
-		vaktcomply.Register(protected.Group("/vaktcomply"), ckHandler)
+		vaktcomply.Register(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply")), ckHandler)
 		// Sprint 22 / S22-6: authentifizierter NIS2-Wizard-Migrate-Endpoint
 		// (POST /vaktcomply/nis2-assessment/migrate-from-anonymous).
-		nis2wizard.RegisterAuthenticated(protected.Group("/vaktcomply"), nis2wizardHandler)
+		nis2wizard.RegisterAuthenticated(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply")), nis2wizardHandler)
 		// Auditor portal uses URL token — exempt from Bearer auth; rate-limited to 30 req/min per IP
 		portalRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
 			middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(30.0 / 60.0), Burst: 30, ExpiresIn: 5 * time.Minute},
@@ -627,9 +627,9 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		// Policy acceptance — public token routes (no Bearer auth), rate-limited
 		vaktcomply.RegisterPolicyAcceptPublic(api.Group("", portalRateLimiter), ckHandler)
 		// Audit package export
-		audit.RegisterExport(protected.Group("/vaktcomply"), pool)
+		audit.RegisterExport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply")), pool)
 		// One-click audit report PDF
-		audit.RegisterReport(protected.Group("/vaktcomply"), pool)
+		audit.RegisterReport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply")), pool)
 		// AI-generated reports via OpenAI-compatible provider.
 		// Sprint 15 (S15-1/2/3/5): Rate-Limit + Daily-Quota + Response-Cache
 		// + Streaming-SSE-Endpoint laufen über RegisterWithOptions, sofern
@@ -638,7 +638,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		if aiFailOpen {
 			log.Warn().Msg("ai: VAKT_AI_FAIL_OPEN_ON_OUTAGE=true — rate-limit + quota checks will fail open during Redis/Postgres outages (audit-relevant choice)")
 		}
-		ai.RegisterWithOptions(protected.Group("/vaktcomply"), pool, cfg.AIProvider, cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel, ai.RegisterOptions{
+		ai.RegisterWithOptions(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply")), pool, cfg.AIProvider, cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel, ai.RegisterOptions{
 			Redis:            rdb,
 			RateLimitRPM:     cfg.AIRateLimitRPM,
 			DailyTokenLimit:  cfg.AIDailyTokenLimit,
@@ -650,13 +650,13 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		// Auditor portal — read-only vaktcomply access via session token (no Bearer auth)
 		vaktcomply.RegisterAuditor(api.Group("/auditor/vaktcomply", auditorRateLimiter, auditor.AuditorAuth(pool)), ckHandler)
 		// Auto-evidence inbox — GitHub, SecReflex, SecPulse
-		evidence_auto.RegisterRoutes(protected.Group("/vaktcomply"), pool)
+		evidence_auto.RegisterRoutes(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply")), pool)
 		log.Info().Msg("vaktcomply routes registered")
 	}
 
 	if cfg.IsModuleEnabled("vaktvault") && cfg.SecretKey != "" {
 		soSvc := vaktvault.NewService(pool, vaultKey, asynqClient)
-		vaktvault.Register(protected.Group("/vaktvault"), vaktvault.NewHandler(soSvc))
+		vaktvault.Register(protected.Group("/vaktvault", auth.RequireModuleAccess(pool, "vaktvault")), vaktvault.NewHandler(soSvc))
 		log.Info().Msg("vaktvault routes registered")
 	}
 
@@ -665,7 +665,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 			Host: cfg.SMTPHost, Port: cfg.SMTPPort,
 			User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
 		}, asynq.RedisClientOpt{Addr: redisOpt.Addr})
-		vaktaware.Register(protected.Group("/vaktaware"), vaktaware.NewHandler(pgSvc))
+		vaktaware.Register(protected.Group("/vaktaware", auth.RequireModuleAccess(pool, "vaktaware")), vaktaware.NewHandler(pgSvc))
 		log.Info().Msg("vaktaware routes registered")
 	}
 
@@ -692,7 +692,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		if alertSvc != nil {
 			poHandler.WithAlerting(alertSvc.Fire)
 		}
-		vaktprivacy.Register(protected.Group("/vaktprivacy"), poHandler)
+		vaktprivacy.Register(protected.Group("/vaktprivacy", auth.RequireModuleAccess(pool, "vaktprivacy")), poHandler)
 		// DSR portal uses URL slug/token — exempt from Bearer auth; rate-limited to 30 req/min per IP
 		dsrPortalRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
 			middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(30.0 / 60.0), Burst: 30, ExpiresIn: 5 * time.Minute},
@@ -704,7 +704,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	// HR module — onboarding and offboarding workflows
 	hrSvc := vakthr.NewService(vakthr.NewRepository(pool)).WithEvidenceWriter(hrEvidence)
 	hrHandler := vakthr.NewHandler(hrSvc)
-	vakthr.Register(protected.Group("/vakthr"), hrHandler)
+	vakthr.Register(protected.Group("/vakthr", auth.RequireModuleAccess(pool, "vakthr")), hrHandler)
 	log.Info().Msg("vakthr routes registered")
 
 	// Account self-service: DSGVO Art. 17 (delete) and Art. 20 (export).
@@ -833,12 +833,11 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		feedback.Register(api, pool, auth.AuthMiddleware(pasetoKey, pool, rdb))
 		log.Info().Msg("demo feedback routes registered")
 
-		// Rate-limit POST /demo/start to 10 req/min per IP to prevent DB flood.
-		// 10/min is generous enough for a public demo (multiple browser tabs, refreshes)
-		// while still protecting against automated abuse.
-		demoStartRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
-			middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(10.0 / 60.0), Burst: 10, ExpiresIn: 5 * time.Minute},
-		))
+		// Rate-limit POST /demo/start to 10 req per 5 min per IP to prevent DB flood.
+		// Uses Redis so the limit is shared across all replicas — an in-memory store
+		// would let a client bypass the limit by hitting different pods (SCALE-007).
+		// Fails open when Redis is unavailable to keep the demo accessible.
+		demoStartRateLimiter := sharedmw.DemoStartRateLimiter(rdb)
 		demoStartHandler := demo.NewStartHandler(pool, cfg.SecretKey, authSvc)
 		demo.RegisterStart(api.Group("/demo", demoStartRateLimiter), demoStartHandler)
 		log.Info().Msg("demo start route registered")

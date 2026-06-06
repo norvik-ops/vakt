@@ -71,6 +71,7 @@ services:
     restart: unless-stopped
     volumes:
       - scanner_bins:/usr/local/bin:ro
+      - uploads_data:/app/data/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -261,3 +262,4 @@ volumes:
   frontend_dist:
   ollama_models:
   scanner_bins:
+  uploads_data:

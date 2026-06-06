@@ -74,7 +74,7 @@ echo "    Images pulled."
 # ── Step 3: Run migrations ────────────────────────────────────────────────────
 echo ""
 echo "==> Step 3/5: Running database migrations..."
-$COMPOSE_CMD -f "$COMPOSE_FILE" run --rm "$SERVICE_API" migrate up
+$COMPOSE_CMD -f "$COMPOSE_FILE" run --rm migrate
 echo "    Migrations complete."
 
 # ── Step 4: Restart services ──────────────────────────────────────────────────

@@ -64,6 +64,7 @@ func (h *SIEMHandler) fetchExportEntries(c echo.Context, orgID string) ([]siemEx
 		FROM audit_log
 		WHERE org_id = $1::uuid
 		  AND created_at >= $2
+		  AND deleted_at IS NULL
 		ORDER BY created_at ASC`,
 		orgID, from,
 	)

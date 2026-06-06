@@ -216,6 +216,36 @@ func (s *Service) ResetPassword(ctx context.Context, rawToken, newPassword strin
 		log.Error().Err(incrErr).Str("user_id", userID).Msg("password reset: failed to increment pw_version in Redis")
 	}
 
+	// AUTH-002: Revoke all refresh sessions so that an attacker holding a stolen
+	// refresh token cannot call POST /auth/refresh after a password reset and
+	// receive a new access token with the current pw_version — bypassing the
+	// pw_version invalidation above. Belt-and-suspenders: the password has already
+	// been changed and pw_version incremented; any failure here is logged only.
+	revokeCtx, revokeCancel := context.WithTimeout(ctx, 3*time.Second)
+	defer revokeCancel()
+	rows, revokeErr := s.db.Query(revokeCtx,
+		`DELETE FROM refresh_sessions WHERE user_id = $1::uuid RETURNING token_hash`,
+		userID,
+	)
+	if revokeErr != nil {
+		log.Error().Err(revokeErr).Str("user_id", userID).Msg("password reset: failed to revoke refresh sessions")
+	} else {
+		defer rows.Close()
+		var keys []string
+		for rows.Next() {
+			var h string
+			if scanErr := rows.Scan(&h); scanErr == nil {
+				keys = append(keys, "refresh:"+h)
+			}
+		}
+		if s.redis != nil && len(keys) > 0 {
+			if delErr := s.redis.Del(revokeCtx, keys...).Err(); delErr != nil {
+				log.Error().Err(delErr).Str("user_id", userID).Int("count", len(keys)).
+					Msg("password reset: failed to remove refresh tokens from Redis")
+			}
+		}
+	}
+
 	return nil
 }
 
