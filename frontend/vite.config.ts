@@ -66,7 +66,35 @@ export default defineConfig({
       },
     },
   },
-  build: {},
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react':  ['react', 'react-dom', 'react-router-dom'],
+          'vendor-query':  ['@tanstack/react-query'],
+          'vendor-ui':     [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-label',
+            '@radix-ui/react-progress',
+            '@radix-ui/react-select',
+            '@radix-ui/react-separator',
+            '@radix-ui/react-slot',
+            '@radix-ui/react-switch',
+            '@radix-ui/react-tabs',
+            '@radix-ui/react-toast',
+            'class-variance-authority',
+            'clsx',
+            'cmdk',
+            'tailwind-merge',
+          ],
+          'vendor-charts': ['recharts'],
+          'vendor-i18n':   ['i18next', 'react-i18next'],
+          'vendor-motion': ['framer-motion'],
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

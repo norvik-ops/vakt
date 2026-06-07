@@ -253,6 +253,13 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		},
 	}))
 	e.Use(middleware.Recover())
+	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
+		Level: 5,
+		Skipper: func(c echo.Context) bool {
+			p := c.Request().URL.Path
+			return p == "/metrics" || p == "/health"
+		},
+	}))
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins:     cfg.CORSOrigins,
 		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodOptions},

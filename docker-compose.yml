@@ -135,6 +135,13 @@ services:
       POSTGRES_DB: vakt
       POSTGRES_USER: vakt
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set — run install.sh or set the variable}
+    command: >
+      postgres
+      -c shared_buffers=128MB
+      -c effective_cache_size=384MB
+      -c work_mem=8MB
+      -c checkpoint_completion_target=0.9
+      -c max_connections=50
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped

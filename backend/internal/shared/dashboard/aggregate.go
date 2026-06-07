@@ -55,9 +55,17 @@ type AggregateResponse struct {
 // aggregateCacheTTL is the Redis TTL for the dashboard aggregate payload.
 const aggregateCacheTTL = 60 * time.Second
 
+// scoreCacheTTL is the Redis TTL for the security score payload.
+const scoreCacheTTL = 30 * time.Second
+
 // aggregateCacheKey returns the Redis key for an org's dashboard aggregate.
 func aggregateCacheKey(orgID string) string {
 	return fmt.Sprintf("dashboard:aggregate:%s", orgID)
+}
+
+// scoreCacheKey returns the Redis key for an org's security score.
+func scoreCacheKey(orgID string) string {
+	return fmt.Sprintf("dashboard:score:%s", orgID)
 }
 
 // InvalidateDashboardCache deletes the cached aggregate payload for the given
@@ -70,4 +78,14 @@ func InvalidateDashboardCache(ctx context.Context, rdb *redis.Client, orgID stri
 		return nil
 	}
 	return rdb.Del(ctx, aggregateCacheKey(orgID)).Err()
+}
+
+// InvalidateScoreCache deletes the cached score payload for the given org from
+// Redis. It is a no-op when rdb is nil. Call after any write that changes the
+// security score (findings, breaches, framework changes).
+func InvalidateScoreCache(ctx context.Context, rdb *redis.Client, orgID string) error {
+	if rdb == nil {
+		return nil
+	}
+	return rdb.Del(ctx, scoreCacheKey(orgID)).Err()
 }

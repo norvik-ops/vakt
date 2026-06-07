@@ -61,12 +61,21 @@ func defaultScoreConfig() ScoreConfig {
 
 // GetScore returns the organisation's composite security health score along
 // with the raw component counts used to derive it.
+// Results are cached in Redis for 30 seconds to avoid repeated DB aggregations.
 func (h *Handler) GetScore(c echo.Context) error {
 	orgID, ok := c.Get("org_id").(string)
 	if !ok || orgID == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
 	ctx := c.Request().Context()
+
+	if h.rdb != nil {
+		if cached, err := h.rdb.Get(ctx, scoreCacheKey(orgID)).Bytes(); err == nil {
+			return c.JSONBlob(http.StatusOK, cached)
+		} else if err != redis.Nil {
+			log.Warn().Err(err).Str("org_id", orgID).Msg("dashboard score: redis get failed")
+		}
+	}
 
 	cfg, err := h.svc.LoadScoreConfig(ctx, orgID)
 	if err != nil {
@@ -76,10 +85,22 @@ func (h *Handler) GetScore(c echo.Context) error {
 	inp := h.svc.LoadScoreInputs(ctx, orgID, cfg)
 	score, components := ComputeScore(inp)
 
-	return c.JSON(http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"score":      score,
 		"components": components,
-	})
+	}
+
+	if h.rdb != nil {
+		if blob, err := json.Marshal(resp); err == nil {
+			cacheCtx, cacheCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			defer cacheCancel()
+			if err := h.rdb.Set(cacheCtx, scoreCacheKey(orgID), blob, scoreCacheTTL).Err(); err != nil {
+				log.Warn().Err(err).Str("org_id", orgID).Msg("dashboard score: redis set failed")
+			}
+		}
+	}
+
+	return c.JSON(http.StatusOK, resp)
 }
 
 // GetBackupStatus handles GET /api/v1/dashboard/backup-status.
