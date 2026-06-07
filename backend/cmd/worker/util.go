@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
@@ -62,6 +63,9 @@ func workerKey(cfg *config.Config, purpose string) []byte {
 	return k
 }
 
+// connectDB opens a DB pool, retrying up to 10 times with 3s backoff.
+// Watchtower restarts the container before DB is fully ready, so a single
+// attempt would crash-loop the worker immediately.
 func connectDB(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 	dbURL := ""
 	if cfg != nil {
@@ -70,9 +74,23 @@ func connectDB(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 	if dbURL == "" {
 		dbURL = os.Getenv("VAKT_DB_URL")
 	}
-	pool, err := db.Connect(ctx, dbURL)
-	if err != nil {
-		return nil, fmt.Errorf("connect to database: %w", err)
+
+	const maxAttempts = 10
+	const backoff = 3 * time.Second
+	var lastErr error
+	for i := 1; i <= maxAttempts; i++ {
+		pool, err := db.Connect(ctx, dbURL)
+		if err == nil {
+			return pool, nil
+		}
+		lastErr = err
+		log.Warn().Err(err).Int("attempt", i).Int("max", maxAttempts).
+			Dur("retry_in", backoff).Msg("db connect failed, retrying")
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(backoff):
+		}
 	}
-	return pool, nil
+	return nil, fmt.Errorf("connect to database after %d attempts: %w", maxAttempts, lastErr)
 }

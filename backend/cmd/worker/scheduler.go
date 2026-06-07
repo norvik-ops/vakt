@@ -172,8 +172,9 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		log.Error().Err(err).Msg("failed to register deadline notification cron")
 	}
 
-	// Daily at 03:00 UTC: delete expired and old used password-reset tokens.
-	if _, err := scheduler.Register("0 3 * * *",
+	// Daily at 03:10 UTC: delete expired and old used password-reset tokens.
+	// Shifted from 03:00 to avoid pile-up with hourly demo-cleanup + digest jobs.
+	if _, err := scheduler.Register("10 3 * * *",
 		auth.NewCleanupPasswordResetTokensTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register password reset token cleanup cron")
@@ -186,29 +187,33 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		log.Error().Err(err).Msg("failed to register SCIM token expiry cron")
 	}
 
-	// Daily at 03:05 UTC: delete expired rows from token_deny_list_fallback (S31-4).
-	if _, err := scheduler.Register("5 3 * * *",
+	// Daily at 03:20 UTC: delete expired rows from token_deny_list_fallback (S31-4).
+	// Shifted from 03:05 to spread DB load across the 03:xx window.
+	if _, err := scheduler.Register("20 3 * * *",
 		auth.NewCleanupDenyListFallbackTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register deny-list fallback cleanup cron")
 	}
 
-	// Sprint 22 S22-12: täglich 03:15 UTC — abgelaufene NIS2-Wizard-Runs aufräumen.
-	if _, err := scheduler.Register("15 3 * * *",
+	// Sprint 22 S22-12: täglich 03:30 UTC — abgelaufene NIS2-Wizard-Runs aufräumen.
+	// Shifted from 03:15 to spread DB load across the 03:xx window.
+	if _, err := scheduler.Register("30 3 * * *",
 		nis2wizard.NewCleanupAnonymousRunsTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register nis2 anonymous runs cleanup cron")
 	}
 
-	// Sprint 22 S22-13: wöchentlich Sonntag 04:00 UTC — login_history > 90d aufräumen.
-	if _, err := scheduler.Register("0 4 * * 0",
+	// Sprint 22 S22-13: wöchentlich Sonntag 04:30 UTC — login_history > 90d aufräumen.
+	// Shifted from 04:00 to avoid collision with Watchtower (0 4 * * *) and cloud sync.
+	if _, err := scheduler.Register("30 4 * * 0",
 		auth.NewCleanupLoginHistoryTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register login history cleanup cron")
 	}
 
-	// Daily at 04:00 UTC: collect cloud evidence from all enabled AWS + Azure integrations.
-	if _, err := scheduler.Register("0 4 * * *",
+	// Daily at 04:20 UTC: collect cloud evidence from all enabled AWS + Azure integrations.
+	// Shifted from 04:00 to avoid collision with Watchtower restart window.
+	if _, err := scheduler.Register("20 4 * * *",
 		cloudintegration.NewCloudSyncTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register cloud sync cron")
