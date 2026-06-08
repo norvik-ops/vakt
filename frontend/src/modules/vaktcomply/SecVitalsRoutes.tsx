@@ -44,6 +44,8 @@ import SoAPage from './pages/SoAPage'
 import AccessReviewsPage from './pages/AccessReviewsPage'
 import ExceptionsPage from './pages/ExceptionsPage'
 import PolicyTemplatesPage from './pages/PolicyTemplatesPage'
+import BCPPage from './pages/BCPPage'
+import ProtectionNeedsPage from './pages/ProtectionNeedsPage'
 
 export default function SecVitalsRoutes() {
   return (
@@ -98,6 +100,8 @@ export default function SecVitalsRoutes() {
       <Route path="access-reviews" element={<AccessReviewsPage />} />
       <Route path="exceptions" element={<ExceptionsPage />} />
       <Route path="policy-templates" element={<PolicyTemplatesPage />} />
+      <Route path="bcp" element={<BCPPage />} />
+      <Route path="protection-needs" element={<ProtectionNeedsPage />} />
       <Route path="*" element={<Navigate to="/vaktcomply" replace />} />
     </Routes>
   )

@@ -1669,3 +1669,81 @@ type Webhooks struct {
 	LastTriggeredAt pgtype.Timestamptz `json:"last_triggered_at"`
 	LastStatusCode  pgtype.Int4        `json:"last_status_code"`
 }
+
+// ── S60: BCP / Notfallhandbuch ────────────────────────────────────────────────
+
+type CkBcpPlans struct {
+	ID        string             `json:"id"`
+	OrgID     string             `json:"org_id"`
+	Title     string             `json:"title"`
+	Scope     string             `json:"scope"`
+	Version   string             `json:"version"`
+	Status    string             `json:"status"`
+	Owner     string             `json:"owner"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type CkBcpTests struct {
+	ID        string             `json:"id"`
+	OrgID     string             `json:"org_id"`
+	PlanID    string             `json:"plan_id"`
+	TestDate  pgtype.Date        `json:"test_date"`
+	TestType  string             `json:"test_type"`
+	Outcome   string             `json:"outcome"`
+	Findings  string             `json:"findings"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+// ── S60: Schutzbedarfsfeststellung ────────────────────────────────────────────
+
+type CkProtectionNeedAssessments struct {
+	ID              string             `json:"id"`
+	OrgID           string             `json:"org_id"`
+	Name            string             `json:"name"`
+	ObjectType      string             `json:"object_type"`
+	ObjectName      string             `json:"object_name"`
+	Confidentiality string             `json:"confidentiality"`
+	Integrity       string             `json:"integrity"`
+	Availability    string             `json:"availability"`
+	Overall         string             `json:"overall"`
+	Status          string             `json:"status"`
+	FinalizedAt     pgtype.Timestamptz `json:"finalized_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
+// ── S60: Berechtigungskonzept ─────────────────────────────────────────────────
+
+type HrAccessConcepts struct {
+	ID             string             `json:"id"`
+	OrgID          string             `json:"org_id"`
+	Title          string             `json:"title"`
+	Scope          string             `json:"scope"`
+	Owner          string             `json:"owner"`
+	CurrentVersion int32              `json:"current_version"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+type HrAccessRoles struct {
+	ID                   string             `json:"id"`
+	ConceptID            string             `json:"concept_id"`
+	OrgID                string             `json:"org_id"`
+	RoleName             string             `json:"role_name"`
+	SystemName           string             `json:"system_name"`
+	AccessLevel          string             `json:"access_level"`
+	Justification        string             `json:"justification"`
+	ReviewIntervalMonths int32              `json:"review_interval_months"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+}
+
+type HrAccessConceptVersions struct {
+	ID            string             `json:"id"`
+	ConceptID     string             `json:"concept_id"`
+	OrgID         string             `json:"org_id"`
+	VersionNumber int32              `json:"version_number"`
+	Snapshot      json.RawMessage    `json:"snapshot"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}

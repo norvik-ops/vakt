@@ -350,6 +350,26 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/org/approval-setting", h.GetApprovalSetting)
 	g.PUT("/org/approval-setting", h.UpdateApprovalSetting, rw)
 
+	// BCP / Notfallhandbuch (S60)
+	// CRITICAL: /bcp/plans/:id/tests and /bcp/plans/:id/evidence must be registered BEFORE /bcp/plans/:id
+	g.GET("/bcp/plans", h.ListBCPPlans)
+	g.POST("/bcp/plans", h.CreateBCPPlan, rw)
+	g.GET("/bcp/plans/:id/tests", h.ListBCPTests)
+	g.POST("/bcp/plans/:id/tests", h.AddBCPTest, rw)
+	g.POST("/bcp/plans/:id/evidence", h.LinkBCPPlanAsEvidence, rw)
+	g.GET("/bcp/plans/:id", h.GetBCPPlan)
+	g.PATCH("/bcp/plans/:id", h.UpdateBCPPlan, rw)
+	g.DELETE("/bcp/plans/:id", h.DeleteBCPPlan, rw)
+
+	// Schutzbedarfsfeststellung (S60)
+	// CRITICAL: /protection-needs/assessments/:id/finalize must be registered BEFORE /protection-needs/assessments/:id
+	g.GET("/protection-needs/assessments", h.ListProtectionNeedAssessments)
+	g.POST("/protection-needs/assessments", h.CreateProtectionNeedAssessment, rw)
+	g.POST("/protection-needs/assessments/:id/finalize", h.FinalizeProtectionNeedAssessment, rw)
+	g.GET("/protection-needs/assessments/:id", h.GetProtectionNeedAssessment)
+	g.PATCH("/protection-needs/assessments/:id", h.UpdateProtectionNeedAssessment, rw)
+	g.DELETE("/protection-needs/assessments/:id", h.DeleteProtectionNeedAssessment, rw)
+
 	registerAccessReviewRoutes(g, h)
 	registerExceptionRoutes(g, h)
 }

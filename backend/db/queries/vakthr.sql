@@ -133,3 +133,71 @@ WHERE api_keys.created_by = users.id
   AND users.org_id        = $1::uuid
   AND users.email         = $2
   AND api_keys.revoked_at IS NULL;
+
+
+-- ── Berechtigungskonzept (S60) ────────────────────────────────────────────────
+
+-- name: CreateHRAccessConcept :one
+INSERT INTO hr_access_concepts (org_id, title, scope, owner)
+VALUES ($1, $2, $3, $4)
+RETURNING *;
+
+-- name: ListHRAccessConcepts :many
+SELECT * FROM hr_access_concepts
+WHERE org_id = $1
+ORDER BY created_at DESC;
+
+-- name: GetHRAccessConcept :one
+SELECT * FROM hr_access_concepts
+WHERE id = $1 AND org_id = $2;
+
+-- name: UpdateHRAccessConcept :one
+UPDATE hr_access_concepts
+SET title = $3, scope = $4, owner = $5, updated_at = NOW()
+WHERE id = $1 AND org_id = $2
+RETURNING *;
+
+-- name: DeleteHRAccessConcept :execrows
+DELETE FROM hr_access_concepts
+WHERE id = $1 AND org_id = $2;
+
+-- name: IncrementHRAccessConceptVersion :one
+UPDATE hr_access_concepts
+SET current_version = current_version + 1, updated_at = NOW()
+WHERE id = $1 AND org_id = $2
+RETURNING current_version;
+
+-- name: AddHRAccessRole :one
+INSERT INTO hr_access_roles (concept_id, org_id, role_name, system_name, access_level, justification, review_interval_months)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING *;
+
+-- name: ListHRAccessRoles :many
+SELECT * FROM hr_access_roles
+WHERE concept_id = $1 AND org_id = $2
+ORDER BY role_name, system_name;
+
+-- name: UpdateHRAccessRole :one
+UPDATE hr_access_roles
+SET role_name = $3, system_name = $4, access_level = $5, justification = $6, review_interval_months = $7, updated_at = NOW()
+WHERE id = $1 AND org_id = $2
+RETURNING *;
+
+-- name: DeleteHRAccessRole :execrows
+DELETE FROM hr_access_roles
+WHERE id = $1 AND org_id = $2;
+
+-- name: InsertHRAccessConceptVersion :one
+INSERT INTO hr_access_concept_versions (concept_id, org_id, version_number, snapshot)
+VALUES ($1, $2, $3, $4)
+RETURNING *;
+
+-- name: ListHRAccessConceptVersions :many
+SELECT id, concept_id, org_id, version_number, created_at
+FROM hr_access_concept_versions
+WHERE concept_id = $1 AND org_id = $2
+ORDER BY version_number DESC;
+
+-- name: GetHRAccessConceptVersion :one
+SELECT * FROM hr_access_concept_versions
+WHERE concept_id = $1 AND org_id = $2 AND version_number = $3;

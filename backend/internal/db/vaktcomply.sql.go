@@ -10554,3 +10554,306 @@ func (q *Queries) InsertCKCIEvidence(ctx context.Context, arg InsertCKCIEvidence
 	err := row.Scan(&id)
 	return id, err
 }
+
+// ── S60: BCP / Notfallhandbuch ────────────────────────────────────────────────
+
+const createCKBCPPlan = `-- name: CreateCKBCPPlan :one
+INSERT INTO ck_bcp_plans (org_id, title, scope, version, status, owner)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, org_id, title, scope, version, status, owner, created_at, updated_at
+`
+
+type CreateCKBCPPlanParams struct {
+	OrgID   string `json:"org_id"`
+	Title   string `json:"title"`
+	Scope   string `json:"scope"`
+	Version string `json:"version"`
+	Status  string `json:"status"`
+	Owner   string `json:"owner"`
+}
+
+func (q *Queries) CreateCKBCPPlan(ctx context.Context, arg CreateCKBCPPlanParams) (CkBcpPlans, error) {
+	row := q.db.QueryRow(ctx, createCKBCPPlan,
+		arg.OrgID, arg.Title, arg.Scope, arg.Version, arg.Status, arg.Owner)
+	var i CkBcpPlans
+	err := row.Scan(&i.ID, &i.OrgID, &i.Title, &i.Scope, &i.Version, &i.Status, &i.Owner, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const listCKBCPPlans = `-- name: ListCKBCPPlans :many
+SELECT id, org_id, title, scope, version, status, owner, created_at, updated_at FROM ck_bcp_plans
+WHERE org_id = $1 ORDER BY created_at DESC
+`
+
+func (q *Queries) ListCKBCPPlans(ctx context.Context, orgID string) ([]CkBcpPlans, error) {
+	rows, err := q.db.Query(ctx, listCKBCPPlans, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CkBcpPlans{}
+	for rows.Next() {
+		var i CkBcpPlans
+		if err := rows.Scan(&i.ID, &i.OrgID, &i.Title, &i.Scope, &i.Version, &i.Status, &i.Owner, &i.CreatedAt, &i.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	return items, rows.Err()
+}
+
+const getCKBCPPlan = `-- name: GetCKBCPPlan :one
+SELECT id, org_id, title, scope, version, status, owner, created_at, updated_at FROM ck_bcp_plans
+WHERE id = $1 AND org_id = $2
+`
+
+type GetCKBCPPlanParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+func (q *Queries) GetCKBCPPlan(ctx context.Context, arg GetCKBCPPlanParams) (CkBcpPlans, error) {
+	row := q.db.QueryRow(ctx, getCKBCPPlan, arg.ID, arg.OrgID)
+	var i CkBcpPlans
+	err := row.Scan(&i.ID, &i.OrgID, &i.Title, &i.Scope, &i.Version, &i.Status, &i.Owner, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const updateCKBCPPlan = `-- name: UpdateCKBCPPlan :one
+UPDATE ck_bcp_plans
+SET title = $3, scope = $4, version = $5, status = $6, owner = $7, updated_at = NOW()
+WHERE id = $1 AND org_id = $2
+RETURNING id, org_id, title, scope, version, status, owner, created_at, updated_at
+`
+
+type UpdateCKBCPPlanParams struct {
+	ID      string `json:"id"`
+	OrgID   string `json:"org_id"`
+	Title   string `json:"title"`
+	Scope   string `json:"scope"`
+	Version string `json:"version"`
+	Status  string `json:"status"`
+	Owner   string `json:"owner"`
+}
+
+func (q *Queries) UpdateCKBCPPlan(ctx context.Context, arg UpdateCKBCPPlanParams) (CkBcpPlans, error) {
+	row := q.db.QueryRow(ctx, updateCKBCPPlan, arg.ID, arg.OrgID, arg.Title, arg.Scope, arg.Version, arg.Status, arg.Owner)
+	var i CkBcpPlans
+	err := row.Scan(&i.ID, &i.OrgID, &i.Title, &i.Scope, &i.Version, &i.Status, &i.Owner, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const deleteCKBCPPlan = `-- name: DeleteCKBCPPlan :execrows
+DELETE FROM ck_bcp_plans WHERE id = $1 AND org_id = $2
+`
+
+type DeleteCKBCPPlanParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+func (q *Queries) DeleteCKBCPPlan(ctx context.Context, arg DeleteCKBCPPlanParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCKBCPPlan, arg.ID, arg.OrgID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const createCKBCPTest = `-- name: CreateCKBCPTest :one
+INSERT INTO ck_bcp_tests (org_id, plan_id, test_date, test_type, outcome, findings)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, org_id, plan_id, test_date, test_type, outcome, findings, created_at
+`
+
+type CreateCKBCPTestParams struct {
+	OrgID    string      `json:"org_id"`
+	PlanID   string      `json:"plan_id"`
+	TestDate pgtype.Date `json:"test_date"`
+	TestType string      `json:"test_type"`
+	Outcome  string      `json:"outcome"`
+	Findings string      `json:"findings"`
+}
+
+func (q *Queries) CreateCKBCPTest(ctx context.Context, arg CreateCKBCPTestParams) (CkBcpTests, error) {
+	row := q.db.QueryRow(ctx, createCKBCPTest,
+		arg.OrgID, arg.PlanID, arg.TestDate, arg.TestType, arg.Outcome, arg.Findings)
+	var i CkBcpTests
+	err := row.Scan(&i.ID, &i.OrgID, &i.PlanID, &i.TestDate, &i.TestType, &i.Outcome, &i.Findings, &i.CreatedAt)
+	return i, err
+}
+
+const listCKBCPTests = `-- name: ListCKBCPTests :many
+SELECT id, org_id, plan_id, test_date, test_type, outcome, findings, created_at FROM ck_bcp_tests
+WHERE plan_id = $1 AND org_id = $2 ORDER BY test_date DESC
+`
+
+type ListCKBCPTestsParams struct {
+	PlanID string `json:"plan_id"`
+	OrgID  string `json:"org_id"`
+}
+
+func (q *Queries) ListCKBCPTests(ctx context.Context, arg ListCKBCPTestsParams) ([]CkBcpTests, error) {
+	rows, err := q.db.Query(ctx, listCKBCPTests, arg.PlanID, arg.OrgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CkBcpTests{}
+	for rows.Next() {
+		var i CkBcpTests
+		if err := rows.Scan(&i.ID, &i.OrgID, &i.PlanID, &i.TestDate, &i.TestType, &i.Outcome, &i.Findings, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	return items, rows.Err()
+}
+
+const getLatestCKBCPTest = `-- name: GetLatestCKBCPTest :one
+SELECT id, org_id, plan_id, test_date, test_type, outcome, findings, created_at FROM ck_bcp_tests
+WHERE plan_id = $1 AND org_id = $2 ORDER BY test_date DESC LIMIT 1
+`
+
+type GetLatestCKBCPTestParams struct {
+	PlanID string `json:"plan_id"`
+	OrgID  string `json:"org_id"`
+}
+
+func (q *Queries) GetLatestCKBCPTest(ctx context.Context, arg GetLatestCKBCPTestParams) (CkBcpTests, error) {
+	row := q.db.QueryRow(ctx, getLatestCKBCPTest, arg.PlanID, arg.OrgID)
+	var i CkBcpTests
+	err := row.Scan(&i.ID, &i.OrgID, &i.PlanID, &i.TestDate, &i.TestType, &i.Outcome, &i.Findings, &i.CreatedAt)
+	return i, err
+}
+
+// ── S60: Schutzbedarfsfeststellung ────────────────────────────────────────────
+
+const createCKProtectionNeedAssessment = `-- name: CreateCKProtectionNeedAssessment :one
+INSERT INTO ck_protection_need_assessments (org_id, name, object_type, object_name)
+VALUES ($1, $2, $3, $4)
+RETURNING id, org_id, name, object_type, object_name, confidentiality, integrity, availability, overall, status, finalized_at, created_at, updated_at
+`
+
+type CreateCKProtectionNeedAssessmentParams struct {
+	OrgID      string `json:"org_id"`
+	Name       string `json:"name"`
+	ObjectType string `json:"object_type"`
+	ObjectName string `json:"object_name"`
+}
+
+func (q *Queries) CreateCKProtectionNeedAssessment(ctx context.Context, arg CreateCKProtectionNeedAssessmentParams) (CkProtectionNeedAssessments, error) {
+	row := q.db.QueryRow(ctx, createCKProtectionNeedAssessment, arg.OrgID, arg.Name, arg.ObjectType, arg.ObjectName)
+	var i CkProtectionNeedAssessments
+	err := row.Scan(&i.ID, &i.OrgID, &i.Name, &i.ObjectType, &i.ObjectName,
+		&i.Confidentiality, &i.Integrity, &i.Availability, &i.Overall,
+		&i.Status, &i.FinalizedAt, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const listCKProtectionNeedAssessments = `-- name: ListCKProtectionNeedAssessments :many
+SELECT id, org_id, name, object_type, object_name, confidentiality, integrity, availability, overall, status, finalized_at, created_at, updated_at
+FROM ck_protection_need_assessments WHERE org_id = $1 ORDER BY created_at DESC
+`
+
+func (q *Queries) ListCKProtectionNeedAssessments(ctx context.Context, orgID string) ([]CkProtectionNeedAssessments, error) {
+	rows, err := q.db.Query(ctx, listCKProtectionNeedAssessments, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CkProtectionNeedAssessments{}
+	for rows.Next() {
+		var i CkProtectionNeedAssessments
+		if err := rows.Scan(&i.ID, &i.OrgID, &i.Name, &i.ObjectType, &i.ObjectName,
+			&i.Confidentiality, &i.Integrity, &i.Availability, &i.Overall,
+			&i.Status, &i.FinalizedAt, &i.CreatedAt, &i.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	return items, rows.Err()
+}
+
+const getCKProtectionNeedAssessment = `-- name: GetCKProtectionNeedAssessment :one
+SELECT id, org_id, name, object_type, object_name, confidentiality, integrity, availability, overall, status, finalized_at, created_at, updated_at
+FROM ck_protection_need_assessments WHERE id = $1 AND org_id = $2
+`
+
+type GetCKProtectionNeedAssessmentParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+func (q *Queries) GetCKProtectionNeedAssessment(ctx context.Context, arg GetCKProtectionNeedAssessmentParams) (CkProtectionNeedAssessments, error) {
+	row := q.db.QueryRow(ctx, getCKProtectionNeedAssessment, arg.ID, arg.OrgID)
+	var i CkProtectionNeedAssessments
+	err := row.Scan(&i.ID, &i.OrgID, &i.Name, &i.ObjectType, &i.ObjectName,
+		&i.Confidentiality, &i.Integrity, &i.Availability, &i.Overall,
+		&i.Status, &i.FinalizedAt, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const updateCKProtectionNeedAssessment = `-- name: UpdateCKProtectionNeedAssessment :one
+UPDATE ck_protection_need_assessments
+SET confidentiality = $3, integrity = $4, availability = $5, overall = $6, updated_at = NOW()
+WHERE id = $1 AND org_id = $2
+RETURNING id, org_id, name, object_type, object_name, confidentiality, integrity, availability, overall, status, finalized_at, created_at, updated_at
+`
+
+type UpdateCKProtectionNeedAssessmentParams struct {
+	ID              string `json:"id"`
+	OrgID           string `json:"org_id"`
+	Confidentiality string `json:"confidentiality"`
+	Integrity       string `json:"integrity"`
+	Availability    string `json:"availability"`
+	Overall         string `json:"overall"`
+}
+
+func (q *Queries) UpdateCKProtectionNeedAssessment(ctx context.Context, arg UpdateCKProtectionNeedAssessmentParams) (CkProtectionNeedAssessments, error) {
+	row := q.db.QueryRow(ctx, updateCKProtectionNeedAssessment,
+		arg.ID, arg.OrgID, arg.Confidentiality, arg.Integrity, arg.Availability, arg.Overall)
+	var i CkProtectionNeedAssessments
+	err := row.Scan(&i.ID, &i.OrgID, &i.Name, &i.ObjectType, &i.ObjectName,
+		&i.Confidentiality, &i.Integrity, &i.Availability, &i.Overall,
+		&i.Status, &i.FinalizedAt, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const finalizeCKProtectionNeedAssessment = `-- name: FinalizeCKProtectionNeedAssessment :one
+UPDATE ck_protection_need_assessments
+SET status = 'finalized', finalized_at = NOW(), updated_at = NOW()
+WHERE id = $1 AND org_id = $2
+RETURNING id, org_id, name, object_type, object_name, confidentiality, integrity, availability, overall, status, finalized_at, created_at, updated_at
+`
+
+type FinalizeCKProtectionNeedAssessmentParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+func (q *Queries) FinalizeCKProtectionNeedAssessment(ctx context.Context, arg FinalizeCKProtectionNeedAssessmentParams) (CkProtectionNeedAssessments, error) {
+	row := q.db.QueryRow(ctx, finalizeCKProtectionNeedAssessment, arg.ID, arg.OrgID)
+	var i CkProtectionNeedAssessments
+	err := row.Scan(&i.ID, &i.OrgID, &i.Name, &i.ObjectType, &i.ObjectName,
+		&i.Confidentiality, &i.Integrity, &i.Availability, &i.Overall,
+		&i.Status, &i.FinalizedAt, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const deleteCKProtectionNeedAssessment = `-- name: DeleteCKProtectionNeedAssessment :execrows
+DELETE FROM ck_protection_need_assessments WHERE id = $1 AND org_id = $2
+`
+
+type DeleteCKProtectionNeedAssessmentParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+func (q *Queries) DeleteCKProtectionNeedAssessment(ctx context.Context, arg DeleteCKProtectionNeedAssessmentParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCKProtectionNeedAssessment, arg.ID, arg.OrgID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}

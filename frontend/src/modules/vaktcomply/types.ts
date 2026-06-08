@@ -983,3 +983,85 @@ export interface CreateDORAThirdPartyInput {
 }
 
 export type UpdateDORAThirdPartyInput = CreateDORAThirdPartyInput
+
+// --- BCP / Notfallhandbuch (Migration 156) ---
+
+export interface BCPPlan {
+  id: string
+  org_id: string
+  title: string
+  scope: string
+  version: string
+  status: 'draft' | 'active' | 'archived'
+  owner: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateBCPPlanInput {
+  title: string
+  scope?: string
+  version?: string
+  owner?: string
+}
+
+export interface UpdateBCPPlanInput {
+  title: string
+  scope?: string
+  version?: string
+  status?: BCPPlan['status']
+  owner?: string
+}
+
+export interface BCPTest {
+  id: string
+  org_id: string
+  plan_id: string
+  test_date: string
+  test_type: 'tabletop' | 'walkthrough' | 'fulltest'
+  outcome: 'passed' | 'failed' | 'partial'
+  findings: string
+  created_at: string
+}
+
+export interface CreateBCPTestInput {
+  plan_id: string
+  test_date: string
+  test_type: BCPTest['test_type']
+  outcome: BCPTest['outcome']
+  findings?: string
+}
+
+// --- Schutzbedarfsfeststellung (Migration 157) ---
+
+export type ProtectionLevel = 'normal' | 'hoch' | 'sehr_hoch'
+export type ProtectionObjectType = 'process' | 'system' | 'information' | 'location'
+
+export interface ProtectionNeedAssessment {
+  id: string
+  org_id: string
+  name: string
+  object_type: ProtectionObjectType
+  object_name: string
+  confidentiality: ProtectionLevel
+  integrity: ProtectionLevel
+  availability: ProtectionLevel
+  overall: ProtectionLevel
+  status: 'draft' | 'finalized'
+  finalized_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateProtectionNeedInput {
+  name: string
+  object_type: ProtectionObjectType
+  object_name: string
+  confidentiality: ProtectionLevel
+  integrity: ProtectionLevel
+  availability: ProtectionLevel
+}
+
+export interface UpdateProtectionNeedInput extends CreateProtectionNeedInput {
+  status?: 'draft' | 'finalized'
+}

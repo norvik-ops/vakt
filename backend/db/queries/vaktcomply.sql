@@ -2175,3 +2175,78 @@ VALUES
     ($1::uuid, NULL, $2, $3, 'ci_webhook', 'pending',
      'ci_webhook', $4, $5, $6::jsonb)
 RETURNING id::text;
+
+
+-- ── BCP / Notfallhandbuch (S60) ──────────────────────────────────────────────
+
+-- name: CreateCKBCPPlan :one
+INSERT INTO ck_bcp_plans (org_id, title, scope, version, status, owner)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING *;
+
+-- name: ListCKBCPPlans :many
+SELECT * FROM ck_bcp_plans
+WHERE org_id = $1
+ORDER BY created_at DESC;
+
+-- name: GetCKBCPPlan :one
+SELECT * FROM ck_bcp_plans
+WHERE id = $1 AND org_id = $2;
+
+-- name: UpdateCKBCPPlan :one
+UPDATE ck_bcp_plans
+SET title = $3, scope = $4, version = $5, status = $6, owner = $7, updated_at = NOW()
+WHERE id = $1 AND org_id = $2
+RETURNING *;
+
+-- name: DeleteCKBCPPlan :execrows
+DELETE FROM ck_bcp_plans
+WHERE id = $1 AND org_id = $2;
+
+-- name: CreateCKBCPTest :one
+INSERT INTO ck_bcp_tests (org_id, plan_id, test_date, test_type, outcome, findings)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING *;
+
+-- name: ListCKBCPTests :many
+SELECT * FROM ck_bcp_tests
+WHERE plan_id = $1 AND org_id = $2
+ORDER BY test_date DESC;
+
+-- name: GetLatestCKBCPTest :one
+SELECT * FROM ck_bcp_tests
+WHERE plan_id = $1 AND org_id = $2
+ORDER BY test_date DESC
+LIMIT 1;
+
+-- ── Schutzbedarfsfeststellung (S60) ──────────────────────────────────────────
+
+-- name: CreateCKProtectionNeedAssessment :one
+INSERT INTO ck_protection_need_assessments (org_id, name, object_type, object_name)
+VALUES ($1, $2, $3, $4)
+RETURNING *;
+
+-- name: ListCKProtectionNeedAssessments :many
+SELECT * FROM ck_protection_need_assessments
+WHERE org_id = $1
+ORDER BY created_at DESC;
+
+-- name: GetCKProtectionNeedAssessment :one
+SELECT * FROM ck_protection_need_assessments
+WHERE id = $1 AND org_id = $2;
+
+-- name: UpdateCKProtectionNeedAssessment :one
+UPDATE ck_protection_need_assessments
+SET confidentiality = $3, integrity = $4, availability = $5, overall = $6, updated_at = NOW()
+WHERE id = $1 AND org_id = $2
+RETURNING *;
+
+-- name: FinalizeCKProtectionNeedAssessment :one
+UPDATE ck_protection_need_assessments
+SET status = 'finalized', finalized_at = NOW(), updated_at = NOW()
+WHERE id = $1 AND org_id = $2
+RETURNING *;
+
+-- name: DeleteCKProtectionNeedAssessment :execrows
+DELETE FROM ck_protection_need_assessments
+WHERE id = $1 AND org_id = $2;

@@ -78,3 +78,61 @@ export interface UpdateChecklistRunInput {
   completed_items: string[]
   status: 'in_progress' | 'completed'
 }
+
+// --- Berechtigungskonzept (Migration 158) ---
+
+export type AccessLevel = 'read' | 'write' | 'admin' | 'no_access'
+
+export interface AccessRole {
+  id: string
+  concept_id: string
+  org_id: string
+  role_name: string
+  system_name: string
+  access_level: AccessLevel
+  justification: string
+  review_interval_months: number
+  created_at: string
+  updated_at: string
+}
+
+export interface AccessConcept {
+  id: string
+  org_id: string
+  title: string
+  scope: string
+  owner: string
+  current_version: number
+  roles?: AccessRole[]
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateAccessConceptInput {
+  title: string
+  scope?: string
+  owner?: string
+}
+
+export interface UpdateAccessConceptInput {
+  title: string
+  scope?: string
+  owner?: string
+}
+
+export interface CreateAccessRoleInput {
+  role_name: string
+  system_name: string
+  access_level: AccessLevel
+  justification?: string
+  review_interval_months?: number
+}
+
+export interface UpdateAccessRoleInput extends CreateAccessRoleInput {}
+
+export interface AccessConceptVersionSummary {
+  id: string
+  concept_id: string
+  version_number: number
+  created_at: string
+}

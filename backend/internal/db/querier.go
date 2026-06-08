@@ -677,6 +677,36 @@ type Querier interface {
 	// ── Targets ───────────────────────────────────────────────────────────────
 	UpsertSRTarget(ctx context.Context, arg UpsertSRTargetParams) (SrTargets, error)
 	UpsertUserModulePermission(ctx context.Context, arg UpsertUserModulePermissionParams) error
+	// ── S60: BCP / Notfallhandbuch ────────────────────────────────────────────
+	CreateCKBCPPlan(ctx context.Context, arg CreateCKBCPPlanParams) (CkBcpPlans, error)
+	ListCKBCPPlans(ctx context.Context, orgID string) ([]CkBcpPlans, error)
+	GetCKBCPPlan(ctx context.Context, arg GetCKBCPPlanParams) (CkBcpPlans, error)
+	UpdateCKBCPPlan(ctx context.Context, arg UpdateCKBCPPlanParams) (CkBcpPlans, error)
+	DeleteCKBCPPlan(ctx context.Context, arg DeleteCKBCPPlanParams) (int64, error)
+	CreateCKBCPTest(ctx context.Context, arg CreateCKBCPTestParams) (CkBcpTests, error)
+	ListCKBCPTests(ctx context.Context, arg ListCKBCPTestsParams) ([]CkBcpTests, error)
+	GetLatestCKBCPTest(ctx context.Context, arg GetLatestCKBCPTestParams) (CkBcpTests, error)
+	// ── S60: Schutzbedarfsfeststellung ────────────────────────────────────────
+	CreateCKProtectionNeedAssessment(ctx context.Context, arg CreateCKProtectionNeedAssessmentParams) (CkProtectionNeedAssessments, error)
+	ListCKProtectionNeedAssessments(ctx context.Context, orgID string) ([]CkProtectionNeedAssessments, error)
+	GetCKProtectionNeedAssessment(ctx context.Context, arg GetCKProtectionNeedAssessmentParams) (CkProtectionNeedAssessments, error)
+	UpdateCKProtectionNeedAssessment(ctx context.Context, arg UpdateCKProtectionNeedAssessmentParams) (CkProtectionNeedAssessments, error)
+	FinalizeCKProtectionNeedAssessment(ctx context.Context, arg FinalizeCKProtectionNeedAssessmentParams) (CkProtectionNeedAssessments, error)
+	DeleteCKProtectionNeedAssessment(ctx context.Context, arg DeleteCKProtectionNeedAssessmentParams) (int64, error)
+	// ── S60: Berechtigungskonzept ─────────────────────────────────────────────
+	CreateHRAccessConcept(ctx context.Context, arg CreateHRAccessConceptParams) (HrAccessConcepts, error)
+	ListHRAccessConcepts(ctx context.Context, orgID string) ([]HrAccessConcepts, error)
+	GetHRAccessConcept(ctx context.Context, arg GetHRAccessConceptParams) (HrAccessConcepts, error)
+	UpdateHRAccessConcept(ctx context.Context, arg UpdateHRAccessConceptParams) (HrAccessConcepts, error)
+	DeleteHRAccessConcept(ctx context.Context, arg DeleteHRAccessConceptParams) (int64, error)
+	IncrementHRAccessConceptVersion(ctx context.Context, arg IncrementHRAccessConceptVersionParams) (int32, error)
+	AddHRAccessRole(ctx context.Context, arg AddHRAccessRoleParams) (HrAccessRoles, error)
+	ListHRAccessRoles(ctx context.Context, arg ListHRAccessRolesParams) ([]HrAccessRoles, error)
+	UpdateHRAccessRole(ctx context.Context, arg UpdateHRAccessRoleParams) (HrAccessRoles, error)
+	DeleteHRAccessRole(ctx context.Context, arg DeleteHRAccessRoleParams) (int64, error)
+	InsertHRAccessConceptVersion(ctx context.Context, arg InsertHRAccessConceptVersionParams) (HrAccessConceptVersions, error)
+	ListHRAccessConceptVersions(ctx context.Context, arg ListHRAccessConceptVersionsParams) ([]ListHRAccessConceptVersionsRow, error)
+	GetHRAccessConceptVersion(ctx context.Context, arg GetHRAccessConceptVersionParams) (HrAccessConceptVersions, error)
 }
 
 var _ Querier = (*Queries)(nil)

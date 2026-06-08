@@ -103,3 +103,71 @@ type RunEvent struct {
 	CompletedBy string    `json:"completed_by"`
 	CompletedAt time.Time `json:"completed_at"`
 }
+
+// ── S60: Berechtigungskonzept ─────────────────────────────────────────────────
+
+// AccessConcept represents a Berechtigungskonzept document.
+type AccessConcept struct {
+	ID             string    `json:"id"`
+	OrgID          string    `json:"org_id"`
+	Title          string    `json:"title"`
+	Scope          string    `json:"scope"`
+	Owner          string    `json:"owner"`
+	CurrentVersion int32     `json:"current_version"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+// AccessRole represents a single role definition within an AccessConcept.
+type AccessRole struct {
+	ID                   string    `json:"id"`
+	ConceptID            string    `json:"concept_id"`
+	OrgID                string    `json:"org_id"`
+	RoleName             string    `json:"role_name"`
+	SystemName           string    `json:"system_name"`
+	AccessLevel          string    `json:"access_level"`
+	Justification        string    `json:"justification"`
+	ReviewIntervalMonths int32     `json:"review_interval_months"`
+	CreatedAt            time.Time `json:"created_at"`
+	UpdatedAt            time.Time `json:"updated_at"`
+}
+
+// AccessConceptVersionSummary is the slim row returned when listing version snapshots.
+type AccessConceptVersionSummary struct {
+	ID            string    `json:"id"`
+	ConceptID     string    `json:"concept_id"`
+	VersionNumber int32     `json:"version_number"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
+// CreateAccessConceptInput is the request body for creating an access concept.
+type CreateAccessConceptInput struct {
+	Title string `json:"title" validate:"required"`
+	Scope string `json:"scope"`
+	Owner string `json:"owner"`
+}
+
+// UpdateAccessConceptInput is the request body for updating an access concept.
+type UpdateAccessConceptInput struct {
+	Title string `json:"title" validate:"required"`
+	Scope string `json:"scope"`
+	Owner string `json:"owner"`
+}
+
+// CreateAccessRoleInput is the request body for adding a role to an access concept.
+type CreateAccessRoleInput struct {
+	RoleName             string `json:"role_name"              validate:"required"`
+	SystemName           string `json:"system_name"            validate:"required"`
+	AccessLevel          string `json:"access_level"           validate:"required,oneof=read write admin no_access"`
+	Justification        string `json:"justification"`
+	ReviewIntervalMonths int32  `json:"review_interval_months"`
+}
+
+// UpdateAccessRoleInput is the request body for updating a role definition.
+type UpdateAccessRoleInput struct {
+	RoleName             string `json:"role_name"              validate:"required"`
+	SystemName           string `json:"system_name"            validate:"required"`
+	AccessLevel          string `json:"access_level"           validate:"required,oneof=read write admin no_access"`
+	Justification        string `json:"justification"`
+	ReviewIntervalMonths int32  `json:"review_interval_months"`
+}

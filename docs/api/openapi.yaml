@@ -1089,6 +1089,88 @@ components:
           items:
             type: string
 
+    BCPPlan:
+      type: object
+      required: [id, org_id, title, scope, version, status, owner, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        title: { type: string }
+        scope: { type: string }
+        version: { type: string }
+        status: { type: string, enum: [draft, active, archived] }
+        owner: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    BCPTest:
+      type: object
+      required: [id, org_id, plan_id, test_date, test_type, outcome, findings, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        plan_id: { type: string, format: uuid }
+        test_date: { type: string, format: date }
+        test_type: { type: string, enum: [tabletop, walkthrough, fulltest] }
+        outcome: { type: string, enum: [passed, failed, partial] }
+        findings: { type: string }
+        created_at: { type: string, format: date-time }
+
+    ProtectionNeedAssessment:
+      type: object
+      required: [id, org_id, name, object_type, object_name, confidentiality, integrity, availability, overall, status, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        name: { type: string }
+        object_type: { type: string, enum: [process, system, information, location] }
+        object_name: { type: string }
+        confidentiality: { type: string, enum: [normal, hoch, sehr_hoch] }
+        integrity: { type: string, enum: [normal, hoch, sehr_hoch] }
+        availability: { type: string, enum: [normal, hoch, sehr_hoch] }
+        overall: { type: string, enum: [normal, hoch, sehr_hoch] }
+        status: { type: string, enum: [draft, finalized] }
+        finalized_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AccessConcept:
+      type: object
+      required: [id, org_id, title, scope, owner, current_version, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        title: { type: string }
+        scope: { type: string }
+        owner: { type: string }
+        current_version: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AccessRole:
+      type: object
+      required: [id, concept_id, org_id, role_name, system_name, access_level, justification, review_interval_months, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        concept_id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        role_name: { type: string }
+        system_name: { type: string }
+        access_level: { type: string, enum: [read, write, admin, no_access] }
+        justification: { type: string }
+        review_interval_months: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AccessConceptVersionSummary:
+      type: object
+      required: [id, concept_id, version_number, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        concept_id: { type: string, format: uuid }
+        version_number: { type: integer }
+        created_at: { type: string, format: date-time }
+
 tags:
   - name: auth
     description: Authentication
@@ -5557,3 +5639,527 @@ paths:
                   errors: { type: array, items: { type: string } }
 
   # --- Sessions: /auth/sessions already documented earlier in this file ---
+
+  # ── BCP / Notfallhandbuch (Migration 156) ────────────────────────────────
+
+  /vaktcomply/bcp/plans:
+    get:
+      summary: List BCP plans
+      operationId: listBCPPlans
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of BCP plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BCPPlan'
+    post:
+      summary: Create BCP plan
+      operationId: createBCPPlan
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                scope: { type: string }
+                version: { type: string }
+                owner: { type: string }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BCPPlan'
+
+  /vaktcomply/bcp/plans/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get BCP plan
+      operationId: getBCPPlan
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: BCP plan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BCPPlan'
+    put:
+      summary: Update BCP plan
+      operationId: updateBCPPlan
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                scope: { type: string }
+                version: { type: string }
+                status: { type: string, enum: [draft, active, archived] }
+                owner: { type: string }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BCPPlan'
+    delete:
+      summary: Delete BCP plan
+      operationId: deleteBCPPlan
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+
+  /vaktcomply/bcp/plans/{id}/tests:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: List BCP tests for a plan
+      operationId: listBCPTests
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of BCP tests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BCPTest'
+    post:
+      summary: Add BCP test to a plan
+      operationId: addBCPTest
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [test_date, test_type, outcome]
+              properties:
+                test_date: { type: string, format: date }
+                test_type: { type: string, enum: [tabletop, walkthrough, fulltest] }
+                outcome: { type: string, enum: [passed, failed, partial] }
+                findings: { type: string }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BCPTest'
+
+  /vaktcomply/bcp/plans/{id}/link-evidence:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Link BCP plan as compliance evidence
+      operationId: linkBCPPlanEvidence
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                control_id: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Evidence linked or skipped
+
+  # ── Schutzbedarfsfeststellung (Migration 157) ─────────────────────────────
+
+  /vaktcomply/protection-needs:
+    get:
+      summary: List protection need assessments
+      operationId: listProtectionNeeds
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of assessments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProtectionNeedAssessment'
+    post:
+      summary: Create protection need assessment
+      operationId: createProtectionNeed
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, object_type, object_name, confidentiality, integrity, availability]
+              properties:
+                name: { type: string }
+                object_type: { type: string, enum: [process, system, information, location] }
+                object_name: { type: string }
+                confidentiality: { type: string, enum: [normal, hoch, sehr_hoch] }
+                integrity: { type: string, enum: [normal, hoch, sehr_hoch] }
+                availability: { type: string, enum: [normal, hoch, sehr_hoch] }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProtectionNeedAssessment'
+
+  /vaktcomply/protection-needs/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get protection need assessment
+      operationId: getProtectionNeed
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Assessment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProtectionNeedAssessment'
+    put:
+      summary: Update protection need assessment
+      operationId: updateProtectionNeed
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, object_type, object_name, confidentiality, integrity, availability]
+              properties:
+                name: { type: string }
+                object_type: { type: string, enum: [process, system, information, location] }
+                object_name: { type: string }
+                confidentiality: { type: string, enum: [normal, hoch, sehr_hoch] }
+                integrity: { type: string, enum: [normal, hoch, sehr_hoch] }
+                availability: { type: string, enum: [normal, hoch, sehr_hoch] }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProtectionNeedAssessment'
+    delete:
+      summary: Delete protection need assessment
+      operationId: deleteProtectionNeed
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+
+  /vaktcomply/protection-needs/{id}/finalize:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Finalize protection need assessment
+      operationId: finalizeProtectionNeed
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Finalized assessment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProtectionNeedAssessment'
+
+  # ── Berechtigungskonzept (Migration 158) ──────────────────────────────────
+
+  /vakthr/access-concepts:
+    get:
+      summary: List access concepts
+      operationId: listAccessConcepts
+      tags: [vakthr]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of access concepts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccessConcept'
+    post:
+      summary: Create access concept
+      operationId: createAccessConcept
+      tags: [vakthr]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                scope: { type: string }
+                owner: { type: string }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessConcept'
+
+  /vakthr/access-concepts/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get access concept
+      operationId: getAccessConcept
+      tags: [vakthr]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Access concept
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessConcept'
+    put:
+      summary: Update access concept
+      operationId: updateAccessConcept
+      tags: [vakthr]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                scope: { type: string }
+                owner: { type: string }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessConcept'
+    delete:
+      summary: Delete access concept
+      operationId: deleteAccessConcept
+      tags: [vakthr]
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+
+  /vakthr/access-concepts/{id}/roles:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: List roles for an access concept
+      operationId: listAccessRoles
+      tags: [vakthr]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccessRole'
+    post:
+      summary: Add role to access concept
+      operationId: addAccessRole
+      tags: [vakthr]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role_name, system_name, access_level]
+              properties:
+                role_name: { type: string }
+                system_name: { type: string }
+                access_level: { type: string, enum: [read, write, admin, no_access] }
+                justification: { type: string }
+                review_interval_months: { type: integer }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessRole'
+
+  /vakthr/access-concepts/{id}/roles/{roleId}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: roleId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Update access role
+      operationId: updateAccessRole
+      tags: [vakthr]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role_name, system_name, access_level]
+              properties:
+                role_name: { type: string }
+                system_name: { type: string }
+                access_level: { type: string, enum: [read, write, admin, no_access] }
+                justification: { type: string }
+                review_interval_months: { type: integer }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessRole'
+    delete:
+      summary: Delete access role
+      operationId: deleteAccessRole
+      tags: [vakthr]
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+
+  /vakthr/access-concepts/{id}/versions:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: List versions of an access concept
+      operationId: listAccessConceptVersions
+      tags: [vakthr]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of version summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccessConceptVersionSummary'
+
+  /vakthr/access-concepts/{id}/snapshot:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Snapshot current access concept roles as a new version
+      operationId: snapshotAccessConcept
+      tags: [vakthr]
+      security:
+        - BearerAuth: []
+      responses:
+        '201':
+          description: Snapshot created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessConceptVersionSummary'

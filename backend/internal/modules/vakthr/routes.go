@@ -37,4 +37,18 @@ func Register(g *echo.Group, h *Handler) {
 	// Step completion + audit trail
 	g.POST("/checklist-runs/:id/steps/:step_id", h.CompleteStep, rw)
 	g.GET("/checklist-runs/:id/events", h.ListRunEvents, rw)
+
+	// Berechtigungskonzept (S60)
+	// CRITICAL: static sub-paths (/roles, /versions) must be registered BEFORE bare /:id
+	g.GET("/access-concepts", h.ListAccessConcepts, rw)
+	g.POST("/access-concepts", h.CreateAccessConcept, admin)
+	g.GET("/access-concepts/:id/roles", h.ListAccessRoles, rw)
+	g.POST("/access-concepts/:id/roles", h.AddAccessRole, admin)
+	g.PATCH("/access-concepts/:id/roles/:rid", h.UpdateAccessRole, admin)
+	g.DELETE("/access-concepts/:id/roles/:rid", h.DeleteAccessRole, admin)
+	g.POST("/access-concepts/:id/versions", h.SnapshotAccessConceptVersion, admin)
+	g.GET("/access-concepts/:id/versions", h.ListAccessConceptVersions, rw)
+	g.GET("/access-concepts/:id", h.GetAccessConcept, rw)
+	g.PATCH("/access-concepts/:id", h.UpdateAccessConcept, admin)
+	g.DELETE("/access-concepts/:id", h.DeleteAccessConcept, admin)
 }

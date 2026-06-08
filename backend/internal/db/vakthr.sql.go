@@ -672,3 +672,286 @@ func (q *Queries) HRRevokeUserAPIKeys(ctx context.Context, arg HRRevokeUserAPIKe
 	_, err := q.db.Exec(ctx, hRRevokeUserAPIKeys, arg.OrgID, arg.Email)
 	return err
 }
+
+// ── S60: Berechtigungskonzept ─────────────────────────────────────────────────
+
+const createHRAccessConcept = `-- name: CreateHRAccessConcept :one
+INSERT INTO hr_access_concepts (org_id, title, scope, owner)
+VALUES ($1, $2, $3, $4)
+RETURNING id, org_id, title, scope, owner, current_version, created_at, updated_at
+`
+
+type CreateHRAccessConceptParams struct {
+	OrgID string `json:"org_id"`
+	Title string `json:"title"`
+	Scope string `json:"scope"`
+	Owner string `json:"owner"`
+}
+
+func (q *Queries) CreateHRAccessConcept(ctx context.Context, arg CreateHRAccessConceptParams) (HrAccessConcepts, error) {
+	row := q.db.QueryRow(ctx, createHRAccessConcept, arg.OrgID, arg.Title, arg.Scope, arg.Owner)
+	var i HrAccessConcepts
+	err := row.Scan(&i.ID, &i.OrgID, &i.Title, &i.Scope, &i.Owner, &i.CurrentVersion, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const listHRAccessConcepts = `-- name: ListHRAccessConcepts :many
+SELECT id, org_id, title, scope, owner, current_version, created_at, updated_at FROM hr_access_concepts
+WHERE org_id = $1 ORDER BY created_at DESC
+`
+
+func (q *Queries) ListHRAccessConcepts(ctx context.Context, orgID string) ([]HrAccessConcepts, error) {
+	rows, err := q.db.Query(ctx, listHRAccessConcepts, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []HrAccessConcepts{}
+	for rows.Next() {
+		var i HrAccessConcepts
+		if err := rows.Scan(&i.ID, &i.OrgID, &i.Title, &i.Scope, &i.Owner, &i.CurrentVersion, &i.CreatedAt, &i.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	return items, rows.Err()
+}
+
+const getHRAccessConcept = `-- name: GetHRAccessConcept :one
+SELECT id, org_id, title, scope, owner, current_version, created_at, updated_at FROM hr_access_concepts
+WHERE id = $1 AND org_id = $2
+`
+
+type GetHRAccessConceptParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+func (q *Queries) GetHRAccessConcept(ctx context.Context, arg GetHRAccessConceptParams) (HrAccessConcepts, error) {
+	row := q.db.QueryRow(ctx, getHRAccessConcept, arg.ID, arg.OrgID)
+	var i HrAccessConcepts
+	err := row.Scan(&i.ID, &i.OrgID, &i.Title, &i.Scope, &i.Owner, &i.CurrentVersion, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const updateHRAccessConcept = `-- name: UpdateHRAccessConcept :one
+UPDATE hr_access_concepts SET title = $3, scope = $4, owner = $5, updated_at = NOW()
+WHERE id = $1 AND org_id = $2
+RETURNING id, org_id, title, scope, owner, current_version, created_at, updated_at
+`
+
+type UpdateHRAccessConceptParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+	Title string `json:"title"`
+	Scope string `json:"scope"`
+	Owner string `json:"owner"`
+}
+
+func (q *Queries) UpdateHRAccessConcept(ctx context.Context, arg UpdateHRAccessConceptParams) (HrAccessConcepts, error) {
+	row := q.db.QueryRow(ctx, updateHRAccessConcept, arg.ID, arg.OrgID, arg.Title, arg.Scope, arg.Owner)
+	var i HrAccessConcepts
+	err := row.Scan(&i.ID, &i.OrgID, &i.Title, &i.Scope, &i.Owner, &i.CurrentVersion, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const deleteHRAccessConcept = `-- name: DeleteHRAccessConcept :execrows
+DELETE FROM hr_access_concepts WHERE id = $1 AND org_id = $2
+`
+
+type DeleteHRAccessConceptParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+func (q *Queries) DeleteHRAccessConcept(ctx context.Context, arg DeleteHRAccessConceptParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteHRAccessConcept, arg.ID, arg.OrgID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const incrementHRAccessConceptVersion = `-- name: IncrementHRAccessConceptVersion :one
+UPDATE hr_access_concepts SET current_version = current_version + 1, updated_at = NOW()
+WHERE id = $1 AND org_id = $2 RETURNING current_version
+`
+
+type IncrementHRAccessConceptVersionParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+func (q *Queries) IncrementHRAccessConceptVersion(ctx context.Context, arg IncrementHRAccessConceptVersionParams) (int32, error) {
+	row := q.db.QueryRow(ctx, incrementHRAccessConceptVersion, arg.ID, arg.OrgID)
+	var currentVersion int32
+	err := row.Scan(&currentVersion)
+	return currentVersion, err
+}
+
+const addHRAccessRole = `-- name: AddHRAccessRole :one
+INSERT INTO hr_access_roles (concept_id, org_id, role_name, system_name, access_level, justification, review_interval_months)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, concept_id, org_id, role_name, system_name, access_level, justification, review_interval_months, created_at, updated_at
+`
+
+type AddHRAccessRoleParams struct {
+	ConceptID            string `json:"concept_id"`
+	OrgID                string `json:"org_id"`
+	RoleName             string `json:"role_name"`
+	SystemName           string `json:"system_name"`
+	AccessLevel          string `json:"access_level"`
+	Justification        string `json:"justification"`
+	ReviewIntervalMonths int32  `json:"review_interval_months"`
+}
+
+func (q *Queries) AddHRAccessRole(ctx context.Context, arg AddHRAccessRoleParams) (HrAccessRoles, error) {
+	row := q.db.QueryRow(ctx, addHRAccessRole,
+		arg.ConceptID, arg.OrgID, arg.RoleName, arg.SystemName, arg.AccessLevel, arg.Justification, arg.ReviewIntervalMonths)
+	var i HrAccessRoles
+	err := row.Scan(&i.ID, &i.ConceptID, &i.OrgID, &i.RoleName, &i.SystemName, &i.AccessLevel, &i.Justification, &i.ReviewIntervalMonths, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const listHRAccessRoles = `-- name: ListHRAccessRoles :many
+SELECT id, concept_id, org_id, role_name, system_name, access_level, justification, review_interval_months, created_at, updated_at
+FROM hr_access_roles WHERE concept_id = $1 AND org_id = $2 ORDER BY role_name, system_name
+`
+
+type ListHRAccessRolesParams struct {
+	ConceptID string `json:"concept_id"`
+	OrgID     string `json:"org_id"`
+}
+
+func (q *Queries) ListHRAccessRoles(ctx context.Context, arg ListHRAccessRolesParams) ([]HrAccessRoles, error) {
+	rows, err := q.db.Query(ctx, listHRAccessRoles, arg.ConceptID, arg.OrgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []HrAccessRoles{}
+	for rows.Next() {
+		var i HrAccessRoles
+		if err := rows.Scan(&i.ID, &i.ConceptID, &i.OrgID, &i.RoleName, &i.SystemName, &i.AccessLevel, &i.Justification, &i.ReviewIntervalMonths, &i.CreatedAt, &i.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	return items, rows.Err()
+}
+
+const updateHRAccessRole = `-- name: UpdateHRAccessRole :one
+UPDATE hr_access_roles
+SET role_name = $3, system_name = $4, access_level = $5, justification = $6, review_interval_months = $7, updated_at = NOW()
+WHERE id = $1 AND org_id = $2
+RETURNING id, concept_id, org_id, role_name, system_name, access_level, justification, review_interval_months, created_at, updated_at
+`
+
+type UpdateHRAccessRoleParams struct {
+	ID                   string `json:"id"`
+	OrgID                string `json:"org_id"`
+	RoleName             string `json:"role_name"`
+	SystemName           string `json:"system_name"`
+	AccessLevel          string `json:"access_level"`
+	Justification        string `json:"justification"`
+	ReviewIntervalMonths int32  `json:"review_interval_months"`
+}
+
+func (q *Queries) UpdateHRAccessRole(ctx context.Context, arg UpdateHRAccessRoleParams) (HrAccessRoles, error) {
+	row := q.db.QueryRow(ctx, updateHRAccessRole,
+		arg.ID, arg.OrgID, arg.RoleName, arg.SystemName, arg.AccessLevel, arg.Justification, arg.ReviewIntervalMonths)
+	var i HrAccessRoles
+	err := row.Scan(&i.ID, &i.ConceptID, &i.OrgID, &i.RoleName, &i.SystemName, &i.AccessLevel, &i.Justification, &i.ReviewIntervalMonths, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const deleteHRAccessRole = `-- name: DeleteHRAccessRole :execrows
+DELETE FROM hr_access_roles WHERE id = $1 AND org_id = $2
+`
+
+type DeleteHRAccessRoleParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+func (q *Queries) DeleteHRAccessRole(ctx context.Context, arg DeleteHRAccessRoleParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteHRAccessRole, arg.ID, arg.OrgID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const insertHRAccessConceptVersion = `-- name: InsertHRAccessConceptVersion :one
+INSERT INTO hr_access_concept_versions (concept_id, org_id, version_number, snapshot)
+VALUES ($1, $2, $3, $4)
+RETURNING id, concept_id, org_id, version_number, snapshot, created_at
+`
+
+type InsertHRAccessConceptVersionParams struct {
+	ConceptID     string          `json:"concept_id"`
+	OrgID         string          `json:"org_id"`
+	VersionNumber int32           `json:"version_number"`
+	Snapshot      json.RawMessage `json:"snapshot"`
+}
+
+func (q *Queries) InsertHRAccessConceptVersion(ctx context.Context, arg InsertHRAccessConceptVersionParams) (HrAccessConceptVersions, error) {
+	row := q.db.QueryRow(ctx, insertHRAccessConceptVersion,
+		arg.ConceptID, arg.OrgID, arg.VersionNumber, arg.Snapshot)
+	var i HrAccessConceptVersions
+	err := row.Scan(&i.ID, &i.ConceptID, &i.OrgID, &i.VersionNumber, &i.Snapshot, &i.CreatedAt)
+	return i, err
+}
+
+const listHRAccessConceptVersions = `-- name: ListHRAccessConceptVersions :many
+SELECT id, concept_id, org_id, version_number, created_at
+FROM hr_access_concept_versions WHERE concept_id = $1 AND org_id = $2 ORDER BY version_number DESC
+`
+
+type ListHRAccessConceptVersionsParams struct {
+	ConceptID string `json:"concept_id"`
+	OrgID     string `json:"org_id"`
+}
+
+type ListHRAccessConceptVersionsRow struct {
+	ID            string             `json:"id"`
+	ConceptID     string             `json:"concept_id"`
+	OrgID         string             `json:"org_id"`
+	VersionNumber int32              `json:"version_number"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) ListHRAccessConceptVersions(ctx context.Context, arg ListHRAccessConceptVersionsParams) ([]ListHRAccessConceptVersionsRow, error) {
+	rows, err := q.db.Query(ctx, listHRAccessConceptVersions, arg.ConceptID, arg.OrgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListHRAccessConceptVersionsRow{}
+	for rows.Next() {
+		var i ListHRAccessConceptVersionsRow
+		if err := rows.Scan(&i.ID, &i.ConceptID, &i.OrgID, &i.VersionNumber, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	return items, rows.Err()
+}
+
+const getHRAccessConceptVersion = `-- name: GetHRAccessConceptVersion :one
+SELECT id, concept_id, org_id, version_number, snapshot, created_at FROM hr_access_concept_versions
+WHERE concept_id = $1 AND org_id = $2 AND version_number = $3
+`
+
+type GetHRAccessConceptVersionParams struct {
+	ConceptID     string `json:"concept_id"`
+	OrgID         string `json:"org_id"`
+	VersionNumber int32  `json:"version_number"`
+}
+
+func (q *Queries) GetHRAccessConceptVersion(ctx context.Context, arg GetHRAccessConceptVersionParams) (HrAccessConceptVersions, error) {
+	row := q.db.QueryRow(ctx, getHRAccessConceptVersion, arg.ConceptID, arg.OrgID, arg.VersionNumber)
+	var i HrAccessConceptVersions
+	err := row.Scan(&i.ID, &i.ConceptID, &i.OrgID, &i.VersionNumber, &i.Snapshot, &i.CreatedAt)
+	return i, err
+}
