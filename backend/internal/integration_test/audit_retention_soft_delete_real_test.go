@@ -62,6 +62,12 @@ func TestAuditRetention_SoftDeletePreservesChain(t *testing.T) {
 	require.NoError(t, err)
 
 	// ── 3. Run retention with a 1-day window ─────────────────────────────────
+	_, err = pool.Exec(ctx, `
+		INSERT INTO retention_config (org_id, audit_log_days, findings_resolved_days, notifications_days, scan_history_days, updated_at)
+		VALUES ($1::uuid, 1, 0, 0, 0, NOW())
+		ON CONFLICT (org_id) DO UPDATE SET audit_log_days = EXCLUDED.audit_log_days`, orgID)
+	require.NoError(t, err)
+
 	err = retention.RunRetention(ctx, pool, orgID)
 	require.NoError(t, err)
 
@@ -105,6 +111,13 @@ func TestAuditRetention_IdempotentSoftDelete(t *testing.T) {
 	_, err := pool.Exec(ctx, `
 		UPDATE audit_log SET created_at = NOW() - INTERVAL '10 days'
 		WHERE org_id = $1::uuid`, orgID)
+	require.NoError(t, err)
+
+	// Insert a short retention window so the 10-day-old row falls outside it.
+	_, err = pool.Exec(ctx, `
+		INSERT INTO retention_config (org_id, audit_log_days, findings_resolved_days, notifications_days, scan_history_days, updated_at)
+		VALUES ($1::uuid, 1, 0, 0, 0, NOW())
+		ON CONFLICT (org_id) DO UPDATE SET audit_log_days = EXCLUDED.audit_log_days`, orgID)
 	require.NoError(t, err)
 
 	// Run retention twice.
