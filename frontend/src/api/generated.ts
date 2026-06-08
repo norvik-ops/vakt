@@ -7387,6 +7387,260 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vaktcomply/bcp/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List BCP plans */
+        get: operations["listBCPPlans"];
+        put?: never;
+        /** Create BCP plan */
+        post: operations["createBCPPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bcp/plans/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get BCP plan */
+        get: operations["getBCPPlan"];
+        /** Update BCP plan */
+        put: operations["updateBCPPlan"];
+        post?: never;
+        /** Delete BCP plan */
+        delete: operations["deleteBCPPlan"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bcp/plans/{id}/tests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** List BCP tests for a plan */
+        get: operations["listBCPTests"];
+        put?: never;
+        /** Add BCP test to a plan */
+        post: operations["addBCPTest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bcp/plans/{id}/link-evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Link BCP plan as compliance evidence */
+        post: operations["linkBCPPlanEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/protection-needs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List protection need assessments */
+        get: operations["listProtectionNeeds"];
+        put?: never;
+        /** Create protection need assessment */
+        post: operations["createProtectionNeed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/protection-needs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get protection need assessment */
+        get: operations["getProtectionNeed"];
+        /** Update protection need assessment */
+        put: operations["updateProtectionNeed"];
+        post?: never;
+        /** Delete protection need assessment */
+        delete: operations["deleteProtectionNeed"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/protection-needs/{id}/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finalize protection need assessment */
+        post: operations["finalizeProtectionNeed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vakthr/access-concepts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List access concepts */
+        get: operations["listAccessConcepts"];
+        put?: never;
+        /** Create access concept */
+        post: operations["createAccessConcept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vakthr/access-concepts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get access concept */
+        get: operations["getAccessConcept"];
+        /** Update access concept */
+        put: operations["updateAccessConcept"];
+        post?: never;
+        /** Delete access concept */
+        delete: operations["deleteAccessConcept"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vakthr/access-concepts/{id}/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** List roles for an access concept */
+        get: operations["listAccessRoles"];
+        put?: never;
+        /** Add role to access concept */
+        post: operations["addAccessRole"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vakthr/access-concepts/{id}/roles/{roleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                roleId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Update access role */
+        put: operations["updateAccessRole"];
+        post?: never;
+        /** Delete access role */
+        delete: operations["deleteAccessRole"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vakthr/access-concepts/{id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** List versions of an access concept */
+        get: operations["listAccessConceptVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vakthr/access-concepts/{id}/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Snapshot current access concept roles as a new version */
+        post: operations["snapshotAccessConcept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7959,6 +8213,106 @@ export interface components {
             /** @description Reporting deadline in hours (e.g. 72 for GDPR Art. 33) */
             deadline_hours?: number;
             applicable_frameworks?: string[];
+        };
+        BCPPlan: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            title: string;
+            scope: string;
+            version: string;
+            /** @enum {string} */
+            status: "draft" | "active" | "archived";
+            owner: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        BCPTest: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            /** Format: uuid */
+            plan_id: string;
+            /** Format: date */
+            test_date: string;
+            /** @enum {string} */
+            test_type: "tabletop" | "walkthrough" | "fulltest";
+            /** @enum {string} */
+            outcome: "passed" | "failed" | "partial";
+            findings: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        ProtectionNeedAssessment: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            name: string;
+            /** @enum {string} */
+            object_type: "process" | "system" | "information" | "location";
+            object_name: string;
+            /** @enum {string} */
+            confidentiality: "normal" | "hoch" | "sehr_hoch";
+            /** @enum {string} */
+            integrity: "normal" | "hoch" | "sehr_hoch";
+            /** @enum {string} */
+            availability: "normal" | "hoch" | "sehr_hoch";
+            /** @enum {string} */
+            overall: "normal" | "hoch" | "sehr_hoch";
+            /** @enum {string} */
+            status: "draft" | "finalized";
+            /** Format: date-time */
+            finalized_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AccessConcept: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            title: string;
+            scope: string;
+            owner: string;
+            current_version: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AccessRole: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            concept_id: string;
+            /** Format: uuid */
+            org_id: string;
+            role_name: string;
+            system_name: string;
+            /** @enum {string} */
+            access_level: "read" | "write" | "admin" | "no_access";
+            justification: string;
+            review_interval_months: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AccessConceptVersionSummary: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            concept_id: string;
+            version_number: number;
+            /** Format: date-time */
+            created_at: string;
         };
     };
     responses: never;
@@ -9068,6 +9422,643 @@ export interface operations {
                         skipped?: number;
                         errors?: string[];
                     };
+                };
+            };
+        };
+    };
+    listBCPPlans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of BCP plans */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BCPPlan"][];
+                };
+            };
+        };
+    };
+    createBCPPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    scope?: string;
+                    version?: string;
+                    owner?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BCPPlan"];
+                };
+            };
+        };
+    };
+    getBCPPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description BCP plan */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BCPPlan"];
+                };
+            };
+        };
+    };
+    updateBCPPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    scope?: string;
+                    version?: string;
+                    /** @enum {string} */
+                    status?: "draft" | "active" | "archived";
+                    owner?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BCPPlan"];
+                };
+            };
+        };
+    };
+    deleteBCPPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listBCPTests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of BCP tests */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BCPTest"][];
+                };
+            };
+        };
+    };
+    addBCPTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date */
+                    test_date: string;
+                    /** @enum {string} */
+                    test_type: "tabletop" | "walkthrough" | "fulltest";
+                    /** @enum {string} */
+                    outcome: "passed" | "failed" | "partial";
+                    findings?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BCPTest"];
+                };
+            };
+        };
+    };
+    linkBCPPlanEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    control_id?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Evidence linked or skipped */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listProtectionNeeds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of assessments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProtectionNeedAssessment"][];
+                };
+            };
+        };
+    };
+    createProtectionNeed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** @enum {string} */
+                    object_type: "process" | "system" | "information" | "location";
+                    object_name: string;
+                    /** @enum {string} */
+                    confidentiality: "normal" | "hoch" | "sehr_hoch";
+                    /** @enum {string} */
+                    integrity: "normal" | "hoch" | "sehr_hoch";
+                    /** @enum {string} */
+                    availability: "normal" | "hoch" | "sehr_hoch";
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProtectionNeedAssessment"];
+                };
+            };
+        };
+    };
+    getProtectionNeed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Assessment */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProtectionNeedAssessment"];
+                };
+            };
+        };
+    };
+    updateProtectionNeed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** @enum {string} */
+                    object_type: "process" | "system" | "information" | "location";
+                    object_name: string;
+                    /** @enum {string} */
+                    confidentiality: "normal" | "hoch" | "sehr_hoch";
+                    /** @enum {string} */
+                    integrity: "normal" | "hoch" | "sehr_hoch";
+                    /** @enum {string} */
+                    availability: "normal" | "hoch" | "sehr_hoch";
+                };
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProtectionNeedAssessment"];
+                };
+            };
+        };
+    };
+    deleteProtectionNeed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    finalizeProtectionNeed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Finalized assessment */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProtectionNeedAssessment"];
+                };
+            };
+        };
+    };
+    listAccessConcepts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of access concepts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessConcept"][];
+                };
+            };
+        };
+    };
+    createAccessConcept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    scope?: string;
+                    owner?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessConcept"];
+                };
+            };
+        };
+    };
+    getAccessConcept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Access concept */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessConcept"];
+                };
+            };
+        };
+    };
+    updateAccessConcept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    scope?: string;
+                    owner?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessConcept"];
+                };
+            };
+        };
+    };
+    deleteAccessConcept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listAccessRoles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of roles */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessRole"][];
+                };
+            };
+        };
+    };
+    addAccessRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    role_name: string;
+                    system_name: string;
+                    /** @enum {string} */
+                    access_level: "read" | "write" | "admin" | "no_access";
+                    justification?: string;
+                    review_interval_months?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessRole"];
+                };
+            };
+        };
+    };
+    updateAccessRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                roleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    role_name: string;
+                    system_name: string;
+                    /** @enum {string} */
+                    access_level: "read" | "write" | "admin" | "no_access";
+                    justification?: string;
+                    review_interval_months?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessRole"];
+                };
+            };
+        };
+    };
+    deleteAccessRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                roleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listAccessConceptVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of version summaries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessConceptVersionSummary"][];
+                };
+            };
+        };
+    };
+    snapshotAccessConcept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Snapshot created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessConceptVersionSummary"];
                 };
             };
         };
