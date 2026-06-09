@@ -33,6 +33,10 @@ type WriteEntry struct {
 	ResourceName string
 	Details      map[string]string // optional extra info (changed fields, event markers, …)
 	IPAddress    string
+	// CreatedAt overrides the timestamp used for both the DB column and the
+	// chain hash. Zero value (default) means time.Now(). Only set this in
+	// tests — production code must never back-date entries.
+	CreatedAt time.Time
 }
 
 // Write writes one audit entry to the audit_log table.
@@ -89,7 +93,10 @@ func Write(ctx context.Context, db *pgxpool.Pool, e WriteEntry) {
 	}
 
 	id := uuid.NewString()
-	now := time.Now().UTC()
+	now := e.CreatedAt
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
 	chainInput := ChainInput{
 		ID:           id,
 		OrgID:        e.OrgID,

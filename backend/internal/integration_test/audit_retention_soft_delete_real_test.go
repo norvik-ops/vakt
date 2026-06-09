@@ -38,28 +38,32 @@ func TestAuditRetention_SoftDeletePreservesChain(t *testing.T) {
 	ctx := context.Background()
 
 	// ── 1. Insert three chained audit entries ────────────────────────────────
-	for _, action := range []string{"create", "update", "delete"} {
+	// The two "old" rows are written with a past CreatedAt so the hash is
+	// consistent from the start — no SQL back-dating needed (which would
+	// invalidate the stored entry_hash and break the verifier).
+	twoDaysAgo := time.Now().UTC().Add(-48 * time.Hour)
+	for _, action := range []string{"create", "update"} {
 		audit.Write(ctx, pool, audit.WriteEntry{
 			OrgID:        orgID,
 			UserEmail:    "ops@example.org",
 			Action:       action,
 			ResourceType: "control",
 			ResourceID:   "ctrl-1",
+			CreatedAt:    twoDaysAgo,
 		})
 	}
+	audit.Write(ctx, pool, audit.WriteEntry{
+		OrgID:        orgID,
+		UserEmail:    "ops@example.org",
+		Action:       "delete",
+		ResourceType: "control",
+		ResourceID:   "ctrl-1",
+	})
 
 	// Verify chain is clean before we do anything.
 	bad, err := audit.VerifyOrgChain(ctx, pool, orgID)
 	require.NoError(t, err)
 	require.Empty(t, bad, "pre-condition: freshly-written chain must be clean")
-
-	// ── 2. Back-date two of the three rows to fall outside the 1-day window ──
-	_, err = pool.Exec(ctx, `
-		UPDATE audit_log
-		SET created_at = NOW() - INTERVAL '2 days'
-		WHERE org_id = $1::uuid
-		  AND action IN ('create', 'update')`, orgID)
-	require.NoError(t, err)
 
 	// ── 3. Run retention with a 1-day window ─────────────────────────────────
 	_, err = pool.Exec(ctx, `
