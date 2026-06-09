@@ -473,6 +473,8 @@ func iso27001Controls(frameworkID, orgID string) []Control {
 		c("A.8.1.2", "Eigentümerschaft von Assets", "Weise jedem Asset einen verantwortlichen Eigentümer zu. Nachweis: Asset-Register mit Eigentümerfeld.", "Asset Management", "manual", 1),
 		c("A.8.1.3", "Zulässige Nutzung von Assets", "Dokumentiere akzeptable Nutzungsregeln für alle Asset-Klassen. Nachweis: Acceptable-Use-Policy.", "Asset Management", "manual", 1),
 		c("A.8.1.4", "Rückgabe von Assets", "Stelle Rückgabe aller Assets bei Beschäftigungsende sicher. Nachweis: Offboarding-Checkliste.", "Asset Management", "manual", 1),
+		c("A.8.2", "Klassifizierung von Informationen", "Klassifiziere alle Informationsassets nach Vertraulichkeit, Integrität und Verfügbarkeit. Nachweis: Klassifizierungsschema, Asset-Register mit Klassifizierungsfeld.", "Asset Management", "manual", 2),
+		c("A.8.3", "Handhabung von Datenträgern", "Manage physische und digitale Datenträger sicher über ihren gesamten Lebenszyklus (Einsatz, Transport, Entsorgung). Nachweis: Datenträger-Policy, Vernichtungsnachweise.", "Asset Management", "manual", 2),
 
 		// A.9 — Zugangskontrolle
 		c("A.9.1", "Geschäftsanforderungen an die Zugangskontrolle", "Definiere Zugangskontrollrichtlinie basierend auf Geschäftsbedarf.", "Zugangskontrolle", "automated", 3),
@@ -497,8 +499,10 @@ func iso27001Controls(frameworkID, orgID string) []Control {
 		c("A.12.1", "Betriebsverfahren und Verantwortlichkeiten", "Dokumentiere und manage IT-Betriebsprozesse.", "Betrieb", "manual", 2),
 		c("A.12.1.1", "Dokumentierte Betriebsverfahren", "Erstelle schriftliche Betriebshandbücher für alle kritischen Systeme. Nachweis: Betriebsdokumentation.", "Betrieb", "manual", 2),
 		c("A.12.1.2", "Änderungsmanagement", "Stelle sicher, dass alle IT-Änderungen geplant, genehmigt und dokumentiert werden. Nachweis: Change-Tickets.", "Betrieb", "manual", 2),
+		c("A.12.2", "Schutz vor Schadsoftware", "Schütze Systeme vor Malware durch präventive und erkennende Maßnahmen.", "Betrieb", "automated", 3),
 		c("A.12.3", "Datensicherung", "Stelle Datenverfügbarkeit durch regelmäßige Backups sicher.", "Betrieb", "automated", 3),
 		c("A.12.3.1", "Sicherung von Informationen", "Implementiere automatisierte Backups nach 3-2-1-Prinzip. Nachweis: Backup-Job-Konfiguration, Testberichte.", "Betrieb", "automated", 3),
+		c("A.12.4", "Protokollierung und Überwachung", "Protokolliere sicherheitsrelevante Ereignisse und überwache Systeme auf Anomalien. Nachweis: SIEM-Konfiguration, Log-Aufbewahrungsrichtlinie, Alerting-Regelwerk.", "Betrieb", "automated", 3),
 		c("A.12.6", "Management technischer Schwachstellen", "Reduziere Angriffsfläche durch zeitnahes Schwachstellenmanagement.", "Betrieb", "automated", 3),
 		c("A.12.6.1", "Management technischer Schwachstellen", "Scanne regelmäßig auf Schwachstellen und behebe kritische innerhalb definierter Fristen. Nachweis: Scanner-Berichte, Patch-Protokoll.", "Betrieb", "automated", 3),
 
@@ -535,6 +539,7 @@ func iso27001Controls(frameworkID, orgID string) []Control {
 		// A.7 — Personalsicherheit (ISO 27001:2013; in 2022: Kap. 6)
 		c("A.7.1.1", "Überprüfung von Bewerbern", "Führe Hintergrundprüfungen (Zeugnisse, Referenzen, ggf. polizeiliches Führungszeugnis) vor der Einstellung durch. Nachweis: Screening-Richtlinie, Nachweisdokumentation.", "Personalsicherheit", "manual", 2),
 		c("A.7.1.2", "Beschäftigungsbedingungen", "Verpflichte Mitarbeitende vertraglich auf Informationssicherheits- und Datenschutzpflichten. Nachweis: Muster-Arbeitsvertrag mit IS-Klauseln, unterzeichnete Vertraulichkeitserklärungen.", "Personalsicherheit", "manual", 2),
+		c("A.7.2", "Während der Beschäftigung", "Stelle sicher, dass Mitarbeitende IS-Pflichten kennen und erfüllen. Nachweis: Schulungsnachweise, Disziplinarrichtlinie.", "Personalsicherheit", "manual", 2),
 		c("A.7.2.1", "Verantwortlichkeiten der Leitung", "Stelle sicher, dass die Leitung IS-Pflichten kommuniziert, Schulungen fördert und Einhaltung einfordert. Nachweis: Management-Richtlinie, Kommunikationsnachweise.", "Personalsicherheit", "manual", 2),
 		c("A.7.2.2", "IS-Bewusstsein, -Ausbildung und -Schulung", "Schule alle Mitarbeitenden mindestens jährlich zu IS-Grundlagen, aktuellen Bedrohungen und internen Richtlinien. Nachweis: Schulungsnachweise, Teilnehmerlisten, Schulungsplan.", "Personalsicherheit", "manual", 3),
 		c("A.7.2.3", "Disziplinarverfahren", "Definiere und kommuniziere Konsequenzen bei Verstößen gegen IS-Richtlinien. Nachweis: HR-Richtlinie, Kommunikationsnachweis.", "Personalsicherheit", "manual", 1),
@@ -550,6 +555,7 @@ func iso27001Controls(frameworkID, orgID string) []Control {
 		c("A.11.2.7", "Sichere Entsorgung von Betriebsmitteln", "Lösche Datenträger sicher (NIST 800-88, Degaussing, physische Vernichtung) vor Entsorgung. Nachweis: Vernichtungsnachweise, zertifizierter Dienstleister.", "Physische Sicherheit", "manual", 3),
 
 		// A.13 — Kommunikationssicherheit (ISO 27001:2013; in 2022: Kap. 8)
+		c("A.13.1", "Netzwerksicherheitsmanagement", "Schütze Informationen in Netzwerken und unterstützenden IT-Infrastrukturkomponenten. Nachweis: Netzwerksicherheitsrichtlinie, Netzwerkplan, Firewall-Konfiguration.", "Kommunikationssicherheit", "automated", 3),
 		c("A.13.1.1", "Steuerungsmaßnahmen für Netze", "Betreibe Netzwerke unter Sicherheitsgesichtspunkten: Netzstruktur, Zugangskontrolle, Monitoring. Nachweis: Netzwerkplan, Firewall-Konfiguration.", "Kommunikationssicherheit", "automated", 3),
 		c("A.13.1.2", "Sicherheit von Netzdiensten", "Definiere Sicherheitsanforderungen für alle genutzten Netzdienste (intern wie extern) und verankere sie in SLAs/AVVs. Nachweis: Dienstleistungsverträge, SLA-Anforderungen.", "Kommunikationssicherheit", "manual", 2),
 		c("A.13.1.3", "Trennung in Netzen", "Segmentiere das Netzwerk nach Schutzbedarf (DMZ, Produktions-/Entwicklungsnetz, Gastnetze). Nachweis: Netzwerkplan mit Segmentierungskonzept, Firewall-Regeln.", "Kommunikationssicherheit", "automated", 3),
