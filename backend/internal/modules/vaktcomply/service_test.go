@@ -248,7 +248,7 @@ func TestGapAnalysis_ExpiringEvidence(t *testing.T) {
 
 func TestDORAControls_Count(t *testing.T) {
 	controls := doraControls("fw-dora", "org-1")
-	assert.Len(t, controls, 18, "doraControls must return exactly 18 controls")
+	assert.Len(t, controls, 24, "doraControls must return exactly 24 controls")
 }
 
 func TestDORAControls_AllHaveDomain(t *testing.T) {

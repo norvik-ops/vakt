@@ -9,6 +9,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.38.0] — 2026-06-09
+
+**ISB-Vollständigkeit — Notfallhandbuch (BCP), Schutzbedarfsfeststellung, Berechtigungskonzept.**
+Drei neue Feature-Bereiche runden die ISB-Checkliste ab. Alle drei sind vollständig versioniert und erzeugen audit-fähige Nachweise in Vakt Comply.
+
+### Added
+
+- **Notfallhandbuch / BCP** (`Vakt Comply`) — Verwaltung von Business-Continuity-Plänen mit Status-Workflow (draft → active → archived), versionierten Plänen und zugeordneten Wiederanlauftests. Jeder Test dokumentiert Datum, Typ (tabletop / walkthrough / fulltest) und Ergebnis (passed / failed / partial). Pläne ohne Test in den letzten 12 Monaten werden mit einem Amber-Banner hervorgehoben. Pläne können direkt als Compliance-Nachweis in Vakt Comply verlinkt werden.
+- **Schutzbedarfsfeststellung** (`Vakt Comply`) — CIA-Triade-Bewertung (Vertraulichkeit, Integrität, Verfügbarkeit) nach BSI-Maximumprinzip. Schutzklassen: `normal`, `hoch`, `sehr_hoch`. Gesamtbedarf wird automatisch als Maximum der drei Dimensionen berechnet. Einträge können finalisiert (eingefroren) werden — danach keine Änderungen mehr möglich. Unterstützte Objekttypen: Prozess, System, Information, Standort.
+- **Berechtigungskonzept** (`Vakt HR`) — Verwaltung von Berechtigungskonzepten mit Rollenmatrix pro Konzept. Zugriffsrollen dokumentieren System, Zugriffsebene (`read / write / admin / no_access`), Begründung und Wiederprüfungsintervall. Konzepte können per „Version einfrieren" als unveränderlicher Schnappschuss gesichert werden; die Versionshistorie ist vollständig einsehbar.
+
+### Infrastructure
+
+- **`promote.yml` mit automatischem Deploy** — Der promote-Workflow kopiert Images jetzt auf `:latest` **und** `:demo` (Server nutzt `APP_VERSION=demo`) und fährt danach den Demo-Server direkt auf dem Self-Hosted Runner hoch (`docker compose pull` → migrate → worker → api → health-check → frontend). Kein manueller SSH-Schritt mehr nötig.
+
+---
+
 ## [0.37.0] — 2026-05-29
 
 **Mega-Audit-Welle — VPS-Hardening, Code-Security-Fixes, CI-Hygiene.** Zweites Agent-Audit (2026-05-29) mit 5 VPS-Findings + 7 Code-Findings + 3 Hardening-Items. Alle Wave A/B/C-Items adressiert; CI durchgehend grün (Backend, Frontend, Integration, Deploy, E2E).

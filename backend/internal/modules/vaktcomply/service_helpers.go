@@ -123,6 +123,7 @@ func builtinVersion(name string) string {
 		"ISO42001":  "2023",
 		"TISAX":     "6.0",
 		"DSGVO-TOM": "2018",
+		"CIS":       "8.1",
 	}
 	return versions[name]
 }
@@ -530,6 +531,50 @@ func iso27001Controls(frameworkID, orgID string) []Control {
 		c("A.18.1.4", "Datenschutz und Schutz von personenbezogenen Daten", "Stelle DSGVO-Konformität sicher. Nachweis: Verzeichnis der Verarbeitungstätigkeiten, DSFA.", "Compliance", "manual", 3),
 		c("A.18.2", "Überprüfung der Informationssicherheit", "Prüfe regelmäßig die Einhaltung der IS-Vorgaben.", "Compliance", "manual", 2),
 		c("A.18.2.2", "Einhaltung von Sicherheitsrichtlinien und -standards", "Überprüfe technische Systeme auf Konformität mit IS-Richtlinien. Nachweis: Compliance-Scan-Berichte.", "Compliance", "manual", 2),
+
+		// A.7 — Personalsicherheit (ISO 27001:2013; in 2022: Kap. 6)
+		c("A.7.1.1", "Überprüfung von Bewerbern", "Führe Hintergrundprüfungen (Zeugnisse, Referenzen, ggf. polizeiliches Führungszeugnis) vor der Einstellung durch. Nachweis: Screening-Richtlinie, Nachweisdokumentation.", "Personalsicherheit", "manual", 2),
+		c("A.7.1.2", "Beschäftigungsbedingungen", "Verpflichte Mitarbeitende vertraglich auf Informationssicherheits- und Datenschutzpflichten. Nachweis: Muster-Arbeitsvertrag mit IS-Klauseln, unterzeichnete Vertraulichkeitserklärungen.", "Personalsicherheit", "manual", 2),
+		c("A.7.2.1", "Verantwortlichkeiten der Leitung", "Stelle sicher, dass die Leitung IS-Pflichten kommuniziert, Schulungen fördert und Einhaltung einfordert. Nachweis: Management-Richtlinie, Kommunikationsnachweise.", "Personalsicherheit", "manual", 2),
+		c("A.7.2.2", "IS-Bewusstsein, -Ausbildung und -Schulung", "Schule alle Mitarbeitenden mindestens jährlich zu IS-Grundlagen, aktuellen Bedrohungen und internen Richtlinien. Nachweis: Schulungsnachweise, Teilnehmerlisten, Schulungsplan.", "Personalsicherheit", "manual", 3),
+		c("A.7.2.3", "Disziplinarverfahren", "Definiere und kommuniziere Konsequenzen bei Verstößen gegen IS-Richtlinien. Nachweis: HR-Richtlinie, Kommunikationsnachweis.", "Personalsicherheit", "manual", 1),
+		c("A.7.3.1", "Pflichten bei Beendigung des Arbeitsverhältnisses", "Stelle bei Austritt sicher, dass alle Zugänge gesperrt, Assets zurückgegeben und Vertraulichkeitspflichten kommuniziert werden. Nachweis: Offboarding-Checkliste, Nachweise.", "Personalsicherheit", "manual", 2),
+
+		// A.11 — Physische Sicherheit (ISO 27001:2013; in 2022: Kap. 7)
+		c("A.11.1.1", "Physischer Sicherheitsperimeter", "Definiere Sicherheitsbereiche (Serverräume, Büros, RZ) und sichere sie mit physischen Barrieren und Zutrittskontrollen. Nachweis: Raumkonzept, Zutrittskontroll-Dokumentation.", "Physische Sicherheit", "manual", 3),
+		c("A.11.1.2", "Physische Zutrittssteuerung", "Implementiere elektronische Zutrittskontrolle mit individueller Authentifizierung, Protokollierung und Besuchermanagement. Nachweis: Zutrittssystem, Zugangsprotokolle.", "Physische Sicherheit", "manual", 3),
+		c("A.11.1.3", "Sicherung von Büros und Einrichtungen", "Sichere Büros und Nebenräume physisch: abschließbare Schränke, keine sensitiven Informationen offen sichtbar (Clean Desk). Nachweis: Begehungsprotokoll, Hausordnung.", "Physische Sicherheit", "manual", 2),
+		c("A.11.1.5", "Arbeiten in sicheren Bereichen", "Definiere Verhaltensregeln in sicherheitskritischen Bereichen (kein Fotografieren, Besucher begleiten, Bildschirmsperre). Nachweis: Richtlinie, Einweisung.", "Physische Sicherheit", "manual", 1),
+		c("A.11.2.1", "Aufstellung und Schutz von Betriebsmitteln", "Platziere Server und kritische Hardware in kontrollierten Umgebungen (Klimatisierung, unterbrechungsfreie Stromversorgung). Nachweis: RZ-Konzept, USV-Konfiguration.", "Physische Sicherheit", "manual", 2),
+		c("A.11.2.5", "Entfernen von Betriebsmitteln", "Genehmige und protokolliere das Entfernen von Hardware aus Sicherheitsbereichen. Nachweis: Asset-Tracking, Genehmigungsprotokoll.", "Physische Sicherheit", "manual", 1),
+		c("A.11.2.7", "Sichere Entsorgung von Betriebsmitteln", "Lösche Datenträger sicher (NIST 800-88, Degaussing, physische Vernichtung) vor Entsorgung. Nachweis: Vernichtungsnachweise, zertifizierter Dienstleister.", "Physische Sicherheit", "manual", 3),
+
+		// A.13 — Kommunikationssicherheit (ISO 27001:2013; in 2022: Kap. 8)
+		c("A.13.1.1", "Steuerungsmaßnahmen für Netze", "Betreibe Netzwerke unter Sicherheitsgesichtspunkten: Netzstruktur, Zugangskontrolle, Monitoring. Nachweis: Netzwerkplan, Firewall-Konfiguration.", "Kommunikationssicherheit", "automated", 3),
+		c("A.13.1.2", "Sicherheit von Netzdiensten", "Definiere Sicherheitsanforderungen für alle genutzten Netzdienste (intern wie extern) und verankere sie in SLAs/AVVs. Nachweis: Dienstleistungsverträge, SLA-Anforderungen.", "Kommunikationssicherheit", "manual", 2),
+		c("A.13.1.3", "Trennung in Netzen", "Segmentiere das Netzwerk nach Schutzbedarf (DMZ, Produktions-/Entwicklungsnetz, Gastnetze). Nachweis: Netzwerkplan mit Segmentierungskonzept, Firewall-Regeln.", "Kommunikationssicherheit", "automated", 3),
+		c("A.13.2.1", "Richtlinien für Informationsübertragung", "Definiere Regeln für die sichere Übertragung von Informationen (verschlüsselt per E-Mail, gesicherter Datentransfer). Nachweis: Übertragungsrichtlinie.", "Kommunikationssicherheit", "manual", 2),
+		c("A.13.2.4", "Vertraulichkeitsvereinbarungen", "Stelle sicher, dass Personen mit Zugang zu sensiblen Informationen aktuelle NDAs unterzeichnet haben. Nachweis: NDA-Muster, unterzeichnete Vereinbarungen.", "Kommunikationssicherheit", "manual", 2),
+
+		// A.15 — Lieferantenbeziehungen (ISO 27001:2013; in 2022: Kap. 5)
+		c("A.15.1.1", "IS-Richtlinie für Lieferantenbeziehungen", "Definiere Mindest-Sicherheitsanforderungen für alle Lieferanten und Dienstleister mit Zugang zu IS-relevanten Informationen oder Systemen. Nachweis: Lieferanten-Sicherheitsrichtlinie.", "Lieferantenbeziehungen", "manual", 2),
+		c("A.15.1.2", "Sicherheitsaspekte in Lieferantenvereinbarungen", "Verankere IS-Anforderungen (DSGVO-AVV, Auditrechte, Vorfallmeldepflicht, Datenlöschung) verbindlich in allen Lieferantenverträgen. Nachweis: Vertragsklauseln, AVV-Muster.", "Lieferantenbeziehungen", "manual", 3),
+		c("A.15.1.3", "IKT-Lieferkette", "Bewerte Sicherheitsrisiken in der IKT-Lieferkette (Software-Komponenten, Hardware-Hersteller, Cloud-Provider). Nachweis: Lieferketten-Risikobewertung, SBOM.", "Lieferantenbeziehungen", "manual", 2),
+		c("A.15.2.1", "Überwachung von Lieferantendienstleistungen", "Überprüfe regelmäßig die IS-Leistung kritischer Lieferanten (Fragebögen, Zertifikate, Audits). Nachweis: Bewertungsberichte, Auditprotokolle.", "Lieferantenbeziehungen", "manual", 2),
+		c("A.15.2.2", "Steuerung von Änderungen an Lieferantendienstleistungen", "Bewerte IS-Auswirkungen bei Änderungen von Lieferantendienstleistungen und steuere sie durch Change-Management. Nachweis: Change-Protokolle mit IS-Prüfung.", "Lieferantenbeziehungen", "manual", 1),
+
+		// ISO 27001:2022 — 11 neue Controls (Annex A 2022-Nummerierung)
+		c("A2022-5.7", "Threat Intelligence", "Sammle und analysiere Informationen zu Bedrohungen (CERT-Bund, CVE-Feeds, Threat-Intel-Plattformen) und integriere Erkenntnisse in den Risikoprozess. Nachweis: Threat-Intel-Quellen, Prozessdokumentation. (ISO 27001:2022 Annex A 5.7)", "Richtlinien", "manual", 2),
+		c("A2022-5.23", "IS für Cloud-Dienste", "Definiere Sicherheitsanforderungen für alle genutzten Cloud-Dienste (IaaS, PaaS, SaaS) gemäß Schutzbedarf. Verifiziere Anbieter-Konformität (ISO 27001, SOC 2, BSI C5). Nachweis: Cloud-Sicherheitsrichtlinie, Anbieter-Zertifikate. (ISO 27001:2022 Annex A 5.23)", "Richtlinien", "third_party", 3),
+		c("A2022-5.30", "IKT-Bereitschaft für Business Continuity", "Stelle sicher, dass IKT-Systeme für Betriebskontinuität ausgelegt sind (Redundanz, Failover, RTO/RPO). Teste mindestens jährlich. Nachweis: BCM-Plan mit IKT-Komponente, Testergebnisse. (ISO 27001:2022 Annex A 5.30)", "Business Continuity", "automated", 3),
+		c("A2022-7.4", "Physische Sicherheitsüberwachung", "Überwache Sicherheitsbereiche durch Videoüberwachung, Einbruchsmeldeanlage oder Sicherheitspersonal. Nachweis: CCTV-Konzept, Alarmierungskonfiguration. (ISO 27001:2022 Annex A 7.4)", "Physische Sicherheit", "automated", 2),
+		c("A2022-8.9", "Konfigurationsmanagement", "Definiere, implementiere und überwache sichere Konfigurationsbaselines für alle IT-Systeme (CIS Benchmarks). Nachweis: Hardening-Baseline, Konfigurationsscanning-Bericht. (ISO 27001:2022 Annex A 8.9)", "Betrieb", "automated", 3),
+		c("A2022-8.10", "Informationslöschung", "Lösche Informationen sicher, wenn sie nicht mehr benötigt werden (NIST 800-88, sichere Formatierung, physische Vernichtung). Nachweis: Löschkonzept, Vernichtungsnachweise. (ISO 27001:2022 Annex A 8.10)", "Betrieb", "manual", 2),
+		c("A2022-8.11", "Datenmaskierung", "Maskiere oder pseudonymisiere personenbezogene und sensible Daten in nicht-produktiven Umgebungen. Nachweis: Maskierungskonzept, technische Umsetzung in Test-/Staging-Systemen. (ISO 27001:2022 Annex A 8.11)", "Betrieb", "automated", 2),
+		c("A2022-8.12", "Verhinderung von Datenlecks (DLP)", "Implementiere Data-Loss-Prevention-Maßnahmen für kritische Daten (E-Mail-DLP, Endpoint-DLP, Cloud-DLP). Nachweis: DLP-Konfiguration, Alerting-Protokoll. (ISO 27001:2022 Annex A 8.12)", "Betrieb", "automated", 2),
+		c("A2022-8.16", "Überwachungsaktivitäten", "Überwache Systeme kontinuierlich auf Anomalien, ungewöhnliches Verhalten und Sicherheitsereignisse (SIEM, UEBA). Nachweis: SIEM-Use-Cases, Monitoring-Dashboard. (ISO 27001:2022 Annex A 8.16)", "Betrieb", "automated", 3),
+		c("A2022-8.23", "Web-Filterung", "Nutze Web-Proxy oder DNS-Filterung, um Zugriff auf schädliche oder unerwünschte Websites zu verhindern. Nachweis: Filterkonfiguration, Kategorisierungsrichtlinie. (ISO 27001:2022 Annex A 8.23)", "Betrieb", "automated", 2),
+		c("A2022-8.28", "Sichere Programmierung", "Wende sichere Programmierstandards an (OWASP Top 10, SANS CWE). Integriere SAST/DAST in CI/CD. Nachweis: Secure-Coding-Richtlinie, CI-Pipeline-Konfiguration, Scan-Berichte. (ISO 27001:2022 Annex A 8.28)", "Systementwicklung", "automated", 3),
 	}
 }
 
@@ -681,6 +726,76 @@ func bsiControls(frameworkID, orgID string) []Control {
 		c("BSI-INF.10.A1", "Besprechungs-, Veranstaltungs- und Schulungsräume",
 			"Definiere Schutzanforderungen für Besprechungsräume (kein WLAN-Stick, verdeckte Whiteboard-Inhalte, Sperrbildschirm bei Verlassen). Nachweis: Hausordnung, Stichproben-Audit.",
 			"Infrastruktur", "manual", 1),
+
+		// ── Erweiterung ISMS: weitere A-Anforderungen ──
+		c("BSI-ISMS.1.A2", "Beauftragung eines IS-Beauftragten",
+			"Beauftrage einen Informationssicherheitsbeauftragten (ISB) schriftlich, stelle ausreichende Ressourcen bereit und positioniere ihn hierarchisch angemessen. Nachweis: Beauftragungsschreiben, Organigramm, Stellenbeschreibung.",
+			"Sicherheitsmanagement", "manual", 3),
+		c("BSI-ISMS.1.A4", "Ressourcen für Informationssicherheit",
+			"Stelle sicher, dass ausreichende personelle, finanzielle und infrastrukturelle Ressourcen für den Betrieb des ISMS bereitgestellt werden. Nachweis: Ressourcenplanung, Budgetnachweis, ISB-Stunden.",
+			"Sicherheitsmanagement", "manual", 2),
+		c("BSI-ISMS.1.A5", "IS-Leitlinie und Ziele kommunizieren",
+			"Kommuniziere die IS-Leitlinie und die konkreten Sicherheitsziele aktiv an alle Mitarbeitenden (z.B. Intranet, Onboarding, Schulungen). Nachweis: Kommunikationsnachweise, Onboarding-Unterlagen.",
+			"Sicherheitsmanagement", "manual", 2),
+		c("BSI-ISMS.1.A10", "Überprüfung und Steuerung des ISMS",
+			"Führe regelmäßige interne IS-Audits durch und steuere das ISMS durch KPIs und Kennzahlen. Berichte an die Leitung. Nachweis: Auditplan, Auditberichte, KPI-Dashboard.",
+			"Sicherheitsmanagement", "manual", 2),
+
+		// ── ORP: Erweiterung ──
+		c("BSI-ORP.2.A3", "Einweisung neuer Mitarbeitender",
+			"Weise neue Mitarbeitende beim Onboarding auf IS-Regeln, Ansprechpartner und ihre Pflichten hin. Nachweis: Onboarding-Checkliste mit IS-Einweisung, Teilnahmebestätigung.",
+			"Personal", "manual", 2),
+		c("BSI-ORP.2.A4", "Regelung für Telearbeit und mobiles Arbeiten",
+			"Lege verbindliche Regeln für Heimarbeit und mobiles Arbeiten fest (VPN-Pflicht, Sichtschutz, Speicherung auf freigegebenen Systemen). Nachweis: Telearbeitsrichtlinie, MDM-Konfiguration.",
+			"Personal", "manual", 2),
+
+		// ── CON: Erweiterung ──
+		c("BSI-CON.7.A1", "Regelung zur Nutzung mobiler Datenträger",
+			"Definiere und kommuniziere Regeln für den Einsatz mobiler Datenträger (USB-Sticks, externe Festplatten). Lege fest, welche Geräte erlaubt sind und wie sie verschlüsselt werden müssen. Nachweis: Richtlinie, technische Durchsetzung (Device-Control), Stichproben.",
+			"Konzeption", "automated", 2),
+		c("BSI-CON.9.A1", "Regelungen zu Weitergabe und Veröffentlichung von Informationen",
+			"Lege fest, welche Informationen an wen und über welche Kanäle weitergegeben werden dürfen. Stelle sicher, dass Klassifizierungsregeln eingehalten werden. Nachweis: Informationsklassifizierungsrichtlinie, Schulungsnachweise.",
+			"Konzeption", "manual", 2),
+		c("BSI-CON.10.A1", "Entwicklung und Beschaffung — Sicherheitsanforderungen",
+			"Definiere IS-Anforderungen vor der Entwicklung oder Beschaffung neuer IT-Systeme und Software (Security-by-Design, Threat Modeling). Nachweis: Anforderungsdokument, Beschaffungs-Checkliste mit IS-Kriterien.",
+			"Konzeption", "manual", 2),
+
+		// ── OPS: Erweiterung ──
+		c("BSI-OPS.1.2.5.A1", "Planung und Konzeption der Fernwartung",
+			"Lege fest, welche Systeme wie und von wem remote gewartet werden dürfen. Erzwinge MFA, verschlüsselte Verbindungen und vollständiges Logging aller Fernwartungssitzungen. Nachweis: Fernwartungskonzept, VPN/PAM-Konfiguration, Sitzungsprotokolle.",
+			"Betrieb", "automated", 3),
+		c("BSI-OPS.2.2.A1", "Sorgfaltspflichten bei Cloud-Nutzung",
+			"Prüfe Cloud-Anbieter auf IS-Konformität (ISO 27001, BSI C5, SOC 2) vor Vertragsabschluss. Regele Datenstandort, AVV, Auditrechte und Portabilität. Nachweis: Anbieter-Prüfbericht, AVV, Cloud-Nutzungskonzept.",
+			"Betrieb", "third_party", 3),
+
+		// ── APP: Erweiterung ──
+		c("BSI-APP.2.1.A1", "Planung des Verzeichnisdienstes",
+			"Plane und betreibe Verzeichnisdienste (Active Directory, LDAP, Entra ID) sicher: Tier-Modell, minimale Admin-Rechte, regelmäßige Bereinigung verwaister Konten. Nachweis: AD-Konzept, Tier-Modell-Dokumentation, Auditberichte.",
+			"Anwendungen", "automated", 3),
+		c("BSI-APP.3.1.A1", "Authentifizierung bei Web-Anwendungen",
+			"Implementiere sichere Authentifizierung in Web-Anwendungen: starke Passwörter, MFA, Session-Management (kurze Timeouts, Secure/HttpOnly-Cookies, CSRF-Schutz). Nachweis: OWASP-Konformitätsprüfung, Pentest-Bericht.",
+			"Anwendungen", "automated", 3),
+		c("BSI-APP.3.2.A1", "Absicherung von Webservern",
+			"Härte Webserver: TLS 1.2+, keine veralteten Cipher-Suites, Security-Header (HSTS, CSP, X-Frame-Options), automatische Zertifikatserneuerung. Nachweis: SSL-Labs-Scan, Security-Header-Test, Konfigurationsdokumentation.",
+			"Anwendungen", "automated", 2),
+
+		// ── SYS: Erweiterung ──
+		c("BSI-SYS.1.5.A1", "Planung von Virtualisierung",
+			"Plane und betreibe Virtualisierungsinfrastruktur sicher: Hypervisor-Härtung, VM-Isolation, separate Verwaltungsnetze. Patchzyklus für Hypervisoren einhalten. Nachweis: Virtualisierungskonzept, Hypervisor-Konfiguration, Patch-Protokoll.",
+			"IT-Systeme", "automated", 2),
+		c("BSI-SYS.3.2.A1", "Anforderungen an Mobile Device Management",
+			"Verwalte alle mobilen Endgeräte (Smartphones, Tablets, Laptops) über eine zentrale MDM-Lösung: Geräteverschlüsselung, Remote-Wipe, PIN-Pflicht, App-Whitelist. Nachweis: MDM-Konfiguration, Geräte-Compliance-Bericht.",
+			"IT-Systeme", "automated", 3),
+
+		// ── DER: Erweiterung ──
+		c("BSI-DER.4.A1", "Notfallmanagementplan",
+			"Erstelle einen Notfallmanagementplan (BCM-Plan) mit klar definierten Rollen, Reaktionszeiten (RTO, RPO) und Eskalationswegen. Teste ihn mindestens jährlich. Nachweis: BCM-Plan-Dokument, Übungsprotokolle.",
+			"Reaktion", "manual", 3),
+
+		// ── NET: Erweiterung ──
+		c("BSI-NET.4.1.A1", "Absicherung von Sprach- und Datenkommunikation",
+			"Schütze Telefon- und Videokonferenzsysteme vor Abhören und Manipulation: verschlüsselte Übertragung (SRTP, ZRTP), Authentifizierung, Patch-Management für Kommunikationssysteme. Nachweis: Systemkonfiguration, Protokoll-Analyse.",
+			"Netze", "automated", 2),
 	}
 }
 
@@ -742,6 +857,29 @@ func craControls(frameworkID, orgID string) []Control {
 		c("CRA-3.3", "Konfigurationsmanagement und Härtung",
 			"Dokumentiere sichere Konfigurationsempfehlungen für Betreiber. Vermeide unsichere Protokolle und Dienste im Auslieferungszustand. Nachweis: Hardening-Guide, Konfigurationsbaseline.",
 			"Entwicklungsprozess", "manual", 2),
+		// Anhang I Part II — Anforderungen an die Schwachstellenbehandlung
+		c("CRA-3.4", "Exploit-Mitigation und Speicherschutz (Annex I Part II)",
+			"Stelle sicher, dass das Produkt Speicherschutz-Mechanismen nutzt (ASLR, Stack Canaries, DEP/NX) und keine bekannten Exploit-Muster enthält. Nachweis: Compiler-Flags-Konfiguration, Binary-Hardening-Scan (checksec), Release-Notes.",
+			"Entwicklungsprozess", "automated", 2),
+		c("CRA-3.5", "Sichere Update-Mechanismen (Annex I Part II)",
+			"Implementiere sichere, authentifizierte Update-Mechanismen mit kryptographischer Signierung aller Updates. Vermeide Downgrade-Angriffe durch Versionsvalidierung. Nachweis: Update-Signierungskonzept, Signaturprüfung-Tests.",
+			"Entwicklungsprozess", "automated", 3),
+		c("CRA-3.6", "Schnittstellen-Minimierung und Angriffsflächen-Reduktion (Annex I Part II)",
+			"Begrenze die Angriffsfläche des Produkts: deaktiviere nicht benötigte Dienste, Ports und Protokolle im Auslieferungszustand. Dokumentiere alle aktiven Schnittstellen. Nachweis: Portscanning-Bericht, Interface-Dokumentation, Release-Konfiguration.",
+			"Entwicklungsprozess", "automated", 2),
+		// Anhang II — Nutzerinformationen und Bedienungsanleitung
+		c("CRA-4.1", "Nutzerinformationen und Bedienungsanleitung (Annex II Nr. 1)",
+			"Stelle Nutzern verständliche Informationen bereit: Zweck des Produkts, sichere Inbetriebnahme, Konfigurationsempfehlungen, bekannte Sicherheitseinschränkungen, EOL-Datum. Nachweis: Nutzerhandbuch, Online-Dokumentation, Release-Begleitdokumentation.",
+			"Nutzerinformationen", "manual", 2),
+		c("CRA-4.2", "Sicherheitskonfigurationsanleitung (Annex II Nr. 2)",
+			"Erstelle eine klare Anleitung zur sicheren Konfiguration des Produkts für Betreiber: Passwort-Anforderungen, Netzwerk-Konfiguration, Logging-Empfehlungen, Härtungsmaßnahmen. Nachweis: Sicherheits-Setup-Guide, Schritt-für-Schritt-Härtungsanleitung.",
+			"Nutzerinformationen", "manual", 2),
+		c("CRA-4.3", "Kontaktinformationen für Schwachstellenmeldungen (Annex II Nr. 5)",
+			"Veröffentliche Kontaktinformationen für Sicherheitsforscher und Nutzer, um Schwachstellen zu melden (security.txt, dedizierte E-Mail-Adresse, Bug-Bounty-Programm). Nachweis: Öffentliche VDP-Seite, security.txt-Datei, Reaktionszeitnachweis.",
+			"Nutzerinformationen", "manual", 3),
+		c("CRA-4.4", "EOL-Kommunikation und Support-Zeitraum (Annex II Nr. 6)",
+			"Informiere Nutzer rechtzeitig (mind. 12 Monate vorher) über das geplante End-of-Life des Produkts oder einzelner Versionen. Benenne den verfügbaren Support-Zeitraum für Sicherheitsupdates (mind. 5 Jahre). Nachweis: EOL-Richtlinie, Kommunikationsnachweise.",
+			"Nutzerinformationen", "manual", 2),
 	}
 }
 
@@ -810,6 +948,26 @@ func doraControls(frameworkID, orgID string) []Control {
 		c("DORA-4.3", "Ausstiegsstrategie für kritische IKT-Drittanbieter",
 			"Entwickle Ausstiegsstrategien für kritische IKT-Abhängigkeiten. Nachweis: Exit-Plan-Dokument.",
 			"Drittparteienrisiken", "manual", 2),
+		// Art. 28 — Register + Konzentrationsrisiko
+		c("DORA-4.4", "Register der IKT-Drittanbieter (Art. 28 Abs. 3)",
+			"Führe ein vollständiges, aktuelles Register aller IKT-Drittanbieter mit Angabe zu kritischen und nicht-kritischen Anbietern, vertraglichem Scope und Abhängigkeitsprofil. Nachweis: Drittanbieter-Register gemäß Art. 28(3) DORA, letzte Aktualisierung.",
+			"Drittparteienrisiken", "manual", 3),
+		c("DORA-4.5", "Vertragsklauseln für kritische IKT-Drittanbieter (Art. 30)",
+			"Stelle sicher, dass Verträge mit kritischen IKT-Drittanbietern alle Mindestklauseln nach Art. 30 DORA enthalten: Verfügbarkeits-SLAs, Datenlokation, Auditrechte, Incident-Meldung, Kooperationspflicht mit Aufsicht, Unterlizenzierungsbeschränkungen. Nachweis: Vertragsvorlagen, Konformitätscheckliste.",
+			"Drittparteienrisiken", "manual", 3),
+		c("DORA-4.6", "Konzentrationsrisiko und Diversifizierungsstrategie (Art. 29)",
+			"Analysiere und manage IKT-Konzentrationsrisiken (zu hohe Abhängigkeit von einzelnen Anbietern). Definiere Diversifizierungsziele und Ausweichlieferanten für kritische IKT-Funktionen. Nachweis: Konzentrationsrisikoanalyse, Strategie-Dokument.",
+			"Drittparteienrisiken", "manual", 2),
+		// Art. 45-49 — Informationsaustausch (Säule 5)
+		c("DORA-5.1", "Rechtsrahmen für Informationsaustausch (Art. 45)",
+			"Richte einen rechtlich abgesicherten Rahmen für den freiwilligen Informationsaustausch zu Cyberbedrohungen ein. Stelle sicher, dass datenschutzrechtliche Anforderungen (DSGVO) eingehalten werden. Nachweis: Rechtliche Prüfung, Datenschutz-Policy für ISAC-Teilnahme.",
+			"Informationsaustausch", "manual", 2),
+		c("DORA-5.2", "Teilnahme an Bedrohungsinformationsaustausch (Art. 46)",
+			"Nimm an einem oder mehreren ISAC (Information Sharing and Analysis Centers) oder ähnlichen Strukturen des Finanzsektors teil. Teile Erkenntnisse zu Cyberbedrohungen und Schwachstellen mit Peers. Nachweis: ISAC-Mitgliedschaft, eingereichte Meldungen, empfangene Threat-Intel-Berichte.",
+			"Informationsaustausch", "manual", 2),
+		c("DORA-5.3", "Weitergabe von Bedrohungsinformationen an Behörden (Art. 47)",
+			"Melde relevante Bedrohungsinformationen an zuständige Aufsichtsbehörden (BaFin, EBA) und CERT/CSIRT, sofern dies für die Sicherheit des Finanzsystems relevant ist. Nachweis: Meldeprozess-Dokumentation, Meldungsarchiv.",
+			"Informationsaustausch", "manual", 1),
 	}
 }
 
@@ -833,6 +991,12 @@ var doraISO27001Mapping = map[string]string{
 	"DORA-4.1": "A.5.19, A.5.20",
 	"DORA-4.2": "A.5.20, A.5.21",
 	"DORA-4.3": "A.5.19",
+	"DORA-4.4": "A.5.19, A.5.20",
+	"DORA-4.5": "A.5.20, A.5.21",
+	"DORA-4.6": "A.5.19",
+	"DORA-5.1": "A.5.5, A.6.1",
+	"DORA-5.2": "A.5.5",
+	"DORA-5.3": "A.5.5, A.5.24",
 }
 
 // euAiActControls returns controls for the EU AI Act (Verordnung (EU) 2024/1689).
@@ -901,6 +1065,30 @@ func euAiActControls(frameworkID, orgID string) []Control {
 		c("AIACT-8.2", "Einschränkung auf vorgesehene Verwendung",
 			"Stelle sicher, dass KI-Systeme ausschließlich für ihren vorgesehenen Verwendungszweck eingesetzt werden. Nachweis: Nutzungsrichtlinie, Schulungsnachweise.",
 			"Compliance", "manual", 2),
+		// Art. 17 — Qualitätsmanagementsystem
+		c("AIACT-9.1", "Qualitätsmanagementsystem für Hochrisiko-KI (Art. 17)",
+			"Implementiere ein dokumentiertes Qualitätsmanagementsystem für die Entwicklung, das Deployment und die Überwachung von Hochrisiko-KI-Systemen. Das QMS muss Strategie, Prozesse, Ressourcen, Verantwortlichkeiten und kontinuierliche Verbesserung umfassen. Nachweis: QMS-Dokumentation, Versionierung, Management-Review.",
+			"Qualitätsmanagement", "manual", 3),
+		c("AIACT-9.2", "QMS-Verfahrensanweisungen und Aufzeichnungen (Art. 17)",
+			"Erstelle verbindliche Verfahrensanweisungen für alle sicherheitsrelevanten Phasen des KI-Lebenszyklus (Datenaufbereitung, Training, Validierung, Deployment, Monitoring) und bewahre alle Aufzeichnungen für die Aufsicht auf. Nachweis: Verfahrensanweisungen, Aufzeichnungsregister, Aufbewahrungsrichtlinie.",
+			"Qualitätsmanagement", "manual", 3),
+		c("AIACT-9.3", "Post-Market-Monitoring-Plan (Art. 17 Abs. 1 lit. n)",
+			"Erstelle und betreibe einen Post-Market-Monitoring-Plan für alle am Markt platzierten Hochrisiko-KI-Systeme: kontinuierliches Performance-Monitoring, Drifterkennung, Kundenfeedback-Auswertung. Nachweis: Monitoring-Plan, Dashboard, Alerting-Konfiguration.",
+			"Qualitätsmanagement", "automated", 2),
+		// Art. 18 — Dokumentationspflichten
+		c("AIACT-10.1", "Aufbewahrung der technischen Dokumentation (Art. 18)",
+			"Bewahre die technische Dokumentation (Annex IV) und alle QMS-Aufzeichnungen für Hochrisiko-KI-Systeme mindestens 10 Jahre nach Markteinführung oder letztem Einsatz auf. Stelle Zugänglichkeit für Aufsichtsbehörden sicher. Nachweis: Archivierungsrichtlinie, Zugriffsprotokoll.",
+			"Dokumentation", "manual", 2),
+		// Titel VIII — Allzweck-KI (GPAI, Art. 51–56)
+		c("AIACT-11.1", "Klassifizierung von GPAI-Modellen (Art. 51)",
+			"Klassifiziere alle eingesetzten General-Purpose-AI-Modelle (GPAI) nach EU AI Act: Modelle mit systemischem Risiko (Rechenaufwand > 10^25 FLOP) vs. sonstige. Nachweis: GPAI-Modell-Register, Klassifizierungsmatrix, Anbieter-Dokumentation.",
+			"GPAI-Compliance", "manual", 2),
+		c("AIACT-11.2", "Urheberrecht und Trainingsdaten für GPAI (Art. 53)",
+			"Stelle sicher, dass GPAI-Modelle, die du einsetzt oder entwickelst, eine Richtlinie zur Einhaltung des Urheberrechts bei Trainingsdaten haben. Nachweis: Trainingsdaten-Policy, Herkunftsdokumentation, Opt-out-Dokumentation.",
+			"GPAI-Compliance", "manual", 2),
+		c("AIACT-11.3", "Systemische Risiken bei GPAI-Modellen (Art. 55)",
+			"Bewerte und manage systemische Risiken bei GPAI-Modellen mit systemischem Risiko: adversarielle Tests, Incident-Reporting an EU-Behörden, Cybersicherheitsmaßnahmen. Nachweis: Risikobewertungsbericht, Test-Protokolle, Incident-Meldungsverfahren.",
+			"GPAI-Compliance", "manual", 2),
 	}
 }
 
@@ -971,6 +1159,61 @@ func iso42001Controls(frameworkID, orgID string) []Control {
 		c("42001-10.1", "Kontinuierliche Verbesserung des KI-MS",
 			"Etabliere einen systematischen KVP für das KI-Managementsystem. Nachweis: Verbesserungsmaßnahmen-Tracking.",
 			"Verbesserung", "manual", 1),
+
+		// ── Annex A — Spezifische Referenzmaßnahmen für KI-Managementsysteme ──
+		// A.2 — Ziele für verantwortungsvolle KI-Entwicklung und -Nutzung
+		c("42001-A2.1", "Richtlinie für verantwortungsvolle KI",
+			"Erstelle eine KI-Ethikrichtlinie, die Grundsätze für den verantwortungsvollen Einsatz von KI definiert: Fairness, Transparenz, Nicht-Diskriminierung, Erklärbarkeit, Datenschutz. Nachweis: genehmigtes Richtliniendokument, Kommunikationsnachweis.",
+			"Annex A — Verantwortungsvolle KI", "manual", 3),
+		c("42001-A2.2", "Messbare KI-Nachhaltigkeitsziele",
+			"Definiere messbare Ziele für den nachhaltigen und ethischen Einsatz von KI (z.B. Reduktion von Bias-Metriken um X%, Erreichung von XAI-Schwellwerten). Nachweis: Zieldokument mit messbaren KPIs, Fortschrittsbericht.",
+			"Annex A — Verantwortungsvolle KI", "manual", 2),
+		// A.3 — Risiko- und Impact-Assessment für KI
+		c("42001-A3.1", "KI-Risikobewertungsverfahren",
+			"Etabliere ein formales Verfahren zur Identifikation und Bewertung von KI-spezifischen Risiken: technische Risiken (Modell-Drift, Datenvergiftung), ethische Risiken (Bias, Diskriminierung), gesellschaftliche Risiken. Nachweis: Risikobewertungsverfahren, ausgefüllte Risikoregister.",
+			"Annex A — Risiko & Impact", "manual", 3),
+		c("42001-A3.2", "KI-Impact-Assessment-Verfahren",
+			"Führe vor der Inbetriebnahme neuer KI-Systeme ein strukturiertes Impact Assessment durch, das gesellschaftliche, rechtliche und ethische Auswirkungen bewertet. Nachweis: Impact-Assessment-Vorlage, Assessment-Berichte.",
+			"Annex A — Risiko & Impact", "manual", 3),
+		c("42001-A3.3", "Betroffenenfolgenabschätzung",
+			"Bewerte systematisch die Auswirkungen von KI-Systementscheidungen auf betroffene Personen und Gruppen — insbesondere vulnerable Gruppen. Nachweis: Folgenabschätzungs-Bericht, Maßnahmenkatalog.",
+			"Annex A — Risiko & Impact", "manual", 3),
+		// A.4 — KI-System-Lebenszyklus
+		c("42001-A4.1", "Design und Spezifikation von KI-Systemen",
+			"Dokumentiere Anforderungen, Designentscheidungen und Architektur von KI-Systemen vor der Entwicklung. Berücksichtige IS- und Datenschutzanforderungen (Privacy by Design, Security by Design). Nachweis: System-Designdokument, Anforderungsspezifikation.",
+			"Annex A — Lebenszyklus", "manual", 3),
+		c("42001-A4.2", "Daten-Pipeline und Trainingsprozess",
+			"Dokumentiere die gesamte Daten-Pipeline: Datenquellen, Vorverarbeitung, Augmentation, Labeling-Prozesse. Stelle Reproduzierbarkeit und Nachvollziehbarkeit des Trainingsprozesses sicher. Nachweis: Pipeline-Dokumentation, Experiment-Tracking (MLflow o.ä.).",
+			"Annex A — Lebenszyklus", "manual", 2),
+		c("42001-A4.3", "Verifikation und Validierung von KI-Modellen",
+			"Validiere KI-Modelle systematisch vor dem Deployment: Leistungsmetriken, Robustheitstests, Bias-Evaluation, Out-of-Distribution-Tests. Definiere Abnahmekriterien. Nachweis: Validierungsberichte, Testprotokolle, Go/No-Go-Entscheidungsdokumentation.",
+			"Annex A — Lebenszyklus", "automated", 3),
+		c("42001-A4.4", "Deployment und Inbetriebnahme von KI-Systemen",
+			"Stelle sicher, dass KI-Systeme kontrolliert in Produktion übergehen: Genehmigungsprozess, Rollback-Fähigkeit, Canary-Deployment, Monitoring-Aktivierung. Nachweis: Deployment-Checkliste, Rollback-Plan, Monitoring-Dashboard.",
+			"Annex A — Lebenszyklus", "automated", 3),
+		c("42001-A4.5", "Außerbetriebnahme und Datenarchivierung",
+			"Definiere einen geordneten Prozess für die Außerbetriebnahme von KI-Systemen: Datenlöschung oder -archivierung, Modell-Archivierung, Benachrichtigung der Stakeholder, Dokumentenaufbewahrung. Nachweis: Außerbetriebnahme-Richtlinie, Protokoll.",
+			"Annex A — Lebenszyklus", "manual", 2),
+		// A.5 — Daten für KI-Systeme
+		c("42001-A5.1", "Anforderungen an Trainingsdaten",
+			"Definiere Qualitätskriterien für Trainingsdaten: Repräsentativität, Vollständigkeit, Aktualität, Fehlerfreiheit. Dokumentiere Herkunft und Lizenzierung aller Datensätze. Nachweis: Daten-Governance-Richtlinie, Datensatz-Inventar mit Herkunftsangaben.",
+			"Annex A — Daten", "manual", 3),
+		c("42001-A5.2", "Datenqualität und Repräsentativität",
+			"Stelle sicher, dass Trainingsdaten frei von systematischen Verzerrungen sind und alle relevanten Bevölkerungsgruppen und Szenarien angemessen repräsentieren. Nachweis: Datenqualitätsbericht, Bias-Analyse, Sampling-Protokoll.",
+			"Annex A — Daten", "manual", 3),
+		c("42001-A5.3", "Datenschutz in KI-Datenpipelines",
+			"Implementiere Privacy-by-Design in allen KI-Datenpipelines: Anonymisierung/Pseudonymisierung wo möglich, Minimierung der Datenhaltung, DSGVO-konforme Verarbeitung. Nachweis: Datenschutz-Impact-Assessment (DPIA), Technische Maßnahmen, VVT-Eintrag.",
+			"Annex A — Daten", "manual", 3),
+		c("42001-A5.4", "Synthetische und augmentierte Daten",
+			"Dokumentiere den Einsatz synthetischer oder augmentierter Daten im Training. Bewerte Auswirkungen auf Modell-Fairness und -Robustheit. Nachweis: Augmentierungs-Konzept, Fairness-Evaluation nach Augmentierung.",
+			"Annex A — Daten", "manual", 2),
+		// A.6 — Informationspflichten gegenüber Stakeholdern
+		c("42001-A6.1", "Transparenz gegenüber interessierten Parteien",
+			"Kommuniziere offen gegenüber Kunden, Nutzern, Regulatoren und der Öffentlichkeit über den Einsatz von KI-Systemen, deren Zweck, Fähigkeiten und Einschränkungen. Nachweis: Öffentliche KI-Transparenzerklärung, Kommunikationsplan.",
+			"Annex A — Stakeholder", "manual", 3),
+		c("42001-A6.2", "Kommunikation über KI-Systemfähigkeiten und -grenzen",
+			"Stelle sicher, dass Nutzer und Entscheidungsträger vollständig über die Grenzen des KI-Systems informiert sind: Fehlermöglichkeiten, bekannte Schwächen, empfohlene menschliche Aufsicht. Nachweis: Nutzerdokumentation, Schulungsmaterial, Onboarding-Unterlagen.",
+			"Annex A — Stakeholder", "manual", 2),
 	}
 }
 
@@ -1182,6 +1425,25 @@ func tisaxControls(frameworkID, orgID string) []Control {
 		c("TISAX-15.1.4", "Fotografierverbot und digitale Sicherheit",
 			"Verbiete das unbefugte Fotografieren von Prototypen und treffe technische Maßnahmen gegen unbefugte Bildaufnahmen (Abschirmung, Kamerasperren in Sicherheitsbereichen). Nachweis: Richtlinie, technische Maßnahmen.",
 			"Prototypenschutz", "manual", 3),
+
+		// VDA ISA 6.0 — Connected Vehicles (Modul für vernetzte Fahrzeuge)
+		c("TISAX-16.1.1", "Sicherheitsanforderungen für vernetzte Fahrzeuge",
+			"Definiere und implementiere Sicherheitsanforderungen für Komponenten und Systeme vernetzter Fahrzeuge gemäß VDA ISA 6.0 und UN-R155/R156. Berücksichtige fahrzeugspezifische Angriffsvektoren (OBD, V2X, Telematik). Nachweis: Anforderungsdokument, Threat-Analysis (TARA nach ISO/SAE 21434).",
+			"Connected Vehicles", "manual", 3),
+		c("TISAX-16.1.2", "Schutz von Fahrzeugkommunikations-Schnittstellen",
+			"Sichere alle Fahrzeugkommunikationsschnittstellen gegen unbefugten Zugriff: OBD-Härtung, V2X-Authentifizierung, Telematik-Verschlüsselung, Schutz von Diagnose-Zugängen. Nachweis: Schnittstellenkonzept, Penetrationstest-Berichte (Automotive-Pentest).",
+			"Connected Vehicles", "manual", 3),
+		c("TISAX-16.1.3", "Software-Update-Sicherheit (OTA)",
+			"Stelle sicher, dass Over-the-Air (OTA) Software-Updates für Fahrzeugsysteme sicher sind: kryptographische Signierung, Downgrade-Schutz, Rollback-Fähigkeit, Ausfallsicherheit bei Update-Fehlschlag. Nachweis: OTA-Sicherheitskonzept, Signaturprüfung, Test-Berichte.",
+			"Connected Vehicles", "automated", 3),
+
+		// VDA ISA 6.0 — Reifegradmodell und Assessment-Scope-Dokumentation
+		c("TISAX-0.1", "TISAX-Scope-Festlegung und Geltungsbereich",
+			"Definiere und dokumentiere den TISAX-Assessment-Scope: betroffene Standorte, Systeme, Prozesse und Personengruppen mit Zugang zu OEM-sensitiven Informationen. Stimme den Scope mit dem TISAX-Auftraggeber (OEM) ab. Nachweis: Scope-Dokument, OEM-Bestätigung.",
+			"Assessment-Scope", "manual", 3),
+		c("TISAX-0.2", "VDA ISA Reifegrad-Selbstbewertung",
+			"Führe eine Selbstbewertung anhand des VDA ISA 6.0 Reifegradmodells durch: Reifegrad 0 (nicht vorhanden) bis 5 (kontinuierlich optimiert). Dokumentiere Ist-Stand und Ziel-Reifegrad pro Kontrollbereich. Nachweis: Selbstbewertungsbericht, Gap-Analyse, Maßnahmenplan.",
+			"Assessment-Scope", "manual", 3),
 	}
 }
 

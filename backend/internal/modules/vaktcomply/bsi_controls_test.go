@@ -14,7 +14,7 @@ import (
 // the customer-facing materials.  Sprint 59 closed the audit gap (7 stubs
 // → 34 fully described controls).  If a future change drops below this
 // number, the test red-lights the regression.
-const minBSIControls = 30
+const minBSIControls = 50
 
 // requiredBSILayers lists every BSI-Grundschutz-Kompendium layer that the
 // baseline must cover. The check uses the BSI-XXX.* ID prefix as the
