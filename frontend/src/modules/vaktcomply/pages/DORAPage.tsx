@@ -17,15 +17,17 @@ const DOMAIN_TO_ARTICLE: Record<string, string> = {
   'Vorfallmanagement': 'Art. 17–23',
   'Resilienztests': 'Art. 24–27',
   'Drittparteienrisiken': 'Art. 28–44',
+  'Informationsaustausch': 'Art. 45–49',
 }
 
-const ARTICLE_ORDER = ['Art. 5–16', 'Art. 17–23', 'Art. 24–27', 'Art. 28–44']
+const ARTICLE_ORDER = ['Art. 5–16', 'Art. 17–23', 'Art. 24–27', 'Art. 28–44', 'Art. 45–49']
 
 const ARTICLE_DESCRIPTIONS: Record<string, string> = {
   'Art. 5–16': 'ICT-Risikomanagement — Anforderungen an Risikomanagement-Framework, Asset-Inventar, Schutzmaßnahmen, BCM und Patch-Management.',
   'Art. 17–23': 'ICT-bezogenes Vorfallmanagement — Klassifizierung, Meldepflichten gegenüber BaFin/EBA sowie Incident-Response-Prozesse.',
   'Art. 24–27': 'Digital Operational Resilience Testing — Jährliche Resilienz-Tests, TLPT und szenarienbasierte Übungen.',
   'Art. 28–44': 'IKT-Drittparteienrisiken — Management-Framework, Vertragsanforderungen und Ausstiegsstrategien für kritische IKT-Anbieter.',
+  'Art. 45–49': 'Informationsaustausch — Freiwilliger Austausch von Bedrohungsinformationen im Finanzsektor (ISAC-Teilnahme, Behördenmeldungen).',
 }
 
 /**
@@ -135,7 +137,7 @@ export default function DORAPage() {
       <div className="flex flex-col h-full">
         <PageHeader
           title="DORA — Artikel-Übersicht"
-          description="Controls gegliedert nach den DORA-Artikelgruppen (Art. 5–16, 17–23, 24–27, 28–44)."
+          description="Controls gegliedert nach den DORA-Artikelgruppen (Art. 5–16, 17–23, 24–27, 28–44, 45–49)."
           actions={
             <Button
               variant="outline"
