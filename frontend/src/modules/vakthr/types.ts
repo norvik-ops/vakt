@@ -128,7 +128,7 @@ export interface CreateAccessRoleInput {
   review_interval_months?: number
 }
 
-export interface UpdateAccessRoleInput extends CreateAccessRoleInput {}
+export type UpdateAccessRoleInput = CreateAccessRoleInput
 
 export interface AccessConceptVersionSummary {
   id: string
