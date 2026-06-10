@@ -97,6 +97,7 @@ func (h *Handler) GetGapAnalysis(c echo.Context) error {
 // Offset mode (deprecated): ?page=1&limit=25 — sends Deprecation header
 func (h *Handler) ListControls(c echo.Context) error {
 	frameworkID := c.Param("id")
+	scopeFilter := c.QueryParam("scope")
 
 	if c.QueryParam("page") == "" {
 		cp := pagination.CursorFromRequest(c)
@@ -106,6 +107,8 @@ func (h *Handler) ListControls(c echo.Context) error {
 			log.Error().Err(err).Str("framework_id", frameworkID).Msg("list controls cursor")
 			return errResp(c, http.StatusInternalServerError, "failed to list controls", "CK_LIST_CONTROLS_FAILED")
 		}
+		enrichControlsWithNIS2Meta(rows)
+		rows = filterControlsByScope(rows, scopeFilter)
 		resp := pagination.WrapCursor(rows, cp, func(ctrl Control) string {
 			return pagination.EncodeControlCursor(ctrl.ControlID, ctrl.ID)
 		})
@@ -114,13 +117,27 @@ func (h *Handler) ListControls(c echo.Context) error {
 	c.Response().Header().Set("Deprecation", "true")
 	c.Response().Header().Set("Sunset", "2027-01-01")
 	offset, limit, meta := pagination.FromRequest(c)
-	controls, total, err := h.service.ListControlsPaged(c.Request().Context(), orgID(c), frameworkID, offset, limit)
+	controls, _, err := h.service.ListControlsPaged(c.Request().Context(), orgID(c), frameworkID, offset, limit)
 	if err != nil {
 		log.Error().Err(err).Str("framework_id", frameworkID).Msg("list controls")
 		return errResp(c, http.StatusInternalServerError, "failed to list controls", "CK_LIST_CONTROLS_FAILED")
 	}
-	pagination.Complete(&meta, total)
+	enrichControlsWithNIS2Meta(controls)
+	controls = filterControlsByScope(controls, scopeFilter)
+	pagination.Complete(&meta, len(controls))
 	return c.JSON(http.StatusOK, pagination.Wrap(controls, meta))
+}
+
+// enrichControlsWithNIS2Meta sets RegulationSource, ThematicArea, and ApplicabilityScope
+// on any control whose ID appears in nis2ControlMeta (S70-2).
+func enrichControlsWithNIS2Meta(cs []Control) {
+	for i := range cs {
+		if m, ok := nis2ControlMeta[cs[i].ControlID]; ok {
+			cs[i].RegulationSource = m.source
+			cs[i].ThematicArea = m.area
+			cs[i].ApplicabilityScope = m.scopes
+		}
+	}
 }
 
 // ListAvailableFrameworks handles GET /api/v1/vaktcomply/frameworks/available.

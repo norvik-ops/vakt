@@ -475,7 +475,7 @@ type Querier interface {
 	// SecPrivacy queries — sqlc migration started in v0.6.x (ADR-0005, inkrementell).
 	//
 	// Migrationsstand:
-	//   ✅ po_vvt_entries — sqlc (this file)
+	//   ✅ po_processing_activities — sqlc (this file)
 	//   ✅ po_dpias       — sqlc (this file)
 	//   ✅ po_avvs        — sqlc (this file)
 	//   ⏳ po_breaches    — embedded SQL

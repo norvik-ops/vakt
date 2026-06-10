@@ -24,6 +24,7 @@ import (
 	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/modules/vaktaware"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
+	"github.com/matharnica/vakt/internal/modules/vakthr"
 	"github.com/matharnica/vakt/internal/modules/vaktprivacy"
 	"github.com/matharnica/vakt/internal/modules/vaktscan"
 	"github.com/matharnica/vakt/internal/modules/vaktvault"
@@ -269,6 +270,11 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 
 	// S67-4: daily evidence staleness sweep
 	mux.HandleFunc(vaktcomply.TaskEvidenceStalenessCheck, handleEvidenceStalenessCheck(pool))
+
+	// S70-4: daily contractor expiry check
+	mux.HandleFunc(vakthr.TaskContractorExpiryCheck, handleContractorExpiryCheck(pool))
+	// S70-5: quarterly vault access review creation
+	mux.HandleFunc(vaktvault.TaskQuarterlyAccessReview, handleQuarterlyAccessReview(pool))
 
 	return srv, mux
 }

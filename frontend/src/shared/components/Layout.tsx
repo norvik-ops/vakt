@@ -123,9 +123,10 @@ const MODULES_NAV: NavItem[] = [
     label: 'Vakt Vault',
     icon: Key,
     children: [
-      { path: '/vaktvault/projects',  label: 'Projekte',  icon: Key },
-      { path: '/vaktvault/tokens',    label: 'Tokens',    icon: Shield },
-      { path: '/vaktvault/git-scans', label: 'Git-Scans', icon: ScanSearch },
+      { path: '/vaktvault/projects',      label: 'Projekte',          icon: Key },
+      { path: '/vaktvault/tokens',        label: 'Tokens',            icon: Shield },
+      { path: '/vaktvault/git-scans',     label: 'Git-Scans',        icon: ScanSearch },
+      { path: '/vaktvault/access-reviews', label: 'Zugriffsreviews', icon: UserCheck },
     ],
   },
   {
@@ -145,11 +146,12 @@ const MODULES_NAV: NavItem[] = [
     label: 'Vakt Privacy',
     icon: Eye,
     children: [
-      { path: '/vaktprivacy/vvt',    label: 'VVT',         icon: FileText },
-      { path: '/vaktprivacy/dpia',   label: 'DPIA',        icon: FileSearch },
-      { path: '/vaktprivacy/avv',    label: 'AVV',         icon: Handshake },
-      { path: '/vaktprivacy/breach', label: 'Datenpannen', icon: AlertTriangle },
-      { path: '/vaktprivacy/dsr',    label: 'DSR',         icon: Users },
+      { path: '/vaktprivacy/vvt',            label: 'VVT',             icon: FileText },
+      { path: '/vaktprivacy/dpia',           label: 'DPIA',            icon: FileSearch },
+      { path: '/vaktprivacy/avv',            label: 'AVV',             icon: Handshake },
+      { path: '/vaktprivacy/breach',         label: 'Datenpannen',     icon: AlertTriangle },
+      { path: '/vaktprivacy/dsr',            label: 'DSR',             icon: Users },
+      { path: '/vaktprivacy/privacy-design', label: 'Privacy by Design', icon: ClipboardCheck },
     ],
   },
   {
@@ -157,8 +159,9 @@ const MODULES_NAV: NavItem[] = [
     label: 'Vakt HR',
     icon: UserCog,
     children: [
-      { path: '/vakthr/employees',  label: 'Mitarbeiter', icon: Users },
-      { path: '/vakthr/checklists', label: 'Checklisten', icon: ClipboardList },
+      { path: '/vakthr/employees',    label: 'Mitarbeiter',  icon: Users },
+      { path: '/vakthr/checklists',   label: 'Checklisten',  icon: ClipboardList },
+      { path: '/vakthr/contractors',  label: 'Freelancer',   icon: Building2 },
     ],
   },
 ]

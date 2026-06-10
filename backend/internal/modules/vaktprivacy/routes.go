@@ -96,4 +96,10 @@ func registerRoutes(g *echo.Group, h *Handler) {
 		g.GET("/transfers/:id/tia", h.ListTIAs)
 		g.POST("/transfers/:id/tia", h.CreateTIA)
 	}
+
+	// S70-3: Privacy by Design (Art. 25 DSGVO)
+	// CRITICAL: /privacy-design/summary must be registered BEFORE /processing-activities/:id/privacy-design.
+	g.GET("/privacy-design/summary", h.GetPrivacyDesignSummary)
+	g.GET("/processing-activities/:id/privacy-design", h.GetPrivacyDesign)
+	g.POST("/processing-activities/:id/privacy-design", h.CreateOrUpdatePrivacyDesign)
 }

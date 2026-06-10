@@ -62,4 +62,10 @@ func Register(g *echo.Group, h *Handler) {
 	g.GET("/git-scans/:id", h.GetGitScan, rw)
 	g.GET("/git-scans/:id/results", h.GetGitScanResults, rw)
 	g.POST("/git-scans/results/:result_id/dismiss", h.DismissScanResult, rw)
+
+	// S70-5: Vault Access Reviews (quarterly)
+	g.GET("/access-reviews", h.ListAccessReviews, rw)
+	g.POST("/access-reviews", h.CreateAccessReview, admin)
+	g.GET("/access-reviews/:id", h.GetAccessReview, rw)
+	g.POST("/access-reviews/:id/complete", h.CompleteAccessReview, admin)
 }

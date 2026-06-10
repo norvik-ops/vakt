@@ -906,3 +906,43 @@ func (h *Handler) ExportSCCPDF(c echo.Context) error {
 	c.Response().Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	return c.Blob(http.StatusOK, "application/pdf", data)
 }
+
+// GetPrivacyDesignSummary handles GET /api/v1/vaktprivacy/privacy-design/summary (S70-3).
+func (h *Handler) GetPrivacyDesignSummary(c echo.Context) error {
+	summary, err := h.service.GetPrivacyDesignSummary(c.Request().Context(), orgID(c))
+	if err != nil {
+		log.Error().Err(err).Msg("get privacy design summary")
+		return errResp(c, http.StatusInternalServerError, "failed to get summary", "PO_PD_SUMMARY_FAILED")
+	}
+	return c.JSON(http.StatusOK, summary)
+}
+
+// GetPrivacyDesign handles GET /api/v1/vaktprivacy/processing-activities/:id/privacy-design (S70-3).
+func (h *Handler) GetPrivacyDesign(c echo.Context) error {
+	a, err := h.service.GetPrivacyDesign(c.Request().Context(), orgID(c), c.Param("id"))
+	if err != nil {
+		log.Error().Err(err).Msg("get privacy design")
+		return errResp(c, http.StatusInternalServerError, "failed to get assessment", "PO_PD_GET_FAILED")
+	}
+	if a == nil {
+		return errResp(c, http.StatusNotFound, "no assessment found", "PO_PD_NOT_FOUND")
+	}
+	return c.JSON(http.StatusOK, a)
+}
+
+// CreateOrUpdatePrivacyDesign handles POST /api/v1/vaktprivacy/processing-activities/:id/privacy-design (S70-3).
+func (h *Handler) CreateOrUpdatePrivacyDesign(c echo.Context) error {
+	var in PrivacyDesignInput
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "PO_INVALID_BODY")
+	}
+	if err := h.validate.Struct(in); err != nil {
+		return errResp(c, http.StatusUnprocessableEntity, "Ungültige Eingabe", "VALIDATION_ERROR")
+	}
+	a, err := h.service.CreateOrUpdatePrivacyDesign(c.Request().Context(), orgID(c), c.Param("id"), in)
+	if err != nil {
+		log.Error().Err(err).Msg("upsert privacy design")
+		return errResp(c, http.StatusInternalServerError, "failed to save assessment", "PO_PD_UPSERT_FAILED")
+	}
+	return c.JSON(http.StatusOK, a)
+}

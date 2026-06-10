@@ -58,4 +58,10 @@ func Register(g *echo.Group, h *Handler) {
 	g.GET("/mover-events/:id", h.GetMoverEvent, rw)
 	g.PATCH("/mover-events/:id/status", h.UpdateMoverEventStatus, rw)
 	g.GET("/mover-templates", h.ListMoverTemplates, rw)
+
+	// S70-4: Contractor/Freelancer lifecycle
+	g.GET("/contractors", h.ListContractors, rw)
+	g.POST("/contractors", h.CreateContractor, admin)
+	g.GET("/contractors/:id", h.GetContractor, rw)
+	g.PUT("/contractors/:id", h.UpdateContractor, admin)
 }

@@ -136,3 +136,37 @@ export interface AccessConceptVersionSummary {
   version_number: number
   created_at: string
 }
+
+// S70-4: Contractor/Freelancer Lifecycle
+export type ContractorStatus = 'active' | 'expiring_soon' | 'offboarding' | 'terminated'
+
+export interface Contractor {
+  id: string
+  org_id: string
+  first_name: string
+  last_name: string
+  email?: string
+  company?: string
+  contract_start: string
+  contract_end: string
+  access_scope: string[]
+  nda_signed: boolean
+  avv_signed: boolean
+  status: ContractorStatus
+  checklist_run_id?: string
+  offboarding_completed_at?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateContractorInput {
+  first_name: string
+  last_name: string
+  email?: string
+  company?: string
+  contract_start: string
+  contract_end: string
+  access_scope?: string[]
+  nda_signed?: boolean
+  avv_signed?: boolean
+}

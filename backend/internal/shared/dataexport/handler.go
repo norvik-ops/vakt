@@ -105,7 +105,7 @@ func buildZip(ctx context.Context, db *pgxpool.Pool, orgID, orgName string) ([]b
 		file  string
 		query string
 	}{
-		{"vvt.json", `SELECT * FROM po_vvt_entries WHERE org_id = $1::uuid ORDER BY created_at`},
+		{"vvt.json", `SELECT * FROM po_processing_activities WHERE org_id = $1::uuid ORDER BY created_at`},
 		{"dpias.json", `SELECT * FROM po_dpias WHERE org_id = $1::uuid ORDER BY created_at`},
 		{"avv.json", `SELECT * FROM po_avvs WHERE org_id = $1::uuid ORDER BY created_at`},
 		{"breaches.json", `SELECT * FROM po_breaches WHERE org_id = $1::uuid ORDER BY created_at`},

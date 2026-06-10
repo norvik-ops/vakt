@@ -65,7 +65,7 @@ func (q *Queries) CountPPBreaches(ctx context.Context, orgID string) (int64, err
 }
 
 const countPPVVT = `-- name: CountPPVVT :one
-SELECT COUNT(*) FROM po_vvt_entries WHERE org_id = $1
+SELECT COUNT(*) FROM po_processing_activities WHERE org_id = $1
 `
 
 func (q *Queries) CountPPVVT(ctx context.Context, orgID string) (int64, error) {
@@ -395,7 +395,7 @@ func (q *Queries) CreatePPDSR(ctx context.Context, arg CreatePPDSRParams) (Creat
 }
 
 const createPPVVT = `-- name: CreatePPVVT :one
-INSERT INTO po_vvt_entries
+INSERT INTO po_processing_activities
   (org_id, name, purpose, legal_basis, data_categories, data_subjects,
    recipients, retention_period, third_country_transfer, safeguards, responsible_person)
 VALUES
@@ -553,7 +553,7 @@ func (q *Queries) DeletePPDSR(ctx context.Context, arg DeletePPDSRParams) error 
 }
 
 const deletePPVVT = `-- name: DeletePPVVT :exec
-DELETE FROM po_vvt_entries WHERE id = $1 AND org_id = $2
+DELETE FROM po_processing_activities WHERE id = $1 AND org_id = $2
 `
 
 type DeletePPVVTParams struct {
@@ -940,7 +940,7 @@ SELECT id, org_id, name, purpose, legal_basis,
        retention_period, third_country_transfer,
        safeguards, responsible_person,
        status, created_at, updated_at
-FROM po_vvt_entries
+FROM po_processing_activities
 WHERE id = $1 AND org_id = $2
 `
 
@@ -1338,7 +1338,7 @@ SELECT id, org_id, name, purpose, legal_basis,
        retention_period, third_country_transfer,
        safeguards, responsible_person,
        status, created_at, updated_at
-FROM po_vvt_entries
+FROM po_processing_activities
 WHERE org_id = $1
 ORDER BY created_at DESC
 `
@@ -1347,7 +1347,7 @@ ORDER BY created_at DESC
 //
 // Migrationsstand:
 //
-//	✅ po_vvt_entries — sqlc (this file)
+//	✅ po_processing_activities — sqlc (this file)
 //	✅ po_dpias       — sqlc (this file)
 //	✅ po_avvs        — sqlc (this file)
 //	⏳ po_breaches    — embedded SQL
@@ -1398,7 +1398,7 @@ SELECT id, org_id, name, purpose, legal_basis,
        retention_period, third_country_transfer,
        safeguards, responsible_person,
        status, created_at, updated_at
-FROM po_vvt_entries
+FROM po_processing_activities
 WHERE org_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -1856,7 +1856,7 @@ func (q *Queries) UpdatePPDSR(ctx context.Context, arg UpdatePPDSRParams) (Updat
 }
 
 const updatePPVVT = `-- name: UpdatePPVVT :one
-UPDATE po_vvt_entries SET
+UPDATE po_processing_activities SET
   name = $3, purpose = $4, legal_basis = $5,
   data_categories = $6, data_subjects = $7, recipients = $8,
   retention_period = $9, third_country_transfer = $10,

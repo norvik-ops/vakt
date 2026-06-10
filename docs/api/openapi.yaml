@@ -1889,6 +1889,60 @@ components:
         valid_until: { type: string, format: date, nullable: true }
         created_at: { type: string, format: date-time }
 
+    PrivacyDesignAssessment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        processing_activity_id: { type: string, format: uuid }
+        design_measures: { type: string }
+        design_at_conception: { type: boolean }
+        risk_considered: { type: boolean }
+        data_minimization: { type: boolean }
+        purpose_limitation: { type: boolean }
+        storage_limitation: { type: boolean }
+        access_limitation: { type: boolean }
+        default_settings_note: { type: string, nullable: true }
+        assessment_result: { type: string, enum: [compliant, partially, not_assessed] }
+        reviewed_by: { type: string, format: uuid, nullable: true }
+        reviewed_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    Contractor:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        first_name: { type: string }
+        last_name: { type: string }
+        email: { type: string, nullable: true }
+        company: { type: string, nullable: true }
+        contract_start: { type: string, format: date }
+        contract_end: { type: string, format: date }
+        access_scope: { type: array, items: { type: string } }
+        nda_signed: { type: boolean }
+        avv_signed: { type: boolean }
+        status: { type: string, enum: [active, expiring_soon, offboarding, terminated] }
+        checklist_run_id: { type: string, format: uuid, nullable: true }
+        offboarding_completed_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AccessReview:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        period_label: { type: string }
+        status: { type: string, enum: [open, completed] }
+        reviewed_by: { type: string, format: uuid, nullable: true }
+        completed_at: { type: string, format: date-time, nullable: true }
+        total_entries: { type: integer }
+        stale_entries: { type: integer }
+        revoked_entries: { type: integer }
+        created_at: { type: string, format: date-time }
+
 tags:
   - name: auth
     description: Authentication
@@ -10000,3 +10054,271 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TransferImpactAssessment'
+
+  # ── S70-3: Privacy by Design (DSGVO Art. 25) ──────────────────────────────
+  /vaktprivacy/privacy-design/summary:
+    get:
+      operationId: getPrivacyDesignSummary
+      summary: Privacy by Design summary stats
+      tags: [vaktprivacy]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Summary of privacy design assessments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer }
+                  compliant: { type: integer }
+                  partially: { type: integer }
+                  not_assessed: { type: integer }
+                  total_activities: { type: integer }
+
+  /vaktprivacy/processing-activities/{id}/privacy-design:
+    get:
+      operationId: getPrivacyDesign
+      summary: Get privacy by design assessment for a processing activity
+      tags: [vaktprivacy]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Privacy design assessment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivacyDesignAssessment'
+        '404':
+          description: No assessment found
+    post:
+      operationId: createOrUpdatePrivacyDesign
+      summary: Create or update privacy by design assessment
+      tags: [vaktprivacy]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [design_measures, assessment_result]
+              properties:
+                design_measures: { type: string }
+                design_at_conception: { type: boolean }
+                risk_considered: { type: boolean }
+                data_minimization: { type: boolean }
+                purpose_limitation: { type: boolean }
+                storage_limitation: { type: boolean }
+                access_limitation: { type: boolean }
+                default_settings_note: { type: string }
+                assessment_result:
+                  type: string
+                  enum: [compliant, partially, not_assessed]
+      responses:
+        '200':
+          description: Created or updated assessment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivacyDesignAssessment'
+
+  # ── S70-4: Contractor/Freelancer Lifecycle ─────────────────────────────────
+  /vakthr/contractors:
+    get:
+      operationId: listContractors
+      summary: List contractors and freelancers
+      tags: [vakthr]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: status, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: List of contractors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Contractor'
+    post:
+      operationId: createContractor
+      summary: Create a contractor record
+      tags: [vakthr]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, last_name, contract_start, contract_end]
+              properties:
+                first_name: { type: string }
+                last_name: { type: string }
+                email: { type: string, format: email }
+                company: { type: string }
+                contract_start: { type: string, format: date }
+                contract_end: { type: string, format: date }
+                access_scope: { type: array, items: { type: string } }
+                nda_signed: { type: boolean }
+                avv_signed: { type: boolean }
+      responses:
+        '201':
+          description: Created contractor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contractor'
+
+  /vakthr/contractors/{id}:
+    get:
+      operationId: getContractor
+      summary: Get a contractor by ID
+      tags: [vakthr]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Contractor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contractor'
+        '404':
+          description: Not found
+    put:
+      operationId: updateContractor
+      summary: Update a contractor
+      tags: [vakthr]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name: { type: string }
+                last_name: { type: string }
+                email: { type: string, format: email }
+                company: { type: string }
+                contract_start: { type: string, format: date }
+                contract_end: { type: string, format: date }
+                access_scope: { type: array, items: { type: string } }
+                nda_signed: { type: boolean }
+                avv_signed: { type: boolean }
+                status:
+                  type: string
+                  enum: [active, expiring_soon, offboarding, terminated]
+      responses:
+        '200':
+          description: Updated contractor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contractor'
+
+  # ── S70-5: Vault Access Reviews (quarterly) ────────────────────────────────
+  /vaktvault/access-reviews:
+    get:
+      operationId: listAccessReviews
+      summary: List vault access reviews
+      tags: [vaktvault]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: List of access reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccessReview'
+    post:
+      operationId: createAccessReview
+      summary: Create a new vault access review
+      tags: [vaktvault]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [period_label]
+              properties:
+                period_label: { type: string }
+      responses:
+        '201':
+          description: Created access review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessReview'
+
+  /vaktvault/access-reviews/{id}:
+    get:
+      operationId: getAccessReview
+      summary: Get an access review by ID
+      tags: [vaktvault]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Access review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessReview'
+
+  /vaktvault/access-reviews/{id}/complete:
+    post:
+      operationId: completeAccessReview
+      summary: Mark an access review as completed
+      tags: [vaktvault]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revoked_entries: { type: integer }
+                notes: { type: string }
+      responses:
+        '200':
+          description: Completed access review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessReview'

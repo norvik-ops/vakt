@@ -1,7 +1,7 @@
 -- SecPrivacy queries — sqlc migration started in v0.6.x (ADR-0005, inkrementell).
 --
 -- Migrationsstand:
---   ✅ po_vvt_entries — sqlc (this file)
+--   ✅ po_processing_activities — sqlc (this file) [renamed from po_processing_activities in migration 193]
 --   ✅ po_dpias       — sqlc (this file)
 --   ✅ po_avvs        — sqlc (this file)
 --   ⏳ po_breaches    — embedded SQL
@@ -17,7 +17,7 @@ SELECT id, org_id, name, purpose, legal_basis,
        retention_period, third_country_transfer,
        safeguards, responsible_person,
        status, created_at, updated_at
-FROM po_vvt_entries
+FROM po_processing_activities
 WHERE org_id = $1
 ORDER BY created_at DESC;
 
@@ -27,11 +27,11 @@ SELECT id, org_id, name, purpose, legal_basis,
        retention_period, third_country_transfer,
        safeguards, responsible_person,
        status, created_at, updated_at
-FROM po_vvt_entries
+FROM po_processing_activities
 WHERE id = $1 AND org_id = $2;
 
 -- name: CreatePPVVT :one
-INSERT INTO po_vvt_entries
+INSERT INTO po_processing_activities
   (org_id, name, purpose, legal_basis, data_categories, data_subjects,
    recipients, retention_period, third_country_transfer, safeguards, responsible_person)
 VALUES
@@ -43,7 +43,7 @@ RETURNING id, org_id, name, purpose, legal_basis,
           status, created_at, updated_at;
 
 -- name: UpdatePPVVT :one
-UPDATE po_vvt_entries SET
+UPDATE po_processing_activities SET
   name = $3, purpose = $4, legal_basis = $5,
   data_categories = $6, data_subjects = $7, recipients = $8,
   retention_period = $9, third_country_transfer = $10,
@@ -57,7 +57,7 @@ RETURNING id, org_id, name, purpose, legal_basis,
           status, created_at, updated_at;
 
 -- name: DeletePPVVT :exec
-DELETE FROM po_vvt_entries WHERE id = $1 AND org_id = $2;
+DELETE FROM po_processing_activities WHERE id = $1 AND org_id = $2;
 
 -- ── DPIA (Data Protection Impact Assessment) — Art. 35 DSGVO ────────────────
 
@@ -386,10 +386,10 @@ SELECT id, org_id, name, purpose, legal_basis,
        retention_period, third_country_transfer,
        safeguards, responsible_person,
        status, created_at, updated_at
-FROM po_vvt_entries
+FROM po_processing_activities
 WHERE org_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3;
 
 -- name: CountPPVVT :one
-SELECT COUNT(*) FROM po_vvt_entries WHERE org_id = $1;
+SELECT COUNT(*) FROM po_processing_activities WHERE org_id = $1;

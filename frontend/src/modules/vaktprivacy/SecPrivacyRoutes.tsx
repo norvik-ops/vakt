@@ -8,6 +8,7 @@ import DSRPage from './pages/DSRPage'
 import DSRPortalSettingsPage from './pages/DSRPortalSettingsPage'
 import DeletionRemindersPage from './pages/DeletionRemindersPage'
 import TransfersPage from './pages/TransfersPage'
+import PrivacyDesignPage from './pages/PrivacyDesignPage'
 
 export default function SecPrivacyRoutes() {
   return (
@@ -21,6 +22,7 @@ export default function SecPrivacyRoutes() {
       <Route path="dsr-portal-settings" element={<DSRPortalSettingsPage />} />
       <Route path="deletion-reminders" element={<DeletionRemindersPage />} />
       <Route path="transfers" element={<TransfersPage />} />
+      <Route path="privacy-design" element={<PrivacyDesignPage />} />
       <Route path="*" element={<Navigate to="/vaktprivacy" replace />} />
     </Routes>
   )

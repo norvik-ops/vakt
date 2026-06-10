@@ -2,5 +2,6 @@ package vaktvault
 
 // Job type constants for SecVault Asynq tasks.
 const (
-	TaskGitScan = "vaktvault:git_scan"
+	TaskGitScan               = "vaktvault:git_scan"
+	TaskQuarterlyAccessReview = "vault:quarterly_access_review"
 )

@@ -48,6 +48,10 @@ type Control struct {
 	EvidenceStatus     string     `json:"evidence_status,omitempty"` // ok | stale | missing | na
 	EvidenceMaxAgeDays *int       `json:"evidence_max_age_days,omitempty"`
 	EvidenceExpiresAt  *time.Time `json:"evidence_expires_at,omitempty"`
+	// NIS2 enrichment (S70-2)
+	RegulationSource   string   `json:"regulation_source,omitempty"`
+	ThematicArea       string   `json:"thematic_area,omitempty"`
+	ApplicabilityScope []string `json:"applicability_scope,omitempty"`
 }
 
 // ControlReview represents a single periodic review event for a control.

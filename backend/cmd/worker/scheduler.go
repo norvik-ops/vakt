@@ -12,8 +12,10 @@ import (
 	"github.com/matharnica/vakt/internal/auth"
 	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
+	"github.com/matharnica/vakt/internal/modules/vakthr"
 	"github.com/matharnica/vakt/internal/modules/vaktprivacy"
 	"github.com/matharnica/vakt/internal/modules/vaktscan"
+	"github.com/matharnica/vakt/internal/modules/vaktvault"
 	"github.com/matharnica/vakt/internal/services/alerting"
 	"github.com/matharnica/vakt/internal/services/siem"
 	"github.com/matharnica/vakt/internal/shared/bsi"
@@ -315,6 +317,20 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		asynq.NewTask(vaktprivacy.TaskDeletionReminderCheck, nil),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register deletion reminder check cron")
+	}
+
+	// S70-4: daily at 07:30 UTC — check contractor expiry and mark expiring_soon/offboarding.
+	if _, err := scheduler.Register("30 7 * * *",
+		asynq.NewTask(vakthr.TaskContractorExpiryCheck, nil),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register contractor expiry check cron")
+	}
+
+	// S70-5: 1st of Jan/Apr/Jul/Oct at 06:00 UTC — create quarterly vault access reviews.
+	if _, err := scheduler.Register("0 6 1 1,4,7,10 *",
+		asynq.NewTask(vaktvault.TaskQuarterlyAccessReview, nil),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register quarterly access review cron")
 	}
 
 	return scheduler

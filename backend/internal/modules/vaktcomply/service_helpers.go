@@ -156,11 +156,130 @@ func builtinControls(frameworkID, orgID, name string) []Control {
 	return nil
 }
 
+// nis2MetaEntry holds S70-2 enrichment data for one NIS2 control.
+type nis2MetaEntry struct {
+	source string
+	area   string
+	scopes []string
+}
+
+// nis2ControlMeta maps each NIS2 control ID to its EU 2024/2690 regulation source,
+// ENISA TIG V1.0 thematic area, and applicability scope (S70-2).
+var nis2ControlMeta = map[string]nis2MetaEntry{
+	"NIS2-A.1":  {"EU 2024/2690 Art. 4", "Governance & Risikomanagement", []string{"all"}},
+	"NIS2-A.2":  {"EU 2024/2690 Art. 4", "Governance & Risikomanagement", []string{"all"}},
+	"NIS2-A.3":  {"EU 2024/2690 Art. 4", "Governance & Risikomanagement", []string{"all"}},
+	"NIS2-A.4":  {"EU 2024/2690 Art. 4", "Governance & Risikomanagement", []string{"all"}},
+	"NIS2-A.5":  {"EU 2024/2690 Art. 4", "Governance & Risikomanagement", []string{"all"}},
+	"NIS2-A.6":  {"EU 2024/2690 Art. 4", "Governance & Risikomanagement", []string{"all"}},
+	"NIS2-A.7":  {"EU 2024/2690 Art. 4", "Governance & Risikomanagement", []string{"all"}},
+	"NIS2-A.8":  {"EU 2024/2690 Art. 4", "Governance & Risikomanagement", []string{"all"}},
+	"NIS2-A.9":  {"EU 2024/2690 Art. 4", "Governance & Risikomanagement", []string{"all"}},
+	"NIS2-A.10": {"EU 2024/2690 Art. 4", "Governance & Risikomanagement", []string{"all"}},
+	"NIS2-B.1":  {"EU 2024/2690 Art. 8", "Incident Management", []string{"all"}},
+	"NIS2-B.2":  {"EU 2024/2690 Art. 8", "Incident Management", []string{"all"}},
+	"NIS2-B.3":  {"EU 2024/2690 Art. 8", "Incident Management", []string{"all"}},
+	"NIS2-B.4":  {"EU 2024/2690 Art. 8", "Incident Management", []string{"all"}},
+	"NIS2-B.5":  {"EU 2024/2690 Art. 8", "Incident Management", []string{"all"}},
+	"NIS2-B.6":  {"EU 2024/2690 Art. 8", "Incident Management", []string{"all"}},
+	"NIS2-B.7":  {"EU 2024/2690 Art. 8", "Incident Management", []string{"all"}},
+	"NIS2-B.8":  {"EU 2024/2690 Art. 8", "Incident Management", []string{"all"}},
+	"NIS2-B.9":  {"EU 2024/2690 Art. 8", "Incident Management", []string{"all"}},
+	"NIS2-C.1":  {"EU 2024/2690 Art. 9", "Business Continuity", []string{"all"}},
+	"NIS2-C.2":  {"EU 2024/2690 Art. 9", "Business Continuity", []string{"all"}},
+	"NIS2-C.3":  {"EU 2024/2690 Art. 9", "Business Continuity", []string{"all"}},
+	"NIS2-C.4":  {"EU 2024/2690 Art. 9", "Business Continuity", []string{"all"}},
+	"NIS2-C.5":  {"EU 2024/2690 Art. 9", "Business Continuity", []string{"all"}},
+	"NIS2-C.6":  {"EU 2024/2690 Art. 9", "Business Continuity", []string{"all"}},
+	"NIS2-C.7":  {"EU 2024/2690 Art. 9", "Business Continuity", []string{"all"}},
+	"NIS2-C.8":  {"EU 2024/2690 Art. 9", "Business Continuity", []string{"all"}},
+	"NIS2-C.9":  {"EU 2024/2690 Art. 9", "Business Continuity", []string{"all"}},
+	"NIS2-D.1":  {"EU 2024/2690 Art. 7", "Supply-Chain-Sicherheit", []string{"all"}},
+	"NIS2-D.2":  {"EU 2024/2690 Art. 7", "Supply-Chain-Sicherheit", []string{"all"}},
+	"NIS2-D.3":  {"EU 2024/2690 Art. 7", "Supply-Chain-Sicherheit", []string{"all"}},
+	"NIS2-D.4":  {"EU 2024/2690 Art. 7", "Supply-Chain-Sicherheit", []string{"all"}},
+	"NIS2-D.5":  {"EU 2024/2690 Art. 7", "Supply-Chain-Sicherheit", []string{"all", "msp", "cloud"}},
+	"NIS2-D.6":  {"EU 2024/2690 Art. 7", "Supply-Chain-Sicherheit", []string{"all", "msp"}},
+	"NIS2-D.7":  {"EU 2024/2690 Art. 7", "Supply-Chain-Sicherheit", []string{"all", "msp"}},
+	"NIS2-D.8":  {"EU 2024/2690 Art. 7", "Supply-Chain-Sicherheit", []string{"all"}},
+	"NIS2-E.1":  {"EU 2024/2690 Art. 5", "Netz- & Informationssicherheit", []string{"all"}},
+	"NIS2-E.2":  {"EU 2024/2690 Art. 5", "Netz- & Informationssicherheit", []string{"all"}},
+	"NIS2-E.3":  {"EU 2024/2690 Art. 5", "Netz- & Informationssicherheit", []string{"all"}},
+	"NIS2-E.4":  {"EU 2024/2690 Art. 5", "Netz- & Informationssicherheit", []string{"all"}},
+	"NIS2-E.5":  {"EU 2024/2690 Art. 5", "Netz- & Informationssicherheit", []string{"all"}},
+	"NIS2-E.6":  {"EU 2024/2690 Art. 5", "Netz- & Informationssicherheit", []string{"all"}},
+	"NIS2-E.7":  {"EU 2024/2690 Art. 5", "Netz- & Informationssicherheit", []string{"all"}},
+	"NIS2-E.8":  {"EU 2024/2690 Art. 5", "Netz- & Informationssicherheit", []string{"all", "cloud", "dns"}},
+	"NIS2-E.9":  {"EU 2024/2690 Art. 5", "Netz- & Informationssicherheit", []string{"all", "cloud", "dns"}},
+	"NIS2-E.10": {"EU 2024/2690 Art. 5", "Netz- & Informationssicherheit", []string{"all", "cloud", "dns"}},
+	"NIS2-E.11": {"EU 2024/2690 Art. 5", "Netz- & Informationssicherheit", []string{"all"}},
+	"NIS2-F.1":  {"EU 2024/2690 Art. 6", "Wirksamkeitsbewertung", []string{"all"}},
+	"NIS2-F.2":  {"EU 2024/2690 Art. 6", "Wirksamkeitsbewertung", []string{"all"}},
+	"NIS2-F.3":  {"EU 2024/2690 Art. 6", "Wirksamkeitsbewertung", []string{"all"}},
+	"NIS2-F.4":  {"EU 2024/2690 Art. 6", "Wirksamkeitsbewertung", []string{"all"}},
+	"NIS2-F.5":  {"EU 2024/2690 Art. 6", "Wirksamkeitsbewertung", []string{"all"}},
+	"NIS2-G.1":  {"EU 2024/2690 Art. 11", "Cyberhygiene & Schulungen", []string{"all"}},
+	"NIS2-G.2":  {"EU 2024/2690 Art. 11", "Cyberhygiene & Schulungen", []string{"all"}},
+	"NIS2-G.3":  {"EU 2024/2690 Art. 11", "Cyberhygiene & Schulungen", []string{"all"}},
+	"NIS2-G.4":  {"EU 2024/2690 Art. 11", "Cyberhygiene & Schulungen", []string{"all"}},
+	"NIS2-G.5":  {"EU 2024/2690 Art. 11", "Cyberhygiene & Schulungen", []string{"all"}},
+	"NIS2-G.6":  {"EU 2024/2690 Art. 11", "Cyberhygiene & Schulungen", []string{"all"}},
+	"NIS2-G.7":  {"EU 2024/2690 Art. 11", "Cyberhygiene & Schulungen", []string{"all"}},
+	"NIS2-G.8":  {"EU 2024/2690 Art. 11", "Cyberhygiene & Schulungen", []string{"all"}},
+	"NIS2-G.9":  {"EU 2024/2690 Art. 11", "Cyberhygiene & Schulungen", []string{"all"}},
+	"NIS2-H.1":  {"EU 2024/2690 Art. 10", "Kryptographie", []string{"all"}},
+	"NIS2-H.2":  {"EU 2024/2690 Art. 10", "Kryptographie", []string{"all"}},
+	"NIS2-H.3":  {"EU 2024/2690 Art. 10", "Kryptographie", []string{"all"}},
+	"NIS2-H.4":  {"EU 2024/2690 Art. 10", "Kryptographie", []string{"all"}},
+	"NIS2-H.5":  {"EU 2024/2690 Art. 10", "Kryptographie", []string{"all"}},
+	"NIS2-H.6":  {"EU 2024/2690 Art. 10", "Kryptographie", []string{"all"}},
+	"NIS2-I.1":  {"EU 2024/2690 Art. 12", "HR-Sicherheit & Zugriffskontrolle", []string{"all"}},
+	"NIS2-I.2":  {"EU 2024/2690 Art. 12", "HR-Sicherheit & Zugriffskontrolle", []string{"all"}},
+	"NIS2-I.3":  {"EU 2024/2690 Art. 12", "HR-Sicherheit & Zugriffskontrolle", []string{"all"}},
+	"NIS2-I.4":  {"EU 2024/2690 Art. 12", "HR-Sicherheit & Zugriffskontrolle", []string{"all"}},
+	"NIS2-I.5":  {"EU 2024/2690 Art. 12", "HR-Sicherheit & Zugriffskontrolle", []string{"all"}},
+	"NIS2-I.6":  {"EU 2024/2690 Art. 12", "HR-Sicherheit & Zugriffskontrolle", []string{"all"}},
+	"NIS2-I.7":  {"EU 2024/2690 Art. 12", "HR-Sicherheit & Zugriffskontrolle", []string{"all"}},
+	"NIS2-I.8":  {"EU 2024/2690 Art. 12", "HR-Sicherheit & Zugriffskontrolle", []string{"all"}},
+	"NIS2-I.9":  {"EU 2024/2690 Art. 12", "HR-Sicherheit & Zugriffskontrolle", []string{"all"}},
+	"NIS2-I.10": {"EU 2024/2690 Art. 12", "HR-Sicherheit & Zugriffskontrolle", []string{"all"}},
+	"NIS2-I.11": {"EU 2024/2690 Art. 12", "HR-Sicherheit & Zugriffskontrolle", []string{"all"}},
+	"NIS2-I.12": {"EU 2024/2690 Art. 12", "HR-Sicherheit & Zugriffskontrolle", []string{"all"}},
+	"NIS2-I.13": {"EU 2024/2690 Art. 12", "HR-Sicherheit & Zugriffskontrolle", []string{"all"}},
+	"NIS2-J.1":  {"EU 2024/2690 Art. 13", "Authentifizierung & sichere Kommunikation", []string{"all"}},
+	"NIS2-J.2":  {"EU 2024/2690 Art. 13", "Authentifizierung & sichere Kommunikation", []string{"all"}},
+	"NIS2-J.3":  {"EU 2024/2690 Art. 13", "Authentifizierung & sichere Kommunikation", []string{"all"}},
+	"NIS2-J.4":  {"EU 2024/2690 Art. 13", "Authentifizierung & sichere Kommunikation", []string{"all"}},
+	"NIS2-J.5":  {"EU 2024/2690 Art. 13", "Authentifizierung & sichere Kommunikation", []string{"all"}},
+	"NIS2-J.6":  {"EU 2024/2690 Art. 13", "Authentifizierung & sichere Kommunikation", []string{"all"}},
+	"NIS2-J.7":  {"EU 2024/2690 Art. 13", "Authentifizierung & sichere Kommunikation", []string{"all"}},
+	"NIS2-J.8":  {"EU 2024/2690 Art. 13", "Authentifizierung & sichere Kommunikation", []string{"all"}},
+}
+
+// filterControlsByScope returns controls that match the given scope.
+// Controls with applicability_scope containing "all" always pass.
+// If scope is empty, all controls are returned unfiltered.
+func filterControlsByScope(controls []Control, scope string) []Control {
+	if scope == "" {
+		return controls
+	}
+	out := make([]Control, 0, len(controls))
+	for _, c := range controls {
+		for _, s := range c.ApplicabilityScope {
+			if s == "all" || s == scope {
+				out = append(out, c)
+				break
+			}
+		}
+	}
+	return out
+}
+
 func nis2Controls(frameworkID, orgID string) []Control {
 	c := func(id, title, desc, domain, evType string, w int) Control {
 		return Control{FrameworkID: frameworkID, OrgID: orgID, ControlID: id, Title: title, Description: desc, Domain: domain, EvidenceType: evType, Weight: w}
 	}
-	return []Control{
+	cs := []Control{
 		// Art. 21(2)(a) — Risikomanagement
 		c("NIS2-A.1", "Informationssicherheitsrichtlinie",
 			"Erstelle und genehmige eine schriftliche Informationssicherheitsrichtlinie. Sie muss Schutzziele, Geltungsbereich, Verantwortlichkeiten und Überprüfungsintervall enthalten. Nachweis: unterschriebenes Richtliniendokument mit Versionsnummer und Genehmigungsdatum.",
@@ -445,6 +564,14 @@ func nis2Controls(frameworkID, orgID string) []Control {
 			"Halte Notfallkommunikationsmittel bereit, die unabhängig von der normalen IT-Infrastruktur funktionieren (Satelliten-Telefon, Out-of-Band-Kommunikation). Nachweis: Inventarliste, Testprotokoll.",
 			"Authentifizierung & Kommunikation", "manual", 1),
 	}
+	for i := range cs {
+		if meta, ok := nis2ControlMeta[cs[i].ControlID]; ok {
+			cs[i].RegulationSource = meta.source
+			cs[i].ThematicArea = meta.area
+			cs[i].ApplicabilityScope = meta.scopes
+		}
+	}
+	return cs
 }
 
 func iso27001Controls(frameworkID, orgID string) []Control {
@@ -452,135 +579,106 @@ func iso27001Controls(frameworkID, orgID string) []Control {
 		return Control{FrameworkID: frameworkID, OrgID: orgID, ControlID: id, Title: title, Description: desc, Domain: domain, EvidenceType: evType, Weight: w}
 	}
 	return []Control{
-		// A.5 — Informationssicherheitsrichtlinien
-		c("A.5.1", "Richtlinien zur Informationssicherheit", "Definiere den Rahmen für alle IS-Richtlinien der Organisation.", "Richtlinien", "manual", 2),
-		c("A.5.1.1", "Richtlinien für Informationssicherheit", "Erstelle ein vollständiges Set genehmigter IS-Richtlinien. Nachweis: aktuelle, unterschriebene Richtliniendokumente.", "Richtlinien", "manual", 2),
-		c("A.5.1.2", "Überprüfung der Richtlinien für Informationssicherheit", "Überprüfe alle Richtlinien mindestens jährlich. Nachweis: Revisionshistorie mit Datum und Genehmigung.", "Richtlinien", "manual", 1),
+		// A.5 — Organisational controls (37)
+		c("A.5.1", "Richtlinien zur Informationssicherheit", "Erstelle und kommuniziere ein Set genehmigter IS-Richtlinien. Nachweis: unterschriebene, versionierte Richtliniendokumente.", "Richtlinien", "manual", 2),
+		c("A.5.2", "Rollen und Verantwortlichkeiten für Informationssicherheit", "Weise IS-Rollen (ISB, CISO, Datenschutzbeauftragter) explizit zu. Nachweis: Stellenbeschreibungen, Beauftragungsschreiben.", "Organisation", "manual", 2),
+		c("A.5.3", "Aufgabentrennung", "Trenne unvereinbare Aufgaben (Entwicklung/Freigabe, Buchung/Genehmigung). Nachweis: Rollenmatrix mit Trennungsnachweis.", "Organisation", "manual", 2),
+		c("A.5.4", "Verantwortlichkeiten der Leitung", "Stelle sicher, dass die Leitung IS-Pflichten kommuniziert und einfordert. Nachweis: Management-Direktive, Protokolle.", "Organisation", "manual", 2),
+		c("A.5.5", "Kontakt mit Behörden", "Pflege aktuelle Kontakte zu relevanten Behörden (BSI, Datenschutzbehörden, CERT). Nachweis: Kontaktliste.", "Organisation", "manual", 1),
+		c("A.5.6", "Kontakt mit Interessengruppen", "Pflege Kontakte zu Fachverbänden, ISACs und Interessengruppen. Nachweis: Mitgliedschaftsnachweise, Kommunikationslog.", "Organisation", "manual", 1),
+		c("A.5.7", "Threat Intelligence", "Sammle und analysiere Bedrohungsinformationen (CERT-Bund, CVE-Feeds) und integriere sie in den Risikoprozess. Nachweis: Threat-Intel-Quellen, Prozessdokumentation.", "Richtlinien", "manual", 2),
+		c("A.5.8", "Informationssicherheit im Projektmanagement", "Integriere IS-Anforderungen in alle Projektprozesse. Nachweis: Projektcheckliste mit IS-Punkten.", "Organisation", "manual", 1),
+		c("A.5.9", "Inventar von Informationen und zugehörigen Assets", "Führe ein vollständiges, aktuelles Asset-Register. Nachweis: Asset-Inventar mit Aktualisierungsdatum.", "Asset Management", "automated", 2),
+		c("A.5.10", "Zulässige Nutzung von Informationen und zugehörigen Assets", "Dokumentiere akzeptable Nutzungsregeln für alle Asset-Klassen. Nachweis: Acceptable-Use-Policy.", "Asset Management", "manual", 1),
+		c("A.5.11", "Rückgabe von Assets", "Stelle Rückgabe aller Assets bei Beschäftigungsende sicher. Nachweis: Offboarding-Checkliste.", "Asset Management", "manual", 1),
+		c("A.5.12", "Klassifizierung von Informationen", "Klassifiziere alle Informationsassets nach Schutzbedarf. Nachweis: Klassifizierungsschema, Asset-Register.", "Asset Management", "manual", 2),
+		c("A.5.13", "Kennzeichnung von Informationen", "Kennzeichne Informationen entsprechend ihrer Klassifizierung. Nachweis: Kennzeichnungsrichtlinie, Stichprobenprüfung.", "Asset Management", "manual", 1),
+		c("A.5.14", "Informationsübertragung", "Definiere Regeln für die sichere Übertragung von Informationen (Verschlüsselung, NDA, sichere Kanäle). Nachweis: Übertragungsrichtlinie.", "Kommunikation", "manual", 2),
+		c("A.5.15", "Zugangskontrolle", "Definiere Zugangskontrollrichtlinie basierend auf Geschäftsbedarf und Least-Privilege-Prinzip. Nachweis: Zugangskontrollrichtlinie.", "Zugangskontrolle", "manual", 3),
+		c("A.5.16", "Identitätsmanagement", "Manage Benutzerkonten über den gesamten Lebenszyklus (Provisionierung, Review, Deprovisioning). Nachweis: IAM-Prozessdokumentation.", "Zugangskontrolle", "automated", 3),
+		c("A.5.17", "Authentifizierungsinformationen", "Verwalte Passwörter und Authentifizierungsinformationen sicher (Passwortrichtlinie, Passwortmanager). Nachweis: Richtlinie, technische Konfiguration.", "Zugangskontrolle", "automated", 3),
+		c("A.5.18", "Zugriffsrechte", "Genehmige und überprüfe Zugriffsrechte halbjährlich auf Aktualität. Nachweis: Review-Protokolle.", "Zugangskontrolle", "manual", 2),
+		c("A.5.19", "Informationssicherheit in Lieferantenbeziehungen", "Definiere Mindest-Sicherheitsanforderungen für alle Lieferanten. Nachweis: Lieferanten-Sicherheitsrichtlinie.", "Lieferantenmanagement", "manual", 2),
+		c("A.5.20", "IS in Lieferantenvereinbarungen", "Verankere IS-Anforderungen (DSGVO-AVV, Auditrechte) verbindlich in allen Lieferantenverträgen. Nachweis: Vertragsklauseln.", "Lieferantenmanagement", "manual", 3),
+		c("A.5.21", "IS in der IKT-Lieferkette", "Bewerte Sicherheitsrisiken in der IKT-Lieferkette (Software-Komponenten, Cloud-Provider). Nachweis: Lieferketten-Risikobewertung, SBOM.", "Lieferantenmanagement", "manual", 2),
+		c("A.5.22", "Überwachung von Lieferantendienstleistungen", "Überprüfe regelmäßig die IS-Leistung kritischer Lieferanten. Nachweis: Bewertungsberichte, Auditprotokolle.", "Lieferantenmanagement", "manual", 2),
+		c("A.5.23", "IS für Cloud-Dienste", "Definiere Sicherheitsanforderungen für alle genutzten Cloud-Dienste. Nachweis: Cloud-Sicherheitsrichtlinie, Anbieter-Zertifikate.", "Lieferantenmanagement", "third_party", 3),
+		c("A.5.24", "Planung und Vorbereitung des Vorfallmanagements", "Etabliere einen strukturierten Prozess zur Vorfallbehandlung. Nachweis: IR-Plan, Teambesetzungsplan.", "Vorfallmanagement", "manual", 3),
+		c("A.5.25", "Bewertung und Entscheidung über IS-Ereignisse", "Stelle sicher, dass Ereignisse zeitnah klassifiziert werden. Nachweis: Klassifizierungsmatrix.", "Vorfallmanagement", "manual", 2),
+		c("A.5.26", "Reaktion auf IS-Vorfälle", "Definiere konkrete Reaktionsschritte je Vorfallklasse. Nachweis: IR-Playbooks.", "Vorfallmanagement", "manual", 3),
+		c("A.5.27", "Erkenntnisse aus IS-Vorfällen", "Führe Post-Incident-Reviews durch und leite Verbesserungen ab. Nachweis: Review-Berichte.", "Vorfallmanagement", "manual", 2),
+		c("A.5.28", "Beweissicherung", "Definiere Verfahren zur gerichtsfesten Sicherung digitaler Beweise. Nachweis: Forensik-Checkliste.", "Vorfallmanagement", "manual", 1),
+		c("A.5.29", "IS bei Störungen", "Stelle IS-Kontinuität im Krisenfall sicher. Nachweis: BCM-Plan mit IS-Komponente.", "Business Continuity", "manual", 2),
+		c("A.5.30", "IKT-Bereitschaft für Business Continuity", "Stelle sicher, dass IKT-Systeme für Betriebskontinuität ausgelegt sind. Nachweis: BCM-Plan, RTO/RPO-Tabelle.", "Business Continuity", "automated", 3),
+		c("A.5.31", "Gesetzliche, regulatorische und vertragliche Anforderungen", "Pflege ein Compliance-Register aller relevanten Gesetze und Verträge. Nachweis: Compliance-Register.", "Compliance", "manual", 2),
+		c("A.5.32", "Rechte des geistigen Eigentums", "Stelle sicher, dass nur lizenzkonform genutzte Software eingesetzt wird. Nachweis: Software-Inventar, Lizenzübersicht.", "Compliance", "manual", 1),
+		c("A.5.33", "Schutz von Aufzeichnungen", "Stelle Aufbewahrung und Schutz von Aufzeichnungen gemäß gesetzlicher Fristen sicher. Nachweis: Aufbewahrungsrichtlinie.", "Compliance", "manual", 1),
+		c("A.5.34", "Datenschutz und Schutz von PII", "Stelle DSGVO-Konformität sicher. Nachweis: VVT, DSFA.", "Compliance", "manual", 3),
+		c("A.5.35", "Unabhängige Überprüfung der Informationssicherheit", "Führe mindestens jährlich unabhängige IS-Audits durch. Nachweis: Auditplan, Auditberichte.", "Compliance", "manual", 2),
+		c("A.5.36", "Einhaltung von IS-Richtlinien und -Standards", "Überprüfe technische Systeme auf Konformität mit IS-Richtlinien. Nachweis: Compliance-Scan-Berichte.", "Compliance", "manual", 2),
+		c("A.5.37", "Dokumentierte Betriebsverfahren", "Erstelle schriftliche Betriebshandbücher für alle kritischen Systeme. Nachweis: Betriebsdokumentation.", "Betrieb", "manual", 2),
 
-		// A.6 — Organisation der Informationssicherheit
-		c("A.6.1", "Interne Organisation", "Stelle sicher, dass IS-Verantwortlichkeiten klar geregelt sind.", "Organisation", "manual", 2),
-		c("A.6.1.1", "Rollen und Verantwortlichkeiten für Informationssicherheit", "Weise IS-Rollen (ISB, Datenschutzbeauftragter, etc.) explizit zu. Nachweis: Stellenbeschreibungen, Beauftragungsschreiben.", "Organisation", "manual", 2),
-		c("A.6.1.2", "Aufgabentrennung", "Trenne unvereinbare Aufgaben (z.B. Entwicklung/Freigabe). Nachweis: Rollenmatrix mit Trennungsnachweis.", "Organisation", "manual", 1),
-		c("A.6.1.3", "Kontakt mit Behörden", "Pflege aktuelle Kontaktinformationen zu relevanten Behörden (BSI, Datenschutzbehörden). Nachweis: Kontaktliste.", "Organisation", "manual", 1),
-		c("A.6.1.5", "Informationssicherheit im Projektmanagement", "Integriere IS-Anforderungen in alle Projektprozesse. Nachweis: Projektcheckliste mit IS-Punkten.", "Organisation", "manual", 1),
-		c("A.6.2", "Mobilgeräte und Telearbeit", "Manage Risiken durch mobile Geräte und Heimarbeit.", "Organisation", "manual", 2),
-		c("A.6.2.1", "Richtlinie für mobile Geräte", "Definiere zulässige Nutzung und Sicherheitsanforderungen für mobile Geräte. Nachweis: MDM-Konfiguration, Richtliniendokument.", "Organisation", "manual", 2),
-		c("A.6.2.2", "Telearbeit", "Stelle sichere Arbeitsmöglichkeiten für Heimarbeitsplätze sicher. Nachweis: Telearbeitsrichtlinie, VPN-Konfiguration.", "Organisation", "manual", 1),
+		// A.6 — People controls (8)
+		c("A.6.1", "Überprüfung von Bewerbern", "Führe Hintergrundprüfungen vor der Einstellung durch. Nachweis: Screening-Richtlinie, Nachweisdokumentation.", "Personalsicherheit", "manual", 2),
+		c("A.6.2", "Beschäftigungsbedingungen", "Verpflichte Mitarbeitende vertraglich auf IS- und Datenschutzpflichten. Nachweis: Arbeitsvertrag mit IS-Klauseln.", "Personalsicherheit", "manual", 2),
+		c("A.6.3", "IS-Bewusstsein, -Ausbildung und -Schulung", "Schule alle Mitarbeitenden mindestens jährlich zu IS-Grundlagen. Nachweis: Schulungsnachweise, Teilnehmerlisten.", "Personalsicherheit", "manual", 3),
+		c("A.6.4", "Disziplinarverfahren", "Definiere und kommuniziere Konsequenzen bei Verstößen gegen IS-Richtlinien. Nachweis: HR-Richtlinie.", "Personalsicherheit", "manual", 1),
+		c("A.6.5", "Pflichten bei Beendigung des Arbeitsverhältnisses", "Stelle bei Austritt sicher, dass alle Zugänge gesperrt und Assets zurückgegeben werden. Nachweis: Offboarding-Checkliste.", "Personalsicherheit", "manual", 2),
+		c("A.6.6", "Vertraulichkeitsvereinbarungen", "Stelle sicher, dass Personen mit Zugang zu sensiblen Informationen aktuelle NDAs unterzeichnet haben. Nachweis: NDA-Muster, unterzeichnete Vereinbarungen.", "Personalsicherheit", "manual", 2),
+		c("A.6.7", "Fernarbeit", "Stelle sichere Arbeitsmöglichkeiten für Heimarbeitsplätze sicher. Nachweis: Telearbeitsrichtlinie, VPN-Konfiguration.", "Personalsicherheit", "manual", 2),
+		c("A.6.8", "Meldung von IS-Ereignissen", "Etabliere einfache Meldekanäle für alle Mitarbeitenden. Nachweis: Meldeprozess, Kontaktinfos.", "Vorfallmanagement", "manual", 2),
 
-		// A.8 — Asset Management
-		c("A.8.1", "Verantwortung für Assets", "Inventarisiere und klassifiziere alle Informationsassets.", "Asset Management", "automated", 2),
-		c("A.8.1.1", "Inventarisierung von Assets", "Führe ein vollständiges, aktuelles Asset-Register. Nachweis: Asset-Inventar mit letztem Aktualisierungsdatum.", "Asset Management", "automated", 2),
-		c("A.8.1.2", "Eigentümerschaft von Assets", "Weise jedem Asset einen verantwortlichen Eigentümer zu. Nachweis: Asset-Register mit Eigentümerfeld.", "Asset Management", "manual", 1),
-		c("A.8.1.3", "Zulässige Nutzung von Assets", "Dokumentiere akzeptable Nutzungsregeln für alle Asset-Klassen. Nachweis: Acceptable-Use-Policy.", "Asset Management", "manual", 1),
-		c("A.8.1.4", "Rückgabe von Assets", "Stelle Rückgabe aller Assets bei Beschäftigungsende sicher. Nachweis: Offboarding-Checkliste.", "Asset Management", "manual", 1),
-		c("A.8.2", "Klassifizierung von Informationen", "Klassifiziere alle Informationsassets nach Vertraulichkeit, Integrität und Verfügbarkeit. Nachweis: Klassifizierungsschema, Asset-Register mit Klassifizierungsfeld.", "Asset Management", "manual", 2),
-		c("A.8.3", "Handhabung von Datenträgern", "Manage physische und digitale Datenträger sicher über ihren gesamten Lebenszyklus (Einsatz, Transport, Entsorgung). Nachweis: Datenträger-Policy, Vernichtungsnachweise.", "Asset Management", "manual", 2),
+		// A.7 — Physical controls (14)
+		c("A.7.1", "Physische Sicherheitsbereiche", "Definiere Sicherheitsbereiche (Serverräume, Büros, RZ) und sichere sie mit physischen Barrieren. Nachweis: Raumkonzept, Zutrittskontroll-Dokumentation.", "Physische Sicherheit", "manual", 3),
+		c("A.7.2", "Physische Zugangskontrolle", "Implementiere elektronische Zutrittskontrolle mit Protokollierung und Besuchermanagement. Nachweis: Zutrittssystem, Zugangsprotokolle.", "Physische Sicherheit", "manual", 3),
+		c("A.7.3", "Sicherung von Büros, Räumen und Einrichtungen", "Sichere Büros physisch: abschließbare Schränke, Clean Desk. Nachweis: Begehungsprotokoll.", "Physische Sicherheit", "manual", 2),
+		c("A.7.4", "Physische Sicherheitsüberwachung", "Überwache Sicherheitsbereiche durch CCTV oder Einbruchmeldung. Nachweis: CCTV-Konzept, Alarmierungskonfiguration.", "Physische Sicherheit", "automated", 2),
+		c("A.7.5", "Schutz vor physischen und Umweltbedrohungen", "Schütze Systeme vor Feuer, Wasser, Strom- und Klimaausfall. Nachweis: RZ-Konzept, USV-Konfiguration, Brandschutzplan.", "Physische Sicherheit", "manual", 2),
+		c("A.7.6", "Arbeiten in sicheren Bereichen", "Definiere Verhaltensregeln in sicherheitskritischen Bereichen. Nachweis: Richtlinie, Einweisung.", "Physische Sicherheit", "manual", 1),
+		c("A.7.7", "Clean Desk und Clear Screen", "Setze Clean-Desk-Richtlinie und automatische Bildschirmsperren durch. Nachweis: Richtlinie, Stichprobenkontrolle.", "Physische Sicherheit", "manual", 1),
+		c("A.7.8", "Aufstellung und Schutz von Betriebsmitteln", "Platziere kritische Hardware in kontrollierten Umgebungen (Klimatisierung, USV). Nachweis: RZ-Konzept.", "Physische Sicherheit", "manual", 2),
+		c("A.7.9", "Sicherheit von Assets außerhalb des Unternehmens", "Definiere Regeln für den sicheren Umgang mit Assets außerhalb der Unternehmensräume. Nachweis: Mobile-Asset-Richtlinie.", "Physische Sicherheit", "manual", 2),
+		c("A.7.10", "Speichermedien", "Manage physische Datenträger sicher über Lebenszyklus und Entsorgung. Nachweis: Datenträger-Policy, Vernichtungsnachweise.", "Physische Sicherheit", "manual", 2),
+		c("A.7.11", "Versorgungseinrichtungen", "Stelle Redundanz bei Strom, Klima und anderen kritischen Versorgungseinrichtungen sicher. Nachweis: RZ-Konzept, USV-Testprotokoll.", "Physische Sicherheit", "automated", 2),
+		c("A.7.12", "Verkabelungssicherheit", "Sichere Netzwerkverkabelung gegen unbefugten Zugriff und Beeinträchtigungen. Nachweis: Kabelplan, Sichtschutzmaßnahmen.", "Physische Sicherheit", "manual", 1),
+		c("A.7.13", "Wartung von Betriebsmitteln", "Führe regelmäßige, dokumentierte Wartung aller kritischen IT-Betriebsmittel durch. Nachweis: Wartungsplan, Protokolle.", "Physische Sicherheit", "manual", 1),
+		c("A.7.14", "Sichere Entsorgung von Betriebsmitteln", "Lösche Datenträger sicher vor Entsorgung (NIST 800-88, Degaussing). Nachweis: Vernichtungsnachweise.", "Physische Sicherheit", "manual", 3),
 
-		// A.9 — Zugangskontrolle
-		c("A.9.1", "Geschäftsanforderungen an die Zugangskontrolle", "Definiere Zugangskontrollrichtlinie basierend auf Geschäftsbedarf.", "Zugangskontrolle", "automated", 3),
-		c("A.9.1.1", "Zugangssteuerungsrichtlinie", "Erstelle eine schriftliche Zugangskontrollrichtlinie (Need-to-know, Least Privilege). Nachweis: genehmigtes Dokument.", "Zugangskontrolle", "manual", 3),
-		c("A.9.1.2", "Zugang zu Netzwerken und Netzwerkdiensten", "Beschränke Netzwerkzugänge auf autorisierte Nutzer und Geräte. Nachweis: NAC-Konfiguration, Firewall-Regeln.", "Zugangskontrolle", "automated", 2),
-		c("A.9.2", "Benutzerzugangsverwaltung", "Manage Benutzerkonten über den gesamten Lebenszyklus.", "Zugangskontrolle", "automated", 3),
-		c("A.9.2.1", "Registrierung und Deregistrierung von Benutzern", "Formalisiere Onboarding/Offboarding-Prozesse für Konten. Nachweis: Provisionierungs-Workflow.", "Zugangskontrolle", "automated", 2),
-		c("A.9.2.2", "Benutzerzugangsprovisionierung", "Stelle sicher, dass Zugriffsrechte nur nach Genehmigung erteilt werden. Nachweis: Genehmigungsprotokoll.", "Zugangskontrolle", "automated", 2),
-		c("A.9.2.3", "Verwaltung privilegierter Zugriffsrechte", "Verwalte Admin-Rechte restriktiv mit PAM-Lösung. Nachweis: PAM-Konfiguration, Zugriffsprotokoll.", "Zugangskontrolle", "automated", 3),
-		c("A.9.2.5", "Überprüfung von Benutzerzugriffsrechten", "Überprüfe Zugriffsrechte halbjährlich auf Aktualität. Nachweis: Review-Protokolle.", "Zugangskontrolle", "manual", 2),
-		c("A.9.4", "Zugangs- und Passwortverwaltung", "Sichere Systemzugänge durch technische Maßnahmen.", "Zugangskontrolle", "automated", 3),
-		c("A.9.4.1", "Zugang zu Informationen einschränken", "Setze Least-Privilege auf Applikationsebene durch. Nachweis: Berechtigungskonzept.", "Zugangskontrolle", "automated", 2),
-		c("A.9.4.2", "Sichere Anmeldeverfahren", "Erzwinge MFA und sichere Login-Mechanismen. Nachweis: MFA-Konfiguration.", "Zugangskontrolle", "automated", 3),
-		c("A.9.4.3", "Passwortverwaltungssystem", "Setze einen Passwort-Manager oder Single-Sign-On ein. Nachweis: Tool-Konfiguration, Richtlinie.", "Zugangskontrolle", "automated", 3),
-
-		// A.10 — Kryptographie
-		c("A.10.1", "Kryptographische Maßnahmen", "Stelle den richtigen Einsatz von Kryptographie sicher.", "Kryptographie", "manual", 2),
-		c("A.10.1.1", "Richtlinie für den Einsatz kryptographischer Maßnahmen", "Definiere zulässige Algorithmen, Schlüssellängen und Einsatzgebiete. Nachweis: Kryptographierichtlinie.", "Kryptographie", "manual", 2),
-		c("A.10.1.2", "Schlüsselverwaltung", "Dokumentiere Schlüssellebenszyklus (Generierung, Verteilung, Widerruf). Nachweis: Key-Management-Prozess, KMS-Konfiguration.", "Kryptographie", "manual", 2),
-
-		// A.12 — Betrieb
-		c("A.12.1", "Betriebsverfahren und Verantwortlichkeiten", "Dokumentiere und manage IT-Betriebsprozesse.", "Betrieb", "manual", 2),
-		c("A.12.1.1", "Dokumentierte Betriebsverfahren", "Erstelle schriftliche Betriebshandbücher für alle kritischen Systeme. Nachweis: Betriebsdokumentation.", "Betrieb", "manual", 2),
-		c("A.12.1.2", "Änderungsmanagement", "Stelle sicher, dass alle IT-Änderungen geplant, genehmigt und dokumentiert werden. Nachweis: Change-Tickets.", "Betrieb", "manual", 2),
-		c("A.12.2", "Schutz vor Schadsoftware", "Schütze Systeme vor Malware durch präventive und erkennende Maßnahmen.", "Betrieb", "automated", 3),
-		c("A.12.3", "Datensicherung", "Stelle Datenverfügbarkeit durch regelmäßige Backups sicher.", "Betrieb", "automated", 3),
-		c("A.12.3.1", "Sicherung von Informationen", "Implementiere automatisierte Backups nach 3-2-1-Prinzip. Nachweis: Backup-Job-Konfiguration, Testberichte.", "Betrieb", "automated", 3),
-		c("A.12.4", "Protokollierung und Überwachung", "Protokolliere sicherheitsrelevante Ereignisse und überwache Systeme auf Anomalien. Nachweis: SIEM-Konfiguration, Log-Aufbewahrungsrichtlinie, Alerting-Regelwerk.", "Betrieb", "automated", 3),
-		c("A.12.6", "Management technischer Schwachstellen", "Reduziere Angriffsfläche durch zeitnahes Schwachstellenmanagement.", "Betrieb", "automated", 3),
-		c("A.12.6.1", "Management technischer Schwachstellen", "Scanne regelmäßig auf Schwachstellen und behebe kritische innerhalb definierter Fristen. Nachweis: Scanner-Berichte, Patch-Protokoll.", "Betrieb", "automated", 3),
-
-		// A.14 — Systembeschaffung, -entwicklung und -wartung
-		c("A.14.1", "Sicherheitsanforderungen an Informationssysteme", "Definiere IS-Anforderungen bei Beschaffung und Entwicklung.", "Systementwicklung", "manual", 2),
-		c("A.14.1.1", "Analyse und Spezifikation von Anforderungen an die Informationssicherheit", "Dokumentiere IS-Anforderungen in Pflichtenheften. Nachweis: Anforderungsdokument.", "Systementwicklung", "manual", 2),
-		c("A.14.1.2", "Absicherung von Anwendungsdiensten in öffentlichen Netzen", "Sichere Web-Dienste gegen OWASP Top 10. Nachweis: Pentest-Bericht, WAF-Konfiguration.", "Systementwicklung", "manual", 2),
-		c("A.14.2", "Sicherheit in Entwicklungs- und Unterstützungsprozessen", "Integriere Sicherheit in den gesamten SDLC.", "Systementwicklung", "manual", 2),
-		c("A.14.2.1", "Richtlinie zur sicheren Entwicklung", "Erstelle und kommuniziere Secure-Coding-Richtlinien. Nachweis: Richtliniendokument, Schulungsnachweise.", "Systementwicklung", "manual", 2),
-		c("A.14.2.8", "Testen der Systemsicherheit", "Führe Sicherheitstests (SAST, DAST, Pentest) vor Releases durch. Nachweis: Testberichte.", "Systementwicklung", "manual", 2),
-
-		// A.16 — Handhabung von Informationssicherheitsvorfällen
-		c("A.16.1", "Management von Informationssicherheitsvorfällen", "Etabliere einen strukturierten Prozess zur Vorfallbehandlung.", "Vorfallmanagement", "manual", 3),
-		c("A.16.1.1", "Verantwortlichkeiten und Verfahren", "Definiere klare Rollen und Abläufe für Vorfallreaktionen. Nachweis: IR-Plan, Teambesetzungsplan.", "Vorfallmanagement", "manual", 2),
-		c("A.16.1.2", "Meldung von Informationssicherheitsereignissen", "Etabliere einfache Meldekanäle für alle Mitarbeitenden. Nachweis: Meldeprozess, Kontaktinfos.", "Vorfallmanagement", "manual", 3),
-		c("A.16.1.4", "Bewertung von und Entscheidung über Informationssicherheitsereignisse", "Stelle sicher, dass Ereignisse zeitnah klassifiziert werden. Nachweis: Klassifizierungsmatrix.", "Vorfallmanagement", "manual", 2),
-		c("A.16.1.5", "Reaktion auf Informationssicherheitsvorfälle", "Definiere konkrete Reaktionsschritte je Vorfallklasse. Nachweis: IR-Playbooks.", "Vorfallmanagement", "manual", 3),
-		c("A.16.1.6", "Erkenntnisse aus Informationssicherheitsvorfällen", "Führe Post-Incident-Reviews durch und leite Verbesserungen ab. Nachweis: Review-Berichte.", "Vorfallmanagement", "manual", 2),
-
-		// A.17 — Business Continuity
-		c("A.17.1", "Kontinuität der Informationssicherheit", "Stelle IS-Kontinuität im Krisenfall sicher.", "Business Continuity", "manual", 2),
-		c("A.17.1.1", "Planung der Kontinuität der Informationssicherheit", "Erstelle BCM-Plan mit IS-Komponente. Nachweis: BCM-Plan-Dokument.", "Business Continuity", "manual", 2),
-		c("A.17.1.2", "Implementierung der Kontinuität der Informationssicherheit", "Setze BCM-Maßnahmen technisch und organisatorisch um. Nachweis: Implementierungsnachweis.", "Business Continuity", "manual", 2),
-		c("A.17.1.3", "Überprüfung, Überarbeitung und Bewertung der Kontinuität der Informationssicherheit", "Teste und überprüfe BCM-Pläne mindestens jährlich. Nachweis: Testberichte.", "Business Continuity", "manual", 1),
-
-		// A.18 — Compliance
-		c("A.18.1", "Einhaltung gesetzlicher und vertraglicher Anforderungen", "Identifiziere und erfülle alle anwendbaren Rechtspflichten.", "Compliance", "third_party", 2),
-		c("A.18.1.1", "Identifizierung anwendbarer Gesetze und vertraglicher Anforderungen", "Pflege ein Compliance-Register aller relevanten Gesetze und Verträge. Nachweis: Compliance-Register.", "Compliance", "manual", 2),
-		c("A.18.1.3", "Schutz von Aufzeichnungen", "Stelle Aufbewahrung und Schutz von Aufzeichnungen gem. gesetzlicher Fristen sicher. Nachweis: Aufbewahrungsrichtlinie.", "Compliance", "manual", 1),
-		c("A.18.1.4", "Datenschutz und Schutz von personenbezogenen Daten", "Stelle DSGVO-Konformität sicher. Nachweis: Verzeichnis der Verarbeitungstätigkeiten, DSFA.", "Compliance", "manual", 3),
-		c("A.18.2", "Überprüfung der Informationssicherheit", "Prüfe regelmäßig die Einhaltung der IS-Vorgaben.", "Compliance", "manual", 2),
-		c("A.18.2.2", "Einhaltung von Sicherheitsrichtlinien und -standards", "Überprüfe technische Systeme auf Konformität mit IS-Richtlinien. Nachweis: Compliance-Scan-Berichte.", "Compliance", "manual", 2),
-
-		// A.7 — Personalsicherheit (ISO 27001:2013; in 2022: Kap. 6)
-		c("A.7.1.1", "Überprüfung von Bewerbern", "Führe Hintergrundprüfungen (Zeugnisse, Referenzen, ggf. polizeiliches Führungszeugnis) vor der Einstellung durch. Nachweis: Screening-Richtlinie, Nachweisdokumentation.", "Personalsicherheit", "manual", 2),
-		c("A.7.1.2", "Beschäftigungsbedingungen", "Verpflichte Mitarbeitende vertraglich auf Informationssicherheits- und Datenschutzpflichten. Nachweis: Muster-Arbeitsvertrag mit IS-Klauseln, unterzeichnete Vertraulichkeitserklärungen.", "Personalsicherheit", "manual", 2),
-		c("A.7.2", "Während der Beschäftigung", "Stelle sicher, dass Mitarbeitende IS-Pflichten kennen und erfüllen. Nachweis: Schulungsnachweise, Disziplinarrichtlinie.", "Personalsicherheit", "manual", 2),
-		c("A.7.2.1", "Verantwortlichkeiten der Leitung", "Stelle sicher, dass die Leitung IS-Pflichten kommuniziert, Schulungen fördert und Einhaltung einfordert. Nachweis: Management-Richtlinie, Kommunikationsnachweise.", "Personalsicherheit", "manual", 2),
-		c("A.7.2.2", "IS-Bewusstsein, -Ausbildung und -Schulung", "Schule alle Mitarbeitenden mindestens jährlich zu IS-Grundlagen, aktuellen Bedrohungen und internen Richtlinien. Nachweis: Schulungsnachweise, Teilnehmerlisten, Schulungsplan.", "Personalsicherheit", "manual", 3),
-		c("A.7.2.3", "Disziplinarverfahren", "Definiere und kommuniziere Konsequenzen bei Verstößen gegen IS-Richtlinien. Nachweis: HR-Richtlinie, Kommunikationsnachweis.", "Personalsicherheit", "manual", 1),
-		c("A.7.3.1", "Pflichten bei Beendigung des Arbeitsverhältnisses", "Stelle bei Austritt sicher, dass alle Zugänge gesperrt, Assets zurückgegeben und Vertraulichkeitspflichten kommuniziert werden. Nachweis: Offboarding-Checkliste, Nachweise.", "Personalsicherheit", "manual", 2),
-
-		// A.11 — Physische Sicherheit (ISO 27001:2013; in 2022: Kap. 7)
-		c("A.11.1.1", "Physischer Sicherheitsperimeter", "Definiere Sicherheitsbereiche (Serverräume, Büros, RZ) und sichere sie mit physischen Barrieren und Zutrittskontrollen. Nachweis: Raumkonzept, Zutrittskontroll-Dokumentation.", "Physische Sicherheit", "manual", 3),
-		c("A.11.1.2", "Physische Zutrittssteuerung", "Implementiere elektronische Zutrittskontrolle mit individueller Authentifizierung, Protokollierung und Besuchermanagement. Nachweis: Zutrittssystem, Zugangsprotokolle.", "Physische Sicherheit", "manual", 3),
-		c("A.11.1.3", "Sicherung von Büros und Einrichtungen", "Sichere Büros und Nebenräume physisch: abschließbare Schränke, keine sensitiven Informationen offen sichtbar (Clean Desk). Nachweis: Begehungsprotokoll, Hausordnung.", "Physische Sicherheit", "manual", 2),
-		c("A.11.1.5", "Arbeiten in sicheren Bereichen", "Definiere Verhaltensregeln in sicherheitskritischen Bereichen (kein Fotografieren, Besucher begleiten, Bildschirmsperre). Nachweis: Richtlinie, Einweisung.", "Physische Sicherheit", "manual", 1),
-		c("A.11.2.1", "Aufstellung und Schutz von Betriebsmitteln", "Platziere Server und kritische Hardware in kontrollierten Umgebungen (Klimatisierung, unterbrechungsfreie Stromversorgung). Nachweis: RZ-Konzept, USV-Konfiguration.", "Physische Sicherheit", "manual", 2),
-		c("A.11.2.5", "Entfernen von Betriebsmitteln", "Genehmige und protokolliere das Entfernen von Hardware aus Sicherheitsbereichen. Nachweis: Asset-Tracking, Genehmigungsprotokoll.", "Physische Sicherheit", "manual", 1),
-		c("A.11.2.7", "Sichere Entsorgung von Betriebsmitteln", "Lösche Datenträger sicher (NIST 800-88, Degaussing, physische Vernichtung) vor Entsorgung. Nachweis: Vernichtungsnachweise, zertifizierter Dienstleister.", "Physische Sicherheit", "manual", 3),
-
-		// A.13 — Kommunikationssicherheit (ISO 27001:2013; in 2022: Kap. 8)
-		c("A.13.1", "Netzwerksicherheitsmanagement", "Schütze Informationen in Netzwerken und unterstützenden IT-Infrastrukturkomponenten. Nachweis: Netzwerksicherheitsrichtlinie, Netzwerkplan, Firewall-Konfiguration.", "Kommunikationssicherheit", "automated", 3),
-		c("A.13.1.1", "Steuerungsmaßnahmen für Netze", "Betreibe Netzwerke unter Sicherheitsgesichtspunkten: Netzstruktur, Zugangskontrolle, Monitoring. Nachweis: Netzwerkplan, Firewall-Konfiguration.", "Kommunikationssicherheit", "automated", 3),
-		c("A.13.1.2", "Sicherheit von Netzdiensten", "Definiere Sicherheitsanforderungen für alle genutzten Netzdienste (intern wie extern) und verankere sie in SLAs/AVVs. Nachweis: Dienstleistungsverträge, SLA-Anforderungen.", "Kommunikationssicherheit", "manual", 2),
-		c("A.13.1.3", "Trennung in Netzen", "Segmentiere das Netzwerk nach Schutzbedarf (DMZ, Produktions-/Entwicklungsnetz, Gastnetze). Nachweis: Netzwerkplan mit Segmentierungskonzept, Firewall-Regeln.", "Kommunikationssicherheit", "automated", 3),
-		c("A.13.2.1", "Richtlinien für Informationsübertragung", "Definiere Regeln für die sichere Übertragung von Informationen (verschlüsselt per E-Mail, gesicherter Datentransfer). Nachweis: Übertragungsrichtlinie.", "Kommunikationssicherheit", "manual", 2),
-		c("A.13.2.4", "Vertraulichkeitsvereinbarungen", "Stelle sicher, dass Personen mit Zugang zu sensiblen Informationen aktuelle NDAs unterzeichnet haben. Nachweis: NDA-Muster, unterzeichnete Vereinbarungen.", "Kommunikationssicherheit", "manual", 2),
-
-		// A.15 — Lieferantenbeziehungen (ISO 27001:2013; in 2022: Kap. 5)
-		c("A.15.1.1", "IS-Richtlinie für Lieferantenbeziehungen", "Definiere Mindest-Sicherheitsanforderungen für alle Lieferanten und Dienstleister mit Zugang zu IS-relevanten Informationen oder Systemen. Nachweis: Lieferanten-Sicherheitsrichtlinie.", "Lieferantenbeziehungen", "manual", 2),
-		c("A.15.1.2", "Sicherheitsaspekte in Lieferantenvereinbarungen", "Verankere IS-Anforderungen (DSGVO-AVV, Auditrechte, Vorfallmeldepflicht, Datenlöschung) verbindlich in allen Lieferantenverträgen. Nachweis: Vertragsklauseln, AVV-Muster.", "Lieferantenbeziehungen", "manual", 3),
-		c("A.15.1.3", "IKT-Lieferkette", "Bewerte Sicherheitsrisiken in der IKT-Lieferkette (Software-Komponenten, Hardware-Hersteller, Cloud-Provider). Nachweis: Lieferketten-Risikobewertung, SBOM.", "Lieferantenbeziehungen", "manual", 2),
-		c("A.15.2.1", "Überwachung von Lieferantendienstleistungen", "Überprüfe regelmäßig die IS-Leistung kritischer Lieferanten (Fragebögen, Zertifikate, Audits). Nachweis: Bewertungsberichte, Auditprotokolle.", "Lieferantenbeziehungen", "manual", 2),
-		c("A.15.2.2", "Steuerung von Änderungen an Lieferantendienstleistungen", "Bewerte IS-Auswirkungen bei Änderungen von Lieferantendienstleistungen und steuere sie durch Change-Management. Nachweis: Change-Protokolle mit IS-Prüfung.", "Lieferantenbeziehungen", "manual", 1),
-
-		// ISO 27001:2022 — 11 neue Controls (Annex A 2022-Nummerierung)
-		c("A2022-5.7", "Threat Intelligence", "Sammle und analysiere Informationen zu Bedrohungen (CERT-Bund, CVE-Feeds, Threat-Intel-Plattformen) und integriere Erkenntnisse in den Risikoprozess. Nachweis: Threat-Intel-Quellen, Prozessdokumentation. (ISO 27001:2022 Annex A 5.7)", "Richtlinien", "manual", 2),
-		c("A2022-5.23", "IS für Cloud-Dienste", "Definiere Sicherheitsanforderungen für alle genutzten Cloud-Dienste (IaaS, PaaS, SaaS) gemäß Schutzbedarf. Verifiziere Anbieter-Konformität (ISO 27001, SOC 2, BSI C5). Nachweis: Cloud-Sicherheitsrichtlinie, Anbieter-Zertifikate. (ISO 27001:2022 Annex A 5.23)", "Richtlinien", "third_party", 3),
-		c("A2022-5.30", "IKT-Bereitschaft für Business Continuity", "Stelle sicher, dass IKT-Systeme für Betriebskontinuität ausgelegt sind (Redundanz, Failover, RTO/RPO). Teste mindestens jährlich. Nachweis: BCM-Plan mit IKT-Komponente, Testergebnisse. (ISO 27001:2022 Annex A 5.30)", "Business Continuity", "automated", 3),
-		c("A2022-7.4", "Physische Sicherheitsüberwachung", "Überwache Sicherheitsbereiche durch Videoüberwachung, Einbruchsmeldeanlage oder Sicherheitspersonal. Nachweis: CCTV-Konzept, Alarmierungskonfiguration. (ISO 27001:2022 Annex A 7.4)", "Physische Sicherheit", "automated", 2),
-		c("A2022-8.9", "Konfigurationsmanagement", "Definiere, implementiere und überwache sichere Konfigurationsbaselines für alle IT-Systeme (CIS Benchmarks). Nachweis: Hardening-Baseline, Konfigurationsscanning-Bericht. (ISO 27001:2022 Annex A 8.9)", "Betrieb", "automated", 3),
-		c("A2022-8.10", "Informationslöschung", "Lösche Informationen sicher, wenn sie nicht mehr benötigt werden (NIST 800-88, sichere Formatierung, physische Vernichtung). Nachweis: Löschkonzept, Vernichtungsnachweise. (ISO 27001:2022 Annex A 8.10)", "Betrieb", "manual", 2),
-		c("A2022-8.11", "Datenmaskierung", "Maskiere oder pseudonymisiere personenbezogene und sensible Daten in nicht-produktiven Umgebungen. Nachweis: Maskierungskonzept, technische Umsetzung in Test-/Staging-Systemen. (ISO 27001:2022 Annex A 8.11)", "Betrieb", "automated", 2),
-		c("A2022-8.12", "Verhinderung von Datenlecks (DLP)", "Implementiere Data-Loss-Prevention-Maßnahmen für kritische Daten (E-Mail-DLP, Endpoint-DLP, Cloud-DLP). Nachweis: DLP-Konfiguration, Alerting-Protokoll. (ISO 27001:2022 Annex A 8.12)", "Betrieb", "automated", 2),
-		c("A2022-8.16", "Überwachungsaktivitäten", "Überwache Systeme kontinuierlich auf Anomalien, ungewöhnliches Verhalten und Sicherheitsereignisse (SIEM, UEBA). Nachweis: SIEM-Use-Cases, Monitoring-Dashboard. (ISO 27001:2022 Annex A 8.16)", "Betrieb", "automated", 3),
-		c("A2022-8.23", "Web-Filterung", "Nutze Web-Proxy oder DNS-Filterung, um Zugriff auf schädliche oder unerwünschte Websites zu verhindern. Nachweis: Filterkonfiguration, Kategorisierungsrichtlinie. (ISO 27001:2022 Annex A 8.23)", "Betrieb", "automated", 2),
-		c("A2022-8.28", "Sichere Programmierung", "Wende sichere Programmierstandards an (OWASP Top 10, SANS CWE). Integriere SAST/DAST in CI/CD. Nachweis: Secure-Coding-Richtlinie, CI-Pipeline-Konfiguration, Scan-Berichte. (ISO 27001:2022 Annex A 8.28)", "Systementwicklung", "automated", 3),
+		// A.8 — Technological controls (34)
+		c("A.8.1", "Benutzer-Endgeräte", "Manage Endgeräte mit MDM: Verschlüsselung, Remote-Wipe, Patch-Level. Nachweis: MDM-Konfiguration, Compliance-Bericht.", "Zugangskontrolle", "automated", 2),
+		c("A.8.2", "Privilegierte Zugriffsrechte", "Verwalte Admin-Rechte restriktiv mit PAM-Lösung. Nachweis: PAM-Konfiguration, Zugriffsprotokoll.", "Zugangskontrolle", "automated", 3),
+		c("A.8.3", "Einschränkung des Informationszugriffs", "Setze Least-Privilege auf Applikationsebene durch. Nachweis: Berechtigungskonzept.", "Zugangskontrolle", "automated", 2),
+		c("A.8.4", "Zugriff auf Quellcode", "Beschränke Zugriff auf Source-Code auf autorisierte Entwickler. Nachweis: Repository-Zugriffskonfiguration.", "Zugangskontrolle", "automated", 2),
+		c("A.8.5", "Sichere Authentifizierung", "Erzwinge MFA und sichere Login-Mechanismen. Nachweis: MFA-Konfiguration.", "Zugangskontrolle", "automated", 3),
+		c("A.8.6", "Kapazitätsmanagement", "Überwache und plane Ressourcen (CPU, Speicher, Bandbreite), um Engpässe zu vermeiden. Nachweis: Monitoring-Dashboard, Kapazitätsplanung.", "Betrieb", "automated", 1),
+		c("A.8.7", "Schutz vor Schadsoftware", "Implementiere Endpoint-Protection (AV/EDR) mit automatischen Updates. Nachweis: AV-Konfiguration, Scan-Berichte.", "Betrieb", "automated", 3),
+		c("A.8.8", "Management technischer Schwachstellen", "Scanne regelmäßig auf Schwachstellen und behebe kritische innerhalb SLA-Fristen. Nachweis: Scanner-Berichte, Patch-Protokoll.", "Betrieb", "automated", 3),
+		c("A.8.9", "Konfigurationsmanagement", "Definiere und überwache sichere Konfigurationsbaselines (CIS Benchmarks). Nachweis: Hardening-Baseline, Konfigurationsscanning-Bericht.", "Betrieb", "automated", 3),
+		c("A.8.10", "Informationslöschung", "Lösche Informationen sicher, wenn nicht mehr benötigt. Nachweis: Löschkonzept, Vernichtungsnachweise.", "Betrieb", "manual", 2),
+		c("A.8.11", "Datenmaskierung", "Maskiere oder pseudonymisiere personenbezogene Daten in nicht-produktiven Umgebungen. Nachweis: Maskierungskonzept, technische Umsetzung.", "Betrieb", "automated", 2),
+		c("A.8.12", "Verhinderung von Datenlecks", "Implementiere DLP-Maßnahmen für kritische Daten. Nachweis: DLP-Konfiguration, Alerting-Protokoll.", "Betrieb", "automated", 2),
+		c("A.8.13", "Datensicherung", "Implementiere automatisierte Backups nach 3-2-1-Prinzip. Nachweis: Backup-Job-Konfiguration, Testberichte.", "Betrieb", "automated", 3),
+		c("A.8.14", "Redundanz der Informationsverarbeitungseinrichtungen", "Implementiere Redundanz für kritische Systeme (Failover, Load Balancing). Nachweis: Architektur-Diagramm.", "Betrieb", "automated", 2),
+		c("A.8.15", "Protokollierung", "Protokolliere sicherheitsrelevante Ereignisse auf allen kritischen Systemen. Nachweis: Log-Konfiguration, Aufbewahrungsrichtlinie.", "Betrieb", "automated", 3),
+		c("A.8.16", "Überwachungsaktivitäten", "Überwache Systeme kontinuierlich auf Anomalien (SIEM, UEBA). Nachweis: SIEM-Use-Cases, Monitoring-Dashboard.", "Betrieb", "automated", 3),
+		c("A.8.17", "Zeitsynchronisation", "Synchronisiere alle Systemuhren mit autorisierten Zeitquellen (NTP). Nachweis: NTP-Konfiguration.", "Betrieb", "automated", 1),
+		c("A.8.18", "Verwendung privilegierter Systemhilfsprogramme", "Kontrolliere Zugang zu privilegierten Systemwerkzeugen. Nachweis: Tool-Whitelist, Zugriffsprotokolle.", "Betrieb", "manual", 1),
+		c("A.8.19", "Installation von Software auf Betriebssystemen", "Regle, welche Software auf Produktivsystemen installiert werden darf. Nachweis: Software-Whitelist, Change-Protokoll.", "Betrieb", "manual", 2),
+		c("A.8.20", "Netzwerksicherheit", "Betreibe Netzwerke unter Sicherheitsgesichtspunkten (Firewall, IDS/IPS, Monitoring). Nachweis: Netzwerkplan, Firewall-Konfiguration.", "Netzwerksicherheit", "automated", 3),
+		c("A.8.21", "Sicherheit von Netzdiensten", "Definiere Sicherheitsanforderungen für alle genutzten Netzdienste. Nachweis: SLA-Anforderungen.", "Netzwerksicherheit", "manual", 2),
+		c("A.8.22", "Trennung von Netzen", "Segmentiere das Netzwerk nach Schutzbedarf (DMZ, Produktions-/Entwicklungsnetz). Nachweis: Netzwerkplan mit Segmentierungskonzept.", "Netzwerksicherheit", "automated", 3),
+		c("A.8.23", "Web-Filterung", "Nutze Web-Proxy oder DNS-Filterung, um schädliche Websites zu blockieren. Nachweis: Filterkonfiguration.", "Netzwerksicherheit", "automated", 2),
+		c("A.8.24", "Einsatz von Kryptographie", "Wende kryptographische Maßnahmen gemäß Kryptographierichtlinie an. Nachweis: Kryptographierichtlinie, KMS-Konfiguration.", "Kryptographie", "manual", 2),
+		c("A.8.25", "Sicherer Entwicklungslebenszyklus", "Integriere Sicherheitsanforderungen in den SDLC (Threat Modeling, Code Review, Security Testing). Nachweis: SDLC-Dokumentation.", "Systementwicklung", "manual", 2),
+		c("A.8.26", "Anforderungen an Anwendungssicherheit", "Definiere und prüfe Sicherheitsanforderungen vor Beschaffung/Entwicklung. Nachweis: Anforderungsdokument.", "Systementwicklung", "manual", 2),
+		c("A.8.27", "Sichere Systemarchitektur und -entwicklungsprinzipien", "Wende sichere Architekturprinzipien an (Security by Design, Defense-in-Depth). Nachweis: Architektur-Reviews.", "Systementwicklung", "manual", 2),
+		c("A.8.28", "Sichere Programmierung", "Wende sichere Programmierstandards an (OWASP Top 10, SANS CWE). Integriere SAST/DAST in CI/CD. Nachweis: Secure-Coding-Richtlinie, Scan-Berichte.", "Systementwicklung", "automated", 3),
+		c("A.8.29", "Sicherheitstests in Entwicklung und Abnahme", "Führe Sicherheitstests (SAST, DAST, Pentest) vor Releases durch. Nachweis: Testberichte.", "Systementwicklung", "manual", 2),
+		c("A.8.30", "Ausgelagerte Entwicklung", "Überwache Sicherheitsanforderungen bei externer Softwareentwicklung. Nachweis: Vertragsklauseln, Code-Review-Nachweis.", "Systementwicklung", "manual", 2),
+		c("A.8.31", "Trennung von Entwicklungs-, Test- und Produktionsumgebungen", "Trenne Entwicklungs-, Test- und Produktionsumgebungen strikt. Nachweis: Umgebungskonzept, Zugriffsprotokolle.", "Systementwicklung", "automated", 2),
+		c("A.8.32", "Änderungsmanagement", "Stelle sicher, dass alle Änderungen geplant, genehmigt und dokumentiert werden. Nachweis: Change-Tickets.", "Betrieb", "manual", 2),
+		c("A.8.33", "Testinformationen", "Schütze und kontrolliere die Verwendung von Testdaten. Nachweis: Test-Datenrichtlinie, Maskierungsnachweis.", "Systementwicklung", "manual", 1),
+		c("A.8.34", "Schutz von Informationssystemen bei Audittests", "Koordiniere Audittests und schütze Produktivsysteme vor unbeabsichtigten Auswirkungen. Nachweis: Audit-Test-Plan, Genehmigungsnachweis.", "Compliance", "manual", 1),
 	}
 }
 

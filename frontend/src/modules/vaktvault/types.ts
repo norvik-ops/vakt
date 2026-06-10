@@ -101,3 +101,23 @@ export interface AccessLogPage {
   /** Maximum number of entries per page as requested by the caller. */
   limit: number
 }
+
+// S70-5: Vault Access Review (quarterly)
+export type ReviewDecision = 'keep' | 'revoke' | 'pending'
+
+export interface AccessReview {
+  id: string
+  org_id: string
+  period_label: string
+  status: 'open' | 'completed'
+  reviewed_by?: string
+  completed_at?: string
+  total_entries: number
+  stale_entries: number
+  revoked_entries: number
+  created_at: string
+}
+
+export interface AccessReviewDetail extends AccessReview {
+  notes?: string
+}

@@ -240,7 +240,7 @@ func runSeed(ctx context.Context, db *pgxpool.Pool, masterKeyHex, orgName, orgSl
 	}
 	for _, v := range vvtEntries {
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO po_vvt_entries
+			INSERT INTO po_processing_activities
 				(org_id, name, purpose, legal_basis, data_categories, data_subjects,
 				 recipients, retention_period, responsible_person, status)
 			VALUES ($1::uuid,$2,$3,$4,
@@ -829,6 +829,79 @@ func runSeed(ctx context.Context, db *pgxpool.Pool, masterKeyHex, orgName, orgSl
 			VALUES ($1::uuid, $2, $3, $4::date)`,
 			orgID, r.description, r.dataCategory, r.dueDate); err != nil {
 			return "", "", fmt.Errorf("demoseed: deletion reminder %q: %w", r.description, err)
+		}
+	}
+
+	// ── S70-4: Contractors/Freelancer ────────────────────────────────────────
+	contractors := []struct {
+		firstName, lastName, email, company string
+		daysFromNow                         int
+		ndaSigned, avvSigned                bool
+		scope                               []string
+	}{
+		{"Thomas", "Becker", "t.becker@freelancer.de", "Becker IT GbR", 90, true, true, []string{"gitlab", "staging"}},
+		{"Petra", "Steiner", "p.steiner@consultant.de", "", 30, true, false, []string{"confluence", "jira"}},
+		{"Markus", "Wolf", "m.wolf@agency.com", "Wolf Digital GmbH", -10, false, false, []string{"github"}},
+	}
+	for _, c := range contractors {
+		status := "active"
+		if c.daysFromNow < 0 {
+			status = "terminated"
+		} else if c.daysFromNow <= 30 {
+			status = "expiring_soon"
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO hr_contractors
+				(org_id, first_name, last_name, email, company,
+				 contract_start, contract_end, access_scope, nda_signed, avv_signed, status)
+			VALUES ($1::uuid,$2,$3,$4,$5,
+				$6::date, $7::date, $8, $9, $10, $11)`,
+			orgID, c.firstName, c.lastName, c.email, c.company,
+			now.AddDate(0, -6, 0).Format("2006-01-02"),
+			now.AddDate(0, 0, c.daysFromNow).Format("2006-01-02"),
+			c.scope, c.ndaSigned, c.avvSigned, status); err != nil {
+			return "", "", fmt.Errorf("demoseed: contractor %s: %w", c.lastName, err)
+		}
+	}
+
+	// ── S70-5: Vault Access Review ────────────────────────────────────────────
+	quarterLabel := "Q" + func() string {
+		m := now.Month()
+		switch {
+		case m <= 3:
+			return "1/" + now.Format("2006")
+		case m <= 6:
+			return "2/" + now.Format("2006")
+		case m <= 9:
+			return "3/" + now.Format("2006")
+		default:
+			return "4/" + now.Format("2006")
+		}
+	}()
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO so_access_reviews (org_id, period_label, status, total_entries, stale_entries, revoked_entries)
+		VALUES ($1::uuid, $2, 'open', 47, 3, 0)`,
+		orgID, quarterLabel); err != nil {
+		return "", "", fmt.Errorf("demoseed: vault access review: %w", err)
+	}
+
+	// ── S70-3: Privacy by Design Assessment ──────────────────────────────────
+	var vvtIDForPDA string
+	_ = tx.QueryRow(ctx,
+		`SELECT id::text FROM po_processing_activities WHERE org_id=$1::uuid LIMIT 1`, orgID,
+	).Scan(&vvtIDForPDA)
+	if vvtIDForPDA != "" {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO po_privacy_design_assessments
+				(org_id, processing_activity_id, design_measures,
+				 design_at_conception, risk_considered,
+				 data_minimization, purpose_limitation, storage_limitation, access_limitation,
+				 assessment_result)
+			VALUES ($1::uuid, $2::uuid,
+				'Datensparsamkeit durch Pflichtfeldminimierung; Pseudonymisierung nach Speicherfrist; Rollenbasierter Zugriff mit Need-to-know-Prinzip.',
+				true, true, true, true, false, true, 'partially')`,
+			orgID, vvtIDForPDA); err != nil {
+			return "", "", fmt.Errorf("demoseed: privacy design assessment: %w", err)
 		}
 	}
 
