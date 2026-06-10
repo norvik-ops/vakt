@@ -772,12 +772,12 @@ func runSeed(ctx context.Context, db *pgxpool.Pool, masterKeyHex, orgName, orgSl
 	interestedParties := []struct {
 		name, category, requirements, concerns string
 	}{
-		{"Datenschutzaufsichtsbehörde", "regulatory", "DSGVO-Compliance, Art. 30 VVT, Löschkonzept", "Unzureichende Dokumentation"},
-		{"Geschäftsführung / CISO", "internal", "Nachweisbare ISO 27001-Konformität, Auditberichte", "Unklare Verantwortlichkeiten"},
+		{"Datenschutzaufsichtsbehörde", "regulator", "DSGVO-Compliance, Art. 30 VVT, Löschkonzept", "Unzureichende Dokumentation"},
+		{"Geschäftsführung / CISO", "employee", "Nachweisbare ISO 27001-Konformität, Auditberichte", "Unklare Verantwortlichkeiten"},
 		{"Kunden (B2B)", "customer", "Datensicherheit, AVV-Abschluss, Transparenz", "Datenpannen, mangelnde Transparenz"},
 		{"IT-Lieferanten", "supplier", "Klare Sicherheitsanforderungen, AVV", "Zu hohe Anforderungen"},
-		{"Mitarbeitende", "internal", "Klare Richtlinien, Schulungen, sichere Arbeitsumgebung", "Überwachung ohne Betriebsvereinbarung"},
-		{"BSI / ENISA", "regulatory", "NIS2-Umsetzung, Meldepflichten, Grundschutz", "Meldung von Sicherheitsvorfällen"},
+		{"Mitarbeitende", "employee", "Klare Richtlinien, Schulungen, sichere Arbeitsumgebung", "Überwachung ohne Betriebsvereinbarung"},
+		{"BSI / ENISA", "regulator", "NIS2-Umsetzung, Meldepflichten, Grundschutz", "Meldung von Sicherheitsvorfällen"},
 	}
 	for _, p := range interestedParties {
 		if _, err := tx.Exec(ctx, `
