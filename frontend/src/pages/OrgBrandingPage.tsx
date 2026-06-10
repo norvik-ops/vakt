@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { FileImage, Info, Shield, ExternalLink } from 'lucide-react'
 import { PageHeader } from '../shared/components/PageHeader'
@@ -62,6 +63,7 @@ function useUpdateTrustCenter() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function OrgBrandingPage() {
+  const { t } = useTranslation()
   const [logoUrl, setLogoUrl] = useState('')
   const [saved, setSaved] = useState(false)
   const update = useUpdateOrg()
@@ -112,19 +114,19 @@ export default function OrgBrandingPage() {
   return (
     <div className="space-y-6 p-6">
       <PageHeader
-        title="Organisation & Branding"
-        description="Passe das Erscheinungsbild deiner Vakt-Instanz an."
+        title={t('orgBranding.title')}
+        description={t('orgBranding.description')}
       />
 
       {/* Logo URL card */}
       <Card className="p-6 space-y-4">
         <div className="flex items-center gap-2">
           <FileImage className="w-5 h-5 text-secondary" />
-          <h2 className="text-base font-semibold">Logo-URL</h2>
+          <h2 className="text-base font-semibold">{t('orgBranding.logoTitle')}</h2>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="logo-url">URL des Organisationslogos</Label>
+          <Label htmlFor="logo-url">{t('orgBranding.logoLabel')}</Label>
           <Input
             id="logo-url"
             type="url"
@@ -136,21 +138,20 @@ export default function OrgBrandingPage() {
             }}
           />
           {!isValidUrl && (
-            <p className="text-xs text-destructive">Bitte eine gültige URL (https://…) eingeben.</p>
+            <p className="text-xs text-destructive">{t('orgBranding.invalidUrl')}</p>
           )}
           <p className="text-xs text-muted-foreground">
-            Das Logo erscheint in exportierten PDF-Berichten (Compliance-Reports, Audit-Dokumente).
-            Empfohlene Formate: PNG oder SVG, mindestens 200 × 60 px.
+            {t('orgBranding.logoHint')}
           </p>
         </div>
 
         {update.isError && (
           <p className="text-sm text-destructive">
-            Speichern fehlgeschlagen: {update.error.message}
+            {t('orgBranding.saveError', { message: update.error.message })}
           </p>
         )}
         {saved && (
-          <p className="text-sm text-green-500">Einstellungen wurden gespeichert.</p>
+          <p className="text-sm text-green-500">{t('orgBranding.settingsSaved')}</p>
         )}
 
         <div className="flex justify-end">
@@ -158,7 +159,7 @@ export default function OrgBrandingPage() {
             onClick={handleSave}
             disabled={update.isPending || !isValidUrl}
           >
-            {update.isPending ? 'Wird gespeichert...' : 'Speichern'}
+            {update.isPending ? t('orgBranding.saving') : t('orgBranding.save')}
           </Button>
         </div>
       </Card>
@@ -167,12 +168,11 @@ export default function OrgBrandingPage() {
       <Card className="p-6 space-y-4">
         <div className="flex items-center gap-2">
           <Shield className="w-5 h-5 text-secondary" />
-          <h2 className="text-base font-semibold">Trust Center</h2>
+          <h2 className="text-base font-semibold">{t('orgBranding.trustCenterTitle')}</h2>
         </div>
 
         <p className="text-sm text-muted-foreground">
-          Das Trust Center ist eine öffentliche Seite, auf der deine Kunden und Partner
-          den aktuellen Compliance-Status deiner Organisation einsehen können — ohne Login.
+          {t('orgBranding.trustCenterDescription')}
         </p>
 
         {/* Enable toggle */}
@@ -185,13 +185,13 @@ export default function OrgBrandingPage() {
             className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
           />
           <Label htmlFor="tc-enabled" className="cursor-pointer">
-            Trust Center öffentlich aktivieren
+            {t('orgBranding.enableTrustCenter')}
           </Label>
         </div>
 
         {/* Description */}
         <div className="space-y-2">
-          <Label htmlFor="tc-description">Beschreibung (max. 300 Zeichen)</Label>
+          <Label htmlFor="tc-description">{t('orgBranding.descriptionLabel')}</Label>
           <textarea
             id="tc-description"
             maxLength={300}
@@ -206,7 +206,7 @@ export default function OrgBrandingPage() {
 
         {/* Contact */}
         <div className="space-y-2">
-          <Label htmlFor="tc-contact">Kontakt-E-Mail für Auditoranfragen</Label>
+          <Label htmlFor="tc-contact">{t('orgBranding.contactLabel')}</Label>
           <Input
             id="tc-contact"
             type="email"
@@ -221,7 +221,7 @@ export default function OrgBrandingPage() {
           <div className="flex items-center gap-2 rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-2">
             <ExternalLink className="w-4 h-4 text-indigo-500 shrink-0" />
             <span className="text-sm text-indigo-700">
-              Dein Trust Center:{' '}
+              {t('orgBranding.trustCenterLink')}{' '}
               <a
                 href={trustCenterUrl}
                 target="_blank"
@@ -236,11 +236,11 @@ export default function OrgBrandingPage() {
 
         {updateTrustCenter.isError && (
           <p className="text-sm text-destructive">
-            Speichern fehlgeschlagen: {updateTrustCenter.error.message}
+            {t('orgBranding.saveError', { message: updateTrustCenter.error.message })}
           </p>
         )}
         {tcSaved && (
-          <p className="text-sm text-green-500">Trust Center-Einstellungen wurden gespeichert.</p>
+          <p className="text-sm text-green-500">{t('orgBranding.trustCenterSaved')}</p>
         )}
 
         <div className="flex justify-end">
@@ -248,7 +248,7 @@ export default function OrgBrandingPage() {
             onClick={handleTrustCenterSave}
             disabled={updateTrustCenter.isPending}
           >
-            {updateTrustCenter.isPending ? 'Wird gespeichert...' : 'Speichern'}
+            {updateTrustCenter.isPending ? t('orgBranding.saving') : t('orgBranding.save')}
           </Button>
         </div>
       </Card>
@@ -257,12 +257,10 @@ export default function OrgBrandingPage() {
       <Card className="p-6 space-y-3">
         <div className="flex items-center gap-2">
           <Info className="w-5 h-5 text-secondary" />
-          <h2 className="text-base font-semibold">Benutzerdefinierte Berichte</h2>
+          <h2 className="text-base font-semibold">{t('orgBranding.reportsTitle')}</h2>
         </div>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Vakt generiert Compliance-Berichte im PDF-Format für ISO 27001, NIS2 und
-          BSI IT-Grundschutz. Mit einem gespeicherten Logo erscheint dieses automatisch
-          auf dem Deckblatt und in der Kopfzeile aller generierten Dokumente.
+          {t('orgBranding.reportsHint')}
         </p>
         <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
           <li>Audit-Ready Compliance Reports (Vakt Comply)</li>

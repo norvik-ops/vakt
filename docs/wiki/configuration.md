@@ -232,6 +232,32 @@ VAKT_LDAP_TLS=false
 
 ---
 
+## Lizenz (Vakt Pro)
+
+Self-Hosted-Instanzen laufen standardmäßig als **Community Edition** (kostenlos, unbegrenzt). Für Pro-Features wird ein License Key benötigt, der nach dem Kauf automatisch per E-Mail zugestellt wird.
+
+| Variable | Pflicht | Standard | Beschreibung |
+|----------|---------|----------|--------------|
+| `VAKT_LICENSE_KEY` | — | — | Pro License Key. Nach dem Kauf per E-Mail erhalten. Kann auch direkt unter **Einstellungen → Lizenz** eingetragen werden — dann ist kein Neustart nötig. |
+| `VAKT_LICENSE_TOKEN` | — | — | Renewal-Token für automatische Key-Erneuerung (ebenfalls in der Kauf-E-Mail). Wenn gesetzt, holt die Instanz täglich den aktuellen Key von `api.norvikops.de` — kein manueller Eingriff bei Verlängerungen nötig. Opt-in, siehe unten. |
+
+**Beispiel:**
+
+```env
+VAKT_LICENSE_KEY=eyJ0aWVyIjoicHJvIn0.signatur...
+VAKT_LICENSE_TOKEN=550e8400-e29b-41d4-a716-446655440000
+```
+
+**Manuelle Aktivierung:** Key unter **Einstellungen → Lizenz → License Key eingeben → Aktivieren** eintragen. Nur Admin-Benutzer haben Zugriff.
+
+**Laufzeit & Auto-Renewal:** Pro-Keys haben ein Ablaufdatum (35 Tage bei Monatsabo, 395 Tage bei Jahresabo). Mit `VAKT_LICENSE_TOKEN` erneuert sich der Key täglich automatisch — kein Admin-Eingriff nötig. Ohne Token erscheint ab 30 Tage vor Ablauf ein Banner mit Hinweis auf die Kauf-E-Mail.
+
+**Datenschutz-Hinweis zu `VAKT_LICENSE_TOKEN`:** Die Instanz stellt einmal täglich eine ausgehende HTTPS-Verbindung zu `api.norvikops.de` her. Dabei wird ausschließlich der Token übertragen — keine Geschäftsdaten, keine Nutzungsdaten. Wer ausgehende Verbindungen in der Firewall kontrolliert (typisch für ISO 27001 / NIS2 Umgebungen), muss `api.norvikops.de:443` in der Egress-Whitelist eintragen oder `VAKT_LICENSE_TOKEN` weglassen und die manuelle Aktivierung nutzen.
+
+> **Hinweis:** Die Variablen `VAKT_POLAR_WEBHOOK_SECRET` und `VAKT_LICENSE_PRIVATE_KEY` sind ausschließlich für den Norvik-eigenen Billing-Server — sie gehören **nicht** in die Kunden-Konfiguration.
+
+---
+
 ## Vollständige .env-Vorlage
 
 ```env
@@ -278,6 +304,10 @@ VAKT_LDAP_BASE_DN=
 VAKT_LDAP_USER_FILTER=(objectClass=person)
 VAKT_LDAP_GROUP_FILTER=(objectClass=group)
 VAKT_LDAP_TLS=false
+
+# ── Lizenz (Vakt Pro, optional) ───────────────────────────────────────────────
+# VAKT_LICENSE_KEY=      # Pro License Key — nach Kauf per E-Mail erhalten
+# VAKT_LICENSE_TOKEN=    # Renewal-Token — aktiviert Auto-Renewal (ebenfalls in der Kauf-E-Mail)
 ```
 
 ---

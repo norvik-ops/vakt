@@ -28,6 +28,7 @@ type Handler struct {
 	validate  *validator.Validate
 	alertFunc AlertFunc
 	db        *pgxpool.Pool
+	tia       *TIAService
 }
 
 // NewHandler creates a new PrivacyOps handler.
@@ -47,6 +48,12 @@ func (h *Handler) WithDB(db *pgxpool.Pool) *Handler {
 // WithAlerting sets an optional alerting callback invoked on key events.
 func (h *Handler) WithAlerting(fn AlertFunc) *Handler {
 	h.alertFunc = fn
+	return h
+}
+
+// WithTIA injects the TIA service (S69-6).
+func (h *Handler) WithTIA(tia *TIAService) *Handler {
+	h.tia = tia
 	return h
 }
 
@@ -580,6 +587,156 @@ func (h *Handler) ExportDSRsCSV(c echo.Context) error {
 	}
 	w.Flush()
 	return nil
+}
+
+// ── DSR enhanced endpoints (S68-2) ─────────────────────────────────────────
+
+// ResolveDSR handles POST /api/v1/vaktprivacy/dsr/:id/resolve
+func (h *Handler) ResolveDSR(c echo.Context) error {
+	var in ResolveDSRInput
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "PO_BAD_REQUEST")
+	}
+	if err := h.validate.Struct(in); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
+	}
+	uid, _ := c.Get("user_id").(string)
+	dsr, err := h.service.ResolveDSR(c.Request().Context(), orgID(c), c.Param("id"), uid, in)
+	if err != nil {
+		log.Error().Err(err).Msg("resolve dsr")
+		return errResp(c, http.StatusBadRequest, err.Error(), "PO_RESOLVE_DSR_FAILED")
+	}
+	return c.JSON(http.StatusOK, dsr)
+}
+
+// AssignDSR handles PATCH /api/v1/vaktprivacy/dsr/:id/assign
+func (h *Handler) AssignDSR(c echo.Context) error {
+	var in struct {
+		AssignedTo string `json:"assigned_to"`
+	}
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "PO_BAD_REQUEST")
+	}
+	_, err := h.service.db.Exec(c.Request().Context(),
+		`UPDATE po_dsr SET assigned_to = NULLIF($1,''), updated_at = NOW() WHERE org_id = $2 AND id = $3`,
+		in.AssignedTo, orgID(c), c.Param("id"),
+	)
+	if err != nil {
+		log.Error().Err(err).Msg("assign dsr")
+		return errResp(c, http.StatusInternalServerError, "failed to assign DSR", "PO_ASSIGN_DSR_FAILED")
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+// GetDSRSummary handles GET /api/v1/vaktprivacy/dsr/summary
+func (h *Handler) GetDSRSummary(c echo.Context) error {
+	summary, err := h.service.GetDSRSummary(c.Request().Context(), orgID(c))
+	if err != nil {
+		log.Error().Err(err).Msg("get dsr summary")
+		return errResp(c, http.StatusInternalServerError, "failed to get DSR summary", "PO_DSR_SUMMARY_FAILED")
+	}
+	return c.JSON(http.StatusOK, summary)
+}
+
+// ExportDSRLog handles GET /api/v1/vaktprivacy/dsr/export
+func (h *Handler) ExportDSRLog(c echo.Context) error {
+	data, err := h.service.ExportDSRLogPDF(c.Request().Context(), orgID(c), 365)
+	if err != nil {
+		log.Error().Err(err).Msg("export dsr log pdf")
+		return errResp(c, http.StatusInternalServerError, "export failed", "PO_DSR_EXPORT_FAILED")
+	}
+	filename := fmt.Sprintf("vakt-dsr-log-%s.pdf", time.Now().UTC().Format("2006-01-02"))
+	c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, filename))
+	return c.Blob(http.StatusOK, "application/pdf", data)
+}
+
+// ── Retention handlers (S68-5) ─────────────────────────────────────────────
+
+// GetRetentionInfo handles GET /api/v1/vaktprivacy/processing-activities/:id/retention
+func (h *Handler) GetRetentionInfo(c echo.Context) error {
+	info, err := h.service.GetRetentionInfo(c.Request().Context(), orgID(c), c.Param("id"))
+	if err != nil {
+		log.Error().Err(err).Msg("get retention info")
+		return errResp(c, http.StatusNotFound, "processing activity not found", "PO_RETENTION_NOT_FOUND")
+	}
+	return c.JSON(http.StatusOK, info)
+}
+
+// UpdateRetentionInfo handles PUT /api/v1/vaktprivacy/processing-activities/:id/retention
+func (h *Handler) UpdateRetentionInfo(c echo.Context) error {
+	var in UpdateRetentionInfoInput
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "PO_BAD_REQUEST")
+	}
+	if err := h.validate.Struct(in); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
+	}
+	if err := h.service.UpdateRetentionInfo(c.Request().Context(), orgID(c), c.Param("id"), in); err != nil {
+		log.Error().Err(err).Msg("update retention info")
+		return errResp(c, http.StatusInternalServerError, "failed to update retention info", "PO_RETENTION_UPDATE_FAILED")
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+// GetRetentionSummary handles GET /api/v1/vaktprivacy/retention/summary
+func (h *Handler) GetRetentionSummary(c echo.Context) error {
+	summary, err := h.service.GetRetentionSummary(c.Request().Context(), orgID(c))
+	if err != nil {
+		log.Error().Err(err).Msg("get retention summary")
+		return errResp(c, http.StatusInternalServerError, "failed to get retention summary", "PO_RETENTION_SUMMARY_FAILED")
+	}
+	return c.JSON(http.StatusOK, summary)
+}
+
+// ListDeletionReminders handles GET /api/v1/vaktprivacy/deletion-reminders
+func (h *Handler) ListDeletionReminders(c echo.Context) error {
+	reminders, err := h.service.ListDeletionReminders(c.Request().Context(), orgID(c))
+	if err != nil {
+		log.Error().Err(err).Msg("list deletion reminders")
+		return errResp(c, http.StatusInternalServerError, "failed to list deletion reminders", "PO_DELETION_REMINDERS_FAILED")
+	}
+	return c.JSON(http.StatusOK, reminders)
+}
+
+// CreateDeletionReminder handles POST /api/v1/vaktprivacy/deletion-reminders
+func (h *Handler) CreateDeletionReminder(c echo.Context) error {
+	var in CreateDeletionReminderInput
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "PO_BAD_REQUEST")
+	}
+	if err := h.validate.Struct(in); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
+	}
+	reminder, err := h.service.CreateDeletionReminder(c.Request().Context(), orgID(c), in)
+	if err != nil {
+		log.Error().Err(err).Msg("create deletion reminder")
+		return errResp(c, http.StatusInternalServerError, "failed to create deletion reminder", "PO_DELETION_REMINDER_CREATE_FAILED")
+	}
+	return c.JSON(http.StatusCreated, reminder)
+}
+
+// CompleteDeletionReminder handles PATCH /api/v1/vaktprivacy/deletion-reminders/:id/complete
+func (h *Handler) CompleteDeletionReminder(c echo.Context) error {
+	var in CompleteDeletionReminderInput
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "PO_BAD_REQUEST")
+	}
+	userUID, _ := c.Get("user_id").(string)
+	if err := h.service.CompleteDeletionReminder(c.Request().Context(), orgID(c), c.Param("id"), userUID, in); err != nil {
+		log.Error().Err(err).Msg("complete deletion reminder")
+		return errResp(c, http.StatusInternalServerError, "failed to complete reminder", "PO_DELETION_REMINDER_COMPLETE_FAILED")
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+// ListRetentionTemplates handles GET /api/v1/vaktprivacy/retention-templates
+func (h *Handler) ListRetentionTemplates(c echo.Context) error {
+	templates, err := h.service.ListRetentionTemplates(c.Request().Context())
+	if err != nil {
+		log.Error().Err(err).Msg("list retention templates")
+		return errResp(c, http.StatusInternalServerError, "failed to list retention templates", "PO_RETENTION_TEMPLATES_FAILED")
+	}
+	return c.JSON(http.StatusOK, templates)
 }
 
 // ExportBreachNotification handles GET /api/v1/vaktprivacy/breaches/:id/notification-pdf.

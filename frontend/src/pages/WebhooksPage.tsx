@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Zap, Plus, Pencil, Trash2, Eye, EyeOff } from 'lucide-react'
 import { PageHeader } from '../shared/components/PageHeader'
 import { CopyButton } from '../shared/components/CopyButton'
@@ -48,12 +49,15 @@ import { useFormatDate } from '../shared/hooks/useFormatDate'
 
 // ─── Event labels ─────────────────────────────────────────────────────────────
 
-const EVENT_LABELS: Record<WebhookEvent, string> = {
-  'finding.created':          'Finding erstellt',
-  'finding.severity_changed': 'Finding-Schweregrad geändert',
-  'incident.created':         'Vorfall erstellt',
-  'incident.status_changed':  'Vorfall-Status geändert',
-  'control.status_changed':   'Control-Status geändert',
+function useEventLabels(): Record<WebhookEvent, string> {
+  const { t } = useTranslation()
+  return {
+    'finding.created':          t('webhooks.events.findingCreated'),
+    'finding.severity_changed': t('webhooks.events.findingSeverityChanged'),
+    'incident.created':         t('webhooks.events.incidentCreated'),
+    'incident.status_changed':  t('webhooks.events.incidentStatusChanged'),
+    'control.status_changed':   t('webhooks.events.controlStatusChanged'),
+  }
 }
 
 const ALL_EVENTS: WebhookEvent[] = [
@@ -73,6 +77,8 @@ interface WebhookDialogProps {
 }
 
 function WebhookDialog({ open, onClose, initial }: WebhookDialogProps) {
+  const { t } = useTranslation()
+  const eventLabels = useEventLabels()
   const [name, setName] = useState(initial?.name ?? '')
   const [url, setUrl] = useState(initial?.url ?? '')
   const [secret, setSecret] = useState('')
@@ -123,13 +129,13 @@ function WebhookDialog({ open, onClose, initial }: WebhookDialogProps) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Webhook bearbeiten' : 'Webhook hinzufügen'}</DialogTitle>
+          <DialogTitle>{isEdit ? t('webhooks.dialog.titleEdit') : t('webhooks.dialog.titleCreate')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           {/* Name */}
           <div className="space-y-1.5">
-            <Label htmlFor="wh-name">Name</Label>
+            <Label htmlFor="wh-name">{t('webhooks.dialog.labelName')}</Label>
             <Input
               id="wh-name"
               value={name}
@@ -141,7 +147,7 @@ function WebhookDialog({ open, onClose, initial }: WebhookDialogProps) {
           {/* URL */}
           <div className="space-y-1.5">
             <Label htmlFor="wh-url">
-              URL <span className="text-red-500">*</span>
+              {t('webhooks.dialog.labelUrl')} <span className="text-red-500">*</span>
             </Label>
             <Input
               id="wh-url"
@@ -154,7 +160,7 @@ function WebhookDialog({ open, onClose, initial }: WebhookDialogProps) {
 
           {/* Secret */}
           <div className="space-y-1.5">
-            <Label htmlFor="wh-secret">Secret (optional)</Label>
+            <Label htmlFor="wh-secret">{t('webhooks.dialog.labelSecret')}</Label>
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <Input
@@ -169,7 +175,7 @@ function WebhookDialog({ open, onClose, initial }: WebhookDialogProps) {
                   type="button"
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-secondary hover:text-primary"
                   onClick={() => { setShowSecret((s) => !s); }}
-                  aria-label={showSecret ? 'Secret verbergen' : 'Secret anzeigen'}
+                  aria-label={showSecret ? t('webhooks.dialog.secretHideLabel') : t('webhooks.dialog.secretShowLabel')}
                 >
                   {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -182,7 +188,7 @@ function WebhookDialog({ open, onClose, initial }: WebhookDialogProps) {
 
           {/* Events */}
           <div className="space-y-2">
-            <Label>Events</Label>
+            <Label>{t('webhooks.dialog.labelEvents')}</Label>
             <div className="space-y-2">
               {ALL_EVENTS.map((ev) => (
                 <label key={ev} className="flex items-center gap-2.5 cursor-pointer">
@@ -192,7 +198,7 @@ function WebhookDialog({ open, onClose, initial }: WebhookDialogProps) {
                     onChange={() => { toggleEvent(ev); }}
                     className="rounded border-border w-4 h-4 accent-brand"
                   />
-                  <span className="text-sm text-primary">{EVENT_LABELS[ev]}</span>
+                  <span className="text-sm text-primary">{eventLabels[ev]}</span>
                   <span className="text-xs text-secondary font-mono">{ev}</span>
                 </label>
               ))}
@@ -201,7 +207,7 @@ function WebhookDialog({ open, onClose, initial }: WebhookDialogProps) {
 
           {/* Active */}
           <div className="flex items-center justify-between">
-            <Label htmlFor="wh-active">Aktiv</Label>
+            <Label htmlFor="wh-active">{t('webhooks.dialog.labelActive')}</Label>
             <Switch
               id="wh-active"
               checked={active}
@@ -216,10 +222,10 @@ function WebhookDialog({ open, onClose, initial }: WebhookDialogProps) {
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isPending}>
-            Abbrechen
+            {t('webhooks.dialog.cancel')}
           </Button>
           <Button onClick={() => { void handleSave() }} disabled={isPending || !url.trim()}>
-            {isPending ? 'Wird gespeichert…' : 'Speichern'}
+            {isPending ? t('webhooks.dialog.saving') : t('webhooks.dialog.save')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -230,6 +236,8 @@ function WebhookDialog({ open, onClose, initial }: WebhookDialogProps) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function WebhooksPage() {
+  const { t } = useTranslation()
+  const eventLabels = useEventLabels()
   const { formatDateTime } = useFormatDate()
   const { data, isLoading } = useWebhooks()
   const webhooks = data?.data ?? []
@@ -261,12 +269,12 @@ export default function WebhooksPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Webhooks"
-        description="Automatische HTTP-Benachrichtigungen bei Plattform-Ereignissen."
+        title={t('webhooks.title')}
+        description={t('webhooks.description')}
         actions={
           <Button onClick={openCreate}>
             <Plus className="w-4 h-4 mr-1.5" />
-            Webhook hinzufügen
+            {t('webhooks.addButton')}
           </Button>
         }
       />
@@ -283,12 +291,12 @@ export default function WebhooksPage() {
         {!isLoading && webhooks.length === 0 && (
           <EmptyState
             icon={Zap}
-            title="Noch keine Webhooks"
-            description="Erstellen Sie einen Webhook, um externe Systeme bei Ereignissen zu benachrichtigen."
+            title={t('webhooks.noWebhooks')}
+            description={t('webhooks.noWebhooksHint')}
             action={
               <Button onClick={openCreate}>
                 <Plus className="w-4 h-4 mr-1.5" />
-                Webhook hinzufügen
+                {t('webhooks.addButton')}
               </Button>
             }
           />
@@ -299,12 +307,12 @@ export default function WebhooksPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>URL</TableHead>
-                  <TableHead>Events</TableHead>
-                  <TableHead>Aktiv</TableHead>
-                  <TableHead>Zuletzt ausgelöst</TableHead>
-                  <TableHead className="text-right">Aktionen</TableHead>
+                  <TableHead>{t('webhooks.colName')}</TableHead>
+                  <TableHead>{t('webhooks.colUrl')}</TableHead>
+                  <TableHead>{t('webhooks.colEvents')}</TableHead>
+                  <TableHead>{t('webhooks.colActive')}</TableHead>
+                  <TableHead>{t('webhooks.colLastTriggered')}</TableHead>
+                  <TableHead className="text-right">{t('webhooks.colActions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -321,14 +329,14 @@ export default function WebhooksPage() {
                         )}
                         {wh.events.map((ev) => (
                           <Badge key={ev} variant="secondary" className="text-[10px] px-1.5 py-0">
-                            {EVENT_LABELS[ev] ?? ev}
+                            {eventLabels[ev] ?? ev}
                           </Badge>
                         ))}
                       </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant={wh.active ? 'success' : 'secondary'} className="text-[10px]">
-                        {wh.active ? 'Aktiv' : 'Inaktiv'}
+                        {wh.active ? t('webhooks.statusActive') : t('webhooks.statusInactive')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs text-secondary">
@@ -342,32 +350,32 @@ export default function WebhooksPage() {
                           size="sm"
                           variant="ghost"
                           className="h-7 w-7 p-0"
-                          title="Test-Ping senden"
+                          title={t('webhooks.testPing')}
                           onClick={() => { testWebhook.mutate(wh.id); }}
                           disabled={testWebhook.isPending}
                         >
                           <Zap className="w-3.5 h-3.5" aria-hidden="true" />
-                          <span className="sr-only">Test senden</span>
+                          <span className="sr-only">{t('webhooks.testPing')}</span>
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
                           className="h-7 w-7 p-0"
-                          title="Bearbeiten"
+                          title={t('webhooks.edit')}
                           onClick={() => { openEdit(wh); }}
                         >
                           <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
-                          <span className="sr-only">Bearbeiten</span>
+                          <span className="sr-only">{t('webhooks.edit')}</span>
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
                           className="h-7 w-7 p-0 text-secondary hover:text-red-500 hover:bg-red-500/10"
-                          title="Löschen"
+                          title={t('webhooks.delete')}
                           onClick={() => { setDeleteTarget(wh); }}
                         >
                           <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-                          <span className="sr-only">Löschen</span>
+                          <span className="sr-only">{t('webhooks.delete')}</span>
                         </Button>
                       </div>
                     </TableCell>
@@ -392,19 +400,18 @@ export default function WebhooksPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => { if (!v) setDeleteTarget(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Webhook löschen?</AlertDialogTitle>
+            <AlertDialogTitle>{t('webhooks.deleteDialog.title')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Der Webhook <strong>{deleteTarget?.name}</strong> wird dauerhaft gelöscht.
-              Diese Aktion kann nicht rückgängig gemacht werden.
+              {t('webhooks.deleteDialog.description', { name: deleteTarget?.name ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogCancel>{t('webhooks.deleteDialog.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
             >
-              Löschen
+              {t('webhooks.deleteDialog.confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

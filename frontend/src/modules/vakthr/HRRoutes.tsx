@@ -3,6 +3,7 @@ import EmployeesPage from './pages/EmployeesPage'
 import ChecklistsPage from './pages/ChecklistsPage'
 import ChecklistRunPage from './pages/ChecklistRunPage'
 import AccessConceptsPage from './pages/AccessConceptsPage'
+import MoverEventsPage from './pages/MoverEventsPage'
 
 export default function HRRoutes() {
   return (
@@ -12,6 +13,7 @@ export default function HRRoutes() {
       <Route path="checklists" element={<ChecklistsPage />} />
       <Route path="checklist-runs/:id" element={<ChecklistRunPage />} />
       <Route path="access-concepts" element={<AccessConceptsPage />} />
+      <Route path="mover-events" element={<MoverEventsPage />} />
       <Route path="*" element={<Navigate to="/vakthr/employees" replace />} />
     </Routes>
   )

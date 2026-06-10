@@ -67,3 +67,17 @@ export function useDeleteProtectionNeed() {
     },
   })
 }
+
+export function useLinkAssetToPNA() {
+  const queryClient = useQueryClient()
+  return useMutation<{ pna_id: string; vb_asset_id: string | null }, Error, { pnaId: string; assetId: string | null }>({
+    mutationFn: ({ pnaId, assetId }) =>
+      apiFetch<{ pna_id: string; vb_asset_id: string | null }>(
+        `/vaktcomply/protection-needs/assessments/${pnaId}/asset-link`,
+        { method: 'PATCH', body: JSON.stringify({ vb_asset_id: assetId }) },
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [...QK] })
+    },
+  })
+}

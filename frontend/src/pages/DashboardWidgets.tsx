@@ -44,12 +44,12 @@ export function TodayWidget() {
 
   if (total === 0) {
     return (
-      <section className="rounded-lg border border-border bg-surface p-4">
+      <section className="rounded-xl border border-border bg-surface p-4">
         <div className="flex items-center gap-2 mb-3">
           <ListTodo className="w-4 h-4 text-secondary" aria-hidden="true" />
           <h2 className="text-[13px] font-semibold text-primary">Heute zu tun</h2>
         </div>
-        <p className="text-[12px] text-secondary">Nichts Dringendes heute 🎉</p>
+        <p className="text-[12px] text-secondary">Nichts Dringendes heute.</p>
       </section>
     )
   }

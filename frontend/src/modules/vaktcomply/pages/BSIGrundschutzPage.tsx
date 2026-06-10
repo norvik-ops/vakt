@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, CheckCircle2, Circle, ArrowRight } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Badge } from '../../../components/ui/badge'
 
@@ -204,6 +204,89 @@ function CategoryCard({ cat, expanded, onToggle }: {
   )
 }
 
+// ─── BSI Phase Progress ───────────────────────────────────────────────────────
+
+interface Phase {
+  number: number
+  label: string
+  description: string
+  done: boolean
+  linkTo?: string
+  linkLabel?: string
+}
+
+const BSI_PHASES: Phase[] = [
+  {
+    number: 1,
+    label: 'Strukturanalyse',
+    description: 'IT-Assets erfassen',
+    done: true,
+  },
+  {
+    number: 2,
+    label: 'Schutzbedarfsfeststellung',
+    description: 'C/I/A-Bewertung je Asset',
+    done: true,
+    linkTo: '/vaktcomply/protection-needs',
+    linkLabel: 'Öffnen',
+  },
+  {
+    number: 3,
+    label: 'Modellierung',
+    description: 'Bausteine Assets zuweisen',
+    done: false,
+    linkTo: '/vaktcomply/bsi-modeling',
+    linkLabel: 'Starten',
+  },
+  {
+    number: 4,
+    label: 'IT-Grundschutz-Check',
+    description: 'Anforderungen prüfen',
+    done: false,
+    linkTo: '/vaktcomply/bsi-modeling',
+    linkLabel: 'Öffnen',
+  },
+]
+
+function PhaseProgressCard() {
+  return (
+    <div className="rounded-lg border border-border bg-surface p-4">
+      <p className="text-xs font-semibold text-secondary uppercase tracking-wide mb-3">
+        BSI-Vorgehensweise — 4 Phasen
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {BSI_PHASES.map((phase) => (
+          <div
+            key={phase.number}
+            className={`rounded-md border p-3 flex flex-col gap-1.5 ${
+              phase.done ? 'border-green-600/40 bg-green-900/10' : 'border-border bg-surface2'
+            }`}
+          >
+            <div className="flex items-center gap-1.5">
+              {phase.done
+                ? <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+                : <Circle className="w-4 h-4 text-secondary shrink-0" />
+              }
+              <span className="text-[11px] font-semibold text-secondary">Phase {phase.number}</span>
+            </div>
+            <p className="text-[13px] font-medium text-primary leading-tight">{phase.label}</p>
+            <p className="text-[11px] text-secondary">{phase.description}</p>
+            {phase.linkTo && (
+              <Link
+                to={phase.linkTo}
+                className="mt-auto inline-flex items-center gap-1 text-[11px] text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                {phase.linkLabel}
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function BSIGrundschutzPage() {
@@ -225,6 +308,9 @@ export default function BSIGrundschutzPage() {
       />
 
       <div className="p-6 space-y-4">
+        {/* Phase progress */}
+        <PhaseProgressCard />
+
         {/* Summary badges */}
         <div className="flex flex-wrap gap-2 items-center">
           <Badge className="bg-severity-info-bg text-severity-info border-transparent text-xs">

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Bell } from 'lucide-react'
 import { Spinner } from '../components/Spinner'
 import { useQuery, useMutation } from '@tanstack/react-query'
@@ -121,6 +122,7 @@ function ToggleRow({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function NotificationPreferencesPage() {
+  const { t } = useTranslation()
   const { data: serverPrefs, isLoading } = useNotificationPreferences()
   const updatePrefs = useUpdateNotificationPreferences()
 
@@ -144,10 +146,10 @@ export default function NotificationPreferencesPage() {
   async function handleSave() {
     try {
       await updatePrefs.mutateAsync(prefs)
-      toast('Benachrichtigungseinstellungen gespeichert', 'success')
+      toast(t('notifications.saved'), 'success')
     } catch {
       // Backend not yet connected — just show success
-      toast('Gespeichert', 'success')
+      toast(t('notifications.saved'), 'success')
     }
   }
 
@@ -155,8 +157,8 @@ export default function NotificationPreferencesPage() {
     return (
       <div className="flex flex-col h-full">
         <PageHeader
-          title="Benachrichtigungen"
-          description="Steuere welche Ereignisse du per E-Mail oder In-App erhältst."
+          title={t('notifications.title')}
+          description={t('notifications.description')}
         />
         <div className="flex items-center justify-center flex-1">
           <Spinner size="md" />
@@ -168,19 +170,19 @@ export default function NotificationPreferencesPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Benachrichtigungen"
-        description="Steuere welche Ereignisse du per E-Mail oder In-App erhältst."
+        title={t('notifications.title')}
+        description={t('notifications.description')}
       />
 
       <div className="flex-1 p-6 overflow-auto">
         <div className="max-w-2xl space-y-6">
 
           {/* E-Mail notifications */}
-          <PreferenceSection title="E-Mail-Benachrichtigungen">
+          <PreferenceSection title={t('notifications.emailSection')}>
             <ToggleRow
               id="email_weekly_digest"
-              label="Wöchentlicher Sicherheits-Digest (Mo)"
-              description="Zusammenfassung deiner Compliance-Lage, offener Findings und anstehender Controls."
+              label={t('notifications.weeklyDigest')}
+              description={t('notifications.weeklyDigestHint')}
               checked={prefs.email_weekly_digest}
               onCheckedChange={() => { toggle('email_weekly_digest'); }}
             />
@@ -188,10 +190,10 @@ export default function NotificationPreferencesPage() {
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-0.5">
                 <Label className="text-sm font-medium text-primary">
-                  Neue Findings
+                  {t('notifications.newFindings')}
                 </Label>
                 <p className="text-[11px] text-secondary leading-relaxed">
-                  Ab welchem Schweregrad du per E-Mail informiert wirst.
+                  {t('notifications.newFindingsHint')}
                 </p>
               </div>
               <Select
@@ -202,61 +204,61 @@ export default function NotificationPreferencesPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="critical">Nur Kritisch</SelectItem>
-                  <SelectItem value="high">Kritisch &amp; Hoch</SelectItem>
-                  <SelectItem value="all">Alle</SelectItem>
-                  <SelectItem value="none">Keine</SelectItem>
+                  <SelectItem value="critical">{t('notifications.severityCritical')}</SelectItem>
+                  <SelectItem value="high">{t('notifications.severityHigh')}</SelectItem>
+                  <SelectItem value="all">{t('notifications.severityAll')}</SelectItem>
+                  <SelectItem value="none">{t('notifications.severityNone')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <ToggleRow
               id="email_new_incidents"
-              label="Neue Vorfälle"
-              description="Benachrichtigung wenn ein neuer Sicherheitsvorfall angelegt wird."
+              label={t('notifications.newIncidents')}
+              description={t('notifications.newIncidentsHint')}
               checked={prefs.email_new_incidents}
               onCheckedChange={() => { toggle('email_new_incidents'); }}
             />
 
             <ToggleRow
               id="email_overdue_controls"
-              label="Überfällige Controls"
-              description="Tägliche Erinnerung wenn Controls ihr Review-Datum überschritten haben."
+              label={t('notifications.overdueControls')}
+              description={t('notifications.overdueControlsHint')}
               checked={prefs.email_overdue_controls}
               onCheckedChange={() => { toggle('email_overdue_controls'); }}
             />
 
             <ToggleRow
               id="email_evidence_expiry"
-              label="Evidence-Ablauf (30 Tage vorher)"
-              description="Erinnerung wenn ein Nachweis in 30 Tagen abläuft."
+              label={t('notifications.evidenceExpiry')}
+              description={t('notifications.evidenceExpiryHint')}
               checked={prefs.email_evidence_expiry}
               onCheckedChange={() => { toggle('email_evidence_expiry'); }}
             />
           </PreferenceSection>
 
           {/* In-App notifications */}
-          <PreferenceSection title="In-App-Benachrichtigungen">
+          <PreferenceSection title={t('notifications.inappSection')}>
             <ToggleRow
               id="inapp_comments"
-              label="Neue Kommentare auf eigene Items"
-              description="Wenn jemand einen Kommentar auf ein von dir erstelltes Element hinterlässt."
+              label={t('notifications.inappComments')}
+              description={t('notifications.inappCommentsHint')}
               checked={prefs.inapp_comments}
               onCheckedChange={() => { toggle('inapp_comments'); }}
             />
 
             <ToggleRow
               id="inapp_approvals"
-              label="Genehmigungsanfragen"
-              description="Wenn eine Richtlinie oder ein Control deine Genehmigung benötigt."
+              label={t('notifications.inappApprovals')}
+              description={t('notifications.inappApprovalsHint')}
               checked={prefs.inapp_approvals}
               onCheckedChange={() => { toggle('inapp_approvals'); }}
             />
 
             <ToggleRow
               id="inapp_system_updates"
-              label="System-Updates"
-              description="Hinweise auf neue Vakt-Versionen und Plattform-Änderungen."
+              label={t('notifications.inappSystemUpdates')}
+              description={t('notifications.inappSystemUpdatesHint')}
               checked={prefs.inapp_system_updates}
               onCheckedChange={() => { toggle('inapp_system_updates'); }}
             />
@@ -271,10 +273,10 @@ export default function NotificationPreferencesPage() {
               {updatePrefs.isPending ? (
                 <>
                   <Spinner size="xs" color="current" className="mr-1.5" />
-                  Wird gespeichert…
+                  {t('notifications.saving')}
                 </>
               ) : (
-                'Speichern'
+                t('notifications.save')
               )}
             </Button>
           </div>

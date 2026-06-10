@@ -27,6 +27,46 @@ import (
 // not satisfy the platform complexity requirements.
 const weakPasswordCode = "AUTH_WEAK_PASSWORD"
 
+// humanValidationError converts a go-playground/validator error into a
+// user-facing German message. Raw validator strings (e.g. "Key: 'Password'
+// Error:Field validation for 'Password' failed on the 'min' tag") must never
+// reach the UI — this function maps the most common tags to natural language.
+func humanValidationError(err error) string {
+	var ve validator.ValidationErrors
+	if !errors.As(err, &ve) {
+		return "Eingabe ungültig. Bitte alle Felder korrekt ausfüllen."
+	}
+	for _, fe := range ve {
+		field := strings.ToLower(fe.Field())
+		switch fe.Tag() {
+		case "required":
+			switch field {
+			case "email":
+				return "E-Mail-Adresse ist erforderlich."
+			case "password":
+				return "Passwort ist erforderlich."
+			default:
+				return "Pflichtfeld fehlt: " + fe.Field()
+			}
+		case "email":
+			return "Keine gültige E-Mail-Adresse."
+		case "min":
+			switch field {
+			case "password":
+				return fmt.Sprintf("Passwort muss mindestens %s Zeichen lang sein.", fe.Param())
+			case "name", "display_name":
+				return fmt.Sprintf("%s muss mindestens %s Zeichen lang sein.", fe.Field(), fe.Param())
+			}
+		case "max":
+			switch field {
+			case "password":
+				return fmt.Sprintf("Passwort darf maximal %s Zeichen lang sein.", fe.Param())
+			}
+		}
+	}
+	return "Eingabe ungültig. Bitte alle Felder korrekt ausfüllen."
+}
+
 // samlHTTPClient is used for fetching SAML metadata from Casdoor.
 // A 15-second timeout prevents hanging requests to unresponsive IdP endpoints.
 var samlHTTPClient = &http.Client{Timeout: 15 * time.Second}
@@ -120,7 +160,7 @@ func (h *Handler) Register(c echo.Context) error {
 	}
 	if err := h.validate.Struct(input); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
+			"error": humanValidationError(err),
 			"code":  "AUTH_VALIDATION_ERROR",
 		})
 	}
@@ -166,7 +206,7 @@ func (h *Handler) Login(c echo.Context) error {
 	}
 	if err := h.validate.Struct(body); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
+			"error": humanValidationError(err),
 			"code":  "AUTH_VALIDATION_ERROR",
 		})
 	}
@@ -261,7 +301,7 @@ func (h *Handler) Refresh(c echo.Context) error {
 	}
 	if err := h.validate.Struct(body); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
+			"error": humanValidationError(err),
 			"code":  "AUTH_VALIDATION_ERROR",
 		})
 	}
@@ -398,7 +438,7 @@ func (h *Handler) OIDCCallback(c echo.Context) error {
 	}
 	if err := h.validate.Struct(input); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
+			"error": humanValidationError(err),
 			"code":  "AUTH_VALIDATION_ERROR",
 		})
 	}
@@ -456,7 +496,7 @@ func (h *Handler) SAMLCallback(c echo.Context) error {
 	}
 	if err := h.validate.Struct(input); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
+			"error": humanValidationError(err),
 			"code":  "AUTH_VALIDATION_ERROR",
 		})
 	}
@@ -651,7 +691,7 @@ func (h *Handler) ResetPassword(c echo.Context) error {
 	}
 	if err := h.validate.Struct(body); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
+			"error": humanValidationError(err),
 			"code":  "AUTH_VALIDATION_ERROR",
 		})
 	}

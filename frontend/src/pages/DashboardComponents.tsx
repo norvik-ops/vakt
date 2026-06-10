@@ -28,6 +28,13 @@ export function riskBadgeColor(score: number): string {
   return 'bg-severity-low/15 text-severity-low'
 }
 
+export function scoreStrokeColor(score: number | undefined): string {
+  if (score == null) return '#6b7280'
+  if (score >= 70) return '#22c55e'
+  if (score >= 40) return '#f59e0b'
+  return '#ef4444'
+}
+
 export function entityIcon(entityType: string) {
   switch (entityType) {
     case 'control': return Shield

@@ -68,7 +68,7 @@ describe('CampaignsPage — loading state', () => {
   it('shows page header but not empty state while loading', () => {
     vi.mocked(useCampaigns).mockReturnValue({ data: [], isLoading: true, error: null } as any)
     renderWithProviders(<CampaignsPage />)
-    expect(screen.getByText('Campaigns')).toBeInTheDocument()
+    expect(screen.getByText('Kampagnen')).toBeInTheDocument()
     expect(screen.queryByText('Keine Kampagnen')).not.toBeInTheDocument()
   })
 })
@@ -93,7 +93,7 @@ describe('CampaignsPage — error state', () => {
       error: new Error('Network error'),
     } as any)
     renderWithProviders(<CampaignsPage />)
-    expect(screen.getByText('Campaigns')).toBeInTheDocument()
+    expect(screen.getByText('Kampagnen')).toBeInTheDocument()
   })
 })
 
@@ -104,7 +104,7 @@ describe('CampaignsPage — data rendering', () => {
     vi.mocked(useCampaigns).mockReturnValue({ data: [CAMPAIGN], isLoading: false, error: null } as any)
     renderWithProviders(<CampaignsPage />)
     expect(screen.getByText('Q1 Awareness')).toBeInTheDocument()
-    expect(screen.getByText('draft')).toBeInTheDocument()
+    expect(screen.getByText('Entwurf')).toBeInTheDocument()
   })
 })
 
@@ -114,8 +114,8 @@ describe('CampaignsPage — create mutation', () => {
   it('opens dialog, fills name, and calls mutate on form submit', () => {
     renderWithProviders(<CampaignsPage />)
 
-    fireEvent.click(screen.getByText('New Campaign'))
-    expect(screen.getByText('Neue Kampagne')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Neue Kampagne'))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Kampagnenname'), {
       target: { value: 'Q2 Phishing Test' },
@@ -133,7 +133,7 @@ describe('CampaignsPage — create mutation', () => {
   it('shows "Creating…" on the submit button while mutation is pending', () => {
     vi.mocked(useCreateCampaign).mockReturnValue({ mutate: vi.fn(), isPending: true } as any)
     renderWithProviders(<CampaignsPage />)
-    fireEvent.click(screen.getByText('New Campaign'))
+    fireEvent.click(screen.getByText('Neue Kampagne'))
     expect(screen.getByText('Creating…')).toBeInTheDocument()
   })
 })

@@ -41,8 +41,69 @@ export interface Template {
   from_name: string
   from_email: string
   html_body: string
+  attack_type: string
+  category?: string
+  difficulty?: 'easy' | 'medium' | 'hard'
+  language?: string
+  placeholders?: string[]
   is_preset: boolean
   created_at: string
+}
+
+export interface EnrollmentRule {
+  id: string
+  org_id: string
+  name: string
+  trigger_type: 'new_employee' | 'phishing_click'
+  target_campaign_id?: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateEnrollmentRuleInput {
+  name: string
+  trigger_type: 'new_employee' | 'phishing_click'
+  target_campaign_id?: string
+}
+
+export interface CampaignSummary {
+  id: string
+  name: string
+  recipient_count: number
+  click_rate: number
+  completion_rate: number
+  started_at?: string
+  completed_at?: string
+}
+
+export interface AwareStats {
+  total_campaigns: number
+  total_participants: number
+  avg_click_rate: number
+  total_trainings_completed: number
+}
+
+export interface ORP3Requirement {
+  id: string
+  title: string
+  fulfilled: boolean
+  evidence_ids?: string[]
+}
+
+export interface BSIOrp3Compliance {
+  fulfilled_count: number
+  total_count: number
+  requirements: ORP3Requirement[]
+}
+
+export interface TrainingMatrixReport {
+  period: { from: string; to: string }
+  org_name: string
+  campaigns: CampaignSummary[]
+  total_stats: AwareStats
+  bsi_compliance: BSIOrp3Compliance
+  generated_at: string
 }
 
 export interface TargetGroup {

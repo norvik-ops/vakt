@@ -14,11 +14,21 @@ import (
 // writer is used.
 type EvidenceWriter interface {
 	WriteChecklistCompletion(ctx context.Context, in events.ChecklistCompletionEvidence) error
+	WritePersonioOffboardingEvidence(ctx context.Context, in events.PersonioOffboardingEvidence) error
+	WriteEvidence(ctx context.Context, orgID, evidenceType, description, entityID string) error
 }
 
 type noopEvidenceWriter struct{}
 
 func (noopEvidenceWriter) WriteChecklistCompletion(_ context.Context, _ events.ChecklistCompletionEvidence) error {
+	return nil
+}
+
+func (noopEvidenceWriter) WritePersonioOffboardingEvidence(_ context.Context, _ events.PersonioOffboardingEvidence) error {
+	return nil
+}
+
+func (noopEvidenceWriter) WriteEvidence(_ context.Context, _, _, _, _ string) error {
 	return nil
 }
 

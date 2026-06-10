@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../../api/client'
-import type { Asset, SLAEntry } from '../types'
+import type { Asset, SLAEntry, ClassificationSummary, SLAPolicy, SLASummaryFE } from '../types'
 import type { PaginatedResponse } from '../../../shared/types/pagination'
 
 export interface CreateAssetInput {
@@ -9,6 +9,7 @@ export interface CreateAssetInput {
   target: string
   criticality: Asset['criticality']
   tags: string[]
+  classification?: Asset['classification']
 }
 
 export function useAssets(page = 1, limit = 25, tag?: string) {
@@ -85,6 +86,14 @@ export function useSLADashboard() {
   })
 }
 
+export function useClassificationSummary() {
+  return useQuery<ClassificationSummary>({
+    queryKey: ['vaktscan', 'assets', 'classification-summary'],
+    queryFn: () => apiFetch<ClassificationSummary>('/vaktscan/assets/classification-summary'),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 export function useDeleteAsset() {
   const queryClient = useQueryClient()
   return useMutation<undefined, Error, string>({
@@ -104,6 +113,46 @@ export function useTriggerScan(assetId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['vaktscan', 'assets', assetId] })
       void queryClient.invalidateQueries({ queryKey: ['vaktscan', 'findings'] })
+    },
+  })
+}
+
+// ── S69-3: SLA Policies ───────────────────────────────────────────────────────
+
+export function useSLAPolicies() {
+  return useQuery<SLAPolicy[]>({
+    queryKey: ['vaktscan', 'sla-policies'],
+    queryFn: () => apiFetch<SLAPolicy[]>('/vaktscan/sla-policies'),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useSLASummaryNew() {
+  return useQuery<SLASummaryFE>({
+    queryKey: ['vaktscan', 'sla-summary'],
+    queryFn: () => apiFetch<SLASummaryFE>('/vaktscan/sla/summary'),
+    staleTime: 60_000,
+  })
+}
+
+export function useUpsertSLAPolicy() {
+  const queryClient = useQueryClient()
+  return useMutation<SLAPolicy, Error, { severity: string; remediation_days: number; notification_advance_days: number }>({
+    mutationFn: ({ severity, ...body }) =>
+      apiFetch<SLAPolicy>(`/vaktscan/sla-policies/${severity}`, { method: 'PUT', body: JSON.stringify(body) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['vaktscan', 'sla-policies'] })
+      void queryClient.invalidateQueries({ queryKey: ['vaktscan', 'sla-summary'] })
+    },
+  })
+}
+
+export function useResetSLAPolicies() {
+  const queryClient = useQueryClient()
+  return useMutation<void>({
+    mutationFn: () => apiFetch('/vaktscan/sla-policies/reset', { method: 'POST' }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['vaktscan', 'sla-policies'] })
     },
   })
 }

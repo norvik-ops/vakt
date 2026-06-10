@@ -4,7 +4,7 @@ import { useUpdateCheck } from './useUpdateCheck'
 const STORAGE_KEY = 'vakt_last_seen_version'
 
 export function useWhatsNew() {
-  const { data: updateInfo } = useUpdateCheck()
+  const { data: updateInfo, isLoading } = useUpdateCheck()
 
   const currentVersion = updateInfo?.current_version ?? null
 
@@ -22,5 +22,5 @@ export function useWhatsNew() {
     }
   }, [currentVersion])
 
-  return { isNew, currentVersion, dismiss }
+  return { isNew, currentVersion, dismiss, isLoading }
 }

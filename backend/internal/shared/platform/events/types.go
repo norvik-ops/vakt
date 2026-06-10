@@ -25,6 +25,7 @@ const (
 	ResourceTypeTrainingCompleted = "vakt-aware/training-completion"
 	ResourceTypeIncidentCreated   = "vakt-comply/incident-created"
 	ResourceTypeEvidenceCollected = "vakt-comply/evidence-collected"
+	ResourceTypeCertExpiring      = "vakt-scan/cert-expiring"
 )
 
 // CrossModuleEvent is the canonical envelope for all cross-module events.
@@ -118,6 +119,20 @@ func IncidentCreated(orgID, incidentID, title string) CrossModuleEvent {
 	}
 }
 
+// CertExpiring constructs a CrossModuleEvent when a tracked TLS certificate
+// is about to expire (within 30 days) or has already expired.
+func CertExpiring(orgID, certID, domain, status string) CrossModuleEvent {
+	return CrossModuleEvent{
+		OrgID:        orgID,
+		Source:       SourceSecpulse,
+		ResourceType: ResourceTypeCertExpiring,
+		ResourceID:   certID,
+		Title:        "TLS-Zertifikat läuft ab: " + domain,
+		Description:  "Das TLS-Zertifikat für " + domain + " hat den Status '" + status + "' und erfordert Erneuerung. (A.10.1 / NIS2-H.5)",
+		OccurredAt:   time.Now().UTC(),
+	}
+}
+
 // ChecklistCompletionEvidence is the payload written to the compliance evidence
 // store when an HR checklist run reaches the "completed" state.
 // Defined here (shared) so neither vaktcomply nor hr imports the other. See ADR-0004.
@@ -130,4 +145,17 @@ type ChecklistCompletionEvidence struct {
 	RunID         string
 	CompletedAt   time.Time
 	StepCount     int
+}
+
+// PersonioOffboardingEvidence is the payload written when a Personio-triggered
+// offboarding checklist is completed. Defined here so neither vaktcomply nor
+// vakthr imports the other. Status is "ok" (<24h) or "warning" (>24h).
+type PersonioOffboardingEvidence struct {
+	OrgID              string
+	PersonioEmployeeID int
+	RunID              string
+	CompletedAt        time.Time
+	DepartureDate      time.Time
+	ElapsedHours       float64
+	Status             string // "ok" | "warning"
 }

@@ -3,7 +3,9 @@ package vaktcomply
 import (
 	"fmt"
 	"net/http"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
@@ -216,4 +218,95 @@ func (h *Handler) ClassifyReportingObligation(c echo.Context) error {
 // License probe for the NIS2 reporting feature — the route itself is gated.
 func (h *Handler) NIS2ReportingEnabled(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]bool{"enabled": true})
+}
+
+// NIS2AssessReportability handles POST /api/v1/vaktcomply/incidents/:id/nis2/assess.
+// Stores the NIS2 meldepflicht assessment and sets deadline timers.
+func (h *Handler) NIS2AssessReportability(c echo.Context) error {
+	id := c.Param("id")
+	var in struct {
+		NIS2ReportabilityCheck
+		DetectedAt *string `json:"detected_at"`
+	}
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+
+	detectedAt := time.Now().UTC()
+	if in.DetectedAt != nil {
+		if t, err := time.Parse(time.RFC3339, *in.DetectedAt); err == nil {
+			detectedAt = t
+		}
+	}
+
+	incidentID, err := uuid.Parse(id)
+	if err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid incident id", "CK_BAD_REQUEST")
+	}
+
+	if err := h.service.MarkIncidentReportable(c.Request().Context(), orgID(c), incidentID, detectedAt, in.NIS2ReportabilityCheck); err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "incident not found", "CK_INCIDENT_NOT_FOUND")
+		}
+		log.Error().Err(err).Str("incident_id", id).Msg("nis2 assess reportability")
+		return errResp(c, http.StatusInternalServerError, "failed to assess reportability", "CK_ASSESS_FAILED")
+	}
+	return c.JSON(http.StatusOK, map[string]any{
+		"is_reportable": in.NIS2ReportabilityCheck.IsReportable(),
+	})
+}
+
+// NIS2Status handles GET /api/v1/vaktcomply/incidents/:id/nis2-status.
+func (h *Handler) NIS2Status(c echo.Context) error {
+	id := c.Param("id")
+	status, err := h.service.GetNIS2Status(c.Request().Context(), orgID(c), id)
+	if err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "incident not found", "CK_INCIDENT_NOT_FOUND")
+		}
+		log.Error().Err(err).Str("incident_id", id).Msg("get nis2 status")
+		return errResp(c, http.StatusInternalServerError, "failed to get nis2 status", "CK_NIS2_STATUS_FAILED")
+	}
+	return c.JSON(http.StatusOK, status)
+}
+
+// NIS2SubmitStage handles POST /api/v1/vaktcomply/incidents/:id/nis2/submit/:stage.
+func (h *Handler) NIS2SubmitStage(c echo.Context) error {
+	id := c.Param("id")
+	stage := c.Param("stage")
+	var in NIS2ReportInput
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+
+	report, err := h.service.SubmitNIS2Stage(c.Request().Context(), orgID(c), id, userID(c), stage, in)
+	if err != nil {
+		log.Error().Err(err).Str("incident_id", id).Str("stage", stage).Msg("submit nis2 stage")
+		return errResp(c, http.StatusInternalServerError, "failed to submit nis2 stage", "CK_NIS2_SUBMIT_FAILED")
+	}
+	return c.JSON(http.StatusOK, report)
+}
+
+// ListAuthorityContacts handles GET /api/v1/vaktcomply/authority-contacts.
+func (h *Handler) ListAuthorityContacts(c echo.Context) error {
+	contacts, err := h.service.ListAuthorityContacts(c.Request().Context(), orgID(c))
+	if err != nil {
+		log.Error().Err(err).Msg("list authority contacts")
+		return errResp(c, http.StatusInternalServerError, "failed to list authority contacts", "CK_LIST_AUTH_CONTACTS_FAILED")
+	}
+	return c.JSON(http.StatusOK, contacts)
+}
+
+// CreateAuthorityContact handles POST /api/v1/vaktcomply/authority-contacts.
+func (h *Handler) CreateAuthorityContact(c echo.Context) error {
+	var in AuthorityContact
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+	contact, err := h.service.CreateAuthorityContact(c.Request().Context(), orgID(c), in)
+	if err != nil {
+		log.Error().Err(err).Msg("create authority contact")
+		return errResp(c, http.StatusInternalServerError, "failed to create authority contact", "CK_CREATE_AUTH_CONTACT_FAILED")
+	}
+	return c.JSON(http.StatusCreated, contact)
 }

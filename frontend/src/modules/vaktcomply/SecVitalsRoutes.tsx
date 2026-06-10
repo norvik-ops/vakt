@@ -40,12 +40,21 @@ import EvidenceAutoPage from './pages/EvidenceAutoPage'
 import ApprovalsPage from './pages/ApprovalsPage'
 import CertificationTimelinePage from './pages/CertificationTimelinePage'
 import CISControlsPage from './pages/CISControlsPage'
+import MappingCoveragePage from './pages/MappingCoveragePage'
 import SoAPage from './pages/SoAPage'
 import AccessReviewsPage from './pages/AccessReviewsPage'
 import ExceptionsPage from './pages/ExceptionsPage'
 import PolicyTemplatesPage from './pages/PolicyTemplatesPage'
 import BCPPage from './pages/BCPPage'
 import ProtectionNeedsPage from './pages/ProtectionNeedsPage'
+import ISMSScopePage from './pages/ISMSScopePage'
+import PentestsPage from './pages/PentestsPage'
+import BSIModelingPage from './pages/BSIModelingPage'
+import ManagementReviewsPage from './pages/ManagementReviewsPage'
+import KPIDashboardPage from './pages/KPIDashboardPage'
+import CryptoKeysPage from './pages/CryptoKeysPage'
+import InterestedPartiesPage from './pages/InterestedPartiesPage'
+import AuditProgramPage from './pages/AuditProgramPage'
 
 export default function SecVitalsRoutes() {
   return (
@@ -57,6 +66,7 @@ export default function SecVitalsRoutes() {
       <Route path="frameworks/:id/tisax" element={<TISAXPage />} />
       <Route path="cis-controls" element={<CISControlsPage />} />
       <Route path="tisax-mapping" element={<TISAXMappingPage />} />
+      <Route path="mapping-coverage" element={<MappingCoveragePage />} />
       {/* CRITICAL: overdue-reviews must be before controls/:id to avoid catch-all match */}
       <Route path="overdue-reviews" element={<OverdueReviewsPage />} />
       <Route path="evidence/auto" element={<EvidenceAutoPage />} />
@@ -102,6 +112,14 @@ export default function SecVitalsRoutes() {
       <Route path="policy-templates" element={<PolicyTemplatesPage />} />
       <Route path="bcp" element={<BCPPage />} />
       <Route path="protection-needs" element={<ProtectionNeedsPage />} />
+      <Route path="isms-scope" element={<ISMSScopePage />} />
+      <Route path="pentests" element={<PentestsPage />} />
+      <Route path="bsi-modeling" element={<BSIModelingPage />} />
+      <Route path="management-reviews" element={<ManagementReviewsPage />} />
+      <Route path="kpi-dashboard" element={<KPIDashboardPage />} />
+      <Route path="crypto-keys" element={<CryptoKeysPage />} />
+      <Route path="interested-parties" element={<InterestedPartiesPage />} />
+      <Route path="audit-program" element={<AuditProgramPage />} />
       <Route path="*" element={<Navigate to="/vaktcomply" replace />} />
     </Routes>
   )

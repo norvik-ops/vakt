@@ -258,7 +258,13 @@ type riskFields struct {
 	TreatmentStatus                          string
 	ResidualLikelihood                       pgtype.Int4
 	ResidualImpact                           pgtype.Int4
-	CreatedAt, UpdatedAt                     pgtype.Timestamptz
+	// S61-4 residual fields (Migration 164) — nil when populated via sqlc (query not regenerated)
+	InherentLikelihood          pgtype.Int4
+	InherentImpact              pgtype.Int4
+	RiskAcceptedBy              pgtype.UUID
+	RiskAcceptedAt              pgtype.Timestamptz
+	RiskAcceptanceJustification pgtype.Text
+	CreatedAt, UpdatedAt        pgtype.Timestamptz
 }
 
 func intPtrFromInt4(v pgtype.Int4) *int {
@@ -270,7 +276,7 @@ func intPtrFromInt4(v pgtype.Int4) *int {
 }
 
 func riskFromFields(f riskFields) Risk {
-	return Risk{
+	r := Risk{
 		ID:                 f.ID,
 		OrgID:              f.OrgID,
 		Title:              f.Title,
@@ -290,9 +296,24 @@ func riskFromFields(f riskFields) Risk {
 		TreatmentStatus:    f.TreatmentStatus,
 		ResidualLikelihood: intPtrFromInt4(f.ResidualLikelihood),
 		ResidualImpact:     intPtrFromInt4(f.ResidualImpact),
+		// S61-4 residual fields
+		InherentLikelihood: intPtrFromInt4(f.InherentLikelihood),
+		InherentImpact:     intPtrFromInt4(f.InherentImpact),
 		CreatedAt:          ckTsToTime(f.CreatedAt),
 		UpdatedAt:          ckTsToTime(f.UpdatedAt),
 	}
+	if f.RiskAcceptedBy.Valid {
+		s := f.RiskAcceptedBy.Bytes
+		str := fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+			s[0:4], s[4:6], s[6:8], s[8:10], s[10:16])
+		r.RiskAcceptedBy = &str
+	}
+	r.RiskAcceptedAt = ckTsToTimePtr(f.RiskAcceptedAt)
+	if f.RiskAcceptanceJustification.Valid {
+		r.RiskAcceptanceJustification = f.RiskAcceptanceJustification.String
+	}
+	r.ComputeScores()
+	return r
 }
 
 // evidenceFields is the union of columns returned by all Evidence-returning

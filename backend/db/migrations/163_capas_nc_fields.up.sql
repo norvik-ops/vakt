@@ -1,0 +1,10 @@
+ALTER TABLE ck_capas ADD COLUMN IF NOT EXISTS nc_classification TEXT CHECK (nc_classification IN ('major_nc', 'minor_nc', 'observation', 'ofi'));
+ALTER TABLE ck_capas ADD COLUMN IF NOT EXISTS immediate_containment TEXT NOT NULL DEFAULT '';
+ALTER TABLE ck_capas ADD COLUMN IF NOT EXISTS root_cause TEXT NOT NULL DEFAULT '';
+ALTER TABLE ck_capas ADD COLUMN IF NOT EXISTS similar_ncs_assessed BOOLEAN;
+ALTER TABLE ck_capas ADD COLUMN IF NOT EXISTS similar_ncs_notes TEXT NOT NULL DEFAULT '';
+ALTER TABLE ck_capas ADD COLUMN IF NOT EXISTS effectiveness_check_date DATE;
+ALTER TABLE ck_capas ADD COLUMN IF NOT EXISTS effectiveness_confirmed BOOLEAN;
+ALTER TABLE ck_capas ADD COLUMN IF NOT EXISTS effectiveness_checked_at TIMESTAMPTZ;
+ALTER TABLE ck_capas ADD COLUMN IF NOT EXISTS effectiveness_checked_by UUID REFERENCES users(id);
+ALTER TABLE ck_capas ADD COLUMN IF NOT EXISTS effectiveness_evidence TEXT NOT NULL DEFAULT '';

@@ -54,6 +54,7 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/frameworks/available", h.ListAvailableFrameworks)
 	g.POST("/frameworks/install", h.InstallFrameworkPlugin, rw)
 	// CRITICAL: static TISAX routes must be registered BEFORE /frameworks/:id to avoid route conflict.
+	g.GET("/frameworks/mapping-coverage", h.GetMappingCoverage)
 	g.GET("/frameworks/tisax/iso-mapping", h.GetTISAXISOMapping, features.Require(features.FeatureTISAX))
 	g.GET("/frameworks/tisax/coverage-after-iso", h.GetTISAXCoverageAfterISO, features.Require(features.FeatureTISAX))
 	g.GET("/frameworks/:id", h.GetFrameworkByID)
@@ -79,13 +80,50 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/frameworks/:id/soa.pdf", h.ExportSoAPDF, features.Require(features.FeatureAuditPDF))
 	g.GET("/frameworks/:id/audit-package.zip", h.ExportAuditPackage, features.Require(features.FeatureAuditPDF))
 	g.GET("/frameworks/:id/controls", h.ListControls)
+	g.GET("/frameworks/:id/implementation-path", h.GetImplementationPath)
 	g.POST("/frameworks/:id/auditor-link", h.CreateAuditorLink, rw)
 
-	// SoA (Statement of Applicability) — cross-framework view
+	// SoA (Statement of Applicability) — cross-framework view (legacy, column-based)
 	// CRITICAL: /soa.csv must be registered BEFORE /soa/:control_id to avoid route conflict.
 	g.GET("/soa", h.GetSoA)
 	g.GET("/soa.csv", h.GetSoACSV)
 	g.PATCH("/soa/:control_id", h.UpdateSoAApplicability, rw)
+
+	// SoA dedicated tables (S68-1) — ISO 27001:2022 Annex A, versioned, approval workflow
+	// CRITICAL: static paths (/soa/init, /soa/approve, /soa/versions, /soa/summary, /soa/export, /soa/entries)
+	// MUST be registered BEFORE the param route /soa/entries/:control_ref.
+	g.POST("/soa/init", h.InitDedicatedSoA, rw)
+	g.POST("/soa/approve", h.ApproveDedicatedSoA, rw)
+	g.GET("/soa/versions", h.GetDedicatedSoAVersions)
+	g.GET("/soa/summary", h.GetDedicatedSoASummary)
+	g.GET("/soa/export", h.ExportDedicatedSoA)
+	g.GET("/soa/entries", h.GetDedicatedSoAEntries)
+	g.GET("/soa/entries/:control_ref", h.GetDedicatedSoAEntry)
+	g.PUT("/soa/entries/:control_ref", h.UpdateDedicatedSoAEntry, rw)
+
+	// Interessierte Parteien — ISO 27001 Clause 4.2 (S68-3)
+	// CRITICAL: static sub-paths (/seed-defaults, /export) must be before /:id
+	g.GET("/interested-parties", h.ListInterestedParties)
+	g.POST("/interested-parties", h.CreateInterestedParty, rw)
+	g.POST("/interested-parties/seed-defaults", h.SeedDefaultInterestedParties, rw)
+	g.GET("/interested-parties/export", h.ExportInterestedPartiesPDF)
+	g.PUT("/interested-parties/:id", h.UpdateInterestedParty, rw)
+	g.DELETE("/interested-parties/:id", h.DeleteInterestedParty, rw)
+
+	// Audit-Programm — ISO 27001 Clause 9.2 (S68-4)
+	// CRITICAL: /audit-program/summary must be before /audit-program/:id
+	g.GET("/audit-plans", h.ListAuditPlans)
+	g.POST("/audit-plans", h.CreateAuditPlan, rw)
+	g.PUT("/audit-plans/:id", h.UpdateAuditPlan, rw)
+	g.GET("/audit-program/summary", h.GetAuditProgramSummary)
+	g.GET("/audit-program", h.ListAuditProgramAudits)
+	g.POST("/audit-program", h.CreateAuditProgramAudit, rw)
+	g.GET("/audit-program/:id", h.GetAuditProgramAudit)
+	g.PUT("/audit-program/:id", h.UpdateAuditProgramAudit, rw)
+	g.PATCH("/audit-program/:id/complete", h.CompleteAuditProgramAudit, rw)
+	g.GET("/audit-program/:id/findings", h.ListAuditFindings)
+	g.POST("/audit-program/:id/findings", h.CreateAuditFinding, rw)
+	g.GET("/audit-program/:id/export", h.ExportAuditProgramReport)
 
 	// DSGVO Art. 32 TOM coverage
 	g.GET("/dsgvo/tom-coverage", h.GetDSGVOTOMCoverage)
@@ -143,8 +181,12 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/risks/:id", h.GetRisk)
 	g.PATCH("/risks/:id", h.UpdateRisk, rw)
 	g.DELETE("/risks/:id", h.DeleteRisk, rw)
-	// CRITICAL: /risks/:id/treatment must be registered BEFORE /risks/:id/controls to avoid route conflict.
+	// CRITICAL: /risks/:id/treatment, /risks/:id/residual and /risks/:id/accept must be registered
+	// BEFORE /risks/:id/controls to avoid route conflict.
 	g.PATCH("/risks/:id/treatment", h.UpdateRiskTreatment, rw)
+	// S61-4: Residualrisiko-Berechnung
+	g.PATCH("/risks/:id/residual", h.UpdateRiskResidualFields, rw)
+	g.POST("/risks/:id/accept", h.AcceptRisk, rw)
 
 	// Risk ↔ Control Links
 	g.GET("/risks/:id/controls", h.ListRiskControls)
@@ -168,6 +210,12 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/incidents/:id/report-pdf", h.IncidentReportPDF, features.Require(features.FeatureAuditPDF))
 	// Report download (separate resource path)
 	g.GET("/incident-reports/:reportId/pdf", h.DownloadIncidentReportPDF, features.Require(features.FeatureAuditPDF))
+	// S67-1: NIS2 Art.23 stage-based reporting workflow
+	g.POST("/incidents/:id/nis2/assess", h.NIS2AssessReportability, rw, features.Require(features.FeatureNIS2Reporting))
+	g.GET("/incidents/:id/nis2-status", h.NIS2Status, features.Require(features.FeatureNIS2Reporting))
+	g.POST("/incidents/:id/nis2/submit/:stage", h.NIS2SubmitStage, rw, features.Require(features.FeatureNIS2Reporting))
+	g.GET("/authority-contacts", h.ListAuthorityContacts)
+	g.POST("/authority-contacts", h.CreateAuthorityContact, rw)
 
 	// Supplier Register — Pro feature
 	g.GET("/suppliers", h.ListSuppliers, features.Require(features.FeatureSupplierPortal))
@@ -330,6 +378,11 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/capas/:id", h.GetCAPA)
 	g.PATCH("/capas/:id", h.UpdateCAPA, rw)
 	g.DELETE("/capas/:id", h.DeleteCAPA, rw)
+	// CRITICAL: static sub-paths (/capas/:id/nc-fields and /capas/:id/effectiveness-check)
+	// must be registered BEFORE the bare /capas/:id routes above.
+	// (Echo route registration order: most-specific first for same-prefix paths.)
+	g.PATCH("/capas/:id/nc-fields", h.UpdateCAPANCFields, rw)
+	g.POST("/capas/:id/effectiveness-check", h.CompleteEffectivenessCheck, rw)
 	// CRITICAL: /audits/:id/capas and /incidents/:id/capas must be registered BEFORE the bare
 	// /audits/:id and /incidents/:id to avoid Echo route conflicts.
 	g.GET("/audits/:id/capas", h.ListCAPAsForAudit)
@@ -362,13 +415,69 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.DELETE("/bcp/plans/:id", h.DeleteBCPPlan, rw)
 
 	// Schutzbedarfsfeststellung (S60)
-	// CRITICAL: /protection-needs/assessments/:id/finalize must be registered BEFORE /protection-needs/assessments/:id
+	// CRITICAL: sub-resource routes must be registered BEFORE /:id to avoid shadowing
 	g.GET("/protection-needs/assessments", h.ListProtectionNeedAssessments)
 	g.POST("/protection-needs/assessments", h.CreateProtectionNeedAssessment, rw)
 	g.POST("/protection-needs/assessments/:id/finalize", h.FinalizeProtectionNeedAssessment, rw)
+	g.PATCH("/protection-needs/assessments/:id/asset-link", h.LinkPNAAsset, rw)
 	g.GET("/protection-needs/assessments/:id", h.GetProtectionNeedAssessment)
 	g.PATCH("/protection-needs/assessments/:id", h.UpdateProtectionNeedAssessment, rw)
 	g.DELETE("/protection-needs/assessments/:id", h.DeleteProtectionNeedAssessment, rw)
+
+	// ISMS Scope (S61-1)
+	// CRITICAL: /isms-scope/versions and /isms-scope/approve and /isms-scope/export-pdf
+	// must be registered BEFORE /isms-scope to avoid route conflicts.
+	g.GET("/isms-scope/versions", h.ListISMSScopeVersions)
+	g.POST("/isms-scope/approve", h.ApproveISMSScope, rw)
+	g.GET("/isms-scope/export-pdf", h.ExportISMSScopePDF)
+	g.GET("/isms-scope", h.GetISMSScope)
+	g.POST("/isms-scope", h.CreateOrUpdateISMSScope, rw)
+
+	// Pentest Tracking (S61-6)
+	// CRITICAL: sub-resource routes before /:id to avoid shadowing
+	g.GET("/pentests", h.ListPentests)
+	g.POST("/pentests", h.CreatePentest, rw)
+	g.GET("/pentests/:id", h.GetPentest)
+	g.PATCH("/pentests/:id", h.UpdatePentest, rw)
+	g.DELETE("/pentests/:id", h.DeletePentest, rw)
+	g.POST("/pentests/:id/report", h.UploadPentestReport, rw)
+	g.POST("/pentests/:id/link-evidence", h.LinkPentestAsEvidence, rw)
+
+	// BSI Modeling (S61-5)
+	// CRITICAL: static paths before /:id to avoid route conflict.
+	g.GET("/bsi-modeling", h.GetBSIModelingMatrix)
+	g.POST("/bsi-modeling", h.CreateBSIModeling, rw)
+	g.GET("/bsi-modeling/stats", h.GetBSIModelingStats)
+	g.GET("/bsi-modeling/suggestions", h.GetBSIBausteinSuggestions)
+	g.GET("/bsi-modeling/export-pdf", h.ExportBSIModelingPDF)
+	g.GET("/bsi-modeling/export-xlsx", h.ExportBSIModelingXLSX)
+	g.PATCH("/bsi-modeling/:id", h.UpdateBSIModeling, rw)
+	g.DELETE("/bsi-modeling/:id", h.DeleteBSIModeling, rw)
+
+	// Management Reviews (S61-2)
+	// CRITICAL: sub-resource routes before /:id to avoid route conflicts
+	g.GET("/management-reviews", h.ListManagementReviews)
+	g.POST("/management-reviews", h.CreateManagementReview, rw)
+	g.GET("/management-reviews/:id", h.GetManagementReview)
+	g.PATCH("/management-reviews/:id/inputs", h.UpdateManagementReviewInputs, rw)
+	g.PATCH("/management-reviews/:id/outputs", h.UpdateManagementReviewOutputs, rw)
+	g.POST("/management-reviews/:id/approve", h.ApproveManagementReview, rw)
+	g.GET("/management-reviews/:id/export-pdf", h.ExportManagementReviewPDF)
+
+	// ISMS KPI Dashboard (S61-7)
+	// CRITICAL: /kpi-dashboard/export-pdf before /kpi-dashboard to avoid route conflict.
+	g.GET("/kpi-dashboard/export-pdf", h.ExportKPIReportPDF)
+	g.GET("/kpi-dashboard", h.GetKPIDashboard)
+
+	// S67-4: Evidence staleness compliance score
+	g.GET("/compliance-score", h.GetComplianceScore)
+	g.GET("/controls/stale", h.ListStaleControls)
+
+	// S67-6: Kryptographie-Schlüssel-Lifecycle (A.8.24)
+	g.GET("/crypto-keys", h.ListCryptoKeys)
+	g.POST("/crypto-keys", h.CreateCryptoKey, rw)
+	g.POST("/crypto-keys/:id/rotate", h.RotateCryptoKey, rw)
+	g.DELETE("/crypto-keys/:id", h.DeleteCryptoKey, rw)
 
 	registerAccessReviewRoutes(g, h)
 	registerExceptionRoutes(g, h)

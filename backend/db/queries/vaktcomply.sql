@@ -2250,3 +2250,4 @@ RETURNING *;
 -- name: DeleteCKProtectionNeedAssessment :execrows
 DELETE FROM ck_protection_need_assessments
 WHERE id = $1 AND org_id = $2;
+

@@ -220,6 +220,8 @@ func (r *Repository) ListRisksCursor(ctx context.Context, orgID string, cursorID
 		       likelihood, impact, risk_score, owner, status, treatment, treatment_notes,
 		       treatment_option, treatment_plan, treatment_owner, treatment_due_date,
 		       treatment_status, residual_likelihood, residual_impact,
+		       inherent_likelihood, inherent_impact,
+		       risk_accepted_by, risk_accepted_at, risk_acceptance_justification,
 		       created_at, updated_at
 		FROM ck_risks
 		WHERE org_id = $1`
@@ -249,6 +251,8 @@ func (r *Repository) ListRisksCursor(ctx context.Context, orgID string, cursorID
 			&f.Likelihood, &f.Impact, &f.RiskScore, &f.Owner, &f.Status, &f.Treatment, &f.TreatmentNotes,
 			&f.TreatmentOption, &f.TreatmentPlan, &f.TreatmentOwner, &f.TreatmentDueDate,
 			&f.TreatmentStatus, &f.ResidualLikelihood, &f.ResidualImpact,
+			&f.InherentLikelihood, &f.InherentImpact,
+			&f.RiskAcceptedBy, &f.RiskAcceptedAt, &f.RiskAcceptanceJustification,
 			&f.CreatedAt, &f.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan risk cursor row: %w", err)
@@ -256,4 +260,34 @@ func (r *Repository) ListRisksCursor(ctx context.Context, orgID string, cursorID
 		out = append(out, riskFromFields(f))
 	}
 	return out, rows.Err()
+}
+
+// GetRiskFull fetches a single risk including S61-4 residual/acceptance fields via raw SQL.
+func (r *Repository) GetRiskFull(ctx context.Context, orgID, id string) (*Risk, error) {
+	var f riskFields
+	err := r.db.QueryRow(ctx, `
+		SELECT id, org_id, title, description, category,
+		       likelihood, impact, risk_score, owner, status, treatment, treatment_notes,
+		       treatment_option, treatment_plan, treatment_owner, treatment_due_date,
+		       treatment_status, residual_likelihood, residual_impact,
+		       inherent_likelihood, inherent_impact,
+		       risk_accepted_by, risk_accepted_at, risk_acceptance_justification,
+		       created_at, updated_at
+		FROM ck_risks
+		WHERE id = $1 AND org_id = $2`,
+		id, orgID,
+	).Scan(
+		&f.ID, &f.OrgID, &f.Title, &f.Description, &f.Category,
+		&f.Likelihood, &f.Impact, &f.RiskScore, &f.Owner, &f.Status, &f.Treatment, &f.TreatmentNotes,
+		&f.TreatmentOption, &f.TreatmentPlan, &f.TreatmentOwner, &f.TreatmentDueDate,
+		&f.TreatmentStatus, &f.ResidualLikelihood, &f.ResidualImpact,
+		&f.InherentLikelihood, &f.InherentImpact,
+		&f.RiskAcceptedBy, &f.RiskAcceptedAt, &f.RiskAcceptanceJustification,
+		&f.CreatedAt, &f.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get risk full: %w", err)
+	}
+	risk := riskFromFields(f)
+	return &risk, nil
 }

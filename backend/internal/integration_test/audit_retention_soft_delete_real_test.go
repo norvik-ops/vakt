@@ -37,27 +37,21 @@ func TestAuditRetention_SoftDeletePreservesChain(t *testing.T) {
 	defer cleanup()
 	ctx := context.Background()
 
-	// The two old rows use distinct microsecond timestamps: the chain verifier
-	// orders rows by (created_at ASC, id ASC) while the writer finds the tail
-	// by (created_at DESC, id DESC). Identical timestamps + random UUIDs make
-	// those orderings contradict each other ~50% of the time.
+	// ── 1. Insert three chained audit entries ────────────────────────────────
+	// The two "old" rows are written with a past CreatedAt so the hash is
+	// consistent from the start — no SQL back-dating needed (which would
+	// invalidate the stored entry_hash and break the verifier).
 	twoDaysAgo := time.Now().UTC().Add(-48 * time.Hour)
-	audit.Write(ctx, pool, audit.WriteEntry{
-		OrgID:        orgID,
-		UserEmail:    "ops@example.org",
-		Action:       "create",
-		ResourceType: "control",
-		ResourceID:   "ctrl-1",
-		CreatedAt:    twoDaysAgo,
-	})
-	audit.Write(ctx, pool, audit.WriteEntry{
-		OrgID:        orgID,
-		UserEmail:    "ops@example.org",
-		Action:       "update",
-		ResourceType: "control",
-		ResourceID:   "ctrl-1",
-		CreatedAt:    twoDaysAgo.Add(time.Microsecond),
-	})
+	for _, action := range []string{"create", "update"} {
+		audit.Write(ctx, pool, audit.WriteEntry{
+			OrgID:        orgID,
+			UserEmail:    "ops@example.org",
+			Action:       action,
+			ResourceType: "control",
+			ResourceID:   "ctrl-1",
+			CreatedAt:    twoDaysAgo,
+		})
+	}
 	audit.Write(ctx, pool, audit.WriteEntry{
 		OrgID:        orgID,
 		UserEmail:    "ops@example.org",

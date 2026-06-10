@@ -16,6 +16,7 @@ interface LicenseInfo {
   expires_at: string | null
   demo: boolean
   revoked: boolean
+  auto_renewal_enabled: boolean
 }
 
 function useLicenseInfo() {
@@ -53,8 +54,9 @@ export function LicenseExpiryBanner() {
 
   const isAdmin = user?.roles.includes('admin') || user?.roles.includes('owner')
 
-  // Only admins, only Pro licenses with an expiry, not already dismissed this session/day
-  if (!isAdmin || !lic?.is_pro || !lic.expires_at) {
+  // Only admins, only Pro licenses with an expiry, not already dismissed this session/day.
+  // Auto-renewal handles key rotation automatically — no expiry warning needed.
+  if (!isAdmin || !lic?.is_pro || !lic.expires_at || lic.auto_renewal_enabled) {
     return null
   }
 

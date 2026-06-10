@@ -17,7 +17,8 @@ import (
 // The caller passes the /api/v1 group, the active License, the auth middleware,
 // an optional DB pool for key persistence, and an optional Redis client for
 // cache invalidation on activation.
-func RegisterRoutes(api *echo.Group, lic *License, authMW echo.MiddlewareFunc, db *pgxpool.Pool, rdb ...*redis.Client) {
+// Returns the Handler so the caller can configure auto-renewal.
+func RegisterRoutes(api *echo.Group, lic *License, authMW echo.MiddlewareFunc, db *pgxpool.Pool, rdb ...*redis.Client) *Handler {
 	h := NewHandler(lic)
 	if db != nil {
 		h = h.WithDB(db)
@@ -40,6 +41,7 @@ func RegisterRoutes(api *echo.Group, lic *License, authMW echo.MiddlewareFunc, d
 	api.GET("/license", h.Get, authMW)
 	// POST /api/v1/license/activate — validate and persist a Pro key (requires auth + Admin role + rate limit).
 	api.POST("/license/activate", h.Activate, authMW, requireAdminRole(), activateLimiter)
+	return h
 }
 
 // requireAdminRole is a lightweight middleware that checks the "roles" context

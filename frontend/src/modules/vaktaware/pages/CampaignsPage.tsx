@@ -21,6 +21,14 @@ import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const statusVariant = campaignStatusVariant
 
+const STATUS_LABELS: Record<string, string> = {
+  draft: 'Entwurf',
+  scheduled: 'Geplant',
+  running: 'Läuft',
+  completed: 'Abgeschlossen',
+  cancelled: 'Abgebrochen',
+}
+
 export default function CampaignsPage() {
   const navigate = useNavigate()
   const { formatDate, formatDateTime } = useFormatDate()
@@ -73,12 +81,12 @@ export default function CampaignsPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Campaigns"
+        title="Kampagnen"
         description="Phishing-Simulationskampagnen verwalten."
         actions={
           <Button onClick={() => { setOpen(true); }}>
             <Plus className="w-4 h-4 mr-1" />
-            New Campaign
+            Neue Kampagne
           </Button>
         }
       />
@@ -126,7 +134,7 @@ export default function CampaignsPage() {
                     >
                       <TableCell className="font-medium">{c.name}</TableCell>
                       <TableCell>
-                        <Badge variant={statusVariant[c.status]} className="capitalize">{c.status}</Badge>
+                        <Badge variant={statusVariant[c.status]}>{STATUS_LABELS[c.status] ?? c.status}</Badge>
                       </TableCell>
                       <TableCell>
                         {c.betriebsrat_mode ? (

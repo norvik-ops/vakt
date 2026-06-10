@@ -18,6 +18,22 @@ Nicht erlaubt: Vakt als gehosteten oder verwalteten Service an Dritte verkaufen 
 
 ---
 
+### Muss ich den Lizenzschlüssel jeden Monat neu eingeben?
+
+Nein — mit dem **Renewal-Token** aus der Kauf-E-Mail erneuert sich der Key vollautomatisch:
+
+```env
+VAKT_LICENSE_TOKEN=<token aus der Kauf-E-Mail>
+```
+
+Die Instanz holt sich dann täglich den aktuellen Key von `api.norvikops.de` und aktiviert ihn im Hintergrund. In Einstellungen → Lizenz erscheint das Badge „Auto-Renewal aktiv". Kein Neustart, kein Admin-Eingriff bei Verlängerungen.
+
+**Ohne `VAKT_LICENSE_TOKEN`** (manueller Modus): Die Kauf-E-Mail enthält bei jedem Renewal einen neuen Key. Einzutragen unter Einstellungen → Lizenz → Aktivieren.
+
+**Datenschutz:** Die tägliche Verbindung zu `api.norvikops.de` überträgt ausschließlich den Token — keine Nutzungsdaten, keine Geschäftsdaten. Wer ausgehende Verbindungen strikt kontrolliert, kann `VAKT_LICENSE_TOKEN` weglassen und den manuellen Modus nutzen.
+
+---
+
 ### Was ist ELv2?
 
 ELv2 steht für die [Elastic License 2.0](https://www.elastic.co/licensing/elastic-license). Das ist eine Source-Available-Lizenz — der Quellcode ist öffentlich lesbar und auditierbar, aber mit einer Einschränkung:

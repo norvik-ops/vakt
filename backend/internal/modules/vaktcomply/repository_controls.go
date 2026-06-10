@@ -821,3 +821,100 @@ func (r *Repository) FindControlByCode(ctx context.Context, orgID, code string) 
 	}
 	return id, nil
 }
+
+// --- S69-1: Prerequisite Chains ---
+
+// UpsertControlPrerequisite inserts a row into ck_control_prerequisites,
+// silently ignoring duplicates (ON CONFLICT DO NOTHING).
+func (r *Repository) UpsertControlPrerequisite(ctx context.Context, e PrerequisiteEntry) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO ck_control_prerequisites
+			(control_framework, control_code, prerequisite_framework, prerequisite_code,
+			 dependency_type, rationale, source)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (control_framework, control_code, prerequisite_framework, prerequisite_code)
+		DO NOTHING`,
+		e.ControlFW, e.ControlCode, e.PrereqFW, e.PrereqCode,
+		e.DependencyType, e.Rationale, e.Source,
+	)
+	return err
+}
+
+// ListPrerequisitesByFramework returns all prerequisite rows where the control
+// OR the prerequisite belongs to the given framework (for cross-framework display).
+func (r *Repository) ListPrerequisitesByFramework(ctx context.Context, frameworkName string) ([]ControlPrerequisiteRow, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT control_framework, control_code, prerequisite_framework, prerequisite_code,
+		       dependency_type, COALESCE(rationale, '')
+		FROM ck_control_prerequisites
+		WHERE control_framework = $1 OR prerequisite_framework = $1`,
+		frameworkName,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list prerequisites by framework: %w", err)
+	}
+	defer rows.Close()
+
+	var out []ControlPrerequisiteRow
+	for rows.Next() {
+		var p ControlPrerequisiteRow
+		if err := rows.Scan(
+			&p.ControlFramework, &p.ControlCode,
+			&p.PrerequisiteFramework, &p.PrerequisiteCode,
+			&p.DependencyType, &p.Rationale,
+		); err != nil {
+			return nil, fmt.Errorf("scan prerequisite row: %w", err)
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// GetFrameworkMappingCounts returns the number of global mappings per framework-pair.
+// Uses the global ck_framework_control_mappings table (text-code based).
+func (r *Repository) GetFrameworkMappingCounts(ctx context.Context, orgID string) ([]FrameworkPairCountRow, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT m.source_framework, m.target_framework, COUNT(*) AS cnt
+		FROM ck_framework_control_mappings m
+		WHERE EXISTS (
+			SELECT 1 FROM ck_frameworks
+			WHERE org_id = $1::uuid
+			  AND lower(name) LIKE '%' || lower(m.source_framework) || '%'
+		)
+		AND EXISTS (
+			SELECT 1 FROM ck_frameworks
+			WHERE org_id = $1::uuid
+			  AND lower(name) LIKE '%' || lower(m.target_framework) || '%'
+		)
+		GROUP BY m.source_framework, m.target_framework`,
+		orgID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get framework mapping counts: %w", err)
+	}
+	defer rows.Close()
+
+	var out []FrameworkPairCountRow
+	for rows.Next() {
+		var p FrameworkPairCountRow
+		if err := rows.Scan(&p.FrameworkAName, &p.FrameworkBName, &p.MappingCount); err != nil {
+			return nil, fmt.Errorf("scan mapping count row: %w", err)
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// SetControlPartialIfUnset sets manual_status = 'partial' on a control if it
+// is currently unset (NULL or empty). Never overwrites 'implemented' or 'partial'.
+func (r *Repository) SetControlPartialIfUnset(ctx context.Context, orgID, controlID string) error {
+	_, err := r.db.Exec(ctx, `
+		UPDATE ck_controls
+		SET manual_status = 'partial'
+		WHERE id = $1::uuid
+		  AND org_id = $2::uuid
+		  AND (manual_status IS NULL OR manual_status = '')`,
+		controlID, orgID,
+	)
+	return err
+}

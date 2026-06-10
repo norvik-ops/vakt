@@ -135,8 +135,20 @@ export interface Risk {
   residual_likelihood?: number | null
   residual_impact?: number | null
   ai_narrative?: string | null
+  // Residualrisiko-Berechnung (S61-4, Migration 164)
+  inherent_likelihood?: number
+  inherent_impact?: number
+  residual_score?: number
+  inherent_score?: number
+  risk_accepted_by?: string
+  risk_accepted_at?: string
+  risk_acceptance_justification?: string
   created_at: string
   updated_at: string
+}
+
+export interface AcceptRiskInput {
+  justification: string
 }
 
 export interface AIInsight {
@@ -221,8 +233,130 @@ export interface Incident {
   financial_impact_estimate?: string
   is_major_incident: boolean
   deadline_status?: IncidentDeadlineStatus
+  // NIS2 Art.23 stage-based reporting (Migration 175, S67-1)
+  nis2_reportable?: boolean
+  nis2_reporting_stage?: 'none' | 'early_warning' | 'full_report' | 'final_report'
+  nis2_detected_at?: string
+  nis2_early_warning_due?: string
+  nis2_full_report_due?: string
+  nis2_final_report_due?: string
+  nis2_early_warning_submitted_at?: string
+  nis2_full_report_submitted_at?: string
+  nis2_final_report_submitted_at?: string
   created_at: string
   updated_at: string
+}
+
+// S67-1: NIS2 Art.23 reporting types
+export interface NIS2ReportabilityCheck {
+  causes_significant_disruption: boolean
+  affects_third_parties: boolean
+  causes_financial_damage: boolean
+}
+
+export interface NIS2ReportInput {
+  affected_services?: string
+  initial_assessment?: string
+  root_cause?: string
+  affected_users_estimate?: number
+  measures_taken?: string
+  estimated_recovery?: string
+  full_root_cause_analysis?: string
+  permanent_measures?: string
+  effectiveness_evidence?: string
+}
+
+export interface NIS2StageReport {
+  id: string
+  stage: 'early_warning' | 'full_report' | 'final_report'
+  submitted_at?: string
+  pdf_path?: string
+}
+
+export interface NIS2ReportStatus {
+  is_reportable: boolean
+  reporting_stage: string
+  detected_at?: string
+  deadlines: {
+    early_warning?: string
+    full_report?: string
+    final_report?: string
+  }
+  completed_stages: string[]
+  reports: NIS2StageReport[]
+}
+
+export interface AuthorityContact {
+  id: string
+  org_id?: string
+  country: 'de' | 'at' | 'ch' | 'eu'
+  sector?: string
+  authority_name: string
+  report_url?: string
+  email?: string
+  phone?: string
+  notes?: string
+  is_primary: boolean
+  is_builtin: boolean
+  created_at: string
+}
+
+// S67-4: Evidence staleness types
+export interface ComplianceScore {
+  total_controls: number
+  ok_count: number
+  stale_count: number
+  missing_count: number
+  na_count: number
+  score_pct: number
+  as_of: string
+}
+
+// S67-3: Classification types
+export type ClassificationLevel = 'public' | 'internal' | 'confidential' | 'restricted'
+
+export interface ClassificationSummary {
+  total_count: number
+  classified_count: number
+  by_level: Record<ClassificationLevel, number>
+  unclassified_count: number
+}
+
+// S67-6: Crypto key types
+export type CryptoKeyType = 'symmetric' | 'asymmetric' | 'certificate' | 'hmac' | 'signing' | 'other'
+export type RotationStatus = 'ok' | 'due_soon' | 'overdue' | 'none'
+
+export interface CryptoKey {
+  id: string
+  org_id: string
+  name: string
+  key_type: CryptoKeyType
+  algorithm: string
+  key_length?: number
+  purpose: string
+  location?: string
+  rotation_interval_days?: number
+  last_rotation_date?: string
+  next_rotation_due?: string
+  expiry_date?: string
+  is_weak_algorithm: boolean
+  rotation_status: RotationStatus
+  notes?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateCryptoKeyInput {
+  name: string
+  key_type: CryptoKeyType
+  algorithm: string
+  key_length?: number
+  purpose: string
+  location?: string
+  rotation_interval_days?: number
+  last_rotation_date?: string
+  expiry_date?: string
+  notes?: string
 }
 
 export interface CreateIncidentInput {
@@ -1048,6 +1182,7 @@ export interface ProtectionNeedAssessment {
   availability: ProtectionLevel
   overall: ProtectionLevel
   status: 'draft' | 'finalized'
+  vb_asset_id?: string | null
   finalized_at?: string | null
   created_at: string
   updated_at: string
@@ -1064,4 +1199,230 @@ export interface CreateProtectionNeedInput {
 
 export interface UpdateProtectionNeedInput extends CreateProtectionNeedInput {
   status?: 'draft' | 'finalized'
+}
+
+// ── S61-1: ISMS Scope ────────────────────────────────────────────────────────
+export interface ISMSScopeExclusion {
+  item: string
+  justification: string
+}
+
+export interface ISMSScope {
+  id: string
+  org_id: string
+  version: number
+  status: 'draft' | 'approved'
+  scope_definition: string
+  exclusions: ISMSScopeExclusion[]
+  outsourcing_dependencies: string
+  change_note: string
+  approved_by?: string
+  approved_at?: string
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateISMSScopeInput {
+  scope_definition: string
+  exclusions: ISMSScopeExclusion[]
+  outsourcing_dependencies: string
+  change_note: string
+}
+
+// ── S61-6: Pentest Tracking ──
+export interface Pentest {
+  id: string
+  org_id: string
+  title: string
+  scope: string
+  pentest_date: string
+  tester_type: 'internal' | 'external'
+  tester_name: string
+  methodology?: 'blackbox' | 'greybox' | 'whitebox'
+  findings_critical: number
+  findings_high: number
+  findings_medium: number
+  findings_low: number
+  status: 'in_progress' | 'completed' | 'remediation' | 'closed'
+  retest_date?: string
+  notes: string
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CreatePentestInput {
+  title: string
+  scope: string
+  pentest_date: string
+  tester_type: 'internal' | 'external'
+  tester_name?: string
+  methodology?: 'blackbox' | 'greybox' | 'whitebox'
+  findings_critical?: number
+  findings_high?: number
+  findings_medium?: number
+  findings_low?: number
+  notes?: string
+}
+
+// ── S61-5: BSI Modellierung ──
+
+export interface BSIModelingEntry {
+  id: string
+  org_id: string
+  asset_id: string
+  control_id: string
+  priority: 'R1' | 'R2' | 'R3'
+  justification_for_exclusion: string
+  check_status?: 'yes' | 'partial' | 'no' | 'not_applicable'
+  interview_notes: string
+  site_visit_notes: string
+  asset_name: string
+  control_title: string
+  framework_id: string
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateBSIModelingInput {
+  asset_id: string
+  control_id: string
+  priority: 'R1' | 'R2' | 'R3'
+  justification_for_exclusion?: string
+  check_status?: 'yes' | 'partial' | 'no' | 'not_applicable'
+  interview_notes?: string
+  site_visit_notes?: string
+}
+
+export interface UpdateBSIModelingInput {
+  priority: 'R1' | 'R2' | 'R3'
+  justification_for_exclusion?: string
+  check_status?: 'yes' | 'partial' | 'no' | 'not_applicable'
+  interview_notes?: string
+  site_visit_notes?: string
+}
+
+export interface BSIModelingStats {
+  total: number
+  count_yes: number
+  count_partial: number
+  count_no: number
+  count_na: number
+  count_pending: number
+}
+
+// ── S61-2: Management Review ─────────────────────────────────────────────────
+
+export interface ImprovementDecision {
+  decision: string
+  responsible: string
+  due_date: string
+}
+
+export interface ManagementReview {
+  id: string
+  org_id: string
+  review_date: string
+  review_type: 'annual' | 'extraordinary'
+  participant_ids: string[]
+  status: 'draft' | 'approved'
+  audit_findings_summary: string
+  incident_summary: string
+  risk_status_summary: string
+  previous_actions_status: string
+  kpi_snapshot?: Record<string, unknown>
+  context_changes: string
+  customer_feedback: string
+  improvement_decisions: ImprovementDecision[]
+  resource_decisions: string
+  isms_changes: string
+  next_review_date?: string
+  approved_by?: string
+  approved_at?: string
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateManagementReviewInput {
+  review_date: string
+  review_type: 'annual' | 'extraordinary'
+  participant_ids?: string[]
+}
+
+export interface UpdateManagementReviewInputsInput {
+  audit_findings_summary: string
+  incident_summary: string
+  risk_status_summary: string
+  previous_actions_status: string
+  kpi_snapshot?: Record<string, unknown>
+  context_changes: string
+  customer_feedback: string
+}
+
+export interface UpdateManagementReviewOutputsInput {
+  improvement_decisions: ImprovementDecision[]
+  resource_decisions: string
+  isms_changes: string
+  next_review_date?: string
+}
+
+// ── S61-7: ISMS KPI Dashboard ─────────────────────────────────────────────────
+
+export interface KPISnapshot {
+  id: string
+  org_id: string
+  snapshot_date: string
+  kpi_compliance_score?: number
+  kpi_open_critical_controls?: number
+  kpi_open_high_risks?: number
+  kpi_residual_risk_avg?: number
+  kpi_open_incidents?: number
+  kpi_incident_mttr_days?: number
+  kpi_evidence_coverage?: number
+  kpi_expiring_evidence_count?: number
+  kpi_finding_sla_compliance?: number
+  kpi_open_major_ncs?: number
+  kpi_suppliers_overdue_pct?: number
+  kpi_phishing_click_rate?: number
+  created_at: string
+}
+
+export interface KPIDashboard {
+  current?: KPISnapshot
+  history: KPISnapshot[]
+}
+
+// ── S69-1: Cross-Framework Mapping Coverage ───────────────────────────────────
+
+export interface FrameworkPairCoverage {
+  framework_a_name: string
+  framework_b_name: string
+  mapping_count: number
+  is_mapped: boolean
+}
+
+export interface MappingCoverageResponse {
+  pairs: FrameworkPairCoverage[]
+  total_meaningful_pairs: number
+  mapped_pairs: number
+  coverage_pct: number
+}
+
+export interface PrereqRef {
+  framework: string
+  control_code: string
+  dependency_type: string
+}
+
+export interface ImplementationStep {
+  step_nr: number
+  framework_id: string
+  control_code: string
+  control_title: string
+  current_status: string
+  prerequisites_met: boolean
+  blocking_prereqs: PrereqRef[]
 }

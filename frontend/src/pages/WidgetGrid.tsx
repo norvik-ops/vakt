@@ -128,7 +128,7 @@ export function WidgetGrid({
         </div>
       )}
 
-      {widgets.onboarding && onboarding && !onboarding.completed && !onboarding.dismissed && (
+      {widgets.onboarding && !widgets.evidence_expiry && onboarding && !onboarding.completed && !onboarding.dismissed && (
         <OnboardingBanner status={onboarding} onOpen={() => { setWizardOpen(true) }} />
       )}
       {onboarding && !onboarding.dismissed && (

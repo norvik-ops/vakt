@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../../api/client'
-import type { Control, Evidence, UpdateControlInput } from '../types'
+import type { Control, Evidence, UpdateControlInput, ComplianceScore } from '../types'
 
 export interface BulkUpdateControlsInput {
   ids: string[]
@@ -126,4 +126,42 @@ export function useExportControl(controlId: string) {
         URL.revokeObjectURL(url)
       })
   }
+}
+
+export function useComplianceScore(frameworkId?: string) {
+  const qs = frameworkId ? `?framework_id=${frameworkId}` : ''
+  return useQuery<ComplianceScore>({
+    queryKey: ['vaktcomply', 'compliance-score', frameworkId ?? ''],
+    queryFn: () => apiFetch<ComplianceScore>(`/vaktcomply/compliance-score${qs}`),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useStaleControls(frameworkId?: string) {
+  const qs = frameworkId ? `?framework_id=${frameworkId}` : ''
+  return useQuery<Control[]>({
+    queryKey: ['vaktcomply', 'controls', 'stale', frameworkId ?? ''],
+    queryFn: () => apiFetch<Control[]>(`/vaktcomply/controls/stale${qs}`),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+interface SetMaxAgeInput {
+  max_age_days: number | null
+}
+
+export function useSetControlMaxAge(controlId: string) {
+  const queryClient = useQueryClient()
+  return useMutation<undefined, Error, SetMaxAgeInput>({
+    mutationFn: (input) =>
+      apiFetch<undefined>(`/vaktcomply/controls/${controlId}/max-age`, {
+        method: 'PATCH',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'controls', controlId] })
+      void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'compliance-score'] })
+      void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'controls', 'stale'] })
+    },
+  })
 }

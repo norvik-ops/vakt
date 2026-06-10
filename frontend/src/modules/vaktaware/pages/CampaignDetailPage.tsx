@@ -11,6 +11,14 @@ import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const statusVariant = campaignStatusVariant
 
+const STATUS_LABELS: Record<string, string> = {
+  draft: 'Entwurf',
+  scheduled: 'Geplant',
+  running: 'Läuft',
+  completed: 'Abgeschlossen',
+  cancelled: 'Abgebrochen',
+}
+
 function StatCard({ label, value, pct }: { label: string; value: number; pct?: number }) {
   return (
     <div className="text-center p-4 bg-surface border border-border rounded-lg">
@@ -86,22 +94,22 @@ export default function CampaignDetailPage() {
         <Card>
           <CardHeader className="flex flex-row items-center gap-3 pb-3">
             <CardTitle>Details</CardTitle>
-            <Badge variant={statusVariant[campaign.status]} className="capitalize">{campaign.status}</Badge>
+            <Badge variant={statusVariant[campaign.status]}>{STATUS_LABELS[campaign.status] ?? campaign.status}</Badge>
           </CardHeader>
           <CardContent>
             <dl className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
               <div>
-                <dt className="text-secondary">From</dt>
+                <dt className="text-secondary">Absender</dt>
                 <dd className="mt-0.5 text-primary">{campaign.from_name} &lt;{campaign.from_email}&gt;</dd>
               </div>
               <div>
-                <dt className="text-secondary">Scheduled</dt>
+                <dt className="text-secondary">Geplant</dt>
                 <dd className="mt-0.5 text-primary">
-                  {campaign.scheduled_at ? formatDateTime(campaign.scheduled_at) : 'Not scheduled'}
+                  {campaign.scheduled_at ? formatDateTime(campaign.scheduled_at) : 'Nicht geplant'}
                 </dd>
               </div>
               <div>
-                <dt className="text-secondary">Created</dt>
+                <dt className="text-secondary">Erstellt</dt>
                 <dd className="mt-0.5 text-primary">{formatDate(campaign.created_at)}</dd>
               </div>
             </dl>
@@ -113,16 +121,16 @@ export default function CampaignDetailPage() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <BarChart2 className="w-4 h-4 text-secondary" />
-                <CardTitle>Campaign Statistics</CardTitle>
+                <CardTitle>Kampagnen-Statistik</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                <StatCard label="Targets" value={stats.total_targets} />
-                <StatCard label="Emails Sent" value={stats.emails_sent} />
-                <StatCard label="Opened" value={Math.round(stats.open_rate * stats.emails_sent)} pct={stats.open_rate} />
-                <StatCard label="Clicked" value={Math.round(stats.click_rate * stats.emails_sent)} pct={stats.click_rate} />
-                <StatCard label="Submitted" value={Math.round(stats.submission_rate * stats.emails_sent)} pct={stats.submission_rate} />
+                <StatCard label="Ziele" value={stats.total_targets} />
+                <StatCard label="Versandt" value={stats.emails_sent} />
+                <StatCard label="Geöffnet" value={Math.round(stats.open_rate * stats.emails_sent)} pct={stats.open_rate} />
+                <StatCard label="Geklickt" value={Math.round(stats.click_rate * stats.emails_sent)} pct={stats.click_rate} />
+                <StatCard label="Eingegeben" value={Math.round(stats.submission_rate * stats.emails_sent)} pct={stats.submission_rate} />
               </div>
             </CardContent>
           </Card>

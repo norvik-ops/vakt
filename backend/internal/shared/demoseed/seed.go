@@ -163,7 +163,7 @@ func runSeed(ctx context.Context, db *pgxpool.Pool, masterKeyHex, orgName, orgSl
 		{"Datenbank-Cluster", "server", "critical", []string{"prod", "intern", "pii"}},
 		{"API-Gateway", "container", "high", []string{"prod", "extern"}},
 		{"Dev-Server", "server", "medium", []string{"intern", "dev"}},
-		{"Haupt-Repository", "repository", "high", []string{"intern", "sourcecode"}},
+		{"Haupt-Repository", "repo", "high", []string{"intern", "sourcecode"}},
 	}
 	for _, a := range assets {
 		var id string
@@ -765,6 +765,70 @@ func runSeed(ctx context.Context, db *pgxpool.Pool, masterKeyHex, orgName, orgSl
 			VALUES ($1::uuid, $2, $3, $4, $5)`,
 			orgID, n.title, n.body, n.typ, n.module); err != nil {
 			return "", "", fmt.Errorf("demoseed: notification %q: %w", n.title, err)
+		}
+	}
+
+	// ── Sprint 68: Interessierte Parteien (Clause 4.2) ────────────────────────
+	interestedParties := []struct {
+		name, category, requirements, concerns string
+	}{
+		{"Datenschutzaufsichtsbehörde", "regulatory", "DSGVO-Compliance, Art. 30 VVT, Löschkonzept", "Unzureichende Dokumentation"},
+		{"Geschäftsführung / CISO", "internal", "Nachweisbare ISO 27001-Konformität, Auditberichte", "Unklare Verantwortlichkeiten"},
+		{"Kunden (B2B)", "customer", "Datensicherheit, AVV-Abschluss, Transparenz", "Datenpannen, mangelnde Transparenz"},
+		{"IT-Lieferanten", "supplier", "Klare Sicherheitsanforderungen, AVV", "Zu hohe Anforderungen"},
+		{"Mitarbeitende", "internal", "Klare Richtlinien, Schulungen, sichere Arbeitsumgebung", "Überwachung ohne Betriebsvereinbarung"},
+		{"BSI / ENISA", "regulatory", "NIS2-Umsetzung, Meldepflichten, Grundschutz", "Meldung von Sicherheitsvorfällen"},
+	}
+	for _, p := range interestedParties {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO ck_interested_parties (org_id, name, category, requirements, concerns, is_system_default)
+			VALUES ($1::uuid, $2, $3, $4, $5, true)`,
+			orgID, p.name, p.category, p.requirements, p.concerns); err != nil {
+			return "", "", fmt.Errorf("demoseed: interested party %q: %w", p.name, err)
+		}
+	}
+
+	// ── Sprint 68: Audit-Programm (Clause 9.2) ────────────────────────────────
+	var auditPlanID string
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO ck_audit_plans (org_id, year, scope, status)
+		VALUES ($1::uuid, 2026, 'Gesamtes ISMS (ISO 27001:2022)', 'active')
+		RETURNING id`, orgID).Scan(&auditPlanID); err != nil {
+		return "", "", fmt.Errorf("demoseed: audit plan: %w", err)
+	}
+	auditSeeds := []struct {
+		title, auditType, status, scheduledDate string
+	}{
+		{"Internes ISMS-Audit Q1 2026", "isms_internal", "completed", now.AddDate(0, -3, 0).Format("2006-01-02")},
+		{"Lieferantenaudit IT-Dienstleister", "supplier_audit", "planned", now.AddDate(0, 2, 0).Format("2006-01-02")},
+		{"Compliance-Prüfung DSGVO/NIS2", "compliance_check", "planned", now.AddDate(0, 4, 0).Format("2006-01-02")},
+	}
+	for _, a := range auditSeeds {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO ck_audit_program_audits (org_id, plan_id, title, audit_type, scheduled_date, status)
+			VALUES ($1::uuid, $2::uuid, $3, $4, $5::date, $6)`,
+			orgID, auditPlanID, a.title, a.auditType, a.scheduledDate, a.status); err != nil {
+			return "", "", fmt.Errorf("demoseed: audit %q: %w", a.title, err)
+		}
+	}
+
+	// ── Sprint 68: Löscherinnerungen (Art. 5 Abs. 1 lit. e DSGVO) ─────────────
+	deletionReminders := []struct {
+		description, dataCategory, dueDate string
+	}{
+		{"Bewerbungsunterlagen löschen (Absagen älter als 6 Monate)", "Bewerbungsunterlagen",
+			now.AddDate(0, 0, 12).Format("2006-01-02")},
+		{"Kundendaten inaktiver Accounts (> 2 Jahre) löschen", "Kundenstammdaten",
+			now.AddDate(0, 0, 30).Format("2006-01-02")},
+		{"Protokolldaten älter als 90 Tage löschen", "Server-Logs",
+			now.AddDate(0, 0, 7).Format("2006-01-02")},
+	}
+	for _, r := range deletionReminders {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO po_deletion_reminders (org_id, description, data_category, deletion_due_date)
+			VALUES ($1::uuid, $2, $3, $4::date)`,
+			orgID, r.description, r.dataCategory, r.dueDate); err != nil {
+			return "", "", fmt.Errorf("demoseed: deletion reminder %q: %w", r.description, err)
 		}
 	}
 

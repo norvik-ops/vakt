@@ -78,6 +78,7 @@ func TestWorkerTaskConstantsRegistered(t *testing.T) {
 	assert.Equal(t, "vaktscan:auto_evidence", vaktscan.TaskAutoEvidence)
 	assert.Equal(t, "vaktscan:sbom:generate", vaktscan.TaskSBOMGenerate)
 	assert.Equal(t, "vaktscan:eol:check", vaktscan.TaskEOLCheck)
+	assert.Equal(t, "vaktscan:cert_scan", vaktscan.TaskCertScan)
 
 	// SecReflex.
 	assert.Equal(t, "vaktaware:send_campaign", vaktaware.TaskSendCampaign)

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Spinner } from '../components/Spinner'
 import { apiFetch } from '../api/client'
@@ -17,6 +18,7 @@ function roleName(role: string) {
 }
 
 export default function InviteAcceptPage() {
+  const { t } = useTranslation()
   const [params] = useSearchParams()
   const token = params.get('token')
   const navigate = useNavigate()
@@ -34,15 +36,15 @@ export default function InviteAcceptPage() {
     setFormError(null)
 
     if (!token) {
-      setFormError('Kein Einladungstoken gefunden.')
+      setFormError(t('invite.errorNoToken'))
       return
     }
     if (password !== confirm) {
-      setFormError('Passwörter stimmen nicht überein.')
+      setFormError(t('invite.errorPasswordMismatch'))
       return
     }
     if (password.length < 8) {
-      setFormError('Das Passwort muss mindestens 8 Zeichen lang sein.')
+      setFormError(t('invite.errorPasswordTooShort'))
       return
     }
 
@@ -54,7 +56,7 @@ export default function InviteAcceptPage() {
       })
       navigate('/login?message=account-created', { replace: true })
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Fehler beim Erstellen des Kontos.')
+      setFormError(err instanceof Error ? err.message : t('invite.errorCreatingAccount'))
     } finally {
       setSubmitting(false)
     }
@@ -64,8 +66,8 @@ export default function InviteAcceptPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg">
         <div className="text-center space-y-2">
-          <p className="text-lg font-semibold text-primary">Ungültiger Link</p>
-          <p className="text-sm text-secondary">Der Einladungslink ist unvollständig oder fehlerhaft.</p>
+          <p className="text-lg font-semibold text-primary">{t('invite.invalidLink')}</p>
+          <p className="text-sm text-secondary">{t('invite.invalidLinkHint')}</p>
         </div>
       </div>
     )
@@ -83,11 +85,8 @@ export default function InviteAcceptPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg">
         <div className="text-center space-y-2 max-w-sm">
-          <p className="text-lg font-semibold text-primary">Einladung abgelaufen</p>
-          <p className="text-sm text-secondary">
-            Dieser Einladungslink ist nicht mehr gültig oder wurde bereits verwendet.
-            Bitte bitte die einladende Person, eine neue Einladung zu senden.
-          </p>
+          <p className="text-lg font-semibold text-primary">{t('invite.expiredTitle')}</p>
+          <p className="text-sm text-secondary">{t('invite.expiredHint')}</p>
         </div>
       </div>
     )
@@ -102,24 +101,23 @@ export default function InviteAcceptPage() {
             <img src="/logo.svg" alt="Vakt" className="w-8 h-8" />
             <span className="font-bold text-xl text-brand">Vakt</span>
           </div>
-          <h1 className="text-xl font-semibold text-primary">Konto erstellen</h1>
+          <h1 className="text-xl font-semibold text-primary">{t('invite.createAccount')}</h1>
           <p className="text-sm text-secondary">
-            Du wurdest von <strong>{invite.invited_by || 'deinem Team'}</strong> als{' '}
-            <strong>{roleName(invite.role)}</strong> eingeladen.
+            {t('invite.invitedBy', { inviter: invite.invited_by || 'deinem Team', role: roleName(invite.role) })}
           </p>
           <p className="text-sm text-secondary">
-            E-Mail: <strong>{invite.email}</strong>
+            {t('invite.email')} <strong>{invite.email}</strong>
           </p>
         </div>
 
         {/* Form */}
         <form onSubmit={(e) => { void handleSubmit(e) }} className="space-y-4">
           <div className="space-y-1">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">{t('invite.nameLabel')}</Label>
             <Input
               id="name"
               type="text"
-              placeholder="Vor- und Nachname"
+              placeholder={t('invite.namePlaceholder')}
               value={name}
               onChange={(e) => { setName(e.target.value); }}
               required
@@ -127,11 +125,11 @@ export default function InviteAcceptPage() {
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="password">Passwort</Label>
+            <Label htmlFor="password">{t('invite.passwordLabel')}</Label>
             <Input
               id="password"
               type="password"
-              placeholder="Mindestens 10 Zeichen"
+              placeholder={t('invite.passwordPlaceholder')}
               value={password}
               onChange={(e) => { setPassword(e.target.value); }}
               required
@@ -139,11 +137,11 @@ export default function InviteAcceptPage() {
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="confirm">Passwort wiederholen</Label>
+            <Label htmlFor="confirm">{t('invite.confirmLabel')}</Label>
             <Input
               id="confirm"
               type="password"
-              placeholder="Passwort bestätigen"
+              placeholder={t('invite.confirmPlaceholder')}
               value={confirm}
               onChange={(e) => { setConfirm(e.target.value); }}
               required
@@ -155,14 +153,14 @@ export default function InviteAcceptPage() {
           )}
 
           <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? 'Erstelle Konto...' : 'Konto erstellen'}
+            {submitting ? t('invite.submitting') : t('invite.submit')}
           </Button>
         </form>
 
         <p className="text-center text-xs text-secondary">
-          Bereits ein Konto?{' '}
+          {t('invite.alreadyHaveAccount')}{' '}
           <a href="/login" className="text-brand hover:underline">
-            Einloggen
+            {t('invite.login')}
           </a>
         </p>
       </div>

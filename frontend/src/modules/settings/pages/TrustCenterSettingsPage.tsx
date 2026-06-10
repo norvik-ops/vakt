@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Spinner } from '../../../components/Spinner'
 import { Shield, Award, FileText, Plus, Trash2 } from 'lucide-react'
@@ -283,6 +284,7 @@ function SubprocessorsSection({
 }
 
 function CertificatesSection() {
+  const { t } = useTranslation()
   const { data, isLoading } = useCertificates()
   const createCert = useCreateCertificate()
   const deleteCert = useDeleteCertificate()
@@ -319,7 +321,7 @@ function CertificatesSection() {
         </div>
       )}
       {!isLoading && certs.length === 0 && (
-        <p className="text-sm text-muted-foreground">Noch keine Zertifikate hinterlegt.</p>
+        <p className="text-sm text-muted-foreground">{t('settings.trustCenter.noCertificates')}</p>
       )}
       {!isLoading && certs.map((cert) => (
         <div key={cert.id} className="flex items-center justify-between p-3 rounded-lg border bg-surface2 gap-4">
@@ -329,7 +331,7 @@ function CertificatesSection() {
               <div className="text-sm font-medium text-primary truncate">{cert.name}</div>
               <div className="text-xs text-muted-foreground">
                 {cert.issuer && <span>{cert.issuer}</span>}
-                {cert.expires_at && <span className="ml-2">· Gültig bis {cert.expires_at}</span>}
+                {cert.expires_at && <span className="ml-2">· {t('settings.trustCenter.validUntil')} {cert.expires_at}</span>}
               </div>
             </div>
           </div>
@@ -389,10 +391,10 @@ function CertificatesSection() {
               onClick={handleCreate}
               disabled={!name.trim() || createCert.isPending}
             >
-              {createCert.isPending ? 'Wird gespeichert…' : 'Hinzufügen'}
+              {createCert.isPending ? t('settings.trustCenter.saving') : t('settings.trustCenter.add')}
             </Button>
             <Button size="sm" variant="outline" onClick={() => { setShowForm(false); }}>
-              Abbrechen
+              {t('settings.trustCenter.cancel')}
             </Button>
           </div>
           {createCert.isError && (
@@ -404,7 +406,7 @@ function CertificatesSection() {
       {!showForm && (
         <Button size="sm" variant="outline" onClick={() => { setShowForm(true); }} className="mt-2">
           <Plus className="h-3.5 w-3.5 mr-1.5" />
-          Zertifikat hinzufügen
+          {t('settings.trustCenter.addCertificate')}
         </Button>
       )}
     </div>
@@ -412,6 +414,7 @@ function CertificatesSection() {
 }
 
 function PoliciesSection() {
+  const { t } = useTranslation()
   const { data: allPoliciesData, isLoading: policiesLoading } = usePolicies()
   const { data: publishedData, isLoading: publishedLoading } = usePublishedPolicies()
   const publishPolicy = usePublishPolicy()
@@ -433,7 +436,7 @@ function PoliciesSection() {
   if (allPolicies.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        Keine Richtlinien vorhanden. Erstelle Richtlinien unter Vakt Comply → Richtlinien.
+        {t('settings.trustCenter.noPolicies')}
       </p>
     )
   }
@@ -464,7 +467,7 @@ function PoliciesSection() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {isPublished && (
-                <span className="text-xs text-green-600 font-medium">Veröffentlicht</span>
+                <span className="text-xs text-green-600 font-medium">{t('settings.trustCenter.published')}</span>
               )}
               <input
                 type="checkbox"
@@ -487,6 +490,7 @@ function PoliciesSection() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function TrustCenterSettingsPage() {
+  const { t } = useTranslation()
   const { data, isLoading, isError } = useTrustCenterSettings()
   const updateSettings = useUpdateTrustCenterSettings()
   const [settings, setSettings] = useState<TrustCenterSettings>({
@@ -534,37 +538,37 @@ export default function TrustCenterSettingsPage() {
   return (
     <div className="space-y-6 p-6">
       <PageHeader
-        title="Trust Center"
-        description="Verwalte dein öffentliches Trust Center für Kunden und Partner."
+        title={t('settings.trustCenter.title')}
+        description={t('settings.trustCenter.description')}
       />
 
       {/* Allgemein */}
       <Card className="p-6 space-y-4">
         <div className="flex items-center gap-2">
           <Shield className="w-5 h-5 text-secondary" />
-          <h2 className="text-base font-semibold">Allgemein</h2>
+          <h2 className="text-base font-semibold">{t('settings.trustCenter.general')}</h2>
         </div>
         <GeneralSection settings={settings} onChange={setSettings} />
       </Card>
 
       {/* Sichtbarkeit */}
       <Card className="p-6 space-y-4">
-        <h2 className="text-base font-semibold">Sichtbarkeit</h2>
+        <h2 className="text-base font-semibold">{t('settings.trustCenter.visibility')}</h2>
         <VisibilitySection settings={settings} onChange={setSettings} />
       </Card>
 
       {/* Unterauftragnehmer */}
       <Card className="p-6 space-y-4">
-        <h2 className="text-base font-semibold">Unterauftragnehmer</h2>
+        <h2 className="text-base font-semibold">{t('settings.trustCenter.subprocessors')}</h2>
         <SubprocessorsSection settings={settings} onChange={setSettings} />
       </Card>
 
       {/* Save button for settings */}
       <div className="flex items-center gap-3">
         <Button onClick={handleSave} disabled={updateSettings.isPending}>
-          {updateSettings.isPending ? 'Wird gespeichert…' : 'Einstellungen speichern'}
+          {updateSettings.isPending ? t('settings.trustCenter.saving') : t('settings.trustCenter.saveSettings')}
         </Button>
-        {saved && <span className="text-sm text-green-600">Gespeichert.</span>}
+        {saved && <span className="text-sm text-green-600">{t('settings.trustCenter.saved')}</span>}
         {updateSettings.isError && (
           <span className="text-sm text-destructive">{updateSettings.error.message}</span>
         )}
@@ -574,7 +578,7 @@ export default function TrustCenterSettingsPage() {
       <Card className="p-6 space-y-4">
         <div className="flex items-center gap-2">
           <Award className="w-5 h-5 text-secondary" />
-          <h2 className="text-base font-semibold">Zertifikate</h2>
+          <h2 className="text-base font-semibold">{t('settings.trustCenter.certificates')}</h2>
         </div>
         <CertificatesSection />
       </Card>
@@ -583,7 +587,7 @@ export default function TrustCenterSettingsPage() {
       <Card className="p-6 space-y-4">
         <div className="flex items-center gap-2">
           <FileText className="w-5 h-5 text-secondary" />
-          <h2 className="text-base font-semibold">Policies veröffentlichen</h2>
+          <h2 className="text-base font-semibold">{t('settings.trustCenter.publishPolicies')}</h2>
         </div>
         <PoliciesSection />
       </Card>

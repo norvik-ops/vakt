@@ -281,7 +281,7 @@ export default function FrameworksPage() {
               {t('vaktcomply.frameworksPage.frameworkCatalogue')}
             </h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {FRAMEWORK_CATALOGUE.map((fw) => {
               const alreadyEnabled = enabledKeys.has(fw.key.toUpperCase()) ||
                 enabledKeys.has(fw.name.toUpperCase())
@@ -300,7 +300,7 @@ export default function FrameworksPage() {
                       <p className="text-xs text-secondary mt-0.5">{fw.fullName}</p>
                     </div>
                   </div>
-                  <p className="text-xs text-secondary leading-relaxed">{fw.description}</p>
+                  <p className="text-xs text-secondary leading-relaxed line-clamp-2">{fw.description}</p>
                   <div className="flex items-center justify-between mt-1">
                     <span className="text-xs text-secondary">{fw.controls}</span>
                     {alreadyEnabled ? (

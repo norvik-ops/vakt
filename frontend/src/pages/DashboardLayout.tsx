@@ -6,9 +6,101 @@ import {
 import { Skeleton } from '../components/ui/skeleton'
 import { Switch } from '../components/ui/switch'
 import { Label } from '../components/ui/label'
-import { scoreColor } from './DashboardComponents'
+import { scoreStrokeColor } from './DashboardComponents'
 import { WIDGET_LABELS } from './WidgetConfigPanel'
 import type { WidgetKey } from './WidgetConfigPanel'
+
+// SVG horseshoe-style progress ring for the Security Score.
+// 270° arc (25% gap at bottom), starts at 7:30 o'clock.
+const RING = 120
+const STROKE_W = 9
+const RADIUS = (RING / 2) - (STROKE_W / 2)
+const CIRC = 2 * Math.PI * RADIUS
+const ARC = CIRC * 0.75   // 270° of full circle
+
+function ScoreRing({ score, scoreTrend }: { score: number | undefined; scoreTrend: number | null }) {
+  const val = score ?? 0
+  const filled = ARC * (val / 100)
+  const strokeColor = scoreStrokeColor(score)
+  // Rotate so the gap sits at the bottom (start at top-left, 225° from standard 0°)
+  const rotate = 'rotate(135 60 60)'
+
+  return (
+    <Link
+      to="/settings/score-config"
+      className="block w-[120px] hover:opacity-90 transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand rounded-full"
+      aria-label={`Security Score: ${String(score ?? '—')} von 100. Klick öffnet die Score-Konfiguration.`}
+      title="Aggregierte Sicherheitsbewertung: 0–49 schwach, 50–69 ausbaufähig, 70–89 gut, 90+ exzellent."
+    >
+      <svg viewBox={`0 0 ${RING} ${RING}`} width={RING} height={RING} aria-hidden="true">
+        {/* track */}
+        <circle
+          cx="60" cy="60" r={RADIUS}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={STROKE_W}
+          strokeDasharray={`${ARC} ${CIRC}`}
+          strokeLinecap="round"
+          transform={rotate}
+          className="text-border"
+        />
+        {/* progress */}
+        <circle
+          cx="60" cy="60" r={RADIUS}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth={STROKE_W}
+          strokeDasharray={`${filled} ${CIRC}`}
+          strokeLinecap="round"
+          transform={rotate}
+          style={{ transition: 'stroke-dasharray 0.8s ease, stroke 0.4s ease' }}
+        />
+        {/* score value */}
+        <text
+          x="60" y="56"
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontSize="26"
+          fontWeight="900"
+          fill={strokeColor}
+          style={{ transition: 'fill 0.4s ease', fontFamily: 'inherit' }}
+        >
+          {score ?? '—'}
+        </text>
+        {/* /100 */}
+        <text
+          x="60" y="76"
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontSize="11"
+          fill="currentColor"
+          className="text-secondary"
+          style={{ fontFamily: 'inherit' }}
+        >
+          / 100
+        </text>
+      </svg>
+      {scoreTrend !== null && (
+        <div
+          className={`flex items-center justify-center gap-0.5 mt-1 text-[11px] font-semibold ${
+            scoreTrend > 0.5 ? 'text-severity-low' : scoreTrend < -0.5 ? 'text-severity-critical' : 'text-secondary'
+          }`}
+          aria-label={`Trend: ${scoreTrend > 0 ? '+' : ''}${scoreTrend.toFixed(1)}%`}
+        >
+          {scoreTrend > 0.5 ? (
+            <TrendingUp className="w-3 h-3" aria-hidden="true" />
+          ) : scoreTrend < -0.5 ? (
+            <TrendingDown className="w-3 h-3" aria-hidden="true" />
+          ) : (
+            <Minus className="w-3 h-3" aria-hidden="true" />
+          )}
+          {scoreTrend > 0 ? '+' : ''}{scoreTrend.toFixed(1)}%
+        </div>
+      )}
+      <p className="text-[10px] text-secondary text-center mt-0.5">Gesamtbewertung</p>
+    </Link>
+  )
+}
 
 interface StatItem {
   label: string
@@ -122,44 +214,16 @@ export function DashboardLayout({
           </div>
         </div>
 
-        <p className="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1 opacity-60">
+        <p className="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-2 opacity-60">
           Security Score
         </p>
-        <div
-          className="flex items-end gap-1"
-          title="Aggregierte Sicherheitsbewertung aus offenen Findings, Control-Coverage und Risiken. 0–49 schwach, 50–69 ausbaufähig, 70–89 gut, 90+ exzellent. Klick auf die Zahl für Konfiguration und Gewichtungen."
-        >
-          {scoreLoading ? (
-            <Skeleton className="h-12 w-20" />
-          ) : (
-            <Link
-              to="/settings/score-config"
-              className={`text-[52px] font-black leading-none ${scoreColor(scoreData?.score)} hover:underline decoration-2 underline-offset-4`}
-              aria-label={`Security Score: ${String(scoreData?.score ?? '—')} von 100. Klick öffnet die Score-Konfiguration.`}
-            >
-              {scoreData?.score ?? '—'}
-            </Link>
-          )}
-          <p className="text-[16px] text-secondary mb-2">/ 100</p>
-        </div>
-        <div className="flex items-center gap-2 mt-1">
-          <p className="text-[12px] text-secondary">Gesamtbewertung</p>
-          {scoreTrend !== null && (
-            <span
-              className={`flex items-center gap-0.5 text-[11px] font-semibold ${scoreTrend > 0.5 ? 'text-severity-low' : scoreTrend < -0.5 ? 'text-severity-critical' : 'text-secondary'}`}
-              aria-label={`Trend: ${scoreTrend > 0 ? '+' : ''}${scoreTrend.toFixed(1)}%`}
-            >
-              {scoreTrend > 0.5 ? (
-                <TrendingUp className="w-3 h-3" aria-hidden="true" />
-              ) : scoreTrend < -0.5 ? (
-                <TrendingDown className="w-3 h-3" aria-hidden="true" />
-              ) : (
-                <Minus className="w-3 h-3" aria-hidden="true" />
-              )}
-              {scoreTrend > 0 ? '+' : ''}{scoreTrend.toFixed(1)}%
-            </span>
-          )}
-        </div>
+        {scoreLoading ? (
+          <div className="flex items-center justify-center w-[120px] h-[120px]">
+            <Skeleton className="w-[120px] h-[120px] rounded-full" />
+          </div>
+        ) : (
+          <ScoreRing score={scoreData?.score} scoreTrend={scoreTrend} />
+        )}
 
         <div className="h-px bg-border my-4" />
 
@@ -183,20 +247,6 @@ export function DashboardLayout({
           ))}
         </div>
 
-        <div className="h-px bg-border my-4" />
-
-        <p className="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1 opacity-60">
-          Datenpannen
-        </p>
-        {breachLoading ? (
-          <Skeleton className="h-4 w-32" />
-        ) : openBreachCount === 0 ? (
-          <p className="text-[12px] text-severity-low">Keine offenen Datenpannen</p>
-        ) : (
-          <p className="text-[12px] text-severity-critical">
-            {openBreachCount} offene Datenpanne{openBreachCount === 1 ? '' : 'n'}
-          </p>
-        )}
       </div>
     </div>
   )

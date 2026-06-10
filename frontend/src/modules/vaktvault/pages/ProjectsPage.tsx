@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Lock, Plus, Trash2 } from 'lucide-react'
+import { Lock, Plus, Trash2, ChevronRight } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -90,7 +90,7 @@ export default function ProjectsPage() {
             {projects.map((project) => (
               <Card
                 key={project.id}
-                className="cursor-pointer hover:shadow-md transition-shadow"
+                className="group cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => { navigate(`/vaktvault/projects/${project.id}`); }}
               >
                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
@@ -117,6 +117,10 @@ export default function ProjectsPage() {
                     {t('vaktvault.projectsPage.createdOn')}{' '}
                     {formatDate(project.created_at, { year: 'numeric', month: 'short', day: 'numeric' })}
                   </p>
+                  <div className="flex items-center justify-end mt-2 text-xs text-secondary/50 group-hover:text-brand transition-colors">
+                    <span>{t('common.open', 'Öffnen')}</span>
+                    <ChevronRight className="w-3 h-3 ml-0.5" />
+                  </div>
                 </CardContent>
               </Card>
             ))}

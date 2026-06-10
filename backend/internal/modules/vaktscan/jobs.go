@@ -21,6 +21,8 @@ const (
 	TaskSBOMGenerate      = "vaktscan:sbom:generate"
 	TaskEOLCheck          = "vaktscan:eol:check"
 	TaskRiskTrendSnapshot = "vaktscan:risk_trend_snapshot"
+	TaskCertScan          = "vaktscan:cert_scan"
+	TaskSLACheck          = "vaktscan:sla_check"
 
 	// QueueScans is the dedicated Asynq queue for scanner jobs.
 	// Higher concurrency than other module queues to avoid starving user-facing scans.
@@ -94,4 +96,9 @@ func EnqueueEOLCheck(client *asynq.Client, payload EOLCheckPayload) error {
 	task := asynq.NewTask(TaskEOLCheck, b)
 	_, err = client.Enqueue(task, asynq.Queue(QueueMaintenance))
 	return err
+}
+
+// CertScanPayload is the Asynq task payload for the daily TLS certificate rescan.
+type CertScanPayload struct {
+	OrgID string `json:"org_id"`
 }

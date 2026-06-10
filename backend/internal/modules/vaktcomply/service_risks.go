@@ -26,7 +26,7 @@ func (s *Service) ListRisks(ctx context.Context, orgID string) ([]Risk, error) {
 }
 
 func (s *Service) GetRisk(ctx context.Context, orgID, id string) (*Risk, error) {
-	return s.repo.GetRisk(ctx, orgID, id)
+	return s.repo.GetRiskFull(ctx, orgID, id)
 }
 
 func (s *Service) CreateRisk(ctx context.Context, orgID string, in CreateRiskInput) (*Risk, error) {
@@ -91,4 +91,14 @@ func (s *Service) ListRiskControls(ctx context.Context, orgID, riskID string) ([
 		controls = []Control{}
 	}
 	return controls, nil
+}
+
+// UpdateRiskResidualFields patches the inherent/residual likelihood+impact columns (S61-4).
+func (s *Service) UpdateRiskResidualFields(ctx context.Context, orgID, id string, in UpdateRiskResidualInput) error {
+	return s.repo.UpdateRiskResidualFields(ctx, orgID, id, in)
+}
+
+// AcceptRisk records a formal risk acceptance for a risk with treatment_status=accepted (S61-4).
+func (s *Service) AcceptRisk(ctx context.Context, orgID, id, userID string, in AcceptRiskInput) error {
+	return s.repo.AcceptRisk(ctx, orgID, id, userID, in.Justification)
 }

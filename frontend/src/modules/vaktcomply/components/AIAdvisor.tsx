@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Sparkles, Loader2, AlertTriangle, Square, ExternalLink } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { FeatureLockedError } from '../../../api/client'
 import { ProGate } from '../../../shared/components/ProGate'
 import { useAIStream } from '../../../shared/hooks/useAIStream'
@@ -114,7 +114,10 @@ export function AIAdvisor({ aiAvailable, providerHost, model }: Props) {
       {/* Not configured */}
       {!aiAvailable && (
         <p className="text-xs text-secondary italic">
-          KI nicht konfiguriert — <code className="text-primary">VAKT_AI_PROVIDER</code> setzen
+          KI nicht konfiguriert —{' '}
+          <Link to="/settings?tab=ai" className="text-brand underline hover:text-brand/80 not-italic">
+            KI einrichten
+          </Link>
         </p>
       )}
 

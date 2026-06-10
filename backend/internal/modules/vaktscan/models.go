@@ -5,17 +5,27 @@ import "time"
 
 // Asset represents an infrastructure asset tracked in VulnBoard.
 type Asset struct {
-	ID          string    `json:"id"`
-	OrgID       string    `json:"org_id"`
-	Name        string    `json:"name"`
-	Type        string    `json:"type"`
-	Criticality string    `json:"criticality"`
-	Environment string    `json:"environment"` // prod | staging | dev (S44-2)
-	Tags        []string  `json:"tags"`
-	OwnerID     *string   `json:"owner_id,omitempty"`
-	ExternalURL *string   `json:"external_url,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID               string    `json:"id"`
+	OrgID            string    `json:"org_id"`
+	Name             string    `json:"name"`
+	Type             string    `json:"type"`
+	Criticality      string    `json:"criticality"`
+	Environment      string    `json:"environment"`    // prod | staging | dev (S44-2)
+	Classification   string    `json:"classification"` // public | internal | confidential | restricted (S67-3)
+	Tags             []string  `json:"tags"`
+	OwnerID          *string   `json:"owner_id,omitempty"`
+	ExternalURL      *string   `json:"external_url,omitempty"`
+	ProtectionNeedID *string   `json:"protection_need_id,omitempty"` // soft link to ck_protection_need_assessments, no FK
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
+// ClassificationSummary holds counts of assets by classification level.
+type ClassificationSummary struct {
+	TotalCount        int            `json:"total_count"`
+	ClassifiedCount   int            `json:"classified_count"`
+	ByLevel           map[string]int `json:"by_level"`
+	UnclassifiedCount int            `json:"unclassified_count"`
 }
 
 // SLAConfig holds the per-org SLA remediation targets in days per severity.
@@ -29,24 +39,26 @@ type SLAConfig struct {
 
 // CreateAssetInput is the validated request body for creating an asset.
 type CreateAssetInput struct {
-	Name        string   `json:"name"         validate:"required,min=1,max=255"`
-	Type        string   `json:"type"         validate:"required,oneof=server container webapp repository"`
-	Criticality string   `json:"criticality"  validate:"required,oneof=low medium high critical"`
-	Environment string   `json:"environment"  validate:"omitempty,oneof=prod staging dev"`
-	Tags        []string `json:"tags"`
-	OwnerID     *string  `json:"owner_id,omitempty"`
-	ExternalURL string   `json:"external_url"`
+	Name           string   `json:"name"           validate:"required,min=1,max=255"`
+	Type           string   `json:"type"           validate:"required,oneof=server container web_app database repo"`
+	Criticality    string   `json:"criticality"    validate:"required,oneof=low medium high critical"`
+	Environment    string   `json:"environment"    validate:"omitempty,oneof=prod staging dev"`
+	Classification string   `json:"classification" validate:"omitempty,oneof=public internal confidential restricted"`
+	Tags           []string `json:"tags"`
+	OwnerID        *string  `json:"owner_id,omitempty"`
+	ExternalURL    string   `json:"external_url"`
 }
 
 // UpdateAssetInput is the validated request body for updating an asset.
 type UpdateAssetInput struct {
-	Name        *string  `json:"name"         validate:"omitempty,min=1,max=255"`
-	Type        *string  `json:"type"         validate:"omitempty,oneof=server container webapp repository"`
-	Criticality *string  `json:"criticality"  validate:"omitempty,oneof=low medium high critical"`
-	Environment *string  `json:"environment"  validate:"omitempty,oneof=prod staging dev"`
-	Tags        []string `json:"tags"`
-	OwnerID     *string  `json:"owner_id,omitempty"`
-	ExternalURL *string  `json:"external_url,omitempty"`
+	Name           *string  `json:"name"           validate:"omitempty,min=1,max=255"`
+	Type           *string  `json:"type"           validate:"omitempty,oneof=server container web_app database repo"`
+	Criticality    *string  `json:"criticality"    validate:"omitempty,oneof=low medium high critical"`
+	Environment    *string  `json:"environment"    validate:"omitempty,oneof=prod staging dev"`
+	Classification *string  `json:"classification" validate:"omitempty,oneof=public internal confidential restricted"`
+	Tags           []string `json:"tags"`
+	OwnerID        *string  `json:"owner_id,omitempty"`
+	ExternalURL    *string  `json:"external_url,omitempty"`
 }
 
 // CSVAssetRow represents one row from a bulk-import CSV file.

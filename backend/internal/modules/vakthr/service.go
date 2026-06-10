@@ -27,9 +27,10 @@ type Actor struct {
 
 // Service handles HR business logic.
 type Service struct {
-	repo     *Repository
-	db       *pgxpool.Pool
-	evidence EvidenceWriter
+	repo         *Repository
+	db           *pgxpool.Pool
+	evidence     EvidenceWriter
+	accessReview AccessReviewTrigger
 }
 
 // audit is the single point where the HR service writes audit-log entries.
@@ -51,13 +52,13 @@ func (s *Service) audit(ctx context.Context, actor Actor, action, resourceType, 
 // NewService creates a new HR service backed by the given repository.
 // The evidence writer defaults to a noop; use WithEvidenceWriter to inject the real one.
 func NewService(repo *Repository) *Service {
-	return &Service{repo: repo, db: repo.db, evidence: NoopEvidenceWriter()}
+	return &Service{repo: repo, db: repo.db, evidence: NoopEvidenceWriter(), accessReview: &NoopAccessReviewTrigger{}}
 }
 
 // NewServiceFromPool is a convenience constructor that creates the repository internally.
 func NewServiceFromPool(db *pgxpool.Pool) *Service {
 	repo := NewRepository(db)
-	return &Service{repo: repo, db: db, evidence: NoopEvidenceWriter()}
+	return &Service{repo: repo, db: db, evidence: NoopEvidenceWriter(), accessReview: &NoopAccessReviewTrigger{}}
 }
 
 // WithEvidenceWriter injects the evidence writer used when checklist runs complete.
@@ -66,6 +67,16 @@ func (s *Service) WithEvidenceWriter(w EvidenceWriter) *Service {
 		s.evidence = NoopEvidenceWriter()
 	} else {
 		s.evidence = w
+	}
+	return s
+}
+
+// WithAccessReviewTrigger injects the access-review trigger used when offboarding runs complete.
+func (s *Service) WithAccessReviewTrigger(t AccessReviewTrigger) *Service {
+	if t == nil {
+		s.accessReview = &NoopAccessReviewTrigger{}
+	} else {
+		s.accessReview = t
 	}
 	return s
 }
@@ -363,6 +374,39 @@ func (s *Service) fireCompletionEvidence(ctx context.Context, run *ChecklistRun)
 	})
 	if err != nil {
 		log.Error().Err(err).Str("run_id", run.ID).Msg("hr: write checklist completion evidence")
+	}
+
+	if checklist.Type == "offboarding" {
+		if arErr := s.accessReview.TriggerOffboardingReview(ctx, OffboardingReviewInput{
+			OrgID:       run.OrgID,
+			RunID:       run.ID,
+			Department:  emp.Department,
+			CompletedAt: completedAt,
+		}); arErr != nil {
+			log.Error().Err(arErr).Str("run_id", run.ID).Msg("hr: trigger offboarding access review")
+		}
+
+		// Personio-specific evidence: calculate elapsed time since departure
+		personioID, departureDate, pfErr := s.repo.GetEmployeePersonioFields(ctx, run.OrgID, run.EmployeeID)
+		if pfErr == nil && personioID > 0 && !departureDate.IsZero() {
+			elapsed := completedAt.Sub(departureDate).Hours()
+			status := "ok"
+			if elapsed > 24 {
+				status = "warning"
+			}
+			evIn := events.PersonioOffboardingEvidence{
+				OrgID:              run.OrgID,
+				PersonioEmployeeID: personioID,
+				RunID:              run.ID,
+				CompletedAt:        completedAt,
+				DepartureDate:      departureDate,
+				ElapsedHours:       elapsed,
+				Status:             status,
+			}
+			if evErr := s.evidence.WritePersonioOffboardingEvidence(ctx, evIn); evErr != nil {
+				log.Error().Err(evErr).Str("run_id", run.ID).Msg("hr: write personio offboarding evidence")
+			}
+		}
 	}
 }
 

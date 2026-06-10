@@ -5,19 +5,21 @@ import "time"
 
 // Employee represents a member of staff tracked in the HR module.
 type Employee struct {
-	ID         string    `json:"id"`
-	OrgID      string    `json:"org_id"`
-	FirstName  string    `json:"first_name"`
-	LastName   string    `json:"last_name"`
-	Email      string    `json:"email"`
-	Department string    `json:"department,omitempty"`
-	Role       string    `json:"role,omitempty"`
-	StartDate  *string   `json:"start_date,omitempty"`
-	EndDate    *string   `json:"end_date,omitempty"`
-	Status     string    `json:"status"`
-	Notes      string    `json:"notes,omitempty"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID                  string    `json:"id"`
+	OrgID               string    `json:"org_id"`
+	FirstName           string    `json:"first_name"`
+	LastName            string    `json:"last_name"`
+	Email               string    `json:"email"`
+	Department          string    `json:"department,omitempty"`
+	Role                string    `json:"role,omitempty"`
+	StartDate           *string   `json:"start_date,omitempty"`
+	EndDate             *string   `json:"end_date,omitempty"`
+	Status              string    `json:"status"`
+	Notes               string    `json:"notes,omitempty"`
+	PersonioEmployeeID  *int      `json:"personio_employee_id,omitempty"`
+	DepartureDate       *string   `json:"departure_date,omitempty"` // YYYY-MM-DD
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
 }
 
 // CreateEmployeeInput is the request body for creating a new employee.

@@ -213,6 +213,18 @@ type DSR struct {
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 	// Notes holds internal handling notes, not shared with the requester.
 	Notes string `json:"notes,omitempty"`
+	// Channel records how the request was received (email/postal/form/verbal/other).
+	Channel string `json:"channel,omitempty"`
+	// ReferenceID is an internal ticket number assigned by the admin (optional).
+	ReferenceID string `json:"reference_id,omitempty"`
+	// ExtensionDueAt is set when the response deadline is extended to 90 days (Art. 12 Abs. 3).
+	ExtensionDueAt *time.Time `json:"extension_due_at,omitempty"`
+	// ExtensionReason must be provided when the deadline is extended (DSGVO Art. 12 Abs. 3).
+	ExtensionReason string `json:"extension_reason,omitempty"`
+	// AssignedTo is the user UUID responsible for handling this request.
+	AssignedTo *string `json:"assigned_to,omitempty"`
+	// ResolvedBy is the user UUID who completed/rejected/extended this request.
+	ResolvedBy *string `json:"resolved_by,omitempty"`
 	// CreatedAt is the database insert timestamp.
 	CreatedAt time.Time `json:"created_at"`
 	// UpdatedAt is the timestamp of the most recent modification.
@@ -228,10 +240,12 @@ type CreateDSRInput struct {
 	// RequesterEmail must be a valid address; it is the channel for the official response.
 	RequesterEmail string `json:"requester_email" validate:"required,email"`
 	// Type selects the DSGVO right being exercised.
-	// Must be one of: access, erasure, portability, objection, rectification.
-	Type        string `json:"type"            validate:"required,oneof=access erasure portability objection rectification"`
+	// Must be one of: access, erasure, portability, objection, rectification, restriction, no_profiling.
+	Type        string `json:"type"            validate:"required,oneof=access erasure portability objection rectification restriction no_profiling"`
 	Description string `json:"description,omitempty" validate:"max=10000"`
 	Notes       string `json:"notes,omitempty"       validate:"max=10000"`
+	Channel     string `json:"channel,omitempty"     validate:"omitempty,oneof=email postal form verbal other"`
+	ReferenceID string `json:"reference_id,omitempty" validate:"max=200"`
 }
 
 // UpdateDSRInput holds validated input for updating a DSR.
@@ -239,9 +253,27 @@ type CreateDSRInput struct {
 // in the repository so the response timeline is preserved for audit purposes.
 type UpdateDSRInput struct {
 	// Status is the new processing state.
-	// Allowed values: open | in_progress | completed | rejected.
-	Status string `json:"status" validate:"required,oneof=open in_progress completed rejected"`
+	// Allowed values: open | in_progress | completed | rejected | extended.
+	Status string `json:"status" validate:"required,oneof=open in_progress completed rejected extended overdue"`
 	Notes  string `json:"notes,omitempty" validate:"max=10000"`
+}
+
+// ResolveDSRInput holds validated input for resolving (completing/extending) a DSR.
+type ResolveDSRInput struct {
+	// ResolutionType: 'fulfilled', 'rejected', or 'extended'.
+	ResolutionType  string `json:"resolution_type" validate:"required,oneof=fulfilled rejected extended"`
+	ResolutionNotes string `json:"resolution_notes,omitempty" validate:"max=10000"`
+	// ExtensionReason is mandatory when ResolutionType = 'extended' (DSGVO Art. 12 Abs. 3).
+	ExtensionReason string `json:"extension_reason,omitempty" validate:"max=5000"`
+}
+
+// DSRSummary holds aggregate statistics for the DSR dashboard.
+type DSRSummary struct {
+	OpenCount        int     `json:"open_count"`
+	OverdueCount     int     `json:"overdue_count"`
+	FulfilledLast12M int     `json:"fulfilled_last_12m"`
+	RejectedLast12M  int     `json:"rejected_last_12m"`
+	OnTimeRatePct    float64 `json:"on_time_rate_pct"`
 }
 
 // PortalDSRInput is the payload submitted by a data subject via the public DSR portal.

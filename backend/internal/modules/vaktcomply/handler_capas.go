@@ -190,3 +190,55 @@ func (h *Handler) CreateCAPAFromIncident(c echo.Context) error {
 	}
 	return c.JSON(http.StatusCreated, capa)
 }
+
+// UpdateCAPANCFields handles PATCH /api/v1/vaktcomply/capas/:id/nc-fields.
+// Updates the NC root-cause and effectiveness planning fields of a CAPA.
+func (h *Handler) UpdateCAPANCFields(c echo.Context) error {
+	var in CAPANCFields
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+	if err := h.service.UpdateCAPANCFields(c.Request().Context(), orgID(c), c.Param("id"), in); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return errResp(c, http.StatusNotFound, "capa not found", "CK_CAPA_NOT_FOUND")
+		}
+		log.Error().Err(err).Msg("update capa nc fields")
+		return errResp(c, http.StatusInternalServerError, "failed to update capa nc fields", "CK_UPDATE_NC_FIELDS_FAILED")
+	}
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
+		OrgID:        orgID(c),
+		UserID:       userID(c),
+		Action:       "update",
+		ResourceType: "vakt-comply/capa",
+		ResourceID:   c.Param("id"),
+		ResourceName: "nc-fields",
+		IPAddress:    c.RealIP(),
+	})
+	return c.NoContent(http.StatusNoContent)
+}
+
+// CompleteEffectivenessCheck handles POST /api/v1/vaktcomply/capas/:id/effectiveness-check.
+// Records the result of a CAPA effectiveness review.
+func (h *Handler) CompleteEffectivenessCheck(c echo.Context) error {
+	var in EffectivenessCheckInput
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+	if err := h.service.CompleteEffectivenessCheck(c.Request().Context(), orgID(c), c.Param("id"), userID(c), in); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return errResp(c, http.StatusNotFound, "capa not found", "CK_CAPA_NOT_FOUND")
+		}
+		log.Error().Err(err).Msg("complete effectiveness check")
+		return errResp(c, http.StatusInternalServerError, "failed to complete effectiveness check", "CK_EFFECTIVENESS_CHECK_FAILED")
+	}
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
+		OrgID:        orgID(c),
+		UserID:       userID(c),
+		Action:       "update",
+		ResourceType: "vakt-comply/capa",
+		ResourceID:   c.Param("id"),
+		ResourceName: "effectiveness-check",
+		IPAddress:    c.RealIP(),
+	})
+	return c.NoContent(http.StatusNoContent)
+}

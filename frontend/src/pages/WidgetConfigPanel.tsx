@@ -23,7 +23,7 @@ export const WIDGET_LABELS: Record<WidgetKey, string> = {
   incidents: 'Incidents',
   recent_pages: 'Zuletzt besucht',
   onboarding: 'Onboarding-Checkliste',
-  evidence_expiry: 'Evidence-Ablauf',
+  evidence_expiry: 'Erste Schritte',
 }
 
 export function loadWidgets(): Record<WidgetKey, boolean> {

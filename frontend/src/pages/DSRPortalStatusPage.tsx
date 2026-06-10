@@ -1,5 +1,6 @@
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { useFormatDate } from '../shared/hooks/useFormatDate'
 
 // ---------------------------------------------------------------------------
@@ -36,22 +37,41 @@ async function fetchDSRStatus(token: string): Promise<DSR> {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Hooks for label maps
 // ---------------------------------------------------------------------------
 
-const TYPE_LABELS: Record<string, string> = {
-  access: 'Auskunft (Art. 15)',
-  erasure: 'Löschung (Art. 17)',
-  rectification: 'Berichtigung (Art. 16)',
-  objection: 'Widerspruch (Art. 21)',
-  portability: 'Datenübertragbarkeit (Art. 20)',
+function useTypeLabels(): Record<string, string> {
+  const { t } = useTranslation()
+  return {
+    access: t('dsr.status.typeAccess'),
+    erasure: t('dsr.status.typeErasure'),
+    rectification: t('dsr.status.typeRectification'),
+    objection: t('dsr.status.typeObjection'),
+    portability: t('dsr.status.typePortability'),
+  }
 }
 
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  open: { label: 'Offen', color: 'bg-yellow-100 text-yellow-800' },
-  in_progress: { label: 'In Bearbeitung', color: 'bg-blue-100 text-blue-800' },
-  completed: { label: 'Abgeschlossen', color: 'bg-green-100 text-green-800' },
-  rejected: { label: 'Abgelehnt', color: 'bg-red-100 text-red-800' },
+function useStatusLabels(): Record<string, { label: string; color: string }> {
+  const { t } = useTranslation()
+  return {
+    open: { label: t('dsr.status.statusOpen'), color: 'bg-yellow-100 text-yellow-800' },
+    in_progress: { label: t('dsr.status.statusInProgress'), color: 'bg-blue-100 text-blue-800' },
+    completed: { label: t('dsr.status.statusCompleted'), color: 'bg-green-100 text-green-800' },
+    rejected: { label: t('dsr.status.statusRejected'), color: 'bg-red-100 text-red-800' },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between text-sm">
+      <span className="text-gray-500">{label}</span>
+      <span className="text-gray-800 font-medium">{value}</span>
+    </div>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -59,8 +79,11 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 // ---------------------------------------------------------------------------
 
 export default function DSRPortalStatusPage() {
+  const { t } = useTranslation()
   const { token } = useParams<{ token: string }>()
   const { formatDate } = useFormatDate()
+  const typeLabels = useTypeLabels()
+  const statusLabels = useStatusLabels()
 
   const { data: dsr, isLoading, isError } = useQuery({
     queryKey: ['dsr-status', token],
@@ -72,7 +95,7 @@ export default function DSRPortalStatusPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-gray-500">Status wird geladen…</p>
+        <p className="text-gray-500">{t('dsr.status.loading')}</p>
       </div>
     )
   }
@@ -83,18 +106,17 @@ export default function DSRPortalStatusPage() {
         <div className="max-w-md w-full bg-white rounded-xl shadow p-8 text-center">
           <div className="text-4xl mb-4">⚠️</div>
           <h1 className="text-xl font-semibold text-gray-800 mb-3">
-            Anfrage nicht gefunden
+            {t('dsr.status.notFoundTitle')}
           </h1>
           <p className="text-gray-600 text-sm">
-            Zu diesem Token wurde keine Datenschutzanfrage gefunden. Bitte prüfen Sie
-            den Token und versuchen Sie es erneut.
+            {t('dsr.status.notFoundHint')}
           </p>
         </div>
       </div>
     )
   }
 
-  const statusInfo = STATUS_LABELS[dsr.status] ?? {
+  const statusInfo = statusLabels[dsr.status] ?? {
     label: dsr.status,
     color: 'bg-gray-100 text-gray-800',
   }
@@ -105,10 +127,10 @@ export default function DSRPortalStatusPage() {
       <header className="bg-white border-b px-6 py-4 shadow-sm">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-lg font-semibold text-gray-800">
-            Status Ihrer Datenschutzanfrage
+            {t('dsr.status.headerTitle')}
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Betroffenenanfrage nach Art. 15–21 DSGVO
+            {t('dsr.status.headerSubtitle')}
           </p>
         </div>
       </header>
@@ -118,7 +140,7 @@ export default function DSRPortalStatusPage() {
           <div className="bg-white rounded-xl shadow p-6 space-y-5">
             {/* Status badge */}
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-gray-800">Anfragestatus</h2>
+              <h2 className="text-base font-semibold text-gray-800">{t('dsr.status.statusTitle')}</h2>
               <span
                 className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}
               >
@@ -127,42 +149,29 @@ export default function DSRPortalStatusPage() {
             </div>
 
             <div className="border-t pt-4 space-y-3">
-              <Row label="Anfragetyp" value={TYPE_LABELS[dsr.type] ?? dsr.type} />
-              <Row label="Eingegangen am" value={formatDate(dsr.received_at)} />
+              <Row label={t('dsr.status.rowType')} value={typeLabels[dsr.type] ?? dsr.type} />
+              <Row label={t('dsr.status.rowReceived')} value={formatDate(dsr.received_at)} />
               {dsr.due_date && (
-                <Row label="Antwort-Frist" value={dsr.due_date} />
+                <Row label={t('dsr.status.rowDue')} value={dsr.due_date} />
               )}
               {dsr.completed_at && (
-                <Row label="Abgeschlossen am" value={formatDate(dsr.completed_at)} />
+                <Row label={t('dsr.status.rowCompleted')} value={formatDate(dsr.completed_at)} />
               )}
             </div>
 
             {/* Status explanation */}
             <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800">
               {dsr.status === 'open' && (
-                <p>
-                  Ihre Anfrage ist eingegangen und wird bearbeitet. Gemäß Art. 12 Abs. 3
-                  DSGVO haben Sie Anspruch auf eine Antwort innerhalb von 30 Tagen.
-                </p>
+                <p>{t('dsr.status.explanationOpen')}</p>
               )}
               {dsr.status === 'in_progress' && (
-                <p>
-                  Ihre Anfrage wird derzeit von der zuständigen Stelle bearbeitet. Sie
-                  werden innerhalb der gesetzlichen Frist eine Antwort erhalten.
-                </p>
+                <p>{t('dsr.status.explanationInProgress')}</p>
               )}
               {dsr.status === 'completed' && (
-                <p>
-                  Ihre Anfrage wurde abgeschlossen. Sie sollten bereits eine Antwort per
-                  E-Mail erhalten haben.
-                </p>
+                <p>{t('dsr.status.explanationCompleted')}</p>
               )}
               {dsr.status === 'rejected' && (
-                <p>
-                  Ihre Anfrage wurde abgelehnt. Die Gründe dafür sollten Ihnen per
-                  E-Mail mitgeteilt worden sein. Bei Fragen wenden Sie sich bitte an den
-                  Datenschutzbeauftragten.
-                </p>
+                <p>{t('dsr.status.explanationRejected')}</p>
               )}
             </div>
           </div>
@@ -170,17 +179,8 @@ export default function DSRPortalStatusPage() {
       </main>
 
       <footer className="py-4 text-center text-xs text-gray-500">
-        Datenschutz-Self-Service · Powered by Vakt
+        {t('dsr.status.footer')}
       </footer>
-    </div>
-  )
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between text-sm">
-      <span className="text-gray-500">{label}</span>
-      <span className="text-gray-800 font-medium">{value}</span>
     </div>
   )
 }

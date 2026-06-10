@@ -51,4 +51,11 @@ func Register(g *echo.Group, h *Handler) {
 	g.GET("/access-concepts/:id", h.GetAccessConcept, rw)
 	g.PATCH("/access-concepts/:id", h.UpdateAccessConcept, admin)
 	g.DELETE("/access-concepts/:id", h.DeleteAccessConcept, admin)
+
+	// S69-4: JML Mover Workflow
+	g.GET("/mover-events", h.ListMoverEvents, rw)
+	g.POST("/mover-events", h.CreateMoverEvent, rw)
+	g.GET("/mover-events/:id", h.GetMoverEvent, rw)
+	g.PATCH("/mover-events/:id/status", h.UpdateMoverEventStatus, rw)
+	g.GET("/mover-templates", h.ListMoverTemplates, rw)
 }

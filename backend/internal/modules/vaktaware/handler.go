@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
@@ -449,4 +450,154 @@ func (h *Handler) RegeneratePhishToken(c echo.Context) error {
 		return errJSON(c, http.StatusInternalServerError, "failed to regenerate token", "PG_ERROR")
 	}
 	return c.JSON(http.StatusOK, map[string]string{"token": token})
+}
+
+// ── Template library (S65-1) ──────────────────────────────────────────────────
+
+// ListPresetsFiltered returns preset templates optionally filtered by category, difficulty, language.
+func (h *Handler) ListPresetsFiltered(c echo.Context) error {
+	all := h.service.GetPresetTemplates()
+	filtered := FilterPresetTemplates(all,
+		c.QueryParam("category"),
+		c.QueryParam("difficulty"),
+		c.QueryParam("language"),
+	)
+	return c.JSON(http.StatusOK, filtered)
+}
+
+// ── Enrollment rules (S65-2) ──────────────────────────────────────────────────
+
+// ListEnrollmentRules returns all enrollment rules for the org.
+func (h *Handler) ListEnrollmentRules(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	rules, err := h.service.ListEnrollmentRules(c.Request().Context(), orgID)
+	if err != nil {
+		return errJSON(c, http.StatusInternalServerError, "failed to list enrollment rules", "SR_ERROR")
+	}
+	if rules == nil {
+		rules = []EnrollmentRule{}
+	}
+	return c.JSON(http.StatusOK, rules)
+}
+
+// CreateEnrollmentRule creates a new auto-enrollment rule.
+func (h *Handler) CreateEnrollmentRule(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	var input CreateEnrollmentRuleInput
+	if err := c.Bind(&input); err != nil {
+		return errJSON(c, http.StatusBadRequest, "invalid body", "SR_BAD_REQUEST")
+	}
+	if err := h.validate.Struct(input); err != nil {
+		return errJSON(c, http.StatusUnprocessableEntity, "Ungültige Eingabe", "VALIDATION_ERROR")
+	}
+	rule, err := h.service.CreateEnrollmentRule(c.Request().Context(), orgID, input)
+	if err != nil {
+		return errJSON(c, http.StatusInternalServerError, "failed to create enrollment rule", "SR_ERROR")
+	}
+	h.audit(c, "create", "vaktaware/enrollment-rule", rule.ID, rule.Name)
+	return c.JSON(http.StatusCreated, rule)
+}
+
+// UpdateEnrollmentRuleActive toggles the is_active flag of an enrollment rule.
+func (h *Handler) UpdateEnrollmentRuleActive(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	var body struct {
+		IsActive bool `json:"is_active"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return errJSON(c, http.StatusBadRequest, "invalid body", "SR_BAD_REQUEST")
+	}
+	if err := h.service.UpdateEnrollmentRuleActive(c.Request().Context(), orgID, c.Param("id"), body.IsActive); err != nil {
+		return errJSON(c, http.StatusInternalServerError, "update failed", "SR_ERROR")
+	}
+	return c.JSON(http.StatusOK, map[string]bool{"is_active": body.IsActive})
+}
+
+// DeleteEnrollmentRule removes an enrollment rule.
+func (h *Handler) DeleteEnrollmentRule(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	if err := h.service.DeleteEnrollmentRule(c.Request().Context(), orgID, c.Param("id")); err != nil {
+		return errJSON(c, http.StatusInternalServerError, "delete failed", "SR_ERROR")
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+// ── Training evidence export (S65-3) ──────────────────────────────────────────
+
+// GetTrainingMatrix returns the JSON training matrix report for the given period.
+func (h *Handler) GetTrainingMatrix(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	from, to, err := parsePeriodParams(c)
+	if err != nil {
+		return errJSON(c, http.StatusBadRequest, err.Error(), "SR_BAD_PERIOD")
+	}
+	report, err := h.service.GenerateTrainingMatrixReport(c.Request().Context(), orgID, from, to)
+	if err != nil {
+		return errJSON(c, http.StatusInternalServerError, "failed to generate report", "SR_ERROR")
+	}
+	return c.JSON(http.StatusOK, report)
+}
+
+// ExportTrainingMatrixPDF generates and streams a PDF training evidence report.
+func (h *Handler) ExportTrainingMatrixPDF(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	from, to, err := parsePeriodParams(c)
+	if err != nil {
+		return errJSON(c, http.StatusBadRequest, err.Error(), "SR_BAD_PERIOD")
+	}
+	pdfBytes, err := h.service.ExportTrainingMatrixPDF(c.Request().Context(), orgID, from, to)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("export training matrix pdf")
+		return errJSON(c, http.StatusInternalServerError, "failed to generate PDF", "SR_PDF_ERROR")
+	}
+	filename := fmt.Sprintf("training-report-%d.pdf", to.Year())
+	c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, filename))
+	return c.Blob(http.StatusOK, "application/pdf", pdfBytes)
+}
+
+// ExportTrainingMatrixCSV generates and streams a CSV training evidence report.
+func (h *Handler) ExportTrainingMatrixCSV(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	from, to, err := parsePeriodParams(c)
+	if err != nil {
+		return errJSON(c, http.StatusBadRequest, err.Error(), "SR_BAD_PERIOD")
+	}
+	csvBytes, err := h.service.ExportTrainingMatrixCSV(c.Request().Context(), orgID, from, to)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("export training matrix csv")
+		return errJSON(c, http.StatusInternalServerError, "failed to generate CSV", "SR_CSV_ERROR")
+	}
+	filename := fmt.Sprintf("training-report-%d.csv", to.Year())
+	c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, filename))
+	return c.Blob(http.StatusOK, "text/csv", csvBytes)
+}
+
+// parsePeriodParams parses ?from= and ?to= query params as RFC3339 dates.
+// Defaults: to = now, from = 1 year ago.
+func parsePeriodParams(c echo.Context) (from, to time.Time, err error) {
+	to = time.Now().UTC()
+	from = to.AddDate(-1, 0, 0)
+	if fp := c.QueryParam("from"); fp != "" {
+		if from, err = time.Parse("2006-01-02", fp); err != nil {
+			return from, to, fmt.Errorf("invalid from date: %s", fp)
+		}
+	}
+	if tp := c.QueryParam("to"); tp != "" {
+		if to, err = time.Parse("2006-01-02", tp); err != nil {
+			return from, to, fmt.Errorf("invalid to date: %s", tp)
+		}
+	}
+	return from, to, nil
+}
+
+// ── BSI ORP.3 status (S65-4) ──────────────────────────────────────────────────
+
+// GetORP3Status returns the BSI ORP.3 compliance overview for the past 12 months.
+func (h *Handler) GetORP3Status(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	status, err := h.service.GetORP3Status(c.Request().Context(), orgID)
+	if err != nil {
+		return errJSON(c, http.StatusInternalServerError, "failed to compute ORP.3 status", "SR_ERROR")
+	}
+	return c.JSON(http.StatusOK, status)
 }

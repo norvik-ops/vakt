@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '../../../components/ui/select'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { InfoBanner } from '../../../shared/components/InfoBanner'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Pagination } from '../../../shared/components/Pagination'
 import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
@@ -265,6 +266,16 @@ export default function EmployeesPage() {
           </Button>
         }
       />
+
+      <InfoBanner icon={Users} title="So funktioniert Vakt HR">
+        <p>
+          Vakt HR verwaltet den Mitarbeiter-Lifecycle: <strong>Onboarding</strong>, <strong>Offboarding</strong> und <strong>Zugriffsrechte</strong>.
+          Lege Checklisten für jeden Schritt an und weise sie Mitarbeitern zu.
+        </p>
+        <p className="mt-1">
+          Abgeschlossene Checklisten fließen automatisch als Evidenz in <strong>Vakt Comply</strong> ein.
+        </p>
+      </InfoBanner>
 
       {/* Status filter */}
       <div className="flex gap-2">

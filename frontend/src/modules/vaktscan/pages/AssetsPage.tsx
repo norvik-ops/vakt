@@ -18,7 +18,8 @@ import { Label } from '../../../components/ui/label'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '../../../components/ui/select'
 import { useAssets, useCreateAsset, useImportAssets } from '../hooks/useAssets'
 import { useFirstAction } from '../../../shared/hooks/useFirstAction'
-import type { Asset } from '../types'
+import { ClassificationBadge } from '../components/ClassificationBadge'
+import type { Asset, ClassificationLevel } from '../types'
 import type { CreateAssetInput, ImportAssetsResult } from '../hooks/useAssets'
 import { toast } from '../../../shared/hooks/useToast'
 import { Skeleton } from '../../../components/ui/skeleton'
@@ -60,6 +61,7 @@ const emptyForm: CreateAssetInput = {
   target: '',
   criticality: 'medium',
   tags: [],
+  classification: 'internal',
 }
 
 function ASSET_COLUMNS(t: (key: string) => string, formatDate: (v: string) => string): Column<SortableAsset>[] {
@@ -79,7 +81,11 @@ function ASSET_COLUMNS(t: (key: string) => string, formatDate: (v: string) => st
       key: 'target',
       label: t('vaktscan.assetsPage.colTarget'),
       mobileHide: true,
-      render: (row) => <span className="font-mono text-xs text-secondary">{row.target}</span>,
+      render: (row) => (
+        <span className="font-mono text-xs text-secondary">
+          {row.target || <span className="text-secondary/40">—</span>}
+        </span>
+      ),
     },
     {
       key: 'criticality',
@@ -106,6 +112,14 @@ function ASSET_COLUMNS(t: (key: string) => string, formatDate: (v: string) => st
           ))}
         </div>
       ),
+    },
+    {
+      key: 'classification',
+      label: 'Klassifizierung',
+      mobileHide: true,
+      render: (row) => row.classification
+        ? <ClassificationBadge level={row.classification} />
+        : <span className="text-xs text-muted-foreground">—</span>,
     },
     {
       key: 'created_at',
@@ -376,6 +390,24 @@ export default function AssetsPage() {
                     <SelectItem value="medium">Medium</SelectItem>
                     <SelectItem value="high">High</SelectItem>
                     <SelectItem value="critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="asset-classification">Informationsklassifizierung</Label>
+                <Select
+                  value={form.classification ?? 'internal'}
+                  onValueChange={(val) => { setForm({ ...form, classification: val as ClassificationLevel }); }}
+                >
+                  <SelectTrigger id="asset-classification">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">Öffentlich</SelectItem>
+                    <SelectItem value="internal">Intern</SelectItem>
+                    <SelectItem value="confidential">Vertraulich</SelectItem>
+                    <SelectItem value="restricted">Streng Vertraulich</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

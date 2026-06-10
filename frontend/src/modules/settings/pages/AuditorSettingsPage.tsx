@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Copy, Trash2, Plus, UserCheck } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
@@ -22,10 +23,10 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function inviteStatus(invite: AuditorInvite): { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' } {
-  if (invite.accepted_at) return { label: 'Aktiviert', variant: 'default' }
-  if (new Date(invite.expires_at) < new Date()) return { label: 'Abgelaufen', variant: 'destructive' }
-  return { label: 'Ausstehend', variant: 'secondary' }
+function inviteStatus(invite: AuditorInvite, t: (key: string) => string): { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' } {
+  if (invite.accepted_at) return { label: t('settings.auditor.statusActive'), variant: 'default' }
+  if (new Date(invite.expires_at) < new Date()) return { label: t('settings.auditor.statusExpired'), variant: 'destructive' }
+  return { label: t('settings.auditor.statusPending'), variant: 'secondary' }
 }
 
 // ---------------------------------------------------------------------------
@@ -38,6 +39,7 @@ interface CreateDialogProps {
 }
 
 function CreateInviteDialog({ open, onClose }: CreateDialogProps) {
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [expiresIn, setExpiresIn] = useState('30')
   const [createdToken, setCreatedToken] = useState<string | null>(null)
@@ -83,13 +85,13 @@ function CreateInviteDialog({ open, onClose }: CreateDialogProps) {
     <Dialog open={open} onOpenChange={(v) => { if (!v) { handleClose(); } }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Auditor einladen</DialogTitle>
+          <DialogTitle>{t('settings.auditor.invite')}</DialogTitle>
         </DialogHeader>
 
         {createdToken ? (
           <div className="space-y-4">
             <p className="text-sm text-secondary">
-              Invite-Link erstellt. Sende diesen Link an den Auditor — er ist einmalig sichtbar.
+              {t('settings.auditor.inviteLinkCreated')}
             </p>
             <div className="flex items-center gap-2">
               <Input
@@ -99,17 +101,17 @@ function CreateInviteDialog({ open, onClose }: CreateDialogProps) {
               />
               <Button variant="outline" size="sm" onClick={handleCopy}>
                 <Copy className="w-4 h-4 mr-1" />
-                {copied ? 'Kopiert!' : 'Kopieren'}
+                {copied ? t('settings.auditor.copied') : t('settings.auditor.copy')}
               </Button>
             </div>
             <DialogFooter>
-              <Button onClick={handleClose}>Schliessen</Button>
+              <Button onClick={handleClose}>{t('settings.auditor.close')}</Button>
             </DialogFooter>
           </div>
         ) : (
           <div className="space-y-4">
             <div className="space-y-1">
-              <Label htmlFor="auditor-email">E-Mail-Adresse</Label>
+              <Label htmlFor="auditor-email">{t('settings.auditor.emailAddress')}</Label>
               <Input
                 id="auditor-email"
                 type="email"
@@ -119,7 +121,7 @@ function CreateInviteDialog({ open, onClose }: CreateDialogProps) {
               />
             </div>
             <div className="space-y-1">
-              <Label>Gültigkeitsdauer</Label>
+              <Label>{t('settings.auditor.validity')}</Label>
               <Select value={expiresIn} onValueChange={setExpiresIn}>
                 <SelectTrigger>
                   <SelectValue />
@@ -134,12 +136,12 @@ function CreateInviteDialog({ open, onClose }: CreateDialogProps) {
               </Select>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={handleClose}>Abbrechen</Button>
+              <Button variant="outline" onClick={handleClose}>{t('settings.auditor.cancel')}</Button>
               <Button
                 onClick={handleSave}
                 disabled={!email.trim() || create.isPending}
               >
-                {create.isPending ? 'Erstelle...' : 'Einladen'}
+                {create.isPending ? t('settings.auditor.creating') : t('settings.auditor.inviteAction')}
               </Button>
             </DialogFooter>
           </div>
@@ -154,6 +156,7 @@ function CreateInviteDialog({ open, onClose }: CreateDialogProps) {
 // ---------------------------------------------------------------------------
 
 export default function AuditorSettingsPage() {
+  const { t } = useTranslation()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [revokeTarget, setRevokeTarget] = useState<{ id: string; email: string } | null>(null)
   const { data: invites = [], isLoading } = useAuditorInvites()
@@ -173,12 +176,12 @@ export default function AuditorSettingsPage() {
   return (
     <div className="p-6 space-y-6 max-w-4xl">
       <PageHeader
-        title="Auditoren"
-        description="Erteile externen Auditoren zeitlich begrenzten Read-only-Zugang zu Frameworks, Controls und Nachweisen."
+        title={t('settings.auditor.title')}
+        description={t('settings.auditor.description')}
         actions={
           <Button onClick={() => { setDialogOpen(true); }}>
             <Plus className="w-4 h-4 mr-2" />
-            Auditor einladen
+            {t('settings.auditor.invite')}
           </Button>
         }
       />
@@ -187,11 +190,11 @@ export default function AuditorSettingsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>E-Mail</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Erstellt am</TableHead>
-              <TableHead>Laeuft ab</TableHead>
-              <TableHead>Aktiviert am</TableHead>
+              <TableHead>{t('settings.auditor.email')}</TableHead>
+              <TableHead>{t('settings.auditor.status')}</TableHead>
+              <TableHead>{t('settings.auditor.createdAt')}</TableHead>
+              <TableHead>{t('settings.auditor.expiresAt')}</TableHead>
+              <TableHead>{t('settings.auditor.activatedAt')}</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -199,7 +202,7 @@ export default function AuditorSettingsPage() {
             {isLoading && (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-secondary py-8">
-                  Laden...
+                  {t('settings.auditor.loading')}
                 </TableCell>
               </TableRow>
             )}
@@ -208,13 +211,13 @@ export default function AuditorSettingsPage() {
                 <TableCell colSpan={6} className="text-center py-12">
                   <div className="flex flex-col items-center gap-2 text-secondary">
                     <UserCheck className="w-8 h-8 opacity-40" />
-                    <p className="text-sm">Noch keine Auditoren eingeladen</p>
+                    <p className="text-sm">{t('settings.auditor.noAuditors')}</p>
                   </div>
                 </TableCell>
               </TableRow>
             )}
             {invites.map((invite) => {
-              const { label, variant } = inviteStatus(invite)
+              const { label, variant } = inviteStatus(invite, t)
               return (
                 <TableRow key={invite.id}>
                   <TableCell className="font-medium">{invite.email}</TableCell>
@@ -253,16 +256,15 @@ export default function AuditorSettingsPage() {
       <AlertDialog open={revokeTarget !== null} onOpenChange={(open) => { if (!open) setRevokeTarget(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Einladung widerrufen?</AlertDialogTitle>
+            <AlertDialogTitle>{t('settings.auditor.revokeConfirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Die Einladung von <strong>{revokeTarget?.email}</strong> wird widerrufen und der Zugang
-              wird deaktiviert. Diese Aktion kann nicht rückgängig gemacht werden.
+              {t('settings.auditor.revokeConfirmDesc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogCancel>{t('settings.auditor.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmRevoke} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Widerrufen
+              {t('settings.auditor.revoke')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -117,6 +117,16 @@ func (s *Service) UpdateAsset(ctx context.Context, orgID, assetID string, input 
 	return s.repo.UpdateAsset(ctx, orgID, assetID, input)
 }
 
+// GetAssetProtectionNeedID returns the protection_need_id soft-link for an asset, or nil if unlinked.
+func (s *Service) GetAssetProtectionNeedID(ctx context.Context, orgID, assetID string) (*string, error) {
+	return s.repo.GetAssetProtectionNeedID(ctx, orgID, assetID)
+}
+
+// GetClassificationSummary returns asset counts grouped by classification level (S67-3).
+func (s *Service) GetClassificationSummary(ctx context.Context, orgID string) (*ClassificationSummary, error) {
+	return s.repo.GetClassificationSummary(ctx, orgID)
+}
+
 // DeleteAsset soft-deletes an asset.
 func (s *Service) DeleteAsset(ctx context.Context, orgID, assetID string) error {
 	return s.repo.SoftDeleteAsset(ctx, orgID, assetID)

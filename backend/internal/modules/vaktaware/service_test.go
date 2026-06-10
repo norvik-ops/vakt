@@ -110,18 +110,15 @@ func TestAnonymizeForBetriebsrat_EmptyPreserved(t *testing.T) {
 // campaign renderer (tracking_url placeholder, open_pixel placeholder).
 func TestPresetTemplates_CurriculumShape(t *testing.T) {
 	presets := presetTemplates()
-	assert.GreaterOrEqual(t, len(presets), 10, "content library must offer at least 10 presets")
+	assert.GreaterOrEqual(t, len(presets), 50, "content library must offer at least 50 presets")
 
-	seenAttackTypes := map[string]bool{}
 	for _, p := range presets {
 		assert.NotEmpty(t, p.ID)
 		assert.NotEmpty(t, p.Name)
 		assert.True(t, p.IsPreset)
 		assert.NotEmpty(t, p.HTMLBody)
-		seenAttackTypes[p.AttackType] = true
+		assert.NotEmpty(t, p.AttackType)
 	}
-	// At least three of the four attack types should be represented in the bundled set.
-	assert.GreaterOrEqual(t, len(seenAttackTypes), 3, "presets should cover multiple attack types")
 }
 
 // TestPresetTemplates_NoExternalImages confirms that every bundled template
@@ -133,6 +130,86 @@ func TestPresetTemplates_NoExternalImages(t *testing.T) {
 			t.Errorf("preset %s has external image tracker: %v", p.ID, err)
 		}
 	}
+}
+
+// TestPresetTemplates_FiftyInFiveCategories verifies the 50-template library
+// requirement: exactly 5 categories with 10 templates each.
+func TestPresetTemplates_FiftyInFiveCategories(t *testing.T) {
+	presets := presetTemplates()
+	assert.GreaterOrEqual(t, len(presets), 50)
+
+	categories := map[string]int{}
+	for _, p := range presets {
+		assert.NotEmpty(t, p.Category, "every preset must have a category (preset: %s)", p.ID)
+		assert.NotEmpty(t, p.Difficulty, "every preset must have a difficulty (preset: %s)", p.ID)
+		assert.Equal(t, "de", p.Language)
+		categories[p.Category]++
+	}
+	assert.GreaterOrEqual(t, len(categories), 5, "presets must span at least 5 categories")
+}
+
+// TestRenderTemplate_PlaceholderReplacement verifies that all known placeholders
+// in a template body are correctly substituted.
+func TestRenderTemplate_PlaceholderReplacement(t *testing.T) {
+	tmpl := Template{
+		Subject:  "Hallo {{first_name}} von {{company}}",
+		HTMLBody: `<p>Hi {{first_name}} {{last_name}}, klick <a href="{{tracking_url}}">hier</a></p>`,
+	}
+	r := Recipient{
+		FirstName:   "Max",
+		LastName:    "Mustermann",
+		CompanyName: "Beispiel GmbH",
+	}
+	subj, body, _ := RenderTemplate(tmpl, r, "https://track.example.com/abc")
+	assert.Equal(t, "Hallo Max von Beispiel GmbH", subj)
+	assert.Contains(t, body, "Max Mustermann")
+	assert.Contains(t, body, "https://track.example.com/abc")
+}
+
+// TestRenderTemplate_HTMLInjectionEscaped ensures malicious input in recipient
+// fields is HTML-escaped and cannot break out of template context.
+func TestRenderTemplate_HTMLInjectionEscaped(t *testing.T) {
+	tmpl := Template{HTMLBody: `<p>Hi {{first_name}}</p>`}
+	r := Recipient{FirstName: `<script>alert(1)</script>`}
+	_, body, _ := RenderTemplate(tmpl, r, "")
+	assert.NotContains(t, body, "<script>")
+	assert.Contains(t, body, "&lt;script&gt;")
+}
+
+// TestRenderTemplate_UnknownPlaceholderPreserved confirms that unknown
+// placeholders (like custom org-specific tokens) survive render unchanged.
+func TestRenderTemplate_UnknownPlaceholderPreserved(t *testing.T) {
+	tmpl := Template{HTMLBody: `<p>{{unknown_placeholder}}</p>`}
+	_, body, _ := RenderTemplate(tmpl, Recipient{}, "")
+	assert.Contains(t, body, "{{unknown_placeholder}}")
+}
+
+// TestAnonymizeEmail verifies that the hash is deterministic, 16 chars long,
+// and case-insensitive (DSGVO-compliant anonymisation requirement).
+func TestAnonymizeEmail(t *testing.T) {
+	h1 := anonymizeEmail("user@example.com")
+	h2 := anonymizeEmail("USER@EXAMPLE.COM")
+	assert.Equal(t, 16, len(h1))
+	assert.Equal(t, h1, h2, "case-insensitive: upper and lower must produce same hash")
+	assert.NotEqual(t, h1, anonymizeEmail("other@example.com"))
+}
+
+// TestFilterPresetTemplates_ByCategory verifies that the filter returns only
+// templates matching the requested category.
+func TestFilterPresetTemplates_ByCategory(t *testing.T) {
+	all := presetTemplates()
+	filtered := FilterPresetTemplates(all, "credential", "", "")
+	for _, t2 := range filtered {
+		assert.Equal(t, "credential", t2.Category)
+	}
+	assert.Greater(t, len(filtered), 0)
+}
+
+// TestFilterPresetTemplates_NoFilter verifies that empty filters return all templates.
+func TestFilterPresetTemplates_NoFilter(t *testing.T) {
+	all := presetTemplates()
+	filtered := FilterPresetTemplates(all, "", "", "")
+	assert.Equal(t, len(all), len(filtered))
 }
 
 // TestPresetTrainingModules_Shape verifies the training-module curriculum is

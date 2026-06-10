@@ -21,8 +21,24 @@ import { toast } from '../../../shared/hooks/useToast'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import {
   useCAPAs, useCreateCAPA, useUpdateCAPA, useDeleteCAPA, useBulkUpdateCAPAs,
-  type CAPA, type CreateCAPAInput, type UpdateCAPAInput,
+  useUpdateCAPANCFields, useCompleteEffectivenessCheck,
+  type CAPA, type CreateCAPAInput, type UpdateCAPAInput, type CAPANCFields,
 } from '../hooks/useCAPAs'
+
+// ---- S61-3: NC classification badge helpers ----
+
+const NC_CLASS_LABEL: Record<NonNullable<CAPA['nc_classification']>, string> = {
+  major_nc:    'Major NC',
+  minor_nc:    'Minor NC',
+  observation: 'Beobachtung',
+  ofi:         'Verbesserungspotenzial',
+}
+const NC_CLASS_COLOR: Record<NonNullable<CAPA['nc_classification']>, string> = {
+  major_nc:    'bg-red-500/20 text-red-400 border-red-500/30',
+  minor_nc:    'bg-orange-500/20 text-orange-400 border-orange-500/30',
+  observation: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  ofi:         'bg-slate-500/20 text-slate-400 border-slate-500/30',
+}
 
 // ---- constants ----
 
@@ -175,9 +191,17 @@ function CreateDialog({ open, onClose, prefillSourceType, prefillSourceId }: Cre
 
 function CAPADetail({ capa, onClose }: { capa: CAPA; onClose: () => void }) {
   const update = useUpdateCAPA()
+  const updateNCFields = useUpdateCAPANCFields(capa.id)
+  const completeEffectiveness = useCompleteEffectivenessCheck(capa.id)
   const [rootCause, setRootCause] = useState(capa.root_cause)
   const [actionPlan, setActionPlan] = useState(capa.action_plan)
   const [verificationNote, setVerificationNote] = useState(capa.verification_note)
+  // NC fields
+  const [ncClassification, setNcClassification] = useState<CAPANCFields['nc_classification']>(capa.nc_classification)
+  const [immediateContainment, setImmediateContainment] = useState(capa.immediate_containment ?? '')
+  const [similarNcsNotes, setSimilarNcsNotes] = useState(capa.similar_ncs_notes ?? '')
+  const [effectivenessCheckDate, setEffectivenessCheckDate] = useState(capa.effectiveness_check_date ?? '')
+  const [effectivenessEvidenceNote, setEffectivenessEvidenceNote] = useState('')
 
   const nextStatusIdx = STATUS_FLOW.indexOf(capa.status) + 1
   const nextStatus = nextStatusIdx < STATUS_FLOW.length ? STATUS_FLOW[nextStatusIdx] : null
@@ -195,6 +219,25 @@ function CAPADetail({ capa, onClose }: { capa: CAPA; onClose: () => void }) {
 
   function saveText() {
     save({ root_cause: rootCause, action_plan: actionPlan })
+  }
+
+  function saveNCFields() {
+    updateNCFields.mutate({
+      nc_classification: ncClassification,
+      immediate_containment: immediateContainment,
+      root_cause: rootCause,
+      similar_ncs_notes: similarNcsNotes,
+      effectiveness_check_date: effectivenessCheckDate || undefined,
+      effectiveness_evidence: '',
+    }, {
+      onSuccess: () => { toast('NC-Felder gespeichert', 'success') },
+    })
+  }
+
+  function confirmEffectiveness(confirmed: boolean) {
+    completeEffectiveness.mutate({ confirmed, evidence_note: effectivenessEvidenceNote }, {
+      onSuccess: () => { toast(confirmed ? 'Wirksamkeit bestätigt' : 'Wirksamkeit nicht bestätigt', 'success') },
+    })
   }
 
   return (
@@ -221,6 +264,59 @@ function CAPADetail({ capa, onClose }: { capa: CAPA; onClose: () => void }) {
           </Button>
         )}
         <Button size="sm" variant="ghost" onClick={onClose} className="ml-auto">Schließen</Button>
+      </div>
+
+      {/* S61-3: NC root-cause + effectiveness section */}
+      <div className="border-t border-border pt-3 space-y-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">NC-Klassifizierung &amp; Wirksamkeit</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">NC-Klassifizierung</Label>
+            <Select value={ncClassification ?? ''} onValueChange={(v) => { setNcClassification((v as CAPANCFields['nc_classification']) || undefined); }}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Nicht klassifiziert" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Nicht klassifiziert</SelectItem>
+                <SelectItem value="major_nc">Major NC</SelectItem>
+                <SelectItem value="minor_nc">Minor NC</SelectItem>
+                <SelectItem value="observation">Beobachtung</SelectItem>
+                <SelectItem value="ofi">Verbesserungspotenzial</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Wirksamkeitsprüfung bis</Label>
+            <Input type="date" className="h-8 text-xs" value={effectivenessCheckDate} onChange={(e) => { setEffectivenessCheckDate(e.target.value); }} />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Sofortmaßnahme (Containment)</Label>
+          <Textarea rows={2} className="text-xs" value={immediateContainment} onChange={(e) => { setImmediateContainment(e.target.value); }} placeholder="Welche Sofortmaßnahme wurde ergriffen?" />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Ähnliche NCs bewertet</Label>
+          <Textarea rows={2} className="text-xs" value={similarNcsNotes} onChange={(e) => { setSimilarNcsNotes(e.target.value); }} placeholder="Wurden ähnliche Nichtkonformitäten geprüft?" />
+        </div>
+        <Button size="sm" variant="outline" onClick={saveNCFields} disabled={updateNCFields.isPending}>NC-Felder speichern</Button>
+
+        {capa.effectiveness_check_date && capa.effectiveness_confirmed == null && (
+          <div className="space-y-2 border border-border rounded p-3">
+            <p className="text-xs font-medium">Wirksamkeitsprüfung durchführen</p>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nachweis / Notiz</Label>
+              <Textarea rows={2} className="text-xs" value={effectivenessEvidenceNote} onChange={(e) => { setEffectivenessEvidenceNote(e.target.value); }} placeholder="Nachweis für die Wirksamkeit …" />
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => { confirmEffectiveness(true); }} disabled={completeEffectiveness.isPending}>Wirksam bestätigen</Button>
+              <Button size="sm" variant="outline" onClick={() => { confirmEffectiveness(false); }} disabled={completeEffectiveness.isPending}>Nicht wirksam</Button>
+            </div>
+          </div>
+        )}
+        {capa.effectiveness_confirmed === true && (
+          <p className="text-xs text-green-400">Wirksamkeit bestätigt</p>
+        )}
+        {capa.effectiveness_confirmed === false && (
+          <p className="text-xs text-red-400">Wirksamkeit nicht bestätigt — neue Maßnahmen erforderlich</p>
+        )}
       </div>
     </div>
   )
@@ -272,6 +368,11 @@ function CAPACard({
             <Badge variant="outline" className="text-xs">{SOURCE_LABEL[capa.source_type]}</Badge>
             <Badge className={`text-xs ${PRIORITY_CLASS[capa.priority]}`}>{PRIORITY_LABEL[capa.priority]}</Badge>
             <Badge className={`text-xs ${STATUS_CLASS[capa.status]}`}>{STATUS_LABEL[capa.status]}</Badge>
+            {capa.nc_classification && (
+              <Badge className={`text-xs ${NC_CLASS_COLOR[capa.nc_classification]}`}>
+                {NC_CLASS_LABEL[capa.nc_classification]}
+              </Badge>
+            )}
             {capa.due_date && !['closed', 'verified'].includes(capa.status) && new Date(capa.due_date) < new Date() && (
               <Badge variant="destructive" className="text-xs gap-1">
                 <AlertTriangle className="w-3 h-3" />

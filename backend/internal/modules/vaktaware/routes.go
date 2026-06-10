@@ -95,4 +95,21 @@ func Register(g *echo.Group, h *Handler) {
 	p.GET("/phish-reports", h.ListPhishReports, features.Require(features.FeatureSecReflex))
 	p.GET("/phish-reports/stats", h.GetPhishReportStats, features.Require(features.FeatureSecReflex))
 	p.POST("/phish-report-token/regenerate", h.RegeneratePhishToken, rw, features.Require(features.FeatureSecReflex))
+
+	// --- S65-1: Template library (filtered presets) ---
+	p.GET("/templates/library", h.ListPresetsFiltered, features.Require(features.FeatureSecReflex))
+
+	// --- S65-2: Auto-enrollment rules ---
+	p.GET("/enrollment-rules", h.ListEnrollmentRules, features.Require(features.FeatureSecReflex))
+	p.POST("/enrollment-rules", h.CreateEnrollmentRule, rw, features.Require(features.FeatureSecReflex))
+	p.PUT("/enrollment-rules/:id", h.UpdateEnrollmentRuleActive, rw, features.Require(features.FeatureSecReflex))
+	p.DELETE("/enrollment-rules/:id", h.DeleteEnrollmentRule, rw, features.Require(features.FeatureSecReflex))
+
+	// --- S65-3: Training evidence export ---
+	p.GET("/reports/training-matrix", h.GetTrainingMatrix, features.Require(features.FeatureSecReflex))
+	p.GET("/reports/training-matrix/export/pdf", h.ExportTrainingMatrixPDF, features.Require(features.FeatureSecReflex))
+	p.GET("/reports/training-matrix/export/csv", h.ExportTrainingMatrixCSV, features.Require(features.FeatureSecReflex))
+
+	// --- S65-4: BSI ORP.3 compliance status ---
+	p.GET("/bsi-orp3-status", h.GetORP3Status)
 }

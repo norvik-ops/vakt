@@ -51,7 +51,7 @@ export default function TemplatesPage() {
         actions={
           <Button onClick={() => { setOpen(true); }}>
             <Plus className="w-4 h-4 mr-1" />
-            New Template
+            Neue Vorlage
           </Button>
         }
       />
@@ -92,10 +92,10 @@ export default function TemplatesPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-xs text-secondary mb-3">
-                    From: {t.from_name} &lt;{t.from_email}&gt;
+                    Von: {t.from_name} &lt;{t.from_email}&gt;
                   </p>
                   <p className="text-xs text-secondary">
-                    Created {formatDate(t.created_at)}
+                    Erstellt {formatDate(t.created_at)}
                   </p>
                   {!t.is_preset && (
                     <div className="mt-3 flex justify-end">
@@ -155,7 +155,7 @@ export default function TemplatesPage() {
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => { setOpen(false); resetForm() }}>Abbrechen</Button>
               <Button type="submit" disabled={createTemplate.isPending}>
-                {createTemplate.isPending ? 'Creating…' : 'Create Template'}
+                {createTemplate.isPending ? 'Wird erstellt…' : 'Vorlage erstellen'}
               </Button>
             </DialogFooter>
           </form>
@@ -165,15 +165,15 @@ export default function TemplatesPage() {
       <Dialog open={!!deleteId} onOpenChange={(open) => { if (!open) { setDeleteId(null); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Vorlage löschen</DialogTitle></DialogHeader>
-          <p className="text-sm text-secondary py-2">This will permanently delete the template. Campaigns using it will not be affected.</p>
+          <p className="text-sm text-secondary py-2">Die Vorlage wird unwiderruflich gelöscht. Bestehende Kampagnen, die sie verwenden, sind nicht betroffen.</p>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setDeleteId(null); }}>Abbrechen</Button>
             <Button
               variant="destructive"
-              onClick={() => { deleteTemplate.mutate(deleteId!, { onSuccess: () => { setDeleteId(null); } }); }}
+              onClick={() => { if (deleteId) deleteTemplate.mutate(deleteId, { onSuccess: () => { setDeleteId(null); } }); }}
               disabled={deleteTemplate.isPending}
             >
-              {deleteTemplate.isPending ? 'Deleting…' : 'Delete'}
+              {deleteTemplate.isPending ? 'Wird gelöscht…' : 'Löschen'}
             </Button>
           </DialogFooter>
         </DialogContent>

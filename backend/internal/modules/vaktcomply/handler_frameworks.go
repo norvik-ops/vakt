@@ -352,3 +352,25 @@ func (h *Handler) ExportTISAXReportPDF(c echo.Context) error {
 	c.Response().Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	return c.Blob(http.StatusOK, "application/pdf", pdfBytes)
 }
+
+// GetMappingCoverage handles GET /api/v1/vaktcomply/frameworks/mapping-coverage.
+// Returns the cross-framework mapping coverage matrix for the org.
+func (h *Handler) GetMappingCoverage(c echo.Context) error {
+	resp, err := h.service.GetMappingCoverage(c.Request().Context(), orgID(c))
+	if err != nil {
+		log.Error().Err(err).Msg("get mapping coverage")
+		return errResp(c, http.StatusInternalServerError, "failed to get mapping coverage", "CK_MAPPING_COVERAGE_FAILED")
+	}
+	return c.JSON(http.StatusOK, resp)
+}
+
+// GetImplementationPath handles GET /api/v1/vaktcomply/frameworks/:id/implementation-path.
+// Returns controls in topological order based on prerequisite chains.
+func (h *Handler) GetImplementationPath(c echo.Context) error {
+	steps, err := h.service.GetImplementationPath(c.Request().Context(), orgID(c), c.Param("id"))
+	if err != nil {
+		log.Error().Err(err).Str("framework_id", c.Param("id")).Msg("get implementation path")
+		return errResp(c, http.StatusInternalServerError, "failed to get implementation path", "CK_IMPL_PATH_FAILED")
+	}
+	return c.JSON(http.StatusOK, steps)
+}

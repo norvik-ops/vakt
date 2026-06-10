@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient, type QueryKey } from '@tanstack/react-query'
 import { apiFetch } from '../../../api/client'
-import type { Risk, CreateRiskInput, UpdateRiskInput, UpdateRiskTreatmentInput, Control } from '../types'
+import type { Risk, CreateRiskInput, UpdateRiskInput, UpdateRiskTreatmentInput, AcceptRiskInput, Control } from '../types'
 import type { PaginatedResponse } from '../../../shared/types/pagination'
 
 export function useDeleteRisk() {
@@ -138,6 +138,32 @@ export function useUnlinkRiskControl(riskId: string) {
       apiFetch<void>(`/vaktcomply/risks/${riskId}/controls/${controlId}`, { method: 'DELETE' }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'risks', riskId, 'controls'] })
+    },
+  })
+}
+
+// S61-4: Residualrisiko-Berechnung hooks
+
+export function useUpdateRiskResidual(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { inherent_likelihood?: number; inherent_impact?: number; residual_likelihood?: number; residual_impact?: number }) =>
+      apiFetch(`/vaktcomply/risks/${id}/residual`, { method: 'PATCH', body: JSON.stringify(input) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'risks'] })
+      void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'risks', id] })
+    },
+  })
+}
+
+export function useAcceptRisk(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation<unknown, Error, AcceptRiskInput>({
+    mutationFn: (input) =>
+      apiFetch(`/vaktcomply/risks/${id}/accept`, { method: 'POST', body: JSON.stringify(input) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'risks'] })
+      void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'risks', id] })
     },
   })
 }

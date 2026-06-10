@@ -261,5 +261,90 @@ Dienstleister müssen:
 - Einholen aktueller Sicherheitsnachweise (Zertifikate, Auditberichte)
 - Sofortige Kündigung bei schwerwiegenden Sicherheitsverstößen`,
 		},
+		{
+			ID:          "cryptography-policy",
+			Title:       "Kryptographierichtlinie",
+			Category:    "Technische Sicherheit",
+			Description: "Richtlinie für den Einsatz kryptographischer Verfahren und Schlüsselverwaltung (ISO 27001 A.8.24, BSI CON.1).",
+			Content: `# Kryptographierichtlinie
+
+## 1. Zweck und Geltungsbereich
+Diese Richtlinie regelt den Einsatz kryptographischer Verfahren zum Schutz der Vertraulichkeit, Integrität und Authentizität von Informationen. Sie gilt für alle IT-Systeme, Anwendungen und Übertragungswege der Organisation.
+
+## 2. Zugelassene Algorithmen
+Folgende Algorithmen sind für den Einsatz zugelassen:
+- **Symmetrische Verschlüsselung:** AES-256-GCM, AES-128-GCM (bevorzugt), ChaCha20-Poly1305
+- **Asymmetrische Verfahren:** RSA-4096 (Minimum RSA-2048), ECDSA P-256/P-384, Ed25519
+- **Hashing:** SHA-256, SHA-384, SHA-512, BLAKE2b
+- **TLS:** TLS 1.2 (Minimum), TLS 1.3 (bevorzugt)
+
+## 3. Verbotene / Veraltete Algorithmen
+Folgende Algorithmen dürfen nicht mehr eingesetzt werden:
+- MD5, SHA-1 (für kryptographische Zwecke)
+- DES, 3DES, RC4, RC2, Blowfish
+- RSA < 2048 bit, DSA < 2048 bit
+- SSL 2.0/3.0, TLS 1.0/1.1
+
+## 4. Schlüsselverwaltung
+- Alle kryptographischen Schlüssel werden im Krypto-Schlüssel-Register (Vakt Comply) dokumentiert
+- Rotationsintervalle: Signing-Keys 1 Jahr, TLS-Zertifikate max. 1 Jahr, Symmetric Keys 2 Jahre
+- Schlüssel werden sicher erzeugt (CSPRNG), nie im Klartext gespeichert
+- Kompromittierte Schlüssel werden sofort rotiert und der Vorfall gemeldet
+
+## 5. Verantwortlichkeiten
+- IT-Sicherheitsbeauftragter: Pflege des Schlüssel-Registers, Überwachung der Rotationsfristen
+- Systemverantwortliche: Implementierung zugelassener Algorithmen in ihren Systemen
+
+## 6. Überprüfung
+Diese Richtlinie wird jährlich überprüft und bei neuen kryptographischen Erkenntnissen aktualisiert.`,
+		},
+		{
+			ID:          "information-classification-policy",
+			Title:       "Informationsklassifizierungsrichtlinie",
+			Category:    "Informationsschutz",
+			Description: "4-stufiges Klassifizierungsschema für Informationswerte (ISO 27001 A.5.12, A.5.13).",
+			Content: `# Informationsklassifizierungsrichtlinie
+
+## 1. Zweck
+Diese Richtlinie definiert, wie Informationswerte der Organisation klassifiziert, gekennzeichnet und geschützt werden. Ziel ist die angemessene Handhabung von Informationen je nach ihrem Schutzbedarf (ISO 27001 A.5.12, A.5.13).
+
+## 2. Klassifizierungsstufen
+
+### Öffentlich (Public)
+- Für die Öffentlichkeit bestimmt oder freigegeben
+- Keine besonderen Schutzmaßnahmen erforderlich
+- Beispiele: Marketingmaterial, öffentliche Dokumentation, Pressemitteilungen
+
+### Intern (Internal)
+- Nur für Mitarbeiter der Organisation bestimmt
+- Keine Weitergabe an Externe ohne Genehmigung
+- Beispiele: interne Prozessdokumentationen, allgemeine Mitarbeiterinformationen
+
+### Vertraulich (Confidential)
+- Zugang nur für autorisierte Personen mit definiertem Bedarf
+- Verschlüsselte Übertragung und Speicherung erforderlich
+- Beispiele: Kundendaten, Finanzdaten, Verträge, Personalakten, technische Spezifikationen
+
+### Streng Vertraulich (Restricted)
+- Höchster Schutzbedarf, streng limitierter Personenkreis
+- Starke Verschlüsselung, Multi-Faktor-Authentifizierung, Audit-Logging erforderlich
+- Beispiele: Encryption-Keys, Zugangsdaten, M&A-Informationen, sicherheitskritischer Quellcode
+
+## 3. Klassifizierungspflichten
+- Alle neu erstellten digitalen Assets werden klassifiziert (Default: Intern)
+- Klassifizierung wird regelmäßig überprüft, besonders bei Änderungen des Informationszwecks
+- Klassifizierung ist sichtbar (Beschriftung, Metadaten) in Vakt Scan und Vakt Comply
+
+## 4. Handhabung nach Klassifizierung
+| Stufe | Übertragung | Speicherung | Löschung |
+|-------|-------------|-------------|---------|
+| Öffentlich | Unverschlüsselt OK | Standard | Normal |
+| Intern | TLS erforderlich | Zugriffskontrolle | Normal |
+| Vertraulich | TLS + End-to-End | Verschlüsselt | Sicheres Löschen |
+| Streng Vertraulich | TLS + E2E + MFA | Verschlüsselt + Audit | Zertifiziertes Löschen |
+
+## 5. Überprüfung
+Jährliche Überprüfung aller als "Vertraulich" oder "Streng Vertraulich" klassifizierten Assets.`,
+		},
 	}
 }

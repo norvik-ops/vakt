@@ -117,7 +117,10 @@ export default function Login() {
           <CardHeader>
             <div className="flex items-center gap-2.5 mb-2">
               <img src="/logo.svg" alt="Vakt" className="w-9 h-9 shrink-0" />
-              <span className="font-semibold text-[16px] text-brand">Vakt</span>
+              <div>
+                <span className="font-semibold text-[16px] text-brand">Vakt</span>
+                <p className="text-xs text-secondary mt-0.5">Security & Compliance Platform</p>
+              </div>
             </div>
             <CardTitle>{t('auth.signIn')}</CardTitle>
           </CardHeader>

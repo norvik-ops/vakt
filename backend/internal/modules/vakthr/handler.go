@@ -12,8 +12,9 @@ import (
 
 // Handler handles HTTP requests for the HR module.
 type Handler struct {
-	Service  *Service
-	validate *validator.Validate
+	Service         *Service
+	validate        *validator.Validate
+	PersonioSecrets PersonioSecretProvider // optional; enables Personio webhook HMAC verification
 }
 
 // NewHandler creates a new HR handler with an initialised validator.
@@ -22,6 +23,12 @@ func NewHandler(svc *Service) *Handler {
 		Service:  svc,
 		validate: validator.New(),
 	}
+}
+
+// WithPersonioSecrets injects the Personio secret provider (typically the cloud.Service).
+func (h *Handler) WithPersonioSecrets(p PersonioSecretProvider) *Handler {
+	h.PersonioSecrets = p
+	return h
 }
 
 // actorFrom assembles the Actor record the service uses to attribute audit-log

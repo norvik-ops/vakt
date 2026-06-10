@@ -1,0 +1,10 @@
+ALTER TABLE ck_capas DROP COLUMN IF EXISTS nc_classification;
+ALTER TABLE ck_capas DROP COLUMN IF EXISTS immediate_containment;
+ALTER TABLE ck_capas DROP COLUMN IF EXISTS root_cause;
+ALTER TABLE ck_capas DROP COLUMN IF EXISTS similar_ncs_assessed;
+ALTER TABLE ck_capas DROP COLUMN IF EXISTS similar_ncs_notes;
+ALTER TABLE ck_capas DROP COLUMN IF EXISTS effectiveness_check_date;
+ALTER TABLE ck_capas DROP COLUMN IF EXISTS effectiveness_confirmed;
+ALTER TABLE ck_capas DROP COLUMN IF EXISTS effectiveness_checked_at;
+ALTER TABLE ck_capas DROP COLUMN IF EXISTS effectiveness_checked_by;
+ALTER TABLE ck_capas DROP COLUMN IF EXISTS effectiveness_evidence;

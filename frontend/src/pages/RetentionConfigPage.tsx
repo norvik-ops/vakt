@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Spinner } from '../components/Spinner'
 import { PageHeader } from '../shared/components/PageHeader'
@@ -30,15 +31,18 @@ const DEFAULT_CONFIG: RetentionConfig = {
   digest_hour: 8,
 }
 
-const WEEKDAYS = [
-  { value: 1, label: 'Montag' },
-  { value: 2, label: 'Dienstag' },
-  { value: 3, label: 'Mittwoch' },
-  { value: 4, label: 'Donnerstag' },
-  { value: 5, label: 'Freitag' },
-  { value: 6, label: 'Samstag' },
-  { value: 0, label: 'Sonntag' },
-]
+function useWeekdays() {
+  const { t } = useTranslation()
+  return [
+    { value: 1, label: t('retention.weekdays.monday') },
+    { value: 2, label: t('retention.weekdays.tuesday') },
+    { value: 3, label: t('retention.weekdays.wednesday') },
+    { value: 4, label: t('retention.weekdays.thursday') },
+    { value: 5, label: t('retention.weekdays.friday') },
+    { value: 6, label: t('retention.weekdays.saturday') },
+    { value: 0, label: t('retention.weekdays.sunday') },
+  ]
+}
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
@@ -79,6 +83,8 @@ function useToast() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function RetentionConfigPage() {
+  const { t } = useTranslation()
+  const weekdays = useWeekdays()
   const { data, isLoading } = useRetentionConfig()
   const update = useUpdateRetentionConfig()
   const toast = useToast()
@@ -114,21 +120,21 @@ export default function RetentionConfigPage() {
 
   function handleRetentionSave() {
     update.mutate(retentionForm, {
-      onSuccess: () => { toast.show('Aufbewahrungsfristen gespeichert'); },
+      onSuccess: () => { toast.show(t('retention.retentionSaved')); },
     })
   }
 
   function handleDigestSave() {
     update.mutate(digestForm, {
-      onSuccess: () => { toast.show('Digest-Einstellungen gespeichert'); },
+      onSuccess: () => { toast.show(t('retention.digestSaved')); },
     })
   }
 
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Datenpflege & Aufbewahrungsfristen"
-        description="Konfigurieren Sie DSGVO-konforme Aufbewahrungsfristen für alle Plattform-Daten."
+        title={t('retention.title')}
+        description={t('retention.description')}
       />
 
       {toast.message && (
@@ -143,9 +149,9 @@ export default function RetentionConfigPage() {
           {/* Card 1: Aufbewahrungsfristen */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Aufbewahrungsfristen</CardTitle>
+              <CardTitle className="text-sm">{t('retention.retentionCard')}</CardTitle>
               <CardDescription>
-                Daten werden nach Ablauf der Frist automatisch gelöscht. 0 = dauerhaft aufbewahren.
+                {t('retention.retentionCardHint')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -156,7 +162,7 @@ export default function RetentionConfigPage() {
               ) : (
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-secondary">Audit-Log behalten (Tage)</Label>
+                    <Label className="text-xs text-secondary">{t('retention.auditLogDays')}</Label>
                     <Input
                       type="number"
                       min={0}
@@ -167,10 +173,10 @@ export default function RetentionConfigPage() {
                       }
                       className="h-8 text-sm"
                     />
-                    <p className="text-[11px] text-secondary">0 = dauerhaft</p>
+                    <p className="text-[11px] text-secondary">{t('retention.permanent')}</p>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-secondary">Abgeschlossene Findings behalten (Tage)</Label>
+                    <Label className="text-xs text-secondary">{t('retention.findingsResolvedDays')}</Label>
                     <Input
                       type="number"
                       min={0}
@@ -183,7 +189,7 @@ export default function RetentionConfigPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-secondary">Gelesene Benachrichtigungen behalten (Tage)</Label>
+                    <Label className="text-xs text-secondary">{t('retention.notificationsDays')}</Label>
                     <Input
                       type="number"
                       min={0}
@@ -196,7 +202,7 @@ export default function RetentionConfigPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-secondary">Scan-Historie behalten (Tage)</Label>
+                    <Label className="text-xs text-secondary">{t('retention.scanHistoryDays')}</Label>
                     <Input
                       type="number"
                       min={0}
@@ -217,7 +223,7 @@ export default function RetentionConfigPage() {
                 disabled={isLoading || update.isPending}
                 className="h-8 text-sm"
               >
-                {update.isPending ? 'Wird gespeichert…' : 'Speichern'}
+                {update.isPending ? t('retention.saving') : t('retention.save')}
               </Button>
             </CardFooter>
           </Card>
@@ -225,9 +231,9 @@ export default function RetentionConfigPage() {
           {/* Card 2: Wöchentlicher E-Mail-Digest */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Wöchentlicher E-Mail-Digest</CardTitle>
+              <CardTitle className="text-sm">{t('retention.digestCard')}</CardTitle>
               <CardDescription>
-                Automatische Status-Zusammenfassung an alle Admins — Wochentag und Uhrzeit frei wählbar.
+                {t('retention.digestCardHint')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -246,13 +252,13 @@ export default function RetentionConfigPage() {
                       }
                       className="w-4 h-4 rounded border-border accent-indigo-500"
                     />
-                    <span className="text-sm text-primary">Wöchentlichen Status-Digest aktivieren</span>
+                    <span className="text-sm text-primary">{t('retention.digestEnable')}</span>
                   </label>
 
                   {digestForm.digest_enabled && (
                     <div className="ml-7 space-y-3">
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-secondary">Wochentag</Label>
+                        <Label className="text-xs text-secondary">{t('retention.digestWeekday')}</Label>
                         <select
                           value={digestForm.digest_day}
                           onChange={(e) =>
@@ -260,13 +266,13 @@ export default function RetentionConfigPage() {
                           }
                           className="h-8 text-sm rounded-md border border-input bg-background px-2 focus:outline-none focus:ring-1 focus:ring-brand"
                         >
-                          {WEEKDAYS.map((d) => (
+                          {weekdays.map((d) => (
                             <option key={d.value} value={d.value}>{d.label}</option>
                           ))}
                         </select>
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-secondary">Uhrzeit (UTC)</Label>
+                        <Label className="text-xs text-secondary">{t('retention.digestTime')}</Label>
                         <select
                           value={digestForm.digest_hour}
                           onChange={(e) =>
@@ -276,7 +282,7 @@ export default function RetentionConfigPage() {
                         >
                           {Array.from({ length: 24 }, (_, h) => (
                             <option key={h} value={h}>
-                              {String(h).padStart(2, '0')}:00 Uhr
+                              {String(h).padStart(2, '0')}:00 UTC
                             </option>
                           ))}
                         </select>
@@ -285,8 +291,7 @@ export default function RetentionConfigPage() {
                   )}
 
                   <p className="text-[11px] text-secondary leading-relaxed">
-                    Der Digest enthält offene Findings, DSR-Fristen und den aktuellen Security Score.
-                    Alle Zeitangaben in UTC.
+                    {t('retention.digestHint')}
                   </p>
                 </div>
               )}
@@ -297,7 +302,7 @@ export default function RetentionConfigPage() {
                 disabled={isLoading || update.isPending}
                 className="h-8 text-sm"
               >
-                {update.isPending ? 'Wird gespeichert…' : 'Speichern'}
+                {update.isPending ? t('retention.saving') : t('retention.save')}
               </Button>
             </CardFooter>
           </Card>

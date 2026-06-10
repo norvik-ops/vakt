@@ -21,6 +21,10 @@ func Register(g *echo.Group, h *Handler) {
 	// --- Community: Asset registry ---
 	assets.POST("/assets", h.CreateAsset, rw)
 	assets.GET("/assets", h.ListAssets)
+	// CRITICAL: static paths must be registered BEFORE /assets/:id to avoid route conflict
+	assets.GET("/assets/classification-summary", h.GetClassificationSummary)
+	// Sub-resource routes must be registered BEFORE /:id to avoid shadowing.
+	assets.GET("/assets/:id/protection-need", h.GetAssetProtectionNeed)
 	assets.GET("/assets/:id", h.GetAsset)
 	assets.PUT("/assets/:id", h.UpdateAsset, rw)
 	assets.DELETE("/assets/:id", h.DeleteAsset, rw)
@@ -82,4 +86,20 @@ func Register(g *echo.Group, h *Handler) {
 
 	// --- Community: Scanner availability status ---
 	assets.GET("/scanner-status", h.GetScannerStatus)
+
+	// --- S69-3: SLA Policies ---
+	assets.GET("/sla-policies", h.ListSLAPolicies)
+	assets.PUT("/sla-policies/:severity", h.UpsertSLAPolicy, rw)
+	assets.POST("/sla-policies/reset", h.ResetSLAPolicies, rw)
+	assets.GET("/sla/summary", h.GetSLASummary)
+
+	// --- Community: TLS certificate tracking ---
+	// CRITICAL: static paths (expiring, check-now) must be before /:id to avoid param conflict.
+	assets.GET("/certificates", h.ListCertificates)
+	assets.POST("/certificates", h.CreateCertificate, rw)
+	assets.GET("/certificates/expiring", h.GetExpiringCertificates)
+	assets.POST("/certificates/check-now", h.ScanAllCertificatesNow, rw)
+	assets.POST("/certificates/:id/scan", h.ScanCertificate, rw)
+	assets.GET("/certificates/:id", h.GetCertificate)
+	assets.DELETE("/certificates/:id", h.DeleteCertificate, rw)
 }

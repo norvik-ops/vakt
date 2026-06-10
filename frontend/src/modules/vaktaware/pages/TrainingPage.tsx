@@ -12,6 +12,13 @@ import { Link } from 'react-router-dom'
 import { useTrainingModules, useAssignments, useAssignModule } from '../hooks/useTraining'
 import type { TrainingModule } from '../types'
 import { assignmentStatusVariant } from '../../../lib/statusMapping'
+
+const ASSIGNMENT_STATUS_LABELS: Record<string, string> = {
+  assigned: 'Zugewiesen',
+  in_progress: 'In Bearbeitung',
+  completed: 'Abgeschlossen',
+  failed: 'Nicht bestanden',
+}
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 async function downloadCertificate(assignmentId: string) {
@@ -80,7 +87,7 @@ function ModuleRow({ module }: { module: TrainingModule }) {
               <Spinner size="sm" />
             </div>
           ) : !assignments || assignments.length === 0 ? (
-            <p className="text-sm text-secondary text-center py-4">No assignments yet.</p>
+            <p className="text-sm text-secondary text-center py-4">Noch keine Zuweisungen vorhanden.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -98,7 +105,7 @@ function ModuleRow({ module }: { module: TrainingModule }) {
                   <TableRow key={a.id}>
                     <TableCell className="font-mono text-xs">{a.user_email}</TableCell>
                     <TableCell>
-                      <Badge variant={assignmentStatusVariant[a.status]} className="capitalize">{a.status}</Badge>
+                      <Badge variant={assignmentStatusVariant[a.status]}>{ASSIGNMENT_STATUS_LABELS[a.status] ?? a.status}</Badge>
                     </TableCell>
                     <TableCell className="text-sm">
                       {a.score != null ? `${a.score}%` : '—'}

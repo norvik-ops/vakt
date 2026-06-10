@@ -5,6 +5,8 @@ import TemplatesPage from './pages/TemplatesPage'
 import TargetGroupsPage from './pages/TargetGroupsPage'
 import TrainingPage from './pages/TrainingPage'
 import PhishReportsPage from './pages/PhishReportsPage'
+import EnrollmentRulesPage from './pages/EnrollmentRulesPage'
+import TrainingReportPage from './pages/TrainingReportPage'
 
 export default function SecReflexRoutes() {
   return (
@@ -16,6 +18,8 @@ export default function SecReflexRoutes() {
       <Route path="target-groups" element={<TargetGroupsPage />} />
       <Route path="training" element={<TrainingPage />} />
       <Route path="phish-reports" element={<PhishReportsPage />} />
+      <Route path="enrollment-rules" element={<EnrollmentRulesPage />} />
+      <Route path="training-report" element={<TrainingReportPage />} />
       <Route path="*" element={<Navigate to="campaigns" replace />} />
     </Routes>
   )

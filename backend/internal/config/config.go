@@ -61,6 +61,14 @@ type Config struct {
 	// License key (base64url payload + "." + base64url signature).
 	// Leave empty for Community Edition. Set VAKT_DEMO=true to enable all features without a key.
 	LicenseKey string
+	// LicenseToken enables automatic license renewal. When set, the instance polls
+	// api.norvikops.de/api/v1/billing/license/:token every 24h and activates the
+	// returned key silently — no admin action required on renewal.
+	// Set VAKT_LICENSE_TOKEN to the renewal token from your purchase email.
+	LicenseToken string
+	// LicenseRefreshURL overrides the default refresh endpoint (https://api.norvikops.de).
+	// Only useful for testing.
+	LicenseRefreshURL string
 	// LemonSqueezy webhook signing secret (VAKT_LS_WEBHOOK_SECRET). Kept for backward compat.
 	LSWebhookSecret string
 	// Polar.sh webhook signing secret (VAKT_POLAR_WEBHOOK_SECRET).
@@ -237,6 +245,8 @@ func Load() (*Config, error) {
 		LDAPTLS:             getEnv("VAKT_LDAP_TLS", "false") == "true",
 		UploadDir:           getEnv("VAKT_UPLOAD_DIR", "./data/uploads"),
 		LicenseKey:          getEnv("VAKT_LICENSE_KEY", ""),
+		LicenseToken:        getEnv("VAKT_LICENSE_TOKEN", ""),
+		LicenseRefreshURL:   getEnv("VAKT_LICENSE_REFRESH_URL", ""),
 		LSWebhookSecret:     getEnv("VAKT_LS_WEBHOOK_SECRET", ""),
 		PolarWebhookSecret:  getEnv("VAKT_POLAR_WEBHOOK_SECRET", ""),
 		LicensePrivateKey:   getEnv("VAKT_LICENSE_PRIVATE_KEY", ""),

@@ -318,6 +318,81 @@ func (r *Repository) enrichEnvironments(ctx context.Context, assets []Asset) {
 	}
 }
 
+// enrichClassifications fetches the classification column for a slice of assets
+// in a single query. Same post-sqlc-generation pattern as enrichEnvironments.
+func (r *Repository) enrichClassifications(ctx context.Context, assets []Asset) {
+	if len(assets) == 0 {
+		return
+	}
+	ids := make([]string, len(assets))
+	for i, a := range assets {
+		ids[i] = a.ID
+	}
+	rows, err := r.db.Query(ctx,
+		`SELECT id, COALESCE(classification, 'internal') FROM vb_assets WHERE id = ANY($1)`, ids)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	m := make(map[string]string, len(assets))
+	for rows.Next() {
+		var id, cls string
+		if rows.Scan(&id, &cls) == nil {
+			m[id] = cls
+		}
+	}
+	for i := range assets {
+		if cls, ok := m[assets[i].ID]; ok {
+			assets[i].Classification = cls
+		} else {
+			assets[i].Classification = "internal"
+		}
+	}
+}
+
+// GetClassificationSummary returns asset counts grouped by classification level.
+func (r *Repository) GetClassificationSummary(ctx context.Context, orgID string) (*ClassificationSummary, error) {
+	rows, err := r.db.Query(ctx,
+		`SELECT COALESCE(classification, 'unclassified') AS cls, COUNT(*) AS cnt
+		   FROM vb_assets
+		  WHERE org_id = $1::uuid AND (is_deleted IS NULL OR is_deleted = false)
+		  GROUP BY cls`,
+		orgID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get classification summary: %w", err)
+	}
+	defer rows.Close()
+
+	levels := map[string]int{"public": 0, "internal": 0, "confidential": 0, "restricted": 0}
+	unclassified := 0
+	total := 0
+	for rows.Next() {
+		var cls string
+		var cnt int
+		if err := rows.Scan(&cls, &cnt); err != nil {
+			return nil, fmt.Errorf("scan classification row: %w", err)
+		}
+		total += cnt
+		if cls == "unclassified" || cls == "" {
+			unclassified += cnt
+		} else {
+			levels[cls] += cnt
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("classification summary rows: %w", err)
+	}
+
+	classified := total - unclassified
+	return &ClassificationSummary{
+		TotalCount:        total,
+		ClassifiedCount:   classified,
+		ByLevel:           levels,
+		UnclassifiedCount: unclassified,
+	}, nil
+}
+
 // CreateAsset inserts a new asset row and returns the created record.
 func (r *Repository) CreateAsset(ctx context.Context, orgID string, input CreateAssetInput) (*Asset, error) {
 	tags := input.Tags
@@ -344,12 +419,21 @@ func (r *Repository) CreateAsset(ctx context.Context, orgID string, input Create
 		`UPDATE vb_assets SET environment=$1 WHERE id=$2`, env, row.ID); execErr != nil {
 		log.Warn().Err(execErr).Str("asset_id", row.ID).Msg("could not set environment on new asset")
 	}
+	cls := input.Classification
+	if cls == "" {
+		cls = "internal"
+	}
+	if _, execErr := r.db.Exec(ctx,
+		`UPDATE vb_assets SET classification=$1 WHERE id=$2`, cls, row.ID); execErr != nil {
+		log.Warn().Err(execErr).Str("asset_id", row.ID).Msg("could not set classification on new asset")
+	}
 	a := assetFromFields(assetFields{
 		ID: row.ID, OrgID: row.OrgID, Name: row.Name, Type: row.Type,
 		Criticality: row.Criticality, Environment: env, Tags: row.Tags,
 		OwnerID: row.OwnerID, ExternalUrl: row.ExternalUrl,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	})
+	a.Classification = cls
 	return &a, nil
 }
 
@@ -505,12 +589,22 @@ func (r *Repository) UpdateAsset(ctx context.Context, orgID, assetID string, inp
 			log.Warn().Err(execErr).Str("asset_id", assetID).Msg("could not update environment")
 		}
 	}
+	newCls := cur.Classification
+	if input.Classification != nil {
+		newCls = *input.Classification
+		if _, execErr := r.db.Exec(ctx,
+			`UPDATE vb_assets SET classification=$1 WHERE id=$2 AND org_id=$3`,
+			newCls, assetID, orgID); execErr != nil {
+			log.Warn().Err(execErr).Str("asset_id", assetID).Msg("could not update classification")
+		}
+	}
 	a := assetFromFields(assetFields{
 		ID: row.ID, OrgID: row.OrgID, Name: row.Name, Type: row.Type,
 		Criticality: row.Criticality, Environment: newEnv, Tags: row.Tags,
 		OwnerID: row.OwnerID, ExternalUrl: row.ExternalUrl,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	})
+	a.Classification = newCls
 	return &a, nil
 }
 
@@ -524,6 +618,23 @@ func (r *Repository) SoftDeleteAsset(ctx context.Context, orgID, assetID string)
 		return fmt.Errorf("asset not found")
 	}
 	return nil
+}
+
+// GetAssetProtectionNeedID returns the protection_need_id soft-link for an asset, or nil if unlinked.
+func (r *Repository) GetAssetProtectionNeedID(ctx context.Context, orgID, assetID string) (*string, error) {
+	var pnaID *string
+	err := r.db.QueryRow(ctx,
+		`SELECT protection_need_id FROM vb_assets
+		 WHERE id = $1::uuid AND org_id = $2::uuid AND deleted_at IS NULL`,
+		assetID, orgID,
+	).Scan(&pnaID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get asset protection need id: %w", err)
+	}
+	return pnaID, nil
 }
 
 // derefStrPtr returns "" for a nil *string.
@@ -1719,4 +1830,145 @@ func findingFromRow(r vbFindingRow) Finding {
 		f.SLADueAt = &t
 	}
 	return f
+}
+
+// --- S69-3: SLA Policies ---
+
+// SLASummaryRow is a raw aggregate row from GetSLASummaryRows.
+type SLASummaryRow struct {
+	Severity  string
+	SLAStatus string
+	Count     int
+}
+
+// ListSLAPolicies returns all SLA policies for an org from vb_sla_policies.
+func (r *Repository) ListSLAPolicies(ctx context.Context, orgID string) ([]SLAPolicy, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT id::text, org_id::text, severity, remediation_days,
+		       notification_advance_days, is_default, created_at, updated_at
+		FROM vb_sla_policies
+		WHERE org_id = $1::uuid
+		ORDER BY remediation_days ASC`,
+		orgID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list sla policies: %w", err)
+	}
+	defer rows.Close()
+
+	var out []SLAPolicy
+	for rows.Next() {
+		var p SLAPolicy
+		if err := rows.Scan(&p.ID, &p.OrgID, &p.Severity, &p.RemediationDays,
+			&p.NotificationAdvanceDays, &p.IsDefault, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan sla policy: %w", err)
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// CreateSLAPolicy inserts a new SLA policy row.
+func (r *Repository) CreateSLAPolicy(ctx context.Context, orgID, severity string, remDays, advDays int, isDefault bool) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO vb_sla_policies (org_id, severity, remediation_days, notification_advance_days, is_default)
+		VALUES ($1::uuid, $2, $3, $4, $5)
+		ON CONFLICT (org_id, severity) DO NOTHING`,
+		orgID, severity, remDays, advDays, isDefault,
+	)
+	return err
+}
+
+// UpsertSLAPolicy inserts or updates an SLA policy for an org+severity.
+func (r *Repository) UpsertSLAPolicy(ctx context.Context, orgID, severity string, remDays, advDays int) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO vb_sla_policies (org_id, severity, remediation_days, notification_advance_days, is_default)
+		VALUES ($1::uuid, $2, $3, $4, false)
+		ON CONFLICT (org_id, severity)
+		DO UPDATE SET remediation_days = EXCLUDED.remediation_days,
+		              notification_advance_days = EXCLUDED.notification_advance_days,
+		              is_default = false,
+		              updated_at = NOW()`,
+		orgID, severity, remDays, advDays,
+	)
+	return err
+}
+
+// GetSLASummaryRows returns aggregate counts of open findings by severity + sla_status.
+func (r *Repository) GetSLASummaryRows(ctx context.Context, orgID string) ([]SLASummaryRow, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT severity, COALESCE(sla_status, 'on_track'), COUNT(*)
+		FROM vb_findings
+		WHERE org_id = $1::uuid AND status NOT IN ('resolved', 'wont_fix', 'false_positive')
+		GROUP BY severity, sla_status`,
+		orgID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("sla summary rows: %w", err)
+	}
+	defer rows.Close()
+
+	var out []SLASummaryRow
+	for rows.Next() {
+		var row SLASummaryRow
+		if err := rows.Scan(&row.Severity, &row.SLAStatus, &row.Count); err != nil {
+			return nil, fmt.Errorf("scan sla summary row: %w", err)
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
+// SLAFinding is a lightweight finding row for SLA processing.
+type SLAFinding struct {
+	ID        string
+	Severity  string
+	SLADueAt  *time.Time
+	CreatedAt time.Time
+}
+
+// ListOpenFindingsWithSLA returns minimal finding data for SLA processing.
+func (r *Repository) ListOpenFindingsWithSLA(ctx context.Context, orgID string) ([]SLAFinding, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT id::text, severity, sla_due_at, created_at
+		FROM vb_findings
+		WHERE org_id = $1::uuid
+		  AND status NOT IN ('resolved', 'wont_fix', 'false_positive')
+		ORDER BY severity, created_at`,
+		orgID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list open findings with sla: %w", err)
+	}
+	defer rows.Close()
+
+	var out []SLAFinding
+	for rows.Next() {
+		var f SLAFinding
+		if err := rows.Scan(&f.ID, &f.Severity, &f.SLADueAt, &f.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan sla finding: %w", err)
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
+// SetFindingSLADue sets the sla_due_at column for a finding.
+func (r *Repository) SetFindingSLADue(ctx context.Context, orgID, findingID string, due time.Time) error {
+	_, err := r.db.Exec(ctx, `
+		UPDATE vb_findings SET sla_due_at = $1, updated_at = NOW()
+		WHERE id = $2::uuid AND org_id = $3::uuid`,
+		due, findingID, orgID,
+	)
+	return err
+}
+
+// UpdateFindingSLAStatus sets the sla_status column for a finding.
+func (r *Repository) UpdateFindingSLAStatus(ctx context.Context, orgID, findingID, status string) error {
+	_, err := r.db.Exec(ctx, `
+		UPDATE vb_findings SET sla_status = $1, updated_at = NOW()
+		WHERE id = $2::uuid AND org_id = $3::uuid`,
+		status, findingID, orgID,
+	)
+	return err
 }

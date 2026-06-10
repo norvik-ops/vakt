@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Plug, GitBranch, RefreshCw, Trash2, ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertCircle, Plus, Cloud, ShieldAlert } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Plug, GitBranch, RefreshCw, Trash2, ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertCircle, Plus, Cloud, ShieldAlert, Copy } from 'lucide-react'
 import { Spinner } from '../components/Spinner'
 import {
   useGitHubIntegrations,
@@ -23,6 +24,54 @@ import {
   useSyncAzure,
   useAzureStatus,
   useAzureEvidence,
+  useHetznerConfig,
+  useSaveHetznerConfig,
+  useSyncHetzner,
+  useHetznerStatus,
+  useHetznerEvidence,
+  useIONOSConfig,
+  useSaveIONOSConfig,
+  useSyncIONOS,
+  useIONOSStatus,
+  useIONOSEvidence,
+  useWazuhConfig,
+  useSaveWazuhConfig,
+  useSyncWazuh,
+  useWazuhStatus,
+  useWazuhEvidence,
+  usePrometheusConfig,
+  useSavePrometheusConfig,
+  useSyncPrometheus,
+  usePrometheusStatus,
+  usePrometheusEvidence,
+  useEntraIDConfig,
+  useSaveEntraIDConfig,
+  useSyncEntraID,
+  useEntraIDStatus,
+  useEntraIDEvidence,
+  useKeycloakConfig,
+  useSaveKeycloakConfig,
+  useSyncKeycloak,
+  useKeycloakStatus,
+  useKeycloakEvidence,
+  useLDAPConfig,
+  useSaveLDAPConfig,
+  useSyncLDAP,
+  useLDAPStatus,
+  useLDAPEvidence,
+  useGitLabConfig,
+  useSaveGitLabConfig,
+  useSyncGitLab,
+  useGitLabStatus,
+  useGitLabEvidence,
+  useSonarQubeConfig,
+  useSaveSonarQubeConfig,
+  useSyncSonarQube,
+  useSonarQubeStatus,
+  useSonarQubeEvidence,
+  usePersonioConfig,
+  useSavePersonioConfig,
+  usePersonioStatus,
   type CloudEvidenceItem,
 } from '../hooks/useCloud'
 import { toast } from '../shared/hooks/useToast'
@@ -31,45 +80,47 @@ import { useFormatDate } from '../shared/hooks/useFormatDate'
 // --- Status badge ---
 
 function SyncStatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation()
   if (status === 'ok') {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
-        <CheckCircle2 className="w-3 h-3" /> Synchronisiert
+        <CheckCircle2 className="w-3 h-3" /> {t('integrations.page.syncSuccess')}
       </span>
     )
   }
   if (status === 'error') {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-full px-2 py-0.5">
-        <XCircle className="w-3 h-3" /> Fehler
+        <XCircle className="w-3 h-3" /> {t('integrations.page.syncError')}
       </span>
     )
   }
   return (
     <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
-      <AlertCircle className="w-3 h-3" /> Ausstehend
+      <AlertCircle className="w-3 h-3" /> {t('integrations.page.syncPending')}
     </span>
   )
 }
 
 function CheckStatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation()
   if (status === 'pass') {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
-        <CheckCircle2 className="w-3 h-3" /> Pass
+        <CheckCircle2 className="w-3 h-3" /> {t('integrations.page.checkPass')}
       </span>
     )
   }
   if (status === 'fail') {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-full px-2 py-0.5">
-        <XCircle className="w-3 h-3" /> Fail
+        <XCircle className="w-3 h-3" /> {t('integrations.page.checkFail')}
       </span>
     )
   }
   return (
     <span className="inline-flex items-center gap-1 text-xs font-medium text-secondary bg-surface border border-border rounded-full px-2 py-0.5">
-      <AlertCircle className="w-3 h-3" /> Unbekannt
+      <AlertCircle className="w-3 h-3" /> {t('integrations.page.checkUnknown')}
     </span>
   )
 }
@@ -89,14 +140,15 @@ function checkTypeLabel(type: string): string {
 // --- Check results panel ---
 
 function CheckResultsPanel({ integrationId }: { integrationId: string }) {
+  const { t } = useTranslation()
   const { data: checks, isLoading } = useGitHubCheckResults(integrationId)
 
   if (isLoading) {
-    return <p className="text-xs text-secondary py-2">Lade Check-Ergebnisse…</p>
+    return <p className="text-xs text-secondary py-2">{t('integrations.page.loadingChecks')}</p>
   }
 
   if (!checks || checks.length === 0) {
-    return <p className="text-xs text-secondary py-2">Noch keine Check-Ergebnisse. Synchronisierung starten.</p>
+    return <p className="text-xs text-secondary py-2">{t('integrations.page.noCheckResults')}</p>
   }
 
   // Show only the latest result per check_type
@@ -135,6 +187,7 @@ function CheckResultsPanel({ integrationId }: { integrationId: string }) {
 // --- Integration row ---
 
 function IntegrationRow({ integration }: { integration: GitHubIntegration }) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const deleteIntegration = useDeleteGitHubIntegration()
   const syncIntegration = useSyncGitHubIntegration()
@@ -142,7 +195,7 @@ function IntegrationRow({ integration }: { integration: GitHubIntegration }) {
 
   const lastSync = integration.last_synced_at
     ? formatDateTime(integration.last_synced_at, { dateStyle: 'short', timeStyle: 'short' })
-    : 'Noch nicht synchronisiert'
+    : null
 
   function handleSync() {
     syncIntegration.mutate(integration.id)
@@ -162,7 +215,9 @@ function IntegrationRow({ integration }: { integration: GitHubIntegration }) {
           <p className="text-sm font-medium text-primary truncate">
             {integration.repo_owner}/{integration.repo_name}
           </p>
-          <p className="text-xs text-secondary">Letzter Sync: {lastSync}</p>
+          <p className="text-xs text-secondary">
+            {lastSync ? t('integrations.page.lastSync', { date: lastSync }) : t('integrations.page.notSyncedYet')}
+          </p>
           {integration.sync_error && (
             <p className="text-xs text-red-500 truncate">{integration.sync_error}</p>
           )}
@@ -206,6 +261,7 @@ function IntegrationRow({ integration }: { integration: GitHubIntegration }) {
 // --- Add integration dialog ---
 
 function AddIntegrationDialog({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation()
   const addIntegration = useAddGitHubIntegration()
   const [owner, setOwner] = useState('')
   const [repo, setRepo] = useState('')
@@ -216,7 +272,7 @@ function AddIntegrationDialog({ onClose }: { onClose: () => void }) {
     e.preventDefault()
     setError('')
     if (!owner.trim() || !repo.trim() || !token.trim()) {
-      setError('Alle Felder sind erforderlich.')
+      setError(t('integrations.page.allFieldsRequired'))
       return
     }
     addIntegration.mutate(
@@ -231,10 +287,10 @@ function AddIntegrationDialog({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-surface border border-border rounded-xl shadow-xl w-full max-w-md p-6">
-        <h2 className="text-base font-semibold text-primary mb-4">Repository verbinden</h2>
+        <h2 className="text-base font-semibold text-primary mb-4">{t('integrations.page.connectRepo')}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-secondary mb-1">Repository-Owner</label>
+            <label className="block text-xs font-medium text-secondary mb-1">{t('integrations.page.repoOwner')}</label>
             <input
               type="text"
               value={owner}
@@ -244,7 +300,7 @@ function AddIntegrationDialog({ onClose }: { onClose: () => void }) {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-secondary mb-1">Repository-Name</label>
+            <label className="block text-xs font-medium text-secondary mb-1">{t('integrations.page.repoName')}</label>
             <input
               type="text"
               value={repo}
@@ -273,14 +329,14 @@ function AddIntegrationDialog({ onClose }: { onClose: () => void }) {
               onClick={onClose}
               className="px-4 py-2 text-sm rounded-md border border-border text-secondary hover:text-primary hover:bg-bg transition-colors"
             >
-              Abbrechen
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={addIntegration.isPending}
               className="px-4 py-2 text-sm rounded-md bg-brand text-white hover:bg-brand/90 transition-colors disabled:opacity-50"
             >
-              {addIntegration.isPending ? 'Wird gespeichert…' : 'Verbinden'}
+              {addIntegration.isPending ? t('integrations.page.connecting') : t('integrations.page.connect')}
             </button>
           </div>
         </form>
@@ -292,6 +348,7 @@ function AddIntegrationDialog({ onClose }: { onClose: () => void }) {
 // --- GitHub tab ---
 
 function GitHubTab() {
+  const { t } = useTranslation()
   const { data: integrations, isLoading, error } = useGitHubIntegrations()
   const [showDialog, setShowDialog] = useState(false)
 
@@ -304,7 +361,7 @@ function GitHubTab() {
   }
 
   if (error) {
-    return <p className="text-sm text-red-500">Fehler beim Laden der Integrationen: {error.message}</p>
+    return <p className="text-sm text-red-500">{t('common.error')}: {error.message}</p>
   }
 
   return (
@@ -321,16 +378,16 @@ function GitHubTab() {
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />
-          Repository verbinden
+          {t('integrations.page.connectRepo')}
         </button>
       </div>
 
       {integrations && integrations.length === 0 ? (
         <div className="border border-dashed border-border rounded-lg p-8 text-center">
           <GitBranch className="w-8 h-8 text-secondary mx-auto mb-2" />
-          <p className="text-sm font-medium text-primary">Noch keine Repositories verbunden</p>
+          <p className="text-sm font-medium text-primary">{t('integrations.page.noReposConnected')}</p>
           <p className="text-xs text-secondary mt-1">
-            Verbinde ein GitHub-Repository, um automatisch Compliance-Evidence zu sammeln.
+            {t('integrations.page.connectFirstRepo')}
           </p>
         </div>
       ) : (
@@ -349,15 +406,14 @@ function GitHubTab() {
 // --- No third-party integrations info box ---
 
 function NoThirdPartyInfoBox() {
+  const { t } = useTranslation()
   return (
     <div className="flex items-start gap-4 p-5 rounded-xl border border-border bg-surface max-w-lg">
       <ShieldAlert className="w-6 h-6 text-amber-500 shrink-0 mt-0.5" />
       <div>
-        <p className="text-sm font-semibold text-primary mb-1">Keine Drittanbieter-Integrationen</p>
+        <p className="text-sm font-semibold text-primary mb-1">{t('integrations.page.noThirdPartyTitle')}</p>
         <p className="text-xs text-secondary leading-relaxed">
-          Aus Datenschutzgründen (DSGVO Art. 28) verzichtet Vakt auf Integrationen,
-          die Sicherheitsdaten an externe SaaS-Dienste übertragen. Nutze Webhooks für
-          eigene Automatisierungen.
+          {t('integrations.page.noThirdPartyDesc')}
         </p>
       </div>
     </div>
@@ -367,23 +423,24 @@ function NoThirdPartyInfoBox() {
 // --- Cloud sync status badge ---
 
 function SyncLastBadge({ status, lastSyncAt }: { status: string | null; lastSyncAt: string | null }) {
+  const { t } = useTranslation()
   if (!lastSyncAt) {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
-        <AlertCircle className="w-3 h-3" /> Nie synchronisiert
+        <AlertCircle className="w-3 h-3" /> {t('integrations.page.neverSynced')}
       </span>
     )
   }
   if (status === 'success') {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
-        <CheckCircle2 className="w-3 h-3" /> Erfolgreich
+        <CheckCircle2 className="w-3 h-3" /> {t('integrations.page.syncSuccess')}
       </span>
     )
   }
   return (
     <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-full px-2 py-0.5">
-      <XCircle className="w-3 h-3" /> Fehler
+      <XCircle className="w-3 h-3" /> {t('integrations.page.syncError')}
     </span>
   )
 }
@@ -391,9 +448,10 @@ function SyncLastBadge({ status, lastSyncAt }: { status: string | null; lastSync
 // --- Recent evidence list ---
 
 function RecentEvidenceList({ items }: { items: CloudEvidenceItem[] }) {
+  const { t } = useTranslation()
   const { formatDateTime } = useFormatDate()
   if (items.length === 0) {
-    return <p className="text-xs text-secondary py-2">Noch keine Evidence gesammelt. Synchronisierung starten.</p>
+    return <p className="text-xs text-secondary py-2">{t('integrations.page.noEvidence')}</p>
   }
   return (
     <div className="mt-3 space-y-2">
@@ -429,6 +487,7 @@ const AWS_REGIONS = [
 ]
 
 function AWSTab() {
+  const { t } = useTranslation()
   const { data: cfg, isLoading } = useAWSConfig()
   const { data: status } = useAWSStatus()
   const { data: evidence } = useAWSEvidence()
@@ -456,9 +515,9 @@ function AWSTab() {
     e.preventDefault()
     try {
       await saveConfig.mutateAsync({ access_key_id: accessKeyID, secret_access_key: secretAccessKey, region, account_id: accountID })
-      toast('AWS-Konfiguration gespeichert', 'success')
+      toast(t('integrations.page.saved'), 'success')
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'Speichern fehlgeschlagen', 'error')
+      toast(err instanceof Error ? err.message : t('integrations.page.saveFailed'), 'error')
     }
   }
 
@@ -466,9 +525,9 @@ function AWSTab() {
     setTestResult(null)
     try {
       const result = await testConnection.mutateAsync()
-      setTestResult({ ok: result.ok, message: result.ok ? 'Verbindung erfolgreich' : (result.error ?? 'Verbindung fehlgeschlagen') })
+      setTestResult({ ok: result.ok, message: result.ok ? t('common.success') : (result.error ?? t('common.error')) })
     } catch (err) {
-      setTestResult({ ok: false, message: err instanceof Error ? err.message : 'Verbindung fehlgeschlagen' })
+      setTestResult({ ok: false, message: err instanceof Error ? err.message : t('common.error') })
     }
   }
 
@@ -476,12 +535,12 @@ function AWSTab() {
     try {
       const result = await syncAWS.mutateAsync()
       if (result.ok) {
-        toast(`Synchronisierung abgeschlossen — ${result.evidence_created} Evidence-Einträge erstellt`, 'success')
+        toast(`${t('integrations.page.saved')} — ${result.evidence_created} Evidence-Einträge erstellt`, 'success')
       } else {
-        toast(result.error ?? 'Synchronisierung fehlgeschlagen', 'error')
+        toast(result.error ?? t('common.error'), 'error')
       }
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'Synchronisierung fehlgeschlagen', 'error')
+      toast(err instanceof Error ? err.message : t('common.error'), 'error')
     }
   }
 
@@ -512,7 +571,7 @@ function AWSTab() {
         <div className="flex items-center gap-3 mb-5 p-3 rounded-lg border border-border bg-surface">
           <div className="flex-1 min-w-0">
             <p className="text-xs text-secondary">
-              {lastSyncFormatted ? `Letzter Sync: ${lastSyncFormatted}` : 'Noch nie synchronisiert'}
+              {lastSyncFormatted ? t('integrations.page.lastSync', { date: lastSyncFormatted }) : t('integrations.page.neverSynced')}
               {status.evidence_count > 0 && ` · ${status.evidence_count} Evidence-Einträge`}
             </p>
             {status.last_sync_error && (
@@ -594,14 +653,14 @@ function AWSTab() {
             disabled={testConnection.isPending || !cfg?.is_configured}
             className="px-3 py-1.5 text-xs rounded-md border border-border text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50"
           >
-            {testConnection.isPending ? 'Teste…' : 'Verbindung testen'}
+            {testConnection.isPending ? t('integrations.page.testing') : t('integrations.page.testConnection')}
           </button>
           <button
             type="submit"
             disabled={saveConfig.isPending}
             className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50"
           >
-            {saveConfig.isPending ? 'Wird gespeichert…' : 'Speichern'}
+            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
           </button>
         </div>
       </form>
@@ -609,7 +668,7 @@ function AWSTab() {
       {/* Recent evidence */}
       {evidence && evidence.length > 0 && (
         <div className="mt-6">
-          <p className="text-xs font-medium text-secondary mb-2">Zuletzt gesammelte Evidence</p>
+          <p className="text-xs font-medium text-secondary mb-2">{t('integrations.page.recentEvidence')}</p>
           <RecentEvidenceList items={evidence} />
         </div>
       )}
@@ -620,6 +679,7 @@ function AWSTab() {
 // --- Azure tab ---
 
 function AzureTab() {
+  const { t } = useTranslation()
   const { data: cfg, isLoading } = useAzureConfig()
   const { data: status } = useAzureStatus()
   const { data: evidence } = useAzureEvidence()
@@ -647,9 +707,9 @@ function AzureTab() {
     e.preventDefault()
     try {
       await saveConfig.mutateAsync({ tenant_id: tenantID, client_id: clientID, client_secret: clientSecret, subscription_id: subscriptionID })
-      toast('Azure-Konfiguration gespeichert', 'success')
+      toast(t('integrations.page.saved'), 'success')
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'Speichern fehlgeschlagen', 'error')
+      toast(err instanceof Error ? err.message : t('integrations.page.saveFailed'), 'error')
     }
   }
 
@@ -657,9 +717,9 @@ function AzureTab() {
     setTestResult(null)
     try {
       const result = await testConnection.mutateAsync()
-      setTestResult({ ok: result.ok, message: result.ok ? 'Verbindung erfolgreich' : (result.error ?? 'Verbindung fehlgeschlagen') })
+      setTestResult({ ok: result.ok, message: result.ok ? t('common.success') : (result.error ?? t('common.error')) })
     } catch (err) {
-      setTestResult({ ok: false, message: err instanceof Error ? err.message : 'Verbindung fehlgeschlagen' })
+      setTestResult({ ok: false, message: err instanceof Error ? err.message : t('common.error') })
     }
   }
 
@@ -667,12 +727,12 @@ function AzureTab() {
     try {
       const result = await syncAzure.mutateAsync()
       if (result.ok) {
-        toast(`Synchronisierung abgeschlossen — ${result.evidence_created} Evidence-Einträge erstellt`, 'success')
+        toast(`${t('integrations.page.saved')} — ${result.evidence_created} Evidence-Einträge erstellt`, 'success')
       } else {
-        toast(result.error ?? 'Synchronisierung fehlgeschlagen', 'error')
+        toast(result.error ?? t('common.error'), 'error')
       }
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'Synchronisierung fehlgeschlagen', 'error')
+      toast(err instanceof Error ? err.message : t('common.error'), 'error')
     }
   }
 
@@ -703,7 +763,7 @@ function AzureTab() {
         <div className="flex items-center gap-3 mb-5 p-3 rounded-lg border border-border bg-surface">
           <div className="flex-1 min-w-0">
             <p className="text-xs text-secondary">
-              {lastSyncFormatted ? `Letzter Sync: ${lastSyncFormatted}` : 'Noch nie synchronisiert'}
+              {lastSyncFormatted ? t('integrations.page.lastSync', { date: lastSyncFormatted }) : t('integrations.page.neverSynced')}
               {status.evidence_count > 0 && ` · ${status.evidence_count} Evidence-Einträge`}
             </p>
             {status.last_sync_error && (
@@ -785,14 +845,14 @@ function AzureTab() {
             disabled={testConnection.isPending || !cfg?.is_configured}
             className="px-3 py-1.5 text-xs rounded-md border border-border text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50"
           >
-            {testConnection.isPending ? 'Teste…' : 'Verbindung testen'}
+            {testConnection.isPending ? t('integrations.page.testing') : t('integrations.page.testConnection')}
           </button>
           <button
             type="submit"
             disabled={saveConfig.isPending}
             className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50"
           >
-            {saveConfig.isPending ? 'Wird gespeichert…' : 'Speichern'}
+            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
           </button>
         </div>
       </form>
@@ -800,7 +860,7 @@ function AzureTab() {
       {/* Recent evidence */}
       {evidence && evidence.length > 0 && (
         <div className="mt-6">
-          <p className="text-xs font-medium text-secondary mb-2">Zuletzt gesammelte Evidence</p>
+          <p className="text-xs font-medium text-secondary mb-2">{t('integrations.page.recentEvidence')}</p>
           <RecentEvidenceList items={evidence} />
         </div>
       )}
@@ -808,17 +868,1345 @@ function AzureTab() {
   )
 }
 
+// --- Hetzner tab ---
+
+const HETZNER_LOCATIONS = ['', 'nbg1', 'fsn1', 'hel1', 'ash', 'hil']
+
+function HetznerTab() {
+  const { t } = useTranslation()
+  const { data: cfg, isLoading } = useHetznerConfig()
+  const { data: status } = useHetznerStatus()
+  const { data: evidence } = useHetznerEvidence()
+  const saveConfig = useSaveHetznerConfig()
+  const syncHetzner = useSyncHetzner()
+  const { formatDateTime } = useFormatDate()
+
+  const [apiToken, setApiToken] = useState('')
+  const [location, setLocation] = useState('')
+  const [initialized, setInitialized] = useState(false)
+
+  if (cfg && !initialized) {
+    setApiToken(cfg.api_token)
+    setLocation(cfg.location)
+    setInitialized(true)
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await saveConfig.mutateAsync({ api_token: apiToken, location })
+      toast(t('integrations.page.saved'), 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('integrations.page.saveFailed'), 'error')
+    }
+  }
+
+  async function handleSync() {
+    try {
+      const result = await syncHetzner.mutateAsync()
+      if (result.ok) {
+        toast(`${t('integrations.page.saved')} — ${result.evidence_created} Evidence-Einträge erstellt`, 'success')
+      } else {
+        toast(result.error ?? t('common.error'), 'error')
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('common.error'), 'error')
+    }
+  }
+
+  if (isLoading) return <div className="flex items-center justify-center h-32"><Spinner size="md" /></div>
+
+  const lastSyncFormatted = status?.last_sync_at
+    ? formatDateTime(status.last_sync_at, { dateStyle: 'short', timeStyle: 'short' })
+    : null
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold text-primary">Hetzner Cloud-Integration</h2>
+        <p className="text-xs text-secondary mt-0.5">
+          Server-Inventar, Firewall-Regeln, SSH-Keys und Snapshot-Nachweis täglich als Compliance-Evidence erfassen.
+          API-Token wird AES-256-GCM verschlüsselt gespeichert.
+        </p>
+      </div>
+
+      {status && (
+        <div className="flex items-center gap-3 mb-5 p-3 rounded-lg border border-border bg-surface">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-secondary">
+              {lastSyncFormatted ? t('integrations.page.lastSync', { date: lastSyncFormatted }) : t('integrations.page.neverSynced')}
+              {status.evidence_count > 0 && ` · ${status.evidence_count} Evidence-Einträge`}
+            </p>
+            {status.last_sync_error && <p className="text-xs text-red-500 truncate mt-0.5">{status.last_sync_error}</p>}
+          </div>
+          <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
+          <button onClick={() => { void handleSync() }} disabled={syncHetzner.isPending || !cfg?.is_configured}
+            title="Jetzt synchronisieren"
+            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
+            <RefreshCw className={`w-4 h-4 ${syncHetzner.isPending ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      )}
+
+      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">API-Token</label>
+          <input type="password" value={apiToken} onChange={(e) => { setApiToken(e.target.value); }}
+            placeholder={cfg?.is_configured ? '****' : 'Hetzner Cloud API-Token'}
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required />
+          <p className="text-[11px] text-secondary mt-1">Empfohlen: Read-only-Token (Berechtigungen: Server, Firewall, SSH Key, Image)</p>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Standort-Filter (optional)</label>
+          <select value={location} onChange={(e) => { setLocation(e.target.value); }}
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary focus:outline-none focus:ring-2 focus:ring-brand/30">
+            {HETZNER_LOCATIONS.map((l) => <option key={l} value={l}>{l || '— Alle Standorte —'}</option>)}
+          </select>
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button type="submit" disabled={saveConfig.isPending}
+            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+          </button>
+        </div>
+      </form>
+
+      {evidence && evidence.length > 0 && (
+        <div className="mt-6">
+          <p className="text-xs font-medium text-secondary mb-2">{t('integrations.page.recentEvidence')}</p>
+          <RecentEvidenceList items={evidence} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- IONOS tab ---
+
+function IONOSTab() {
+  const { t } = useTranslation()
+  const { data: cfg, isLoading } = useIONOSConfig()
+  const { data: status } = useIONOSStatus()
+  const { data: evidence } = useIONOSEvidence()
+  const saveConfig = useSaveIONOSConfig()
+  const syncIONOS = useSyncIONOS()
+  const { formatDateTime } = useFormatDate()
+
+  const [authMode, setAuthMode] = useState<'credentials' | 'token'>('credentials')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [token, setToken] = useState('')
+  const [initialized, setInitialized] = useState(false)
+
+  if (cfg && !initialized) {
+    setUsername(cfg.username)
+    setPassword(cfg.password)
+    setToken(cfg.token)
+    if (cfg.token === '****') setAuthMode('token')
+    setInitialized(true)
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    const input = authMode === 'token'
+      ? { username: '', password: '', token }
+      : { username, password, token: '' }
+    try {
+      await saveConfig.mutateAsync(input)
+      toast(t('integrations.page.saved'), 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('integrations.page.saveFailed'), 'error')
+    }
+  }
+
+  async function handleSync() {
+    try {
+      const result = await syncIONOS.mutateAsync()
+      if (result.ok) {
+        toast(`${t('integrations.page.saved')} — ${result.evidence_created} Evidence-Einträge erstellt`, 'success')
+      } else {
+        toast(result.error ?? t('common.error'), 'error')
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('common.error'), 'error')
+    }
+  }
+
+  if (isLoading) return <div className="flex items-center justify-center h-32"><Spinner size="md" /></div>
+
+  const lastSyncFormatted = status?.last_sync_at
+    ? formatDateTime(status.last_sync_at, { dateStyle: 'short', timeStyle: 'short' })
+    : null
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold text-primary">IONOS Cloud-Integration</h2>
+        <p className="text-xs text-secondary mt-0.5">
+          Server-Inventar, SSH-Keys und Snapshot-Nachweis aus IONOS Cloud automatisch als Evidence erfassen.
+          Credentials werden AES-256-GCM verschlüsselt gespeichert.
+        </p>
+      </div>
+
+      {status && (
+        <div className="flex items-center gap-3 mb-5 p-3 rounded-lg border border-border bg-surface">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-secondary">
+              {lastSyncFormatted ? t('integrations.page.lastSync', { date: lastSyncFormatted }) : t('integrations.page.neverSynced')}
+              {status.evidence_count > 0 && ` · ${status.evidence_count} Evidence-Einträge`}
+            </p>
+            {status.last_sync_error && <p className="text-xs text-red-500 truncate mt-0.5">{status.last_sync_error}</p>}
+          </div>
+          <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
+          <button onClick={() => { void handleSync() }} disabled={syncIONOS.isPending || !cfg?.is_configured}
+            title="Jetzt synchronisieren"
+            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
+            <RefreshCw className={`w-4 h-4 ${syncIONOS.isPending ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      )}
+
+      <div className="flex gap-2 mb-4 max-w-lg">
+        <button type="button" onClick={() => { setAuthMode('credentials'); }}
+          className={`px-3 py-1 text-xs rounded-md border transition-colors ${authMode === 'credentials' ? 'bg-brand text-white border-brand' : 'border-border text-secondary hover:text-primary'}`}>
+          Benutzername / Passwort
+        </button>
+        <button type="button" onClick={() => { setAuthMode('token'); }}
+          className={`px-3 py-1 text-xs rounded-md border transition-colors ${authMode === 'token' ? 'bg-brand text-white border-brand' : 'border-border text-secondary hover:text-primary'}`}>
+          API Token
+        </button>
+      </div>
+
+      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+        {authMode === 'credentials' ? (
+          <>
+            <div>
+              <label className="block text-xs font-medium text-secondary mb-1">Benutzername</label>
+              <input type="text" value={username} onChange={(e) => { setUsername(e.target.value); }}
+                placeholder="IONOS-Benutzername"
+                className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
+                required />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-secondary mb-1">Passwort</label>
+              <input type="password" value={password} onChange={(e) => { setPassword(e.target.value); }}
+                placeholder={cfg?.is_configured && cfg.password === '****' ? '****' : 'Passwort eingeben'}
+                className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
+                required />
+            </div>
+          </>
+        ) : (
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">API-Token</label>
+            <input type="password" value={token} onChange={(e) => { setToken(e.target.value); }}
+              placeholder={cfg?.is_configured && cfg.token === '****' ? '****' : 'IONOS API-Token'}
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+              required />
+          </div>
+        )}
+        <div className="flex gap-2 pt-1">
+          <button type="submit" disabled={saveConfig.isPending}
+            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+          </button>
+        </div>
+      </form>
+
+      {evidence && evidence.length > 0 && (
+        <div className="mt-6">
+          <p className="text-xs font-medium text-secondary mb-2">{t('integrations.page.recentEvidence')}</p>
+          <RecentEvidenceList items={evidence} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- Wazuh tab ---
+
+function WazuhTab() {
+  const { t } = useTranslation()
+  const { data: cfg, isLoading } = useWazuhConfig()
+  const { data: status } = useWazuhStatus()
+  const { data: evidence } = useWazuhEvidence()
+  const saveConfig = useSaveWazuhConfig()
+  const syncWazuh = useSyncWazuh()
+  const { formatDateTime } = useFormatDate()
+
+  const [baseURL, setBaseURL] = useState('')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [verifyTLS, setVerifyTLS] = useState(true)
+  const [initialized, setInitialized] = useState(false)
+
+  if (cfg && !initialized) {
+    setBaseURL(cfg.base_url)
+    setUsername(cfg.username)
+    setPassword(cfg.password)
+    setVerifyTLS(cfg.verify_tls)
+    setInitialized(true)
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await saveConfig.mutateAsync({ base_url: baseURL, username, password, verify_tls: verifyTLS })
+      toast(t('integrations.page.saved'), 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('integrations.page.saveFailed'), 'error')
+    }
+  }
+
+  async function handleSync() {
+    try {
+      const result = await syncWazuh.mutateAsync()
+      if (result.ok) {
+        toast(`${t('integrations.page.saved')} — ${result.evidence_created} Evidence-Einträge erstellt`, 'success')
+      } else {
+        toast(result.error ?? t('common.error'), 'error')
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('common.error'), 'error')
+    }
+  }
+
+  if (isLoading) return <div className="flex items-center justify-center h-32"><Spinner size="md" /></div>
+
+  const lastSyncFormatted = status?.last_sync_at
+    ? formatDateTime(status.last_sync_at, { dateStyle: 'short', timeStyle: 'short' })
+    : null
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold text-primary">Wazuh Pull-Integration</h2>
+        <p className="text-xs text-secondary mt-0.5">
+          Vulnerability-Scans, SCA-Compliance-Scores und FIM-Events täglich aus dem Wazuh-Manager als Compliance-Evidence erfassen.
+          Passwort wird AES-256-GCM verschlüsselt gespeichert.
+        </p>
+      </div>
+
+      {status && (
+        <div className="flex items-center gap-3 mb-5 p-3 rounded-lg border border-border bg-surface">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-secondary">
+              {lastSyncFormatted ? t('integrations.page.lastSync', { date: lastSyncFormatted }) : t('integrations.page.neverSynced')}
+              {status.evidence_count > 0 && ` · ${status.evidence_count} Evidence-Einträge`}
+              {status.agent_count > 0 && ` · ${status.agent_count} Agents`}
+              {status.agents_offline > 0 && ` · ${status.agents_offline} offline`}
+            </p>
+            {status.last_sync_error && <p className="text-xs text-red-500 truncate mt-0.5">{status.last_sync_error}</p>}
+          </div>
+          <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
+          <button onClick={() => { void handleSync() }} disabled={syncWazuh.isPending || !cfg?.is_configured}
+            title="Jetzt synchronisieren"
+            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
+            <RefreshCw className={`w-4 h-4 ${syncWazuh.isPending ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      )}
+
+      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Wazuh Manager URL</label>
+          <input type="url" value={baseURL} onChange={(e) => { setBaseURL(e.target.value); }}
+            placeholder="https://wazuh-manager:55000"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Benutzername</label>
+          <input type="text" value={username} onChange={(e) => { setUsername(e.target.value); }}
+            placeholder="wazuh-readonly"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
+            required />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Passwort</label>
+          <input type="password" value={password} onChange={(e) => { setPassword(e.target.value); }}
+            placeholder={cfg?.is_configured && cfg.password === '****' ? '****' : 'Passwort eingeben'}
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
+            required />
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="checkbox" id="wazuh-tls" checked={!verifyTLS} onChange={(e) => { setVerifyTLS(!e.target.checked); }}
+            className="rounded border-border" />
+          <label htmlFor="wazuh-tls" className="text-xs text-secondary">Self-signed Zertifikat akzeptieren (TLS-Verifizierung deaktivieren)</label>
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button type="submit" disabled={saveConfig.isPending}
+            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+          </button>
+        </div>
+      </form>
+
+      {evidence && evidence.length > 0 && (
+        <div className="mt-6">
+          <p className="text-xs font-medium text-secondary mb-2">{t('integrations.page.recentEvidence')}</p>
+          <RecentEvidenceList items={evidence} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- Prometheus tab ---
+
+function PrometheusTab() {
+  const { t } = useTranslation()
+  const { data: cfg, isLoading } = usePrometheusConfig()
+  const { data: status } = usePrometheusStatus()
+  const { data: evidence } = usePrometheusEvidence()
+  const saveConfig = useSavePrometheusConfig()
+  const syncPrometheus = useSyncPrometheus()
+  const { formatDateTime } = useFormatDate()
+
+  const [prometheusURL, setPrometheusURL] = useState('')
+  const [alertmanagerURL, setAlertmanagerURL] = useState('')
+  const [token, setToken] = useState('')
+  const [initialized, setInitialized] = useState(false)
+
+  if (cfg && !initialized) {
+    setPrometheusURL(cfg.prometheus_url)
+    setAlertmanagerURL(cfg.alertmanager_url)
+    setToken(cfg.token)
+    setInitialized(true)
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await saveConfig.mutateAsync({ prometheus_url: prometheusURL, alertmanager_url: alertmanagerURL, token })
+      toast(t('integrations.page.saved'), 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('integrations.page.saveFailed'), 'error')
+    }
+  }
+
+  async function handleSync() {
+    try {
+      const result = await syncPrometheus.mutateAsync()
+      if (result.ok) {
+        toast(`${t('integrations.page.saved')} — ${result.evidence_created} Evidence-Einträge erstellt`, 'success')
+      } else {
+        toast(result.error ?? t('common.error'), 'error')
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('common.error'), 'error')
+    }
+  }
+
+  if (isLoading) return <div className="flex items-center justify-center h-32"><Spinner size="md" /></div>
+
+  const lastSyncFormatted = status?.last_sync_at
+    ? formatDateTime(status.last_sync_at, { dateStyle: 'short', timeStyle: 'short' })
+    : null
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold text-primary">Prometheus / Alertmanager-Integration</h2>
+        <p className="text-xs text-secondary mt-0.5">
+          Uptime-Metriken, aktive Alerts und Scrape-Target-Health täglich als Monitoring-Evidence erfassen.
+          Bearer Token wird AES-256-GCM verschlüsselt gespeichert.
+        </p>
+
+      </div>
+
+      {status && (
+        <div className="flex items-center gap-3 mb-5 p-3 rounded-lg border border-border bg-surface">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-secondary">
+              {lastSyncFormatted ? t('integrations.page.lastSync', { date: lastSyncFormatted }) : t('integrations.page.neverSynced')}
+              {status.evidence_count > 0 && ` · ${status.evidence_count} Evidence-Einträge`}
+              {status.target_count > 0 && ` · ${status.target_count} Targets`}
+              {status.active_alert_count > 0 && ` · ${status.active_alert_count} aktive Alerts`}
+            </p>
+            {status.last_sync_error && <p className="text-xs text-red-500 truncate mt-0.5">{status.last_sync_error}</p>}
+          </div>
+          <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
+          <button onClick={() => { void handleSync() }} disabled={syncPrometheus.isPending || !cfg?.is_configured}
+            title="Jetzt synchronisieren"
+            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
+            <RefreshCw className={`w-4 h-4 ${syncPrometheus.isPending ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      )}
+
+      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Prometheus URL</label>
+          <input type="url" value={prometheusURL} onChange={(e) => { setPrometheusURL(e.target.value); }}
+            placeholder="http://prometheus:9090"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Alertmanager URL (optional)</label>
+          <input type="url" value={alertmanagerURL} onChange={(e) => { setAlertmanagerURL(e.target.value); }}
+            placeholder="http://alertmanager:9093"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Bearer Token (optional)</label>
+          <input type="password" value={token} onChange={(e) => { setToken(e.target.value); }}
+            placeholder={cfg?.is_configured && cfg.token === '****' ? '****' : 'Leer lassen wenn keine Auth'}
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono" />
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button type="submit" disabled={saveConfig.isPending}
+            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+          </button>
+        </div>
+      </form>
+
+      {evidence && evidence.length > 0 && (
+        <div className="mt-6">
+          <p className="text-xs font-medium text-secondary mb-2">{t('integrations.page.recentEvidence')}</p>
+          <RecentEvidenceList items={evidence} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- Entra ID tab ---
+
+function EntraIDTab() {
+  const { t } = useTranslation()
+  const { data: cfg, isLoading } = useEntraIDConfig()
+  const { data: status } = useEntraIDStatus()
+  const { data: evidence } = useEntraIDEvidence()
+  const saveConfig = useSaveEntraIDConfig()
+  const syncEntraID = useSyncEntraID()
+  const { formatDateTime } = useFormatDate()
+
+  const [tenantID, setTenantID] = useState('')
+  const [clientID, setClientID] = useState('')
+  const [clientSecret, setClientSecret] = useState('')
+  const [initialized, setInitialized] = useState(false)
+
+  if (cfg && !initialized) {
+    setTenantID(cfg.tenant_id)
+    setClientID(cfg.client_id)
+    setClientSecret(cfg.client_secret)
+    setInitialized(true)
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await saveConfig.mutateAsync({ tenant_id: tenantID, client_id: clientID, client_secret: clientSecret })
+      toast(t('integrations.page.saved'), 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('integrations.page.saveFailed'), 'error')
+    }
+  }
+
+  async function handleSync() {
+    try {
+      const result = await syncEntraID.mutateAsync()
+      if (result.ok) {
+        toast(`${t('integrations.page.saved')} — ${result.evidence_created} Evidence-Einträge erstellt`, 'success')
+      } else {
+        toast(result.error ?? t('common.error'), 'error')
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('common.error'), 'error')
+    }
+  }
+
+  if (isLoading) return <div className="flex items-center justify-center h-32"><Spinner size="md" /></div>
+
+  const lastSyncFormatted = status?.last_sync_at
+    ? formatDateTime(status.last_sync_at, { dateStyle: 'short', timeStyle: 'short' })
+    : null
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold text-primary">Microsoft Entra ID (Azure AD) Integration</h2>
+        <p className="text-xs text-secondary mt-0.5">
+          MFA-Enrollment, Conditional Access, Risky Users und Admin-Rollen täglich als Identity-Evidence erfassen.
+          Benötigt App Registration mit Application Permissions (User.Read.All, Policy.Read.All, IdentityRiskyUser.Read.All).
+        </p>
+      </div>
+
+      {status && (
+        <div className="flex items-center gap-3 mb-5 p-3 rounded-lg border border-border bg-surface">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-secondary">
+              {lastSyncFormatted ? t('integrations.page.lastSync', { date: lastSyncFormatted }) : t('integrations.page.neverSynced')}
+              {status.evidence_count > 0 && ` · ${status.evidence_count} Evidence-Einträge`}
+              {status.mfa_enrollment_pct > 0 && ` · MFA ${Math.round(status.mfa_enrollment_pct)}%`}
+              {status.risky_user_count > 0 && ` · ${status.risky_user_count} Risky Users`}
+            </p>
+            {status.last_sync_error && <p className="text-xs text-red-500 truncate mt-0.5">{status.last_sync_error}</p>}
+          </div>
+          <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
+          <button onClick={() => { void handleSync() }} disabled={syncEntraID.isPending || !cfg?.is_configured}
+            title="Jetzt synchronisieren"
+            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
+            <RefreshCw className={`w-4 h-4 ${syncEntraID.isPending ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      )}
+
+      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Tenant ID</label>
+          <input type="text" value={tenantID} onChange={(e) => { setTenantID(e.target.value); }}
+            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Client ID (Application ID)</label>
+          <input type="text" value={clientID} onChange={(e) => { setClientID(e.target.value); }}
+            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Client Secret</label>
+          <input type="password" value={clientSecret} onChange={(e) => { setClientSecret(e.target.value); }}
+            placeholder={cfg?.is_configured && cfg.client_secret === '****' ? '****' : 'App-Secret aus Azure Portal'}
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
+            required />
+          <p className="text-[11px] text-secondary mt-1">Secret wird AES-256-GCM verschlüsselt gespeichert.</p>
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button type="submit" disabled={saveConfig.isPending}
+            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+          </button>
+        </div>
+      </form>
+
+      {evidence && evidence.length > 0 && (
+        <div className="mt-6">
+          <p className="text-xs font-medium text-secondary mb-2">{t('integrations.page.recentEvidence')}</p>
+          <RecentEvidenceList items={evidence} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- Keycloak tab ---
+
+function KeycloakTab() {
+  const { t } = useTranslation()
+  const { data: cfg, isLoading } = useKeycloakConfig()
+  const { data: status } = useKeycloakStatus()
+  const { data: evidence } = useKeycloakEvidence()
+  const saveConfig = useSaveKeycloakConfig()
+  const syncKeycloak = useSyncKeycloak()
+  const { formatDateTime } = useFormatDate()
+
+  const [keycloakURL, setKeycloakURL] = useState('')
+  const [realm, setRealm] = useState('')
+  const [clientID, setClientID] = useState('')
+  const [clientSecret, setClientSecret] = useState('')
+  const [initialized, setInitialized] = useState(false)
+
+  if (cfg && !initialized) {
+    setKeycloakURL(cfg.keycloak_url)
+    setRealm(cfg.realm)
+    setClientID(cfg.client_id)
+    setClientSecret(cfg.client_secret)
+    setInitialized(true)
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await saveConfig.mutateAsync({
+        keycloak_url: keycloakURL,
+        realm,
+        client_id: clientID,
+        client_secret: clientSecret,
+      })
+      toast(t('integrations.page.saved'), 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('integrations.page.saveFailed'), 'error')
+    }
+  }
+
+  async function handleSync() {
+    try {
+      const result = await syncKeycloak.mutateAsync()
+      if (result.ok) {
+        toast(`${t('integrations.page.saved')} — ${result.evidence_created} Evidence-Einträge erstellt`, 'success')
+      } else {
+        toast(result.error ?? t('common.error'), 'error')
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('common.error'), 'error')
+    }
+  }
+
+  if (isLoading) return <div className="flex items-center justify-center h-32"><Spinner size="md" /></div>
+
+  const lastSyncFormatted = status?.last_sync_at
+    ? formatDateTime(status.last_sync_at, { dateStyle: 'short', timeStyle: 'short' })
+    : null
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold text-primary">Keycloak REST Collector</h2>
+        <p className="text-xs text-secondary mt-0.5">
+          MFA-Status, Password-Policy, inaktive Accounts und Admin-Rollen aus Keycloak als Compliance-Evidence erfassen.
+          Service Account benötigt &apos;view-users&apos; und &apos;view-realm&apos; Rollen.
+        </p>
+      </div>
+
+      {status && (
+        <div className="flex items-center gap-3 mb-5 p-3 rounded-lg border border-border bg-surface">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-secondary">
+              {lastSyncFormatted ? t('integrations.page.lastSync', { date: lastSyncFormatted }) : t('integrations.page.neverSynced')}
+              {status.evidence_count > 0 && ` · ${status.evidence_count} Evidence-Einträge`}
+              {status.user_count > 0 && ` · ${status.user_count} User`}
+              {status.mfa_enrollment_pct > 0 && ` · MFA ${Math.round(status.mfa_enrollment_pct)}%`}
+            </p>
+            {status.last_sync_error && <p className="text-xs text-red-500 truncate mt-0.5">{status.last_sync_error}</p>}
+          </div>
+          <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
+          <button onClick={() => { void handleSync() }} disabled={syncKeycloak.isPending || !cfg?.is_configured}
+            title="Jetzt synchronisieren"
+            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
+            <RefreshCw className={`w-4 h-4 ${syncKeycloak.isPending ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      )}
+
+      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Keycloak URL</label>
+          <input type="url" value={keycloakURL} onChange={(e) => { setKeycloakURL(e.target.value); }}
+            placeholder="https://keycloak.example.com"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Realm</label>
+          <input type="text" value={realm} onChange={(e) => { setRealm(e.target.value); }}
+            placeholder="master"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
+            required />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Client ID</label>
+          <input type="text" value={clientID} onChange={(e) => { setClientID(e.target.value); }}
+            placeholder="vakt-collector"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
+            required />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Client Secret</label>
+          <input type="password" value={clientSecret} onChange={(e) => { setClientSecret(e.target.value); }}
+            placeholder={cfg?.is_configured && cfg.client_secret === '****' ? '****' : 'Service-Account-Secret'}
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
+            required />
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button type="submit" disabled={saveConfig.isPending}
+            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+          </button>
+        </div>
+      </form>
+
+      {evidence && evidence.length > 0 && (
+        <div className="mt-6">
+          <p className="text-xs font-medium text-secondary mb-2">{t('integrations.page.recentEvidence')}</p>
+          <RecentEvidenceList items={evidence} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- LDAP tab ---
+
+function LDAPTab() {
+  const { t } = useTranslation()
+  const { data: cfg, isLoading } = useLDAPConfig()
+  const { data: status } = useLDAPStatus()
+  const { data: evidence } = useLDAPEvidence()
+  const saveConfig = useSaveLDAPConfig()
+  const syncLDAP = useSyncLDAP()
+  const { formatDateTime } = useFormatDate()
+
+  const [host, setHost] = useState('')
+  const [port, setPort] = useState('389')
+  const [bindDN, setBindDN] = useState('')
+  const [bindPassword, setBindPassword] = useState('')
+  const [baseDN, setBaseDN] = useState('')
+  const [useTLS, setUseTLS] = useState(false)
+  const [isAD, setIsAD] = useState(true)
+  const [privilegedGroups, setPrivilegedGroups] = useState('Domain Admins,Administrators')
+  const [initialized, setInitialized] = useState(false)
+
+  if (cfg && !initialized) {
+    setHost(cfg.host)
+    setPort(String(cfg.port || 389))
+    setBindDN(cfg.bind_dn)
+    setBindPassword(cfg.bind_password)
+    setBaseDN(cfg.base_dn)
+    setUseTLS(cfg.use_tls)
+    setIsAD(cfg.is_active_directory)
+    setPrivilegedGroups((cfg.privileged_groups ?? []).join(',') || 'Domain Admins,Administrators')
+    setInitialized(true)
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await saveConfig.mutateAsync({
+        host,
+        port: parseInt(port, 10),
+        bind_dn: bindDN,
+        bind_password: bindPassword,
+        base_dn: baseDN,
+        use_tls: useTLS,
+        is_active_directory: isAD,
+        privileged_groups: privilegedGroups.split(',').map((g) => g.trim()).filter(Boolean),
+      })
+      toast(t('integrations.page.saved'), 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('integrations.page.saveFailed'), 'error')
+    }
+  }
+
+  async function handleSync() {
+    try {
+      const result = await syncLDAP.mutateAsync()
+      if (result.ok) {
+        toast(`${t('integrations.page.saved')} — ${result.evidence_created} Evidence-Einträge erstellt`, 'success')
+      } else {
+        toast(result.error ?? t('common.error'), 'error')
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('common.error'), 'error')
+    }
+  }
+
+  if (isLoading) return <div className="flex items-center justify-center h-32"><Spinner size="md" /></div>
+
+  const lastSyncFormatted = status?.last_sync_at
+    ? formatDateTime(status.last_sync_at, { dateStyle: 'short', timeStyle: 'short' })
+    : null
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold text-primary">LDAP / Active Directory Collector</h2>
+        <p className="text-xs text-secondary mt-0.5">
+          Inaktive Accounts, Password-Hygiene und privilegierte Gruppen aus Active Directory oder OpenLDAP als Evidence erfassen.
+          Service Account benötigt Read-Zugriff auf das Verzeichnis.
+        </p>
+      </div>
+
+      {status && (
+        <div className="flex items-center gap-3 mb-5 p-3 rounded-lg border border-border bg-surface">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-secondary">
+              {lastSyncFormatted ? t('integrations.page.lastSync', { date: lastSyncFormatted }) : t('integrations.page.neverSynced')}
+              {status.evidence_count > 0 && ` · ${status.evidence_count} Evidence-Einträge`}
+              {status.user_count > 0 && ` · ${status.user_count} aktive User`}
+              {status.inactive_count > 0 && ` · ${status.inactive_count} inaktiv`}
+              {status.privileged_count > 0 && ` · ${status.privileged_count} privilegiert`}
+            </p>
+            {status.last_sync_error && <p className="text-xs text-red-500 truncate mt-0.5">{status.last_sync_error}</p>}
+          </div>
+          <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
+          <button onClick={() => { void handleSync() }} disabled={syncLDAP.isPending || !cfg?.is_configured}
+            title="Jetzt synchronisieren"
+            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
+            <RefreshCw className={`w-4 h-4 ${syncLDAP.isPending ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      )}
+
+      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-secondary mb-1">LDAP-Host</label>
+            <input type="text" value={host} onChange={(e) => { setHost(e.target.value); }}
+              placeholder="dc.example.com"
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+              required />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">Port</label>
+            <input type="number" value={port} onChange={(e) => { setPort(e.target.value); }}
+              placeholder="389"
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary focus:outline-none focus:ring-2 focus:ring-brand/30"
+              required />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Bind DN (Service Account)</label>
+          <input type="text" value={bindDN} onChange={(e) => { setBindDN(e.target.value); }}
+            placeholder="CN=vakt-svc,OU=ServiceAccounts,DC=example,DC=com"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Bind Password</label>
+          <input type="password" value={bindPassword} onChange={(e) => { setBindPassword(e.target.value); }}
+            placeholder={cfg?.is_configured && cfg.bind_password === '****' ? '****' : 'Service-Account-Passwort'}
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
+            required />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Base DN</label>
+          <input type="text" value={baseDN} onChange={(e) => { setBaseDN(e.target.value); }}
+            placeholder="DC=example,DC=com"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Privilegierte Gruppen (kommagetrennt)</label>
+          <input type="text" value={privilegedGroups} onChange={(e) => { setPrivilegedGroups(e.target.value); }}
+            placeholder="Domain Admins,Administrators"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30" />
+        </div>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="ldap-tls" checked={useTLS} onChange={(e) => { setUseTLS(e.target.checked); }}
+              className="rounded border-border" />
+            <label htmlFor="ldap-tls" className="text-xs text-secondary">LDAPS / STARTTLS verwenden (Port 636)</label>
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="ldap-ad" checked={isAD} onChange={(e) => { setIsAD(e.target.checked); }}
+              className="rounded border-border" />
+            <label htmlFor="ldap-ad" className="text-xs text-secondary">Active Directory Modus (Windows FILETIME für lastLogon)</label>
+          </div>
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button type="submit" disabled={saveConfig.isPending}
+            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+          </button>
+        </div>
+      </form>
+
+      {evidence && evidence.length > 0 && (
+        <div className="mt-6">
+          <p className="text-xs font-medium text-secondary mb-2">{t('integrations.page.recentEvidence')}</p>
+          <RecentEvidenceList items={evidence} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- GitLab tab ---
+
+function GitLabTab() {
+  const { t } = useTranslation()
+  const { data: cfg, isLoading } = useGitLabConfig()
+  const { data: status } = useGitLabStatus()
+  const { data: evidence } = useGitLabEvidence()
+  const saveConfig = useSaveGitLabConfig()
+  const syncGitLab = useSyncGitLab()
+  const { formatDateTime } = useFormatDate()
+
+  const [gitlabURL, setGitlabURL] = useState('')
+  const [accessToken, setAccessToken] = useState('')
+  const [groupID, setGroupID] = useState('')
+  const [initialized, setInitialized] = useState(false)
+
+  if (cfg && !initialized) {
+    setGitlabURL(cfg.gitlab_url)
+    setAccessToken(cfg.access_token)
+    setGroupID(cfg.group_id)
+    setInitialized(true)
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await saveConfig.mutateAsync({ gitlab_url: gitlabURL, access_token: accessToken, group_id: groupID })
+      toast(t('integrations.page.saved'), 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('integrations.page.saveFailed'), 'error')
+    }
+  }
+
+  async function handleSync() {
+    try {
+      const result = await syncGitLab.mutateAsync()
+      if (result.ok) {
+        toast(`${t('integrations.page.saved')} — ${result.evidence_created} Evidence-Einträge erstellt`, 'success')
+      } else {
+        toast(result.error ?? t('common.error'), 'error')
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('common.error'), 'error')
+    }
+  }
+
+  if (isLoading) return <div className="flex items-center justify-center h-32"><Spinner size="md" /></div>
+
+  const lastSyncFormatted = status?.last_sync_at
+    ? formatDateTime(status.last_sync_at, { dateStyle: 'short', timeStyle: 'short' })
+    : null
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold text-primary">GitLab CI Collector</h2>
+        <p className="text-xs text-secondary mt-0.5">
+          Branch-Protection, MR-Approval-Regeln und SAST-Präsenz aus GitLab als Compliance-Evidence für ISO 27001 A.8.4/A.8.29/A.8.32 erfassen.
+          Access Token wird AES-256-GCM verschlüsselt gespeichert.
+        </p>
+      </div>
+
+      {status && (
+        <div className="flex items-center gap-3 mb-5 p-3 rounded-lg border border-border bg-surface">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-secondary">
+              {lastSyncFormatted ? t('integrations.page.lastSync', { date: lastSyncFormatted }) : t('integrations.page.neverSynced')}
+              {status.evidence_count > 0 && ` · ${status.evidence_count} Evidence-Einträge`}
+              {status.project_count > 0 && ` · ${status.project_count} Projekte`}
+              {status.unprotected_branches_count > 0 && (
+                <span className="text-amber-600"> · {status.unprotected_branches_count} ungeschützte Branches</span>
+              )}
+            </p>
+            {status.last_sync_error && <p className="text-xs text-red-500 truncate mt-0.5">{status.last_sync_error}</p>}
+          </div>
+          <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
+          <button onClick={() => { void handleSync() }} disabled={syncGitLab.isPending || !cfg?.is_configured}
+            title="Jetzt synchronisieren"
+            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
+            <RefreshCw className={`w-4 h-4 ${syncGitLab.isPending ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      )}
+
+      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">GitLab URL</label>
+          <input type="url" value={gitlabURL} onChange={(e) => { setGitlabURL(e.target.value); }}
+            placeholder="https://gitlab.example.com"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required />
+          <p className="text-[11px] text-secondary mt-1">Für GitLab.com: <code>https://gitlab.com</code></p>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Personal / Group Access Token</label>
+          <input type="password" value={accessToken} onChange={(e) => { setAccessToken(e.target.value); }}
+            placeholder={cfg?.is_configured && cfg.access_token === '****' ? '****' : 'glpat-...'}
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required />
+          <p className="text-[11px] text-secondary mt-1">Benötigte Scopes: <code>read_api</code>, <code>read_repository</code></p>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Gruppen-ID oder Namespace (optional)</label>
+          <input type="text" value={groupID} onChange={(e) => { setGroupID(e.target.value); }}
+            placeholder="my-group oder 42"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
+          />
+          <p className="text-[11px] text-secondary mt-1">Leer lassen um alle zugänglichen Projekte (Membership) zu erfassen.</p>
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button type="submit" disabled={saveConfig.isPending}
+            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+          </button>
+        </div>
+      </form>
+
+      {evidence && evidence.length > 0 && (
+        <div className="mt-6">
+          <p className="text-xs font-medium text-secondary mb-2">{t('integrations.page.recentEvidence')}</p>
+          <RecentEvidenceList items={evidence} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- SonarQube tab ---
+
+function SonarQubeTab() {
+  const { t } = useTranslation()
+  const { data: cfg, isLoading } = useSonarQubeConfig()
+  const { data: status } = useSonarQubeStatus()
+  const { data: evidence } = useSonarQubeEvidence()
+  const saveConfig = useSaveSonarQubeConfig()
+  const syncSonarQube = useSyncSonarQube()
+  const { formatDateTime } = useFormatDate()
+
+  const [baseURL, setBaseURL] = useState('')
+  const [token, setToken] = useState('')
+  const [initialized, setInitialized] = useState(false)
+
+  if (cfg && !initialized) {
+    setBaseURL(cfg.base_url)
+    setToken(cfg.token)
+    setInitialized(true)
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await saveConfig.mutateAsync({ base_url: baseURL, token })
+      toast(t('integrations.page.saved'), 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('integrations.page.saveFailed'), 'error')
+    }
+  }
+
+  async function handleSync() {
+    try {
+      const result = await syncSonarQube.mutateAsync()
+      if (result.ok) {
+        toast(`${t('integrations.page.saved')} — ${result.evidence_created} Evidence-Einträge erstellt`, 'success')
+      } else {
+        toast(result.error ?? t('common.error'), 'error')
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('common.error'), 'error')
+    }
+  }
+
+  if (isLoading) return <div className="flex items-center justify-center h-32"><Spinner size="md" /></div>
+
+  const lastSyncFormatted = status?.last_sync_at
+    ? formatDateTime(status.last_sync_at, { dateStyle: 'short', timeStyle: 'short' })
+    : null
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold text-primary">SonarQube Collector</h2>
+        <p className="text-xs text-secondary mt-0.5">
+          Quality Gate Status, Security Hotspots und kritische Schwachstellen aus SonarQube / SonarCloud als
+          Evidence für ISO 27001 A.8.8/A.8.29 erfassen. Token wird AES-256-GCM verschlüsselt gespeichert.
+        </p>
+      </div>
+
+      {status && (
+        <div className="flex items-center gap-3 mb-5 p-3 rounded-lg border border-border bg-surface">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-secondary">
+              {lastSyncFormatted ? t('integrations.page.lastSync', { date: lastSyncFormatted }) : t('integrations.page.neverSynced')}
+              {status.evidence_count > 0 && ` · ${status.evidence_count} Evidence-Einträge`}
+              {status.project_count > 0 && ` · ${status.project_count} Projekte`}
+              {status.quality_gate_failed_count > 0 && (
+                <span className="text-red-600"> · {status.quality_gate_failed_count} Quality Gates fehlgeschlagen</span>
+              )}
+              {status.hotspot_count > 0 && ` · ${status.hotspot_count} Hotspots`}
+            </p>
+            {status.last_sync_error && <p className="text-xs text-red-500 truncate mt-0.5">{status.last_sync_error}</p>}
+          </div>
+          <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
+          <button onClick={() => { void handleSync() }} disabled={syncSonarQube.isPending || !cfg?.is_configured}
+            title="Jetzt synchronisieren"
+            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
+            <RefreshCw className={`w-4 h-4 ${syncSonarQube.isPending ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      )}
+
+      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">SonarQube Base URL</label>
+          <input type="url" value={baseURL} onChange={(e) => { setBaseURL(e.target.value); }}
+            placeholder="https://sonarqube.example.com"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required />
+          <p className="text-[11px] text-secondary mt-1">Für SonarCloud: <code>https://sonarcloud.io</code></p>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">User Token</label>
+          <input type="password" value={token} onChange={(e) => { setToken(e.target.value); }}
+            placeholder={cfg?.is_configured && cfg.token === '****' ? '****' : 'squ_...'}
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required />
+          <p className="text-[11px] text-secondary mt-1">
+            Token aus SonarQube → My Account → Security → Generate Token. Typ: <code>User Token</code>.
+          </p>
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button type="submit" disabled={saveConfig.isPending}
+            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+          </button>
+        </div>
+      </form>
+
+      {evidence && evidence.length > 0 && (
+        <div className="mt-6">
+          <p className="text-xs font-medium text-secondary mb-2">{t('integrations.page.recentEvidence')}</p>
+          <RecentEvidenceList items={evidence} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- Personio tab ---
+
+function PersonioTab() {
+  const { t } = useTranslation()
+  const { data: cfg, isLoading } = usePersonioConfig()
+  const { data: status } = usePersonioStatus()
+  const saveConfig = useSavePersonioConfig()
+  const { formatDateTime } = useFormatDate()
+
+  const [webhookSecret, setWebhookSecret] = useState('')
+  const [initialized, setInitialized] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  if (cfg && !initialized) {
+    setWebhookSecret(cfg.webhook_secret)
+    setInitialized(true)
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await saveConfig.mutateAsync({ webhook_secret: webhookSecret })
+      toast(t('integrations.page.saved'), 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('integrations.page.saveFailed'), 'error')
+    }
+  }
+
+  function handleCopyURL() {
+    if (!status?.webhook_url) return
+    const fullURL = window.location.origin + status.webhook_url
+    void navigator.clipboard.writeText(fullURL).then(() => {
+      setCopied(true)
+      setTimeout(() => { setCopied(false) }, 2000)
+    })
+  }
+
+  if (isLoading) return <div className="flex items-center justify-center h-32"><Spinner size="md" /></div>
+
+  const lastWebhookFormatted = status?.last_sync_at
+    ? formatDateTime(status.last_sync_at, { dateStyle: 'short', timeStyle: 'short' })
+    : null
+
+  const fullWebhookURL = status?.webhook_url
+    ? window.location.origin + status.webhook_url
+    : null
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold text-primary">Personio HRIS Webhook</h2>
+        <p className="text-xs text-secondary mt-0.5">
+          Automatisches Offboarding-Checklisten-Trigger bei <code>employee.departed</code>-Events aus Personio.
+          Vakt empfängt den Webhook und startet die HR-Offboarding-Checkliste. Kein Pull aus Personio — Push-only.
+        </p>
+      </div>
+
+      {/* DSGVO notice */}
+      <div className="flex items-start gap-3 p-3 mb-5 rounded-lg border border-amber-200 bg-amber-50">
+        <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+        <p className="text-xs text-amber-800">
+          <strong>DSGVO-Hinweis:</strong> Vakt speichert aus dem Personio-Webhook ausschließlich die
+          numerische <code>employee_id</code> und das <code>departure_date</code>. Keine Namen, E-Mail-Adressen
+          oder andere personenbezogenen Daten werden persistiert (Art. 5 Abs. 1 lit. c DSGVO — Datensparsamkeit).
+        </p>
+      </div>
+
+      {/* Status row */}
+      {status && (
+        <div className="flex items-center gap-3 mb-5 p-3 rounded-lg border border-border bg-surface">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-secondary">
+              {lastWebhookFormatted ? t('integrations.page.lastSync', { date: lastWebhookFormatted }) : t('integrations.page.neverSynced')}
+              {status.offboardings_triggered > 0 && ` · ${status.offboardings_triggered} Offboardings ausgelöst`}
+              {status.offboardings_completed_on_time > 0 && ` · ${status.offboardings_completed_on_time} fristgerecht`}
+            </p>
+          </div>
+          {status.webhook_configured ? (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+              <CheckCircle2 className="w-3 h-3" /> {t('integrations.page.saved')}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+              <AlertCircle className="w-3 h-3" /> {t('integrations.page.syncPending')}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Webhook URL display */}
+      {fullWebhookURL && (
+        <div className="mb-5 max-w-lg">
+          <p className="text-xs font-medium text-secondary mb-1">Webhook URL (in Personio eintragen)</p>
+          <div className="flex items-center gap-2 bg-bg border border-border rounded-md px-3 py-2">
+            <code className="text-xs text-primary flex-1 break-all">{fullWebhookURL}</code>
+            <button onClick={handleCopyURL} title="URL kopieren"
+              className="p-1 rounded text-secondary hover:text-primary transition-colors shrink-0">
+              {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+            </button>
+          </div>
+          <p className="text-[11px] text-secondary mt-1">
+            In Personio unter Einstellungen → Integrationen → Webhooks → Add Webhook eintragen.
+            Methode: <code>POST</code>, Event: <code>employee.departed</code>.
+          </p>
+        </div>
+      )}
+
+      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Webhook Secret</label>
+          <input type="password" value={webhookSecret} onChange={(e) => { setWebhookSecret(e.target.value); }}
+            placeholder={cfg?.is_configured && cfg.webhook_secret === '****' ? '****' : 'Webhook Secret aus Personio'}
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required />
+          <p className="text-[11px] text-secondary mt-1">
+            Das Secret wird von Personio zum Signieren der Webhook-Payloads verwendet (HMAC-SHA256, Header: <code>X-Personio-Signature</code>).
+            Secret wird AES-256-GCM verschlüsselt gespeichert.
+          </p>
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button type="submit" disabled={saveConfig.isPending}
+            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 // --- Main page ---
 
-type Tab = 'github' | 'aws' | 'azure'
+type Tab = 'github' | 'aws' | 'azure' | 'hetzner' | 'ionos' | 'wazuh' | 'prometheus' | 'entra-id' | 'keycloak' | 'ldap' | 'gitlab' | 'sonarqube' | 'personio'
 
 export default function IntegrationsPage() {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<Tab>('github')
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'github', label: 'GitHub', icon: <GitBranch className="w-4 h-4" /> },
     { id: 'aws', label: 'AWS', icon: <Cloud className="w-4 h-4" /> },
     { id: 'azure', label: 'Azure', icon: <Cloud className="w-4 h-4" /> },
+    { id: 'hetzner', label: 'Hetzner', icon: <Cloud className="w-4 h-4" /> },
+    { id: 'ionos', label: 'IONOS', icon: <Cloud className="w-4 h-4" /> },
+    { id: 'wazuh', label: 'Wazuh', icon: <Cloud className="w-4 h-4" /> },
+    { id: 'prometheus', label: 'Prometheus', icon: <Cloud className="w-4 h-4" /> },
+    { id: 'entra-id', label: 'Entra ID', icon: <ShieldAlert className="w-4 h-4" /> },
+    { id: 'keycloak', label: 'Keycloak', icon: <ShieldAlert className="w-4 h-4" /> },
+    { id: 'ldap', label: 'LDAP/AD', icon: <ShieldAlert className="w-4 h-4" /> },
+    { id: 'gitlab', label: 'GitLab', icon: <GitBranch className="w-4 h-4" /> },
+    { id: 'sonarqube', label: 'SonarQube', icon: <ShieldAlert className="w-4 h-4" /> },
+    { id: 'personio', label: 'Personio', icon: <ShieldAlert className="w-4 h-4" /> },
   ]
 
   return (
@@ -827,13 +2215,13 @@ export default function IntegrationsPage() {
       <div className="flex items-center gap-2.5 mb-6">
         <Plug className="w-5 h-5 text-brand" />
         <div>
-          <h1 className="text-lg font-semibold text-primary">Integrationen</h1>
-          <p className="text-xs text-secondary">Externe Dienste verbinden und Compliance-Evidence automatisch sammeln.</p>
+          <h1 className="text-lg font-semibold text-primary">{t('integrations.page.title')}</h1>
+          <p className="text-xs text-secondary">{t('integrations.page.description')}</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-border mb-6">
+      <div className="flex flex-wrap gap-1 border-b border-border mb-6">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -854,6 +2242,16 @@ export default function IntegrationsPage() {
       {activeTab === 'github' && <GitHubTab />}
       {activeTab === 'aws' && <AWSTab />}
       {activeTab === 'azure' && <AzureTab />}
+      {activeTab === 'hetzner' && <HetznerTab />}
+      {activeTab === 'ionos' && <IONOSTab />}
+      {activeTab === 'wazuh' && <WazuhTab />}
+      {activeTab === 'prometheus' && <PrometheusTab />}
+      {activeTab === 'entra-id' && <EntraIDTab />}
+      {activeTab === 'keycloak' && <KeycloakTab />}
+      {activeTab === 'ldap' && <LDAPTab />}
+      {activeTab === 'gitlab' && <GitLabTab />}
+      {activeTab === 'sonarqube' && <SonarQubeTab />}
+      {activeTab === 'personio' && <PersonioTab />}
 
       {/* No third-party integrations notice */}
       <div className="mt-6">

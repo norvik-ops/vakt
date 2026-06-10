@@ -164,7 +164,57 @@ func (s *Service) SyncIntegration(ctx context.Context, orgID, id string) error {
 		log.Error().Err(autoErr).Str("integration_id", id).Msg("evidence_auto: github collection failed")
 	}
 
+	// Collect GHAS alerts (Dependabot, Secret Scanning, Code Scanning) — best-effort.
+	s.collectGHAS(ctx, orgID, id, client, ig.RepoOwner, ig.RepoName)
+
 	return nil
+}
+
+// collectGHAS fetches GHAS alerts and writes them as evidence. Never returns errors.
+func (s *Service) collectGHAS(ctx context.Context, orgID, integrationID string, client *Client, owner, repo string) {
+	dependabotAlerts, err := client.ListDependabotAlerts(ctx, owner, repo)
+	if err != nil {
+		log.Warn().Err(err).Str("repo", owner+"/"+repo).Msg("ghas: dependabot fetch failed")
+	}
+
+	secretAlerts, err := client.ListSecretScanningAlerts(ctx, owner, repo)
+	if err != nil {
+		log.Warn().Err(err).Str("repo", owner+"/"+repo).Msg("ghas: secret scanning fetch failed")
+	}
+
+	codeAlerts, err := client.ListCodeScanningAlerts(ctx, owner, repo)
+	if err != nil {
+		log.Warn().Err(err).Str("repo", owner+"/"+repo).Msg("ghas: code scanning fetch failed")
+	}
+
+	// Convert to evidence_auto transfer types (avoids circular import)
+	eaDependabot := make([]evidence_auto.GHASDependabotAlert, len(dependabotAlerts))
+	for i, a := range dependabotAlerts {
+		eaDependabot[i] = evidence_auto.GHASDependabotAlert{
+			Number: a.Number, State: a.State, Severity: a.Severity,
+			CVEIDs: a.CVEIDs, Summary: a.Summary, Package: a.Package, Repo: a.Repo,
+		}
+	}
+	eaSecrets := make([]evidence_auto.GHASSecretScanningAlert, len(secretAlerts))
+	for i, a := range secretAlerts {
+		eaSecrets[i] = evidence_auto.GHASSecretScanningAlert{
+			Number: a.Number, State: a.State, SecretType: a.SecretType, Repo: a.Repo,
+		}
+	}
+	eaCode := make([]evidence_auto.GHASCodeScanningAlert, len(codeAlerts))
+	for i, a := range codeAlerts {
+		eaCode[i] = evidence_auto.GHASCodeScanningAlert{
+			Number: a.Number, State: a.State, Severity: a.Severity,
+			RuleID: a.RuleID, Tool: a.Tool, Repo: a.Repo,
+		}
+	}
+
+	if ghasErr := evidence_auto.CollectGitHubGHASAlerts(
+		ctx, s.db, orgID, integrationID,
+		eaDependabot, eaSecrets, eaCode,
+	); ghasErr != nil {
+		log.Error().Err(ghasErr).Str("integration_id", integrationID).Msg("evidence_auto: ghas collection failed")
+	}
 }
 
 // writeEvidence inserts compliance evidence into ck_evidence for relevant check results.

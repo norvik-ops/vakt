@@ -23,8 +23,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/time/rate"
 
 	"github.com/matharnica/vakt/internal/license"
 	"github.com/matharnica/vakt/internal/shared/logsafe"
@@ -77,9 +79,38 @@ func (h *Handler) WithRedis(rdb *redis.Client) *Handler {
 	return h
 }
 
-// Register mounts the Polar webhook endpoint on the given group.
+// Register mounts the Polar webhook endpoint and the public license-refresh endpoint.
+// The license-refresh endpoint is rate-limited to 60 requests/hour per IP.
 func Register(g *echo.Group, h *Handler) {
 	g.POST("/billing/webhook", h.Handle)
+
+	refreshLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
+		middleware.RateLimiterMemoryStoreConfig{
+			Rate:      rate.Limit(60.0 / 3600.0),
+			Burst:     5,
+			ExpiresIn: 10 * time.Minute,
+		},
+	))
+	g.GET("/billing/license", h.GetLicenseByToken, refreshLimiter)
+}
+
+// proFeatures is the full set of features included in every issued Pro key.
+var proFeatures = []string{
+	features.FeatureTISAX,
+	features.FeatureDORA,
+	features.FeatureEUAIAct,
+	features.FeatureCRA,
+	features.FeatureAIAdvisor,
+	features.FeatureAuditPDF,
+	features.FeatureSSO,
+	features.FeatureAPI,
+	features.FeatureSecReflex,
+	features.FeatureSecPulse,
+	features.FeatureGranularPermissions,
+	features.FeatureSupplierPortal,
+	features.FeatureNIS2Reporting,
+	features.FeatureSAMLAuth,
+	features.FeatureMultiFramework,
 }
 
 // polarSubscription is the subscription object in Polar webhook payloads.
@@ -93,6 +124,10 @@ type polarSubscription struct {
 	Product struct {
 		Name string `json:"name"`
 	} `json:"product"`
+	// Price.RecurringInterval is "month" or "year" — used to set the key expiry.
+	Price struct {
+		RecurringInterval string `json:"recurring_interval"`
+	} `json:"price"`
 }
 
 // polarEvent is the top-level Polar.sh webhook event structure.
@@ -145,7 +180,7 @@ func (h *Handler) Handle(c echo.Context) error {
 		if event.Data.Status != "active" {
 			return c.NoContent(http.StatusOK)
 		}
-		if err := h.issueKey(ctx, event.Data.Customer.Email, event.Data.Customer.Name, event.Data.ID); err != nil {
+		if err := h.issueKey(ctx, event.Data.Customer.Email, event.Data.Customer.Name, event.Data.ID, event.Data.Price.RecurringInterval, false); err != nil {
 			log.Error().Err(err).
 				Str("email_redacted", logsafe.RedactEmail(event.Data.Customer.Email)).
 				Str("subscription_id", event.Data.ID).
@@ -154,14 +189,24 @@ func (h *Handler) Handle(c echo.Context) error {
 		}
 		return c.NoContent(http.StatusOK)
 
-	case "subscription.revoked", "subscription.canceled":
-		if err := h.handleCancellation(ctx, event.Data.ID, event.Type); err != nil {
-			log.Error().Err(err).
-				Str("subscription_id", event.Data.ID).
-				Str("event_type", event.Type).
-				Msg("polar: cancellation handling failed")
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "cancellation handling failed"})
+	case "subscription.updated", "subscription.uncanceled":
+		// subscription.updated fires on renewals (status flips back to "active").
+		// subscription.uncanceled fires when a customer reverses a cancellation.
+		// Only issue a new key when the subscription is actually active.
+		if event.Data.Status != "active" {
+			return c.NoContent(http.StatusOK)
 		}
+		if err := h.issueKey(ctx, event.Data.Customer.Email, event.Data.Customer.Name, event.Data.ID, event.Data.Price.RecurringInterval, true); err != nil {
+			log.Error().Err(err).
+				Str("email_redacted", logsafe.RedactEmail(event.Data.Customer.Email)).
+				Str("subscription_id", event.Data.ID).
+				Msg("polar: renewal issueKey failed — returning 500 so Polar retries")
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "key renewal failed"})
+		}
+		return c.NoContent(http.StatusOK)
+
+	case "subscription.revoked", "subscription.canceled":
+		h.handleCancellation(ctx, event.Data.ID, event.Type)
 		return c.NoContent(http.StatusOK)
 
 	default:
@@ -183,130 +228,145 @@ func (h *Handler) verifySignature(sig string, body []byte) bool {
 	return hmac.Equal([]byte(hexSig), []byte(expected))
 }
 
-// issueKey generates a Pro license key, persists the subscription record, and emails the key.
-func (h *Handler) issueKey(ctx context.Context, email, orgName, polarSubID string) error {
+// keyExpiry returns the license validity duration based on the Polar recurring interval.
+// Monthly subscriptions get 35 days (31 + 4 day grace), yearly get 395 days (365 + 30 day grace).
+// Unknown intervals fall back to the monthly duration.
+func keyExpiry(interval string) time.Time {
+	if interval == "year" {
+		return time.Now().Add(395 * 24 * time.Hour)
+	}
+	return time.Now().Add(35 * 24 * time.Hour)
+}
+
+// issueKey generates a Pro license key with expiry, persists the subscription record, and emails the key.
+// isRenewal controls the email subject line.
+func (h *Handler) issueKey(ctx context.Context, email, orgName, polarSubID, interval string, isRenewal bool) error {
 	if orgName == "" {
 		orgName = email
 	}
 
-	// Persist the subscription record BEFORE generating/sending the key.
-	// ON CONFLICT DO NOTHING ensures Polar retries are idempotent.
+	var renewalToken string
 	if h.db != nil && polarSubID != "" {
 		_, dbErr := h.db.Exec(ctx,
 			`INSERT INTO polar_subscriptions (polar_subscription_id, customer_email, tier, status)
 			 VALUES ($1, $2, 'pro', 'active')
-			 ON CONFLICT (polar_subscription_id) DO NOTHING`,
+			 ON CONFLICT (polar_subscription_id) DO UPDATE SET status = 'active', updated_at = NOW()`,
 			polarSubID, email,
 		)
 		if dbErr != nil {
 			return fmt.Errorf("persist subscription record: %w", dbErr)
 		}
+		// Fetch the stable renewal_token for this subscription (generated on INSERT).
+		_ = h.db.QueryRow(ctx,
+			`SELECT renewal_token FROM polar_subscriptions WHERE polar_subscription_id = $1`,
+			polarSubID,
+		).Scan(&renewalToken)
 	}
 
-	proFeatures := []string{
-		features.FeatureTISAX,
-		features.FeatureDORA,
-		features.FeatureEUAIAct,
-		features.FeatureCRA,
-		features.FeatureAIAdvisor,
-		features.FeatureAuditPDF,
-		features.FeatureSSO,
-		features.FeatureAPI,
-		features.FeatureSecReflex,
-		features.FeatureSecPulse,
-		features.FeatureGranularPermissions,
-		features.FeatureSupplierPortal,
-		features.FeatureNIS2Reporting,
-		features.FeatureSAMLAuth,
-		features.FeatureMultiFramework,
-	}
-
-	key, err := license.Sign(h.privateKeyPEM, "pro", orgName, proFeatures, nil)
+	expiry := keyExpiry(interval)
+	key, err := license.Sign(h.privateKeyPEM, "pro", orgName, proFeatures, &expiry)
 	if err != nil {
 		return fmt.Errorf("generate license key: %w", err)
 	}
 
-	if err := h.sendLicenseEmail(email, orgName, key); err != nil {
+	// Persist the generated key so GET /billing/license/:token can serve it.
+	if h.db != nil && polarSubID != "" {
+		_, _ = h.db.Exec(ctx,
+			`UPDATE polar_subscriptions SET license_key = $1, updated_at = NOW()
+			 WHERE polar_subscription_id = $2`,
+			key, polarSubID,
+		)
+	}
+
+	if err := h.sendLicenseEmail(email, orgName, key, renewalToken, isRenewal); err != nil {
 		return fmt.Errorf("send license email: %w", err)
 	}
 
-	log.Info().Str("email_redacted", logsafe.RedactEmail(email)).Str("org", orgName).Msg("polar: Pro license issued and sent")
+	log.Info().
+		Str("email_redacted", logsafe.RedactEmail(email)).
+		Str("org", orgName).
+		Str("interval", interval).
+		Time("expires_at", expiry).
+		Bool("renewal", isRenewal).
+		Msg("polar: Pro license issued and sent")
 	return nil
 }
 
-// handleCancellation revokes the subscription and downgrades the org to Community.
-func (h *Handler) handleCancellation(ctx context.Context, polarSubID, reason string) error {
+// GetLicenseByToken serves GET /billing/license.
+// The renewal token is passed in the Authorization: Bearer <token> header so it
+// does not appear in access logs or server-side URL records.
+func (h *Handler) GetLicenseByToken(c echo.Context) error {
+	auth := c.Request().Header.Get("Authorization")
+	token := strings.TrimPrefix(auth, "Bearer ")
+	if token == "" || token == auth {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Authorization: Bearer <token> required"})
+	}
 	if h.db == nil {
-		log.Warn().Str("polar_subscription_id", polarSubID).
-			Msg("polar: no DB configured — cannot process cancellation")
-		return nil
+		return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "billing not configured"})
 	}
-
-	var customerEmail string
-	err := h.db.QueryRow(ctx,
-		`SELECT customer_email FROM polar_subscriptions WHERE polar_subscription_id = $1`,
-		polarSubID,
-	).Scan(&customerEmail)
+	var key string
+	err := h.db.QueryRow(c.Request().Context(),
+		`SELECT license_key FROM polar_subscriptions
+		 WHERE renewal_token = $1::uuid AND status = 'active' AND license_key IS NOT NULL`,
+		token,
+	).Scan(&key)
 	if err != nil {
-		log.Warn().Err(err).Str("polar_subscription_id", polarSubID).
-			Msg("polar: subscription not found in DB — skipping revocation")
-		return nil
+		// 404 for not-found or wrong token — same response to prevent oracle attacks.
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "not found"})
 	}
+	return c.JSON(http.StatusOK, map[string]string{"key": key})
+}
 
-	var userID string
-	err = h.db.QueryRow(ctx,
-		`SELECT id::text FROM users WHERE email = $1 LIMIT 1`,
-		customerEmail,
-	).Scan(&userID)
-	if err != nil {
-		return fmt.Errorf("user not found for email %s: %w", customerEmail, err)
+// handleCancellation records the cancellation in polar_subscriptions.
+// Revocation for self-hosted instances works purely through key expiry — Norvik has no
+// access to the customer's database and cannot push a revocation there.
+func (h *Handler) handleCancellation(ctx context.Context, polarSubID, reason string) {
+	if h.db == nil {
+		log.Info().Str("polar_subscription_id", polarSubID).Str("reason", reason).
+			Msg("polar: subscription cancelled — key will expire at its scheduled expiry")
+		return
 	}
-
-	var orgID string
-	err = h.db.QueryRow(ctx,
-		`SELECT org_id::text FROM org_members WHERE user_id = $1::uuid ORDER BY (role = 'owner') DESC LIMIT 1`,
-		userID,
-	).Scan(&orgID)
-	if err != nil {
-		return fmt.Errorf("org not found for user %s: %w", userID, err)
-	}
-
-	_, err = h.db.Exec(ctx,
+	if _, err := h.db.Exec(ctx,
 		`UPDATE polar_subscriptions SET status = $1, updated_at = NOW() WHERE polar_subscription_id = $2`,
 		reason, polarSubID,
-	)
-	if err != nil {
-		return fmt.Errorf("update subscription status: %w", err)
+	); err != nil {
+		log.Warn().Err(err).Str("polar_subscription_id", polarSubID).
+			Msg("polar: could not update subscription status on cancellation")
 	}
-
-	_, err = h.db.Exec(ctx,
-		`INSERT INTO ls_revoked_subscriptions (org_id, reason, revoked_at)
-		 VALUES ($1::uuid, $2, NOW())
-		 ON CONFLICT (org_id) DO UPDATE SET reason = $2, revoked_at = NOW()`,
-		orgID, reason,
-	)
-	if err != nil {
-		return fmt.Errorf("insert revocation record: %w", err)
-	}
-
-	license.InvalidateLicenseCache(ctx, h.rdb, orgID)
-
-	log.Info().Str("org_id", orgID).Str("reason", reason).
-		Msg("polar: subscription revoked — org downgraded to community tier")
-	return nil
+	log.Info().Str("polar_subscription_id", polarSubID).Str("reason", reason).
+		Msg("polar: subscription cancelled — key will expire at its scheduled expiry")
 }
 
-func (h *Handler) sendLicenseEmail(to, orgName, key string) error {
+func (h *Handler) sendLicenseEmail(to, orgName, key, renewalToken string, isRenewal bool) error {
 	subject := "Dein Vakt Pro License Key"
+	intro := "vielen Dank für deine Vakt Pro Lizenz!"
+	if isRenewal {
+		subject = "Dein neuer Vakt Pro License Key"
+		intro = "deine Vakt Pro Lizenz wurde verlängert. Hier ist dein neuer License Key — bitte aktiviere ihn in deiner Vakt-Instanz, damit die Laufzeit aktualisiert wird."
+	}
+
+	autoRenewalSection := ""
+	if renewalToken != "" {
+		autoRenewalSection = fmt.Sprintf(`
+Auto-Renewal (optional):
+Damit deine Instanz den Key automatisch erneuert, setze in deiner .env:
+
+  VAKT_LICENSE_TOKEN=%s
+
+Die Instanz holt sich dann täglich den aktuellen Key — kein manueller Eingriff mehr nötig.
+Ausgehende Verbindung: api.norvikops.de (nur Lizenzdaten, keine Geschäftsdaten).
+`, renewalToken)
+	}
+
 	body := fmt.Sprintf(`Hallo%s,
 
-vielen Dank für deine Vakt Pro Lizenz!
+%s
 
 Dein License Key:
 
 %s
-
-Aktivierung in der Vakt-Oberfläche:
+%s
+Manuelle Aktivierung in der Vakt-Oberfläche:
 → Einstellungen → Lizenz → License Key eingeben → Aktivieren
 
 Bei Fragen: hello@norvikops.de
@@ -318,7 +378,9 @@ NorvikOps Team`,
 			}
 			return ""
 		}(),
+		intro,
 		key,
+		autoRenewalSection,
 	)
 
 	msg := "From: " + h.smtp.From + "\r\n" +

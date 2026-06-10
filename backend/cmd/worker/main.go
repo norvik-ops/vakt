@@ -142,6 +142,12 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	// ── SecReflex training reminder ───────────────────────────────────────────
 	mux.HandleFunc(vaktaware.TaskTrainingReminder, handleTrainingReminder(cfg, pool))
 
+	// ── SecReflex auto-enrollment (S65-2) ─────────────────────────────────────
+	mux.HandleFunc(vaktaware.TaskAutoEnrollment, handleAutoEnrollment(pool))
+
+	// ── SecReflex BSI ORP.3 evidence sync (S65-4) ────────────────────────────
+	mux.HandleFunc(vaktaware.TaskORP3EvidenceSync, handleORP3EvidenceSync(pool))
+
 	// ── SecVault git scanning ─────────────────────────────────────────────────
 	mux.HandleFunc(vaktvault.TaskGitScan, handleGitScan(cfg, pool))
 
@@ -151,6 +157,12 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	// ── SecPrivacy→SecVitals: breach → incident ───────────────────────────────
 	mux.HandleFunc(vaktprivacy.TaskBreachIncidentCreate, handleBreachIncidentCreate(cfg, pool))
 
+	// ── S68-2: daily DSR overdue marking + 3-day warning notifications ────────
+	mux.HandleFunc(vaktprivacy.TaskDSRDeadlineCheck, handleDSRDeadlineCheck(pool))
+
+	// ── S68-5: daily deletion reminder notifications (14-day window) ──────────
+	mux.HandleFunc(vaktprivacy.TaskDeletionReminderCheck, handleDeletionReminderCheck(pool))
+
 	// ── SecPulse→SecVitals: resolved finding → patch-control evidence ─────────
 	mux.HandleFunc(vaktscan.TaskAutoEvidence, handleAutoEvidence(cfg, pool))
 
@@ -159,6 +171,11 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 
 	// ── SecPulse EOL check (endoflife.date) ───────────────────────────────────
 	mux.HandleFunc(vaktscan.TaskEOLCheck, handleEOLCheck(cfg, pool))
+
+	// ── SecPulse TLS certificate rescan (daily) ────────────────────────────
+	mux.HandleFunc(vaktscan.TaskCertScan, handleCertScan(pool))
+	// ── S69-3: SLA check (daily) ──────────────────────────────────────────
+	mux.HandleFunc(vaktscan.TaskSLACheck, handleSLACheck(pool))
 
 	// ── Alerting: scheduled overdue checks ────────────────────────────────────
 	mux.HandleFunc(alerting.TaskSLAOverdueCheck, handleSLAOverdueCheck(cfg, pool))
@@ -243,6 +260,15 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 
 	// S52-4: Monday AI compliance weekly digest
 	mux.HandleFunc(vaktcomply.TaskAIWeeklyDigest, handleAIWeeklyDigest(cfg, pool))
+
+	// S61-3: daily effectiveness-check overdue alert for major_nc CAPAs
+	mux.HandleFunc(taskEffectivenessCheckOverdueAlert, handleEffectivenessCheckOverdueAlert(pool))
+
+	// S61-7: daily ISMS KPI snapshot
+	mux.HandleFunc(vaktcomply.TaskISMSKPISnapshot, handleISMSKPISnapshot(pool))
+
+	// S67-4: daily evidence staleness sweep
+	mux.HandleFunc(vaktcomply.TaskEvidenceStalenessCheck, handleEvidenceStalenessCheck(pool))
 
 	return srv, mux
 }

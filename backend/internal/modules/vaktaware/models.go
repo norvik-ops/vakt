@@ -7,17 +7,91 @@ import (
 
 // Template is an email template for phishing simulations.
 type Template struct {
-	ID         string    `json:"id"`
-	OrgID      string    `json:"org_id"`
-	Name       string    `json:"name"`
-	Subject    string    `json:"subject"`
-	FromName   string    `json:"from_name"`
-	FromEmail  string    `json:"from_email"`
-	HTMLBody   string    `json:"html_body"`
-	AttackType string    `json:"attack_type"`
-	IsPreset   bool      `json:"is_preset"`
-	CreatedBy  *string   `json:"created_by,omitempty"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID           string    `json:"id"`
+	OrgID        string    `json:"org_id"`
+	Name         string    `json:"name"`
+	Subject      string    `json:"subject"`
+	FromName     string    `json:"from_name"`
+	FromEmail    string    `json:"from_email"`
+	HTMLBody     string    `json:"html_body"`
+	AttackType   string    `json:"attack_type"`
+	Category     string    `json:"category,omitempty"`
+	Difficulty   string    `json:"difficulty,omitempty"`
+	Language     string    `json:"language,omitempty"`
+	Placeholders []string  `json:"placeholders,omitempty"`
+	IsPreset     bool      `json:"is_preset"`
+	CreatedBy    *string   `json:"created_by,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+// EnrollmentRule defines automatic campaign enrollment based on triggers.
+type EnrollmentRule struct {
+	ID               string    `json:"id"`
+	OrgID            string    `json:"org_id"`
+	Name             string    `json:"name"`
+	TriggerType      string    `json:"trigger_type"` // new_employee | phishing_click
+	TargetCampaignID *string   `json:"target_campaign_id,omitempty"`
+	IsActive         bool      `json:"is_active"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
+// CreateEnrollmentRuleInput holds user-supplied data for creating an enrollment rule.
+type CreateEnrollmentRuleInput struct {
+	Name             string  `json:"name"              validate:"required"`
+	TriggerType      string  `json:"trigger_type"      validate:"required,oneof=new_employee phishing_click"`
+	TargetCampaignID *string `json:"target_campaign_id"`
+}
+
+// TrainingMatrixReport is the top-level structure for an audit-ready training report.
+type TrainingMatrixReport struct {
+	Period        ReportPeriod      `json:"period"`
+	OrgName       string            `json:"org_name"`
+	Campaigns     []CampaignSummary `json:"campaigns"`
+	TotalStats    AwareStats        `json:"total_stats"`
+	BSICompliance BSIOrp3Compliance `json:"bsi_compliance"`
+	GeneratedAt   time.Time         `json:"generated_at"`
+}
+
+// ReportPeriod defines the date range of a training report.
+type ReportPeriod struct {
+	From time.Time `json:"from"`
+	To   time.Time `json:"to"`
+}
+
+// CampaignSummary summarises a single campaign for a training report.
+type CampaignSummary struct {
+	ID             string  `json:"id"`
+	Name           string  `json:"name"`
+	Type           string  `json:"type"`
+	RecipientCount int     `json:"recipient_count"`
+	ClickRate      float64 `json:"click_rate"`
+	CompletionRate float64 `json:"completion_rate"`
+	StartedAt      string  `json:"started_at,omitempty"`
+	CompletedAt    string  `json:"completed_at,omitempty"`
+}
+
+// AwareStats aggregates awareness training KPIs for the reporting period.
+type AwareStats struct {
+	TotalCampaigns          int     `json:"total_campaigns"`
+	TotalParticipants       int     `json:"total_participants"`
+	AvgClickRate            float64 `json:"avg_click_rate"`
+	TotalTrainingsCompleted int     `json:"total_trainings_completed"`
+}
+
+// BSIOrp3Compliance tracks coverage of BSI ORP.3 requirements.
+type BSIOrp3Compliance struct {
+	FulfilledCount int               `json:"fulfilled_count"`
+	TotalCount     int               `json:"total_count"`
+	Requirements   []ORP3Requirement `json:"requirements"`
+}
+
+// ORP3Requirement represents a single BSI ORP.3 requirement and its fulfillment state.
+type ORP3Requirement struct {
+	ID          string   `json:"id"`
+	Title       string   `json:"title"`
+	Fulfilled   bool     `json:"fulfilled"`
+	EvidenceIDs []string `json:"evidence_ids,omitempty"`
 }
 
 // CreateTemplateInput holds user-supplied data for creating a template.

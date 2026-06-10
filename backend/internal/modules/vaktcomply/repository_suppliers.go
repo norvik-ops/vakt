@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/matharnica/vakt/internal/db"
 )
@@ -55,6 +56,223 @@ func supplierFromFields(f supplierFields) Supplier {
 	}
 }
 
+// --- S67-2 ISO 27001 A.5.19-21 enrichment (Migration 176) ---
+
+// s67Row holds Migration-176 columns scanned via raw SQL.
+type s67Row struct {
+	Category               pgtype.Text
+	DataAccess             bool
+	AvvDocumentID          pgtype.UUID
+	LastAssessmentScore    pgtype.Int4
+	NextAssessmentDue      pgtype.Date
+	Status                 string
+	ContractStart          pgtype.Date
+	DataProtectionScore    pgtype.Int4
+	AvailabilityScore      pgtype.Int4
+	SecurityCertifications pgtype.Text
+	AuditRights            pgtype.Bool
+	SubProcessorsKnown     pgtype.Bool
+	IncidentNotification   pgtype.Bool
+}
+
+func applyS67Row(s *Supplier, r s67Row) {
+	s.Category = r.Category.String
+	s.DataAccess = r.DataAccess
+	if r.AvvDocumentID.Valid {
+		v := uuidStringFromPgtype(r.AvvDocumentID)
+		s.AvvDocumentID = &v
+	}
+	if r.LastAssessmentScore.Valid {
+		v := int(r.LastAssessmentScore.Int32)
+		s.LastAssessmentScore = &v
+	}
+	s.NextAssessmentDue = ckDateToTimePtr(r.NextAssessmentDue)
+	s.SupplierStatus = r.Status
+	s.ContractStart = ckDateToTimePtr(r.ContractStart)
+	if r.DataProtectionScore.Valid {
+		v := int(r.DataProtectionScore.Int32)
+		s.DataProtectionScore = &v
+	}
+	if r.AvailabilityScore.Valid {
+		v := int(r.AvailabilityScore.Int32)
+		s.AvailabilityScore = &v
+	}
+	s.SecurityCertifications = r.SecurityCertifications.String
+	if r.AuditRights.Valid {
+		b := r.AuditRights.Bool
+		s.AuditRights = &b
+	}
+	if r.SubProcessorsKnown.Valid {
+		b := r.SubProcessorsKnown.Bool
+		s.SubProcessorsKnown = &b
+	}
+	if r.IncidentNotification.Valid {
+		b := r.IncidentNotification.Bool
+		s.IncidentNotification = &b
+	}
+}
+
+const s67SelectCols = `
+	category, data_access, avv_document_id,
+	last_assessment_score, next_assessment_due, status, contract_start,
+	data_protection_score, availability_score, security_certifications,
+	audit_rights, sub_processors_known, incident_notification`
+
+// enrichSuppliersS67 batch-loads Migration-176 columns for all suppliers in one query.
+func enrichSuppliersS67(ctx context.Context, pool *pgxpool.Pool, orgID string, suppliers []Supplier) error {
+	if len(suppliers) == 0 {
+		return nil
+	}
+	ids := make([]string, len(suppliers))
+	for i, s := range suppliers {
+		ids[i] = s.ID
+	}
+	rows, err := pool.Query(ctx,
+		`SELECT id::text,`+s67SelectCols+`
+		   FROM ck_suppliers
+		  WHERE id = ANY($1) AND org_id = $2::uuid`,
+		ids, orgID)
+	if err != nil {
+		return fmt.Errorf("enrich suppliers s67: %w", err)
+	}
+	defer rows.Close()
+	byID := make(map[string]s67Row, len(suppliers))
+	for rows.Next() {
+		var id string
+		var r s67Row
+		if err := rows.Scan(
+			&id,
+			&r.Category, &r.DataAccess, &r.AvvDocumentID,
+			&r.LastAssessmentScore, &r.NextAssessmentDue, &r.Status, &r.ContractStart,
+			&r.DataProtectionScore, &r.AvailabilityScore, &r.SecurityCertifications,
+			&r.AuditRights, &r.SubProcessorsKnown, &r.IncidentNotification,
+		); err != nil {
+			return fmt.Errorf("scan s67 row: %w", err)
+		}
+		byID[id] = r
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("enrich suppliers s67 rows: %w", err)
+	}
+	for i := range suppliers {
+		if r, ok := byID[suppliers[i].ID]; ok {
+			applyS67Row(&suppliers[i], r)
+		}
+	}
+	return nil
+}
+
+// applyS67Patch copies s67Patch values directly to a Supplier (used after Create/Update).
+func applyS67Patch(s *Supplier, p s67Patch) {
+	cat := p.Category
+	if cat == "" {
+		cat = "other"
+	}
+	status := p.SupplierStatus
+	if status == "" {
+		status = "active"
+	}
+	s.Category = cat
+	s.DataAccess = p.DataAccess
+	s.AvvDocumentID = p.AvvDocumentID
+	s.LastAssessmentScore = p.LastAssessmentScore
+	s.NextAssessmentDue = p.NextAssessmentDue
+	s.SupplierStatus = status
+	s.ContractStart = p.ContractStart
+	s.DataProtectionScore = p.DataProtectionScore
+	s.AvailabilityScore = p.AvailabilityScore
+	s.SecurityCertifications = p.SecurityCertifications
+	s.AuditRights = p.AuditRights
+	s.SubProcessorsKnown = p.SubProcessorsKnown
+	s.IncidentNotification = p.IncidentNotification
+}
+
+// s67Patch holds the S67-2 values to persist to an existing supplier row.
+type s67Patch struct {
+	Category               string
+	DataAccess             bool
+	AvvDocumentID          *string
+	LastAssessmentScore    *int
+	NextAssessmentDue      *time.Time
+	SupplierStatus         string
+	ContractStart          *time.Time
+	DataProtectionScore    *int
+	AvailabilityScore      *int
+	SecurityCertifications string
+	AuditRights            *bool
+	SubProcessorsKnown     *bool
+	IncidentNotification   *bool
+}
+
+func s67PatchFromCreate(in CreateSupplierInput) s67Patch {
+	return s67Patch{
+		Category: in.Category, DataAccess: in.DataAccess, AvvDocumentID: in.AvvDocumentID,
+		LastAssessmentScore: in.LastAssessmentScore, NextAssessmentDue: in.NextAssessmentDue,
+		SupplierStatus: in.SupplierStatus, ContractStart: in.ContractStart,
+		DataProtectionScore: in.DataProtectionScore, AvailabilityScore: in.AvailabilityScore,
+		SecurityCertifications: in.SecurityCertifications, AuditRights: in.AuditRights,
+		SubProcessorsKnown: in.SubProcessorsKnown, IncidentNotification: in.IncidentNotification,
+	}
+}
+
+func s67PatchFromUpdate(in UpdateSupplierInput) s67Patch {
+	return s67Patch{
+		Category: in.Category, DataAccess: in.DataAccess, AvvDocumentID: in.AvvDocumentID,
+		LastAssessmentScore: in.LastAssessmentScore, NextAssessmentDue: in.NextAssessmentDue,
+		SupplierStatus: in.SupplierStatus, ContractStart: in.ContractStart,
+		DataProtectionScore: in.DataProtectionScore, AvailabilityScore: in.AvailabilityScore,
+		SecurityCertifications: in.SecurityCertifications, AuditRights: in.AuditRights,
+		SubProcessorsKnown: in.SubProcessorsKnown, IncidentNotification: in.IncidentNotification,
+	}
+}
+
+// patchSupplierS67 persists Migration-176 fields for an existing row.
+func patchSupplierS67(ctx context.Context, pool *pgxpool.Pool, orgID, id string, p s67Patch) error {
+	cat := p.Category
+	if cat == "" {
+		cat = "other"
+	}
+	status := p.SupplierStatus
+	if status == "" {
+		status = "active"
+	}
+	_, err := pool.Exec(ctx,
+		`UPDATE ck_suppliers SET
+		    category              = $3,
+		    data_access           = $4,
+		    avv_document_id       = $5,
+		    last_assessment_score = $6,
+		    next_assessment_due   = $7,
+		    status                = $8,
+		    contract_start        = $9,
+		    data_protection_score = $10,
+		    availability_score    = $11,
+		    security_certifications = $12,
+		    audit_rights          = $13,
+		    sub_processors_known  = $14,
+		    incident_notification = $15
+		  WHERE id = $1::uuid AND org_id = $2::uuid`,
+		id, orgID,
+		cat,
+		p.DataAccess,
+		ckOptUUIDFromPtr(p.AvvDocumentID),
+		ckOptIntPtr(p.LastAssessmentScore),
+		policyDateFromTimePtr(p.NextAssessmentDue),
+		status,
+		policyDateFromTimePtr(p.ContractStart),
+		ckOptIntPtr(p.DataProtectionScore),
+		ckOptIntPtr(p.AvailabilityScore),
+		ckOptText(p.SecurityCertifications),
+		p.AuditRights,
+		p.SubProcessorsKnown,
+		p.IncidentNotification,
+	)
+	if err != nil {
+		return fmt.Errorf("patch supplier s67: %w", err)
+	}
+	return nil
+}
+
 func (r *Repository) ListSuppliers(ctx context.Context, orgID string, filter *SupplierFilter) ([]Supplier, error) {
 	params := db.ListCKSuppliersParams{OrgID: orgID}
 	if filter != nil {
@@ -80,6 +298,9 @@ func (r *Repository) ListSuppliers(ctx context.Context, orgID string, filter *Su
 			CreatedAt:          row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		}))
 	}
+	if err := enrichSuppliersS67(ctx, r.db, orgID, out); err != nil {
+		return nil, fmt.Errorf("list suppliers enrich: %w", err)
+	}
 	return out, nil
 }
 
@@ -100,7 +321,11 @@ func (r *Repository) GetSupplier(ctx context.Context, orgID, id string) (*Suppli
 		LastAssessmentAt:   row.LastAssessmentAt,
 		CreatedAt:          row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	})
-	return &s, nil
+	single := []Supplier{s}
+	if err := enrichSuppliersS67(ctx, r.db, orgID, single); err != nil {
+		return nil, fmt.Errorf("get supplier enrich: %w", err)
+	}
+	return &single[0], nil
 }
 
 func (r *Repository) CreateSupplier(ctx context.Context, orgID string, in CreateSupplierInput) (*Supplier, error) {
@@ -148,6 +373,10 @@ func (r *Repository) CreateSupplier(ctx context.Context, orgID string, in Create
 		LastAssessmentAt:   row.LastAssessmentAt,
 		CreatedAt:          row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	})
+	if err := patchSupplierS67(ctx, r.db, orgID, s.ID, s67PatchFromCreate(in)); err != nil {
+		return nil, err
+	}
+	applyS67Patch(&s, s67PatchFromCreate(in))
 	return &s, nil
 }
 
@@ -197,6 +426,10 @@ func (r *Repository) UpdateSupplier(ctx context.Context, orgID, id string, in Up
 		LastAssessmentAt:   row.LastAssessmentAt,
 		CreatedAt:          row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	})
+	if err := patchSupplierS67(ctx, r.db, orgID, s.ID, s67PatchFromUpdate(in)); err != nil {
+		return nil, err
+	}
+	applyS67Patch(&s, s67PatchFromUpdate(in))
 	return &s, nil
 }
 

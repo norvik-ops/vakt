@@ -95,3 +95,20 @@ func (h *Handler) DeleteProtectionNeedAssessment(c echo.Context) error {
 	}
 	return c.NoContent(http.StatusNoContent)
 }
+
+// LinkPNAAsset handles PATCH /api/v1/vaktcomply/protection-needs/assessments/:id/asset-link.
+// Body: {"vb_asset_id": "uuid"} to link, {"vb_asset_id": null} to unlink.
+func (h *Handler) LinkPNAAsset(c echo.Context) error {
+	id := c.Param("id")
+	var body struct {
+		VBAssetID *string `json:"vb_asset_id"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+	if err := h.service.LinkAssetToPNA(c.Request().Context(), orgID(c), id, body.VBAssetID); err != nil {
+		log.Error().Err(err).Str("id", id).Msg("link asset to pna")
+		return errResp(c, http.StatusInternalServerError, "failed to link asset", "CK_LINK_ASSET_FAILED")
+	}
+	return c.JSON(http.StatusOK, map[string]any{"pna_id": id, "vb_asset_id": body.VBAssetID})
+}

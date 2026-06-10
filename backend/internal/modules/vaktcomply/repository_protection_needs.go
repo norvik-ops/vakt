@@ -7,6 +7,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
+
 	db "github.com/matharnica/vakt/internal/db"
 )
 
@@ -101,4 +103,46 @@ func protectionNeedFromRow(row db.CkProtectionNeedAssessments) ProtectionNeedAss
 		CreatedAt:       ckTsToTime(row.CreatedAt),
 		UpdatedAt:       ckTsToTime(row.UpdatedAt),
 	}
+}
+
+// LinkAssetToPNA sets or clears the vb_asset_id soft-link on a PNA record.
+// Pass assetID = nil to unlink. Also sets the reverse link (protection_need_id) on
+// vb_assets — both are best-effort and never block the main response.
+func (r *Repository) LinkAssetToPNA(ctx context.Context, orgID, pnaID string, assetID *string) error {
+	// Update PNA side.
+	_, err := r.db.Exec(ctx,
+		`UPDATE ck_protection_need_assessments SET vb_asset_id = $1, updated_at = NOW()
+		 WHERE id = $2::uuid AND org_id = $3::uuid`,
+		assetID, pnaID, orgID,
+	)
+	if err != nil {
+		return fmt.Errorf("link asset to pna: %w", err)
+	}
+
+	// Update reverse link on vb_assets (best-effort, different module prefix).
+	if assetID != nil {
+		_, _ = r.db.Exec(ctx,
+			`UPDATE vb_assets SET protection_need_id = $1::uuid, updated_at = NOW()
+			 WHERE id = $2::uuid AND org_id = $3::uuid`,
+			pnaID, *assetID, orgID,
+		)
+	}
+	return nil
+}
+
+// GetPNAVBAssetID returns the vb_asset_id soft-link for a given PNA, or nil if unlinked.
+func (r *Repository) GetPNAVBAssetID(ctx context.Context, orgID, pnaID string) (*string, error) {
+	var assetID *string
+	err := r.db.QueryRow(ctx,
+		`SELECT vb_asset_id FROM ck_protection_need_assessments
+		 WHERE id = $1::uuid AND org_id = $2::uuid`,
+		pnaID, orgID,
+	).Scan(&assetID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get pna asset link: %w", err)
+	}
+	return assetID, nil
 }

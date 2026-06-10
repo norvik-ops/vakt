@@ -60,6 +60,68 @@ func (w *HREvidenceWriter) WriteChecklistCompletion(ctx context.Context, in even
 	return nil
 }
 
+// WritePersonioOffboardingEvidence inserts a ck_evidence row with approved/pending status
+// based on whether the offboarding was completed within 24h of the departure date.
+func (w *HREvidenceWriter) WritePersonioOffboardingEvidence(ctx context.Context, in events.PersonioOffboardingEvidence) error {
+	dbStatus := "approved"
+	title := fmt.Sprintf("Personio Offboarding: Mitarbeiter %d — IT-Zugang gesperrt %.1fh nach Austritt",
+		in.PersonioEmployeeID, in.ElapsedHours)
+	description := fmt.Sprintf(
+		"Offboarding (Run %s) abgeschlossen am %s. Austritt: %s. Verstrichene Zeit: %.1fh. Ziel: <24h.",
+		in.RunID,
+		in.CompletedAt.Format("02.01.2006 15:04"),
+		in.DepartureDate.Format("02.01.2006"),
+		in.ElapsedHours,
+	)
+	if in.ElapsedHours > 24 {
+		dbStatus = "pending"
+		title += " (Ziel 24h überschritten)"
+	}
+
+	data, _ := json.Marshal(map[string]any{
+		"personio_employee_id": in.PersonioEmployeeID,
+		"run_id":               in.RunID,
+		"completed_at":         in.CompletedAt.Format("2006-01-02T15:04:05Z07:00"),
+		"departure_date":       in.DepartureDate.Format("2006-01-02"),
+		"elapsed_hours":        in.ElapsedHours,
+		"within_24h":           in.ElapsedHours <= 24,
+	})
+
+	_, err := w.pool.Exec(ctx, `
+		INSERT INTO ck_evidence
+			(control_id, org_id, title, description, source, collector_data, status,
+			 auto_source_type, auto_collected_at)
+		VALUES
+			(NULL, $1::uuid, $2, $3, 'personio_offboarding', $4, $5,
+			 'personio', NOW())`,
+		in.OrgID, title, description, data, dbStatus,
+	)
+	if err != nil {
+		return fmt.Errorf("insert personio offboarding evidence: %w", err)
+	}
+	return nil
+}
+
+// WriteEvidence inserts a generic evidence row for events not covered by
+// the typed methods (e.g. contractor lifecycle events).
+func (w *HREvidenceWriter) WriteEvidence(ctx context.Context, orgID, evidenceType, description, entityID string) error {
+	data, _ := json.Marshal(map[string]any{
+		"evidence_type": evidenceType,
+		"entity_id":     entityID,
+	})
+	_, err := w.pool.Exec(ctx, `
+		INSERT INTO ck_evidence
+			(control_id, org_id, title, description, source, collector_data, status,
+			 auto_source_type, auto_collected_at)
+		VALUES
+			(NULL, $1::uuid, $2, $3, $4, $5, 'approved', 'hr', NOW())
+	`, orgID, evidenceType, description, "hr_event", data)
+	if err != nil {
+		return fmt.Errorf("insert hr generic evidence: %w", err)
+	}
+	return nil
+}
+
 func titleForType(t string) string {
 	switch t {
 	case "onboarding":

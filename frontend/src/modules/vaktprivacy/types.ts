@@ -168,8 +168,8 @@ export interface UpdateBreachInput {
   data_categories: string[]
 }
 
-export type DSRType = 'access' | 'erasure' | 'portability' | 'objection' | 'rectification'
-export type DSRStatus = 'open' | 'in_progress' | 'completed' | 'rejected'
+export type DSRType = 'access' | 'erasure' | 'portability' | 'objection' | 'rectification' | 'restriction' | 'no_profiling'
+export type DSRStatus = 'open' | 'in_progress' | 'completed' | 'rejected' | 'extended' | 'overdue'
 
 export interface DSR {
   id: string
@@ -183,8 +183,22 @@ export interface DSR {
   received_at: string
   completed_at?: string
   notes?: string
+  channel?: string
+  reference_id?: string
+  extension_due_at?: string
+  extension_reason?: string
+  assigned_to?: string
+  resolved_by?: string
   created_at: string
   updated_at: string
+}
+
+export interface DSRSummary {
+  open_count: number
+  overdue_count: number
+  fulfilled_last_12m: number
+  rejected_last_12m: number
+  on_time_rate_pct: number
 }
 
 export interface CreateDSRInput {
@@ -193,9 +207,74 @@ export interface CreateDSRInput {
   type: DSRType
   description?: string
   notes?: string
+  channel?: string
+  reference_id?: string
 }
 
 export interface UpdateDSRInput {
   status: DSRStatus
   notes?: string
+}
+
+export interface ResolveDSRInput {
+  resolution_type: DSRStatus
+  resolution_notes?: string
+  extension_reason?: string
+}
+
+// ── S69-6: Transfer Impact Assessment ────────────────────────────────────────
+
+export interface AdequacyDecision {
+  country_code: string
+  country_name: string
+  has_adequacy: boolean
+  decision_date?: string
+  decision_reference?: string
+  notes?: string
+  last_updated: string
+}
+
+export interface DataTransfer {
+  id: string
+  org_id: string
+  processing_activity_id?: string
+  recipient_name: string
+  recipient_country: string
+  recipient_country_name: string
+  data_categories: string[]
+  transfer_mechanism: string
+  scc_version?: string
+  status: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface TransferImpactAssessment {
+  id: string
+  org_id: string
+  transfer_id: string
+  legal_system_notes: string
+  surveillance_risk: string
+  data_subject_rights_available: boolean
+  encryption_in_transit: boolean
+  encryption_at_rest: boolean
+  pseudonymization_applied: boolean
+  access_controls_documented: boolean
+  supplementary_measures?: string
+  outcome: string
+  reviewed_by?: string
+  reviewed_at?: string
+  valid_until?: string
+  created_at: string
+}
+
+export interface TransferComplianceStatus {
+  total_transfers: number
+  adequate: number
+  requires_tia: number
+  tia_adequate: number
+  tia_adequate_with_measures: number
+  tia_inadequate: number
+  under_review: number
 }

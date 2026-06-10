@@ -20,3 +20,6 @@ func MFAEnforceMiddlewareForTest(db mfaDB) echo.MiddlewareFunc {
 func RequireModuleAccessForTest(db modulePermDB, module string) echo.MiddlewareFunc {
 	return requireModuleAccess(db, module)
 }
+
+// HumanValidationErrorForTest exposes humanValidationError for white-box tests.
+var HumanValidationErrorForTest = humanValidationError

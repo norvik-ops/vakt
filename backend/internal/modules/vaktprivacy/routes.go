@@ -68,7 +68,32 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	// DSR — Data Subject Requests (Art. 15-21 DSGVO)
 	g.GET("/dsr", h.ListDSRs)
 	g.POST("/dsr", h.CreateDSR)
-	g.GET("/dsrs/export.csv", h.ExportDSRsCSV) // must be before /dsr/:id to avoid param capture
+	// CRITICAL: static sub-paths must come before /dsr/:id to avoid param capture
+	g.GET("/dsrs/export.csv", h.ExportDSRsCSV)
+	g.GET("/dsr/summary", h.GetDSRSummary)
+	g.GET("/dsr/export", h.ExportDSRLog)
 	g.PUT("/dsr/:id", h.UpdateDSR)
 	g.DELETE("/dsr/:id", h.DeleteDSR)
+	g.POST("/dsr/:id/resolve", h.ResolveDSR)
+	g.PATCH("/dsr/:id/assign", h.AssignDSR)
+
+	// Retention / deletion reminders (S68-5)
+	g.GET("/retention/summary", h.GetRetentionSummary)
+	g.GET("/retention-templates", h.ListRetentionTemplates)
+	g.GET("/deletion-reminders", h.ListDeletionReminders)
+	g.POST("/deletion-reminders", h.CreateDeletionReminder)
+	g.PATCH("/deletion-reminders/:id/complete", h.CompleteDeletionReminder)
+	g.GET("/processing-activities/:id/retention", h.GetRetentionInfo)
+	g.PUT("/processing-activities/:id/retention", h.UpdateRetentionInfo)
+
+	// S69-6: Transfer Impact Assessment (TIA / Schrems II)
+	if h.tia != nil {
+		g.GET("/adequacy-decisions", h.ListAdequacyDecisions)
+		// CRITICAL: /transfers/compliance must be registered BEFORE /transfers/:id to avoid param conflict.
+		g.GET("/transfers/compliance", h.GetTransferComplianceStatus)
+		g.GET("/transfers", h.ListDataTransfers)
+		g.POST("/transfers", h.CreateDataTransfer)
+		g.GET("/transfers/:id/tia", h.ListTIAs)
+		g.POST("/transfers/:id/tia", h.CreateTIA)
+	}
 }

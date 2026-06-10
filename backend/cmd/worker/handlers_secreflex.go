@@ -19,6 +19,7 @@ import (
 
 	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/modules/vaktaware"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 )
 
 // taskControlOwnerReminder is the Asynq task name for the daily control-owner reminder.
@@ -49,8 +50,120 @@ func handleSendCampaign(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFun
 		}
 
 		svc := vaktaware.NewService(pool, smtpCfg)
-		return svc.SendCampaignEmails(ctx, payload.OrgID, payload.CampaignID)
+		if err := svc.SendCampaignEmails(ctx, payload.OrgID, payload.CampaignID); err != nil {
+			return err
+		}
+
+		// After delivery + completion, check if click rate warrants a risk sync.
+		// Betriebsrat-mode campaigns are always excluded (privacy constraint).
+		repo := vaktaware.NewRepository(pool)
+		campaign, camErr := repo.GetCampaign(ctx, payload.OrgID, payload.CampaignID)
+		if camErr != nil {
+			log.Error().Err(camErr).Str("campaign_id", payload.CampaignID).
+				Msg("awareness_risk_sync: failed to load campaign after send")
+			return nil
+		}
+		if !campaign.BetriebsratMode {
+			stats, statErr := repo.GetCampaignStats(ctx, payload.OrgID, payload.CampaignID)
+			if statErr == nil && stats.TotalTargets >= 5 && stats.ClickRate > 15.0 {
+				syncAwarenessRisk(ctx, pool, payload.OrgID, campaign.Name, payload.CampaignID, stats.ClickRate)
+			}
+		}
+
+		return nil
 	}
+}
+
+// awarenessRiskCategory is the stable category key used to find/upsert the persistent risk.
+const awarenessRiskCategory = "Awareness / Human Risk"
+
+// awarenessRiskLikelihood maps click rate percentage to likelihood (1–5).
+func awarenessRiskLikelihood(clickRate float64) int {
+	switch {
+	case clickRate <= 20.0:
+		return 2
+	case clickRate <= 40.0:
+		return 3
+	default:
+		return 4
+	}
+}
+
+// syncAwarenessRisk upserts a persistent "Awareness / Human Risk" risk and creates a
+// per-campaign CAPA. Privacy guard: only aggregated stats reach this function (no names/emails).
+func syncAwarenessRisk(ctx context.Context, pool *pgxpool.Pool, orgID, campaignName, campaignID string, clickRate float64) {
+	complyRepo := vaktcomply.NewRepository(pool)
+
+	// Upsert: find existing persistent risk for this org/category.
+	risks, err := complyRepo.ListRisks(ctx, orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("awareness_risk_sync: list risks failed")
+		return
+	}
+
+	likelihood := awarenessRiskLikelihood(clickRate)
+	var riskID string
+
+	for _, r := range risks {
+		if r.Category == awarenessRiskCategory {
+			riskID = r.ID
+			_, updateErr := complyRepo.UpdateRisk(ctx, orgID, r.ID, vaktcomply.UpdateRiskInput{
+				Title:       r.Title,
+				Description: r.Description,
+				Category:    r.Category,
+				Likelihood:  likelihood,
+				Impact:      r.Impact,
+				Owner:       r.Owner,
+				Status:      r.Status,
+				Treatment:   r.Treatment,
+			})
+			if updateErr != nil {
+				log.Error().Err(updateErr).Str("risk_id", r.ID).Msg("awareness_risk_sync: update risk likelihood failed")
+				return
+			}
+			break
+		}
+	}
+
+	if riskID == "" {
+		// No persistent risk yet — create one.
+		newRisk, createErr := complyRepo.CreateRisk(ctx, orgID, vaktcomply.CreateRiskInput{
+			Title:       "Awareness-Risiko (Phishing-Simulationen)",
+			Description: "Persistentes Risiko aus internen Phishing-Simulationen. Likelihood wird automatisch nach jeder Kampagne aktualisiert.",
+			Category:    awarenessRiskCategory,
+			Likelihood:  likelihood,
+			Impact:      3,
+			Treatment:   "mitigate",
+		})
+		if createErr != nil {
+			log.Error().Err(createErr).Str("org_id", orgID).Msg("awareness_risk_sync: create risk failed")
+			return
+		}
+		riskID = newRisk.ID
+	}
+
+	// Per-campaign CAPA for historical traceability (never floods the risk register).
+	dueDate := time.Now().UTC().Add(30 * 24 * time.Hour).Format(time.RFC3339)
+	_, capaErr := complyRepo.CreateCAPA(ctx, orgID, vaktcomply.CreateCAPAInput{
+		SourceType:  "risk",
+		SourceID:    riskID,
+		Title:       fmt.Sprintf("Hohe Klickrate: %s — %.1f%%", campaignName, clickRate),
+		Description: fmt.Sprintf("Kampagne \"%s\" (ID: %s) erzielte eine Klickrate von %.1f%%. Überprüfen Sie die Ergebnisse und passen Sie das Schulungskonzept an.", campaignName, campaignID, clickRate),
+		DueDate:     &dueDate,
+		Priority:    "medium",
+	})
+	if capaErr != nil {
+		log.Error().Err(capaErr).Str("campaign_id", campaignID).Msg("awareness_risk_sync: create CAPA failed")
+		return
+	}
+
+	log.Info().
+		Str("org_id", orgID).
+		Str("campaign_id", campaignID).
+		Str("risk_id", riskID).
+		Int("likelihood", likelihood).
+		Float64("click_rate", clickRate).
+		Msg("vaktaware→vaktcomply: awareness risk synced from campaign")
 }
 
 // handleTrainingReminder handles vaktaware:training_reminder jobs.
@@ -271,6 +384,47 @@ func handleControlOwnerReminder(cfg *config.Config, pool *pgxpool.Pool) asynq.Ha
 			Int("sent", sent).
 			Int("total", len(reminders)).
 			Msg("control_owner_reminder: completed")
+		return nil
+	}
+}
+
+// handleAutoEnrollment processes aware:auto_enrollment jobs.
+// For each active enrollment rule matching the trigger type, it enrolls the
+// employee into the target campaign unless they are already enrolled.
+func handleAutoEnrollment(pool *pgxpool.Pool) asynq.HandlerFunc {
+	return func(ctx context.Context, t *asynq.Task) error {
+		var payload vaktaware.AutoEnrollmentPayload
+		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
+			return fmt.Errorf("parse auto_enrollment payload: %w", err)
+		}
+		svc := vaktaware.NewService(pool, vaktaware.SMTPConfig{})
+		if err := svc.HandleAutoEnrollment(ctx, payload); err != nil {
+			return fmt.Errorf("handle auto-enrollment org=%s: %w", payload.OrgID, err)
+		}
+		log.Info().
+			Str("org_id", payload.OrgID).
+			Str("trigger", payload.TriggerType).
+			Str("employee_id", payload.EmployeeID).
+			Msg("auto_enrollment: processed")
+		return nil
+	}
+}
+
+// handleORP3EvidenceSync processes aware:orp3_evidence_sync jobs.
+// It evaluates BSI ORP.3 compliance for the org and writes the result as evidence.
+func handleORP3EvidenceSync(pool *pgxpool.Pool) asynq.HandlerFunc {
+	return func(ctx context.Context, t *asynq.Task) error {
+		var payload struct {
+			OrgID string `json:"org_id"`
+		}
+		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
+			return fmt.Errorf("parse orp3_evidence_sync payload: %w", err)
+		}
+		svc := vaktaware.NewService(pool, vaktaware.SMTPConfig{})
+		if err := svc.RunORP3EvidenceSync(ctx, payload.OrgID); err != nil {
+			return fmt.Errorf("orp3_evidence_sync org=%s: %w", payload.OrgID, err)
+		}
+		log.Info().Str("org_id", payload.OrgID).Msg("orp3_evidence_sync: completed")
 		return nil
 	}
 }

@@ -12,7 +12,7 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
-import { useRisk, useUpdateRisk } from '../hooks/useRisks'
+import { useRisk, useUpdateRisk, useUpdateRiskResidual, useAcceptRisk } from '../hooks/useRisks'
 import { useRiskNarrative } from '../hooks/useAIInsights'
 import RiskTreatmentPanel from '../components/RiskTreatmentPanel'
 import type { Risk, UpdateRiskInput } from '../types'
@@ -63,15 +63,32 @@ function AIRiskNarrativePanel({ riskId, existingNarrative }: { riskId: string; e
   )
 }
 
+function residualScoreColor(score: number | undefined): string {
+  if (score === undefined) return 'bg-muted text-muted-foreground border-border'
+  if (score > 12) return 'bg-red-500/20 text-red-400 border-red-500/30'
+  if (score >= 6)  return 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+  return 'bg-green-500/20 text-green-400 border-green-500/30'
+}
+
 export default function RiskDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { formatDate } = useFormatDate()
   const { data: risk, isLoading, isError } = useRisk(id ?? '')
   const update = useUpdateRisk(id ?? '')
+  const updateResidual = useUpdateRiskResidual(id ?? '')
+  const acceptRisk = useAcceptRisk(id ?? '')
 
   const [form, setForm] = useState<UpdateRiskInput | null>(null)
   const [dirty, setDirty] = useState(false)
+
+  // Residual form state
+  const [residualForm, setResidualForm] = useState<{
+    inherent_likelihood: string; inherent_impact: string;
+    residual_likelihood: string; residual_impact: string;
+  }>({ inherent_likelihood: '', inherent_impact: '', residual_likelihood: '', residual_impact: '' })
+  const [showAcceptDialog, setShowAcceptDialog] = useState(false)
+  const [justification, setJustification] = useState('')
 
   useEffect(() => {
     if (risk) trackPage(`/vaktcomply/risks/${id}`, risk.title, '⚠️')
@@ -89,6 +106,12 @@ export default function RiskDetailPage() {
         status: risk.status,
         treatment: risk.treatment,
         treatment_notes: risk.treatment_notes ?? '',
+      })
+      setResidualForm({
+        inherent_likelihood: risk.inherent_likelihood !== undefined ? String(risk.inherent_likelihood) : '',
+        inherent_impact: risk.inherent_impact !== undefined ? String(risk.inherent_impact) : '',
+        residual_likelihood: risk.residual_likelihood !== null && risk.residual_likelihood !== undefined ? String(risk.residual_likelihood) : '',
+        residual_impact: risk.residual_impact !== null && risk.residual_impact !== undefined ? String(risk.residual_impact) : '',
       })
     }
   }, [risk, form])
@@ -240,6 +263,123 @@ export default function RiskDetailPage() {
             <h2 className="text-sm font-semibold mb-3">Risikobehandlung (ISO 27001 Clause 6)</h2>
             <RiskTreatmentPanel riskId={id ?? ''} risk={risk} />
           </div>
+
+          {/* S61-4: Residualrisiko-Berechnung */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Residualrisiko-Berechnung (ISO 27001 Clause 8.3)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Score indicators */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Bruttorisiko:</span>
+                  <Badge className={residualScoreColor(risk.inherent_score)}>
+                    {risk.inherent_score !== undefined ? `${risk.inherent_score} / 25` : '–'}
+                  </Badge>
+                </div>
+                {risk.inherent_score !== undefined && risk.residual_score !== undefined && (
+                  <span className="text-muted-foreground text-xs">→</span>
+                )}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Nettorisiko:</span>
+                  <Badge className={residualScoreColor(risk.residual_score)}>
+                    {risk.residual_score !== undefined ? `${risk.residual_score} / 25` : '–'}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Edit form */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {(
+                  [
+                    { key: 'inherent_likelihood' as const, label: 'Brutto-Wahrscheinlichkeit' },
+                    { key: 'inherent_impact' as const, label: 'Brutto-Auswirkung' },
+                    { key: 'residual_likelihood' as const, label: 'Netto-Wahrscheinlichkeit' },
+                    { key: 'residual_impact' as const, label: 'Netto-Auswirkung' },
+                  ] as const
+                ).map(({ key, label }) => (
+                  <div key={key} className="space-y-1">
+                    <Label className="text-xs">{label} (1–5)</Label>
+                    <Input
+                      type="number" min={1} max={5} placeholder="–"
+                      value={residualForm[key]}
+                      onChange={(e) => setResidualForm((f) => ({ ...f, [key]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={updateResidual.isPending}
+                onClick={() => {
+                  const parse = (v: string) => { const n = parseInt(v, 10); return isNaN(n) ? undefined : Math.min(5, Math.max(1, n)); }
+                  updateResidual.mutate({
+                    inherent_likelihood: parse(residualForm.inherent_likelihood),
+                    inherent_impact: parse(residualForm.inherent_impact),
+                    residual_likelihood: parse(residualForm.residual_likelihood),
+                    residual_impact: parse(residualForm.residual_impact),
+                  })
+                }}
+              >
+                {updateResidual.isPending ? 'Speichern …' : 'Werte speichern'}
+              </Button>
+
+              {/* Risk acceptance section (only when treatment_status = accepted) */}
+              {risk.treatment_status === 'accepted' && (
+                <div className="border-t pt-4 space-y-2">
+                  <p className="text-xs font-medium">Formale Risikoakzeptanz</p>
+                  {risk.risk_accepted_at ? (
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p>Akzeptiert am: {formatDate(risk.risk_accepted_at)}</p>
+                      {risk.risk_acceptance_justification && (
+                        <p className="text-primary whitespace-pre-wrap">{risk.risk_acceptance_justification}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      {!showAcceptDialog ? (
+                        <Button size="sm" variant="outline" onClick={() => setShowAcceptDialog(true)}>
+                          Risiko formal akzeptieren
+                        </Button>
+                      ) : (
+                        <div className="space-y-2">
+                          <Label className="text-xs">Begründung (Pflicht)</Label>
+                          <Textarea
+                            rows={3}
+                            placeholder="Begründung für die Risikoakzeptanz…"
+                            value={justification}
+                            onChange={(e) => setJustification(e.target.value)}
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              disabled={!justification.trim() || acceptRisk.isPending}
+                              onClick={() => {
+                                acceptRisk.mutate(
+                                  { justification },
+                                  { onSuccess: () => { setShowAcceptDialog(false); setJustification(''); } },
+                                )
+                              }}
+                            >
+                              {acceptRisk.isPending ? 'Akzeptieren …' : 'Bestätigen'}
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => setShowAcceptDialog(false)}>
+                              Abbrechen
+                            </Button>
+                          </div>
+                          {acceptRisk.isError && (
+                            <p className="text-xs text-red-400">{acceptRisk.error?.message ?? 'Fehler'}</p>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
 

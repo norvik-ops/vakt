@@ -26,7 +26,8 @@ func NewHandler(svc *Service) *Handler {
 
 // RegisterRoutes wires cloud integration routes under the provided echo group.
 // Expected group prefix: /integrations/cloud
-func RegisterRoutes(g *echo.Group, db *pgxpool.Pool, masterKey []byte, evidence EvidenceWriter) {
+// Returns the Service so callers can inject it into other handlers (e.g., the vakthr Personio webhook).
+func RegisterRoutes(g *echo.Group, db *pgxpool.Pool, masterKey []byte, evidence EvidenceWriter) *Service {
 	svc := NewService(db, masterKey, evidence)
 	h := NewHandler(svc)
 
@@ -47,6 +48,86 @@ func RegisterRoutes(g *echo.Group, db *pgxpool.Pool, masterKey []byte, evidence 
 	az.POST("/sync", h.SyncAzure)
 	az.GET("/status", h.GetAzureStatus)
 	az.GET("/evidence", h.GetAzureEvidence)
+
+	// Hetzner
+	hz := g.Group("/hetzner")
+	hz.GET("/config", h.GetHetznerConfig)
+	hz.PUT("/config", h.SaveHetznerConfig)
+	hz.POST("/sync", h.SyncHetzner)
+	hz.GET("/status", h.GetHetznerStatus)
+	hz.GET("/evidence", h.GetHetznerEvidence)
+
+	// IONOS
+	io := g.Group("/ionos")
+	io.GET("/config", h.GetIONOSConfig)
+	io.PUT("/config", h.SaveIONOSConfig)
+	io.POST("/sync", h.SyncIONOS)
+	io.GET("/status", h.GetIONOSStatus)
+	io.GET("/evidence", h.GetIONOSEvidence)
+
+	// Wazuh
+	wz := g.Group("/wazuh")
+	wz.GET("/config", h.GetWazuhConfig)
+	wz.PUT("/config", h.SaveWazuhConfig)
+	wz.POST("/sync", h.SyncWazuh)
+	wz.GET("/status", h.GetWazuhStatus)
+	wz.GET("/evidence", h.GetWazuhEvidence)
+
+	// Prometheus
+	pr := g.Group("/prometheus")
+	pr.GET("/config", h.GetPrometheusConfig)
+	pr.PUT("/config", h.SavePrometheusConfig)
+	pr.POST("/sync", h.SyncPrometheus)
+	pr.GET("/status", h.GetPrometheusStatus)
+	pr.GET("/evidence", h.GetPrometheusEvidence)
+
+	// Entra ID (Microsoft Graph API)
+	ei := g.Group("/entra-id")
+	ei.GET("/config", h.GetEntraIDConfig)
+	ei.PUT("/config", h.SaveEntraIDConfig)
+	ei.POST("/sync", h.SyncEntraID)
+	ei.GET("/status", h.GetEntraIDStatus)
+	ei.GET("/evidence", h.GetEntraIDEvidence)
+
+	// Keycloak
+	kc := g.Group("/keycloak")
+	kc.GET("/config", h.GetKeycloakConfig)
+	kc.PUT("/config", h.SaveKeycloakConfig)
+	kc.POST("/sync", h.SyncKeycloak)
+	kc.GET("/status", h.GetKeycloakStatus)
+	kc.GET("/evidence", h.GetKeycloakEvidence)
+
+	// LDAP / Active Directory
+	ld := g.Group("/ldap")
+	ld.GET("/config", h.GetLDAPConfig)
+	ld.PUT("/config", h.SaveLDAPConfig)
+	ld.POST("/sync", h.SyncLDAP)
+	ld.GET("/status", h.GetLDAPStatus)
+	ld.GET("/evidence", h.GetLDAPEvidence)
+
+	// GitLab (self-managed + GitLab.com)
+	gl := g.Group("/gitlab")
+	gl.GET("/config", h.GetGitLabConfig)
+	gl.PUT("/config", h.SaveGitLabConfig)
+	gl.POST("/sync", h.SyncGitLab)
+	gl.GET("/status", h.GetGitLabStatus)
+	gl.GET("/evidence", h.GetGitLabEvidence)
+
+	// SonarQube / SonarCloud
+	sq := g.Group("/sonarqube")
+	sq.GET("/config", h.GetSonarQubeConfig)
+	sq.PUT("/config", h.SaveSonarQubeConfig)
+	sq.POST("/sync", h.SyncSonarQube)
+	sq.GET("/status", h.GetSonarQubeStatus)
+	sq.GET("/evidence", h.GetSonarQubeEvidence)
+
+	// Personio (push-only via webhook — no sync endpoint)
+	pe := g.Group("/personio")
+	pe.GET("/config", h.GetPersonioConfig)
+	pe.PUT("/config", h.SavePersonioConfig)
+	pe.GET("/status", h.GetPersonioStatus)
+
+	return svc
 }
 
 // --- AWS handlers ---
@@ -203,6 +284,552 @@ func (h *Handler) GetAzureEvidence(c echo.Context) error {
 		items = []EvidenceItem{}
 	}
 	return c.JSON(http.StatusOK, items)
+}
+
+// --- Hetzner handlers ---
+
+func (h *Handler) GetHetznerConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	cfg, err := h.svc.GetHetznerConfig(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, cfg)
+}
+
+func (h *Handler) SaveHetznerConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	var in SaveHetznerConfigInput
+	if err := c.Bind(&in); err != nil {
+		return badRequest(c, "invalid request body")
+	}
+	if err := validate.Struct(in); err != nil {
+		return validationError(c, err)
+	}
+	if err := h.svc.SaveHetznerConfig(c.Request().Context(), orgID, in); err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) SyncHetzner(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	count, err := h.svc.SyncHetzner(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("SyncHetzner failed")
+		return c.JSON(http.StatusOK, map[string]any{"ok": false, "error": "cloud sync failed", "evidence_created": 0})
+	}
+	return c.JSON(http.StatusOK, map[string]any{"ok": true, "evidence_created": count})
+}
+
+func (h *Handler) GetHetznerStatus(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	st, err := h.svc.GetHetznerStatus(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, st)
+}
+
+func (h *Handler) GetHetznerEvidence(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	items, err := h.svc.RecentEvidence(c.Request().Context(), orgID, ProviderHetzner)
+	if err != nil {
+		return serverError(c, err)
+	}
+	if items == nil {
+		items = []EvidenceItem{}
+	}
+	return c.JSON(http.StatusOK, items)
+}
+
+// --- IONOS handlers ---
+
+func (h *Handler) GetIONOSConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	cfg, err := h.svc.GetIONOSConfig(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, cfg)
+}
+
+func (h *Handler) SaveIONOSConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	var in SaveIONOSConfigInput
+	if err := c.Bind(&in); err != nil {
+		return badRequest(c, "invalid request body")
+	}
+	if err := h.svc.SaveIONOSConfig(c.Request().Context(), orgID, in); err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) SyncIONOS(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	count, err := h.svc.SyncIONOS(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("SyncIONOS failed")
+		return c.JSON(http.StatusOK, map[string]any{"ok": false, "error": "cloud sync failed", "evidence_created": 0})
+	}
+	return c.JSON(http.StatusOK, map[string]any{"ok": true, "evidence_created": count})
+}
+
+func (h *Handler) GetIONOSStatus(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	st, err := h.svc.GetIONOSStatus(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, st)
+}
+
+func (h *Handler) GetIONOSEvidence(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	items, err := h.svc.RecentEvidence(c.Request().Context(), orgID, ProviderIONOS)
+	if err != nil {
+		return serverError(c, err)
+	}
+	if items == nil {
+		items = []EvidenceItem{}
+	}
+	return c.JSON(http.StatusOK, items)
+}
+
+// --- Wazuh handlers ---
+
+func (h *Handler) GetWazuhConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	cfg, err := h.svc.GetWazuhConfig(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, cfg)
+}
+
+func (h *Handler) SaveWazuhConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	var in SaveWazuhConfigInput
+	if err := c.Bind(&in); err != nil {
+		return badRequest(c, "invalid request body")
+	}
+	if err := validate.Struct(in); err != nil {
+		return validationError(c, err)
+	}
+	if err := h.svc.SaveWazuhConfig(c.Request().Context(), orgID, in); err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) SyncWazuh(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	count, err := h.svc.SyncWazuh(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("SyncWazuh failed")
+		return c.JSON(http.StatusOK, map[string]any{"ok": false, "error": "cloud sync failed", "evidence_created": 0})
+	}
+	return c.JSON(http.StatusOK, map[string]any{"ok": true, "evidence_created": count})
+}
+
+func (h *Handler) GetWazuhStatus(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	st, err := h.svc.GetWazuhStatus(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, st)
+}
+
+func (h *Handler) GetWazuhEvidence(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	items, err := h.svc.RecentEvidence(c.Request().Context(), orgID, ProviderWazuh)
+	if err != nil {
+		return serverError(c, err)
+	}
+	if items == nil {
+		items = []EvidenceItem{}
+	}
+	return c.JSON(http.StatusOK, items)
+}
+
+// --- Prometheus handlers ---
+
+func (h *Handler) GetPrometheusConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	cfg, err := h.svc.GetPrometheusConfig(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, cfg)
+}
+
+func (h *Handler) SavePrometheusConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	var in SavePrometheusConfigInput
+	if err := c.Bind(&in); err != nil {
+		return badRequest(c, "invalid request body")
+	}
+	if err := validate.Struct(in); err != nil {
+		return validationError(c, err)
+	}
+	if err := h.svc.SavePrometheusConfig(c.Request().Context(), orgID, in); err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) SyncPrometheus(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	count, err := h.svc.SyncPrometheus(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("SyncPrometheus failed")
+		return c.JSON(http.StatusOK, map[string]any{"ok": false, "error": "cloud sync failed", "evidence_created": 0})
+	}
+	return c.JSON(http.StatusOK, map[string]any{"ok": true, "evidence_created": count})
+}
+
+func (h *Handler) GetPrometheusStatus(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	st, err := h.svc.GetPrometheusStatus(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, st)
+}
+
+func (h *Handler) GetPrometheusEvidence(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	items, err := h.svc.RecentEvidence(c.Request().Context(), orgID, ProviderPrometheus)
+	if err != nil {
+		return serverError(c, err)
+	}
+	if items == nil {
+		items = []EvidenceItem{}
+	}
+	return c.JSON(http.StatusOK, items)
+}
+
+// --- Entra ID handlers ---
+
+func (h *Handler) GetEntraIDConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	cfg, err := h.svc.GetEntraIDConfig(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, cfg)
+}
+
+func (h *Handler) SaveEntraIDConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	var in SaveEntraIDConfigInput
+	if err := c.Bind(&in); err != nil {
+		return badRequest(c, "invalid request body")
+	}
+	if err := validate.Struct(in); err != nil {
+		return validationError(c, err)
+	}
+	if err := h.svc.SaveEntraIDConfig(c.Request().Context(), orgID, in); err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) SyncEntraID(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	count, err := h.svc.SyncEntraID(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("SyncEntraID failed")
+		return c.JSON(http.StatusOK, map[string]any{"ok": false, "error": "cloud sync failed", "evidence_created": 0})
+	}
+	return c.JSON(http.StatusOK, map[string]any{"ok": true, "evidence_created": count})
+}
+
+func (h *Handler) GetEntraIDStatus(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	st, err := h.svc.GetEntraIDStatus(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, st)
+}
+
+func (h *Handler) GetEntraIDEvidence(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	items, err := h.svc.RecentEvidence(c.Request().Context(), orgID, ProviderEntraID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	if items == nil {
+		items = []EvidenceItem{}
+	}
+	return c.JSON(http.StatusOK, items)
+}
+
+// --- Keycloak handlers ---
+
+func (h *Handler) GetKeycloakConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	cfg, err := h.svc.GetKeycloakConfig(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, cfg)
+}
+
+func (h *Handler) SaveKeycloakConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	var in SaveKeycloakConfigInput
+	if err := c.Bind(&in); err != nil {
+		return badRequest(c, "invalid request body")
+	}
+	if err := validate.Struct(in); err != nil {
+		return validationError(c, err)
+	}
+	if err := h.svc.SaveKeycloakConfig(c.Request().Context(), orgID, in); err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) SyncKeycloak(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	count, err := h.svc.SyncKeycloak(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("SyncKeycloak failed")
+		return c.JSON(http.StatusOK, map[string]any{"ok": false, "error": "cloud sync failed", "evidence_created": 0})
+	}
+	return c.JSON(http.StatusOK, map[string]any{"ok": true, "evidence_created": count})
+}
+
+func (h *Handler) GetKeycloakStatus(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	st, err := h.svc.GetKeycloakStatus(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, st)
+}
+
+func (h *Handler) GetKeycloakEvidence(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	items, err := h.svc.RecentEvidence(c.Request().Context(), orgID, ProviderKeycloak)
+	if err != nil {
+		return serverError(c, err)
+	}
+	if items == nil {
+		items = []EvidenceItem{}
+	}
+	return c.JSON(http.StatusOK, items)
+}
+
+// --- LDAP handlers ---
+
+func (h *Handler) GetLDAPConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	cfg, err := h.svc.GetLDAPConfig(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, cfg)
+}
+
+func (h *Handler) SaveLDAPConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	var in SaveLDAPConfigInput
+	if err := c.Bind(&in); err != nil {
+		return badRequest(c, "invalid request body")
+	}
+	if err := validate.Struct(in); err != nil {
+		return validationError(c, err)
+	}
+	if err := h.svc.SaveLDAPConfig(c.Request().Context(), orgID, in); err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) SyncLDAP(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	count, err := h.svc.SyncLDAP(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("SyncLDAP failed")
+		return c.JSON(http.StatusOK, map[string]any{"ok": false, "error": "cloud sync failed", "evidence_created": 0})
+	}
+	return c.JSON(http.StatusOK, map[string]any{"ok": true, "evidence_created": count})
+}
+
+func (h *Handler) GetLDAPStatus(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	st, err := h.svc.GetLDAPStatus(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, st)
+}
+
+func (h *Handler) GetLDAPEvidence(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	items, err := h.svc.RecentEvidence(c.Request().Context(), orgID, ProviderLDAP)
+	if err != nil {
+		return serverError(c, err)
+	}
+	if items == nil {
+		items = []EvidenceItem{}
+	}
+	return c.JSON(http.StatusOK, items)
+}
+
+// --- GitLab handlers ---
+
+func (h *Handler) GetGitLabConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	cfg, err := h.svc.GetGitLabConfig(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, cfg)
+}
+
+func (h *Handler) SaveGitLabConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	var in SaveGitLabConfigInput
+	if err := c.Bind(&in); err != nil {
+		return badRequest(c, "invalid request body")
+	}
+	if err := validate.Struct(in); err != nil {
+		return validationError(c, err)
+	}
+	if err := h.svc.SaveGitLabConfig(c.Request().Context(), orgID, in); err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) SyncGitLab(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	count, err := h.svc.SyncGitLab(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("SyncGitLab failed")
+		return c.JSON(http.StatusOK, map[string]any{"ok": false, "error": "cloud sync failed", "evidence_created": 0})
+	}
+	return c.JSON(http.StatusOK, map[string]any{"ok": true, "evidence_created": count})
+}
+
+func (h *Handler) GetGitLabStatus(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	st, err := h.svc.GetGitLabStatus(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, st)
+}
+
+func (h *Handler) GetGitLabEvidence(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	items, err := h.svc.RecentEvidence(c.Request().Context(), orgID, ProviderGitLab)
+	if err != nil {
+		return serverError(c, err)
+	}
+	if items == nil {
+		items = []EvidenceItem{}
+	}
+	return c.JSON(http.StatusOK, items)
+}
+
+// --- SonarQube handlers ---
+
+func (h *Handler) GetSonarQubeConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	cfg, err := h.svc.GetSonarQubeConfig(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, cfg)
+}
+
+func (h *Handler) SaveSonarQubeConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	var in SaveSonarQubeConfigInput
+	if err := c.Bind(&in); err != nil {
+		return badRequest(c, "invalid request body")
+	}
+	if err := validate.Struct(in); err != nil {
+		return validationError(c, err)
+	}
+	if err := h.svc.SaveSonarQubeConfig(c.Request().Context(), orgID, in); err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) SyncSonarQube(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	count, err := h.svc.SyncSonarQube(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("SyncSonarQube failed")
+		return c.JSON(http.StatusOK, map[string]any{"ok": false, "error": "cloud sync failed", "evidence_created": 0})
+	}
+	return c.JSON(http.StatusOK, map[string]any{"ok": true, "evidence_created": count})
+}
+
+func (h *Handler) GetSonarQubeStatus(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	st, err := h.svc.GetSonarQubeStatus(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, st)
+}
+
+func (h *Handler) GetSonarQubeEvidence(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	items, err := h.svc.RecentEvidence(c.Request().Context(), orgID, ProviderSonarQube)
+	if err != nil {
+		return serverError(c, err)
+	}
+	if items == nil {
+		items = []EvidenceItem{}
+	}
+	return c.JSON(http.StatusOK, items)
+}
+
+// --- Personio handlers ---
+
+func (h *Handler) GetPersonioConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	cfg, err := h.svc.GetPersonioConfig(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, cfg)
+}
+
+func (h *Handler) SavePersonioConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	var in SavePersonioConfigInput
+	if err := c.Bind(&in); err != nil {
+		return badRequest(c, "invalid request body")
+	}
+	if err := validate.Struct(in); err != nil {
+		return validationError(c, err)
+	}
+	if err := h.svc.SavePersonioConfig(c.Request().Context(), orgID, in); err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) GetPersonioStatus(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	st, err := h.svc.GetPersonioStatus(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	st.WebhookURL = "/api/v1/vakthr/webhooks/personio/" + orgID
+	return c.JSON(http.StatusOK, st)
 }
 
 // --- helpers ---

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../shared/components/PageHeader'
 import { Spinner } from '../components/Spinner'
 import { Button } from '../components/ui/button'
@@ -62,18 +63,19 @@ const DEFAULT_CONFIG: ScoreConfig = {
 
 type Errors = Partial<Record<keyof ScoreConfig, string>>
 
-function validate(form: ScoreConfig): Errors {
+function validate(form: ScoreConfig, fieldError: string): Errors {
   const errors: Errors = {}
   const fields = Object.keys(form) as (keyof ScoreConfig)[]
   for (const key of fields) {
     if (form[key] < 1 || form[key] > 100) {
-      errors[key] = 'Wert muss zwischen 1 und 100 liegen'
+      errors[key] = fieldError
     }
   }
   return errors
 }
 
 export default function ScoreConfigPage() {
+  const { t } = useTranslation()
   const { data, isLoading } = useScoreConfig()
   const update = useUpdateScoreConfig()
   const toast = useToast()
@@ -88,38 +90,38 @@ export default function ScoreConfigPage() {
   function handleChange(field: keyof ScoreConfig, value: number) {
     const next = { ...form, [field]: value }
     setForm(next)
-    const errs = validate(next)
+    const errs = validate(next, t('scoreConfig.fieldError'))
     setErrors(errs)
   }
 
   function handleSave() {
-    const errs = validate(form)
+    const errs = validate(form, t('scoreConfig.fieldError'))
     setErrors(errs)
     if (Object.keys(errs).length > 0) return
     update.mutate(form, {
-      onSuccess: () => { toast.show('Score-Konfiguration gespeichert'); },
+      onSuccess: () => { toast.show(t('scoreConfig.saved')); },
     })
   }
 
   const hasErrors = Object.keys(errors).length > 0
 
   const FIELDS: { label: string; field: keyof ScoreConfig }[] = [
-    { label: 'Basis-Score', field: 'base_score' },
-    { label: 'Kritisch-Penalty (pro Finding)', field: 'crit_penalty' },
-    { label: 'Kritisch-Penalty Cap', field: 'crit_penalty_cap' },
-    { label: 'Hoch-Penalty (pro Finding)', field: 'high_penalty' },
-    { label: 'Hoch-Penalty Cap', field: 'high_penalty_cap' },
-    { label: 'Datenpannen-Penalty (pro Breach)', field: 'breach_penalty' },
-    { label: 'Datenpannen-Penalty Cap', field: 'breach_penalty_cap' },
-    { label: 'Framework-Bonus (pro Framework)', field: 'fw_bonus' },
-    { label: 'Framework-Bonus Cap', field: 'fw_bonus_cap' },
+    { label: t('scoreConfig.fields.base_score'), field: 'base_score' },
+    { label: t('scoreConfig.fields.crit_penalty'), field: 'crit_penalty' },
+    { label: t('scoreConfig.fields.crit_penalty_cap'), field: 'crit_penalty_cap' },
+    { label: t('scoreConfig.fields.high_penalty'), field: 'high_penalty' },
+    { label: t('scoreConfig.fields.high_penalty_cap'), field: 'high_penalty_cap' },
+    { label: t('scoreConfig.fields.breach_penalty'), field: 'breach_penalty' },
+    { label: t('scoreConfig.fields.breach_penalty_cap'), field: 'breach_penalty_cap' },
+    { label: t('scoreConfig.fields.fw_bonus'), field: 'fw_bonus' },
+    { label: t('scoreConfig.fields.fw_bonus_cap'), field: 'fw_bonus_cap' },
   ]
 
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Security Score Konfiguration"
-        description="Passen Sie die Gewichtung der Score-Formel an Ihre Risikopriorität an."
+        title={t('scoreConfig.title')}
+        description={t('scoreConfig.description')}
       />
 
       {toast.message && (
@@ -133,16 +135,16 @@ export default function ScoreConfigPage() {
 
           {/* Formula */}
           <div className="bg-surface border border-border rounded-xl p-5">
-            <h2 className="text-sm font-semibold text-primary mb-2">Score-Formel</h2>
+            <h2 className="text-sm font-semibold text-primary mb-2">{t('scoreConfig.formulaTitle')}</h2>
             <p className="text-xs text-secondary font-mono leading-relaxed">
               Score = Basis − CritPenalty(max Cap) − HighPenalty(max Cap) − BreachPenalty(max Cap) + FWBonus(max Cap)
             </p>
-            <p className="text-[11px] text-secondary mt-2">Ergebnis wird auf 0–100 begrenzt.</p>
+            <p className="text-[11px] text-secondary mt-2">{t('scoreConfig.formulaHint')}</p>
           </div>
 
           {/* Fields */}
           <div className="bg-surface border border-border rounded-xl p-5">
-            <h2 className="text-sm font-semibold text-primary mb-4">Gewichtungen</h2>
+            <h2 className="text-sm font-semibold text-primary mb-4">{t('scoreConfig.weightsTitle')}</h2>
             {isLoading ? (
               <div className="flex items-center justify-center h-16">
                 <Spinner size="sm" />
@@ -170,14 +172,14 @@ export default function ScoreConfigPage() {
               disabled={update.isPending || isLoading}
               className="h-8 text-sm"
             >
-              Zurücksetzen
+              {t('scoreConfig.reset')}
             </Button>
             <Button
               onClick={handleSave}
               disabled={hasErrors || update.isPending || isLoading}
               className="h-8 text-sm"
             >
-              {update.isPending ? 'Wird gespeichert…' : 'Speichern'}
+              {update.isPending ? t('scoreConfig.saving') : t('scoreConfig.save')}
             </Button>
           </div>
         </div>

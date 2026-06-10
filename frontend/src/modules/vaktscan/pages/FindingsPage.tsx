@@ -233,7 +233,7 @@ export default function FindingsPage() {
   // Augment with numeric severity order for sorting
   const findingsWithOrder: SortableFinding[] = rawFindings.map((f) => ({
     ...f,
-    severity_order: SEVERITY_ORDER[f.severity] ?? 0,
+    severity_order: SEVERITY_ORDER[f.severity] || 0,
   }))
   const {
     sorted: sortedFindings,
@@ -492,7 +492,7 @@ export default function FindingsPage() {
         )}
         {isError && (
           <ErrorState
-            message={error?.message}
+            message={error instanceof Error ? error.message : undefined}
             onRetry={() => void refetch()}
           />
         )}
@@ -573,8 +573,7 @@ export default function FindingsPage() {
                     className="px-4 py-3 text-left text-sm font-medium text-secondary"
                   />
                   <TableHead>{t('vaktscan.findingsPage.colAsset')}</TableHead>
-                  <TableHead>{t('vaktscan.findingsPage.colCve')}</TableHead>
-                  <TableHead>{t('vaktscan.findingsPage.colCvss')}</TableHead>
+                  <TableHead>CVE / CVSS</TableHead>
                   <SortableHeader
                     label="Erstellt"
                     sortKey="created_at"
@@ -604,7 +603,7 @@ export default function FindingsPage() {
                     }}
                     aria-selected={selected.has(f.id)}
                     className={cn(
-                      'cursor-pointer hover:bg-surface2',
+                      'cursor-pointer hover:bg-surface2 [&>td]:py-3',
                       (index === focusedIndex || index === tableKeyIdx) && 'ring-1 ring-brand bg-brand/10 dark:bg-muted/50',
                       selected.has(f.id) && 'bg-brand/5',
                     )}
@@ -640,10 +639,10 @@ export default function FindingsPage() {
                       {f.asset_name ?? '—'}
                     </TableCell>
                     <TableCell className="font-mono text-xs" onClick={() => { navigate(`/vaktscan/findings/${f.id}`); }}>
-                      {f.cve_id ?? '—'}
-                    </TableCell>
-                    <TableCell onClick={() => { navigate(`/vaktscan/findings/${f.id}`); }}>
-                      {f.cvss_score != null ? f.cvss_score.toFixed(1) : '—'}
+                      <span className="block">{f.cve_id ?? '—'}</span>
+                      {f.cvss_score != null && (
+                        <span className="text-[10px] text-secondary">{f.cvss_score.toFixed(1)}</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm text-secondary" onClick={() => { navigate(`/vaktscan/findings/${f.id}`); }}>
                       {formatDate(f.created_at)}

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../../api/client'
-import type { DSR, CreateDSRInput, UpdateDSRInput } from '../types'
+import type { DSR, DSRSummary, CreateDSRInput, UpdateDSRInput, ResolveDSRInput } from '../types'
 
 /**
  * Fetches all Data Subject Requests (Betroffenenanfragen) for the current organisation.
@@ -60,6 +60,26 @@ export function useDeleteDSR() {
     mutationFn: (id) => apiFetch<undefined>(`/vaktprivacy/dsr/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['vaktprivacy', 'dsr'] })
+    },
+  })
+}
+
+export function useDSRSummary() {
+  return useQuery<DSRSummary>({
+    queryKey: ['vaktprivacy', 'dsr-summary'],
+    queryFn: () => apiFetch<DSRSummary>('/vaktprivacy/dsr/summary'),
+    staleTime: 60 * 1000,
+  })
+}
+
+export function useResolveDSR() {
+  const queryClient = useQueryClient()
+  return useMutation<DSR, Error, { id: string; input: ResolveDSRInput }>({
+    mutationFn: ({ id, input }) =>
+      apiFetch<DSR>(`/vaktprivacy/dsr/${id}/resolve`, { method: 'POST', body: JSON.stringify(input) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['vaktprivacy', 'dsr'] })
+      void queryClient.invalidateQueries({ queryKey: ['vaktprivacy', 'dsr-summary'] })
     },
   })
 }

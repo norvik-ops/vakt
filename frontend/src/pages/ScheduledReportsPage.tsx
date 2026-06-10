@@ -3,6 +3,7 @@
  * Backend: /api/v1/reports/scheduled
  */
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2, Play, Calendar, X } from 'lucide-react'
 import { Spinner } from '../components/Spinner'
@@ -114,17 +115,23 @@ function useRunReport() {
 
 // ─── Labels ───────────────────────────────────────────────────────────────────
 
-const REPORT_TYPE_LABELS: Record<ReportType, string> = {
-  compliance:   'Compliance-Übersicht',
-  findings:     'Findings-Report',
-  risk:         'Risk-Report',
-  board_report: 'Management Board-Bericht (PDF)',
+function useReportTypeLabels(): Record<ReportType, string> {
+  const { t } = useTranslation()
+  return {
+    compliance:   t('scheduledReports.types.compliance'),
+    findings:     t('scheduledReports.types.findings'),
+    risk:         t('scheduledReports.types.risk'),
+    board_report: t('scheduledReports.types.boardReport'),
+  }
 }
 
-const SCHEDULE_LABELS: Record<Schedule, string> = {
-  weekly:    'Wöchentlich (Montag)',
-  monthly:   'Monatlich (1. des Monats)',
-  quarterly: 'Vierteljährlich',
+function useScheduleLabels(): Record<Schedule, string> {
+  const { t } = useTranslation()
+  return {
+    weekly:    t('scheduledReports.schedules.weekly'),
+    monthly:   t('scheduledReports.schedules.monthly'),
+    quarterly: t('scheduledReports.schedules.quarterly'),
+  }
 }
 
 const FORMAT_LABELS: Record<Format, string> = {
@@ -140,6 +147,7 @@ interface ChipsInputProps {
 }
 
 function ChipsInput({ value, onChange }: ChipsInputProps) {
+  const { t } = useTranslation()
   const [input, setInput] = useState('')
 
   function addChip() {
@@ -175,7 +183,7 @@ function ChipsInput({ value, onChange }: ChipsInputProps) {
             type="button"
             onClick={() => { removeChip(chip); }}
             className="hover:text-red-500 transition-colors"
-            aria-label={`${chip} entfernen`}
+            aria-label={t('scheduledReports.recipientRemove', { email: chip })}
           >
             <X className="w-3 h-3" />
           </button>
@@ -187,7 +195,7 @@ function ChipsInput({ value, onChange }: ChipsInputProps) {
         onChange={(e) => { setInput(e.target.value); }}
         onKeyDown={handleKeyDown}
         onBlur={addChip}
-        placeholder={value.length === 0 ? 'E-Mail eingeben, Enter drücken' : ''}
+        placeholder={value.length === 0 ? t('scheduledReports.emailPlaceholder') : ''}
         className="flex-1 min-w-[160px] text-sm outline-none bg-transparent placeholder:text-muted-foreground"
       />
     </div>
@@ -213,6 +221,9 @@ const emptyForm: CreateScheduledReportInput = {
 }
 
 function ReportDialog({ open, onClose, initial, onSave, isSaving }: ReportDialogProps) {
+  const { t } = useTranslation()
+  const reportTypeLabels = useReportTypeLabels()
+  const scheduleLabels = useScheduleLabels()
   const [form, setForm] = useState<CreateScheduledReportInput>(() =>
     initial
       ? { name: initial.name, type: initial.type, schedule: initial.schedule, recipients: initial.recipients, format: initial.format }
@@ -235,22 +246,22 @@ function ReportDialog({ open, onClose, initial, onSave, isSaving }: ReportDialog
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Bericht bearbeiten' : 'Bericht planen'}</DialogTitle>
+          <DialogTitle>{isEdit ? t('scheduledReports.dialog.titleEdit') : t('scheduledReports.dialog.titleCreate')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label htmlFor="rep-name">Name des Berichts</Label>
+            <Label htmlFor="rep-name">{t('scheduledReports.dialog.labelName')}</Label>
             <Input
               id="rep-name"
               value={form.name}
               onChange={(e) => { setForm({ ...form, name: e.target.value }); }}
-              placeholder="z.B. Monatlicher Compliance-Bericht"
+              placeholder={t('scheduledReports.dialog.namePlaceholder')}
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label>Typ</Label>
+            <Label>{t('scheduledReports.dialog.labelType')}</Label>
             <Select
               value={form.type}
               onValueChange={(v) => { setForm({ ...form, type: v as ReportType }); }}
@@ -259,7 +270,7 @@ function ReportDialog({ open, onClose, initial, onSave, isSaving }: ReportDialog
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(Object.entries(REPORT_TYPE_LABELS) as [ReportType, string][]).map(([v, l]) => (
+                {(Object.entries(reportTypeLabels) as [ReportType, string][]).map(([v, l]) => (
                   <SelectItem key={v} value={v}>{l}</SelectItem>
                 ))}
               </SelectContent>
@@ -267,7 +278,7 @@ function ReportDialog({ open, onClose, initial, onSave, isSaving }: ReportDialog
           </div>
 
           <div className="space-y-1.5">
-            <Label>Zeitplan</Label>
+            <Label>{t('scheduledReports.dialog.labelSchedule')}</Label>
             <Select
               value={form.schedule}
               onValueChange={(v) => { setForm({ ...form, schedule: v as Schedule }); }}
@@ -276,7 +287,7 @@ function ReportDialog({ open, onClose, initial, onSave, isSaving }: ReportDialog
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(Object.entries(SCHEDULE_LABELS) as [Schedule, string][]).map(([v, l]) => (
+                {(Object.entries(scheduleLabels) as [Schedule, string][]).map(([v, l]) => (
                   <SelectItem key={v} value={v}>{l}</SelectItem>
                 ))}
               </SelectContent>
@@ -284,18 +295,18 @@ function ReportDialog({ open, onClose, initial, onSave, isSaving }: ReportDialog
           </div>
 
           <div className="space-y-1.5">
-            <Label>Empfänger</Label>
+            <Label>{t('scheduledReports.dialog.labelRecipients')}</Label>
             <ChipsInput
               value={form.recipients}
               onChange={(v) => { setForm({ ...form, recipients: v }); }}
             />
             <p className="text-[11px] text-secondary">
-              E-Mail eingeben und Enter drücken. Mehrere Empfänger möglich.
+              {t('scheduledReports.dialog.recipientsHint')}
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Format</Label>
+            <Label>{t('scheduledReports.dialog.labelFormat')}</Label>
             <Select
               value={form.format}
               onValueChange={(v) => { setForm({ ...form, format: v as Format }); }}
@@ -313,20 +324,20 @@ function ReportDialog({ open, onClose, initial, onSave, isSaving }: ReportDialog
 
           {(!form.name.trim() || form.recipients.length === 0) && (
             <p className="text-[11px] text-amber-600">
-              Name und mindestens ein Empfänger sind erforderlich.
+              {t('scheduledReports.dialog.validationHint')}
             </p>
           )}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Abbrechen</Button>
+          <Button variant="outline" onClick={onClose}>{t('scheduledReports.dialog.cancel')}</Button>
           <Button onClick={handleSave} disabled={!canSave || isSaving}>
             {isSaving ? (
               <>
                 <Spinner size="xs" color="current" className="mr-1.5" />
-                Wird gespeichert…
+                {t('scheduledReports.dialog.saving')}
               </>
-            ) : 'Speichern'}
+            ) : t('scheduledReports.dialog.save')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -345,6 +356,9 @@ interface ReportCardProps {
 }
 
 function ReportCard({ report, onEdit, onDelete, onRunNow, isRunning }: ReportCardProps) {
+  const { t } = useTranslation()
+  const reportTypeLabels = useReportTypeLabels()
+  const scheduleLabels = useScheduleLabels()
   const { formatDate: fmtDate } = useFormatDate()
   function formatDate(iso: string | null) {
     if (!iso) return '—'
@@ -355,59 +369,59 @@ function ReportCard({ report, onEdit, onDelete, onRunNow, isRunning }: ReportCar
       <div className="flex items-start justify-between gap-2">
         <div>
           <h3 className="font-semibold text-primary text-sm">{report.name}</h3>
-          <p className="text-xs text-secondary mt-0.5">{REPORT_TYPE_LABELS[report.type]}</p>
+          <p className="text-xs text-secondary mt-0.5">{reportTypeLabels[report.type]}</p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <Button
             size="sm"
             variant="ghost"
             className="h-7 w-7 p-0"
-            title="Jetzt senden"
+            title={t('scheduledReports.runNow')}
             onClick={onRunNow}
             disabled={isRunning}
           >
             <Play className="w-3.5 h-3.5" aria-hidden="true" />
-            <span className="sr-only">Jetzt senden</span>
+            <span className="sr-only">{t('scheduledReports.runNow')}</span>
           </Button>
           <Button
             size="sm"
             variant="ghost"
             className="h-7 w-7 p-0"
-            title="Bearbeiten"
+            title={t('scheduledReports.edit')}
             onClick={onEdit}
           >
             <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
-            <span className="sr-only">Bearbeiten</span>
+            <span className="sr-only">{t('scheduledReports.edit')}</span>
           </Button>
           <Button
             size="sm"
             variant="ghost"
             className="h-7 w-7 p-0 text-secondary hover:text-red-500 hover:bg-red-500/10"
-            title="Löschen"
+            title={t('scheduledReports.delete')}
             onClick={onDelete}
           >
             <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-            <span className="sr-only">Löschen</span>
+            <span className="sr-only">{t('scheduledReports.delete')}</span>
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-        <div className="text-secondary">Zeitplan</div>
-        <div className="text-primary font-medium">{SCHEDULE_LABELS[report.schedule]}</div>
+        <div className="text-secondary">{t('scheduledReports.colSchedule')}</div>
+        <div className="text-primary font-medium">{scheduleLabels[report.schedule]}</div>
 
-        <div className="text-secondary">Nächste Ausführung</div>
+        <div className="text-secondary">{t('scheduledReports.colNextRun')}</div>
         <div className="text-primary font-medium">{formatDate(report.next_run_at)}</div>
 
-        <div className="text-secondary">Letzte Ausführung</div>
+        <div className="text-secondary">{t('scheduledReports.colLastRun')}</div>
         <div className="text-primary font-medium">{formatDate(report.last_run_at)}</div>
 
-        <div className="text-secondary">Format</div>
+        <div className="text-secondary">{t('scheduledReports.colFormat')}</div>
         <div>
           <Badge variant="secondary" className="text-[10px]">{FORMAT_LABELS[report.format]}</Badge>
         </div>
 
-        <div className="text-secondary">Empfänger</div>
+        <div className="text-secondary">{t('scheduledReports.colRecipients')}</div>
         <div className="flex flex-wrap gap-1">
           {report.recipients.map((r) => (
             <span key={r} className="text-[10px] bg-surface2 border border-border rounded px-1.5 py-0.5 text-primary">
@@ -423,20 +437,21 @@ function ReportCard({ report, onEdit, onDelete, onRunNow, isRunning }: ReportCar
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
 function EmptyReports({ onCreate }: { onCreate: () => void }) {
+  const { t } = useTranslation()
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <div className="p-4 rounded-full bg-surface2">
         <Calendar className="w-8 h-8 text-secondary" aria-hidden="true" />
       </div>
       <div className="text-center">
-        <p className="font-semibold text-primary">Noch keine geplanten Berichte</p>
+        <p className="font-semibold text-primary">{t('scheduledReports.noReports')}</p>
         <p className="text-sm text-secondary mt-1 max-w-sm">
-          Planen Sie regelmäßige Berichte, die automatisch per E-Mail versendet werden.
+          {t('scheduledReports.noReportsHint')}
         </p>
       </div>
       <Button onClick={onCreate}>
         <Plus className="w-4 h-4 mr-1.5" />
-        Bericht planen
+        {t('scheduledReports.addButton')}
       </Button>
     </div>
   )
@@ -445,6 +460,7 @@ function EmptyReports({ onCreate }: { onCreate: () => void }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ScheduledReportsPage() {
+  const { t } = useTranslation()
   const { data: reports, isLoading, isError } = useScheduledReports()
   const createReport = useCreateScheduledReport()
   const updateReport = useUpdateScheduledReport()
@@ -470,19 +486,19 @@ export default function ScheduledReportsPage() {
     if (editTarget) {
       try {
         await updateReport.mutateAsync({ id: editTarget.id, ...data })
-        toast('Bericht aktualisiert', 'success')
+        toast(t('scheduledReports.toastUpdated'), 'success')
         setDialogOpen(false)
         setEditTarget(undefined)
       } catch (err) {
-        toast(err instanceof Error ? err.message : 'Speichern fehlgeschlagen', 'error')
+        toast(err instanceof Error ? err.message : t('scheduledReports.toastUpdated'), 'error')
       }
     } else {
       try {
         await createReport.mutateAsync(data)
-        toast('Bericht geplant', 'success')
+        toast(t('scheduledReports.toastCreated'), 'success')
         setDialogOpen(false)
       } catch (err) {
-        toast(err instanceof Error ? err.message : 'Erstellen fehlgeschlagen', 'error')
+        toast(err instanceof Error ? err.message : t('scheduledReports.toastCreated'), 'error')
       }
     }
   }
@@ -491,9 +507,9 @@ export default function ScheduledReportsPage() {
     if (!deleteTarget) return
     try {
       await deleteReport.mutateAsync(deleteTarget.id)
-      toast('Bericht gelöscht', 'success')
+      toast(t('scheduledReports.toastDeleted'), 'success')
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'Löschen fehlgeschlagen', 'error')
+      toast(err instanceof Error ? err.message : t('scheduledReports.toastDeleted'), 'error')
     } finally {
       setDeleteTarget(null)
     }
@@ -503,9 +519,9 @@ export default function ScheduledReportsPage() {
     setRunningId(report.id)
     try {
       await runReport.mutateAsync(report.id)
-      toast(`„${report.name}" wurde zur sofortigen Ausführung eingeplant`, 'success')
+      toast(t('scheduledReports.toastRunScheduled', { name: report.name }), 'success')
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'Ausführung fehlgeschlagen', 'error')
+      toast(err instanceof Error ? err.message : t('scheduledReports.toastRunScheduled', { name: report.name }), 'error')
     } finally {
       setRunningId(null)
     }
@@ -516,13 +532,13 @@ export default function ScheduledReportsPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Geplante Berichte"
-        description="Automatisch versendete Compliance- und Sicherheitsberichte."
+        title={t('scheduledReports.title')}
+        description={t('scheduledReports.description')}
         actions={
           reportList.length > 0 ? (
             <Button onClick={openCreate}>
               <Plus className="w-4 h-4 mr-1.5" />
-              Bericht planen
+              {t('scheduledReports.addButton')}
             </Button>
           ) : undefined
         }
@@ -533,7 +549,7 @@ export default function ScheduledReportsPage() {
 
         {isError && (
           <p className="text-sm text-red-500">
-            Fehler beim Laden der Berichte.
+            {t('scheduledReports.loadError')}
           </p>
         )}
 
@@ -572,19 +588,19 @@ export default function ScheduledReportsPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => { if (!v) setDeleteTarget(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Bericht löschen?</AlertDialogTitle>
+            <AlertDialogTitle>{t('scheduledReports.deleteDialog.title')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Der geplante Bericht <strong>{deleteTarget?.name}</strong> wird dauerhaft entfernt.
+              {t('scheduledReports.deleteDialog.description', { name: deleteTarget?.name ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogCancel>{t('scheduledReports.deleteDialog.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => { void handleDelete() }}
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
               disabled={deleteReport.isPending}
             >
-              {deleteReport.isPending ? 'Wird gelöscht…' : 'Löschen'}
+              {deleteReport.isPending ? t('scheduledReports.deleteDialog.deleting') : t('scheduledReports.deleteDialog.confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

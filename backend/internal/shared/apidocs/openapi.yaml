@@ -290,6 +290,73 @@ components:
           type: string
           format: date-time
 
+    Certificate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        org_id:
+          type: string
+          format: uuid
+        domain:
+          type: string
+        issuer:
+          type: string
+        subject:
+          type: string
+        sans:
+          type: array
+          items:
+            type: string
+        not_before:
+          type: string
+          format: date-time
+          nullable: true
+        not_after:
+          type: string
+          format: date-time
+          nullable: true
+        asset_id:
+          type: string
+          format: uuid
+          nullable: true
+        source:
+          type: string
+          enum: [manual, scan]
+        status:
+          type: string
+          enum: [valid, expiring, expired, error, unknown]
+        last_checked_at:
+          type: string
+          format: date-time
+          nullable: true
+        error_msg:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateCertificateRequest:
+      type: object
+      required: [domain]
+      properties:
+        domain:
+          type: string
+          minLength: 1
+          maxLength: 255
+        asset_id:
+          type: string
+          format: uuid
+          nullable: true
+        source:
+          type: string
+          enum: [manual, scan]
+
     CreateAssetRequest:
       type: object
       required: [name, type, target, criticality]
@@ -721,19 +788,116 @@ components:
       properties:
         id:
           type: string
-          format: uuid
         name:
           type: string
         subject:
           type: string
-        body:
+        from_name:
+          type: string
+        from_email:
+          type: string
+        html_body:
           type: string
           description: HTML body of the phishing email
-        preset:
+        attack_type:
+          type: string
+        category:
+          type: string
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+        language:
+          type: string
+        placeholders:
+          type: array
+          items:
+            type: string
+        is_preset:
           type: boolean
         created_at:
           type: string
           format: date-time
+
+    EnrollmentRule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        org_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        trigger_type:
+          type: string
+          enum: [new_employee, phishing_click]
+        target_campaign_id:
+          type: string
+          format: uuid
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TrainingMatrixReport:
+      type: object
+      properties:
+        period:
+          type: object
+          properties:
+            from: {type: string, format: date-time}
+            to: {type: string, format: date-time}
+        org_name:
+          type: string
+        campaigns:
+          type: array
+          items:
+            type: object
+            properties:
+              id: {type: string}
+              name: {type: string}
+              recipient_count: {type: integer}
+              click_rate: {type: number}
+              completion_rate: {type: number}
+              started_at: {type: string}
+              completed_at: {type: string}
+        total_stats:
+          type: object
+          properties:
+            total_campaigns: {type: integer}
+            total_participants: {type: integer}
+            avg_click_rate: {type: number}
+            total_trainings_completed: {type: integer}
+        bsi_compliance:
+          $ref: '#/components/schemas/BSIOrp3Compliance'
+        generated_at:
+          type: string
+          format: date-time
+
+    BSIOrp3Compliance:
+      type: object
+      properties:
+        fulfilled_count:
+          type: integer
+        total_count:
+          type: integer
+        requirements:
+          type: array
+          items:
+            type: object
+            properties:
+              id: {type: string}
+              title: {type: string}
+              fulfilled: {type: boolean}
+              evidence_ids:
+                type: array
+                items:
+                  type: string
 
     CreateTemplateInput:
       type: object
@@ -1171,6 +1335,560 @@ components:
         version_number: { type: integer }
         created_at: { type: string, format: date-time }
 
+    # ── Sprint 61: ISO-27001-Audit-Readiness ────────────────────────────────
+
+    ISMSScope:
+      type: object
+      required: [id, org_id, version, status, scope_definition, outsourcing_dependencies, change_note, created_by, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        version: { type: integer }
+        status: { type: string, enum: [draft, approved] }
+        scope_definition: { type: string }
+        exclusions: { type: array, items: { type: object } }
+        outsourcing_dependencies: { type: string }
+        change_note: { type: string }
+        approved_by: { type: string, nullable: true }
+        approved_at: { type: string, format: date-time, nullable: true }
+        created_by: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ImprovementDecision:
+      type: object
+      required: [decision, responsible, due_date]
+      properties:
+        decision: { type: string }
+        responsible: { type: string }
+        due_date: { type: string, format: date }
+
+    ManagementReview:
+      type: object
+      required: [id, org_id, review_date, review_type, status, created_by, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        review_date: { type: string, format: date }
+        review_type: { type: string, enum: [annual, extraordinary] }
+        participant_ids: { type: array, items: { type: string, format: uuid } }
+        status: { type: string, enum: [draft, approved] }
+        audit_findings_summary: { type: string }
+        incident_summary: { type: string }
+        risk_status_summary: { type: string }
+        previous_actions_status: { type: string }
+        kpi_snapshot: { type: object, additionalProperties: true }
+        context_changes: { type: string }
+        customer_feedback: { type: string }
+        improvement_decisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImprovementDecision'
+        resource_decisions: { type: string }
+        isms_changes: { type: string }
+        next_review_date: { type: string, format: date, nullable: true }
+        approved_by: { type: string, nullable: true }
+        approved_at: { type: string, format: date-time, nullable: true }
+        created_by: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    Pentest:
+      type: object
+      required: [id, org_id, title, pentest_date, tester_type, findings_critical, findings_high, findings_medium, findings_low, status, created_by, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        title: { type: string }
+        scope: { type: string }
+        pentest_date: { type: string, format: date }
+        tester_type: { type: string, enum: [internal, external] }
+        tester_name: { type: string }
+        methodology: { type: string, enum: [blackbox, greybox, whitebox], nullable: true }
+        findings_critical: { type: integer }
+        findings_high: { type: integer }
+        findings_medium: { type: integer }
+        findings_low: { type: integer }
+        status: { type: string, enum: [in_progress, completed, remediation, closed] }
+        retest_date: { type: string, format: date, nullable: true }
+        notes: { type: string }
+        created_by: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    BSIModelingEntry:
+      type: object
+      required: [id, org_id, asset_id, control_id, priority, asset_name, control_title, framework_id, created_by, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        asset_id: { type: string, format: uuid }
+        control_id: { type: string, format: uuid }
+        priority: { type: string, enum: [R1, R2, R3] }
+        justification_for_exclusion: { type: string }
+        check_status: { type: string, enum: [yes, partial, no, not_applicable], nullable: true }
+        interview_notes: { type: string }
+        site_visit_notes: { type: string }
+        asset_name: { type: string }
+        control_title: { type: string }
+        framework_id: { type: string, format: uuid }
+        created_by: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    BSIModelingStats:
+      type: object
+      required: [total, count_yes, count_partial, count_no, count_na, count_pending]
+      properties:
+        total: { type: integer }
+        count_yes: { type: integer }
+        count_partial: { type: integer }
+        count_no: { type: integer }
+        count_na: { type: integer }
+        count_pending: { type: integer }
+
+    KPISnapshot:
+      type: object
+      required: [id, org_id, snapshot_date, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        snapshot_date: { type: string, format: date }
+        kpi_compliance_score: { type: number, format: float, nullable: true }
+        kpi_open_critical_controls: { type: integer, nullable: true }
+        kpi_open_high_risks: { type: integer, nullable: true }
+        kpi_residual_risk_avg: { type: number, format: float, nullable: true }
+        kpi_open_incidents: { type: integer, nullable: true }
+        kpi_incident_mttr_days: { type: number, format: float, nullable: true }
+        kpi_evidence_coverage: { type: number, format: float, nullable: true }
+        kpi_expiring_evidence_count: { type: integer, nullable: true }
+        kpi_finding_sla_compliance: { type: number, format: float, nullable: true }
+        kpi_open_major_ncs: { type: integer, nullable: true }
+        kpi_suppliers_overdue_pct: { type: number, format: float, nullable: true }
+        kpi_phishing_click_rate: { type: number, format: float, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    KPIDashboard:
+      type: object
+      required: [history]
+      properties:
+        current:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/KPISnapshot'
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/KPISnapshot'
+
+    # ── Sprint 62: Cloud integration shared types ─────────────────────────────
+
+    CloudSyncResult:
+      type: object
+      required: [ok, evidence_created]
+      properties:
+        ok: { type: boolean }
+        evidence_created: { type: integer }
+        error: { type: string, nullable: true }
+
+    CloudEvidenceItem:
+      type: object
+      required: [id, title, description, source, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        source: { type: string }
+        created_at: { type: string, format: date-time }
+
+    CloudSyncStatus:
+      type: object
+      required: [provider, enabled, evidence_count]
+      properties:
+        provider: { type: string }
+        enabled: { type: boolean }
+        last_sync_at: { type: string, format: date-time, nullable: true }
+        last_sync_status: { type: string, nullable: true }
+        last_sync_error: { type: string, nullable: true }
+        evidence_count: { type: integer }
+
+    # ── Hetzner ───────────────────────────────────────────────────────────────
+
+    HetznerConfigResponse:
+      type: object
+      required: [api_token, location, is_configured]
+      properties:
+        api_token: { type: string, description: '"****" if set' }
+        location: { type: string }
+        is_configured: { type: boolean }
+
+    SaveHetznerConfigInput:
+      type: object
+      required: [api_token]
+      properties:
+        api_token: { type: string }
+        location: { type: string }
+
+    HetznerStatus:
+      allOf:
+        - $ref: '#/components/schemas/CloudSyncStatus'
+        - type: object
+          properties:
+            server_count: { type: integer }
+
+    # ── IONOS ─────────────────────────────────────────────────────────────────
+
+    IONOSConfigResponse:
+      type: object
+      required: [username, password, token, is_configured]
+      properties:
+        username: { type: string }
+        password: { type: string, description: '"****" if set' }
+        token: { type: string, description: '"****" if set' }
+        is_configured: { type: boolean }
+
+    SaveIONOSConfigInput:
+      type: object
+      properties:
+        username: { type: string }
+        password: { type: string }
+        token: { type: string }
+
+    IONOSStatus:
+      allOf:
+        - $ref: '#/components/schemas/CloudSyncStatus'
+        - type: object
+          properties:
+            server_count: { type: integer }
+            datacenter_count: { type: integer }
+
+    # ── Wazuh ─────────────────────────────────────────────────────────────────
+
+    WazuhConfigResponse:
+      type: object
+      required: [base_url, username, password, verify_tls, is_configured]
+      properties:
+        base_url: { type: string }
+        username: { type: string }
+        password: { type: string, description: '"****" if set' }
+        verify_tls: { type: boolean }
+        is_configured: { type: boolean }
+
+    SaveWazuhConfigInput:
+      type: object
+      required: [base_url, username, password]
+      properties:
+        base_url: { type: string }
+        username: { type: string }
+        password: { type: string }
+        verify_tls: { type: boolean }
+
+    WazuhStatus:
+      allOf:
+        - $ref: '#/components/schemas/CloudSyncStatus'
+        - type: object
+          properties:
+            agent_count: { type: integer }
+            agents_offline: { type: integer }
+
+    # ── Prometheus ────────────────────────────────────────────────────────────
+
+    PrometheusConfigResponse:
+      type: object
+      required: [prometheus_url, alertmanager_url, token, is_configured]
+      properties:
+        prometheus_url: { type: string }
+        alertmanager_url: { type: string }
+        token: { type: string, description: '"****" if set' }
+        is_configured: { type: boolean }
+
+    SavePrometheusConfigInput:
+      type: object
+      required: [prometheus_url]
+      properties:
+        prometheus_url: { type: string }
+        alertmanager_url: { type: string }
+        token: { type: string }
+
+    PrometheusStatus:
+      allOf:
+        - $ref: '#/components/schemas/CloudSyncStatus'
+        - type: object
+          properties:
+            target_count: { type: integer }
+            active_alert_count: { type: integer }
+
+    # ── Entra ID / Microsoft Graph ────────────────────────────────────────────
+
+    EntraIDConfigResponse:
+      type: object
+      required: [tenant_id, client_id, client_secret, is_configured]
+      properties:
+        tenant_id: { type: string }
+        client_id: { type: string }
+        client_secret: { type: string, description: '"****" if set' }
+        is_configured: { type: boolean }
+
+    SaveEntraIDConfigInput:
+      type: object
+      required: [tenant_id, client_id, client_secret]
+      properties:
+        tenant_id: { type: string }
+        client_id: { type: string }
+        client_secret: { type: string }
+
+    EntraIDStatus:
+      allOf:
+        - $ref: '#/components/schemas/CloudSyncStatus'
+        - type: object
+          properties:
+            mfa_enrollment_pct: { type: number, format: float }
+            risky_user_count: { type: integer }
+            inactive_user_count: { type: integer }
+
+    # ── Keycloak ──────────────────────────────────────────────────────────────
+
+    KeycloakConfigResponse:
+      type: object
+      required: [keycloak_url, realm, client_id, client_secret, is_configured]
+      properties:
+        keycloak_url: { type: string }
+        realm: { type: string }
+        client_id: { type: string }
+        client_secret: { type: string, description: '"****" if set' }
+        is_configured: { type: boolean }
+
+    SaveKeycloakConfigInput:
+      type: object
+      required: [keycloak_url, realm, client_id, client_secret]
+      properties:
+        keycloak_url: { type: string }
+        realm: { type: string }
+        client_id: { type: string }
+        client_secret: { type: string }
+
+    KeycloakStatus:
+      allOf:
+        - $ref: '#/components/schemas/CloudSyncStatus'
+        - type: object
+          properties:
+            user_count: { type: integer }
+            mfa_enrollment_pct: { type: number, format: float }
+
+    # ── LDAP / Active Directory ───────────────────────────────────────────────
+
+    LDAPConfigResponse:
+      type: object
+      required: [host, port, bind_dn, bind_password, base_dn, use_tls, is_active_directory, is_configured]
+      properties:
+        host: { type: string }
+        port: { type: integer }
+        bind_dn: { type: string }
+        bind_password: { type: string, description: '"****" if set' }
+        base_dn: { type: string }
+        use_tls: { type: boolean }
+        is_active_directory: { type: boolean }
+        privileged_groups:
+          type: array
+          items: { type: string }
+        is_configured: { type: boolean }
+
+    SaveLDAPConfigInput:
+      type: object
+      required: [host, port, bind_dn, bind_password, base_dn]
+      properties:
+        host: { type: string }
+        port: { type: integer }
+        bind_dn: { type: string }
+        bind_password: { type: string }
+        base_dn: { type: string }
+        use_tls: { type: boolean }
+        is_active_directory: { type: boolean }
+        privileged_groups:
+          type: array
+          items: { type: string }
+
+    LDAPStatus:
+      allOf:
+        - $ref: '#/components/schemas/CloudSyncStatus'
+        - type: object
+          properties:
+            user_count: { type: integer }
+            inactive_count: { type: integer }
+            privileged_count: { type: integer }
+
+    GitLabConfigResponse:
+      type: object
+      required: [gitlab_url, access_token, group_id, is_configured]
+      properties:
+        gitlab_url: { type: string }
+        access_token: { type: string, description: '"****" if set' }
+        group_id: { type: string }
+        is_configured: { type: boolean }
+
+    SaveGitLabConfigInput:
+      type: object
+      required: [gitlab_url, access_token]
+      properties:
+        gitlab_url: { type: string }
+        access_token: { type: string }
+        group_id: { type: string }
+
+    GitLabStatus:
+      allOf:
+        - $ref: '#/components/schemas/CloudSyncStatus'
+        - type: object
+          properties:
+            project_count: { type: integer }
+            unprotected_branches_count: { type: integer }
+
+    SonarQubeConfigResponse:
+      type: object
+      required: [base_url, token, is_configured]
+      properties:
+        base_url: { type: string }
+        token: { type: string, description: '"****" if set' }
+        is_configured: { type: boolean }
+
+    SaveSonarQubeConfigInput:
+      type: object
+      required: [base_url, token]
+      properties:
+        base_url: { type: string }
+        token: { type: string }
+
+    SonarQubeStatus:
+      allOf:
+        - $ref: '#/components/schemas/CloudSyncStatus'
+        - type: object
+          properties:
+            project_count: { type: integer }
+            quality_gate_failed_count: { type: integer }
+            hotspot_count: { type: integer }
+
+    PersonioConfigResponse:
+      type: object
+      required: [webhook_secret, is_configured]
+      properties:
+        webhook_secret: { type: string, description: '"****" if set' }
+        is_configured: { type: boolean }
+
+    SavePersonioConfigInput:
+      type: object
+      required: [webhook_secret]
+      properties:
+        webhook_secret: { type: string }
+
+    PersonioStatus:
+      allOf:
+        - $ref: '#/components/schemas/CloudSyncStatus'
+        - type: object
+          properties:
+            webhook_url: { type: string }
+            webhook_configured: { type: boolean }
+            offboardings_triggered: { type: integer }
+            offboardings_completed_on_time: { type: integer }
+
+    CryptoKey:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        name: { type: string }
+        key_type: { type: string, enum: [symmetric, asymmetric, certificate, hmac, signing, other] }
+        algorithm: { type: string }
+        key_length: { type: integer, nullable: true }
+        purpose: { type: string }
+        location: { type: string, nullable: true }
+        rotation_interval_days: { type: integer, nullable: true }
+        last_rotation_date: { type: string, format: date, nullable: true }
+        next_rotation_due: { type: string, format: date, nullable: true }
+        expiry_date: { type: string, format: date, nullable: true }
+        is_weak_algorithm: { type: boolean }
+        rotation_status: { type: string, enum: [ok, due_soon, overdue, none] }
+        notes: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    # ── S69-3 ─────────────────────────────────────────────────────────────────
+    SLAPolicy:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        severity: { type: string, enum: [critical, high, medium, low, info] }
+        remediation_days: { type: integer }
+        notification_advance_days: { type: integer }
+        is_default: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    # ── S69-4 ─────────────────────────────────────────────────────────────────
+    MoverEvent:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        employee_id: { type: string, format: uuid }
+        from_department: { type: string }
+        from_job_title: { type: string }
+        to_department: { type: string }
+        to_job_title: { type: string }
+        effective_date: { type: string, format: date }
+        status: { type: string, enum: [pending, in_progress, completed, overdue, cancelled] }
+        due_date: { type: string, format: date }
+        completed_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    # ── S69-6 ─────────────────────────────────────────────────────────────────
+    AdequacyDecision:
+      type: object
+      properties:
+        country_code: { type: string }
+        country_name: { type: string }
+        has_adequacy: { type: boolean }
+        decision_date: { type: string, format: date, nullable: true }
+        decision_reference: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+        last_updated: { type: string, format: date }
+
+    DataTransfer:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        processing_activity_id: { type: string, format: uuid, nullable: true }
+        recipient_name: { type: string }
+        recipient_country: { type: string }
+        recipient_country_name: { type: string }
+        data_categories: { type: array, items: { type: string } }
+        transfer_mechanism: { type: string }
+        scc_version: { type: string, nullable: true }
+        status: { type: string }
+        is_active: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    TransferImpactAssessment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        transfer_id: { type: string, format: uuid }
+        legal_system_notes: { type: string }
+        surveillance_risk: { type: string, enum: [low, medium, high] }
+        data_subject_rights_available: { type: boolean }
+        encryption_in_transit: { type: boolean }
+        encryption_at_rest: { type: boolean }
+        pseudonymization_applied: { type: boolean }
+        access_controls_documented: { type: boolean }
+        supplementary_measures: { type: string, nullable: true }
+        outcome: { type: string, enum: [adequate, adequate_with_measures, inadequate] }
+        reviewed_by: { type: string, format: uuid, nullable: true }
+        reviewed_at: { type: string, format: date-time, nullable: true }
+        valid_until: { type: string, format: date, nullable: true }
+        created_at: { type: string, format: date-time }
+
 tags:
   - name: auth
     description: Authentication
@@ -1184,6 +1902,8 @@ tags:
     description: Vakt Aware — phishing simulations
   - name: vaktvault
     description: Vakt Vault — secrets management
+  - name: integrations
+    description: Cloud provider integrations — evidence collection
   - name: webhooks
     description: Outgoing webhook configuration
   - name: notifications
@@ -1935,6 +2655,100 @@ paths:
       responses:
         '200':
           description: Updated finding
+
+  # ── SecPulse — TLS Certificate Tracking ──────────────────────────────────
+
+  /vaktscan/certificates:
+    get:
+      summary: List tracked TLS certificates
+      tags: [vaktscan]
+      responses:
+        '200':
+          description: Certificate list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Certificate'
+    post:
+      summary: Add a domain certificate to track
+      tags: [vaktscan]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCertificateRequest'
+      responses:
+        '201':
+          description: Certificate created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Certificate'
+        '422':
+          description: Validation error
+
+  /vaktscan/certificates/{id}:
+    get:
+      summary: Get a tracked certificate
+      tags: [vaktscan]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Certificate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Certificate'
+        '404':
+          description: Not found
+    delete:
+      summary: Remove a tracked certificate
+      tags: [vaktscan]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+
+  /vaktscan/certificates/{id}/scan:
+    post:
+      summary: Trigger a manual TLS rescan for a certificate
+      tags: [vaktscan]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Updated certificate after scan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Certificate'
+        '404':
+          description: Not found
 
   # ── SecVitals — Frameworks ────────────────────────────────────────────────
   /vaktcomply/frameworks:
@@ -3266,6 +4080,173 @@ paths:
                   token:
                     type: string
 
+  # ── Vakt Aware Sprint 65: Template Library, Enrollment, Reports, ORP.3 ───
+
+  /vaktaware/templates/library:
+    get:
+      summary: List preset templates (filtered)
+      tags: [vaktaware]
+      parameters:
+        - in: query
+          name: category
+          schema: {type: string, enum: [credential, bec, it_software, hr_payroll, dach_specific]}
+        - in: query
+          name: difficulty
+          schema: {type: string, enum: [easy, medium, hard]}
+        - in: query
+          name: language
+          schema: {type: string}
+      responses:
+        '200':
+          description: Filtered preset templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PhishingTemplate'
+
+  /vaktaware/enrollment-rules:
+    get:
+      summary: List auto-enrollment rules (Pro)
+      tags: [vaktaware]
+      responses:
+        '200':
+          description: Enrollment rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EnrollmentRule'
+    post:
+      summary: Create auto-enrollment rule (Pro)
+      tags: [vaktaware]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, trigger_type]
+              properties:
+                name:
+                  type: string
+                trigger_type:
+                  type: string
+                  enum: [new_employee, phishing_click]
+                target_campaign_id:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Created rule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentRule'
+
+  /vaktaware/enrollment-rules/{id}:
+    put:
+      summary: Toggle enrollment rule active state (Pro)
+      tags: [vaktaware]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [is_active]
+              properties:
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Updated
+    delete:
+      summary: Delete enrollment rule (Pro)
+      tags: [vaktaware]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '204':
+          description: Deleted
+
+  /vaktaware/reports/training-matrix:
+    get:
+      summary: Training matrix report (Pro)
+      tags: [vaktaware]
+      parameters:
+        - in: query
+          name: from
+          schema: {type: string, format: date}
+        - in: query
+          name: to
+          schema: {type: string, format: date}
+      responses:
+        '200':
+          description: Training matrix report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingMatrixReport'
+
+  /vaktaware/reports/training-matrix/export/pdf:
+    get:
+      summary: Export training matrix as PDF (Pro)
+      tags: [vaktaware]
+      parameters:
+        - in: query
+          name: from
+          schema: {type: string, format: date}
+        - in: query
+          name: to
+          schema: {type: string, format: date}
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema: {type: string, format: binary}
+
+  /vaktaware/reports/training-matrix/export/csv:
+    get:
+      summary: Export training matrix as CSV (Pro)
+      tags: [vaktaware]
+      parameters:
+        - in: query
+          name: from
+          schema: {type: string, format: date}
+        - in: query
+          name: to
+          schema: {type: string, format: date}
+      responses:
+        '200':
+          description: CSV file
+          content:
+            text/csv:
+              schema: {type: string}
+
+  /vaktaware/bsi-orp3-status:
+    get:
+      summary: BSI ORP.3 compliance status
+      tags: [vaktaware]
+      responses:
+        '200':
+          description: ORP.3 compliance overview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BSIOrp3Compliance'
+
   # ── SecVitals — Policies ──────────────────────────────────────────────────
 
   /vaktcomply/policies:
@@ -4116,6 +5097,500 @@ paths:
       responses:
         '200':
           description: Updated DSR
+
+  # --- Sprint 68: DSR Enhancements ---
+
+  /vaktprivacy/dsr/summary:
+    get:
+      summary: Get DSR summary statistics
+      tags: [vaktprivacy]
+      responses:
+        '200':
+          description: DSR summary with overdue count and on-time rate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  open_count: { type: integer }
+                  overdue_count: { type: integer }
+                  fulfilled_last_12m: { type: integer }
+                  rejected_last_12m: { type: integer }
+                  on_time_rate_pct: { type: number }
+
+  /vaktprivacy/dsr/export:
+    get:
+      summary: Export DSR audit log
+      tags: [vaktprivacy]
+      parameters:
+        - name: format
+          in: query
+          schema: { type: string, enum: [pdf, csv], default: pdf }
+        - name: period_days
+          in: query
+          schema: { type: integer, default: 365 }
+      responses:
+        '200':
+          description: PDF or CSV export
+
+  /vaktprivacy/dsr/{id}/resolve:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Resolve DSR (complete, reject, or extend with Art. 12 Abs. 3 justification)
+      tags: [vaktprivacy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resolution_type]
+              properties:
+                resolution_type: { type: string, enum: [fulfilled, rejected, extended] }
+                resolution_notes: { type: string }
+                extension_reason: { type: string, description: "Required when resolution_type = extended" }
+      responses:
+        '200':
+          description: Resolved DSR
+        '400':
+          description: extension_reason required for extension
+
+  /vaktprivacy/dsr/{id}/assign:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      summary: Assign DSR to a user
+      tags: [vaktprivacy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assigned_to]
+              properties:
+                assigned_to: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Updated DSR
+
+  # --- Sprint 68: Löschfristen-Management ---
+
+  /vaktprivacy/retention/summary:
+    get:
+      summary: Get retention completeness summary
+      tags: [vaktprivacy]
+      responses:
+        '200':
+          description: Retention stats for all VVT processing activities
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_activities: { type: integer }
+                  with_retention_count: { type: integer }
+                  missing_retention_count: { type: integer }
+                  deletion_reminders_due: { type: integer }
+
+  /vaktprivacy/retention-templates:
+    get:
+      summary: List DACH retention templates
+      tags: [vaktprivacy]
+      responses:
+        '200':
+          description: System-provided DACH retention templates
+
+  /vaktprivacy/deletion-reminders:
+    get:
+      summary: List deletion reminders
+      tags: [vaktprivacy]
+      responses:
+        '200':
+          description: All deletion reminders for the org
+    post:
+      summary: Create deletion reminder
+      tags: [vaktprivacy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [description, deletion_due_date]
+              properties:
+                description: { type: string }
+                data_category: { type: string }
+                deletion_due_date: { type: string, format: date }
+                processing_activity_id: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Created deletion reminder
+
+  /vaktprivacy/deletion-reminders/{id}/complete:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      summary: Mark deletion reminder as completed
+      tags: [vaktprivacy]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                completion_notes: { type: string }
+      responses:
+        '204':
+          description: Completed
+
+  /vaktprivacy/processing-activities/{id}/retention:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get retention info for a processing activity
+      tags: [vaktprivacy]
+      responses:
+        '200':
+          description: Retention info
+    put:
+      summary: Update retention info for a processing activity
+      tags: [vaktprivacy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                retention_period_months: { type: integer }
+                retention_type: { type: string, enum: [fixed, event_based, until_objection, permanent] }
+                retention_event_description: { type: string }
+                retention_max_period_months: { type: integer }
+                deletion_method: { type: string, enum: [secure_deletion, anonymization, physical_destroy, archival, other] }
+                retention_legal_basis: { type: string }
+      responses:
+        '204':
+          description: Updated
+
+  # --- Sprint 68: Statement of Applicability (dedicated, ISO 27001 Clause 6.1.3) ---
+
+  /vaktcomply/soa/init:
+    post:
+      summary: Initialize dedicated SoA with all 93 ISO 27001:2022 Annex A controls (idempotent)
+      tags: [vaktcomply]
+      responses:
+        '204':
+          description: Initialized or already exists
+
+  /vaktcomply/soa/approve:
+    post:
+      summary: Approve current draft SoA version
+      tags: [vaktcomply]
+      responses:
+        '204':
+          description: Approved
+        '422':
+          description: Excluded controls without justification
+
+  /vaktcomply/soa/versions:
+    get:
+      summary: List SoA versions
+      tags: [vaktcomply]
+      responses:
+        '200':
+          description: All SoA versions
+
+  /vaktcomply/soa/summary:
+    get:
+      summary: Get SoA summary (total, applicable, excluded, version status)
+      tags: [vaktcomply]
+      responses:
+        '200':
+          description: SoA summary
+
+  /vaktcomply/soa/export:
+    get:
+      summary: Export SoA as PDF or CSV
+      tags: [vaktcomply]
+      parameters:
+        - name: format
+          in: query
+          schema: { type: string, enum: [pdf, csv], default: pdf }
+      responses:
+        '200':
+          description: PDF or CSV export
+
+  /vaktcomply/soa/entries:
+    get:
+      summary: List all dedicated SoA entries
+      tags: [vaktcomply]
+      responses:
+        '200':
+          description: All 93 SoA entries
+
+  /vaktcomply/soa/entries/{control_ref}:
+    parameters:
+      - name: control_ref
+        in: path
+        required: true
+        schema: { type: string, example: "A.5.1" }
+    get:
+      summary: Get a single SoA entry
+      tags: [vaktcomply]
+      responses:
+        '200':
+          description: SoA entry
+    put:
+      summary: Update SoA entry (applicable, justification, implementation status, owner)
+      tags: [vaktcomply]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                applicable: { type: boolean }
+                justification: { type: string }
+                exclusion_reason: { type: string }
+                implementation_status: { type: string, enum: [not_started, in_progress, implemented, partial] }
+                owner: { type: string }
+                evidence_reference: { type: string }
+                notes: { type: string }
+      responses:
+        '200':
+          description: Updated SoA entry
+
+  # --- Sprint 68: Interessierte Parteien (ISO 27001 Clause 4.2) ---
+
+  /vaktcomply/interested-parties:
+    get:
+      summary: List interested parties
+      tags: [vaktcomply]
+      responses:
+        '200':
+          description: All interested parties for the org
+    post:
+      summary: Create interested party
+      tags: [vaktcomply]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, category]
+              properties:
+                name: { type: string }
+                category: { type: string, enum: [internal, external, regulatory, customer, supplier, other] }
+                requirements: { type: string }
+                concerns: { type: string }
+                review_date: { type: string, format: date }
+      responses:
+        '201':
+          description: Created interested party
+
+  /vaktcomply/interested-parties/seed-defaults:
+    post:
+      summary: Seed DACH default interested parties (idempotent)
+      tags: [vaktcomply]
+      responses:
+        '204':
+          description: Seeded
+
+  /vaktcomply/interested-parties/export:
+    get:
+      summary: Export interested parties as PDF
+      tags: [vaktcomply]
+      responses:
+        '200':
+          description: PDF export
+
+  /vaktcomply/interested-parties/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Update interested party
+      tags: [vaktcomply]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                category: { type: string }
+                requirements: { type: string }
+                concerns: { type: string }
+                review_date: { type: string, format: date }
+      responses:
+        '200':
+          description: Updated interested party
+    delete:
+      summary: Delete interested party
+      tags: [vaktcomply]
+      responses:
+        '204':
+          description: Deleted
+
+  # --- Sprint 68: Audit-Programm (ISO 27001 Clause 9.2) ---
+
+  /vaktcomply/audit-plans:
+    get:
+      summary: List audit plans
+      tags: [vaktcomply]
+      responses:
+        '200':
+          description: All audit plans
+    post:
+      summary: Create audit plan
+      tags: [vaktcomply]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [year]
+              properties:
+                year: { type: integer }
+                scope: { type: string }
+                notes: { type: string }
+      responses:
+        '201':
+          description: Created audit plan
+
+  /vaktcomply/audit-program:
+    get:
+      summary: List audit program audits
+      tags: [vaktcomply]
+      responses:
+        '200':
+          description: All audits in the program
+    post:
+      summary: Create audit program audit
+      tags: [vaktcomply]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, audit_type]
+              properties:
+                title: { type: string }
+                audit_type: { type: string, enum: [isms_internal, compliance_check, supplier_audit, process_audit, follow_up] }
+                scheduled_date: { type: string, format: date }
+                lead_auditor: { type: string }
+                plan_id: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Created audit
+
+  /vaktcomply/audit-program/summary:
+    get:
+      summary: Get audit program summary statistics
+      tags: [vaktcomply]
+      responses:
+        '200':
+          description: Audit program summary
+
+  /vaktcomply/audit-program/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get audit program audit
+      tags: [vaktcomply]
+      responses:
+        '200':
+          description: Audit detail
+
+  /vaktcomply/audit-program/{id}/complete:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Complete an audit
+      tags: [vaktcomply]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                summary: { type: string }
+                overall_rating: { type: string, enum: [satisfactory, minor_issues, major_issues, critical] }
+                completed_date: { type: string, format: date }
+      responses:
+        '200':
+          description: Completed audit
+
+  /vaktcomply/audit-program/{id}/findings:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: List findings for an audit
+      tags: [vaktcomply]
+      responses:
+        '200':
+          description: Findings list (major_nc/minor_nc have linked CAPA IDs)
+    post:
+      summary: Create audit finding (auto-creates CAPA for major_nc/minor_nc)
+      tags: [vaktcomply]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, severity]
+              properties:
+                title: { type: string }
+                description: { type: string }
+                severity: { type: string, enum: [major_nc, minor_nc, observation, ofi] }
+      responses:
+        '201':
+          description: Created finding
+
+  /vaktcomply/audit-program/{id}/export:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Export audit report as PDF
+      tags: [vaktcomply]
+      responses:
+        '200':
+          description: PDF report
 
   # --- CCM (Continuous Control Monitoring) ---
 
@@ -6163,3 +7638,2365 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AccessConceptVersionSummary'
+
+  # ── Sprint 61: ISMS Scope (S61-1) ─────────────────────────────────────────
+
+  /vaktcomply/isms-scope/versions:
+    get:
+      summary: List all ISMS scope versions for the organisation
+      operationId: listISMSScopeVersions
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of scope versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ISMSScope'
+
+  /vaktcomply/isms-scope/approve:
+    post:
+      summary: Approve the current draft ISMS scope (admin only)
+      operationId: approveISMSScope
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Approved scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ISMSScope'
+        '403':
+          description: Insufficient permissions
+
+  /vaktcomply/isms-scope/export-pdf:
+    get:
+      summary: Export the current ISMS scope as PDF (Pro)
+      operationId: exportISMSScopePDF
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: PDF document
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '501':
+          description: Not implemented
+
+  /vaktcomply/isms-scope:
+    get:
+      summary: Get the current ISMS scope document
+      operationId: getISMSScope
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current scope or null if none exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ISMSScope'
+        '404':
+          description: No scope defined yet
+    post:
+      summary: Create or version the ISMS scope document
+      operationId: createOrUpdateISMSScope
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scope_definition]
+              properties:
+                scope_definition: { type: string }
+                exclusions: { type: array, items: { type: object } }
+                outsourcing_dependencies: { type: string }
+                change_note: { type: string }
+      responses:
+        '201':
+          description: New scope version created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ISMSScope'
+
+  # ── Sprint 61: Management Reviews (S61-2) ─────────────────────────────────
+
+  /vaktcomply/management-reviews:
+    get:
+      summary: List management reviews
+      operationId: listManagementReviews
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of management reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ManagementReview'
+    post:
+      summary: Create a new management review
+      operationId: createManagementReview
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [review_date, review_type]
+              properties:
+                review_date: { type: string, format: date }
+                review_type: { type: string, enum: [annual, extraordinary] }
+                participant_ids: { type: array, items: { type: string, format: uuid } }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagementReview'
+
+  /vaktcomply/management-reviews/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get a management review
+      operationId: getManagementReview
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Management review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagementReview'
+
+  /vaktcomply/management-reviews/{id}/inputs:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      summary: Update input-phase fields of a management review
+      operationId: updateManagementReviewInputs
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                audit_findings_summary: { type: string }
+                incident_summary: { type: string }
+                risk_status_summary: { type: string }
+                previous_actions_status: { type: string }
+                kpi_snapshot: { type: object, additionalProperties: true }
+                context_changes: { type: string }
+                customer_feedback: { type: string }
+      responses:
+        '200':
+          description: Updated review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagementReview'
+
+  /vaktcomply/management-reviews/{id}/outputs:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      summary: Update output-phase fields of a management review
+      operationId: updateManagementReviewOutputs
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                improvement_decisions:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ImprovementDecision'
+                resource_decisions: { type: string }
+                isms_changes: { type: string }
+                next_review_date: { type: string, format: date, nullable: true }
+      responses:
+        '200':
+          description: Updated review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagementReview'
+
+  /vaktcomply/management-reviews/{id}/approve:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Approve a management review (admin only)
+      operationId: approveManagementReview
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Approved review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagementReview'
+        '403':
+          description: Insufficient permissions
+
+  /vaktcomply/management-reviews/{id}/export-pdf:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Export a management review as PDF (Pro)
+      operationId: exportManagementReviewPDF
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: PDF document
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '501':
+          description: Not implemented
+
+  # ── Sprint 61: CAPA NC fields + Effectiveness Check (S61-3) ───────────────
+
+  /vaktcomply/capas/{id}/nc-fields:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      summary: Update NC root-cause and effectiveness fields on a CAPA
+      operationId: updateCAPANCFields
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nc_classification: { type: string, enum: [minor_nc, major_nc, observation], nullable: true }
+                immediate_containment: { type: string }
+                root_cause: { type: string }
+                similar_ncs_assessed: { type: boolean, nullable: true }
+                similar_ncs_notes: { type: string }
+                effectiveness_check_date: { type: string, format: date, nullable: true }
+      responses:
+        '200':
+          description: Updated CAPA
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /vaktcomply/capas/{id}/effectiveness-check:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Record the outcome of a CAPA effectiveness check
+      operationId: completeCAPAEffectivenessCheck
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmed]
+              properties:
+                confirmed: { type: boolean }
+                evidence_note: { type: string }
+      responses:
+        '200':
+          description: Updated CAPA
+          content:
+            application/json:
+              schema:
+                type: object
+
+  # ── Sprint 61: Risk Residual Scoring + Acceptance (S61-4) ─────────────────
+
+  /vaktcomply/risks/{id}/residual:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      summary: Update inherent and residual risk scores
+      operationId: updateRiskResidualFields
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                inherent_likelihood: { type: integer, nullable: true }
+                inherent_impact: { type: integer, nullable: true }
+                residual_likelihood: { type: integer, nullable: true }
+                residual_impact: { type: integer, nullable: true }
+      responses:
+        '200':
+          description: Updated risk
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /vaktcomply/risks/{id}/accept:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Formally accept a residual risk
+      operationId: acceptRisk
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [justification]
+              properties:
+                justification: { type: string }
+      responses:
+        '200':
+          description: Risk accepted
+          content:
+            application/json:
+              schema:
+                type: object
+        '409':
+          description: Risk treatment_status is not accepted
+
+  # ── Sprint 61: BSI Baustein Modeling (S61-5) ──────────────────────────────
+
+  /vaktcomply/bsi-modeling/stats:
+    get:
+      summary: Aggregate check-status statistics for the BSI modeling matrix
+      operationId: getBSIModelingStats
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BSIModelingStats'
+
+  /vaktcomply/bsi-modeling/suggestions:
+    get:
+      summary: Get suggested BSI Bausteine for an asset type
+      operationId: getBSIBausteinSuggestions
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: asset_type
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: List of suggested control IDs
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string, format: uuid }
+
+  /vaktcomply/bsi-modeling/export-pdf:
+    get:
+      summary: Export BSI modeling matrix as PDF (Pro)
+      operationId: exportBSIModelingPDF
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '501':
+          description: Not implemented
+
+  /vaktcomply/bsi-modeling/export-xlsx:
+    get:
+      summary: Export BSI modeling matrix as XLSX (Pro)
+      operationId: exportBSIModelingXLSX
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '501':
+          description: Not implemented
+
+  /vaktcomply/bsi-modeling:
+    get:
+      summary: Get the full BSI modeling matrix for the organisation
+      operationId: getBSIModelingMatrix
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of modeling entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BSIModelingEntry'
+    post:
+      summary: Add a Baustein-to-Asset mapping
+      operationId: createBSIModeling
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [asset_id, control_id, priority]
+              properties:
+                asset_id: { type: string, format: uuid }
+                control_id: { type: string, format: uuid }
+                priority: { type: string, enum: [R1, R2, R3] }
+                justification_for_exclusion: { type: string }
+                check_status: { type: string, enum: [yes, partial, no, not_applicable], nullable: true }
+                interview_notes: { type: string }
+                site_visit_notes: { type: string }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BSIModelingEntry'
+        '409':
+          description: Duplicate asset/control combination
+
+  /vaktcomply/bsi-modeling/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      summary: Update a BSI modeling entry
+      operationId: updateBSIModeling
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [priority]
+              properties:
+                priority: { type: string, enum: [R1, R2, R3] }
+                justification_for_exclusion: { type: string }
+                check_status: { type: string, enum: [yes, partial, no, not_applicable], nullable: true }
+                interview_notes: { type: string }
+                site_visit_notes: { type: string }
+      responses:
+        '200':
+          description: Updated entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BSIModelingEntry'
+    delete:
+      summary: Remove a BSI modeling entry
+      operationId: deleteBSIModeling
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+
+  # ── Sprint 61: Pentest Tracking (S61-6) ───────────────────────────────────
+
+  /vaktcomply/pentests:
+    get:
+      summary: List penetration test records
+      operationId: listPentests
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tester_type
+          in: query
+          required: false
+          schema: { type: string, enum: [internal, external] }
+      responses:
+        '200':
+          description: List of pentest records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pentest'
+    post:
+      summary: Create a new pentest record
+      operationId: createPentest
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, pentest_date, tester_type]
+              properties:
+                title: { type: string }
+                scope: { type: string }
+                pentest_date: { type: string, format: date }
+                tester_type: { type: string, enum: [internal, external] }
+                tester_name: { type: string }
+                methodology: { type: string, enum: [blackbox, greybox, whitebox], nullable: true }
+                findings_critical: { type: integer }
+                findings_high: { type: integer }
+                findings_medium: { type: integer }
+                findings_low: { type: integer }
+                notes: { type: string }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pentest'
+
+  /vaktcomply/pentests/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get a pentest record
+      operationId: getPentest
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Pentest record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pentest'
+    patch:
+      summary: Update a pentest record
+      operationId: updatePentest
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, tester_type, status]
+              properties:
+                title: { type: string }
+                scope: { type: string }
+                tester_type: { type: string, enum: [internal, external] }
+                tester_name: { type: string }
+                methodology: { type: string, enum: [blackbox, greybox, whitebox], nullable: true }
+                findings_critical: { type: integer }
+                findings_high: { type: integer }
+                findings_medium: { type: integer }
+                findings_low: { type: integer }
+                status: { type: string, enum: [in_progress, completed, remediation, closed] }
+                retest_date: { type: string, format: date, nullable: true }
+                notes: { type: string }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pentest'
+    delete:
+      summary: Delete a pentest record
+      operationId: deletePentest
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+
+  /vaktcomply/pentests/{id}/report:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Upload a pentest report file (Pro)
+      operationId: uploadPentestReport
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '501':
+          description: Not implemented
+
+  /vaktcomply/pentests/{id}/link-evidence:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Link a pentest record as evidence to a control
+      operationId: linkPentestAsEvidence
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [control_id]
+              properties:
+                control_id: { type: string, format: uuid }
+      responses:
+        '501':
+          description: Not implemented
+
+  # ── Sprint 61: ISMS KPI Dashboard (S61-7) ─────────────────────────────────
+
+  /vaktcomply/kpi-dashboard/export-pdf:
+    get:
+      summary: Export the ISMS KPI dashboard as PDF (Pro)
+      operationId: exportKPIReportPDF
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '501':
+          description: Not implemented
+
+  /vaktcomply/kpi-dashboard:
+    get:
+      summary: Get the ISMS KPI dashboard (latest snapshot + 90-day history)
+      operationId: getKPIDashboard
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: KPI dashboard
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KPIDashboard'
+
+  # ── Sprint 62: DACH-Integrations-Welle ────────────────────────────────────
+
+  /integrations/cloud/hetzner/config:
+    get:
+      summary: Get Hetzner Cloud integration config (secrets masked)
+      operationId: getHetznerConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Hetzner config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HetznerConfigResponse'
+    put:
+      summary: Save Hetzner Cloud integration config
+      operationId: saveHetznerConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveHetznerConfigInput'
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+
+  /integrations/cloud/hetzner/sync:
+    post:
+      summary: Trigger Hetzner evidence sync
+      operationId: syncHetzner
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudSyncResult'
+
+  /integrations/cloud/hetzner/status:
+    get:
+      summary: Get Hetzner sync status + server count
+      operationId: getHetznerStatus
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Hetzner status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HetznerStatus'
+
+  /integrations/cloud/hetzner/evidence:
+    get:
+      summary: List recent Hetzner evidence items
+      operationId: getHetznerEvidence
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Evidence items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CloudEvidenceItem'
+
+  /integrations/cloud/ionos/config:
+    get:
+      summary: Get IONOS Cloud integration config (secrets masked)
+      operationId: getIONOSConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: IONOS config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IONOSConfigResponse'
+    put:
+      summary: Save IONOS Cloud integration config
+      operationId: saveIONOSConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveIONOSConfigInput'
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+
+  /integrations/cloud/ionos/sync:
+    post:
+      summary: Trigger IONOS evidence sync
+      operationId: syncIONOS
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudSyncResult'
+
+  /integrations/cloud/ionos/status:
+    get:
+      summary: Get IONOS sync status + server/datacenter counts
+      operationId: getIONOSStatus
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: IONOS status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IONOSStatus'
+
+  /integrations/cloud/ionos/evidence:
+    get:
+      summary: List recent IONOS evidence items
+      operationId: getIONOSEvidence
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Evidence items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CloudEvidenceItem'
+
+  /integrations/cloud/wazuh/config:
+    get:
+      summary: Get Wazuh integration config (secrets masked)
+      operationId: getWazuhConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Wazuh config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WazuhConfigResponse'
+    put:
+      summary: Save Wazuh integration config
+      operationId: saveWazuhConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveWazuhConfigInput'
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+
+  /integrations/cloud/wazuh/sync:
+    post:
+      summary: Trigger Wazuh pull sync
+      operationId: syncWazuh
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudSyncResult'
+
+  /integrations/cloud/wazuh/status:
+    get:
+      summary: Get Wazuh sync status + agent counts
+      operationId: getWazuhStatus
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Wazuh status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WazuhStatus'
+
+  /integrations/cloud/wazuh/evidence:
+    get:
+      summary: List recent Wazuh evidence items
+      operationId: getWazuhEvidence
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Evidence items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CloudEvidenceItem'
+
+  /integrations/cloud/prometheus/config:
+    get:
+      summary: Get Prometheus/Alertmanager integration config (secrets masked)
+      operationId: getPrometheusConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Prometheus config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrometheusConfigResponse'
+    put:
+      summary: Save Prometheus/Alertmanager integration config
+      operationId: savePrometheusConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SavePrometheusConfigInput'
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+
+  /integrations/cloud/prometheus/sync:
+    post:
+      summary: Trigger Prometheus evidence sync
+      operationId: syncPrometheus
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudSyncResult'
+
+  /integrations/cloud/prometheus/status:
+    get:
+      summary: Get Prometheus sync status + target/alert counts
+      operationId: getPrometheusStatus
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Prometheus status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrometheusStatus'
+
+  /integrations/cloud/prometheus/evidence:
+    get:
+      summary: List recent Prometheus evidence items
+      operationId: getPrometheusEvidence
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Evidence items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CloudEvidenceItem'
+
+  /integrations/cloud/entra-id/config:
+    get:
+      summary: Get Entra ID / Microsoft Graph integration config (secrets masked)
+      operationId: getEntraIDConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Entra ID config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntraIDConfigResponse'
+    put:
+      summary: Save Entra ID / Microsoft Graph integration config
+      operationId: saveEntraIDConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveEntraIDConfigInput'
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+
+  /integrations/cloud/entra-id/sync:
+    post:
+      summary: Trigger Entra ID / Microsoft Graph evidence sync
+      operationId: syncEntraID
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudSyncResult'
+
+  /integrations/cloud/entra-id/status:
+    get:
+      summary: Get Entra ID sync status and identity risk metrics
+      operationId: getEntraIDStatus
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Entra ID status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntraIDStatus'
+
+  /integrations/cloud/entra-id/evidence:
+    get:
+      summary: List recent Entra ID evidence items
+      operationId: getEntraIDEvidence
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Evidence items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CloudEvidenceItem'
+
+  /integrations/cloud/keycloak/config:
+    get:
+      summary: Get Keycloak integration config (secrets masked)
+      operationId: getKeycloakConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Keycloak config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeycloakConfigResponse'
+    put:
+      summary: Save Keycloak integration config
+      operationId: saveKeycloakConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveKeycloakConfigInput'
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+
+  /integrations/cloud/keycloak/sync:
+    post:
+      summary: Trigger Keycloak evidence sync
+      operationId: syncKeycloak
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudSyncResult'
+
+  /integrations/cloud/keycloak/status:
+    get:
+      summary: Get Keycloak sync status and user/MFA metrics
+      operationId: getKeycloakStatus
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Keycloak status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeycloakStatus'
+
+  /integrations/cloud/keycloak/evidence:
+    get:
+      summary: List recent Keycloak evidence items
+      operationId: getKeycloakEvidence
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Evidence items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CloudEvidenceItem'
+
+  /integrations/cloud/ldap/config:
+    get:
+      summary: Get LDAP/AD integration config (secrets masked)
+      operationId: getLDAPConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: LDAP config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDAPConfigResponse'
+    put:
+      summary: Save LDAP/AD integration config
+      operationId: saveLDAPConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveLDAPConfigInput'
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+
+  /integrations/cloud/ldap/sync:
+    post:
+      summary: Trigger LDAP/AD evidence sync
+      operationId: syncLDAP
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudSyncResult'
+
+  /integrations/cloud/ldap/status:
+    get:
+      summary: Get LDAP/AD sync status and directory user metrics
+      operationId: getLDAPStatus
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: LDAP status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDAPStatus'
+
+  /integrations/cloud/ldap/evidence:
+    get:
+      summary: List recent LDAP/AD evidence items
+      operationId: getLDAPEvidence
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Evidence items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CloudEvidenceItem'
+
+  /integrations/cloud/gitlab/config:
+    get:
+      summary: Get GitLab integration config (secrets masked)
+      operationId: getGitLabConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: GitLab config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitLabConfigResponse'
+    put:
+      summary: Save GitLab integration config
+      operationId: saveGitLabConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveGitLabConfigInput'
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+
+  /integrations/cloud/gitlab/sync:
+    post:
+      summary: Trigger GitLab evidence sync
+      operationId: syncGitLab
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudSyncResult'
+
+  /integrations/cloud/gitlab/status:
+    get:
+      summary: Get GitLab sync status and project metrics
+      operationId: getGitLabStatus
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: GitLab status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitLabStatus'
+
+  /integrations/cloud/gitlab/evidence:
+    get:
+      summary: List recent GitLab evidence items
+      operationId: getGitLabEvidence
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Evidence items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CloudEvidenceItem'
+
+  /integrations/cloud/sonarqube/config:
+    get:
+      summary: Get SonarQube integration config (secrets masked)
+      operationId: getSonarQubeConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: SonarQube config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SonarQubeConfigResponse'
+    put:
+      summary: Save SonarQube integration config
+      operationId: saveSonarQubeConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveSonarQubeConfigInput'
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+
+  /integrations/cloud/sonarqube/sync:
+    post:
+      summary: Trigger SonarQube evidence sync
+      operationId: syncSonarQube
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudSyncResult'
+
+  /integrations/cloud/sonarqube/status:
+    get:
+      summary: Get SonarQube sync status and quality gate metrics
+      operationId: getSonarQubeStatus
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: SonarQube status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SonarQubeStatus'
+
+  /integrations/cloud/sonarqube/evidence:
+    get:
+      summary: List recent SonarQube evidence items
+      operationId: getSonarQubeEvidence
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Evidence items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CloudEvidenceItem'
+
+  /integrations/cloud/personio/config:
+    get:
+      summary: Get Personio webhook config (secrets masked)
+      operationId: getPersonioConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Personio config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonioConfigResponse'
+    put:
+      summary: Save Personio webhook secret
+      operationId: savePersonioConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SavePersonioConfigInput'
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+
+  /integrations/cloud/personio/status:
+    get:
+      summary: Get Personio webhook status and offboarding metrics
+      operationId: getPersonioStatus
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Personio status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonioStatus'
+
+  /vakthr/webhooks/personio/{org_id}:
+    post:
+      summary: Personio employee.departed webhook endpoint (no auth, HMAC-verified)
+      operationId: handlePersonioWebhook
+      tags: [vakthr]
+      parameters:
+        - name: org_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event: { type: string }
+                data:
+                  type: object
+                  properties:
+                    employee_id: { type: integer }
+                    date: { type: string, format: date }
+      responses:
+        '200':
+          description: Webhook accepted
+        '401':
+          description: Invalid HMAC signature
+
+  # ── Sprint 67: NIS2 Art.23 Stage Reporting ────────────────────────────────
+
+  /vaktcomply/incidents/{id}/nis2/assess:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Mark incident as NIS2-reportable and set 3-stage deadlines
+      operationId: assessNIS2Reportability
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [detected_at, check]
+              properties:
+                detected_at: { type: string, format: date-time }
+                check:
+                  type: object
+                  properties:
+                    causes_significant_disruption: { type: boolean }
+                    affects_third_parties: { type: boolean }
+                    causes_financial_damage: { type: boolean }
+      responses:
+        '204':
+          description: Reportability assessed
+        '400':
+          description: Invalid input
+
+  /vaktcomply/incidents/{id}/nis2-status:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get NIS2 reporting status for an incident
+      operationId: getNIS2Status
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: NIS2 reporting status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  is_reportable: { type: boolean }
+                  reporting_stage: { type: string }
+                  detected_at: { type: string, format: date-time, nullable: true }
+                  deadlines:
+                    type: object
+                    properties:
+                      early_warning: { type: string, format: date-time, nullable: true }
+                      full_report: { type: string, format: date-time, nullable: true }
+                      final_report: { type: string, format: date-time, nullable: true }
+                  completed_stages:
+                    type: array
+                    items: { type: string }
+                  reports:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        stage: { type: string }
+                        submitted_at: { type: string, format: date-time, nullable: true }
+                        pdf_path: { type: string }
+
+  /vaktcomply/incidents/{id}/nis2/submit/{stage}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: stage
+        in: path
+        required: true
+        schema: { type: string, enum: [early_warning, full_report, final_report] }
+    post:
+      summary: Submit NIS2 report stage content
+      operationId: submitNIS2Stage
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                affected_services: { type: string }
+                initial_assessment: { type: string }
+                root_cause: { type: string }
+                affected_users_estimate: { type: integer, nullable: true }
+                measures_taken: { type: string }
+                estimated_recovery: { type: string, nullable: true }
+                full_root_cause_analysis: { type: string }
+                permanent_measures: { type: string }
+                effectiveness_evidence: { type: string }
+      responses:
+        '200':
+          description: Stage report saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  stage: { type: string }
+                  submitted_at: { type: string, format: date-time, nullable: true }
+                  pdf_path: { type: string }
+
+  /vaktcomply/authority-contacts:
+    get:
+      summary: List authority contacts (built-in + org-specific)
+      operationId: listAuthorityContacts
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of authority contacts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    country: { type: string }
+                    sector: { type: string }
+                    authority_name: { type: string }
+                    report_url: { type: string }
+                    email: { type: string }
+                    phone: { type: string }
+                    notes: { type: string }
+                    is_primary: { type: boolean }
+                    is_builtin: { type: boolean }
+                    created_at: { type: string }
+    post:
+      summary: Create a custom authority contact
+      operationId: createAuthorityContact
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [country, authority_name]
+              properties:
+                country: { type: string }
+                sector: { type: string }
+                authority_name: { type: string }
+                report_url: { type: string }
+                email: { type: string }
+                phone: { type: string }
+                notes: { type: string }
+                is_primary: { type: boolean }
+      responses:
+        '201':
+          description: Authority contact created
+
+  # ── Sprint 67: Evidence Staleness Scoring ────────────────────────────────────
+
+  /vaktcomply/compliance-score:
+    get:
+      summary: Get evidence-based compliance score
+      operationId: getComplianceScore
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: framework_id
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Compliance score
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_controls: { type: integer }
+                  ok_count: { type: integer }
+                  stale_count: { type: integer }
+                  missing_count: { type: integer }
+                  na_count: { type: integer }
+                  score_pct: { type: number }
+
+  /vaktcomply/controls/stale:
+    get:
+      summary: List controls with stale or missing evidence
+      operationId: listStaleControls
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: framework_id
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: List of stale controls
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    code: { type: string }
+                    title: { type: string }
+                    evidence_status: { type: string }
+                    evidence_expires_at: { type: string, format: date-time, nullable: true }
+                    evidence_max_age_days: { type: integer, nullable: true }
+
+  # ── Sprint 67: Crypto Key Lifecycle ──────────────────────────────────────────
+
+  /vaktcomply/crypto-keys:
+    get:
+      summary: List cryptographic keys
+      operationId: listCryptoKeys
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of crypto keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CryptoKey'
+    post:
+      summary: Create a cryptographic key entry
+      operationId: createCryptoKey
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, key_type, algorithm, purpose]
+              properties:
+                name: { type: string }
+                key_type: { type: string, enum: [symmetric, asymmetric, certificate, hmac, signing, other] }
+                algorithm: { type: string }
+                key_length: { type: integer, nullable: true }
+                purpose: { type: string }
+                location: { type: string }
+                rotation_interval_days: { type: integer, nullable: true }
+                last_rotation_date: { type: string, format: date, nullable: true }
+                expiry_date: { type: string, format: date, nullable: true }
+                notes: { type: string }
+      responses:
+        '201':
+          description: Crypto key created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CryptoKey'
+
+  /vaktcomply/crypto-keys/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      summary: Delete a cryptographic key entry
+      operationId: deleteCryptoKey
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+
+  /vaktcomply/crypto-keys/{id}/rotate:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Record a key rotation event
+      operationId: rotateCryptoKey
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rotated_at]
+              properties:
+                rotated_at: { type: string, format: date }
+                rotation_interval_days: { type: integer, nullable: true }
+                notes: { type: string }
+      responses:
+        '200':
+          description: Key rotation recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CryptoKey'
+
+  # ── Sprint 67: Information Classification ─────────────────────────────────
+
+  /vaktscan/assets/classification-summary:
+    get:
+      summary: Get asset classification summary
+      operationId: getAssetClassificationSummary
+      tags: [vaktscan]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Classification summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_count: { type: integer }
+                  classified_count: { type: integer }
+                  unclassified_count: { type: integer }
+                  by_level:
+                    type: object
+                    additionalProperties: { type: integer }
+
+  # ── S69-1: Cross-Framework Mapping Coverage ──────────────────────────────────
+  /vaktcomply/frameworks/mapping-coverage:
+    get:
+      summary: Get cross-framework mapping coverage matrix
+      operationId: getMappingCoverage
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Mapping coverage across all framework pairs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pairs:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        framework_a_name: { type: string }
+                        framework_b_name: { type: string }
+                        mapping_count: { type: integer }
+                        is_mapped: { type: boolean }
+                  total_meaningful_pairs: { type: integer }
+                  mapped_pairs: { type: integer }
+                  coverage_pct: { type: number, format: double }
+
+  /vaktcomply/frameworks/{id}/implementation-path:
+    get:
+      summary: Get implementation path for a framework (topological order)
+      operationId: getImplementationPath
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Ordered list of implementation steps
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    step_nr: { type: integer }
+                    framework_id: { type: string }
+                    control_code: { type: string }
+                    control_title: { type: string }
+                    current_status: { type: string }
+                    prerequisites_met: { type: boolean }
+                    blocking_prereqs:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          framework: { type: string }
+                          control_code: { type: string }
+                          dependency_type: { type: string }
+
+  # ── S69-2: TLS Certificate Expiry Monitoring ─────────────────────────────────
+  /vaktscan/certificates/expiring:
+    get:
+      summary: List certificates expiring within 30 days
+      operationId: getExpiringCertificates
+      tags: [vaktscan]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of expiring certificates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    common_name: { type: string }
+                    not_after: { type: string, format: date-time }
+                    status: { type: string }
+
+  /vaktscan/certificates/check-now:
+    post:
+      summary: Trigger immediate certificate rescan for the org
+      operationId: scanAllCertificatesNow
+      tags: [vaktscan]
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          description: Scan triggered
+
+  # ── S69-3: SLA Enforcement ───────────────────────────────────────────────────
+  /vaktscan/sla-policies:
+    get:
+      summary: List SLA policies for the org
+      operationId: listSLAPolicies
+      tags: [vaktscan]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of SLA policies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SLAPolicy'
+
+  /vaktscan/sla-policies/{severity}:
+    put:
+      summary: Upsert an SLA policy for a specific severity
+      operationId: upsertSLAPolicy
+      tags: [vaktscan]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: severity
+          in: path
+          required: true
+          schema: { type: string, enum: [critical, high, medium, low, info] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [remediation_days]
+              properties:
+                remediation_days: { type: integer, minimum: 1 }
+                notification_advance_days: { type: integer, minimum: 0 }
+      responses:
+        '200':
+          description: Updated SLA policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SLAPolicy'
+
+  /vaktscan/sla-policies/reset:
+    post:
+      summary: Reset all SLA policies to DACH defaults
+      operationId: resetSLAPolicies
+      tags: [vaktscan]
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Policies reset
+
+  /vaktscan/sla/summary:
+    get:
+      summary: Get SLA compliance summary
+      operationId: getSLASummary
+      tags: [vaktscan]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: SLA summary counts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_open: { type: integer }
+                  overdue: { type: integer }
+                  at_risk: { type: integer }
+                  on_track: { type: integer }
+                  by_severity:
+                    type: object
+                    additionalProperties: { type: integer }
+                  overdue_by_severity:
+                    type: object
+                    additionalProperties: { type: integer }
+
+  # ── S69-4: JML Mover Workflow ────────────────────────────────────────────────
+  /vakthr/mover-events:
+    get:
+      summary: List mover events (role changes)
+      operationId: listMoverEvents
+      tags: [vakthr]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of mover events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MoverEvent'
+    post:
+      summary: Create a new mover event
+      operationId: createMoverEvent
+      tags: [vakthr]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [employee_id, old_role, new_role, effective_date]
+              properties:
+                employee_id: { type: string, format: uuid }
+                old_role: { type: string }
+                new_role: { type: string }
+                effective_date: { type: string, format: date }
+                notes: { type: string }
+      responses:
+        '201':
+          description: Created mover event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MoverEvent'
+
+  /vakthr/mover-events/{id}:
+    get:
+      summary: Get a mover event
+      operationId: getMoverEvent
+      tags: [vakthr]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Mover event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MoverEvent'
+
+  /vakthr/mover-events/{id}/status:
+    patch:
+      summary: Update mover event status
+      operationId: updateMoverEventStatus
+      tags: [vakthr]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [pending, in_progress, completed, cancelled] }
+      responses:
+        '200':
+          description: Updated mover event
+
+  /vakthr/mover-templates:
+    get:
+      summary: List mover checklist templates
+      operationId: listMoverTemplates
+      tags: [vakthr]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of mover templates
+
+  # ── S69-6: Transfer Impact Assessment ────────────────────────────────────────
+  /vaktprivacy/adequacy-decisions:
+    get:
+      summary: List all adequacy decisions (19 countries)
+      operationId: listAdequacyDecisions
+      tags: [vaktprivacy]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of adequacy decisions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdequacyDecision'
+
+  /vaktprivacy/transfers/compliance:
+    get:
+      summary: Get transfer compliance status summary
+      operationId: getTransferComplianceStatus
+      tags: [vaktprivacy]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Compliance status summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_transfers: { type: integer }
+                  adequate: { type: integer }
+                  requires_tia: { type: integer }
+                  tia_adequate: { type: integer }
+                  tia_adequate_with_measures: { type: integer }
+                  tia_inadequate: { type: integer }
+                  under_review: { type: integer }
+
+  /vaktprivacy/transfers:
+    get:
+      summary: List data transfers for the org
+      operationId: listDataTransfers
+      tags: [vaktprivacy]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of data transfers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DataTransfer'
+    post:
+      summary: Create a new data transfer record
+      operationId: createDataTransfer
+      tags: [vaktprivacy]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [recipient_name, recipient_country, transfer_mechanism]
+              properties:
+                recipient_name: { type: string }
+                recipient_country: { type: string, minLength: 2, maxLength: 2 }
+                transfer_mechanism:
+                  type: string
+                  enum: [adequacy_decision, scc, bcr, derogation, other]
+                data_categories:
+                  type: array
+                  items: { type: string }
+                scc_version: { type: string }
+      responses:
+        '201':
+          description: Created data transfer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataTransfer'
+
+  /vaktprivacy/transfers/{id}/tia:
+    get:
+      summary: List TIAs for a data transfer
+      operationId: listTIAs
+      tags: [vaktprivacy]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: List of TIAs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransferImpactAssessment'
+    post:
+      summary: Create a TIA for a data transfer
+      operationId: createTIA
+      tags: [vaktprivacy]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [legal_system_notes, surveillance_risk, outcome]
+              properties:
+                legal_system_notes: { type: string }
+                surveillance_risk: { type: string, enum: [low, medium, high] }
+                data_subject_rights_available: { type: boolean }
+                encryption_in_transit: { type: boolean }
+                encryption_at_rest: { type: boolean }
+                pseudonymization_applied: { type: boolean }
+                access_controls_documented: { type: boolean }
+                supplementary_measures: { type: string }
+                outcome:
+                  type: string
+                  enum: [adequate, adequate_with_measures, inadequate]
+                valid_until: { type: string, format: date }
+      responses:
+        '201':
+          description: Created TIA
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferImpactAssessment'

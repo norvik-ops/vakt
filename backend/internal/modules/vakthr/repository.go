@@ -468,3 +468,278 @@ func (r *Repository) ListEmployeesCursor(ctx context.Context, orgID string, curs
 	}
 	return out, rows.Err()
 }
+
+// GetEmployeePersonioFields returns personio_employee_id and departure_date for an employee.
+// Returns (0, zero, nil) if not set.
+func (r *Repository) GetEmployeePersonioFields(ctx context.Context, orgID, employeeID string) (personioID int, departureDate time.Time, err error) {
+	var pID pgtype.Int4
+	var dd pgtype.Date
+	err = r.db.QueryRow(ctx, `
+		SELECT personio_employee_id, departure_date
+		FROM hr_employees
+		WHERE org_id = $1::uuid AND id = $2::uuid`,
+		orgID, employeeID,
+	).Scan(&pID, &dd)
+	if err != nil {
+		return 0, time.Time{}, err
+	}
+	if pID.Valid {
+		personioID = int(pID.Int32)
+	}
+	if dd.Valid {
+		departureDate = dd.Time
+	}
+	return personioID, departureDate, nil
+}
+
+// UpsertEmployeeByPersonioID inserts or updates an hr_employees row for the given
+// Personio employee ID. Returns the Vakt employee UUID, whether a new row was created,
+// and any error. Only personio_employee_id and departure_date are stored — no PII.
+func (r *Repository) UpsertEmployeeByPersonioID(ctx context.Context, orgID string, personioEmployeeID int, departureDate time.Time) (employeeID string, created bool, err error) {
+	// Try to find existing employee
+	err = r.db.QueryRow(ctx, `
+		SELECT id::text FROM hr_employees
+		WHERE org_id = $1::uuid AND personio_employee_id = $2`,
+		orgID, personioEmployeeID,
+	).Scan(&employeeID)
+
+	if err == nil {
+		// Found — update departure_date
+		_, err = r.db.Exec(ctx, `
+			UPDATE hr_employees
+			SET departure_date = $1, updated_at = NOW()
+			WHERE org_id = $2::uuid AND personio_employee_id = $3`,
+			departureDate.Format("2006-01-02"), orgID, personioEmployeeID,
+		)
+		return employeeID, false, err
+	}
+
+	// Not found — create placeholder (no name or email)
+	err = r.db.QueryRow(ctx, `
+		INSERT INTO hr_employees
+			(org_id, first_name, last_name, email, status, personio_employee_id, departure_date)
+		VALUES
+			($1::uuid, '', '', '', 'offboarding', $2, $3)
+		RETURNING id::text`,
+		orgID, personioEmployeeID, departureDate.Format("2006-01-02"),
+	).Scan(&employeeID)
+	if err != nil {
+		return "", false, fmt.Errorf("create placeholder employee for personio_id %d: %w", personioEmployeeID, err)
+	}
+	return employeeID, true, nil
+}
+
+// --- S69-4: JML Mover Workflow ---
+
+func (r *Repository) CreateMoverEvent(ctx context.Context, orgID, initiatedBy string, in CreateMoverEventInput, effectiveDate, dueDate time.Time) (*MoverEvent, error) {
+	var initiatedByP *string
+	if initiatedBy != "" {
+		initiatedByP = &initiatedBy
+	}
+	var fromDept, fromTitle *string
+	if in.FromDepartment != "" {
+		fromDept = &in.FromDepartment
+	}
+	if in.FromJobTitle != "" {
+		fromTitle = &in.FromJobTitle
+	}
+
+	var ev MoverEvent
+	var completedAt *time.Time
+	var checklistRunID, initiatedByOut *string
+	err := r.db.QueryRow(ctx, `
+		INSERT INTO hr_mover_events
+			(org_id, employee_id, from_department, from_job_title, to_department, to_job_title,
+			 effective_date, initiated_by, due_date)
+		VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8::uuid, $9)
+		RETURNING id::text, org_id::text, employee_id::text,
+		          COALESCE(from_department,''), COALESCE(from_job_title,''),
+		          to_department, to_job_title,
+		          effective_date, initiated_by::text, checklist_run_id::text,
+		          status, due_date, completed_at, created_at`,
+		orgID, in.EmployeeID, fromDept, fromTitle, in.ToDepartment, in.ToJobTitle,
+		effectiveDate, initiatedByP, dueDate,
+	).Scan(
+		&ev.ID, &ev.OrgID, &ev.EmployeeID,
+		&ev.FromDepartment, &ev.FromJobTitle,
+		&ev.ToDepartment, &ev.ToJobTitle,
+		&ev.EffectiveDate, &initiatedByOut, &checklistRunID,
+		&ev.Status, &ev.DueDate, &completedAt, &ev.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create mover event: %w", err)
+	}
+	ev.InitiatedBy = initiatedByOut
+	ev.ChecklistRunID = checklistRunID
+	ev.CompletedAt = completedAt
+	return &ev, nil
+}
+
+func (r *Repository) ListMoverEvents(ctx context.Context, orgID string) ([]MoverEvent, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT id::text, org_id::text, employee_id::text,
+		       COALESCE(from_department,''), COALESCE(from_job_title,''),
+		       to_department, to_job_title,
+		       effective_date, initiated_by::text, checklist_run_id::text,
+		       status, due_date, completed_at, created_at
+		FROM hr_mover_events
+		WHERE org_id = $1::uuid
+		ORDER BY created_at DESC`,
+		orgID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list mover events: %w", err)
+	}
+	defer rows.Close()
+
+	var out []MoverEvent
+	for rows.Next() {
+		var ev MoverEvent
+		var completedAt *time.Time
+		var initiated, checklist *string
+		if err := rows.Scan(
+			&ev.ID, &ev.OrgID, &ev.EmployeeID,
+			&ev.FromDepartment, &ev.FromJobTitle,
+			&ev.ToDepartment, &ev.ToJobTitle,
+			&ev.EffectiveDate, &initiated, &checklist,
+			&ev.Status, &ev.DueDate, &completedAt, &ev.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan mover event: %w", err)
+		}
+		ev.InitiatedBy = initiated
+		ev.ChecklistRunID = checklist
+		ev.CompletedAt = completedAt
+		out = append(out, ev)
+	}
+	return out, rows.Err()
+}
+
+func (r *Repository) GetMoverEvent(ctx context.Context, orgID, id string) (*MoverEvent, error) {
+	var ev MoverEvent
+	var completedAt *time.Time
+	var initiated, checklist *string
+	err := r.db.QueryRow(ctx, `
+		SELECT id::text, org_id::text, employee_id::text,
+		       COALESCE(from_department,''), COALESCE(from_job_title,''),
+		       to_department, to_job_title,
+		       effective_date, initiated_by::text, checklist_run_id::text,
+		       status, due_date, completed_at, created_at
+		FROM hr_mover_events
+		WHERE id = $1::uuid AND org_id = $2::uuid`,
+		id, orgID,
+	).Scan(
+		&ev.ID, &ev.OrgID, &ev.EmployeeID,
+		&ev.FromDepartment, &ev.FromJobTitle,
+		&ev.ToDepartment, &ev.ToJobTitle,
+		&ev.EffectiveDate, &initiated, &checklist,
+		&ev.Status, &ev.DueDate, &completedAt, &ev.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get mover event: %w", err)
+	}
+	ev.InitiatedBy = initiated
+	ev.ChecklistRunID = checklist
+	ev.CompletedAt = completedAt
+	return &ev, nil
+}
+
+func (r *Repository) UpdateMoverEventStatus(ctx context.Context, orgID, id, status string) (*MoverEvent, error) {
+	var completedAt *time.Time
+	if status == "completed" {
+		t := time.Now()
+		completedAt = &t
+	}
+	var ev MoverEvent
+	var initiated, checklist *string
+	err := r.db.QueryRow(ctx, `
+		UPDATE hr_mover_events
+		SET status = $1, completed_at = $2
+		WHERE id = $3::uuid AND org_id = $4::uuid
+		RETURNING id::text, org_id::text, employee_id::text,
+		          COALESCE(from_department,''), COALESCE(from_job_title,''),
+		          to_department, to_job_title,
+		          effective_date, initiated_by::text, checklist_run_id::text,
+		          status, due_date, completed_at, created_at`,
+		status, completedAt, id, orgID,
+	).Scan(
+		&ev.ID, &ev.OrgID, &ev.EmployeeID,
+		&ev.FromDepartment, &ev.FromJobTitle,
+		&ev.ToDepartment, &ev.ToJobTitle,
+		&ev.EffectiveDate, &initiated, &checklist,
+		&ev.Status, &ev.DueDate, &completedAt, &ev.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("update mover event status: %w", err)
+	}
+	ev.InitiatedBy = initiated
+	ev.ChecklistRunID = checklist
+	ev.CompletedAt = completedAt
+	return &ev, nil
+}
+
+func (r *Repository) ListMoverTemplates(ctx context.Context, orgID string) ([]MoverTemplate, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT id::text, org_id::text, name,
+		       COALESCE(from_role_hint,''), COALESCE(to_role_hint,''),
+		       is_default, created_at
+		FROM hr_mover_templates WHERE org_id = $1::uuid ORDER BY name`,
+		orgID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list mover templates: %w", err)
+	}
+	defer rows.Close()
+
+	var out []MoverTemplate
+	for rows.Next() {
+		var t MoverTemplate
+		if err := rows.Scan(&t.ID, &t.OrgID, &t.Name, &t.FromRoleHint, &t.ToRoleHint, &t.IsDefault, &t.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan mover template: %w", err)
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
+func (r *Repository) CreateMoverTemplate(ctx context.Context, orgID, name, fromRoleHint, toRoleHint string, isDefault bool) (string, error) {
+	var id string
+	err := r.db.QueryRow(ctx, `
+		INSERT INTO hr_mover_templates (org_id, name, from_role_hint, to_role_hint, is_default)
+		VALUES ($1::uuid, $2, NULLIF($3,''), NULLIF($4,''), $5)
+		RETURNING id::text`,
+		orgID, name, fromRoleHint, toRoleHint, isDefault,
+	).Scan(&id)
+	return id, err
+}
+
+func (r *Repository) CreateMoverTemplateItem(ctx context.Context, templateID, section, title, description, responsibleRole string, sortOrder int) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO hr_mover_template_items (template_id, section, title, description, responsible_role, sort_order)
+		VALUES ($1::uuid, $2, $3, NULLIF($4,''), NULLIF($5,''), $6)`,
+		templateID, section, title, description, responsibleRole, sortOrder,
+	)
+	return err
+}
+
+func (r *Repository) ListMoverTemplateItems(ctx context.Context, templateID string) ([]MoverTemplateItem, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT id::text, template_id::text, section, title,
+		       COALESCE(description,''), COALESCE(responsible_role,''), sort_order
+		FROM hr_mover_template_items WHERE template_id = $1::uuid ORDER BY section, sort_order`,
+		templateID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list mover template items: %w", err)
+	}
+	defer rows.Close()
+
+	var out []MoverTemplateItem
+	for rows.Next() {
+		var item MoverTemplateItem
+		if err := rows.Scan(&item.ID, &item.TemplateID, &item.Section, &item.Title, &item.Description, &item.ResponsibleRole, &item.SortOrder); err != nil {
+			return nil, fmt.Errorf("scan mover template item: %w", err)
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}

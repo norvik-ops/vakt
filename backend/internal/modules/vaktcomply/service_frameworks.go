@@ -92,6 +92,54 @@ func (s *Service) EnableFramework(ctx context.Context, orgID, name string) (*Fra
 		if seedErr := s.SeedDORAMappings(ctx, orgID); seedErr != nil {
 			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed DORA↔ISO27001 mappings (non-critical)")
 		}
+		// S69-1: Hotfix — also seed corrected DORA↔ISO mappings.
+		if seedErr := s.SeedDORAMappingsFixed(ctx, orgID); seedErr != nil {
+			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed DORA↔ISO27001 fixed mappings (non-critical)")
+		}
+	}
+
+	// S69-1: Seed new cross-framework pairs when relevant frameworks are enabled.
+	switch name {
+	case "CRA", "ISO27001", "NIS2":
+		if seedErr := s.SeedCRAMappings(ctx, orgID); seedErr != nil {
+			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed CRA mappings (non-critical)")
+		}
+	}
+	switch name {
+	case "NIS2", "DORA":
+		if seedErr := s.SeedNIS2DORAMappings(ctx, orgID); seedErr != nil {
+			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed NIS2↔DORA mappings (non-critical)")
+		}
+	}
+	switch name {
+	case "NIS2", "BSI":
+		if seedErr := s.SeedNIS2BSIMappings(ctx, orgID); seedErr != nil {
+			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed NIS2↔BSI mappings (non-critical)")
+		}
+	}
+	switch name {
+	case "NIS2", "CIS":
+		if seedErr := s.SeedNIS2CISMappings(ctx, orgID); seedErr != nil {
+			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed NIS2↔CIS mappings (non-critical)")
+		}
+	}
+	switch name {
+	case "EUAIACT", "ISO42001":
+		if seedErr := s.SeedEUAIActISO42001Mappings(ctx, orgID); seedErr != nil {
+			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed EUAIACT↔ISO42001 mappings (non-critical)")
+		}
+	}
+	switch name {
+	case "EUAIACT", "ISO27001":
+		if seedErr := s.SeedEUAIActISO27001Mappings(ctx, orgID); seedErr != nil {
+			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed EUAIACT↔ISO27001 mappings (non-critical)")
+		}
+	}
+	switch name {
+	case "ISO42001", "ISO27001":
+		if seedErr := s.SeedISO42001ISO27001Mappings(ctx, orgID); seedErr != nil {
+			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed ISO42001↔ISO27001 mappings (non-critical)")
+		}
 	}
 
 	return fw, nil

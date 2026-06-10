@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Shield, Plus, Pencil, Trash2, Lock } from 'lucide-react'
+import { Shield, Plus, Pencil, Trash2, Lock, Link2 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
@@ -29,13 +30,27 @@ import {
   useUpdateProtectionNeed,
   useFinalizeProtectionNeed,
   useDeleteProtectionNeed,
+  useLinkAssetToPNA,
 } from '../hooks/useProtectionNeeds'
+import { apiFetch } from '../../../api/client'
 import type {
   ProtectionNeedAssessment,
   ProtectionLevel,
   ProtectionObjectType,
   CreateProtectionNeedInput,
 } from '../types'
+
+// Minimal type for the asset picker — only what we display.
+interface AssetOption {
+  id: string
+  name: string
+  criticality: 'low' | 'medium' | 'high' | 'critical'
+  type: string
+}
+
+const criticality_de: Record<string, string> = {
+  low: 'Niedrig', medium: 'Mittel', high: 'Hoch', critical: 'Kritisch',
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -77,11 +92,13 @@ function ProtectionNeedCard({
   onEdit,
   onFinalize,
   onDelete,
+  onLinkAsset,
 }: {
   item: ProtectionNeedAssessment
   onEdit: () => void
   onFinalize: () => void
   onDelete: () => void
+  onLinkAsset?: () => void
 }) {
   const { t } = useTranslation()
   const finalized = item.status === 'finalized'
@@ -102,6 +119,17 @@ function ProtectionNeedCard({
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
                   <Pencil className="w-3.5 h-3.5" />
                 </Button>
+                {item.object_type === 'system' && onLinkAsset && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    title="Asset verknüpfen"
+                    onClick={onLinkAsset}
+                  >
+                    <Link2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -151,6 +179,12 @@ function ProtectionNeedCard({
           </div>
         </div>
 
+        {item.vb_asset_id && (
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <Link2 className="w-3 h-3 text-blue-400" />
+            <span className="text-blue-400">Asset verknüpft</span>
+          </p>
+        )}
         {finalized && (
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Lock className="w-3 h-3" />
@@ -170,11 +204,24 @@ export default function ProtectionNeedsPage() {
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState<CreateProtectionNeedInput>(emptyForm())
 
+  const [linkDialogPnaId, setLinkDialogPnaId] = useState<string | null>(null)
+
   const { data: items = [], isLoading, isError } = useProtectionNeeds()
   const createItem = useCreateProtectionNeed()
   const updateItem = useUpdateProtectionNeed(editId ?? '')
   const finalizeItem = useFinalizeProtectionNeed()
   const deleteItem = useDeleteProtectionNeed()
+  const linkAsset = useLinkAssetToPNA()
+
+  const { data: assetsResp } = useQuery<{ data: AssetOption[] } | AssetOption[]>({
+    queryKey: ['vaktscan', 'assets', 'picker'],
+    queryFn: () => apiFetch<{ data: AssetOption[] } | AssetOption[]>('/vaktscan/assets'),
+    staleTime: 60_000,
+    enabled: linkDialogPnaId != null,
+  })
+  const assetList: AssetOption[] = Array.isArray(assetsResp)
+    ? assetsResp
+    : ((assetsResp as { data?: AssetOption[] })?.data ?? [])
 
   function openCreate() {
     setEditId(null)
@@ -256,11 +303,60 @@ export default function ProtectionNeedsPage() {
                 onEdit={() => { openEdit(item); }}
                 onFinalize={() => { handleFinalize(item.id); }}
                 onDelete={() => { handleDelete(item.id); }}
+                onLinkAsset={item.object_type === 'system' ? () => { setLinkDialogPnaId(item.id); } : undefined}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Asset-Link Dialog */}
+      <Dialog open={linkDialogPnaId != null} onOpenChange={(o) => { if (!o) setLinkDialogPnaId(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Asset verknüpfen</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2 max-h-64 overflow-y-auto">
+            {assetList.length === 0 && (
+              <p className="text-sm text-muted-foreground">Keine Assets gefunden.</p>
+            )}
+            {assetList.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-border hover:bg-surface2 text-left"
+                onClick={() => {
+                  if (linkDialogPnaId) {
+                    linkAsset.mutate(
+                      { pnaId: linkDialogPnaId, assetId: a.id },
+                      { onSuccess: () => { setLinkDialogPnaId(null); } },
+                    )
+                  }
+                }}
+              >
+                <span className="text-sm font-medium">{a.name}</span>
+                <span className="text-xs text-muted-foreground">{criticality_de[a.criticality] ?? a.criticality}</span>
+              </button>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setLinkDialogPnaId(null); }}>Abbrechen</Button>
+            {linkDialogPnaId && items.find((i) => i.id === linkDialogPnaId)?.vb_asset_id && (
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  linkAsset.mutate(
+                    { pnaId: linkDialogPnaId, assetId: null },
+                    { onSuccess: () => { setLinkDialogPnaId(null); } },
+                  )
+                }}
+              >
+                Verknüpfung aufheben
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">

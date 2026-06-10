@@ -39,6 +39,9 @@ const (
 	// It specifically targets incidents where classification_result.obligation = "probably".
 	TaskNIS2ObligationCheck = "vaktcomply:nis2_obligation_check"
 
+	// TaskISMSKPISnapshot is the task type for the daily ISMS KPI snapshot job (S61-7).
+	TaskISMSKPISnapshot = "vaktcomply:isms_kpi_snapshot"
+
 	// Queue is the dedicated Asynq queue for Vakt Comply evidence and compliance jobs.
 	Queue = "vaktcomply"
 )
@@ -95,4 +98,10 @@ func NewEvidenceFreshnessCheckTask() *asynq.Task {
 // Unique window of 7 days prevents duplicate tasks within a weekly cron window.
 func NewAIWeeklyDigestTask() *asynq.Task {
 	return asynq.NewTask(TaskAIWeeklyDigest, nil, asynq.Unique(7*24*time.Hour))
+}
+
+// NewISMSKPISnapshotTask creates the daily ISMS KPI snapshot task (S61-7).
+// Unique window of 23 hours prevents duplicate tasks within a daily cron window.
+func NewISMSKPISnapshotTask() *asynq.Task {
+	return asynq.NewTask(TaskISMSKPISnapshot, nil, asynq.Unique(23*time.Hour))
 }

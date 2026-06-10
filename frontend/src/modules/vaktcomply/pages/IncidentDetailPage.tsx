@@ -21,6 +21,7 @@ import { toast } from '../../../shared/hooks/useToast'
 import { Sparkles } from 'lucide-react'
 import { ReportabilityWizard } from '../components/ReportabilityWizard'
 import { ClassifyReportingWizard } from '../components/ClassifyReportingWizard'
+import { NIS2StagePanel } from '../components/NIS2StagePanel'
 import type { Incident, UpdateIncidentInput, DeadlineInfo, IncidentReport } from '../types'
 
 const SEVERITY_CLASS: Record<Incident['severity'], string> = {
@@ -373,6 +374,10 @@ export default function IncidentDetailPage() {
                   )}
                 </CardContent>
               </Card>
+            )}
+
+            {(incident.incident_type === 'nis2' || incident.incident_type === 'general') && id && (
+              <NIS2StagePanel incidentId={id} />
             )}
 
             {form.incident_type === 'dora' && (

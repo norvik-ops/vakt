@@ -174,3 +174,40 @@ func (h *Handler) UnlinkRiskControl(c echo.Context) error {
 	}
 	return c.NoContent(http.StatusNoContent)
 }
+
+// UpdateRiskResidualFields handles PATCH /api/v1/vaktcomply/risks/:id/residual (S61-4).
+func (h *Handler) UpdateRiskResidualFields(c echo.Context) error {
+	id := c.Param("id")
+	var in UpdateRiskResidualInput
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+	if err := h.validate.Struct(in); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
+	}
+	if err := h.service.UpdateRiskResidualFields(c.Request().Context(), orgID(c), id, in); err != nil {
+		log.Error().Err(err).Msg("update risk residual fields")
+		return errResp(c, http.StatusInternalServerError, "failed to update residual fields", "CK_UPDATE_RESIDUAL_FAILED")
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "updated"})
+}
+
+// AcceptRisk handles POST /api/v1/vaktcomply/risks/:id/accept (S61-4).
+func (h *Handler) AcceptRisk(c echo.Context) error {
+	id := c.Param("id")
+	var in AcceptRiskInput
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+	if err := h.validate.Struct(in); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
+	}
+	if err := h.service.AcceptRisk(c.Request().Context(), orgID(c), id, userID(c), in); err != nil {
+		if err.Error() == "risk must have treatment_status=accepted before formal acceptance" {
+			return errResp(c, http.StatusConflict, err.Error(), "CK_RISK_NOT_ACCEPTED_TREATMENT")
+		}
+		log.Error().Err(err).Msg("accept risk")
+		return errResp(c, http.StatusInternalServerError, "failed to accept risk", "CK_ACCEPT_RISK_FAILED")
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "accepted"})
+}

@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/config"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/modules/vaktvault"
 	cloudintegration "github.com/matharnica/vakt/internal/shared/platform/integrations/cloud"
 	ghintegration "github.com/matharnica/vakt/internal/shared/platform/integrations/github"
@@ -90,8 +91,39 @@ func handleGitScan(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 			Int("findings", openCount).
 			Msg("git scan completed")
 
+		if openCount > 0 {
+			createGitLeakIncident(ctx, pool, payload.OrgID, payload.ScanID, payload.RepoURL, openCount, scannedAt)
+		}
+
 		return nil
 	}
+}
+
+// createGitLeakIncident creates a vaktcomply incident for an open git credential leak.
+// Best-effort: errors are logged but never returned — the scan result is already persisted.
+func createGitLeakIncident(ctx context.Context, pool *pgxpool.Pool, orgID, scanID, repoURL string, findingCount int, discoveredAt time.Time) {
+	complyRepo := vaktcomply.NewRepository(pool)
+	incident, err := complyRepo.CreateIncident(ctx, orgID, vaktcomply.CreateIncidentInput{
+		Title: fmt.Sprintf("[Git-Credential-Leak] %s", repoURL),
+		Description: fmt.Sprintf(
+			"Der Git-Scan des Repositories %s hat %d offene Credential-Leaks gefunden (Scan-ID: %s). "+
+				"Bitte prüfen Sie die betroffenen Commits und rotieren Sie alle exponierten Credentials umgehend.",
+			repoURL, findingCount, scanID,
+		),
+		Severity:        "high",
+		DiscoveredAt:    discoveredAt,
+		AffectedSystems: []string{repoURL},
+	}, nil)
+	if err != nil {
+		log.Error().Err(err).Str("scan_id", scanID).Msg("vaktvault→vaktcomply: failed to create incident from git leak")
+		return
+	}
+	log.Info().
+		Str("scan_id", scanID).
+		Str("incident_id", incident.ID).
+		Str("org_id", orgID).
+		Int("findings", findingCount).
+		Msg("vaktvault→vaktcomply: incident created from git leak")
 }
 
 // handleGitHubCISync collects GitHub Actions CI run evidence for all organisations.

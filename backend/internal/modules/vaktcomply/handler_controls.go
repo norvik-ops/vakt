@@ -275,3 +275,28 @@ func (h *Handler) GetScoreHistory(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, entries)
 }
+
+// GetComplianceScore handles GET /api/v1/vaktcomply/compliance-score (S67-4).
+// Returns the staleness-aware compliance score.
+func (h *Handler) GetComplianceScore(c echo.Context) error {
+	score, err := h.service.GetComplianceScore(c.Request().Context(), orgID(c))
+	if err != nil {
+		log.Error().Err(err).Msg("get compliance score")
+		return errResp(c, http.StatusInternalServerError, "failed to get compliance score", "CK_COMPLIANCE_SCORE_FAILED")
+	}
+	return c.JSON(http.StatusOK, score)
+}
+
+// ListStaleControls handles GET /api/v1/vaktcomply/controls/stale (S67-4).
+// Returns controls with evidence_status = 'stale', sorted by expiry date.
+func (h *Handler) ListStaleControls(c echo.Context) error {
+	controls, err := h.service.ListStaleControls(c.Request().Context(), orgID(c))
+	if err != nil {
+		log.Error().Err(err).Msg("list stale controls")
+		return errResp(c, http.StatusInternalServerError, "failed to list stale controls", "CK_STALE_CONTROLS_FAILED")
+	}
+	if controls == nil {
+		controls = []Control{}
+	}
+	return c.JSON(http.StatusOK, controls)
+}

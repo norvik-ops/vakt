@@ -16,8 +16,10 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/config"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/modules/vaktscan"
 	"github.com/matharnica/vakt/internal/services/alerting"
+	"github.com/matharnica/vakt/internal/shared/platform/events"
 )
 
 func handleScanJob(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
@@ -289,6 +291,113 @@ func handleEOLCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 				Str("sbom_id", payload.SBOMID).
 				Msg("EOL check failed")
 			return err
+		}
+		return nil
+	}
+}
+
+// handleCertScan handles vaktscan:cert_scan jobs.
+// When OrgID is set in the payload, only that org is scanned (manual trigger).
+// When OrgID is empty (scheduled run), all orgs are scanned in sequence.
+// After scanning, crossevidence is written for expiring/expired certs
+// to A.10.1 / NIS2-H.5 controls.
+func handleCertScan(pool *pgxpool.Pool) asynq.HandlerFunc {
+	return func(ctx context.Context, t *asynq.Task) error {
+		var payload vaktscan.CertScanPayload
+		if len(t.Payload()) > 0 {
+			_ = json.Unmarshal(t.Payload(), &payload)
+		}
+
+		var orgIDs []string
+		if payload.OrgID != "" {
+			orgIDs = []string{payload.OrgID}
+		} else {
+			rows, err := pool.Query(ctx, `SELECT id::text FROM organizations`)
+			if err != nil {
+				return fmt.Errorf("cert_scan: list orgs: %w", err)
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var id string
+				if e := rows.Scan(&id); e == nil {
+					orgIDs = append(orgIDs, id)
+				}
+			}
+			if err := rows.Err(); err != nil {
+				return fmt.Errorf("cert_scan: iterate orgs: %w", err)
+			}
+		}
+
+		certKeywords := []string{"kryptographie", "zertifikat", "tls", "certificate", "pki"}
+		repo := vaktscan.NewRepository(pool)
+		complyRepo := vaktcomply.NewRepository(pool)
+
+		for _, orgID := range orgIDs {
+			count, scanErr := vaktscan.ScanAllCertificatesForOrg(ctx, pool, orgID)
+			if scanErr != nil {
+				log.Error().Err(scanErr).Str("org_id", orgID).Msg("cert_scan: scan failed")
+				continue
+			}
+
+			certs, listErr := repo.ListCertificates(ctx, orgID)
+			if listErr != nil {
+				log.Error().Err(listErr).Str("org_id", orgID).Msg("cert_scan: list certs for evidence")
+				continue
+			}
+
+			controls, _ := complyRepo.FindControlsByKeywords(ctx, orgID, certKeywords)
+			for _, cert := range certs {
+				if cert.Status != "expiring" && cert.Status != "expired" {
+					continue
+				}
+				ev := events.CertExpiring(orgID, cert.ID, cert.Domain, cert.Status)
+				collectorData, _ := json.Marshal(map[string]string{
+					"source":        ev.Source,
+					"resource_type": ev.ResourceType,
+					"resource_id":   ev.ResourceID,
+				})
+				for _, ctrl := range controls {
+					if _, evErr := complyRepo.AddCollectorEvidence(
+						ctx, orgID, ctrl.ID, "", "automated",
+						ev.Title, collectorData,
+					); evErr != nil {
+						log.Warn().Err(evErr).Str("cert_id", cert.ID).Str("control_id", ctrl.ID).
+							Msg("cert_scan: add evidence failed")
+					}
+				}
+			}
+
+			log.Info().Str("org_id", orgID).Int("scanned", count).Msg("cert_scan: org completed")
+		}
+		return nil
+	}
+}
+
+// handleSLACheck handles vaktscan:sla_check jobs.
+// Runs daily to update sla_status on all open findings for all orgs.
+func handleSLACheck(pool *pgxpool.Pool) asynq.HandlerFunc {
+	return func(ctx context.Context, t *asynq.Task) error {
+		rows, err := pool.Query(ctx, `SELECT id::text FROM organizations`)
+		if err != nil {
+			return fmt.Errorf("sla_check: list orgs: %w", err)
+		}
+		defer rows.Close()
+
+		var orgIDs []string
+		for rows.Next() {
+			var id string
+			if e := rows.Scan(&id); e == nil {
+				orgIDs = append(orgIDs, id)
+			}
+		}
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("sla_check: iterate orgs: %w", err)
+		}
+
+		for _, orgID := range orgIDs {
+			if err := vaktscan.RunSLACheckForOrg(ctx, pool, orgID); err != nil {
+				log.Error().Err(err).Str("org_id", orgID).Msg("sla_check: org failed")
+			}
 		}
 		return nil
 	}

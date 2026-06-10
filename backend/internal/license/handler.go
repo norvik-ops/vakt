@@ -16,23 +16,25 @@ import (
 )
 
 type licenseResponse struct {
-	Tier      string     `json:"tier"`
-	IsPro     bool       `json:"is_pro"`
-	Features  []string   `json:"features"`
-	OrgName   string     `json:"org_name"`
-	ExpiresAt *time.Time `json:"expires_at"`
-	Demo      bool       `json:"demo"`
-	Revoked   bool       `json:"revoked"`
+	Tier               string     `json:"tier"`
+	IsPro              bool       `json:"is_pro"`
+	Features           []string   `json:"features"`
+	OrgName            string     `json:"org_name"`
+	ExpiresAt          *time.Time `json:"expires_at"`
+	Demo               bool       `json:"demo"`
+	Revoked            bool       `json:"revoked"`
+	AutoRenewalEnabled bool       `json:"auto_renewal_enabled"`
 }
 
 // Handler serves the /api/v1/license endpoint.
 // mu guards h.lic against concurrent reads and writes (e.g. Activate updating
 // h.lic while Get is reading it in another goroutine).
 type Handler struct {
-	mu  sync.RWMutex
-	lic *License
-	db  *pgxpool.Pool
-	rdb *redis.Client
+	mu                 sync.RWMutex
+	lic                *License
+	db                 *pgxpool.Pool
+	rdb                *redis.Client
+	autoRenewalEnabled bool
 }
 
 // NewHandler creates a Handler bound to the given License.
@@ -49,6 +51,13 @@ func (h *Handler) WithDB(db *pgxpool.Pool) *Handler {
 // WithRedis attaches a Redis client so that Activate can invalidate the license cache.
 func (h *Handler) WithRedis(rdb *redis.Client) *Handler {
 	h.rdb = rdb
+	return h
+}
+
+// WithAutoRenewal marks the handler as having auto-renewal enabled so the
+// license response includes auto_renewal_enabled: true.
+func (h *Handler) WithAutoRenewal() *Handler {
+	h.autoRenewalEnabled = true
 	return h
 }
 
@@ -72,13 +81,14 @@ func (h *Handler) Get(c echo.Context) error {
 		features = []string{}
 	}
 	return c.JSON(http.StatusOK, licenseResponse{
-		Tier:      lic.Tier,
-		IsPro:     lic.IsPro(),
-		Features:  features,
-		OrgName:   lic.OrgName,
-		ExpiresAt: lic.ExpiresAt,
-		Demo:      lic.Demo,
-		Revoked:   lic.Revoked,
+		Tier:               lic.Tier,
+		IsPro:              lic.IsPro(),
+		Features:           features,
+		OrgName:            lic.OrgName,
+		ExpiresAt:          lic.ExpiresAt,
+		Demo:               lic.Demo,
+		Revoked:            lic.Revoked,
+		AutoRenewalEnabled: h.autoRenewalEnabled,
 	})
 }
 
@@ -177,12 +187,13 @@ func (h *Handler) Activate(c echo.Context) error {
 		Msg("license: Pro key activated successfully")
 
 	return c.JSON(http.StatusOK, licenseResponse{
-		Tier:      lic.Tier,
-		IsPro:     lic.IsPro(),
-		Features:  features,
-		OrgName:   lic.OrgName,
-		ExpiresAt: lic.ExpiresAt,
-		Demo:      lic.Demo,
-		Revoked:   lic.Revoked,
+		Tier:               lic.Tier,
+		IsPro:              lic.IsPro(),
+		Features:           features,
+		OrgName:            lic.OrgName,
+		ExpiresAt:          lic.ExpiresAt,
+		Demo:               lic.Demo,
+		Revoked:            lic.Revoked,
+		AutoRenewalEnabled: h.autoRenewalEnabled,
 	})
 }

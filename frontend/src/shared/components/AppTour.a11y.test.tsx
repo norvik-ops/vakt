@@ -1,7 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 
 import { AppTour } from './AppTour'
+
+vi.mock('../hooks/useWhatsNew', () => ({
+  useWhatsNew: () => ({ isNew: false, currentVersion: '0.6.0', dismiss: vi.fn() }),
+}))
 
 const TOUR_COMPLETED_KEY = 'vakt_tour_completed'
 

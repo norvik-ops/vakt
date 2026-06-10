@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { GitBranch, Plus, ChevronDown, ChevronUp, KeyRound } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -17,6 +18,7 @@ import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 const statusVariant = jobStatusVariant
 
 function ScanResultsPanel({ scanId }: { scanId: string }) {
+  const { t } = useTranslation()
   const { data: results, isLoading } = useGitScanResults(scanId, true)
   const dismiss = useDismissScanResult()
   const [dismissingId, setDismissingId] = useState<string | null>(null)
@@ -41,7 +43,7 @@ function ScanResultsPanel({ scanId }: { scanId: string }) {
   }
 
   if (!results || results.length === 0) {
-    return <p className="text-sm text-secondary py-4 text-center">No findings.</p>
+    return <p className="text-sm text-secondary py-4 text-center">{t('vault.gitScans.noFindings')}</p>
   }
 
   const active = results.filter((r) => !r.dismissed)
@@ -72,14 +74,18 @@ function ScanResultsPanel({ scanId }: { scanId: string }) {
       ))}
 
       {dismissed.length > 0 && (
-        <p className="text-xs text-secondary">{dismissed.length} dismissed finding{dismissed.length !== 1 ? 's' : ''}</p>
+        <p className="text-xs text-secondary">
+          {dismissed.length !== 1
+            ? t('vault.gitScans.dismissedFindingsPlural', { count: dismissed.length })
+            : t('vault.gitScans.dismissedFindings', { count: dismissed.length })}
+        </p>
       )}
 
       <Dialog open={!!dismissingId} onOpenChange={(open) => { if (!open) { setDismissingId(null); } }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Dismiss Finding</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('vault.gitScans.dismissFinding')}</DialogTitle></DialogHeader>
           <div className="py-4 space-y-1.5">
-            <Label htmlFor="dismiss-reason">Reason</Label>
+            <Label htmlFor="dismiss-reason">{t('vault.gitScans.dismissLabel')}</Label>
             <Input
               id="dismiss-reason"
               placeholder="False positive, already rotated, etc."
@@ -88,9 +94,9 @@ function ScanResultsPanel({ scanId }: { scanId: string }) {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setDismissingId(null); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setDismissingId(null); }}>{t('vault.gitScans.cancel')}</Button>
             <Button onClick={handleDismiss} disabled={dismiss.isPending}>
-              {dismiss.isPending ? 'Dismissing…' : 'Dismiss'}
+              {dismiss.isPending ? t('vault.gitScans.dismissing') : t('vault.gitScans.dismiss')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -128,6 +134,7 @@ function ScanRow({ scan }: { scan: GitScan }) {
 }
 
 export default function GitScansPage() {
+  const { t } = useTranslation()
   const { data: scans, isLoading } = useGitScans()
   const triggerScan = useTriggerGitScan()
   const [open, setOpen] = useState(false)
@@ -146,17 +153,17 @@ export default function GitScansPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Git Scans"
-        description="Repositories nach geleakten Zugangsdaten und Secrets durchsuchen."
+        title={t('vault.gitScans.title')}
+        description={t('vault.gitScans.description')}
         actions={
           <Button onClick={() => { setOpen(true); }}>
             <Plus className="w-4 h-4 mr-1" />
-            New Scan
+            {t('vault.gitScans.newScan')}
           </Button>
         }
       />
 
-      <InfoBanner icon={KeyRound} title="Git-Repos auf Secrets scannen">
+      <InfoBanner icon={KeyRound} title={t('vault.gitScans.infoBannerTitle')}>
         <p>Gib die URL eines öffentlichen oder privaten Repositories ein (HTTPS oder SSH). Vakt Vault sucht mit <strong>Gitleaks</strong> nach versehentlich eingecheckten Passwörtern, Tokens und API-Keys.</p>
         <p className="mt-1">Für <strong>private Repositories</strong>: trage zuerst ein Personal Access Token (GitHub/GitLab/Bitbucket) unter <strong>Settings → Integrationen</strong> ein.</p>
       </InfoBanner>
@@ -169,11 +176,11 @@ export default function GitScansPage() {
         ) : !scans || scans.length === 0 ? (
           <EmptyState
             icon={GitBranch}
-            title="Keine Git-Scans"
-            description="Verbinde dein erstes Repository."
+            title={t('vault.gitScans.noScans')}
+            description={t('vault.gitScans.noScansHint')}
             action={
               <Button onClick={() => { setOpen(true); }}>
-                <Plus className="w-4 h-4 mr-1" />Scan starten
+                <Plus className="w-4 h-4 mr-1" />{t('vault.gitScans.scanStart')}
               </Button>
             }
           />
@@ -197,9 +204,9 @@ export default function GitScansPage() {
               />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => { setOpen(false); }}>Abbrechen</Button>
+              <Button type="button" variant="outline" onClick={() => { setOpen(false); }}>{t('vault.gitScans.cancel')}</Button>
               <Button type="submit" disabled={triggerScan.isPending}>
-                {triggerScan.isPending ? 'Starting…' : 'Start Scan'}
+                {triggerScan.isPending ? 'Starting…' : t('vault.gitScans.scanStart')}
               </Button>
             </DialogFooter>
           </form>

@@ -1,10 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ScanLine, Trash2 } from 'lucide-react'
+import { ArrowLeft, ScanLine, Trash2, Link2 } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Breadcrumbs } from '../../../shared/components/Breadcrumbs'
 import { trackPage } from '../../../shared/hooks/useRecentPages'
 import { ConfirmDeleteDialog } from '../../../shared/components/ConfirmDeleteDialog'
+import { ErrorState } from '../../../shared/components/ErrorState'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -30,9 +31,16 @@ const severityClass = findingSeverityClass
 const assetTypeLabels: Record<Asset['type'], string> = {
   web_app: 'Web App',
   server: 'Server',
-  database: 'Database',
+  database: 'Datenbank',
   container: 'Container',
   repo: 'Repository',
+}
+
+const criticalityLabels: Record<Asset['criticality'], string> = {
+  low:      'Niedrig',
+  medium:   'Mittel',
+  high:     'Hoch',
+  critical: 'Kritisch',
 }
 
 export default function AssetDetailPage() {
@@ -83,11 +91,11 @@ export default function AssetDetailPage() {
   if (error || !asset) {
     return (
       <div className="p-6">
-        <p className="text-sm text-red-600">{error?.message ?? 'Asset not found'}</p>
-        <Button variant="outline" className="mt-4" onClick={() => { navigate('/vaktscan/assets'); }}>
-          <ArrowLeft className="w-4 h-4 mr-1" />
-          Back to Assets
-        </Button>
+        <ErrorState
+          title="Asset nicht gefunden"
+          message={error?.message}
+          onRetry={() => { navigate('/vaktscan/assets') }}
+        />
       </div>
     )
   }
@@ -108,7 +116,7 @@ export default function AssetDetailPage() {
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => { navigate('/vaktscan/assets'); }}>
               <ArrowLeft className="w-4 h-4 mr-1" />
-              Back
+              Zurück
             </Button>
             <Button onClick={() => { void handleScan() }} disabled={triggerScan.isPending}>
               {triggerScan.isPending ? (
@@ -116,7 +124,7 @@ export default function AssetDetailPage() {
               ) : (
                 <ScanLine className="w-4 h-4 mr-1" />
               )}
-              Trigger Scan
+              Scan starten
             </Button>
             <Button
               variant="outline"
@@ -143,12 +151,12 @@ export default function AssetDetailPage() {
 
       {triggerScan.isError && (
         <div className="px-6 pt-4">
-          <p className="text-sm text-red-600">Scan failed: {triggerScan.error.message}</p>
+          <p className="text-sm text-red-600">Scan fehlgeschlagen: {triggerScan.error.message}</p>
         </div>
       )}
       {scanTriggered && (
         <div className="px-6 pt-4">
-          <p className="text-sm text-green-600">Scan triggered successfully.</p>
+          <p className="text-sm text-green-600">Scan wurde erfolgreich gestartet.</p>
         </div>
       )}
 
@@ -164,28 +172,28 @@ export default function AssetDetailPage() {
           <TabsContent value="info" className="mt-4">
             <Card>
               <CardHeader>
-                <CardTitle>Asset Details</CardTitle>
+                <CardTitle>Asset-Details</CardTitle>
               </CardHeader>
               <CardContent>
                 <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
                   <div>
-                    <dt className="text-secondary font-medium">Type</dt>
+                    <dt className="text-secondary font-medium">Typ</dt>
                     <dd className="mt-1 text-primary">{assetTypeLabels[asset.type]}</dd>
                   </div>
                   <div>
-                    <dt className="text-secondary font-medium">Criticality</dt>
+                    <dt className="text-secondary font-medium">Kritikalität</dt>
                     <dd className="mt-1">
-                      <Badge className={cn('capitalize', criticalityClass[asset.criticality])}>
-                        {asset.criticality}
+                      <Badge className={criticalityClass[asset.criticality]}>
+                        {criticalityLabels[asset.criticality]}
                       </Badge>
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-secondary font-medium">Target</dt>
+                    <dt className="text-secondary font-medium">Ziel</dt>
                     <dd className="mt-1 font-mono text-xs text-primary">{asset.target}</dd>
                   </div>
                   <div>
-                    <dt className="text-secondary font-medium">Created</dt>
+                    <dt className="text-secondary font-medium">Erstellt</dt>
                     <dd className="mt-1 text-primary">
                       {formatDate(asset.created_at)}
                     </dd>
@@ -199,9 +207,24 @@ export default function AssetDetailPage() {
                               {tag}
                             </Badge>
                           ))
-                        : <span className="text-secondary">None</span>}
+                        : <span className="text-secondary">Keine</span>}
                     </dd>
                   </div>
+                  {asset.protection_need_id && (
+                    <div className="col-span-2">
+                      <dt className="text-secondary font-medium">Schutzbedarfsfeststellung</dt>
+                      <dd className="mt-1">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300"
+                          onClick={() => { navigate('/vaktcomply/protection-needs'); }}
+                        >
+                          <Link2 className="w-3.5 h-3.5" />
+                          Verknüpfte Schutzbedarfsfeststellung anzeigen
+                        </button>
+                      </dd>
+                    </div>
+                  )}
                 </dl>
               </CardContent>
             </Card>
@@ -209,14 +232,14 @@ export default function AssetDetailPage() {
 
           <TabsContent value="findings" className="mt-4">
             {findings.length === 0 ? (
-              <p className="text-sm text-secondary py-8 text-center">No findings for this asset.</p>
+              <p className="text-sm text-secondary py-8 text-center">Keine Findings für dieses Asset.</p>
             ) : (
               <div className="rounded-md border border-border bg-surface overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Severity</TableHead>
+                      <TableHead>Titel</TableHead>
+                      <TableHead>Schweregrad</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>CVE</TableHead>
                       <TableHead>CVSS</TableHead>

@@ -8,13 +8,14 @@ import {
   DialogFooter,
 } from '../../components/ui/dialog'
 import { useWhatsNew } from '../hooks/useWhatsNew'
+import changelog from '../data/changelog.json'
 
-const HIGHLIGHTS = [
-  'Granulare Modul-Berechtigungen pro Benutzer (Pro)',
-  'In-App Update-Benachrichtigungen',
-  'Pro-Tier — demnächst verfügbar: erweiterte Rollen',
-  'Verbesserter Audit-Export und Compliance-Fortschritt',
-]
+type ChangelogEntry = { type: string; text: string }
+type ChangelogVersion = { version: string; date: string; entries: ChangelogEntry[] }
+
+const HIGHLIGHTS: string[] = (changelog as ChangelogVersion[])
+  .slice(0, 1)
+  .flatMap((v) => v.entries.filter((e) => e.type === 'feat').map((e) => e.text))
 
 export function WhatsNewModal() {
   const { isNew, currentVersion, dismiss } = useWhatsNew()

@@ -19,6 +19,33 @@ export interface CAPA {
   closed_at: string | null
   created_at: string
   updated_at: string
+  // S61-3: NC/CA root-cause + effectiveness fields (Migration 163)
+  nc_classification?: 'major_nc' | 'minor_nc' | 'observation' | 'ofi'
+  immediate_containment?: string
+  similar_ncs_assessed?: boolean
+  similar_ncs_notes?: string
+  effectiveness_check_date?: string
+  effectiveness_confirmed?: boolean
+  effectiveness_checked_at?: string
+  effectiveness_checked_by?: string
+  effectiveness_evidence?: string
+}
+
+// CAPANCFields holds the NC root-cause and effectiveness planning fields.
+export interface CAPANCFields {
+  nc_classification?: 'major_nc' | 'minor_nc' | 'observation' | 'ofi'
+  immediate_containment: string
+  root_cause: string
+  similar_ncs_assessed?: boolean
+  similar_ncs_notes: string
+  effectiveness_check_date?: string
+  effectiveness_evidence: string
+}
+
+// EffectivenessCheckInput is the payload for POST /capas/:id/effectiveness-check.
+export interface EffectivenessCheckInput {
+  confirmed: boolean
+  evidence_note: string
 }
 
 export interface CreateCAPAInput {
@@ -119,6 +146,36 @@ export function useBulkUpdateCAPAs() {
     mutationFn: (data) =>
       apiFetch<undefined>('/vaktcomply/capas/bulk', {
         method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'capas'] })
+    },
+  })
+}
+
+// S61-3: NC/CA root-cause + effectiveness hooks
+
+export function useUpdateCAPANCFields(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation<undefined, Error, CAPANCFields>({
+    mutationFn: (data) =>
+      apiFetch<undefined>(`/vaktcomply/capas/${id}/nc-fields`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'capas'] })
+    },
+  })
+}
+
+export function useCompleteEffectivenessCheck(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation<undefined, Error, EffectivenessCheckInput>({
+    mutationFn: (data) =>
+      apiFetch<undefined>(`/vaktcomply/capas/${id}/effectiveness-check`, {
+        method: 'POST',
         body: JSON.stringify(data),
       }),
     onSuccess: () => {

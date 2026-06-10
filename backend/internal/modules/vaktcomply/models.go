@@ -1,7 +1,10 @@
 // Package vaktcomply provides domain models for compliance automation (NIS2, ISO 27001, BSI-Grundschutz).
 package vaktcomply
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // Framework represents a compliance framework enabled for an organisation.
 type Framework struct {
@@ -41,6 +44,10 @@ type Control struct {
 	ReviewNote         string     `json:"review_note"`
 	IsReviewOverdue    bool       `json:"is_review_overdue"` // computed: next_review_due < NOW() AND next_review_due IS NOT NULL
 	DueDate            *time.Time `json:"due_date,omitempty"`
+	// Evidence staleness (Migration 178, S67-4)
+	EvidenceStatus     string     `json:"evidence_status,omitempty"` // ok | stale | missing | na
+	EvidenceMaxAgeDays *int       `json:"evidence_max_age_days,omitempty"`
+	EvidenceExpiresAt  *time.Time `json:"evidence_expires_at,omitempty"`
 }
 
 // ControlReview represents a single periodic review event for a control.
@@ -156,31 +163,35 @@ type Review struct {
 
 // AuditorLink represents a time-limited read-only access token for external auditors.
 type AuditorLink struct {
-	ID          string    `json:"id"`
-	OrgID       string    `json:"org_id"`
-	FrameworkID string    `json:"framework_id"`
-	TokenHash   string    `json:"-"` // never exposed
-	CreatedBy   string    `json:"created_by"`
-	ExpiresAt   time.Time `json:"expires_at"`
-	UsedCount   int       `json:"used_count"`
-	MaxUses     *int      `json:"max_uses,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID                string    `json:"id"`
+	OrgID             string    `json:"org_id"`
+	FrameworkID       string    `json:"framework_id"`
+	TokenHash         string    `json:"-"` // never exposed
+	CreatedBy         string    `json:"created_by"`
+	ExpiresAt         time.Time `json:"expires_at"`
+	UsedCount         int       `json:"used_count"`
+	MaxUses           *int      `json:"max_uses,omitempty"`
+	Description       string    `json:"description,omitempty"`     // S67-5
+	AllowedFrameworks []string  `json:"allowed_frameworks,omitempty"` // S67-5
+	CreatedAt         time.Time `json:"created_at"`
 	// ShareURL is populated on creation with the raw token embedded.
 	ShareURL string `json:"share_url,omitempty"`
 }
 
 // AuditorLinkListItem is the response shape for listing auditor links (E09.1).
 type AuditorLinkListItem struct {
-	ID             string     `json:"id"`
-	OrgID          string     `json:"org_id"`
-	FrameworkID    string     `json:"framework_id"`
-	Label          string     `json:"label"`
-	CreatedBy      string     `json:"created_by"`
-	ExpiresAt      time.Time  `json:"expires_at"`
-	LastAccessedAt *time.Time `json:"last_accessed_at,omitempty"`
-	AccessCount    int        `json:"access_count"`
-	RevokedAt      *time.Time `json:"revoked_at,omitempty"`
-	CreatedAt      time.Time  `json:"created_at"`
+	ID                string     `json:"id"`
+	OrgID             string     `json:"org_id"`
+	FrameworkID       string     `json:"framework_id"`
+	Label             string     `json:"label"`
+	Description       string     `json:"description,omitempty"` // S67-5
+	AllowedFrameworks []string   `json:"allowed_frameworks,omitempty"` // S67-5
+	CreatedBy         string     `json:"created_by"`
+	ExpiresAt         time.Time  `json:"expires_at"`
+	LastAccessedAt    *time.Time `json:"last_accessed_at,omitempty"`
+	AccessCount       int        `json:"access_count"`
+	RevokedAt         *time.Time `json:"revoked_at,omitempty"`
+	CreatedAt         time.Time  `json:"created_at"`
 }
 
 // ControlWithEvidence holds a control and its associated evidence items for auditor detail view (E09.2).
@@ -297,8 +308,28 @@ type Risk struct {
 	TreatmentStatus    string     `json:"treatment_status"`
 	ResidualLikelihood *int       `json:"residual_likelihood"`
 	ResidualImpact     *int       `json:"residual_impact"`
-	CreatedAt          time.Time  `json:"created_at"`
-	UpdatedAt          time.Time  `json:"updated_at"`
+	// Residualrisiko-Berechnung (S61-4, Migration 164)
+	InherentLikelihood          *int       `json:"inherent_likelihood,omitempty"`
+	InherentImpact              *int       `json:"inherent_impact,omitempty"`
+	InherentScore               *int       `json:"inherent_score,omitempty"`  // computed: InherentLikelihood * InherentImpact
+	ResidualScore               *int       `json:"residual_score,omitempty"`  // computed: ResidualLikelihood * ResidualImpact
+	RiskAcceptedBy              *string    `json:"risk_accepted_by,omitempty"`
+	RiskAcceptedAt              *time.Time `json:"risk_accepted_at,omitempty"`
+	RiskAcceptanceJustification string     `json:"risk_acceptance_justification"`
+	CreatedAt                   time.Time  `json:"created_at"`
+	UpdatedAt                   time.Time  `json:"updated_at"`
+}
+
+// ComputeScores calculates InherentScore and ResidualScore from their factors.
+func (r *Risk) ComputeScores() {
+	if r.InherentLikelihood != nil && r.InherentImpact != nil {
+		score := *r.InherentLikelihood * *r.InherentImpact
+		r.InherentScore = &score
+	}
+	if r.ResidualLikelihood != nil && r.ResidualImpact != nil {
+		score := *r.ResidualLikelihood * *r.ResidualImpact
+		r.ResidualScore = &score
+	}
 }
 
 // CreateRiskInput holds validated input for creating a risk entry.
@@ -349,6 +380,16 @@ type Incident struct {
 	NotifiedWarn24h bool `json:"-"`
 	NotifiedWarn72h bool `json:"-"`
 	NotifiedWarn30d bool `json:"-"`
+	// NIS2 Art.23 stage-based reporting workflow (Migration 175)
+	NIS2Reportable                  *bool      `json:"nis2_reportable,omitempty"`
+	NIS2ReportingStage              *string    `json:"nis2_reporting_stage,omitempty"`
+	NIS2DetectedAt                  *time.Time `json:"nis2_detected_at,omitempty"`
+	NIS2EarlyWarningDue             *time.Time `json:"nis2_early_warning_due,omitempty"`
+	NIS2FullReportDue               *time.Time `json:"nis2_full_report_due,omitempty"`
+	NIS2FinalReportDue              *time.Time `json:"nis2_final_report_due,omitempty"`
+	NIS2EarlyWarningSubmittedAt     *time.Time `json:"nis2_early_warning_submitted_at,omitempty"`
+	NIS2FullReportSubmittedAt       *time.Time `json:"nis2_full_report_submitted_at,omitempty"`
+	NIS2FinalReportSubmittedAt      *time.Time `json:"nis2_final_report_submitted_at,omitempty"`
 	// Computed deadline status — populated by service layer, not stored
 	DeadlineStatus *IncidentDeadlineStatus `json:"deadline_status,omitempty"`
 	CreatedAt      time.Time               `json:"created_at"`
@@ -495,6 +536,19 @@ type UpdateRiskTreatmentInput struct {
 	TreatmentStatus    string  `json:"treatment_status"    validate:"omitempty,oneof=pending in_progress implemented verified"`
 	ResidualLikelihood *int    `json:"residual_likelihood" validate:"omitempty,min=1,max=5"`
 	ResidualImpact     *int    `json:"residual_impact"     validate:"omitempty,min=1,max=5"`
+}
+
+// UpdateRiskResidualInput holds inherent and residual likelihood/impact factors (S61-4).
+type UpdateRiskResidualInput struct {
+	InherentLikelihood *int `json:"inherent_likelihood,omitempty" validate:"omitempty,min=1,max=5"`
+	InherentImpact     *int `json:"inherent_impact,omitempty"     validate:"omitempty,min=1,max=5"`
+	ResidualLikelihood *int `json:"residual_likelihood,omitempty" validate:"omitempty,min=1,max=5"`
+	ResidualImpact     *int `json:"residual_impact,omitempty"     validate:"omitempty,min=1,max=5"`
+}
+
+// AcceptRiskInput holds the justification for formally accepting a risk (S61-4).
+type AcceptRiskInput struct {
+	Justification string `json:"justification" validate:"required"`
 }
 
 type UpdateIncidentInput struct {
@@ -680,6 +734,20 @@ type Supplier struct {
 	// Assessment fields (Migration 046)
 	AssessmentStatus string     `json:"assessment_status"` // none | pending | completed
 	LastAssessmentAt *time.Time `json:"last_assessment_at,omitempty"`
+	// ISO 27001 A.5.19-21 fields (Migration 176 / S67-2)
+	Category                string     `json:"category,omitempty"`
+	DataAccess              bool       `json:"data_access"`
+	AvvDocumentID           *string    `json:"avv_document_id,omitempty"`
+	LastAssessmentScore     *int       `json:"last_assessment_score,omitempty"`
+	NextAssessmentDue       *time.Time `json:"next_assessment_due,omitempty"`
+	SupplierStatus          string     `json:"supplier_status,omitempty"` // active | inactive | terminated
+	ContractStart           *time.Time `json:"contract_start,omitempty"`
+	DataProtectionScore     *int       `json:"data_protection_score,omitempty"`
+	AvailabilityScore       *int       `json:"availability_score,omitempty"`
+	SecurityCertifications  string     `json:"security_certifications,omitempty"`
+	AuditRights             *bool      `json:"audit_rights,omitempty"`
+	SubProcessorsKnown      *bool      `json:"sub_processors_known,omitempty"`
+	IncidentNotification    *bool      `json:"incident_notification,omitempty"`
 	// Computed — not stored in DB
 	ContractStatus string    `json:"contract_status,omitempty"`
 	CreatedAt      time.Time `json:"created_at"`
@@ -704,6 +772,20 @@ type CreateSupplierInput struct {
 	// Assessment fields (Migration 046)
 	AssessmentStatus string     `json:"assessment_status"     validate:"omitempty,oneof=none pending completed"`
 	LastAssessmentAt *time.Time `json:"last_assessment_at"`
+	// ISO 27001 A.5.19-21 fields (Migration 176 / S67-2)
+	Category               string     `json:"category"               validate:"omitempty,oneof=software cloud hardware service telecom other"`
+	DataAccess             bool       `json:"data_access"`
+	AvvDocumentID          *string    `json:"avv_document_id,omitempty"`
+	LastAssessmentScore    *int       `json:"last_assessment_score"  validate:"omitempty,min=1,max=5"`
+	NextAssessmentDue      *time.Time `json:"next_assessment_due"`
+	SupplierStatus         string     `json:"supplier_status"        validate:"omitempty,oneof=active inactive terminated"`
+	ContractStart          *time.Time `json:"contract_start"`
+	DataProtectionScore    *int       `json:"data_protection_score"  validate:"omitempty,min=1,max=5"`
+	AvailabilityScore      *int       `json:"availability_score"     validate:"omitempty,min=1,max=5"`
+	SecurityCertifications string     `json:"security_certifications"`
+	AuditRights            *bool      `json:"audit_rights"`
+	SubProcessorsKnown     *bool      `json:"sub_processors_known"`
+	IncidentNotification   *bool      `json:"incident_notification"`
 }
 
 // UpdateSupplierInput holds validated input for updating a supplier.
@@ -724,6 +806,20 @@ type UpdateSupplierInput struct {
 	// Assessment fields (Migration 046)
 	AssessmentStatus string     `json:"assessment_status"     validate:"omitempty,oneof=none pending completed"`
 	LastAssessmentAt *time.Time `json:"last_assessment_at"`
+	// ISO 27001 A.5.19-21 fields (Migration 176 / S67-2)
+	Category               string     `json:"category"               validate:"omitempty,oneof=software cloud hardware service telecom other"`
+	DataAccess             bool       `json:"data_access"`
+	AvvDocumentID          *string    `json:"avv_document_id,omitempty"`
+	LastAssessmentScore    *int       `json:"last_assessment_score"  validate:"omitempty,min=1,max=5"`
+	NextAssessmentDue      *time.Time `json:"next_assessment_due"`
+	SupplierStatus         string     `json:"supplier_status"        validate:"omitempty,oneof=active inactive terminated"`
+	ContractStart          *time.Time `json:"contract_start"`
+	DataProtectionScore    *int       `json:"data_protection_score"  validate:"omitempty,min=1,max=5"`
+	AvailabilityScore      *int       `json:"availability_score"     validate:"omitempty,min=1,max=5"`
+	SecurityCertifications string     `json:"security_certifications"`
+	AuditRights            *bool      `json:"audit_rights"`
+	SubProcessorsKnown     *bool      `json:"sub_processors_known"`
+	IncidentNotification   *bool      `json:"incident_notification"`
 }
 
 // SupplierFilter holds optional filter parameters for listing suppliers.
@@ -807,6 +903,23 @@ type ControlMapping struct {
 	TargetControlID     string `json:"target_control_id"`
 	TargetControlTitle  string `json:"target_control_title"`
 	TargetFrameworkName string `json:"target_framework_name"`
+}
+
+// FrameworkPairCountRow is returned by GetFrameworkMappingCounts.
+type FrameworkPairCountRow struct {
+	FrameworkAName string
+	FrameworkBName string
+	MappingCount   int
+}
+
+// ControlPrerequisiteRow is a row from ck_control_prerequisites.
+type ControlPrerequisiteRow struct {
+	ControlFramework      string
+	ControlCode           string
+	PrerequisiteFramework string
+	PrerequisiteCode      string
+	DependencyType        string
+	Rationale             string
 }
 
 // MappingResult describes a TISAX control together with its mapped ISO 27001 control and coverage status.
@@ -1209,6 +1322,16 @@ type CAPA struct {
 	ClosedAt         *time.Time `json:"closed_at"`
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
+	// S61-3: NC/CA fields (Migration 163)
+	NCClassification       *string    `json:"nc_classification,omitempty"`
+	ImmediateContainment   string     `json:"immediate_containment"`
+	SimilarNCsAssessed     *bool      `json:"similar_ncs_assessed,omitempty"`
+	SimilarNCsNotes        string     `json:"similar_ncs_notes"`
+	EffectivenessCheckDate *string    `json:"effectiveness_check_date,omitempty"`
+	EffectivenessConfirmed *bool      `json:"effectiveness_confirmed,omitempty"`
+	EffectivenessCheckedAt *time.Time `json:"effectiveness_checked_at,omitempty"`
+	EffectivenessCheckedBy *string    `json:"effectiveness_checked_by,omitempty"`
+	EffectivenessEvidence  string     `json:"effectiveness_evidence"`
 }
 
 // CreateCAPAInput holds validated input for creating a CAPA.
@@ -1458,6 +1581,7 @@ type ProtectionNeedAssessment struct {
 	Availability    string     `json:"availability"`
 	Overall         string     `json:"overall"`
 	Status          string     `json:"status"`
+	VBAssetID       *string    `json:"vb_asset_id,omitempty"` // soft link to vb_assets, no FK
 	FinalizedAt     *time.Time `json:"finalized_at,omitempty"`
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at"`
@@ -1475,4 +1599,253 @@ type UpdateProtectionNeedInput struct {
 	Confidentiality string `json:"confidentiality" validate:"required,oneof=normal hoch sehr_hoch"`
 	Integrity       string `json:"integrity"       validate:"required,oneof=normal hoch sehr_hoch"`
 	Availability    string `json:"availability"    validate:"required,oneof=normal hoch sehr_hoch"`
+}
+
+// ── S61-1: ISMS Scope ──
+
+// ISMSScope represents a versioned ISMS scope document.
+type ISMSScope struct {
+	ID                      string          `json:"id"`
+	OrgID                   string          `json:"org_id"`
+	Version                 int             `json:"version"`
+	Status                  string          `json:"status"`
+	ScopeDefinition         string          `json:"scope_definition"`
+	Exclusions              json.RawMessage `json:"exclusions"`
+	OutsourcingDependencies string          `json:"outsourcing_dependencies"`
+	ChangeNote              string          `json:"change_note"`
+	ApprovedBy              *string         `json:"approved_by,omitempty"`
+	ApprovedAt              *time.Time      `json:"approved_at,omitempty"`
+	CreatedBy               string          `json:"created_by"`
+	CreatedAt               time.Time       `json:"created_at"`
+	UpdatedAt               time.Time       `json:"updated_at"`
+}
+
+// CreateISMSScopeInput holds the request body for creating or versioning an ISMS scope.
+type CreateISMSScopeInput struct {
+	ScopeDefinition         string          `json:"scope_definition"`
+	Exclusions              json.RawMessage `json:"exclusions"`
+	OutsourcingDependencies string          `json:"outsourcing_dependencies"`
+	ChangeNote              string          `json:"change_note"`
+}
+
+// ApproveISMSScopeInput holds the id for an approval action.
+type ApproveISMSScopeInput struct {
+	ID string `json:"-"`
+}
+
+// ── S61-3: NC/CA Root Cause + Wirksamkeitsprüfung ──
+
+// CAPANCFields holds the ISO 9001 / ISO 27001 NC root-cause and effectiveness fields for a CAPA.
+type CAPANCFields struct {
+	NCClassification       *string    `json:"nc_classification,omitempty"`
+	ImmediateContainment   string     `json:"immediate_containment"`
+	RootCause              string     `json:"root_cause"`
+	SimilarNCsAssessed     *bool      `json:"similar_ncs_assessed,omitempty"`
+	SimilarNCsNotes        string     `json:"similar_ncs_notes"`
+	EffectivenessCheckDate *string    `json:"effectiveness_check_date,omitempty"`
+	EffectivenessConfirmed *bool      `json:"effectiveness_confirmed,omitempty"`
+	EffectivenessCheckedAt *time.Time `json:"effectiveness_checked_at,omitempty"`
+	EffectivenessCheckedBy *string    `json:"effectiveness_checked_by,omitempty"`
+	EffectivenessEvidence  string     `json:"effectiveness_evidence"`
+}
+
+// EffectivenessCheckInput holds the payload for completing an effectiveness check on a CAPA.
+type EffectivenessCheckInput struct {
+	Confirmed    bool   `json:"confirmed"     validate:"required"`
+	EvidenceNote string `json:"evidence_note"`
+}
+
+// ── S61-5: BSI Baustein-Modellierung ──
+
+// BSIModelingEntry represents a single Baustein-to-Asset mapping row.
+type BSIModelingEntry struct {
+	ID                        string    `json:"id"`
+	OrgID                     string    `json:"org_id"`
+	AssetID                   string    `json:"asset_id"`
+	ControlID                 string    `json:"control_id"`
+	Priority                  string    `json:"priority"`
+	JustificationForExclusion string    `json:"justification_for_exclusion"`
+	CheckStatus               *string   `json:"check_status,omitempty"`
+	InterviewNotes            string    `json:"interview_notes"`
+	SiteVisitNotes            string    `json:"site_visit_notes"`
+	AssetName                 string    `json:"asset_name"`
+	ControlTitle              string    `json:"control_title"`
+	FrameworkID               string    `json:"framework_id"`
+	CreatedBy                 string    `json:"created_by"`
+	CreatedAt                 time.Time `json:"created_at"`
+	UpdatedAt                 time.Time `json:"updated_at"`
+}
+
+// CreateBSIModelingInput holds validated input for creating a BSI modeling entry.
+type CreateBSIModelingInput struct {
+	AssetID                   string  `json:"asset_id"   validate:"required"`
+	ControlID                 string  `json:"control_id" validate:"required"`
+	Priority                  string  `json:"priority"   validate:"required,oneof=R1 R2 R3"`
+	JustificationForExclusion string  `json:"justification_for_exclusion"`
+	CheckStatus               *string `json:"check_status,omitempty" validate:"omitempty,oneof=yes partial no not_applicable"`
+	InterviewNotes            string  `json:"interview_notes"`
+	SiteVisitNotes            string  `json:"site_visit_notes"`
+}
+
+// UpdateBSIModelingInput holds validated input for updating a BSI modeling entry.
+type UpdateBSIModelingInput struct {
+	Priority                  string  `json:"priority"   validate:"required,oneof=R1 R2 R3"`
+	JustificationForExclusion string  `json:"justification_for_exclusion"`
+	CheckStatus               *string `json:"check_status,omitempty" validate:"omitempty,oneof=yes partial no not_applicable"`
+	InterviewNotes            string  `json:"interview_notes"`
+	SiteVisitNotes            string  `json:"site_visit_notes"`
+}
+
+// BSIModelingStats holds aggregate check-status counts for a BSI modeling matrix.
+type BSIModelingStats struct {
+	Total        int `json:"total"`
+	CountYes     int `json:"count_yes"`
+	CountPartial int `json:"count_partial"`
+	CountNo      int `json:"count_no"`
+	CountNA      int `json:"count_na"`
+	CountPending int `json:"count_pending"`
+}
+
+// ── S61-6: Pentest Tracking ──
+
+// Pentest represents a penetration test record for an organisation.
+type Pentest struct {
+	ID               string    `json:"id"`
+	OrgID            string    `json:"org_id"`
+	Title            string    `json:"title"`
+	Scope            string    `json:"scope"`
+	PentestDate      string    `json:"pentest_date"`
+	TesterType       string    `json:"tester_type"`
+	TesterName       string    `json:"tester_name"`
+	Methodology      *string   `json:"methodology,omitempty"`
+	FindingsCritical int       `json:"findings_critical"`
+	FindingsHigh     int       `json:"findings_high"`
+	FindingsMedium   int       `json:"findings_medium"`
+	FindingsLow      int       `json:"findings_low"`
+	Status           string    `json:"status"`
+	RetestDate       *string   `json:"retest_date,omitempty"`
+	Notes            string    `json:"notes"`
+	CreatedBy        string    `json:"created_by"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
+// CreatePentestInput is the request body for creating a new pentest record.
+type CreatePentestInput struct {
+	Title            string  `json:"title"        validate:"required"`
+	Scope            string  `json:"scope"`
+	PentestDate      string  `json:"pentest_date" validate:"required"`
+	TesterType       string  `json:"tester_type"  validate:"required,oneof=internal external"`
+	TesterName       string  `json:"tester_name"`
+	Methodology      *string `json:"methodology,omitempty" validate:"omitempty,oneof=blackbox greybox whitebox"`
+	FindingsCritical int     `json:"findings_critical"`
+	FindingsHigh     int     `json:"findings_high"`
+	FindingsMedium   int     `json:"findings_medium"`
+	FindingsLow      int     `json:"findings_low"`
+	Notes            string  `json:"notes"`
+}
+
+// UpdatePentestInput is the request body for updating an existing pentest record.
+type UpdatePentestInput struct {
+	Title            string  `json:"title"        validate:"required"`
+	Scope            string  `json:"scope"`
+	TesterType       string  `json:"tester_type"  validate:"required,oneof=internal external"`
+	TesterName       string  `json:"tester_name"`
+	Methodology      *string `json:"methodology,omitempty" validate:"omitempty,oneof=blackbox greybox whitebox"`
+	FindingsCritical int     `json:"findings_critical"`
+	FindingsHigh     int     `json:"findings_high"`
+	FindingsMedium   int     `json:"findings_medium"`
+	FindingsLow      int     `json:"findings_low"`
+	Status           string  `json:"status"       validate:"required,oneof=in_progress completed remediation closed"`
+	RetestDate       *string `json:"retest_date,omitempty"`
+	Notes            string  `json:"notes"`
+}
+
+// ── S61-2: Management Review ──────────────────────────────────────────────────
+
+// ImprovementDecision is a single decision item within a management review output.
+type ImprovementDecision struct {
+	Decision    string `json:"decision"`
+	Responsible string `json:"responsible"`
+	DueDate     string `json:"due_date"`
+}
+
+// ManagementReview represents an ISO 27001 management review record.
+type ManagementReview struct {
+	ID                    string          `json:"id"`
+	OrgID                 string          `json:"org_id"`
+	ReviewDate            string          `json:"review_date"`
+	ReviewType            string          `json:"review_type"`
+	ParticipantIDs        json.RawMessage `json:"participant_ids"`
+	Status                string          `json:"status"`
+	AuditFindingsSummary  string          `json:"audit_findings_summary"`
+	IncidentSummary       string          `json:"incident_summary"`
+	RiskStatusSummary     string          `json:"risk_status_summary"`
+	PreviousActionsStatus string          `json:"previous_actions_status"`
+	KPISnapshot           json.RawMessage `json:"kpi_snapshot,omitempty"`
+	ContextChanges        string          `json:"context_changes"`
+	CustomerFeedback      string          `json:"customer_feedback"`
+	ImprovementDecisions  json.RawMessage `json:"improvement_decisions"`
+	ResourceDecisions     string          `json:"resource_decisions"`
+	ISMSChanges           string          `json:"isms_changes"`
+	NextReviewDate        *string         `json:"next_review_date,omitempty"`
+	ApprovedBy            *string         `json:"approved_by,omitempty"`
+	ApprovedAt            *time.Time      `json:"approved_at,omitempty"`
+	CreatedBy             string          `json:"created_by"`
+	CreatedAt             time.Time       `json:"created_at"`
+	UpdatedAt             time.Time       `json:"updated_at"`
+}
+
+// CreateManagementReviewInput holds validated input for creating a new management review.
+type CreateManagementReviewInput struct {
+	ReviewDate     string          `json:"review_date"    validate:"required"`
+	ReviewType     string          `json:"review_type"    validate:"required,oneof=annual extraordinary"`
+	ParticipantIDs json.RawMessage `json:"participant_ids"`
+}
+
+// UpdateManagementReviewInputsInput holds input-phase fields for a management review.
+type UpdateManagementReviewInputsInput struct {
+	AuditFindingsSummary  string          `json:"audit_findings_summary"`
+	IncidentSummary       string          `json:"incident_summary"`
+	RiskStatusSummary     string          `json:"risk_status_summary"`
+	PreviousActionsStatus string          `json:"previous_actions_status"`
+	KPISnapshot           json.RawMessage `json:"kpi_snapshot,omitempty"`
+	ContextChanges        string          `json:"context_changes"`
+	CustomerFeedback      string          `json:"customer_feedback"`
+}
+
+// UpdateManagementReviewOutputsInput holds output-phase fields for a management review.
+type UpdateManagementReviewOutputsInput struct {
+	ImprovementDecisions json.RawMessage `json:"improvement_decisions"`
+	ResourceDecisions    string          `json:"resource_decisions"`
+	ISMSChanges          string          `json:"isms_changes"`
+	NextReviewDate       *string         `json:"next_review_date,omitempty"`
+}
+
+// ── S61-7: ISMS KPI Dashboard ─────────────────────────────────────────────────
+
+// KPISnapshot holds the 12 ISMS KPIs computed for a single organisation on a given date.
+type KPISnapshot struct {
+	ID                    string    `json:"id"`
+	OrgID                 string    `json:"org_id"`
+	SnapshotDate          string    `json:"snapshot_date"`
+	ComplianceScore       *float64  `json:"kpi_compliance_score"`
+	OpenCriticalControls  *int      `json:"kpi_open_critical_controls"`
+	OpenHighRisks         *int      `json:"kpi_open_high_risks"`
+	ResidualRiskAvg       *float64  `json:"kpi_residual_risk_avg"`
+	OpenIncidents         *int      `json:"kpi_open_incidents"`
+	IncidentMTTRDays      *float64  `json:"kpi_incident_mttr_days"`
+	EvidenceCoverage      *float64  `json:"kpi_evidence_coverage"`
+	ExpiringEvidenceCount *int      `json:"kpi_expiring_evidence_count"`
+	FindingSLACompliance  *float64  `json:"kpi_finding_sla_compliance"`
+	OpenMajorNCs          *int      `json:"kpi_open_major_ncs"`
+	SuppliersOverduePct   *float64  `json:"kpi_suppliers_overdue_pct"`
+	PhishingClickRate     *float64  `json:"kpi_phishing_click_rate"`
+	CreatedAt             time.Time `json:"created_at"`
+}
+
+// KPIDashboard bundles the most recent KPI snapshot with 90-day history.
+type KPIDashboard struct {
+	Current *KPISnapshot  `json:"current"`
+	History []KPISnapshot `json:"history"`
 }

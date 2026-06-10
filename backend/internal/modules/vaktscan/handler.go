@@ -110,7 +110,26 @@ func (h *Handler) GetAsset(c echo.Context) error {
 			"code":  "VB_ASSET_NOT_FOUND",
 		})
 	}
+	// Augment response with soft-link field (best-effort; null when unlinked or column absent).
+	pnaID, _ := h.service.GetAssetProtectionNeedID(c.Request().Context(), orgID, assetID)
+	asset.ProtectionNeedID = pnaID
 	return c.JSON(http.StatusOK, asset)
+}
+
+// GetAssetProtectionNeed handles GET /api/v1/vaktscan/assets/:id/protection-need.
+// Returns {"protection_need_id": "uuid-or-null"} for the given asset.
+func (h *Handler) GetAssetProtectionNeed(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	assetID := c.Param("id")
+	pnaID, err := h.service.GetAssetProtectionNeedID(c.Request().Context(), orgID, assetID)
+	if err != nil {
+		log.Error().Err(err).Str("asset_id", assetID).Msg("get asset protection need id")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to load protection need link",
+			"code":  "VB_PROTECTION_NEED_LOAD_FAILED",
+		})
+	}
+	return c.JSON(http.StatusOK, map[string]any{"protection_need_id": pnaID})
 }
 
 // UpdateAsset handles PUT /api/v1/vaktscan/assets/:id.
@@ -158,6 +177,20 @@ func (h *Handler) DeleteAsset(c echo.Context) error {
 	}
 	h.audit(c, "delete", "vaktscan/asset", assetID, "")
 	return c.NoContent(http.StatusNoContent)
+}
+
+// GetClassificationSummary handles GET /api/v1/vaktscan/assets/classification-summary (S67-3).
+func (h *Handler) GetClassificationSummary(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	summary, err := h.service.GetClassificationSummary(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("get classification summary")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to get classification summary",
+			"code":  "VB_CLASSIFICATION_SUMMARY_FAILED",
+		})
+	}
+	return c.JSON(http.StatusOK, summary)
 }
 
 // GetSLADashboard handles GET /api/v1/vaktscan/sla-dashboard.

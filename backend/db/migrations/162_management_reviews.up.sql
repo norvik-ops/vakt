@@ -1,0 +1,25 @@
+CREATE TABLE ck_management_reviews (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    review_date DATE NOT NULL,
+    review_type TEXT NOT NULL CHECK (review_type IN ('annual', 'extraordinary')) DEFAULT 'annual',
+    participant_ids JSONB NOT NULL DEFAULT '[]',
+    status TEXT NOT NULL CHECK (status IN ('draft', 'approved')) DEFAULT 'draft',
+    audit_findings_summary TEXT NOT NULL DEFAULT '',
+    incident_summary TEXT NOT NULL DEFAULT '',
+    risk_status_summary TEXT NOT NULL DEFAULT '',
+    previous_actions_status TEXT NOT NULL DEFAULT '',
+    kpi_snapshot JSONB,
+    context_changes TEXT NOT NULL DEFAULT '',
+    customer_feedback TEXT NOT NULL DEFAULT '',
+    improvement_decisions JSONB NOT NULL DEFAULT '[]',
+    resource_decisions TEXT NOT NULL DEFAULT '',
+    isms_changes TEXT NOT NULL DEFAULT '',
+    next_review_date DATE,
+    approved_by UUID REFERENCES users(id),
+    approved_at TIMESTAMPTZ,
+    created_by UUID NOT NULL REFERENCES users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_ck_management_reviews_org ON ck_management_reviews (org_id, review_date DESC);

@@ -834,6 +834,164 @@ func (r *Repository) GetTargetEmail(ctx context.Context, targetID string) string
 	return email
 }
 
+// ── Enrollment rules ──────────────────────────────────────────────────────
+
+// ListEnrollmentRules returns all enrollment rules for the given org.
+func (r *Repository) ListEnrollmentRules(ctx context.Context, orgID string) ([]EnrollmentRule, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT id, org_id, name, trigger_type, target_campaign_id, is_active, created_at, updated_at
+		FROM sr_enrollment_rules
+		WHERE org_id = $1
+		ORDER BY created_at DESC
+		LIMIT 500`, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("list enrollment rules: %w", err)
+	}
+	defer rows.Close()
+	var out []EnrollmentRule
+	for rows.Next() {
+		var id, orgIDv, name, triggerType string
+		var campaignID pgtype.UUID
+		var isActive bool
+		var createdAt, updatedAt pgtype.Timestamptz
+		if err := rows.Scan(&id, &orgIDv, &name, &triggerType, &campaignID, &isActive, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan enrollment rule: %w", err)
+		}
+		out = append(out, enrollmentRuleFromRow(id, orgIDv, name, triggerType, campaignID, isActive, createdAt, updatedAt))
+	}
+	return out, rows.Err()
+}
+
+// CreateEnrollmentRule inserts a new enrollment rule.
+func (r *Repository) CreateEnrollmentRule(ctx context.Context, orgID string, input CreateEnrollmentRuleInput) (*EnrollmentRule, error) {
+	var id, name, triggerType string
+	var campaignID pgtype.UUID
+	var isActive bool
+	var createdAt, updatedAt pgtype.Timestamptz
+	err := r.db.QueryRow(ctx, `
+		INSERT INTO sr_enrollment_rules (org_id, name, trigger_type, target_campaign_id)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, org_id, name, trigger_type, target_campaign_id, is_active, created_at, updated_at`,
+		orgID, input.Name, input.TriggerType, optUUIDFromPtr(input.TargetCampaignID),
+	).Scan(&id, &orgID, &name, &triggerType, &campaignID, &isActive, &createdAt, &updatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("create enrollment rule: %w", err)
+	}
+	rule := enrollmentRuleFromRow(id, orgID, name, triggerType, campaignID, isActive, createdAt, updatedAt)
+	return &rule, nil
+}
+
+// UpdateEnrollmentRuleActive toggles the is_active flag.
+func (r *Repository) UpdateEnrollmentRuleActive(ctx context.Context, orgID, ruleID string, active bool) error {
+	_, err := r.db.Exec(ctx, `
+		UPDATE sr_enrollment_rules SET is_active = $1, updated_at = NOW()
+		WHERE id = $2 AND org_id = $3`, active, ruleID, orgID)
+	return err
+}
+
+// DeleteEnrollmentRule removes an enrollment rule belonging to the org.
+func (r *Repository) DeleteEnrollmentRule(ctx context.Context, orgID, ruleID string) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM sr_enrollment_rules WHERE id = $1 AND org_id = $2`, ruleID, orgID)
+	return err
+}
+
+// IsEnrolledInCampaign checks whether an employeeID is already enrolled in the given campaign.
+func (r *Repository) IsEnrolledInCampaign(ctx context.Context, orgID, campaignID, employeeID string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS(SELECT 1 FROM sr_campaign_enrollments WHERE org_id=$1 AND campaign_id=$2 AND employee_id=$3)`,
+		orgID, campaignID, employeeID,
+	).Scan(&exists)
+	return exists, err
+}
+
+// CreateCampaignEnrollment records an auto-enrollment.
+func (r *Repository) CreateCampaignEnrollment(ctx context.Context, orgID, campaignID, employeeID, source string) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO sr_campaign_enrollments (org_id, campaign_id, employee_id, source)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (campaign_id, employee_id) DO NOTHING`,
+		orgID, campaignID, employeeID, source)
+	return err
+}
+
+// ── Training matrix report ────────────────────────────────────────────────
+
+// ListCampaignSummariesForReport returns campaign summaries for the given period.
+func (r *Repository) ListCampaignSummariesForReport(ctx context.Context, orgID string, from, to time.Time) ([]CampaignSummary, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT c.id, c.name, c.status,
+		       COALESCE((SELECT COUNT(*) FROM sr_targets t
+		                  JOIN sr_target_groups g ON t.group_id = g.id
+		                  WHERE c.group_id = g.id), 0) AS recipient_count,
+		       c.started_at, c.completed_at
+		FROM sr_campaigns c
+		WHERE c.org_id = $1
+		  AND c.status = 'completed'
+		  AND c.completed_at >= $2
+		  AND c.completed_at <= $3
+		ORDER BY c.completed_at DESC
+		LIMIT 200`, orgID, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("list campaign summaries: %w", err)
+	}
+	defer rows.Close()
+	var out []CampaignSummary
+	for rows.Next() {
+		var cs CampaignSummary
+		var startedAt, completedAt pgtype.Timestamptz
+		if err := rows.Scan(&cs.ID, &cs.Name, &cs.Type, &cs.RecipientCount, &startedAt, &completedAt); err != nil {
+			return nil, fmt.Errorf("scan campaign summary: %w", err)
+		}
+		if startedAt.Valid {
+			cs.StartedAt = startedAt.Time.Format(time.RFC3339)
+		}
+		if completedAt.Valid {
+			cs.CompletedAt = completedAt.Time.Format(time.RFC3339)
+		}
+		// Compute click rate
+		var clicks, total int
+		_ = r.db.QueryRow(ctx, `SELECT COUNT(*) FROM sr_events WHERE campaign_id=$1 AND type='click'`, cs.ID).Scan(&clicks)
+		if total = cs.RecipientCount; total > 0 {
+			cs.ClickRate = float64(clicks) / float64(total) * 100
+		}
+		out = append(out, cs)
+	}
+	return out, rows.Err()
+}
+
+// CountCompletedTrainingsInPeriod returns completed training assignments in the period.
+func (r *Repository) CountCompletedTrainingsInPeriod(ctx context.Context, orgID string, from, to time.Time) (int, error) {
+	var n int
+	err := r.db.QueryRow(ctx, `
+		SELECT COUNT(*) FROM sr_completions c
+		JOIN sr_assignments a ON c.assignment_id = a.id
+		WHERE a.org_id = $1 AND c.completed_at >= $2 AND c.completed_at <= $3`,
+		orgID, from, to).Scan(&n)
+	return n, err
+}
+
+// HasCampaignInPeriod returns true when the org completed at least one campaign within the period.
+func (r *Repository) HasCampaignInPeriod(ctx context.Context, orgID string, from, to time.Time) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS(SELECT 1 FROM sr_campaigns WHERE org_id=$1 AND status='completed' AND completed_at >= $2 AND completed_at <= $3)`,
+		orgID, from, to).Scan(&exists)
+	return exists, err
+}
+
+// HasActiveNewEmployeeRule returns true when the org has at least one active new_employee enrollment rule.
+func (r *Repository) HasActiveNewEmployeeRule(ctx context.Context, orgID string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS(SELECT 1 FROM sr_enrollment_rules WHERE org_id=$1 AND trigger_type='new_employee' AND is_active=true)`,
+		orgID).Scan(&exists)
+	return exists, err
+}
+
+// ── Campaign enrollments table (sr_campaign_enrollments) ─────────────────
+// This table is created here via a migration note — see migration 173.
+
 // ListCampaignsCursor returns campaigns for orgID using keyset pagination on (created_at DESC, id DESC).
 func (r *Repository) ListCampaignsCursor(ctx context.Context, orgID string, cursorID string, cursorTS time.Time, limit int) ([]Campaign, error) {
 	args := []any{orgID}

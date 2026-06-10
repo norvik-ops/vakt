@@ -88,7 +88,7 @@ The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key requi
 |---|:---:|:---:|:---:|
 | **Price** | Free | €199/month · €1,990/year | Contact us |
 | **Self-hosted** | ✅ | ✅ | ✅ |
-| **No phone-home** | ✅ | ✅ | ✅ |
+| **No telemetry** | ✅ | ✅ | ✅ |
 | **Unlimited users** | ✅ | ✅ | ✅ |
 
 ### Compliance Frameworks
@@ -218,7 +218,7 @@ graph TD
     Worker --> DB
 ```
 
-All services run in Docker containers. No external dependencies. No phone-home.
+All services run in Docker containers. No telemetry, no usage tracking. The optional `VAKT_LICENSE_TOKEN` feature contacts `api.norvikops.de` once daily for license renewal — no business data transmitted.
 
 ---
 
@@ -280,4 +280,4 @@ Issues and pull requests are welcome.
 
 ## License
 
-[Elastic License 2.0 (ELv2)](LICENSE) — the source code is publicly available for reading and auditing. Self-hosting for your own organization is free and unrestricted. You may not offer Vakt as a hosted or managed service to third parties. No phone-home, no telemetry, no usage tracking of any kind.
+[Elastic License 2.0 (ELv2)](LICENSE) — the source code is publicly available for reading and auditing. Self-hosting for your own organization is free and unrestricted. You may not offer Vakt as a hosted or managed service to third parties. No telemetry, no usage tracking. The optional `VAKT_LICENSE_TOKEN` feature contacts `api.norvikops.de` daily for license renewal (license token only, no business data).

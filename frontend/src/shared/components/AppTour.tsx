@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { X, ChevronRight } from 'lucide-react'
+import { useWhatsNew } from '../hooks/useWhatsNew'
 
 const TOUR_COMPLETED_KEY = 'vakt_tour_completed'
 
@@ -115,16 +116,20 @@ export function AppTour() {
   const [tooltipPos, setTooltipPos] = useState<TooltipPosition>({ top: 0, left: 0 })
   const tooltipRef = useRef<HTMLDivElement>(null)
   const sidebarWasCollapsed = useRef(false)
+  const { isNew: whatsNewPending, isLoading: whatsNewLoading } = useWhatsNew()
 
-  // Check if tour should be shown
+  // Check if tour should be shown — defer until WhatsNewModal check resolves.
+  // Race condition fix: if useUpdateCheck hasn't resolved yet, isLoading=true and
+  // isNew=false (null version). Without this guard, the tour would start 800ms
+  // early, then WhatsNewModal would open on top of it once the API responds.
   useEffect(() => {
     const done = localStorage.getItem(TOUR_COMPLETED_KEY)
-    if (!done) {
+    if (!done && !whatsNewPending && !whatsNewLoading) {
       // Small delay to let DOM settle
       const t = setTimeout(() => { setActive(true); }, 800)
       return () => { clearTimeout(t); }
     }
-  }, [])
+  }, [whatsNewPending, whatsNewLoading])
 
   // Expand sidebar at tour start; restore on end
   useEffect(() => {

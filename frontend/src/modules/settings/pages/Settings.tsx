@@ -95,9 +95,9 @@ function useOrgSecurity() {
 
 function useUpdateOrgSecurity() {
   const qc = useQueryClient()
-  return useMutation<void, Error, OrgSecurity>({
+  return useMutation<undefined, Error, OrgSecurity>({
     mutationFn: (input) =>
-      apiFetch<void>('/admin/org/security', {
+      apiFetch<undefined>('/admin/org/security', {
         method: 'PUT',
         body: JSON.stringify(input),
       }),
@@ -135,15 +135,15 @@ function useCreateChannel() {
 
 function useDeleteChannel() {
   const qc = useQueryClient()
-  return useMutation<void, Error, string>({
-    mutationFn: (id) => apiFetch<void>(`/admin/notifications/channels/${id}`, { method: 'DELETE' }),
+  return useMutation<undefined, Error, string>({
+    mutationFn: (id) => apiFetch<undefined>(`/admin/notifications/channels/${id}`, { method: 'DELETE' }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['admin', 'notifications', 'channels'] }),
   })
 }
 
 // ─── Module labels ────────────────────────────────────────────────────────────
 
-const MODULE_META: Record<string, { label: string; desc: string }> = {
+const MODULE_META: Record<string, { label: string; desc: string } | undefined> = {
   vaktscan:   { label: 'Vakt Scan',     desc: 'Scanner-Orchestrierung & Schwachstellenmanagement' },
   vaktcomply:  { label: 'Vakt Comply',   desc: 'Compliance Frameworks, Risiken & Governance' },
   vaktvault:   { label: 'Vakt Vault',    desc: 'Secrets-Verwaltung & Git-Scanning' },
@@ -161,6 +161,7 @@ interface LicenseInfo {
   expires_at: string | null
   demo: boolean
   revoked: boolean
+  auto_renewal_enabled: boolean
 }
 
 const FEATURE_LABELS: Record<string, string> = {
@@ -247,6 +248,11 @@ function LicenseSection() {
           <Badge variant={isPro ? 'success' : 'secondary'} className="text-xs px-2.5 py-1">
             {isPro ? (lic?.demo ? 'Pro (Demo)' : 'Pro') : 'Community'}
           </Badge>
+          {lic?.auto_renewal_enabled && (
+            <Badge variant="outline" className="text-xs px-2 py-0.5 text-green-700 border-green-300 bg-green-50 dark:text-green-400 dark:border-green-800 dark:bg-green-950/30">
+              Auto-Renewal aktiv
+            </Badge>
+          )}
           {lic?.org_name && (
             <span className="text-sm text-secondary">{lic.org_name}</span>
           )}
@@ -268,7 +274,7 @@ function LicenseSection() {
           </p>
         )}
 
-        {lic?.expires_at && daysUntilExpiry(lic.expires_at) < 30 && (
+        {lic?.expires_at && !lic.auto_renewal_enabled && daysUntilExpiry(lic.expires_at) < 30 && (
           <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
             {daysUntilExpiry(lic.expires_at) === 0
               ? t('settingsPage.licenseExpired')
@@ -376,7 +382,7 @@ function OrgSection() {
     if (approvalSetting) setApprovalChecked(approvalSetting.approval_required)
   }, [approvalSetting])
 
-  const isAdmin = user?.roles?.includes('Admin') ?? false
+  const isAdmin = user?.roles.includes('Admin') ?? false
 
   function handleMfaToggle(value: boolean) {
     setMfaChecked(value)
@@ -885,9 +891,9 @@ function useOrgSIEMConfig() {
 
 function useUpdateSIEMConfig() {
   const qc = useQueryClient()
-  return useMutation<void, Error, Partial<OrgSIEMConfig>>({
+  return useMutation<undefined, Error, Partial<OrgSIEMConfig>>({
     mutationFn: (input) =>
-      apiFetch<void>('/admin/org/siem', {
+      apiFetch<undefined>('/admin/org/siem', {
         method: 'PUT',
         body: JSON.stringify(input),
       }),
@@ -896,8 +902,8 @@ function useUpdateSIEMConfig() {
 }
 
 function useTestSIEM() {
-  return useMutation<void>({
-    mutationFn: () => apiFetch<void>('/admin/org/siem/test', { method: 'POST' }),
+  return useMutation<undefined>({
+    mutationFn: () => apiFetch<undefined>('/admin/org/siem/test', { method: 'POST' }),
   })
 }
 
@@ -1117,9 +1123,9 @@ function useOllamaModels() {
 
 function useUpdateOrgAISettings() {
   const qc = useQueryClient()
-  return useMutation<void, Error, OrgAISettings>({
+  return useMutation<undefined, Error, OrgAISettings>({
     mutationFn: (data) =>
-      apiFetch<void>('/admin/org/ai-settings', {
+      apiFetch<undefined>('/admin/org/ai-settings', {
         method: 'PUT',
         body: JSON.stringify(data),
       }),
@@ -1154,7 +1160,7 @@ function AISettingsSection() {
   }
 
   const ollamaModels = modelsData?.models ?? []
-  const isPro = lic?.features?.includes('ai_advisor') ?? false
+  const isPro = lic?.features.includes('ai_advisor') ?? false
 
   return (
     <SectionCard title="KI-Modell" icon={Sparkles}>
@@ -1264,9 +1270,9 @@ function useOrgSAMLConfig() {
 
 function useUpdateSAMLConfig() {
   const qc = useQueryClient()
-  return useMutation<void, Error, Omit<OrgSAMLConfig, 'org_id' | 'cert_pem'>>({
+  return useMutation<undefined, Error, Omit<OrgSAMLConfig, 'org_id' | 'cert_pem'>>({
     mutationFn: (data) =>
-      apiFetch<void>('/admin/org/saml-config', {
+      apiFetch<undefined>('/admin/org/saml-config', {
         method: 'PUT',
         body: JSON.stringify(data),
       }),
@@ -1297,10 +1303,10 @@ function SAMLSetupSection() {
 
   useEffect(() => {
     if (data) {
-      setEntityID(data.entity_id ?? '')
-      setACSURL(data.acs_url ?? '')
-      setIdpMeta(data.idp_metadata ?? '')
-      setEnabled(data.enabled ?? false)
+      setEntityID(data.entity_id)
+      setACSURL(data.acs_url)
+      setIdpMeta(data.idp_metadata)
+      setEnabled(data.enabled)
     }
   }, [data])
 
@@ -1683,14 +1689,14 @@ function LinkCard({
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
 const SETTINGS_TABS = [
-  { id: 'platform',      label: 'Plattform' },
-  { id: 'access',        label: 'Zugriff & SSO' },
-  { id: 'notifications', label: 'Benachrichtigungen' },
-  { id: 'integrations',  label: 'Integrationen' },
-  { id: 'privacy',       label: 'Daten & Privacy' },
-  { id: 'ai',            label: 'KI' },
-  { id: 'public',        label: 'Trust Center' },
-  { id: 'system',        label: 'System' },
+  { id: 'platform',      label: 'Plattform',         description: 'Organisation, Lizenzen & Module' },
+  { id: 'access',        label: 'Zugriff & SSO',     description: 'Team, Rollen, MFA & SSO-Login' },
+  { id: 'notifications', label: 'Benachrichtigungen',description: 'SMTP, Kanäle & Berichte' },
+  { id: 'integrations',  label: 'Integrationen',     description: 'Webhooks, API-Keys & SIEM' },
+  { id: 'privacy',       label: 'Daten & Privacy',   description: 'Datenexport, Audit & Aufbewahrung' },
+  { id: 'ai',            label: 'KI',                description: 'KI-Modell & Berater-Einstellungen' },
+  { id: 'public',        label: 'Trust Center',      description: 'Öffentliche Compliance-Seite' },
+  { id: 'system',        label: 'System',            description: 'Updates & Server-Status' },
 ] as const
 
 type TabId = typeof SETTINGS_TABS[number]['id']
@@ -1733,7 +1739,7 @@ export default function Settings() {
           <Tabs value={tab} onValueChange={changeTab}>
             <TabsList className="flex flex-wrap mb-6 w-full justify-start">
               {SETTINGS_TABS.map((t) => (
-                <TabsTrigger key={t.id} value={t.id}>{t.label}</TabsTrigger>
+                <TabsTrigger key={t.id} value={t.id} title={t.description}>{t.label}</TabsTrigger>
               ))}
             </TabsList>
 

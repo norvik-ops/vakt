@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Eye, EyeOff, Trash2, Key, ClipboardList } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
@@ -31,6 +32,7 @@ function SecretRow({
   projectId: string
   envId: string
 }) {
+  const { t } = useTranslation()
   const [reveal, setReveal] = useState(false)
   const [editing, setEditing] = useState(false)
   const [newValue, setNewValue] = useState('')
@@ -68,8 +70,8 @@ function SecretRow({
             onChange={(e) => { setNewValue(e.target.value); }}
             autoFocus
           />
-          <Button size="sm" onClick={handleSave} disabled={upsertSecret.isPending}>Speichern</Button>
-          <Button size="sm" variant="outline" onClick={() => { setEditing(false); }}>Abbrechen</Button>
+          <Button size="sm" onClick={handleSave} disabled={upsertSecret.isPending}>{t('vault.projectDetail.secretSave')}</Button>
+          <Button size="sm" variant="outline" onClick={() => { setEditing(false); }}>{t('vault.projectDetail.cancel')}</Button>
         </div>
       ) : (
         <div className="flex items-center gap-1">
@@ -87,7 +89,7 @@ function SecretRow({
             onClick={() => { setEditing(true); }}
             className="h-7 px-2 text-xs"
           >
-            Bearbeiten
+            {t('vault.projectDetail.secretEdit')}
           </Button>
           <Button
             variant="ghost"
@@ -105,6 +107,7 @@ function SecretRow({
 }
 
 function EnvTab({ projectId, env }: { projectId: string; env: Environment }) {
+  const { t } = useTranslation()
   const { data: keys, isLoading } = useSecretKeys(projectId, env.id)
   const upsertSecret = useUpsertSecret(projectId, env.id)
   const [addOpen, setAddOpen] = useState(false)
@@ -136,7 +139,7 @@ function EnvTab({ projectId, env }: { projectId: string; env: Environment }) {
       <div className="flex justify-end">
         <Button size="sm" onClick={() => { setAddOpen(true); }}>
           <Plus className="w-4 h-4 mr-1" />
-          Secret hinzufügen
+          {t('vault.projectDetail.addSecret')}
         </Button>
       </div>
 
@@ -145,7 +148,7 @@ function EnvTab({ projectId, env }: { projectId: string; env: Environment }) {
           <Spinner size="md" />
         </div>
       ) : !keys || keys.length === 0 ? (
-        <p className="text-sm text-secondary py-6 text-center">Noch keine Secrets vorhanden.</p>
+        <p className="text-sm text-secondary py-6 text-center">{t('vault.projectDetail.noSecrets')}</p>
       ) : (
         <div className="space-y-2">
           {keys.map((k) => (
@@ -156,11 +159,11 @@ function EnvTab({ projectId, env }: { projectId: string; env: Environment }) {
 
       <Dialog open={addOpen} onOpenChange={handleOpenChange}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Secret hinzufügen</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('vault.projectDetail.addSecret')}</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { handleAdd(e) }}>
             <div className="py-4 space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="secret-key">Key</Label>
+                <Label htmlFor="secret-key">{t('vault.projectDetail.secretKey')}</Label>
                 <Input
                   id="secret-key"
                   placeholder="DATABASE_URL"
@@ -170,17 +173,17 @@ function EnvTab({ projectId, env }: { projectId: string; env: Environment }) {
                   aria-invalid={keyTouched && !newKey.trim()}
                 />
                 {keyTouched && !newKey.trim() && (
-                  <p className="text-sm text-destructive mt-1">Key ist erforderlich.</p>
+                  <p className="text-sm text-destructive mt-1">{t('vault.projectDetail.keyRequired')}</p>
                 )}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="secret-val">Value</Label>
+                <Label htmlFor="secret-val">{t('vault.projectDetail.secretValue')}</Label>
                 <Input id="secret-val" type="password" placeholder="••••••" value={newValue} onChange={(e) => { setNewValue(e.target.value); }} />
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => { handleOpenChange(false); }}>Abbrechen</Button>
-              <Button type="submit" disabled={upsertSecret.isPending}>{upsertSecret.isPending ? 'Wird gespeichert…' : 'Speichern'}</Button>
+              <Button type="button" variant="outline" onClick={() => { handleOpenChange(false); }}>{t('vault.projectDetail.cancel')}</Button>
+              <Button type="submit" disabled={upsertSecret.isPending}>{upsertSecret.isPending ? t('vault.projectDetail.secretSaving') : t('vault.projectDetail.secretSave')}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -190,6 +193,7 @@ function EnvTab({ projectId, env }: { projectId: string; env: Environment }) {
 }
 
 export default function ProjectDetailPage() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { formatDateTime } = useFormatDate()
@@ -240,7 +244,7 @@ export default function ProjectDetailPage() {
     <div className="p-6">
       <p className="text-sm text-red-600">{error?.message ?? 'Project not found'}</p>
       <Button variant="outline" className="mt-4" onClick={() => { navigate('/vaktvault'); }}>
-        <ArrowLeft className="w-4 h-4 mr-1" />Back
+        <ArrowLeft className="w-4 h-4 mr-1" />{t('common.back')}
       </Button>
     </div>
   )
@@ -252,7 +256,7 @@ export default function ProjectDetailPage() {
         description={project.description}
         actions={
           <Button variant="outline" size="sm" onClick={() => { navigate('/vaktvault'); }}>
-            <ArrowLeft className="w-4 h-4 mr-1" />Back
+            <ArrowLeft className="w-4 h-4 mr-1" />{t('common.back')}
           </Button>
         }
       />
@@ -281,15 +285,15 @@ export default function ProjectDetailPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-4">
-            <CardTitle>Secrets nach Umgebung</CardTitle>
+            <CardTitle>{t('vault.projectDetail.secretsTitle')}</CardTitle>
             <Button size="sm" variant="outline" onClick={() => { setEnvDialogOpen(true); }}>
               <Plus className="w-4 h-4 mr-1" />
-              Umgebung hinzufügen
+              {t('vault.projectDetail.addEnv')}
             </Button>
           </CardHeader>
           <CardContent>
             {envList.length === 0 ? (
-              <p className="text-sm text-secondary text-center py-6">No environments yet. Add one to start managing secrets.</p>
+              <p className="text-sm text-secondary text-center py-6">{t('vault.projectDetail.noEnvs')}</p>
             ) : (
               <Tabs value={selectedEnv} onValueChange={setActiveEnv}>
                 <TabsList>
@@ -311,24 +315,24 @@ export default function ProjectDetailPage() {
         <Card>
           <CardHeader className="flex flex-row items-center gap-2 pb-4">
             <ClipboardList className="w-4 h-4 text-secondary" />
-            <CardTitle>Zugriffsprotokoll</CardTitle>
+            <CardTitle>{t('vault.projectDetail.accessLog')}</CardTitle>
             {accessLogData && accessLogData.total > 0 && (
-              <span className="ml-auto text-xs text-secondary">{accessLogData.total} Einträge</span>
+              <span className="ml-auto text-xs text-secondary">{t('vault.projectDetail.accessLogEntries', { count: accessLogData.total })}</span>
             )}
           </CardHeader>
           <CardContent>
             {!accessLogData || accessLogData.entries.length === 0 ? (
-              <p className="text-sm text-secondary text-center py-6">Noch keine Zugriffe protokolliert.</p>
+              <p className="text-sm text-secondary text-center py-6">{t('vault.projectDetail.noAccessLog')}</p>
             ) : (
               <>
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Secret</TableHead>
-                      <TableHead>Aktion</TableHead>
-                      <TableHead>Zeitpunkt</TableHead>
-                      <TableHead>IP / Service</TableHead>
+                      <TableHead>{t('vault.projectDetail.colSecret')}</TableHead>
+                      <TableHead>{t('vault.projectDetail.colAction')}</TableHead>
+                      <TableHead>{t('vault.projectDetail.colTime')}</TableHead>
+                      <TableHead>{t('vault.projectDetail.colIp')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -357,10 +361,10 @@ export default function ProjectDetailPage() {
                       disabled={logPage <= 1}
                       onClick={() => { setLogPage((p) => Math.max(1, p - 1)); }}
                     >
-                      Zurück
+                      {t('common.previousPage')}
                     </Button>
                     <span className="text-xs text-secondary">
-                      Seite {logPage} von {Math.ceil(accessLogData.total / LOG_LIMIT)}
+                      {t('common.pageOf', { page: logPage, total: Math.ceil(accessLogData.total / LOG_LIMIT) })}
                     </span>
                     <Button
                       variant="outline"
@@ -368,7 +372,7 @@ export default function ProjectDetailPage() {
                       disabled={logPage >= Math.ceil(accessLogData.total / LOG_LIMIT)}
                       onClick={() => { setLogPage((p) => p + 1); }}
                     >
-                      Weiter
+                      {t('common.nextPage')}
                     </Button>
                   </div>
                 )}
@@ -381,12 +385,12 @@ export default function ProjectDetailPage() {
       <Dialog open={envDialogOpen} onOpenChange={handleEnvDialogChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Umgebung hinzufügen</DialogTitle>
-            <DialogDescription>Umgebungen gruppieren Secrets nach Deployment-Kontext (z.B. Development, Staging, Production).</DialogDescription>
+            <DialogTitle>{t('vault.projectDetail.envDialogTitle')}</DialogTitle>
+            <DialogDescription>{t('vault.projectDetail.envDialogDesc')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={(e) => { handleCreateEnv(e) }}>
             <div className="py-4 space-y-1.5">
-              <Label htmlFor="env-name">Umgebungsname</Label>
+              <Label htmlFor="env-name">{t('vault.projectDetail.envNameLabel')}</Label>
               <Input
                 id="env-name"
                 className="mt-1.5"
@@ -397,12 +401,12 @@ export default function ProjectDetailPage() {
                 aria-invalid={envNameTouched && !envName.trim()}
               />
               {envNameTouched && !envName.trim() && (
-                <p className="text-sm text-destructive mt-1">Name ist erforderlich.</p>
+                <p className="text-sm text-destructive mt-1">{t('vault.projectDetail.envNameRequired')}</p>
               )}
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => { handleEnvDialogChange(false); }}>Abbrechen</Button>
-              <Button type="submit" disabled={createEnv.isPending}>{createEnv.isPending ? 'Wird erstellt…' : 'Erstellen'}</Button>
+              <Button type="button" variant="outline" onClick={() => { handleEnvDialogChange(false); }}>{t('vault.projectDetail.cancel')}</Button>
+              <Button type="submit" disabled={createEnv.isPending}>{createEnv.isPending ? t('vault.projectDetail.creating') : t('vault.projectDetail.addEnv')}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

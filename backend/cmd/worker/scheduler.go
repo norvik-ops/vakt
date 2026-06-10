@@ -268,6 +268,55 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		log.Error().Err(err).Msg("failed to register AI weekly digest cron")
 	}
 
+	// Daily at 03:00 UTC: rescan all tracked TLS certificates and update expiry status.
+	if _, err := scheduler.Register("0 3 * * *",
+		asynq.NewTask(vaktscan.TaskCertScan, nil),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register cert scan cron")
+	}
+
+	// S69-3: Daily at 04:00 UTC — update sla_status on all open findings.
+	if _, err := scheduler.Register("0 4 * * *",
+		asynq.NewTask(vaktscan.TaskSLACheck, nil),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register sla check cron")
+	}
+
+	// S61-3: Daily at 09:30 UTC — alert on major_nc CAPAs with overdue effectiveness checks.
+	if _, err := scheduler.Register("30 9 * * *",
+		asynq.NewTask(taskEffectivenessCheckOverdueAlert, nil),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register effectiveness check overdue alert cron")
+	}
+
+	// S61-7: daily at 06:00 UTC — compute and persist ISMS KPI snapshots for all orgs.
+	if _, err := scheduler.Register("0 6 * * *",
+		vaktcomply.NewISMSKPISnapshotTask(),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register ISMS KPI snapshot cron")
+	}
+
+	// S67-4: daily at 03:30 UTC — sweep evidence staleness for all controls.
+	if _, err := scheduler.Register("30 3 * * *",
+		asynq.NewTask(vaktcomply.TaskEvidenceStalenessCheck, nil),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register evidence staleness check cron")
+	}
+
+	// S68-2: daily at 08:15 UTC — mark overdue DSRs and send 3-day deadline warnings.
+	if _, err := scheduler.Register("15 8 * * *",
+		asynq.NewTask(vaktprivacy.TaskDSRDeadlineCheck, nil),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register dsr deadline check cron")
+	}
+
+	// S68-5: daily at 08:20 UTC — send deletion reminder notifications for reminders due within 14 days.
+	if _, err := scheduler.Register("20 8 * * *",
+		asynq.NewTask(vaktprivacy.TaskDeletionReminderCheck, nil),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register deletion reminder check cron")
+	}
+
 	return scheduler
 }
 

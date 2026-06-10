@@ -78,6 +78,7 @@ func handleRecordEvidence(pool *pgxpool.Pool) asynq.HandlerFunc {
 		"vaktaware":   {"training", "awareness", "schulung", "bewusstsein"},
 		"vaktprivacy": {"datenschutz", "privacy", "dsar", "betroffene"},
 		"vaktvault":   {"access", "password", "secret", "rotation", "credential"},
+		"vaktscan":    {"kryptographie", "zertifikat", "tls", "certificate", "pki"},
 	}
 	return func(ctx context.Context, t *asynq.Task) error {
 		var payload crossevidence.EvidencePayload

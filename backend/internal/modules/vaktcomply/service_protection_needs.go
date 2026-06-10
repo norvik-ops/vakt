@@ -35,6 +35,12 @@ func (s *Service) DeleteProtectionNeedAssessment(ctx context.Context, orgID, id 
 	return s.repo.DeleteProtectionNeedAssessment(ctx, orgID, id)
 }
 
+// LinkAssetToPNA sets or clears the vb_asset_id soft-link on a PNA.
+// Pass assetID = nil to unlink. The reverse link on vb_assets is updated as a best-effort side-effect.
+func (s *Service) LinkAssetToPNA(ctx context.Context, orgID, pnaID string, assetID *string) error {
+	return s.repo.LinkAssetToPNA(ctx, orgID, pnaID, assetID)
+}
+
 // CalculateOverallProtectionNeed implements the BSI maximum principle:
 // normal < hoch < sehr_hoch — the overall level equals the highest individual rating.
 func CalculateOverallProtectionNeed(c, i, a string) string {

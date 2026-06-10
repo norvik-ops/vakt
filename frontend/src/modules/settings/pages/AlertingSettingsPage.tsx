@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Trash2, Plus, FlaskConical, ChevronDown, ChevronRight, Bell, History, ExternalLink, Zap } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -63,6 +64,7 @@ function QuickSetupCard({
   channelType,
   defaultName,
 }: QuickSetupCardProps) {
+  const { t } = useTranslation()
   const [url, setUrl]           = useState('')
   const [saving, setSaving]       = useState(false)
   const [saved, setSaved]         = useState(false)
@@ -136,7 +138,7 @@ function QuickSetupCard({
             ) : (
               <FlaskConical className="w-3.5 h-3.5 mr-1.5" />
             )}
-            Testen
+            {t('settings.alerting.test')}
           </Button>
         ) : (
           <Button
@@ -148,14 +150,14 @@ function QuickSetupCard({
             {saving ? (
               <Spinner size="xs" color="white" className="mr-1.5" />
             ) : null}
-            Speichern
+            {t('settings.alerting.save')}
           </Button>
         )}
       </div>
 
-      {testOk === true  && <p className="text-[11px] text-green-400">Testbenachrichtigung erfolgreich gesendet.</p>}
-      {testOk === false && <p className="text-[11px] text-red-400">Test fehlgeschlagen. Bitte URL prüfen.</p>}
-      {saved && testOk === null && <p className="text-[11px] text-green-400">Kanal gespeichert. Klicke &ldquo;Testen&rdquo; um die Verbindung zu prüfen.</p>}
+      {testOk === true  && <p className="text-[11px] text-green-400">{t('settings.alerting.testSuccess')}</p>}
+      {testOk === false && <p className="text-[11px] text-red-400">{t('settings.alerting.testFailed')}</p>}
+      {saved && testOk === null && <p className="text-[11px] text-green-400">{t('settings.alerting.saveSuccess')}</p>}
 
       <a
         href={guideUrl}
@@ -193,6 +195,7 @@ function TeamsLogo() {
 }
 
 function QuickSetupSection() {
+  const { t } = useTranslation()
   const { data: channels = [] } = useAlertChannels()
   const hasSlack = channels.some((ch) => ch.type === 'slack')
   const hasTeams = channels.some((ch) => ch.type === 'teams')
@@ -203,7 +206,7 @@ function QuickSetupSection() {
     <div className="bg-surface border border-border rounded-xl overflow-hidden">
       <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border">
         <Zap className="w-4 h-4 text-brand" />
-        <h2 className="text-sm font-semibold text-primary">Schnell einrichten</h2>
+        <h2 className="text-sm font-semibold text-primary">{t('settings.alerting.quickSetup')}</h2>
         <span className="text-xs text-secondary">Slack und Teams in einem Schritt verbinden</span>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5">
@@ -239,6 +242,7 @@ function QuickSetupSection() {
 // ─── Add Channel Dialog ───────────────────────────────────────────────────────
 
 function AddChannelDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation()
   const [name, setName]   = useState('')
   const [type, setType]   = useState<AlertChannel['type']>('slack')
   const [url, setUrl]     = useState('')
@@ -270,7 +274,7 @@ function AddChannelDialog({ open, onClose }: { open: boolean; onClose: () => voi
     <Dialog open={open} onOpenChange={(v) => { if (!v) { onClose(); } }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Benachrichtigungskanal hinzufügen</DialogTitle>
+          <DialogTitle>{t('settings.alerting.addChannel')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
@@ -336,12 +340,12 @@ function AddChannelDialog({ open, onClose }: { open: boolean; onClose: () => voi
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Abbrechen</Button>
+          <Button variant="outline" onClick={onClose}>{t('settings.alerting.cancel')}</Button>
           <Button
             onClick={handleSave}
             disabled={!name.trim() || !url.trim() || events.length === 0 || create.isPending}
           >
-            {create.isPending ? 'Wird gespeichert…' : 'Hinzufügen'}
+            {create.isPending ? t('settings.alerting.saving') : t('settings.alerting.add')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -352,6 +356,7 @@ function AddChannelDialog({ open, onClose }: { open: boolean; onClose: () => voi
 // ─── Per-Channel Delivery History ────────────────────────────────────────────
 
 function ChannelDeliveryHistory({ channelId }: { channelId: string }) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const { data: entries = [], isLoading } = useChannelDeliveries(channelId, expanded)
   const { formatDateTime } = useFormatDate()
@@ -367,7 +372,7 @@ function ChannelDeliveryHistory({ channelId }: { channelId: string }) {
           : <ChevronRight className="w-3.5 h-3.5 text-secondary shrink-0" />
         }
         <History className="w-3.5 h-3.5 text-secondary shrink-0" />
-        <span className="text-xs text-secondary">Lieferverlauf</span>
+        <span className="text-xs text-secondary">{t('settings.alerting.deliveryHistory')}</span>
         {!expanded && entries.length > 0 && (
           <span className="text-[10px] text-secondary ml-1">({entries.length})</span>
         )}
@@ -377,11 +382,11 @@ function ChannelDeliveryHistory({ channelId }: { channelId: string }) {
           {isLoading && (
             <div className="flex items-center gap-2 py-2">
               <Spinner size="xs" />
-              <span className="text-[11px] text-secondary">Lädt…</span>
+              <span className="text-[11px] text-secondary">{t('settings.alerting.loading')}</span>
             </div>
           )}
           {!isLoading && entries.length === 0 && (
-            <p className="text-[11px] text-secondary py-2">Noch keine Zustellungen für diesen Kanal.</p>
+            <p className="text-[11px] text-secondary py-2">{t('settings.alerting.noDeliveries')}</p>
           )}
           {!isLoading && entries.length > 0 && (
             <table className="w-full text-[11px]">
@@ -400,8 +405,8 @@ function ChannelDeliveryHistory({ channelId }: { channelId: string }) {
                     <td className="py-1 pr-3 font-mono text-secondary">{e.event}</td>
                     <td className="py-1 pr-3">
                       {e.status === 'sent'
-                        ? <span className="text-green-400 font-semibold">Gesendet</span>
-                        : <span className="text-red-400 font-semibold">Fehler</span>
+                        ? <span className="text-green-400 font-semibold">{t('settings.alerting.sent')}</span>
+                        : <span className="text-red-400 font-semibold">{t('settings.alerting.error')}</span>
                       }
                     </td>
                     <td className="py-1 text-secondary">{e.response_code ?? '—'}</td>
@@ -419,6 +424,7 @@ function ChannelDeliveryHistory({ channelId }: { channelId: string }) {
 // ─── Channels Section ─────────────────────────────────────────────────────────
 
 function ChannelsSection() {
+  const { t } = useTranslation()
   const [dialogOpen, setDialogOpen] = useState(false)
   const { data: channels = [], isLoading, isError } = useAlertChannels()
   const deleteChannel  = useDeleteAlertChannel()
@@ -441,11 +447,11 @@ function ChannelsSection() {
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
         <div className="flex items-center gap-3">
           <Bell className="w-4 h-4 text-brand" />
-          <h2 className="text-sm font-semibold text-primary">Benachrichtigungskanäle</h2>
+          <h2 className="text-sm font-semibold text-primary">{t('settings.alerting.title')}</h2>
         </div>
         <Button size="sm" variant="outline" onClick={() => { setDialogOpen(true); }} className="h-7 text-xs">
           <Plus className="w-3 h-3 mr-1" />
-          Kanal hinzufügen
+          {t('settings.alerting.addChannel')}
         </Button>
       </div>
 
@@ -512,7 +518,7 @@ function ChannelsSection() {
                     <div className="flex items-center gap-1.5 justify-end">
                       {testResult?.id === ch.id && (
                         <span className={cn('text-[10px] font-medium', testResult.ok ? 'text-green-400' : 'text-red-400')}>
-                          {testResult.ok ? 'OK' : 'Fehler'}
+                          {testResult.ok ? 'OK' : t('settings.alerting.error')}
                         </span>
                       )}
                       <button
@@ -556,6 +562,7 @@ function ChannelsSection() {
 // ─── Delivery History Section ─────────────────────────────────────────────────
 
 function DeliveryHistorySection() {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const { data: entries = [], isLoading } = useAlertDeliveryLog()
   const { formatDateTime } = useFormatDate()
@@ -571,7 +578,7 @@ function DeliveryHistorySection() {
             ? <ChevronDown className="w-4 h-4 text-secondary" />
             : <ChevronRight className="w-4 h-4 text-secondary" />
           }
-          <h2 className="text-sm font-semibold text-primary">Zustellungsprotokoll</h2>
+          <h2 className="text-sm font-semibold text-primary">{t('settings.alerting.deliveryLog')}</h2>
           {!expanded && entries.length > 0 && (
             <span className="text-[11px] text-secondary">({entries.length} Einträge)</span>
           )}
@@ -586,7 +593,7 @@ function DeliveryHistorySection() {
             </div>
           )}
           {!isLoading && entries.length === 0 && (
-            <p className="px-5 py-4 text-xs text-secondary">Noch keine Zustellungen protokolliert.</p>
+            <p className="px-5 py-4 text-xs text-secondary">{t('settings.alerting.noDeliveries')}</p>
           )}
           {!isLoading && entries.length > 0 && (
             <Table>
@@ -609,7 +616,7 @@ function DeliveryHistorySection() {
                         variant={entry.status === 'sent' ? 'success' : 'destructive'}
                         className="text-[10px]"
                       >
-                        {entry.status === 'sent' ? 'Gesendet' : 'Fehler'}
+                        {entry.status === 'sent' ? t('settings.alerting.sent') : t('settings.alerting.error')}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -634,11 +641,12 @@ function DeliveryHistorySection() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AlertingSettingsPage() {
+  const { t } = useTranslation()
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Benachrichtigungen"
-        description="Externe Webhooks und Alert-Kanäle für sicherheitsrelevante Ereignisse."
+        title={t('settings.alerting.title')}
+        description={t('settings.alerting.description')}
       />
       <div className="flex-1 p-6 overflow-auto">
         <div className="max-w-5xl space-y-5">

@@ -181,3 +181,27 @@ func handleDSROverdueCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.Handler
 		return nil
 	}
 }
+
+// handleDSRDeadlineCheck handles privacy:dsr_deadline_check jobs (S68-2).
+// Marks overdue DSRs and sends in-app deadline-warning notifications per org.
+func handleDSRDeadlineCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
+	return func(ctx context.Context, _ *asynq.Task) error {
+		svc := vaktprivacy.NewService(pool, asynq.RedisClientOpt{})
+		if err := svc.CheckOverdueRequests(ctx); err != nil {
+			log.Error().Err(err).Msg("dsr deadline check failed")
+		}
+		return nil
+	}
+}
+
+// handleDeletionReminderCheck handles privacy:deletion_reminder_check jobs (S68-5).
+// Sends in-app notifications for deletion reminders due within 14 days.
+func handleDeletionReminderCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
+	return func(ctx context.Context, _ *asynq.Task) error {
+		svc := vaktprivacy.NewService(pool, asynq.RedisClientOpt{})
+		if err := svc.CheckDeletionReminders(ctx); err != nil {
+			log.Error().Err(err).Msg("deletion reminder check failed")
+		}
+		return nil
+	}
+}

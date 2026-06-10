@@ -19,6 +19,9 @@ export default function NotFoundPage() {
       >
         {t('errors.notFound.back', 'Zurück zur Startseite')}
       </Link>
+      <p className="text-xs text-secondary mt-4">
+        {t('errors.notFound.searchHint', 'Tipp: Nutze die Suche (⌘K) um schnell zum Ziel zu gelangen.')}
+      </p>
     </div>
   )
 }

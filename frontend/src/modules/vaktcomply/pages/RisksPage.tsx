@@ -48,7 +48,8 @@ function RiskMatrixHeatmap({ risks }: { risks: Risk[] }) {
   return (
     <div className="bg-white dark:bg-surface border rounded-lg p-4">
       <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Risikomatrix (offene Risiken)</h3>
-      <div className="flex gap-2">
+      <div className="overflow-x-auto">
+      <div className="flex flex-wrap gap-2 min-w-[280px]">
         {/* Y-axis label */}
         <div
           className="flex flex-col justify-between text-xs text-gray-500 py-1"
@@ -85,7 +86,7 @@ function RiskMatrixHeatmap({ risks }: { risks: Risk[] }) {
           <div className="text-xs text-gray-500 text-center mt-1 pl-4">← Eintrittswahrscheinlichkeit</div>
         </div>
         {/* Legend */}
-        <div className="ml-4 flex flex-col gap-1 justify-center text-xs">
+        <div className="ml-0 mt-3 sm:ml-4 sm:mt-0 flex flex-row flex-wrap sm:flex-col gap-x-3 gap-y-1 sm:justify-center text-xs shrink-0">
           {[
             { color: '#fecaca', label: 'Kritisch (15–25)' },
             { color: '#fed7aa', label: 'Hoch (10–14)' },
@@ -93,11 +94,12 @@ function RiskMatrixHeatmap({ risks }: { risks: Risk[] }) {
             { color: '#d1fae5', label: 'Niedrig (1–4)' },
           ].map(({ color, label }) => (
             <div key={label} className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} />
-              <span className="text-gray-600 dark:text-gray-500">{label}</span>
+              <div className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: color }} />
+              <span className="text-gray-600 dark:text-gray-500 whitespace-nowrap">{label}</span>
             </div>
           ))}
         </div>
+      </div>
       </div>
     </div>
   )

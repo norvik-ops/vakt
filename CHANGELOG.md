@@ -7,6 +7,946 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+**Identity & Access Automation — Entra ID, Keycloak, LDAP/Active Directory.**
+Drei neue Evidence-Collector für Identity-Provider und Verzeichnisdienste — automatisch, lokal, kein Datenabfluss.
+
+### Added
+
+- **Microsoft Entra ID / Graph API-Integration** — MFA-Enrollment-Quote, Conditional-Access-Policies, Risky Users (Identitätsrisiko), Admin-Rollenmitglieder und inaktive Accounts täglich als Compliance-Evidence. OAuth2 Client Credentials (client_id/client_secret), AES-256-GCM verschlüsselt. `@odata.nextLink`-Pagination für große Tenants.
+- **Keycloak REST-Integration** — MFA-Status pro User (OTP/TOTP), Passwort-Policy-Stärke (length()-Extraktion), inaktive Accounts, Admin-Rollenmitglieder und Session-Timeout-Compliance täglich als Evidence. Service Account Client Credentials. Warnung bei Passwortlänge <8 oder SSO-Session >12 Stunden.
+- **LDAP / Active Directory-Integration** — Inaktive Accounts (>90 Tage nicht eingeloggt), Accounts mit „Passwort läuft nie ab", Mitglieder privilegierter Gruppen (Domain Admins, Administrators), deaktivierte Accounts und aktive Account-Gesamtzahl als Evidence. Unterstützt AD (userAccountControl-Flags, Windows FILETIME) und OpenLDAP (shadowLastChange, shadowMax). LDAPS (TLS) unterstützt.
+
+### Infrastructure
+
+- **Migration 169** — `cloud_integrations.provider` CHECK-Constraint erweitert um `ldap`.
+- **OpenAPI-Spec** — 15 neue Endpunkte für die drei neuen Identity-Provider (config GET/PUT, sync POST, status GET, evidence GET) sowie zugehörige Component-Schemas.
+
+### Changed
+
+- **Lizenz-Keys haben jetzt ein Ablaufdatum** — Monatsabo 35 Tage, Jahresabo 395 Tage. Bei Kündigung läuft der Key am nächsten Renewal-Datum automatisch aus; die Instanz fällt dann auf Community zurück.
+- **License Auto-Renewal** — Mit `VAKT_LICENSE_TOKEN` (aus der Kauf-E-Mail) holt sich die Instanz den aktuellen Key täglich selbst — kein manueller Eingriff bei Verlängerungen nötig. Opt-in; ohne Token läuft alles wie bisher. Einzige ausgehende Verbindung: `api.norvikops.de` (nur Lizenzdaten, keine Geschäftsdaten). Sichtbar in Einstellungen → Lizenz als „Auto-Renewal aktiv"-Badge.
+
+---
+
+## [0.40.0] — 2026-06-09
+
+**DACH-Integrations-Welle — Hetzner, IONOS, Wazuh, GitHub GHAS, Prometheus.**
+Fünf neue Evidence-Collector für DACH-typische Infrastruktur — alle Pull-basiert, alle lokal in der Kunden-Infrastruktur, kein Datenabfluss an externe SaaS.
+
+### Added
+
+- **Hetzner Cloud-Integration** — Server-Inventar, Firewall-Regeln, SSH-Keys und Snapshot-Nachweis täglich als Compliance-Evidence. Warnung wenn ein Server seit >7 Tagen kein Snapshot hat. API-Token read-only, AES-256-GCM verschlüsselt. Standort-Filter optional (nbg1, fsn1, hel1, …).
+- **IONOS Cloud-Integration** — Server-Inventar, SSH-Keys und Snapshot-Compliance aus IONOS Cloud API v6. Unterstützt Basic Auth (Benutzername/Passwort) oder API-Token. Warnung bei fehlendem Snapshot in den letzten 7 Tagen.
+- **Wazuh Pull-Integration** — Vulnerability-Scans (CVE), SCA-Compliance-Scores und FIM-Events täglich aus dem Wazuh-Manager (REST-API v4, JWT). Warnung bei offline-Agents >24h oder kritischen CVEs. TLS-Verifizierung deaktivierbar für on-prem-Deployments mit selbstsignierten Zertifikaten.
+- **GitHub GHAS-Integration** — Dependabot Alerts, Secret Scanning Alerts und Code Scanning Alerts (high+critical) werden bei jedem GitHub-Sync automatisch als Compliance-Evidence erfasst. GHAS nicht aktiviert → stiller Skip (kein Fehler). Deduplication über `auto_source_ref`, schreibt in `ck_evidence` (kein Cross-Modul-Import).
+- **Prometheus / Alertmanager-Integration** — Uptime-Metriken (PromQL `avg_over_time(up[24h])`), Scrape-Target-Health und aktive Alerts (critical) täglich als Monitoring-Evidence. Alertmanager-URL optional. Bearer Token optional, AES-256-GCM verschlüsselt.
+
+### Infrastructure
+
+- **Migration 168** — `cloud_integrations.provider` CHECK-Constraint erweitert um `hetzner`, `ionos`, `wazuh`, `prometheus`, `entra_id`, `keycloak`, `gitlab`, `sonarqube`.
+- **OpenAPI-Spec** — 20 neue Endpunkte für die vier neuen Cloud-Provider (config GET/PUT, sync POST, status GET, evidence GET) sowie zugehörige Component-Schemas.
+
+---
+
+## [0.38.0] — 2026-06-09
+
+**ISB-Vollständigkeit — Notfallhandbuch (BCP), Schutzbedarfsfeststellung, Berechtigungskonzept.**
+Drei neue Feature-Bereiche runden die ISB-Checkliste ab. Alle drei sind vollständig versioniert und erzeugen audit-fähige Nachweise in Vakt Comply.
+
+### Added
+
+- **Notfallhandbuch / BCP** (`Vakt Comply`) — Verwaltung von Business-Continuity-Plänen mit Status-Workflow (draft → active → archived), versionierten Plänen und zugeordneten Wiederanlauftests. Jeder Test dokumentiert Datum, Typ (tabletop / walkthrough / fulltest) und Ergebnis (passed / failed / partial). Pläne ohne Test in den letzten 12 Monaten werden mit einem Amber-Banner hervorgehoben. Pläne können direkt als Compliance-Nachweis in Vakt Comply verlinkt werden.
+- **Schutzbedarfsfeststellung** (`Vakt Comply`) — CIA-Triade-Bewertung (Vertraulichkeit, Integrität, Verfügbarkeit) nach BSI-Maximumprinzip. Schutzklassen: `normal`, `hoch`, `sehr_hoch`. Gesamtbedarf wird automatisch als Maximum der drei Dimensionen berechnet. Einträge können finalisiert (eingefroren) werden — danach keine Änderungen mehr möglich. Unterstützte Objekttypen: Prozess, System, Information, Standort.
+- **Berechtigungskonzept** (`Vakt HR`) — Verwaltung von Berechtigungskonzepten mit Rollenmatrix pro Konzept. Zugriffsrollen dokumentieren System, Zugriffsebene (`read / write / admin / no_access`), Begründung und Wiederprüfungsintervall. Konzepte können per „Version einfrieren" als unveränderlicher Schnappschuss gesichert werden; die Versionshistorie ist vollständig einsehbar.
+
+### Infrastructure
+
+- **`promote.yml` mit automatischem Deploy** — Der promote-Workflow kopiert Images jetzt auf `:latest` **und** `:demo` (Server nutzt `APP_VERSION=demo`) und fährt danach den Demo-Server direkt auf dem Self-Hosted Runner hoch (`docker compose pull` → migrate → worker → api → health-check → frontend). Kein manueller SSH-Schritt mehr nötig.
+
+---
+
+## [0.37.0] — 2026-05-29
+
+**Mega-Audit-Welle — VPS-Hardening, Code-Security-Fixes, CI-Hygiene.** Zweites Agent-Audit (2026-05-29) mit 5 VPS-Findings + 7 Code-Findings + 3 Hardening-Items. Alle Wave A/B/C-Items adressiert; CI durchgehend grün (Backend, Frontend, Integration, Deploy, E2E).
+
+> **Operative Hinweise:** `VAKT_SECRET_KEY` auf dem VPS rotiert — bestehende verschlüsselte DB-Einträge bleiben lesbar (HKDF-Migration ist idempotent; `cmd/rotate-key` war in 0.36.0 abgesichert). UFW aktiv auf dem VPS; Zabbix-Agent (Port 10050) und -Proxy (Port 10051) sind in den Allow-Rules explizit gesichert. `VAKT_PROMOTE_SECRET` aus der systemd-Unit in `/etc/vakt-promote.env` (chmod 600) ausgelagert.
+
+### Security
+
+- **VPS Secret-Key rotiert** — neuer kryptografisch zufälliger 32-Byte-Key; `docker compose up -d` propagiert den neuen Key ohne Downtime.
+- **Firewall aktiviert (UFW)** — Default deny-incoming, explizite Allows für SSH (22), HTTP/S (80/443), Zabbix-Agent (10050 von dirserver), Zabbix-Proxy (10051 von dirserver), Prometheus-Scrape.
+- **VAKT_PROMOTE_SECRET rotiert + gehärtet** — Secret aus systemd-Unit-inline in `EnvironmentFile=/etc/vakt-promote.env` (chmod 600) verschoben; kein Klartext mehr in `systemctl show`.
+- **`.env` Berechtigungen** — chmod 600 auf `.env`; war zuvor world-readable.
+- **Schwacher-Key-Guard** (`B1`) — `config.Validate()` verwirft Keys bei denen alle Bytes identisch sind (z.B. `0000…`). Fehler enthält Regenerierungshinweis.
+- **Scanner-Image-Pinning** (`B3`) — Trivy (`0.62.0`) und Nuclei (`v3.4.4`) im Dockerfile per SHA-256-Digest gepinnt; verhindert stilles Tag-Overschreiben.
+- **`err.Error()`-Leaks reduziert** (`B4`) — interne Fehlermeldungen in `cloud/handler.go`, `jobs_handler.go`, `vaktscan/handler.go`, `ai/handler.go`, `nis2wizard/handler.go` durch generische Meldungen ersetzt; Stack-Details nur im strukturierten Log.
+- **`html/template` für E-Mail-Templates** (`B5`) — `vaktaware/service.go` und `vaktcomply/policy_acceptance.go` nutzen jetzt `html/template` statt `text/template`; Auto-Escaping verhindert XSS in kampagnen-generierten E-Mails.
+- **TRUSTED_PROXIES-Warning** (`C3`) — Startup-Log-Warn wenn `VAKT_TRUSTED_PROXIES` nicht gesetzt; verhindert stilles IP-Spoofing hinter Reverse-Proxys.
+- **In-Memory-Ratelimit-Warning** (`C7`) — Startup-Log-Warn wenn Redis nicht konfiguriert und In-Memory-Fallback aktiv ist; Multi-Replica-Deployment mit gespiegelten Limits ist damit erkennbar.
+
+### CI / Tooling
+
+- **Trivy-Image-Scan im Deploy-Step** (`C2`) — nach `docker build` scannt Trivy das frisch gebaute API-Image auf CRITICAL/HIGH; nicht-blockierend (exit-code 0), Report im Summary.
+- **Fuzz `-parallel=1`** — Go 1.22+ gibt `context deadline exceeded` zurück wenn parallele Fuzz-Worker beim Budget-Ablauf nicht sauber stoppen. Einzel-Worker behebt das false-positive.
+- **Vollständiges Paket-Rename** (`secX → vaktX`) — alle verbleibenden Handler, Query-Dateien, SQL-Go-Dateien, Worker-Handler und Test-Fixtures auf die neuen Modul-Namen umgestellt.
+
+### Tests
+
+- **`config/validate_test.go`** (neu) — 5 Tests für Weak-Key-Guard: Zero-Key, Repeat-Byte, valid Key, zu kurzer Key, fehlende DB-URL.
+- **E2E-Fixes** — 3 Playwright-Tests repariert: `compliance` navigiert auf `/vaktcomply/frameworks` (Accordion versteckte Nav-Labels); `ExpiringEvidenceWidget`-Crash bei paginated Mock-Response durch Fixture-Mock behoben; Keyboard-Shortcut-Tests warten auf Layout-Mount vor Tastendruck.
+
+---
+
+## [0.36.0] — 2026-05-27
+
+**Marktreife-Programm — Sprint 56–59 Sammel-Release.** Schließt die 11 Top-Findings aus dem Auditos-Singularity-9-Agent-Audit + alle daraus hervorgegangenen P1-Items und Content-Drifts. 15 neue ADRs (0033–0047), 3 Migrationen (149–151), Backend 33 Pakete + Frontend 482 Tests durchgehend grün.
+
+> **Operative Hinweise:** Migrationen 149 (`audit_log`-Hash-Chain), 150 (RLS-Theater zurückgenommen) und 151 (`audit_log` Range-Partitioning auf `created_at`) sind additiv bzw. data-preserving. Migration 151 ändert den `PRIMARY KEY` von `(id)` auf `(id, created_at)` — anwendungsseitig transparent. Operator: optional `VAKT_AUTH_FAIL_OPEN_ON_REDIS_OUTAGE=true` setzen, falls die strengere Default-Behandlung (503 bei Redis-Outage) für ein Deployment unpassend ist.
+
+### Security (Audit-Findings F1, F2, F4, F5, F6, F7, F8, F9, F10, F11 + XFF/Cross-Org)
+
+- **OIDC `email_verified`-Gate beim Account-Linking** (F4, ADR-0033) — fremde OIDC-Subjects werden nicht mehr blind an Lokal-Accounts mit gleicher Email gelinkt, solange der IdP die Email nicht als verifiziert ausweist.
+- **License-Activate Role-Case-Fix** (F10) — `license/routes.go` checkt jetzt `"Admin"` (PascalCase, DB-Seed-konform) statt des nirgendwo gesetzten `"admin"`. Pro-Aktivierung funktioniert wieder.
+- **LocalLLMBadge zeigt Provider ehrlich** (F2, ADR-0034) — Backend liefert `provider_host` in `/ai/status`, Frontend reicht es in den Badge durch. Kein "Lokal"-Badge mehr bei OpenAI-Cloud.
+- **XFF-Spoofing-Schutz** — `VAKT_TRUSTED_PROXIES` wird als CIDR-Liste in echo-`TrustOption`s übersetzt; XFF-Header von außerhalb des Trust-Sets werden ignoriert.
+- **SAML `InResponseTo`-Binding** (F5, ADR-0036) — HMAC-signiertes Single-Use-Cookie bindet AuthnRequest-ID an die Browser-Session; ACS akzeptiert nur Assertions mit passendem `InResponseTo`.
+- **Operator-Rebrand abgeschlossen** (F11, ADR-0035) — Helm/CRD/RBAC auf `secrets.vakt.io / VaktSecret` migriert; Group-Konsistenz per Unit-Test gepinnt.
+- **Cross-Org Approve-Hijack geschlossen** — `AgentRunManager.Decide` prüft Caller-Org und User-Owner; fremde `run_id`-Approvals geben 404.
+- **`cmd/rotate-key` repariert + erweitert** (F1, ADR-0038) — HKDF-Coverage auf alle 8 verschlüsselten Spalten (`so_secrets`, `totp_secrets`, `notification_channels` ×2, `integrations_github`, `org_saml_configs`, `webhooks.secret`, `cloud_integrations.config`). SAML-Legacy-Rows (raw-master-encrypted) werden im Lauf migriert.
+- **`audit_log` tamper-evident** (F8, ADR-0040, Migration 149) — Per-Org SHA-256 Hash-Chain mit `prev_hash` und `entry_hash`. Neues Tool `cmd/audit-verify` lokalisiert Tamper auf die exakte Row. ISO 27001 A.12.4.3 / NIS2 / DORA Art. 11 Audit-Trail-Anforderungen erfüllt.
+- **AI-Counter zentralisiert** (F3, ADR-0041) — Echo-Middleware `RequireAILimit` ersetzt inline-Gates; alle 8 LLM-erzeugenden Routes durch das Gate. Statischer Route-Coverage-Test verhindert künftige Drift.
+- **PII-Log-Redaktion** (F7, ADR-0039) — Helper `logsafe.RedactEmail` (Format `***@domain`) ersetzt Volltextexposures in 38 Call-Sites über 13 Dateien.
+- **Auth-Lockout fail closed** (ADR-0044) — `checkAccountLocked` / `checkIPLocked` geben 503 `AUTH_LOCKOUT_UNAVAILABLE` bei Redis-Outage statt fail-open. Opt-out via `VAKT_AUTH_FAIL_OPEN_ON_REDIS_OUTAGE=true`.
+- **RLS-Theater zurückgenommen** (F6, ADR-0042, Migration 150) — Migration 012 hatte `ENABLE ROW LEVEL SECURITY` aktiviert, ohne dass die App `app.current_org_id` setzte. Ehrlich-Rückbau auf reine App-Layer-Isolation.
+- **`shieldstack` Build-Artefakt aus Working-Tree entfernt** (F9, ADR-0037) — Datei war seit `b83890c` aus HEAD entfernt; lokal aufgeräumt, History-Rewrite-Plan dokumentiert.
+- **`webhooks.secret` Legacy-Migration** (ADR-0043) — Boot-Hook `MigrateLegacyPlaintextSecrets` konvertiert historische Plaintext-Secrets idempotent auf das `enc:v1:`-Format.
+
+### Operations & Releases (P1-1, P1-2, P1-5)
+
+- **Worker-Health/Readiness** (P1-5) — `/health` (Liveness), `/health/ready` (DB + Asynq-Queue-Probe), `/health/queue` (per-Queue Counts) statt einzelnem DB-Ping.
+- **`audit_log` Range-Partitioning** (P1-2, ADR-0045, Migration 151) — Yearly Partitions (2025–2028) + DEFAULT, `audit_logs`-Backcompat-View neu erstellt.
+- **SBOM + SLSA-Provenance pro Release** (P1-1, ADR-0046) — `release.yml` generiert SPDX-2.3 + CycloneDX SBOMs via syft, attestiert via `cosign attest --type spdxjson`. Release-Body enthält SBOMs als Assets. Compliance für EU CRA Art. 13(15).
+
+### Content
+
+- **BSI IT-Grundschutz von 7 Stub-Controls auf 34 Bausteine** (ADR-0047) — vollständige Abdeckung aller 10 Schichten (ISMS, ORP, CON, OPS, DER, APP, SYS, IND, NET, INF), jeder Control mit deutscher Description, Domain, Evidence-Type und Weight nach CRA/DORA-Pattern.
+- **i18n-Sweep P0+P1 (79 neue Keys × 4 Locales = 316 Strings)** — `AccessReviewsPage`, `AISystemsPage`, `ResilienceTestsPage`, `ExceptionsPage`, `EvidenceAutoPage`, `TISAXMappingPage`, `DSGVOTOMPage` von hardcoded-Deutsch auf `useTranslation`. 240 i18n-Contract-Tests pinnen alle 60 Keys × 4 Locales gegen Drift.
+
+### Migrations
+
+- **149** — `audit_log` Hash-Chain (`prev_hash`, `entry_hash` BYTEA-Spalten + Index).
+- **150** — RLS-Policies aus Migration 012 zurückgenommen.
+- **151** — `audit_log` zu `PARTITION BY RANGE (created_at)`, Yearly + DEFAULT.
+
+### Tools
+
+- **`cmd/audit-verify`** — neuer Verifier für die Audit-Log-Hash-Chain.
+- **`cmd/rotate-key`** — komplett umgebaut zu einer Pipeline aus 8 Stages mit unit-testbaren Stage-Funktionen.
+
+### Tests
+
+- Backend: **33 Pakete grün** (Unit + neue Integration-Tests via testcontainers-postgres in `internal/integration_test/`).
+- Frontend: **482 Tests grün** (vorher 242 + 240 neue i18n-Contract-Tests).
+
+---
+
+## [0.35.0] — 2026-05-25
+
+> Tag-Note: dieser Release-Eintrag wurde nachträglich im Zuge von v0.36.0 ergänzt. v0.34.0 + v0.35.0 enthielten zwei Commits zur Pro-Tier-UX (`feat(ux): ProGate "Demnächst" + DemoTierHint für Pro-Module`) und Billing-Korrektur (`fix(billing): Polar.sh Checkout-URL auf tatsächliche Product-ID aktualisiert`).
+
+---
+
+## [0.33.0] — 2026-05-25
+
+Monetarisierung Phase 4 — Pricing-Dokumentation + Public README
+
+### Changed
+
+- **README Pricing-Section** — Vollständige CE/Pro/Enterprise Tier-Tabelle mit Framework-Matrix (NIS2/ISO 27001 ✅ Community; BSI/EU AI Act/CRA ✅ Pro; DORA/TISAX/ISO 42001 ✅ Enterprise), Modul-Verfügbarkeit und Feature-Vergleich (AI: 25 req/month CE vs. Unlimited Pro/Enterprise). Checkout-Links auf Polar.sh aktualisiert.
+
+---
+
+## [0.32.0] — 2026-05-25
+
+Monetarisierung Phase 3 — In-App UX vollständig
+
+### Added
+
+- **CE AI-Counter-Anzeige** — `CEAICounter`-Component zeigt "18 / 25 KI-Anfragen diesen Monat" mit Fortschrittsbalken im KI-Berater-Widget. Warnung bei ≤5 verbleibenden Anfragen (Amber), Erschöpft-State mit Upgrade-Link (Rot).
+- **`useAIUsage` Hook** — ruft `GET /api/v1/vaktcomply/ai/usage` ab, liefert `{used, limit, is_pro}`. Pro-Orgs: `is_pro=true`, Counter ausgeblendet.
+- **`AI_CE_MONTHLY_LIMIT` Error-Handling** — KI-Berater zeigt deutschen Hinweis statt generischem Fehler wenn das CE-Monatslimit erreicht ist.
+
+### Changed
+
+- **Checkout/Portal-URLs auf Polar.sh migriert** — `frontend/src/lib/constants.ts`: `VAKT_PRO_CHECKOUT_URL` → `buy.polar.sh/norvik-ops/vakt-pro-monthly`, `VAKT_POLAR_PORTAL_URL` neu. `VAKT_LS_PORTAL_URL` als Alias erhalten.
+
+### Notes
+
+Folgende Phase-3-Elemente waren bereits implementiert: License-Key-Eingabe (Settings → Lizenz), ProGate-Upgrade-Prompt, 30-Tage-Ablauf-Banner (LicenseExpiryBanner), Post-Expiry-Hint mit Renewal-Link.
+
+---
+
+## [0.31.0] — 2026-05-25
+
+Monetarisierung Phase 2 — Gate Enforcement vollständig, CE AI-Counter
+
+### Added
+
+- **CE AI-Monatslimit (25 Anfragen)** — Community-Edition-Orgs können AI-Features (Gap-Analyse, Policy-Draft, Incident-Guide, Chat, GapExplain, RiskNarrative) bis zu 25-mal pro Monat verwenden. Ab Anfrage 26 folgt HTTP 402 mit `AI_CE_MONTHLY_LIMIT`. Pro/Enterprise: unbegrenzt.
+- **`GET /api/v1/vaktcomply/ai/usage`** — gibt `{used, limit, is_pro}` zurück. Frontend nutzt das zum Anzeigen von "18/25 Anfragen diesen Monat".
+
+### Notes
+
+Feature-Gates für alle Module und Frameworks (TISAX, DORA, CRA, EU AI Act, SCIM, SSO) waren bereits vollständig implementiert (106 aktive `features.Require()`-Gates). Phase 2 war deshalb auf den fehlenden CE-AI-Counter reduziert.
+
+---
+
+## [0.30.0] — 2026-05-25
+
+Monetarisierung Phase 1 — Polar.sh Webhook, Demo-Tier Enterprise, License-Infrastruktur vollständig
+
+### Added
+
+- **Polar.sh Webhook** — `POST /api/v1/billing/webhook` empfängt Polar.sh-Subscription-Events und stellt automatisch Pro-Lizenzschlüssel aus. HMAC-SHA256-Signaturverifikation, Replay-Schutz via `polar_webhook_events`, idempotente Subscription-Speicherung in `polar_subscriptions`. Migration 148.
+- **Demo → Enterprise-Tier** — `VAKT_DEMO=true` erteilt jetzt Enterprise-Tier statt Pro. Alle Features inkl. SCIM, TISAX, DORA sichtbar für Interessenten auf der Demo-Instanz.
+- **`IsEnterprise()` auf License** — neue Hilfsmethode für Enterprise-Gate-Checks. `IsPro()` gibt auch für Enterprise `true` zurück (Enterprise ⊇ Pro).
+- **`VAKT_POLAR_WEBHOOK_SECRET`** — neue Umgebungsvariable für Polar-Webhook-Signaturprüfung, dokumentiert in `.env.example`.
+
+---
+
+## [0.29.0] — 2026-05-25
+
+Pre-v1.0 Sprint D — HKDF-Schlüsseltrennung, SCIM-Token-Ablauf, Pentest-Dokumentation
+
+### Security
+
+- **HKDF domain-separated keys** — `VAKT_SECRET_KEY` leitet jetzt via HKDF-SHA256 separate Sub-Keys für jede Komponente ab (`vakt-paseto-v1`, `vakt-vault-v1`, `vakt-totp-v1`, `vakt-alert-v1`, `vakt-github-v1`, `vakt-cloud-v1`, `vakt-webhook-v1`). Algorithmus-Isolation: ein kompromittierter Token-Key gibt keinen Zugriff auf verschlüsselte Vault-Secrets und umgekehrt. **Breaking:** alle aktiven Sessions werden beim Rollout ungültig (Paseto-Signing-Key geändert).
+- **Pentest-Scope-Dokument** — `docs/security/pentest-scope.md`: vollständige Scope-Definition für externe Pentester (In-Scope-Klassen, Test-Accounts, Out-of-Scope, Timeline, erwartete Deliverables).
+- **Responsible-Disclosure-Policy** — `docs/security/responsible-disclosure.md`: öffentlich zugängliche Policy mit Timelines, sicheren Kommunikationskanälen, Safe-Harbour-Erklärung.
+
+### Added
+
+- **SCIM Token-Ablauf** — `POST /api/v1/admin/scim/tokens` akzeptiert jetzt `expires_in_days` (0 = unbegrenzt). Abgelaufene Tokens werden täglich automatisch durch einen Worker-Job revoked. Migration 147: `expires_at`-Spalte auf `scim_tokens`.
+
+---
+
+## [0.28.0] — 2026-05-25
+
+Pre-v1.0 Sprint C — Datenbankperformance, unbegrenzte Queries gecappt
+
+### Performance
+
+- **Audit-Log-Composite-Index** — neuer Index `idx_audit_log_org_time ON audit_log (org_id, created_at DESC)`. Audit-Trail-Queries im Compliance-Dashboard sind ab 10.000+ Einträgen deutlich schneller. Migration 145.
+- **Risk-Trend-Snapshots** — täglicher Worker-Job berechnet Risiko-Snapshot pro Organisation und schreibt in `vb_risk_trend_snapshots`. Dashboard-Queries laufen jetzt in O(Tage) statt O(Findings × Tage). Migration 146. Fallback auf Live-Berechnung für frische Instanzen ohne Snapshots.
+
+### Fixed
+
+- **Unbegrenzte Datenbankqueries** — 7 interne `:many`-Queries hatten kein `LIMIT` und konnten bei großen Datensätzen den DB-Pool blockieren. Alle gecappt: Risiken/Policies/Suppressions/SBOM-Komponenten (10.000), Scan-Schedules/Control-Tasks (500), Kommentare (200). Interne Aufrufer (PDF-Export, Audit, XLSX) nutzen explizit `limit=10_000`.
+
+---
+
+## [0.27.0] — 2026-05-25
+
+Pre-v1.0 Sprint B — Command Palette, HR Toast-Undo
+
+### Added
+
+- **Command Palette** (`GlobalSearch`) — `Cmd+K` / `Ctrl+K` öffnet eine globale Suchpalette. Schnellnavigation zu Dashboard, Controls, Risiken, Vorfälle, Richtlinien, Findings und Board-Bericht. Freitext-Suche über alle Entitäten (Controls, Risks, Policies, Incidents, Assets, Findings, DSR, Breaches). Recent-Items-Gedächtnis, Keyboard-Navigation (↑↓ + Enter), Focus-Trap.
+- **Toast-Undo für HR** — das Undo-Pattern (5-Sekunden-Countdown, Löschung erst nach Ablauf) ist jetzt auf HR-Checklisten-Items (`ChecklistsPage`) und Mitarbeiter-Verwaltung (`EmployeesPage`) ausgerollt. Bereits seit v0.24.0 aktiv für Risiken und Ausnahmen in Vakt Comply.
+
+---
+
+## [0.26.0] — 2026-05-25
+
+Pre-v1.0 Sprint A — Infrastruktur-Hygiene
+
+### Added
+
+- **Helm Migration-Job** — `helm/vakt/templates/migrate-job.yaml` führt Datenbankmigrationen als Helm Pre-Upgrade-Hook aus. Keine manuellen Schritte mehr vor `helm upgrade`.
+- **Konfigurierbare DB-Connection-Pool-Größe** — `VAKT_DB_MAX_CONNS` (Default: 25) ermöglicht Tuning für größere Deployments. Dokumentiert in `.env.example`.
+- **Webhook-Secrets verschlüsselt** — Webhook-Secrets werden jetzt mit AES-256-GCM at rest verschlüsselt. Secrets sind nach der Erstellung nicht mehr über List/Get-Endpoints abrufbar (write-once). Bestehende Plaintext-Secrets werden beim Lesen transparent entschlüsselt (lazy migration).
+
+### Changed
+
+- **Vakt Operator** — Kubernetes-Operator umbenannt: Go-Modul `github.com/matharnica/vakt-operator`, CRD-Group `secrets.vakt.io/v1alpha1`. **Breaking** für bestehende Operator-Deployments (als experimental markiert, kein Bestand).
+- **Modul-Isolation** — `vaktcomply` importiert `hr` nicht mehr direkt. HR-Onboarding/Offboarding-Evidence läuft über einen geteilten Interface-Typ in `internal/shared/platform/evidence`.
+
+---
+
+## [0.25.0] — 2026-05-25
+
+Pre-v1.0 Phase 1 — Kritische Sicherheits- und Zuverlässigkeitsfixes
+
+### Security
+
+- **Offene Registrierung geschlossen** — `POST /api/v1/auth/register` liefert 403, sobald eine Organisation existiert. Nur der Bootstrap-Fall (leere DB) erlaubt die erste Registrierung. Migration 144 (`open_registration`-Spalte, Default `false`).
+- **API-Key-Rotation IDOR** — `RotateKey` prüft jetzt `created_by = current_user`. SecurityAnalysts konnten bisher beliebige Keys der Organisation rotieren; das ist behoben.
+- **MFA-Bypass via API-Keys dokumentiert** — die MFA-Middleware exemptiert API-Key-Sessions explizit (Automation-Pfad, kein interaktives TOTP möglich). Kommentar im Code erklärt das bewusste Design.
+
+### Fixed
+
+- **Redis-URL-Bug im Worker** — `buildServer()` und `buildScheduler()` haben die Redis-URL bisher direkt als `host:port` interpretiert. Bei URLs mit Passwort (`redis://:pw@redis:6379`) lief der Worker ohne Authentifizierung. Behoben via `redis.ParseURL()` — identisch zum API-Container. Background-Jobs (Demo-Cleanup, Token-Cleanup, Scan-Fortschritt) funktionieren jetzt zuverlässig.
+- **BSI-Grundschutz-Controls stummes Abschneiden** — interne Aufrufer nutzten `ListCKControls` (LIMIT 1000). BSI-Grundschutz hat 800+ Controls; eigene Controls kommen hinzu. Alle internen Caller nutzen jetzt `ListCKControlsPaged` mit 10.000-Limit.
+
+---
+
+## [0.24.0] — 2026-05-24
+
+Pre-v1.0 Consolidation Wave — Module Depth, AI-Native v2, Security Docs, UX Polish, Architecture Hygiene
+
+### Added
+
+#### Vakt Aware — Module Depth (S55)
+- **8 Phishing Templates** — ready to use in every fresh instance: credential harvesting, invoice fraud, IT helpdesk, parcel notification, CEO fraud, MS 365, bank alert, software update.
+- **5 Training Modules** — Phishing Awareness, Password Hygiene, Clean Desk Policy, MFA & 2-Factor, Social Engineering. Completions automatically flow as evidence into Vakt Comply.
+- **Comply Evidence Banner** — resolving a finding shows "Finding resolution saved as evidence in Vakt Comply" + link. Training completions show "Saved automatically as evidence."
+- **Extended Getting-Started Guide** — Step 6 (First Scan) and Step 7 (First Campaign), each with prerequisites, expected duration, and a direct action link.
+- **Demo seed enrichment** — campaign click events pre-populated in demo instances for realistic campaign analytics.
+
+#### Vakt Comply & Scan — Module Depth (S54)
+- **Scanner status endpoint** — `GET /api/v1/vaktscan/scanner-status` returns `{trivy, nuclei, openvas}` availability; admin dashboard shows scanner health.
+- **HR → Comply evidence flow** — completing an HR onboarding/offboarding checklist emits an evidence event in Vakt Comply (`/vaktcomply/evidence/auto`) with ISO 27001 A.6.1/A.6.5 control-mapping suggestion.
+- **Control suggestion for HR evidence** — unassigned HR evidence shows a rule-based control suggestion, reducing manual mapping overhead.
+
+#### AI-Native v2 (S52)
+- **Evidence Freshness Check** — daily job flags controls with evidence older than 90 days as `evidence_stale` insight cards (24h dedup per control).
+- **Gap-Explain (SSE)** — `POST /api/v1/vaktcomply/ai/controls/:id/explain` streams a German-language gap explanation into the control detail page. Local AI advisor, no external API.
+- **Risk Narrative** — `POST /api/v1/vaktcomply/ai/risks/:id/narrative` generates and persists a risk narrative; displayed in Risk Detail with a "Regenerate" option.
+- **AI Weekly Digest** — opt-in in Settings → AI Advisor. Every Monday 08:00 UTC: digest of open gaps, stale evidence, and unresolved high-severity findings.
+- **Evidence Suggestion Banner** — Finding Detail shows `evidence_suggestion` insight cards for the current finding with one-click navigation to the suggested control.
+- **AI Insights Widget** — Vakt Comply dashboard shows up to 5 dismissable AI insight cards sourced from `ck_ai_insights`.
+
+#### UX Polish (S58)
+- **Inline-Edit Controls** — Control title and status editable directly in the table row (double-click → field, Enter saves, Escape cancels). No modal for these fields.
+- **Inline-Edit Findings & Risks** — Status and severity inline-editable. Bulk status-change via BulkActionBar + "Change status to…" dropdown for selected findings.
+- **Optimistic UI for toggle states** — all boolean status PATCH calls update the UI immediately; on HTTP error: automatic rollback + error toast. No spinner wait.
+- **Toast-Undo for delete actions** — all DELETE calls show a 5-second countdown toast with "Undo". DELETE executes only after the countdown expires.
+- **AI Source Attribution** — AI responses include structured `sources` chips (e.g. "NIS2 Art. 21", "ISO 27001 A.6.1") extracted from the response. Chips navigate to the corresponding control or framework page.
+
+#### Enterprise Trust & Security Docs (S60)
+- **TOM (Art. 32 DSGVO)** — `docs/security/tom.md`: Technical and Organisational Measures document, verified against Go implementation (16/16 claims confirmed).
+- **VVT Template (Art. 30 DSGVO)** — `docs/security/vvt.md`: Records of Processing Activities template with 9 pre-filled processing activities.
+- **Internal Self-Pentest Guide** — `docs/security/pentest-intern.md`: OWASP Top 10 checklist with curl commands for IDOR, privilege escalation, SQL/prompt injection, brute-force, token revocation, and Vakt-specific attack surfaces (SSRF, mass assignment).
+- **External Pentest RFP** — `docs/security/pentest-rfp.md`: ready-to-send RFP targeting Q3 2026 with scope, deliverables, timeline, budget (€3–8k), and 5-vendor shortlist.
+- **SCIM 2.0 Verification Checklist** — `docs/security/scim-verification.md`: 10-point manual verification checklist with curl commands and Okta integration reference.
+
+### Changed
+
+#### Architecture Hygiene (S59)
+- **Audit package consolidated** — `auditexport` + `auditreport` merged into `shared/audit` with `ExportHandler` / `ReportHandler`.
+- **Worker handlers split** — 1,443-line `handlers.go` split into 5 domain files: `auth_handlers.go`, `scan_handlers.go`, `comply_handlers.go`, `aware_handlers.go`, `privacy_handlers.go`.
+- **vaktcomply repository split** — 4,724-line `repository.go` split into 9 domain files < 600 lines each.
+- **Integration test CI job** — new GitHub Actions job runs Go integration tests (`//go:build integration`) against a real PostgreSQL container on every push to `main`.
+
+### Security
+
+#### Security Hardening (S57)
+- **Silent SQL error logging** — raw SQL errors no longer surface to API consumers; structured logging with context in `mfa_sensitive`, `org_ip_allowlist`, `audit`, `dataexport`, `license`, `auth`, `ai/service`.
+- **MFA middleware hardened** — 8 unit tests added; fail-closed on org-DB error (503) and TOTP-DB error (403).
+- **AI streaming hardened** — SSE endpoints validate content type and connection state; panics caught and logged.
+- **TOM correction** — SCIM Bearer tokens are SHA-256 hashed (not bcrypt) — deterministic lookup required for API tokens. Documented in `docs/security/tom.md`.
+
+### Fixed
+- `no-unnecessary-type-arguments` ESLint rule — removed redundant `Error` type argument from TanStack Query mutation hooks.
+- TypeScript strict mode — `useMutation` context generic added for optimistic rollback hooks.
+
+---
+
+## [0.23.0] — 2026-05-23
+
+Security Hardening Wave 2 + Release Readiness Phase 1
+
+#### Phase 1 — Release Readiness
+
+- **feat(auth): Enterprise-Auth Frontend vollständig** — Confirm-Dialog für Session-Widerruf in `SessionsPage` (inkl. Panic-Button „Alle anderen abmelden"), Audit-Trail-Link pro API-Key in `ApiKeysPage`, Login-History-Section in `AccountSettingsPage` (letzte 50 Versuche, Failed-Logins fett markiert) (S20-3, S20-5, S20-7)
+- **refactor(i18n): 62 raw date-Calls auf `useFormatDate` migriert** — alle Datumsangaben in Audit-Trail, Finding-Listen, Session-Tabellen, Compliance-Reports und Supplier-Portal respektieren jetzt die gewählte Sprache (DE/EN/FR/NL); kein hardcoded `de-DE` mehr in React-Komponenten (S13-27)
+- **fix(i18n): `shared/utils/date.ts` auf `navigator.language` umgestellt** — Fallback-Locale in Utility-Funktionen war hardcoded `de-DE`; liest jetzt Browser-Locale dynamisch; betrifft Chart-Label-Formatter und CSV-Export-Datumsspalten
+
+#### Sicherheit
+- **Per-Email Password-Reset-Throttle** — max. 3 Reset-Mails pro Stunde pro Adresse via Redis-INCR; verhindert Inbox-Spam-Angriffe ohne Enumeration-Leak (Antwort bleibt immer HTTP 200)
+- **HR API-Key-Scope** — `/api/v1/hr/`-Endpoints werden jetzt in der Scope-Path-Map geprüft; scoped API-Keys mit `"hr"`-Scope können gezielt auf HR-Endpoints zugreifen, andere Scopes werden abgewiesen
+
+#### Bugfixes
+- **EOL-Version-Parsing: Großbuchstaben-V-Prefix** — `normaliseCycle("V3.9")` lieferte `"v3.9"` statt `"3.9"`, weil `TrimPrefix` case-sensitiv ist und vor `ToLower` aufgerufen wurde. Fix: erst lowercase, dann trim. Betraf SBOM-Komponenten mit Großbuchstaben-V-Versionspräfix (z.B. aus Syft), die silently als "unknown" EOL-Status bewertet wurden.
+
+#### Tests
+- **MFAEnforceMiddleware vollständig getestet** — 8 neue Unit-Tests ohne Real-DB via `mfaDB`-Interface-Fake: exempt paths, missing context, fail-closed bei org-DB-Fehler (503), fail-closed bei TOTP-DB-Fehler (403), MFA required/not required, TOTP enabled/disabled
+- **Password-Reset-Throttle-Invarianten** — 5 reine Logik-Tests: Konstanten-Grenzen, Zähler-Bedingung, Redis-Key-Format
+- **vaktscan Domain-Invarianten** — 15 neue Tests: SLA-Severity-Mapping (BSI-90-Tage-Fallback), EOL-Versionsparsing (`majorCycle`, `normaliseCycle`), EOL-Payload-Deserialisierung (bool/string/date polymorph), `eolValue.UnmarshalJSON` alle 6 Varianten
+
+#### Infrastruktur
+- **`StartBackgroundRefresh` Lifecycle-Context** — Update-Check-Goroutine läuft jetzt mit Server-Lifecycle-Context statt `context.Background()`; wird bei SIGTERM sauber gestoppt bevor Echo shutdown
+
+### v0.22.0 — Supplier Portal + Vakt Scan (2026-05-22)
+
+#### Added
+- Supplier Portal Phase 1 — Lieferanten-Register, Fragebogen-Builder (4 Frage-Typen, 3 Templates), externes Portal via Token-Link ohne Login
+- Supplier Portal Phase 2 — Auswertungsansicht, Zertifikat-Ablauf-Alert (30 Tage), Assessment-Report PDF
+- Asset Inventory — `environment` (prod/staging/dev), Kritikalitätsstufen, Ownership; Migration 139
+- CVE-Enrichment-Service — NVD API v2.0, Redis-Cache 24h, 429-Retry-Backoff
+- Finding-Deduplizierung cross-scanner — CVE+Asset-Key, Severity-Max-Merge, `sources`-JSONB
+- SLA-Overdue-Badge in Findings-Liste — zeigt "SLA überfällig" wenn `sla_due_at` überschritten
+
+---
+
+### v0.21.0 — EU AI Act (2026-05-22)
+
+#### Added
+- KI-System-Inventar — `ai_systems`, `ai_classifications`; CRUD + Filter nach Risikoklasse + Status
+- Risiko-Klassifizierungs-Wizard — JSON-konfigurierter Entscheidungsbaum nach Annex III (Verbots-Prüfung → Hochrisiko → Transparenzpflicht)
+- Technische Dokumentation Hochrisiko-KI (Art. 11) — Template nach Annex IV, Versionierung, PDF-Export
+- EU AI Act Dashboard — Kachel mit Systemen pro Risikoklasse, Countdown August 2026
+
+---
+
+### v0.20.0 — TISAX (2026-05-22)
+
+#### Added
+- TISAX® / VDA ISA-Framework — alle 15 Kapitel als Controls, Reifegrad 0–3, Schutzbedarf Normal/Hoch/Sehr hoch (Kapitel 15 Prototypenschutz optional)
+- TISAX ↔ ISO27001 Mapping — ~60–70% Controls als vorgefüllt bei aktivem ISO27001
+- TISAX Bereitschaftsbericht PDF — Reifegrad pro Kapitel, offene Controls, Deckblatt mit Assessment-Level
+
+---
+
+### v0.19.0 — BSI-Meldungsassistent + i18n (2026-05-22)
+
+#### Added
+- BSI-Meldungsassistent — Meldepflicht-Klassifizierung (3-Fragen-Wizard, obligation probably/unclear/none), Behörden-Empfehlung (BSI/BaFin+BSI/BNetzA/LDA), Migration 140
+- Behörden-Verzeichnis (`authorities.yaml`) + Sektor-Konfiguration in Org-Settings
+- Täglicher NIS2-Deadline-Check-Worker (24h/72h/30d-Fristen ab `first_detected_at`)
+- Gemeinsamer `compliance_reporting`-Service — `DeadlineTracker`, `ComputeDeadlines()`, `AmpelStatus()`, `DORADeadlines`, `NIS2Deadlines`, `DSGVODeadlines`
+- DORA TLPT-Dokumentation — Resilience-Test als DORA-Evidenz verknüpfbar; `POST /resilience-tests/:id/link-evidence`
+- i18n-Infrastruktur Phase 1 — `i18next` vollständig verdrahtet, Locales DE/EN/FR/NL, Locale-Umschalter in User-Settings
+
+---
+
+### v0.18.0 — DORA Phase 1+2 (2026-05-22)
+
+#### Added
+- DORA-Kontrollkatalog als Framework-Seed (Art. II–VI, alle Artikel als Controls)
+- DORA ↔ ISO27001 Mapping — geteilte Evidenz, „DORA-Lücken nach ISO27001-Abzug"
+- IKT-Incident-Register — Typ `ikt_dora`, Felder `first_detected_at`, `reported_24h/72h/30d_at`, `severity_dora`, DORA-Klassifizierungs-JSONB; Migration 136
+- Frist-Berechnung + Ampel (Worker-Cron alle 5 min, grün/gelb/rot pro Frist)
+- IKT-Drittanbieter-Register — `dora_third_parties`, Kritikalitätsstufen, Ausstiegsstrategie, Vertragsparameter; Migration 138
+- DORA Dashboard-Kachel — Drittanbieter-Zähler, fehlende Ausstiegsstrategien
+- DORA PDF-Report — Abschnitt IKT-Drittanbieter + Resilienz-Tests
+
+#### Changed
+- `internal/shared/` → `platform/` Welle 4 (auditor, integrations, ldap, trustcenter, webhooks)
+
+---
+
+### v0.17.0 — Auth-Welle (2026-05-22)
+
+#### Added
+- SAML 2.0 Direct SP (CE) — AzureAD, Okta, OneLogin, Google Workspace; Metadata-XML-Endpoint
+- SCIM 2.0 User+Group Provisioning (Pro) — `/scim/v2/Users`, `/scim/v2/Groups`, Filter-DSL
+- IP-Allowlist für Admin-Endpoints (Pro) — CIDR-Konfiguration in Org-Settings
+- MFA für sensitive API-Calls (Pro) — TOTP-Validation via `X-MFA-Token`-Header
+- SIEM-Audit-Forwarder (Pro) — Splunk HEC, Elastic Bulk API, Generic Webhook; Asynq-Job mit Retry
+- ADR-0022 Auth-Tier-Cut (SAML CE / SCIM+SIEM Pro)
+
+---
+
+### v0.16.0 — Foundation-Welle (2026-05-22)
+
+#### Added
+- Feature-Flag-Infrastruktur (`platform/features`) — alle Pro-Features über `IsEnabled()` steuerbar
+- AgentRunPanel Approve-Cards — Write-Tool-Freigabe-Flow mit Audit-Log
+- Cursor-basierte Pagination für Findings, Controls, Risks, Secrets, DSRs, Employees, Campaigns
+- Typisierte Cross-Module Event-Contracts (`platform/events`) — `FindingCreated`, `BreachNotified`, `EvidenceCollected`, `IncidentCreated`
+
+#### Changed
+- `internal/shared/` → `platform/` Welle 3 (crypto, db, cache, telemetry, middleware, metrics, alerting, notify, scheduledreports, retention)
+- Worker-Queue-Namespaces pro Modul (vaktscan concurrency 8, vaktprivacy 5, ai_agent 3, vaktcomply 5)
+- Redis-Auth-Fallback auf PostgreSQL bei Redis-Ausfall
+
+#### Fixed
+- Dashboard.tsx von 1448 auf 144 Zeilen dekomponiert (5 Komponenten)
+- SQL-Injection-Risiko in `admin/service.go` (dynamisches WHERE → fixe NULL-Safe-Placeholder)
+- `interface{}` vollständig aus `internal/` eliminiert (Go 1.18 `any`)
+- CI Frontend-Lint ist jetzt explizit blockend (`continue-on-error: false`)
+
+---
+
+### v0.15.0 — NIS2 Pro-Layer (Tag-Kandidat, Sprint 28)
+
+Schließt die Pro-Schicht aus Sprint 19 vollständig ab. Kein Breaking-Change — alle neuen Features sind additiv und hinter `FeatureNIS2Reporting` Pro-gated. CE-Features des NIS2-Wizards bleiben unverändert.
+
+**S28-1 Embedded-Mode:**
+- NIS2-Self-Assessment-Wizard via `<iframe>` einbettbar auf Partner- und Berater-Sites.
+- CORS `Access-Control-Allow-Origin: *` auf öffentlichen Wizard-Endpoints (`/api/v1/public/nis2-assessment/*`).
+- `X-Frame-Options`-Header wird auf `/nis2-check*`-Routen entfernt; CSP `frame-ancestors *` gesetzt.
+- Resize-Helper `public/nis2-embed.js` (PostMessage-basiert, 26 Zeilen, kein Tracking, kein Cookie).
+
+**S28-2 Branded PDF-Export (Pro, `FeatureNIS2Reporting`):**
+- `GET /api/v1/public/nis2-assessment/:token/export-pdf` — generiert mehrseitiges PDF: Cover mit Gesamtscore, Bereichs-Tabelle, Top-Gaps, Detailantworten.
+- Footer „Erstellt mit Vakt · vakt.io". Rückgabe als `application/pdf` Blob (filename `nis2-assessment.pdf`).
+- Frontend-Download-Button im Result-Screen — sichtbar nur wenn authentifiziert. Bei `402 Payment Required`: Upgrade-CTA.
+
+**S28-3 Re-Assessment-History (Pro, `FeatureNIS2Reporting`):**
+- Neue Tabelle `ck_nis2_assessment_runs` (Migration 127): speichert vollständige Assessment-Runs mit Scores + Top-Gaps.
+- 90-Tage-Cooldown zwischen Re-Assessments — `429 Too Many Requests` mit `Retry-After`-Header bei Verletzung.
+- Endpoint `GET /api/v1/vaktcomply/nis2-assessment/history` liefert alle Runs sortiert nach Datum.
+- Frontend-Seite `/vaktcomply/nis2-history`: Trend-Pfeile (TrendingUp / TrendingDown) pro Bereich, Delta-Spalte zum Vorrun, Cooldown-Restanzeige, Leer-State mit CTA.
+
+**S28-4 Multi-Framework-Wizard (Pro, `FeatureNIS2Reporting`):**
+- 80 kombinierte Fragen: NIS2 (~30), ISO 27001 (~25), DSGVO-TOM (~25). Stabile IDs mit `mf.`-Prefix.
+- 23 Cross-Mapping-Fragen, die mehreren Frameworks angerechnet werden (Ref-Feld pro Frage).
+- Score-Engine `MultiFrameworkScore`: `NIS2`, `ISO27001`, `DSGVO`, `Overall`, `TopGaps`, `ByFramework`.
+- Neue Route `/nis2-check/multi` — eigene Frontend-Page mit drei Fortschrittsbalken (NIS2 indigo, ISO27001 emerald, DSGVO violet) + Cross-Mapping-Hinweis im Result.
+
+**S28-5 Landing-Page SEO:**
+- `docs/marketing/nis2-check-landing.md` — deutschsprachige SEO-Vorlage für `vakt.io/nis2-check`.
+- Meta-Block (title, description, canonical), Hero, NIS2-Bereichs-Tabelle, 3-Schritt-Flow, Zielgruppen-Blöcke, FAQ (5 Fragen inkl. DSGVO-Hinweis), Legal-Disclaimer. Optimiert auf „NIS2 Self-Assessment", „NIS2 Umsetzungsgesetz", „BSI NIS2 Compliance Check".
+
+---
+
+### v0.14.3 — Interne Qualitätswelle (Sprints 24-27, kein User-Impact)
+
+Keine neuen User-facing-Features. Keine DB-Migrations. Kein Upgrade-Eingriff nötig.
+
+**S24 — UX-Polish + Security-Hardening:**
+- **`Spinner`-Komponente** als zentrale Ladeanimation eingeführt; Inline-`div`-Spinner in Frontend entfernt.
+- **`StatusMapping`-Bibliothek** — zentralisierte `Record`-Typen für Status/Severity-Farb- und Label-Mappings; keine gestreuten `switch`-Blöcke mehr.
+- **Toast-Migration** — verbleibende Inline-`fixed-bottom`-Toast-Blöcke auf globalen `toast()`-Hook umgestellt.
+- **Settings-Modul** — 6 Settings-Pages nach `modules/settings/pages/` migriert (saubere Modul-Struktur).
+- **IP-Lockout** — per-IP Redis-Failure-Counter: nach 10 fehlgeschlagenen Logins wird die IP für 15 Minuten gesperrt. Brute-Force-Schutz auf Login-Endpoint.
+- **Backup-HMAC** — Backup-Archive werden mit HMAC-SHA256 signiert; Integritätsprüfung beim Restore.
+
+**S25 — sqlc-Welle 1 (SecPulse + SecVitals) + E2E:**
+- **SecPulse sqlc-Abschluss** — 3 verbleibende Raw-SQL-Stellen in `vaktscan/` auf sqlc migriert.
+- **SecVitals sqlc Wellen 1+2** — `service_soa`, `approvals_handler`, `handler_my_tasks`, `milestones_repository` auf sqlc.
+- **Playwright E2E V22-1** — Sessions-Panic-2-Step-Confirm, ApiKeys-Rotate-Modal, AgentRunPanel-Visualisierung. Schließt V22-1 aus dem Verifizierungs-Backlog ab.
+
+**S26 — sqlc-Welle 2 (SecVitals + SecReflex + HR):**
+- **SecVitals sqlc Wellen 3+4+5** — `handler_ical`, `handler_templates`, `service_policies`, `service_frameworks`, `handler_boardreport`, `service_reporting`, `policy_acceptance` auf sqlc.
+- **SecReflex + Vakt HR sqlc-Abschluss** — alle verbleibenden Raw-SQL-Stellen in beiden Modulen migriert.
+
+**S27 — sqlc-Abschluss Vakt Vault + E2E Verification:**
+- **Vakt Vault sqlc komplett** — 29 neue sqlc-Queries (Shares, API-Tokens, Git-Scans, Scan-Results, Rotation-Policies, Access-Log, Secrets-Metadata). Drei dokumentierte Ausnahmen bleiben Embedded-SQL: `UpsertSecret` (ON CONFLICT + Crypto-Bytes), `GetSecretRaw`, `GetSecretByID` — beide geben `[]byte`-Encrypted-Value zurück, das sqlc-Code-Gen nicht abbilden kann.
+- **SecPulse CI-Evidence** — `INSERT INTO ck_evidence` in `handler_ci_evidence.go` auf `r.q.InsertCKCIEvidence` migriert.
+- **E2E Grace-Period-Badge** — Playwright-Test für `API_KEYS_IN_GRACE`-Fixture (rotated_at = jetzt → `text=Grace 24h aktiv` sichtbar). Schließt V22-1 vollständig ab.
+
+---
+
+### v0.14.2 — Build-Hotfix (2026-05-23)
+
+Pure Build-Fix. Funktional identisch zu v0.14.1 für den Runtime-Pfad.
+
+- **OpenAPI-Drift gefixt:** `HealthResponse` und `DemoStartResponse` Schemas waren in `backend/internal/shared/apidocs/openapi.yaml` nie definiert, wurden aber in `frontend/src/pages/Login.tsx` per `components['schemas']` referenziert. `npm run build` (tsc -b) ist deshalb seit v0.14.0 rot. Schemas nachgezogen, Types regeneriert. ADR-0017-Honesty-Audit-Miss.
+- **`Setup.tsx` dead state entfernt:** `migratedMsg`-useState wurde gesetzt, dann `navigate('/')` — gerendert wurde es nie. Auf `toast()` umgestellt, damit der User die NIS2-Migrations-Bestätigung nach dem Sign-up auch tatsächlich sieht.
+- **Verifizierung:** `go test ./...` + `npm run build` + `npm run test` alle grün.
+
+### Sprint 22 Tail — Verbleibende Frontend-Komponenten + Tests (Tag-Kandidat v0.14.1)
+
+Schließt die 4 in v0.14.0 zurückgestellten Items aus Sprint 22 ab. Damit ist der Sprint-22-Honesty-Audit vollständig abgearbeitet.
+
+**S22-8 AgentRunPanel-Frontend:**
+- Neuer Hook `useAgentRun` (`frontend/src/shared/hooks/useAgentRun.ts`) konsumiert den SSE-Stream von `POST /api/v1/vaktcomply/ai/agent/run`, parsed strukturierte `AgentEvent`-Frames (plan / tool_call / tool_result / reflect / final / error) und liefert `events[]`, `isRunning`, `error`, `durationMs`, `start()`, `stop()`.
+- Neue Komponente `AgentRunPanel` (`frontend/src/shared/components/AgentRunPanel.tsx`): Goal-Input, Start/Stop-Button, Event-Cards mit farbcodierten Typen, JSON-Expand/Collapse pro Event für Arguments + Result.
+- Neue Page `AIAgentPage` unter `vaktcomply/ai/agent` — mountet das Panel, listet erlaubte Tools/Approve-Skelett.
+
+**S22-9 ApiKeysPage-Refactor:**
+- **Scope-Picker im Create-Dialog**: Checkbox-Liste pro Modul (`vaktcomply.*`, `vaktscan.*`, `vaktvault.*`, `vaktaware.*`, `vaktprivacy.*`, `hr.*`) mit Beschreibungstexten. Leer = Personal-Key (Full Access, ambers gekennzeichnet).
+- **Rotate-Button pro Key** mit eigenem Modal: Erklärt die 24h Grace-Period explizit, zeigt den neuen Raw-Key nach Rotation einmalig im New-Key-Dialog.
+- **Scope-Tags und Grace-Indicator** pro Row: code-style-Pills mit dem Scope-String, oder „Personal (Full Access)"-Badge wenn leer. Während aktiver Grace-Period zusätzlich „Grace 24h aktiv"-Marker.
+- **last_used_ip-Anzeige** unterhalb von last_used_at (klein, monospace).
+
+**Backend-Begleitänderungen:**
+- `apikeys.APIKey` Struct um `LastUsedIP` + `RotatedAt` erweitert; `List` selectiert beide Felder mit. Middleware-Hook für API-Key-Auth-Erfolg updated jetzt zusätzlich `last_used_ip` aus `c.RealIP()`.
+
+**S22-10 Session-Management — Current-Session-Marker + Panic-Button:**
+- `auth.AuthResponse` um `session_id` (UUID der `refresh_sessions`-Row) erweitert. `issueTokenPair` nutzt `RETURNING id::text`, damit Login/Register/Refresh die ID mitliefern.
+- Frontend `api/client.ts` um `getSessionId()`/`setSessionId()`-Helpers erweitert; `apiFetch` sendet die ID als `X-Vakt-Session-Id` Header automatisch mit. `Login.tsx` persistiert die ID in localStorage; `setAuthToken(null)` löscht sie wieder.
+- `auth.SessionHandler.ListSessions` markiert die zur Header-ID passende Row mit `is_current: true`. `RevokeAllOtherSessions` nutzt die Header-ID statt einer nicht-funktionierenden Token-Hash-Vergleichslogik.
+- `SessionsPage` zeigt „Diese hier"-Badge + last_used pro Session, separiert „Andere abmelden" und einen 2-Step-confirm Panic-Button („inkl. dieser") mit auto-redirect auf `/login` nach Revoke.
+- OpenAPI-Spec entsprechend nachgezogen: `LoginResponse` um `session_id`, `SessionInfo` an Backend-Form angepasst (`device_hint`, `last_used`, `is_current`) — gem. ADR-0017.
+
+**S22-14 Integration-Tests für Cleanup-Jobs:**
+- Neue Test-Datei `internal/integration_test/cleanup_jobs_real_test.go` (build-tag `integration`):
+  - `TestCleanupAnonymousRuns_DeletesExpiredRows` — seedet 1 expired + 1 fresh Row in `nis2_anonymous_runs`, ruft `nis2wizard.CleanupAnonymousRuns`, asserted nur expired ist weg.
+  - `TestCleanupLoginHistory_DeletesOldEntries` — seedet 1 Eintrag vor 100 Tagen + 1 frischer Eintrag in `login_history`, ruft `auth.CleanupLoginHistory`, asserted Retention-Grenze 90d sauber.
+- Beide Tests bootstrap Postgres via testcontainers-go (analog zu `hr_evidence_real_test.go`), skippen sauber wenn Docker nicht verfügbar.
+
+**Operations-Doku:**
+- `docs/operations/maintenance-window-server-upgrade.md` — Wartungsfenster-Plan für Strato VC-2-4 → VC-6-12 Upgrade: Pre-Flight (T-24h, T-1h), Live-Migration vs. Backup-Restore-Variante, Post-Flight-Validierung (Health-Smoke aus ADR-0017 Checklist), Rollback-Strategie, Kommunikations-Schema.
+
+### Sprint 22 — Fertigstellungs-Welle für Sprints 17-20 (Tag-Kandidat v0.14.0)
+
+Schließt die Skeleton-Lücken aus 17-20 nach dem Honesty-Audit vom 2026-05-22. Kein neues Feature-Versprechen, sondern Einlösung alter. 12 Items voll-implementiert, 4 größere Frontend-Komponenten als [~] in nachfolgende Welle verschoben.
+
+**22.1 Backend-Bugs (echte Defekte):**
+- **S22-1 Auth-Lookup mit Grace-Period:** API-Key-Auth-Middleware akzeptiert jetzt `previous_key_hash` während `previous_key_grace_expires_at > NOW()`. Beim Match über alten Hash: Response-Header `X-Vakt-Key-Deprecated: true` + `Sunset: <RFC1123>` als Migrations-Signal. **Bug aus Sprint 20 effektiv broken Rotation** ist gefixt.
+- **S22-2 RequireScope-Kontext-Plumbing:** Auth-Middleware setzt jetzt `auth_method=api_key`, `api_key_scopes`, `api_key_id` im Echo-Context. `apikeys.RequireScope(scope)`-Middleware kann das nun nutzen — manuelles Mounten auf Routen ist möglich. Volle 200-Route-Annotation ist noch eigener Sprint, aber das Plumbing steht.
+- **S22-3 OIDC + SAML + Register schreiben login_history:** `auth.OIDCLogin`, `auth.SAMLLogin`, `auth.Register` rufen jetzt `recordLogin` mit source=`oidc`/`saml`/`register`. Failed-OIDC-Provisioning auch als `oidc_failed`. Sprint 20 hatte nur Password-Pfad — Audit-Gap geschlossen.
+
+**22.2 Sign-up-Integration (NIS2-Akquise-Loop schließen):**
+- **S22-4 Setup.tsx liest `?nis2_token=` + localStorage** und ruft nach erfolgreichem Setup `POST /vaktcomply/nis2-assessment/migrate-from-anonymous` auf. CTA aus dem Public-Wizard läuft jetzt nicht mehr ins Leere.
+- **S22-5 Auto-Mapping auf NIS2-Controls** in `nis2wizard.AutoMapToControls`: value 0-1 → `not_implemented`, 2 → `partial`, 3-4 → `implemented`. Mapping via NIS2-Ref-Substring auf `ck_controls.description`/`control_id`. Nur Controls ohne aktiven manual_status werden überschrieben.
+- **S22-6 Authentifizierter Endpoint** `POST /api/v1/vaktcomply/nis2-assessment/migrate-from-anonymous`. Service-Methode `MigrateAndAutoMap` kombiniert Migration + Auto-Mapping in einem atomaren Schritt.
+
+**22.3 Frontend-UI (3 von 5, größere Komponenten als [~]):**
+- **S22-7 `ScanProgressIndicator`-Komponente** unter `modules/vaktscan/components/`. Konsumiert SSE-Stream, zeigt Live-Phase + Percent-Bar + Heartbeat-Filter. Auto-Cleanup beim Unmount via AbortController.
+- **S22-11 `LoginHistorySection`-Komponente** unter `shared/components/`. Tabelle mit TS / Quelle / Browser-Excerpt / IP / Result-Badge. Failed-Logins fett markiert. UA-Mini-Parser (Firefox/Edge/Chrome/Safari-Detection). In `AccountSettingsPage` eingebaut.
+
+**22.4 Cleanup-Jobs:**
+- **S22-12 `TaskCleanupAnonymousRuns`** (täglich 03:15 UTC): `DELETE FROM nis2_anonymous_runs WHERE expires_at < NOW()`. Im Worker-Scheduler verdrahtet.
+- **S22-13 `TaskCleanupLoginHistory`** (wöchentlich Sonntag 04:00 UTC): `DELETE FROM login_history WHERE ts < NOW() - INTERVAL '90 days'`. Worker-Handler + Scheduler-Cron.
+
+**22.5 Doku:**
+- **S22-15 `docs/reviews/2026-05-22-honesty-audit.md`** dokumentiert den Skeleton-Status-Audit der zu Sprint 22 führte. Methodik, Item-Klassifikation, Lessons-Learned.
+- **S22-16 CHANGELOG + UPGRADE** für v0.14.0 mit klarer Bugfix-Kennzeichnung der S22-1-Rotation-Defekts.
+
+**Verschoben (S22-8, S22-9, S22-10, S22-14 [~]) → Folge-Welle:**
+- S22-8 `AgentRunPanel`-Frontend (groß, Streaming-UI mit Approve-Cards).
+- S22-9 `ApiKeysPage`-Refactor (Scope-Checkbox-Wizard, Rotation-Button-UI mit Modal).
+- S22-10 Session-Mgmt-Backend-Endpoint (`/auth/sessions{,/:id/revoke,/revoke-all}`) + SessionsPage-Ausbau.
+- S22-14 Integration-Tests für Cleanup-Jobs (brauchen testcontainers-Setup, separater Test-Hardening-Sprint).
+
+### Sprint 20 — Enterprise-Auth CE-Tier (Tag-Kandidat v0.13.0)
+
+CE-Schicht der Enterprise-Auth-Welle: feingranulare API-Key-Scopes mit Wildcard-Logik, zerstörungsfreie Rotation mit 24-h-Grace-Period, Login-Historie pro User. Pro-Schicht (SAML, SCIM, IP-Allowlist, MFA-API, SIEM) bleibt explizit Sprint 21 — on-demand bei konkretem Enterprise-Sales-Trigger.
+
+**Backend (S20-1, S20-2, S20-6, S20-8):**
+- Migration 126: `api_keys.previous_key_hash` + `previous_key_grace_expires_at` + `last_used_ip` + `rotated_at` für Rotation. Neue Tabelle `login_history` (user/email/ip/UA/source/result) mit 90-Tage-Retention-Plan.
+- `internal/shared/apikeys/rotation_and_scopes.go`:
+  - `RequireScope(scope)` Echo-Middleware mit Wildcard-Logik (`*`, `vaktvault.*`, `vaktvault.secrets.read`).
+  - `ScopeAllows([]string, string) bool` als exportierter Helper für den Auth-Lookup-Pfad.
+  - `Service.RotateKey(orgID, keyID) (*CreateResult, error)` — generiert neuen Hash, alter Hash wandert in Grace-Period (24h), beide werden vom Auth-Middleware akzeptiert. Endpoint `POST /api/v1/api-keys/:id/rotate`.
+  - `RecordLoginAttempt` + `ListLoginHistoryForUser` Helpers.
+- `auth/service.go`: Login-Pfad schreibt `login_history`-Entry bei `bad_password` + `ok`. Best-Effort, blockiert Login nie. Failed-Login ohne user_id (Account-Enumeration-Schutz).
+
+**Docs (S20-8):**
+- `docs/concepts/api-key-scopes.md` — Scope-Format, Wildcards, CI-Pipeline-Workflow, Rotation mit Grace-Period, Migration für Bestands-Keys, Backend-Implementation-Verweise, Skeleton-Status zu Auth-Middleware-Integration.
+- `docs/concepts/README.md` Index aktualisiert.
+
+**Verschoben (S20-3/4/5/7 [~] Frontend-Iteration):**
+- S20-3 ApiKeysPage-Refactor (Scopes-Checkbox-Liste, Rotation-Button, Last-Used-IP) — Backend ist da, Frontend Cosmetic-Iteration.
+- S20-4 Session-Mgmt-Endpoint + S20-5 SessionsPage — bestehende Skelette aus Sprint 2 reichen aktuell; Vollausbau in Folge-Welle.
+- S20-7 Login-History-Section in AccountSettingsPage — Backend-Service-Methode `ListLoginHistoryForUser` ist da, UI ist iterativ.
+
+### Sprint 19 — NIS2-Self-Assessment-Wizard CE (Tag-Kandidat v0.12.0)
+
+Top-of-Funnel-Akquise-Asset für DACH-Markt 2026. Anonymer Wizard mit 30 NIS2-Fragen, Live-Score, Top-3-Gaps. Pro-Schicht (Branded PDF, Trend-View, Multi-Framework) als Folge-Welle vorbereitet.
+
+**Backend:**
+- Migration 125: `nis2_anonymous_runs` (7d-Lebensdauer, IP-Hash für DSGVO) + `ck_nis2_assessments` (Org-Migration bei Sign-up).
+- `internal/shared/nis2wizard/` mit 30 Fragen über 8 Themenbereiche (NIS2 Art. 21 + BSI NIS2-UmsG §30). Gewichtete Score-Engine 0-4 mit Per-Area-Aufschlüsselung.
+- Public-Endpoints (kein Auth, Rate-Limit 5/min/IP): `POST /public/nis2-assessment/{start,answer}`, `GET /public/nis2-assessment/{result,questions}`.
+- `Service.MigrateToOrg(token, orgID, userID)` für Sign-up-Flow.
+- 9 Score-Engine-Tests.
+
+**Frontend:**
+- `pages/NIS2WizardPage.tsx` unter `/nis2-check` (kein Layout, mobile-first). Multi-Step-Flow, Progress-Bar, Live-Score, Token in localStorage für Wiederbesuch.
+- Result-Screen mit Ampel-Bewertung, Top-3-Gaps, CTA „Account erstellen + Ergebnis übernehmen".
+
+**Docs:**
+- **ADR-0021** Accepted: CE vs Pro Cut. Wizard + Sign-up-Migration sind CE; Branded-PDF + Trend + Multi-Framework sind Pro.
+
+**Verschoben (S19-7..12 [~] Folge-Welle):**
+- Embedded-Mode (iframe), Branded-PDF, Re-Assessment-History, Multi-Framework-Wizard, Auto-Mapping bei Sign-up, Landing-Page-Marketing.
+
+### Sprint 18 — Agentic-AI v2 (Tag-Kandidat v0.11.0)
+
+Vakts erste agentische AI-Workflows mit Plan/Execute/Reflect-Loop, Tool-Registry und RBAC-Enforcement. Adressiert den Bericht-§8-„AI-Native"-Hebel.
+
+**Backend:**
+- `AgentRunner` (`services/ai/agent.go`) mit MaxIterations (Default 5, Cap 10), OnEvent-Callback, Rate-Limit + Quota wie AI-Chat-Stream.
+- `AgentTool`-Interface + drei Read-Only-Tools: `list_open_findings`, `list_stale_evidence`, `list_controls_without_evidence`. Jedes Tool deklariert `RequireScope` (z.B. `vaktscan.findings.read`).
+- `POST /api/v1/vaktcomply/ai/agent/run` als SSE-Endpoint. Frame-Types: `plan`, `tool_call`, `tool_result`, `final`, `error`. Terminiert mit `[DONE]`.
+
+**RBAC + Audit:**
+- Tools werden im Plan-Prompt NUR gelistet, wenn der User den Scope hat. Defensiver zweiter Check vor jedem Execute. Audit-Log-Entry pro Agent-Run-Start (`action=agent_run_start, actor=ai_agent`).
+- **ADR-0020** Accepted: keine Privilege-Escalation via AI; Pre-Approval-Pattern für mutierende Tools vorbereitet.
+
+**Drei initiale Workflows:** Triage offener Findings, Wochen-Compliance-Plan, Evidence-Re-Collection.
+
+**Docs:**
+- `docs/concepts/ai-agents.md` — Architektur-Diagramm, Komponenten, SSE-Format, drei Workflows, Skeleton-Grenzen.
+- ADR-0020 in `docs/adr/README.md`-Index.
+
+**Verschoben (S18-4 [~]):**
+- `AgentRunPanel`-Frontend mit Live-Plan-Steps + Approve-Cards. Backend-SSE-Endpoint ist produktiv; Frontend ist Cosmetic-Iteration für eine Folge-Welle.
+
+**Skeleton-Grenzen (bewusst):**
+- Plan-zu-Tool-Mapping via Substring-Heuristik statt echtem OpenAI-Function-Calling-Schema.
+- Reflect ist Single-Pass-Final-Event statt iterativer LLM-Roundtrip pro Tool-Result.
+- Beide Punkte sind Folge-Wellen-Themen; das Skeleton beweist das Pattern + die RBAC-Architektur.
+
+### Sprint 17 — Realtime-Welle (Tag-Kandidat v0.10.0)
+
+Erste produktive SSE-Endpoints nach dem ADR-0019-Pattern aus Sprint 16. Notifications und Scan-Progress werden jetzt live gepushed statt gepollt.
+
+**Backend (S17-1, S17-2, S17-7):**
+- `GET /api/v1/dashboard/notifications/stream` — server-side-poll-and-push, 2 s Cursor-Tick, 30 s Heartbeat-Pongs (`event: ping`). Skaliert besser als Postgres-LISTEN-per-Connection.
+- `GET /api/v1/vaktscan/scans/:id/progress/stream` — subscribed Redis Pub/Sub auf `scan:progress:<id>`-Channel. Worker publiziert `started` und `finished`/`failed`; Stream beendet sich mit `data: [DONE]`. Org-Isolation enforced (Cross-Org-Stream → 404).
+- `internal/modules/vaktscan/progress_stream.go` mit `PublishProgress(rdb, evt)`-Helper; im Worker (`handleScanJob`) verdrahtet vor + nach jedem Scan-Run.
+- OpenTelemetry-Spans pro Stream-Lifecycle.
+
+**Frontend (S17-3, S17-4):**
+- `useNotificationStream`-Hook — fetch-SSE-Reader, Auto-Reconnect mit 1-s-Backoff, Heartbeat-Filter, Unmount-Cleanup.
+- `NotificationBell` invalidiert React-Query-Cache bei jedem Stream-Event statt 60-s-Polling. `useNotifications.refetchInterval` entfernt.
+
+**Docs (S17-6):**
+- `docs/wiki/reverse-proxy.md` — nginx-Konfig für SSE-Endpoints (`proxy_buffering off`, `proxy_read_timeout 1h`, `location ~ ^/api/v1/.+/stream$`-Block). Caddy/Traefik/HAProxy/Cloudflare-Hinweise. Liste aller aktiven SSE-Endpoints.
+
+**Tests (S17-8):**
+- `parseSSEFrames`-Helper in `notifications_stream_test.go` — testbarer SSE-Frame-Parser mit 5 Unit-Tests (single-frame, ping-heartbeat, mixed-stream, empty, DONE-marker).
+
+**Verschoben (S17-5 [~]):**
+- `ScanProgressIndicator`-Frontend-UI als Cosmetic-Polish nach Sprint 18 verschoben. Backend-Pub/Sub-Infra produktiv, Hook-Pattern aus S17-3 wiederverwendbar.
+
+### Sprint 16 — Frontend-Polish + Doku-Reife (Tag-Kandidat v0.9.0)
+
+Sprint 16 schließt die Reife-Sanierung-Welle 2 strukturell ab. Schwerpunkt: Frontend-Hygiene + Doku-Vollständigkeit, keine API-Breaking-Changes.
+
+**Doku-Wave (S16-5..9):**
+- `docs/GLOSSARY.md` neu — Compliance-Vokabular (Control, Evidence, Framework, Finding, Risk, Incident, Cross-Module-Evidence, SoA, TOM, VVT, DPIA, AVV, DSR) + Vakt-Architektur-Begriffe (Modul, Service, Shared, Demo-Flow, safego.Run, Public Mirror).
+- `docs/concepts/` Subdir mit `module-isolation.md`, `evidence-collection.md`, `rbac-model.md`, `demo-flow.md`. Narrative Erklärungen zur Architektur, komplementär zu den ADRs.
+- `docs/api-versioning-policy.md` — Breaking-Change-Definition, 6-Monats-Deprecation-Window, CI-Enforcement-Plan, Sonderfälle für Security-/Legal-Pflichten.
+- `docs/wiki/admin-cli.md` — vollständige Doku zu `vakt-admin` CLI (`health-check`, `list-orgs`, `list-users`, `reset-password`).
+- `docs/adr/0019-sse-statt-websocket-fuer-realtime.md` Accepted — Server-Sent Events als Pflicht-Transport für alle Realtime-Pfade, WebSockets bewusst ausgeschlossen.
+
+**Frontend-Polish (S16-1, S16-3, S16-10, S16-2):**
+- **Severity-Farben als Design-Tokens** — Tailwind `theme.colors.severity.{critical,high,medium,low,info}` + `*-bg`-Varianten. Alle hardcoded `bg-[#hexhex]`-Bracket-Notations bereinigt (0 verbleibend). Whitelabel-Theme-Vorbereitung.
+- **Code-Splitting** — alle Settings-/Admin-Pages auf `React.lazy()` umgestellt; Layout wrapped Outlet in Suspense. Eager bleiben Login/Setup/Dashboard + Token-Magic-Link-Pages (Auditor/Policy/Invite/DSR). Größter einzelner Chunk: `SecVitalsRoutes 452 kB` (gzip 105 kB) — unter Warning-Threshold.
+- **`useFormatDate`-Bulk-Migration** — 60 Files mit hardcoded `toLocaleDateString('de-DE', ...)` / `toLocaleString('de-DE')` auf `formatLocale()` (neuer non-Hook-Helper) migriert. Hook-Variante `useFormatDate` (Sprint 13) bleibt für reaktive Komponenten verfügbar. 0 verbleibende Stellen.
+- **openapi-typescript Client-Generierung** — `npm run api-types` generiert `frontend/src/api/generated.ts` (7018 LOC) aus `openapi.yaml`. CI-Step `api-types:check` enforced Drift (ADR-0017). `Login.tsx` als Demo-Migration nutzt jetzt `components['schemas']['LoginResponse']` statt Manual-Interface.
+
+**Skip-Item:**
+- S16-4 Bundle-Audit verschoben — `vite build` Chunk-Size-Warning erfüllt den Monitoring-Zweck; echte Tree-Shake-Optimierung lohnt sich erst nach Recharts/framer-motion-Bereinigung in einer Q3-Polish-Welle.
+
+### Sprint 15 — AI-Härtung + Observability + Welle 2 (Tag-Kandidat v0.8.0)
+
+Sprint 15 schließt die Backend-Stabilität (Sprint 14) ab und liefert produktreife AI-UX + Observability-Default-On.
+
+**AI-Härtung (S15-1 bis S15-5):**
+- Neue Tabelle `ai_usage` (Migration 124) trackt Tokens, Kosten (micro-EUR), Dauer und Status pro AI-Call. Konfigurierbare Tagesquota via `VAKT_AI_DAILY_TOKEN_LIMIT_PER_ORG`.
+- Redis-basiertes Rate-Limit per Org (Default 30 req/min, `VAKT_AI_RATE_LIMIT_RPM`). Bei Verstoß `429 AI_RATE_LIMITED`.
+- Response-Cache mit sha256(model+messages)-Key, TTL via `VAKT_AI_CACHE_TTL_SECONDS` (Default 1h). Cache-Hits werden als `cache_hit`-Status persistiert.
+- Prompt-Injection-Schutz: strikte System/User-Role-Trennung in `buildMessages` — User-Input landet niemals im System-Prompt-Concat. Unit-Test deckt den Pfad ab.
+- Neuer Endpoint `POST /api/v1/vaktcomply/ai/chat/stream` mit Server-Sent-Events: OpenAI-konforme `data: {"content":"..."}` Frames, `data: [DONE]`-Terminator, X-Accel-Buffering-Off für nginx.
+
+**AI-UX Frontend (S15-6 bis S15-9):**
+- `useAIStream` Hook konsumiert SSE-Frames inkrementell; bietet `text`, `isStreaming`, `error`, `durationMs`, `start(req)`, `stop()`. AbortController + Unmount-Cleanup.
+- `LocalLLMBadge` zeigt sichtbar "Lokal · qwen2.5:3b" (No-Phone-Home-Differential) vs "Cloud · gpt-4o-mini" je nach Provider.
+- `TokenCostIndicator` mit kompakter `1.2k Tk · 0.02 € · 4.3 s`-Anzeige nach Streamende.
+- `AIAdvisor.tsx` als Demo-Migration: Live-Streaming-Rendering mit blinkendem Cursor, Stop-Button, Badge im Header, Cost-Indikator nach Abschluss. Rate-Limit/Quota-Errors bekommen spezifische i18n-Hints.
+- i18n-Keys `ai.{localBadge,cost,stream}.*` in de/en/fr/nl.
+
+**Observability default-on (S15-11 bis S15-15):**
+- `MetricsEnabled` default `true` (opt-out via `VAKT_METRICS_DISABLED=true`); `/metrics` bleibt IP-allowlisted (Loopback + Docker-Netz).
+- Prometheus + AlertManager im `docker-compose.observability.yml` Profil. `observability/prometheus.yaml` scrapt api + worker; `observability/alert-rules.yaml` mit 7 konservativen Default-Alerts (5xx-Rate, P95-Latency, Queue-Backlog, AI-Latency, …).
+- 4 Grafana-Dashboards committed (`observability/dashboards/{api,worker,ai,demo}.json`) + Provisioning-Manifest. Beim Start automatisch unter dem Folder „Vakt" verfügbar.
+- `alertmanager.example.yml` mit severity-basiertem Routing (critical→pager, warning→webhook, info→email-digest), Customer konfiguriert eigene Receiver — kein Phone-Home zu Norvik.
+- `safego.SetPanicHandler` callback-Hook für optionale Sentry/3rd-party-Integration ohne externe Pflicht-Dependency.
+- `docs/operations.md` Sektion 0 mit SLA-Matrix (RTO/RPO) für Container-Crash, Redis-Loss, DB-Korruption, Server-Verlust, K8s-Pod-Eviction, Region-Outage + PITR-/Hot-Standby-Empfehlungen.
+
+**`internal/shared/` Konsolidierung Welle 2 (S15-10):**
+- `internal/shared/{ai,alerting,evidence_auto,crossevidence}/` → `internal/services/*`. 17 Import-Call-Sites in 16 Files migriert, History via `git mv` erhalten.
+- Neues `internal/services/README.md` dokumentiert die Boundary: `shared/` für Cross-Cutting-Concerns, `services/` für Cross-Module-Services mit eigener Domain-Logik. Welle-3-Kandidaten (scheduledreports, emaildigest, notifications) explizit als zukünftige Iteration markiert.
+
+**Neue Env-Vars (Sprint 15):**
+
+| Variable | Default | Bedeutung |
+|---|---|---|
+| `VAKT_AI_RATE_LIMIT_RPM` | 30 | Max AI-Calls pro Minute pro Org |
+| `VAKT_AI_DAILY_TOKEN_LIMIT_PER_ORG` | 0 (aus) | Tages-Token-Quota pro Org |
+| `VAKT_AI_CACHE_TTL_SECONDS` | 3600 | Response-Cache-TTL |
+| `VAKT_AI_COST_PER_MTOKEN_IN_MICRO_EUR` | 0 | Kosten pro 1M Input-Tokens (0 = lokal) |
+| `VAKT_AI_COST_PER_MTOKEN_OUT_MICRO_EUR` | 0 | Kosten pro 1M Output-Tokens |
+| `VAKT_SENTRY_DSN` | leer | Optional Sentry-DSN; aktiviert PanicHandler-Hook |
+| `VAKT_METRICS_DISABLED` | false | Opt-Out für /metrics (vorher: opt-in via VAKT_METRICS_ENABLED) |
+
+### Sprint 13 — Reife-Sanierung Welle 2 abgeschlossen (Tag-Kandidat v0.7.0)
+
+Befunde aus der zweiten Elite-Review (Mai 2026, archiviert unter `docs/reviews/2026-05-elite-review/`, Verify-Pass `docs/reviews/2026-05-bericht-verify.md`). 28/29 P0-Items erledigt; ein Bulk-Migration-Item (`useFormatDate`-Roll-out) verschoben in Sprint 16 (S16-10).
+
+#### Sicherheit
+
+- **SSRF-Guard für `VAKT_AI_BASE_URL`** — neue URL-Validierung beim Startup blockt IMDS (169.254.169.254), Loopback (127.0.0.0/8, ::1), Link-Local (169.254.x, fe80::/10) und `localhost` als Hostname, wenn `VAKT_AI_PROVIDER != "disabled"`. Allowlist für Container-Service-Discovery (`ollama`, `ai-llm`, `llm-proxy`, `lm-studio`) + alle Public-DNS-Hostnames. 22 Testfälle in `backend/internal/config/ai_base_url_test.go`.
+- **LemonSqueezy Webhook-Replay-Schutz** — neue Migration `123_lemonsqueezy_webhook_events.{up,down}.sql` deduped Webhooks auf sha256(body). Doppelter Body → 200 OK ohne erneute Verarbeitung. Vorher konnte ein wiederholter `subscription_created`-Event prinzipiell mehrfach E-Mails / License-Operationen triggern.
+- **LemonSqueezy Startup-Warning** — `NewHandler` logt `Warn` wenn `VAKT_LS_WEBHOOK_SECRET=""`; ohne Secret weist jede Signaturprüfung den Request ab.
+- **bcrypt Cost-Upgrade-on-Login** — Login-Pfad prüft `bcrypt.Cost(hash)` und re-hasht transparent auf cost 12, wenn ein Legacy-Wert kleiner war. Update ist Best-Effort (Fehler nur Warn-Log), Login bleibt funktional.
+- **Audit-Redaction erweitert** — `sensitiveKeys` in `audit/audit.go` enthält jetzt `recovery`, `backup`, `otp`, `mfa` zusätzlich zu `password`, `secret`, `token`, `key`. Felder wie `recovery_code` / `backup_code` / `totp_code` landen nicht mehr im Klartext im Audit-Log.
+- **Trivy `ignore-unfixed: false`** im CI-Workflow (`backend` + `frontend` Scans). Unfixed-Akzeptanzen wandern in `.trivyignore` mit Begründung + Re-Check-Datum (Template enthalten).
+- **gitleaks Per-Secret-Allowlist** — `.gitleaks.toml` nutzt jetzt `regexes` für konkrete Test-Konstanten (CI-Test-Hex, `admin1234demo`, `analyst1234demo`) statt pauschaler Pfad-Allowlist. Pfad-Liste auf wenige kontrollierte Dummy-Files reduziert (`.github/workflows/*.yml` und `docs/`, `Makefile` rausgeflogen).
+- **Helm-Defaults verschärft** — `postgresql.auth.password` darf nicht mehr `"changeme"` sein UND muss ≥ 16 Zeichen lang sein (Honeypot-Default `MUST_BE_OVERRIDDEN` + `fail`-Hook in `_helpers.tpl`). `redis.auth.enabled` default `true` (vorher `false`). Siehe [UPGRADE.md v0.7.0](docs/UPGRADE.md) für Migrations-Hinweise.
+
+#### Rebrand-Cleanup End-to-End
+
+- **`helm/sechealth/` → `helm/vakt/`** — Verzeichnis umbenannt; alle 70 template-namespace-Definitionen (`define "sechealth.fullname"`, …) zu `vakt.*` migriert. Externe Konsumenten von `helm install ./helm/sechealth` müssen den Pfad anpassen — siehe UPGRADE.md.
+- **`backend/cmd/sechealth/` entfernt** — legacy CLI-Binary, nicht in Makefile/Dockerfile referenziert, war Naming-Drift nach Rebrand.
+- **`website/README.md`, `integrations/github-action/action.yml`, `integrations/gitlab-template.yml`** rebranded SecHealth → Vakt.
+- **Frontend-Banner-Links** (`VersionBanner.tsx`, `TrustPage.tsx`) zeigen jetzt auf `github.com/norvik-ops/vatk` (Public Mirror).
+- **`CLAUDE.md` Repo-Tree** aktualisiert (`sechealth/` → `vakt-app/`, `helm/sechealth/` → `helm/vakt/`).
+- **`backend/cmd/admin/`** CLI `Use`-String + Beispiel-Outputs auf `vakt-admin` umgestellt.
+- **Codekommentare + Default-Werte** in `vaktscan/handler.go` (PDF-Dateiname), `vaktcomply/policy_acceptance.go` (Default-From-Adresse), `vaktvault/git_scanner.go` (tmp-Dir-Prefix), `shared/notify`, `shared/dashboard/notifications.go`, `setup/handler_test.go`, `cmd/seed/main.go`, `frontend/src/hooks/useDashboard.ts`, `pkg/sdk/nodejs/{index.ts,package.json}` von `sechealth`/`SecHealth` auf `vakt`/`Vakt` umgestellt.
+- **`docker-compose.demo.yml`** Header rebranded; statische Demo-Credentials-Kommentare entfernt (irreführend nach v0.6.2-Ephemeral-Refactor, Memory-Violation).
+- **`.gitignore`** legacy-Patterns für gelöschtes Binary entfernt.
+
+Bewusst belassen (Memory `project_rebrand` + ADR-0004): DB-Schema-Präfixe (`vb_`, `ck_`, `so_`, …), Docker-Image-`LEGACY_PREFIX`-Aliase (`ghcr.io/matharnica/sechealth/*`) für Watchtower-Backward-Compat, ADR-Historien-Texte, Memory-Dateien, Operator-CRD-Name `SecHealthSecret` (Kubernetes-API-Breaking-Change, separate Welle).
+
+#### Stabilität
+
+- **Silent SQL-Errors in `vaktcomply`** — alle 14 Stellen mit `_ = s.db.QueryRow(...).Scan(...)` durch sichtbare `err`-Pfade ersetzt. Neuer Helper `fetchOrgName(ctx, db, orgID)` in `vaktcomply/orgname.go` mit Warn-Log statt stillem Drop. Composite-Queries (`service_frameworks` Milestone-Dedup, `service_reporting` 30-Tage-Counter, `handler_boardreport` Score-History + Incidents-30d) loggen jetzt explizit; Milestone-Dedup bricht bei DB-Fehler defensiv ab statt Doppelversand.
+
+#### PRD & Doku-Wahrheit
+
+- **PRD aktualisiert** (`docs/prd.md`): Jira-FR-VB06 entfernt (v0.5.2-Realität), Success-Metric "first paying managed-cloud customer" → ADR-0008-konform formuliert ("First 10 self-hosted Pro customers"), Setup-Zeit "< 3 min" → "≤ 5 min Plattform + 3–30 min Ollama-Pull". MSP-Tertiary-Audience neu beschrieben (per-customer-instance, kein zentrales Portal). Epic E16 "MSP Multi-tenancy" gestrichen.
+- **`CONTRIBUTING.md`** neu — Branch-/Commit-Stil, Test-Erwartung gemäß ADR-0012 (kein 80%-Quoten-Diktat), ADR-Prozess, PR-Workflow, Pre-Release-Smoke-Test gemäß ADR-0017, Security-Disclosure-Adresse, explizite "NICHT-Annahme"-Liste (MSP-Portal, Phone-Home, Cloud-SaaS-Integrationen).
+- **`.github/ISSUE_TEMPLATE/{bug,feature,security}.yml`** + **`.github/PULL_REQUEST_TEMPLATE.md`** + **`CODEOWNERS`** neu.
+- **`frontend/README.md`** komplett neu — Stack, Modul-Struktur, Dev-Befehle, wichtige Hooks/Patterns, Frontend↔Backend-Vertrag.
+- **CHANGELOG-Fragment-Konsolidierung** — `docs/CHANGELOG-{sprint3,sprint4,sprint5,launch-readiness,security-wave-may26,session-2026-05-20}.md` nach `docs/history/` verschoben mit Index-README. Root-`CHANGELOG.md` bleibt Single-Source-of-Truth.
+- **`CLAUDE.md`** 80%-Coverage-Satz zu ADR-0012 (risikobasiert statt Quote) konsistent gemacht.
+
+#### Frontend-Quick-Polish
+
+- **Demo-Login-Fail-Toast** (`Login.tsx`) — `/api/v1/demo/start`-Fehler → sichtbarer Error-Toast statt stillem UI-Zerfall. i18n-Schlüssel `auth.demoUnavailable` in allen 4 Locales.
+- **`useFormatDate`-Hook** (`shared/hooks/useFormatDate.ts`) liefert `formatDate`, `formatDateTime`, `formatTime`, `formatRelative` für aktive i18n-Locale (BCP47-Mapping `de/en/fr/nl`). Demo-Migration in `AdminSecurityPage` + `SecVitalsOverviewPage`. Bulk-Migration der verbleibenden ~60 Treffer in Sprint 16 (S16-10).
+- **Hardcoded deutsche Microcopy** `"Demo wird vorbereitet…"` → i18n-Schlüssel `auth.demoPreparing` in allen 4 Locales.
+- **`useErrorMessage`-Hook** (`shared/hooks/useErrorMessage.ts`) — i18n-bewusster Wrapper um `humanizeError`. Bevorzugt `errors.<CODE>`-Lookup über die Locales, fällt auf bestehende Substring-Map zurück. Locale-Keys für `AUTH_INVALID_CREDENTIALS`, `AUTH_BAD_REQUEST`, `AUTH_VALIDATION_ERROR`, `AUTH_INVALID_STATE`, `AUTH_TOKEN_REVOKED`, `AUTH_OIDC_NOT_CONFIGURED`, `AUTH_OIDC_FAILED`, `ACCOUNT_LOCKED`, `RATE_LIMITED`, `GENERIC` in `de/en/fr/nl`.
+
+### Geändert
+
+- **[ADR-0018](docs/adr/0018-goroutine-lifecycle-und-panic-eskalation.md)** (Accepted) — Goroutine-Lifecycle (Parent-Context-Pflicht) und Panic-Eskalation via `safego.Run`. Pflicht-Pattern für alle `backend/internal/`-Goroutinen ab Sprint-14-Migration; golangci-lint-Regel blockt neue Verstöße.
+
+### Behoben
+
+- **`/health` enthält jetzt `demo`, `sso_enabled`, `version`** — Frontend (`useDemoMode`) las diese Felder, Backend lieferte sie nicht. Effekt: `isDemo` war auf `secdemo.norvikops.de` immer `false`, die Demo-Credentials-UI wurde nie eingeblendet.
+- **`POST /auth/login` enthält jetzt das `user`-Objekt** (`id`, `email`, `display_name`, `roles[]`) — Frontend (`Login.tsx → setAuth(data.user)`) crashte mit `can't access property "id"` direkt nach erfolgreichem Login, weil das Feld fehlte.
+- **OpenAPI-Spec auf realen Stand gebracht** — `LoginResponse`-Schema hatte `token`/`name`/`role` während Code längst `access_token`/`display_name`/`roles[]` nutzte. `/health` hatte gar kein Response-Schema. Beides angepasst.
+- **Demo-Banner zeigt keine fake Credentials mehr** — `Layout.tsx` und i18n-Locales (de/en/fr/nl) hatten weiterhin `admin@vakt.local / admin1234` im Demo-Banner, was nach dem Ephemeral-Refactor irreführend war.
+
+### Geändert
+
+- **[ADR-0017](docs/adr/0017-api-contract-tests.md)** — Strategie gegen Backend/Frontend-Drift: OpenAPI-Schemas für alle Frontend-konsumierten Endpoints sind verbindlich, Contract-Tests + Type-Generation als Ziel-Architektur, Maintainer-Checkliste in `docs/dev/api-contract-checklist.md` als Übergang.
+- **[ADR-0016](docs/adr/0016-public-mirror-via-script.md)** — Public Mirror per Script (`scripts/build-public-mirror.sh` + `make public-mirror`) statt inline rsync im CI. Eingebauter `go build ./...`-Check verhindert Bugs wie den v0.6.1-Excludes-Bug.
+
+---
+
+## [v0.6.2] — 2026-05-20
+
+### Behoben
+
+- **Demo-Login funktioniert wieder** — Backend `/api/v1/demo/start` gibt jetzt die generierten ephemeren Random-Passwörter (16 hex chars, admin + analyst) im Response zurück. Frontend `Login.tsx` nimmt sie und füllt die Login-Form vor. Vorher hatte das Frontend ein hardcodiertes `admin1234` als Default-Passwort, das (a) nicht den tatsächlich erzeugten Random-Hashes entsprach und (b) seit Erhöhung der Mindestpasswortlänge auf 10 Zeichen nicht mehr durch die Auth-Validierung kommt. Demo war dadurch unbenutzbar.
+- **Statischer Demo-Seed nutzt 10+ Zeichen-Passwörter** — `demoseed.Run()` (für lokale Dev-Setups) setzt jetzt `admin1234demo` / `analyst1234demo`. Der frühere 9-Zeichen-Default (`admin1234`) wurde von der Auth-Validierung (min 10) abgelehnt.
+- **Public Repo `norvik-ops/vatk` kompiliert wieder** — der Sync-Workflow hatte `internal/shared/demo/`, `demoseed/`, `feedback/` exkludiert, aber `cmd/api/main.go` importierte sie weiterhin. Wer die Codebase aus dem Public Repo baute, erhielt `no required module provides package …`-Fehler. Die drei Packages sind jetzt im Public Repo enthalten — sie sind hinter `if cfg.DemoSeed` gegated und ändern bei Customer-Default-Installs (VAKT_DEMO=false) das Verhalten nicht.
+
+### Geändert
+
+- **Doku zum Demo-Modus richtiggestellt** — `CLAUDE.md`, `docs/wiki/demo-mode.md`, `docs/setup.md`, `docs/configuration.md`, `docs/public/README.md`, `docs/launch-producthunt.md` und CI-Sync-Workflow dokumentieren jetzt einheitlich: Demo-Logins sind ephemer pro Visitor (Random-Slug, Random-Passwort, 4 h Lebensdauer), niemals statisches `admin@vakt.local / admin1234`.
+
+### Lint / Hygiene
+
+- **golangci-lint v2.12.2** statt v1.x — neuer config-Schema (`linters.settings`, `linters.exclusions.rules`), passend zu Go 1.25 build-toolchain
+- **105 vorbestehende Lint-Verstöße bereinigt** — errcheck-Exclusions für idiomatische `defer X.Close()` Patterns, sinnvolle staticcheck-Ausnahmen für deutschsprachige Codebase, echte Bugfixes in `vaktcomply/reportpdf.go` (ungenutzte status-Variable in SoA-PDF jetzt im richtigen Feld dargestellt) und `alerting/service.go` (labeled `break` für korrekten Abbruch der Retry-Schleife bei ctx-cancel)
+
+### Branding
+
+- **Landing-Pages aktualisiert** — `sec.norvikops.de`: Pro-Features auf v0.6.1-Stand (KI-Berater raus, AI Copilot Community rein, 6 Module statt 5, NIS2-Meldungsassistent + Lieferantenportal als Pro ergänzt), Enterprise-Sales-Block entfernt, Datenschutz „SecHealth" → „Vakt"; `norvikops.de`: Meta-Description + Form-Placeholder rebranded
+
+---
+
+## [v0.6.1] — 2026-05-20
+
+> **⚠️ Upgrade-Hinweis für Bestandskunden:** Diese Version startet Ollama (AI Copilot)
+> automatisch mit `docker compose up` (vorher hinter `--profile ai` versteckt). Der
+> Ollama-Container lädt beim ersten Start einmalig das Modell `qwen2.5:3b` (~1.9 GB
+> Download, ~2 GB RAM-Live-Footprint, 4 GB Limit). Auf VMs mit weniger als 8 GB
+> Gesamt-RAM bitte VOR dem Upgrade `VAKT_AI_PROVIDER=disabled` in `.env` setzen
+> und in einer Compose-Override-Datei den `ollama`/`ollama-init`-Service entfernen.
+> Plattform-Startup-Zeit unverändert (<5 Min); AI-Funktionen sind 3–30 Min später
+> verfügbar, abhängig von Internet-Bandbreite (1.9 GB Modell-Download).
+
+### Geändert
+
+- **AI-Copilot ist Community** — Die fünf AI-Endpunkte (`/vaktcomply/ai/status`, `/ai/report`, `/ai/advice`, `/ai/draft-policy`, `/ai/incident-guide` sowie `/vaktcomply/policies/generate-draft`) sind ab sofort in jeder Vakt-Instanz nutzbar — kein `FeatureAIAdvisor`-Pro-Gate mehr. Mit qwen2.5:3b als Default-Modell (Apache 2.0, ~1.9 GB RAM, CPU-tauglich) läuft die AI lokal auf jeder VM; ein Lizenz-Gate hatte daher nur Marketing-Charakter ohne echten Schutz. Premium-Compliance-Features (TISAX, DORA, NIS2-Reporting, EU-AI-Act, AuditPDF, SSO, API-Access, SecReflex/SecPulse-Advanced, Granular-Permissions, Supplier-Portal) bleiben Pro. `FeatureAIAdvisor`-Konstante bleibt für Lizenz-Validierung erhalten, wird aber nicht mehr im Routing geprüft.
+- **Ollama default-on, Auto-Model-Pull** — `ollama` Service ist nicht mehr hinter `profiles: ["ai"]` versteckt; startet automatisch mit `docker compose up`. Neuer Init-Container `ollama-init` zieht das Default-Modell `qwen2.5:3b` einmalig beim ersten Start (idempotent — bei vorhandenem Modell No-Op). Damit ist AI nach einem einzigen `docker compose up` lauffähig — kein `--profile ai`, kein manueller `ollama pull` mehr. Resource-Limit auf Ollama: 4 GB RAM / 2 vCPU. Customers auf VMs mit < 8 GB Gesamt-RAM können via `VAKT_AI_PROVIDER=disabled` + compose-override deaktivieren.
+- **Helm-Chart Ollama-Integration** — Neue Templates in `helm/sechealth/templates/ollama/`: StatefulSet mit PersistentVolumeClaim (10 Gi default), ClusterIP-Service, Helm-Hook-Job für das einmalige Modell-Pull. Default-on via `ollama.enabled: true` in `values.yaml`. Die ConfigMap setzt `VAKT_AI_BASE_URL` automatisch auf den Cluster-internen Ollama-Endpoint, oder erlaubt Override für externe LLM-Quellen (z.B. Mistral EU). Resource-Defaults: 500m CPU / 2 GiB Memory request, 2 / 4 GiB limit.
+- **Vakt Aware vollständig sqlc-migriert** — Tabellen-Präfix `pg_*` → `sr_*` (Migration 122, reine Metadaten-Operation in Postgres). Damit konnte sqlc die Tabellen parsen und alle 35 Repository-Methoden auf den generierten Code umgestellt werden. Vakt Aware war das letzte Modul mit embedded SQL. **ADR-0005 schließt damit ab — alle Module nutzen sqlc.**
+
+### Sicherheit
+
+- **CSRF Double-Submit-Cookie** — alle state-ändernden Endpoints unter `/api/v1` sind jetzt zusätzlich zu SameSite=Strict per expliziten Token gegen CSRF geschützt; Backend setzt `csrf_token` Cookie bei Login/Refresh/OIDC/SAML, Frontend echot ihn als `X-CSRF-Token` Header
+- **Helm Pod-Security** — `podSecurityContext` mit `runAsNonRoot: true`, UID 65532, fsGroup 65532; `containerSecurityContext` mit `readOnlyRootFilesystem: true`, `allowPrivilegeEscalation: false`, alle Capabilities gedroppt, seccomp `RuntimeDefault` für API und Worker; Frontend mit minimal nötigen Anpassungen für nginx
+- **Verschlüsselung at-Rest dokumentiert** — neue `docs/encryption-at-rest.md` mit drei Pfaden (LUKS, Cloud-Provider, pgcrypto) und Installations-Checklist für DSGVO Art. 32
+- **Redis-backed Org-Rate-Limiting** — fixed-window INCR/EXPIRE statt in-memory token-bucket; multi-replica-sicher für HA-Deployments
+- **OIDC/SSO CSRF-Schutz** — OAuth2 `state`-Parameter wird jetzt serverseitig validiert (One-Time-Use via Redis, 10 min TTL); verhindert Login-CSRF-Angriffe
+- **TOTP Deny-List** — ausgeloggte Paseto-Tokens waren auf 2FA-Endpunkten weiterhin gültig; Redis-Deny-List greift jetzt auch auf `/auth/2fa/*`-Routen
+- **TOTP Replay-Schutz** — derselbe 6-stellige Code konnte innerhalb des 90-Sekunden-Fensters mehrfach eingesetzt werden; jetzt per Redis SetNX gesperrt
+- **`RevokeAllOtherSessions`** — widerrief fälschlicherweise auch die eigene Session; eigene Session wird jetzt via `token_hash` ausgeschlossen
+- **MFA-Enforcement Fail-Closed** — ein DB-Fehler beim MFA-Pflicht-Check ließ Requests kommentarlos durch; gibt jetzt HTTP 503 zurück
+- **DSR-Portal** — öffentlicher Status-Endpunkt gab interne DPO-Notizen und org_id zurück; gibt jetzt nur noch `id`, `status`, `type` und Timestamps zurück
+- **Setup-Handler Passwortvalidierung** — initiales Admin-Passwort konnte kürzer als 10 Zeichen sein; jetzt identisch mit der regulären Passwort-Policy
+- **SMTP** — Port 465: implizites TLS (`tls.Dial`); Port 587: STARTTLS; keine Klartext-Credentials mehr
+- **Webhook-RBAC** — Webhook-Endpunkte hatten keine Rollenprüfung; `List`/`Test` → `SecurityAnalyst+`, `Create`/`Update`/`Delete` → `Admin`
+- **SSRF-Schutz** — Scanner-Targets (Trivy, Nuclei) werden gegen RFC-1918, Loopback und Link-Local geprüft; opt-out via `VAKT_SCAN_ALLOW_PRIVATE=true`
+- **CSP** — `style-src` in `style-src-elem 'self'` (blockiert `<style>`-Injection) und `style-src-attr 'unsafe-inline'` (nur Inline-Attribute, nötig für UI-Framework) aufgeteilt
+- **IP-Forwarding** — `X-Forwarded-For` wird nur noch ausgewertet wenn `VAKT_TRUSTED_PROXIES` gesetzt ist; verhindert IP-Spoofing bei direkter Installation
+
+### Hinzugefügt
+
+- **Session-Verwaltung pro Gerät** — neue Seite „Aktive Sitzungen" unter Einstellungen: alle angemeldeten Geräte einsehen und einzeln abmelden (`GET /auth/sessions`, `DELETE /auth/sessions/:id`)
+- **Startup-Warnungen** — strukturierte Warn-Logs beim Start wenn HTTP statt HTTPS (`VAKT_FRONTEND_URL`) oder Demo-Modus aktiv (`VAKT_DEMO=true`)
+
+### Infrastruktur
+
+- **Nicht-Root-Container** — API, Worker und Migrate laufen jetzt als `nonroot` (UID 65532, distroless/static); kein Root-Prozess im Container
+- **Go Healthcheck-Binary** — statisch kompiliertes `/healthcheck`-Binary ersetzt busybox-Abhängigkeit im distroless-Image; Docker-Healthcheck funktioniert ohne Shell
+- **`VAKT_CORS_ORIGINS`** — CORS-Origins sind jetzt konfigurierbar (kommasepariert); Default `*`, Dokumentation in `.env.example` ergänzt
+
+### Dokumentation & Architektur
+
+- **Architecture Decision Records** — neuer `docs/adr/` Verzeichnis mit 12 retrospektiven ADRs: Self-Hosted-Prinzip, ELv2-Lizenz, Paseto-Wahl, Modul-Isolation, sqlc-Strategie, Anonymisierung statt Hard-Delete, Betriebsrat-Modus, MSP-Verzicht, OpenAPI-Single-Source-of-Truth, AES-256-GCM, OTel-Opt-in, Test-Coverage-Pragmatik
+
+### Observability (opt-in)
+
+- **OpenTelemetry-Instrumentation** — `internal/shared/telemetry/` initialisiert OTel beim Start, aktiviert sich aber nur bei explizit gesetztem `OTEL_EXPORTER_OTLP_ENDPOINT` (keine versteckten Telemetrie-Pfade, siehe ADR-0011)
+- **Observability-Stack** — neue `docker-compose.observability.yml` Profile mit Loki + Promtail + Tempo + Grafana; aktivieren via `docker compose --profile observability up`; `docs/observability.md` mit Volumen-Schätzungen und Sicherheits-Hinweisen
+
+### AI-Copilot
+
+- **Default-Modell auf `qwen2.5:3b` umgestellt** — Apache-2.0-Lizenz statt Llama-Community, ~10 % weniger RAM-Footprint, schneller auf CPU, bessere Deutsch-Performance; alternative Modelle dokumentiert (`llama3.2:1b`, `phi3.5:mini`, `gemma2:2b`, `qwen2.5:7b`)
+- **Policy-Drafting** — `POST /vaktcomply/ai/draft-policy` generiert einen Richtlinien-Entwurf in Markdown für ein Thema; Admin reviewt und veröffentlicht
+- **Incident-Response-Guide** — `POST /vaktcomply/ai/incident-guide` erstellt aus einer Vorfalls-Beschreibung eine nummerierte Sofort-Checkliste mit gesetzlichen Fristen (NIS2, DSGVO Art. 33, DORA); im Frontend per „KI-Sofortmaßnahmen"-Button in der Vorfalls-Detailansicht direkt anwendbar
+- **Wiki + Landingpage-Briefing** — neue `docs/wiki/ai-features.md` mit System-Requirements-Tabelle, Modell-Vergleich, DSGVO-Statement und Mistral-EU-Konfiguration; `docs/landingpage-ai-briefing.md` mit Headlines, Use-Cases und Vergleichstabelle gegen Vanta/Drata für die Marketing-Seite
+
+### Refactor & Tests
+
+- **HR-Service Pattern-Migration** — Audit-Logging vom Handler in den Service verlagert (P2-19/P2-20-Pattern); HR-Service ist jetzt vollständig SDK-fähig — Audit-Trail bleibt intakt auch bei Aufrufen aus Worker-Jobs oder künftigen CLI-Tools
+- **sqlc Start für Vakt Vault** — Projects/Environments/AccessLog als sqlc-Queries (`db/queries/vaktvault.sql`); Secrets-Tabelle bleibt embedded SQL wegen Crypto-Spezifika
+- **sqlc VVT (Vakt Privacy)** — Verzeichnis von Verarbeitungstätigkeiten (DSGVO Art. 30) komplett auf sqlc umgestellt; DPIA / AVV / Breach / DSR folgen in Folge-Sitzungen
+- **Frontend-Test-Coverage erhöht** — 16 neue Unit-Tests: apiFetch (CSRF + Retry + Error-Mapping), useFirstAction (Persistenz + Idempotenz), useMilestoneToast (Schwellen + Jump-Detection); 2 vorbestehende Test-Fails behoben
+- **Bugfix MilestoneToast** — Score-Jump-Baseline wurde nicht aktualisiert wenn ein Schwellen-Toast feuerte, führte zu Phantom-Toasts beim Remount; durch Test entdeckt und behoben
+- **Integration-Test mit testcontainers-go** — echter End-to-End-Test für Vakt HR → Vakt Comply Evidence-Flow (`internal/integration_test/hr_evidence_real_test.go`); läuft in CI mit Docker-Daemon, skippt sauber wenn nicht verfügbar
+
+### Datenschutz (DSGVO)
+
+- **Recht auf Datenübertragbarkeit** (Art. 20) — neuer Endpoint `GET /api/v1/account/data-export` liefert ein ZIP-Archiv mit allen persönlichen Daten des Nutzers (Profil, Sessions, API-Keys-Metadaten, eigene Audit-Log-Einträge, eigene Kommentare, Benachrichtigungseinstellungen) als maschinenlesbare JSON-Dateien
+- **Recht auf Löschung** (Art. 17) — neuer Endpoint `POST /api/v1/account/delete` mit Passwort-Re-Auth und expliziter „LÖSCHEN"-Bestätigung; Konto wird in der Datenbank anonymisiert (E-Mail, Name, Avatar geleert; Sessions + API-Keys widerrufen) statt hart gelöscht, um die Audit-Trail-Integrität gemäß ISO 27001 A.5.28 / BSI ORP.2 zu wahren; verhindert versehentliches Orphaning einer Organisation (letzter Admin → 409)
+
+### UX-Verbesserungen
+
+- **SlideOver-Komponente** — neue `SlideOver` für Linear-Style Detail-Panels mit framer-motion-Animation, Focus-Trap und Escape-Handling; nutzbar für Control-, Risiko- und Finding-Details ohne Kontextverlust
+- **Micro-Guidance** — beim ersten Anlegen eines Risikos, Vorfalls, einer Richtlinie oder eines Assets erscheint ein einmaliger Hinweis mit Folge-Aktion-Empfehlung (z.B. „Control angelegt — als Nächstes Evidenz hochladen")
+- **Role-basiertes Onboarding** — der Setup-Wizard zeigt nur die Schritte, die für die Rolle des angemeldeten Nutzers relevant sind: Admins sehen alle 4 Schritte, SecurityAnalysts nur die 2 Arbeits-Schritte (Control + Risiko), Viewer/Auditor sehen den Wizard gar nicht
+- **Formular-Validierung erweitert** — `useFormValidation` unterstützt jetzt Cross-Field-Validation (`custom`-Callback) und scrollt + fokussiert automatisch das erste fehlerhafte Feld
+
+### Hinzugefügt
+
+- **OpenAPI 3.0 Spec — Single Source of Truth** — `backend/internal/shared/apidocs/openapi.yaml` wird zur Build-Zeit in den API-Server embedded; vorher lieferte der Server eine separate hardcoded Go-Spec mit nur 10 Endpoints, jetzt 75+. CI-Gate (`spec_test.go`) prüft YAML-Validität und blockiert PRs, die Pflicht-Endpoints aus der Doku entfernen. Spec ist über `GET /api/v1/openapi.yaml` und Swagger-UI unter `/api/docs` erreichbar. Kunden können daraus eigene SDKs generieren oder Automatisierungs-Skripte schreiben.
+- **Frontend-Error-Tracking** — JS-Errors aus dem ErrorBoundary werden in der Tabelle `client_errors` persistiert; Admins sehen die letzten 200 Errors unter `GET /admin/client-errors` (org-scoped, self-hosted, kein externer Dienst)
+- **Vakt Aware Content-Library** — 10 DACH-spezifische Phishing-Templates (CEO-Fraud, IT-Helpdesk, DHL, Microsoft-MFA, Mahnung, OneDrive, Sparkasse-SMS, USB-Köder, ...) + 5 vorgefertigte Trainings-Module abrufbar über `GET /api/v1/vaktaware/templates/presets` und `GET /api/v1/vaktaware/training-modules/presets`
+- **Vakt Aware Anonymisierungs-Garantie** — Bei `betriebsrat_mode=true` werden IP-Adresse und User-Agent **gar nicht erst** in die DB geschrieben (statt nur im PDF-Export ausgeblendet) — DSGVO Art. 5 (1c) Datenminimierung + §87 BetrVG-konform; Wiki dokumentiert die rechtliche Begründung
+
+### Datenbank
+
+- Migration `117`: `refresh_sessions` — Tabelle für Refresh-Tokens mit Device-Info und Widerruf pro Gerät
+- Migration `118`: `ck_evidence.control_id` nullable + neue Tabelle `hr_run_events` für Vakt HR Step-Audit-Trail
+- Migration `119`: `client_errors` — Tabelle für persistierte Frontend-Errors
+
 ---
 
 ## [0.38.0] — 2026-06-09

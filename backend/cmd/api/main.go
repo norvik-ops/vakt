@@ -518,8 +518,15 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		protected.Use(sharedmw.OrgRateLimit())
 	}
 
-	// License info — returns current tier and available features; activate endpoint persists key in DB
-	license.RegisterRoutes(api, lic, auth.AuthMiddleware(pasetoKey, pool, rdb), pool, rdb)
+	// License auto-refresh: when VAKT_LICENSE_TOKEN is set the instance polls
+	// api.norvikops.de every 24h and silently activates the latest key.
+	licHandler := license.RegisterRoutes(api, lic, auth.AuthMiddleware(pasetoKey, pool, rdb), pool, rdb)
+	if cfg.LicenseToken != "" {
+		licHandler.WithAutoRenewal()
+		refresher := license.NewAutoRefresher(cfg.LicenseToken, cfg.LicenseRefreshURL, licHandler, pool, rdb)
+		go refresher.Start(lifecycleCtx)
+		log.Info().Msg("license: auto-renewal active")
+	}
 	log.Info().Msg("license routes registered")
 
 	// Update check service (opt-in, no phone-home)
@@ -589,6 +596,10 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	// Set inside the vaktcomply block; falls back to a no-op when vaktcomply is disabled.
 	hrEvidence := vakthr.EvidenceWriter(vakthr.NoopEvidenceWriter())
 
+	// hrAccessReview triggers an access-review campaign in vaktcomply when an offboarding run completes.
+	// Set inside the vaktcomply block; falls back to a no-op when vaktcomply is disabled.
+	hrAccessReview := vakthr.AccessReviewTrigger(&vakthr.NoopAccessReviewTrigger{})
+
 	if cfg.IsModuleEnabled("vaktcomply") {
 		ckSvc := vaktcomply.NewService(pool)
 		ckSvc.WithRedis(rdb)
@@ -599,10 +610,15 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		}
 		cloudEvidence = vaktcomply.NewCloudEvidenceWriter(ckSvc.Repo())
 		hrEvidence = vaktcomply.NewHREvidenceWriter(pool)
+		hrAccessReview = vaktcomply.NewHRAccessReviewTrigger(pool)
 		ckSvc.ReseedBuiltinControls(ctx)
 		ckSvc.SeedBuiltinMeasures(ctx)
 		if err := ckSvc.SeedFrameworkMappings(ctx); err != nil {
 			log.Warn().Err(err).Msg("seed framework mappings failed (non-critical)")
+		}
+		// S69-1: Seed prerequisite chains (global, org-agnostic).
+		if err := ckSvc.SeedPrerequisiteChains(ctx); err != nil {
+			log.Warn().Err(err).Msg("seed prerequisite chains failed (non-critical)")
 		}
 		if err := vaktcomply.SeedPolicyTemplates(ctx, pool); err != nil {
 			log.Warn().Err(err).Msg("seed policy templates failed (non-critical)")
@@ -695,7 +711,8 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 
 	if cfg.IsModuleEnabled("vaktprivacy") {
 		poSvc := vaktprivacy.NewService(pool, asynq.RedisClientOpt{Addr: redisOpt.Addr})
-		poHandler := vaktprivacy.NewHandler(poSvc).WithDB(pool)
+		tiaSvc := vaktprivacy.NewTIAService(pool)
+		poHandler := vaktprivacy.NewHandler(poSvc).WithDB(pool).WithTIA(tiaSvc)
 		if alertSvc != nil {
 			poHandler.WithAlerting(alertSvc.Fire)
 		}
@@ -709,7 +726,9 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	}
 
 	// HR module — onboarding and offboarding workflows
-	hrSvc := vakthr.NewService(vakthr.NewRepository(pool)).WithEvidenceWriter(hrEvidence)
+	hrSvc := vakthr.NewService(vakthr.NewRepository(pool)).
+		WithEvidenceWriter(hrEvidence).
+		WithAccessReviewTrigger(hrAccessReview)
 	hrHandler := vakthr.NewHandler(hrSvc)
 	vakthr.Register(protected.Group("/vakthr", auth.RequireModuleAccess(pool, "vakthr")), hrHandler)
 	log.Info().Msg("vakthr routes registered")
@@ -729,8 +748,14 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 
 	// Cloud integrations — AWS + Azure automated evidence collection
 	if cfg.SecretKey != "" {
-		cloudintegration.RegisterRoutes(protected.Group("/integrations/cloud"), pool, cloudKey, cloudEvidence)
+		cloudSvc := cloudintegration.RegisterRoutes(protected.Group("/integrations/cloud"), pool, cloudKey, cloudEvidence)
 		log.Info().Msg("cloud integration routes registered")
+
+		// Inject Personio secret provider into the HR handler so the webhook can verify HMAC sigs.
+		// The webhook is registered on the public api group (no Bearer auth — HMAC only).
+		hrHandler.WithPersonioSecrets(cloudSvc)
+		api.POST("/vakthr/webhooks/personio/:org_id", hrHandler.HandlePersonioWebhook)
+		log.Info().Msg("personio webhook route registered at /api/v1/vakthr/webhooks/personio/:org_id")
 	}
 
 	// Outgoing webhooks — org-scoped event delivery (cross-module).

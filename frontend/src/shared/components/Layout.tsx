@@ -1,5 +1,5 @@
 import { Link, useLocation, Outlet } from 'react-router-dom'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import {
   Bug, FileCheck, Key, Fish, Eye, LayoutDashboard, Sun, Moon, Monitor, Settings,
   ShieldCheck, ShieldAlert, Siren, BookOpen, ClipboardList,
@@ -8,7 +8,7 @@ import {
   Shield, FlaskConical,
   Building2, Bot, PackageX, Mail, GraduationCap, Target, Flag, LayoutTemplate, UserCog, UserCheck,
   Plug, ClipboardCheck, CalendarClock, Inbox, Menu, X, ArrowUpCircle, ScrollText, CalendarDays,
-  ChevronLeft, ChevronRight, Cpu, Landmark, ListChecks, Cloud, Banknote, ChevronUp, ChevronDown,
+  ChevronLeft, ChevronRight, Cpu, Landmark, ListChecks, Cloud, Banknote, ChevronDown,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../stores/auth'
@@ -61,11 +61,12 @@ const MODULES_NAV: NavItem[] = [
     label: 'Vakt Scan',
     icon: Bug,
     children: [
-      { path: '/vaktscan/assets',   label: 'Assets',        icon: Server },
-      { path: '/vaktscan/findings', label: 'Findings',      icon: ScanSearch },
-      { path: '/vaktscan/sla',      label: 'SLA-Dashboard', icon: Clock },
-      { path: '/vaktscan/reports',  label: 'Berichte',      icon: BarChart2 },
-      { path: '/vaktscan/eol',      label: 'EOL-Dashboard', icon: PackageX },
+      { path: '/vaktscan/assets',       label: 'Assets',        icon: Server },
+      { path: '/vaktscan/findings',     label: 'Findings',      icon: ScanSearch },
+      { path: '/vaktscan/sla',          label: 'SLA-Dashboard', icon: Clock },
+      { path: '/vaktscan/reports',      label: 'Berichte',      icon: BarChart2 },
+      { path: '/vaktscan/eol',          label: 'EOL-Dashboard', icon: PackageX },
+      { path: '/vaktscan/certificates', label: 'TLS-Zertifikate', icon: ShieldCheck },
     ],
   },
   {
@@ -103,6 +104,7 @@ const MODULES_NAV: NavItem[] = [
           { path: '/vaktcomply/policies',           label: 'Richtlinien',   icon: BookOpen },
           { path: '/vaktcomply/soa',                label: 'SoA',           icon: ScrollText },
           { path: '/vaktcomply/evidence/auto',      label: 'Nachweise',     icon: Inbox },
+          { path: '/vaktcomply/crypto-keys',        label: 'Kryptographie', icon: Key },
           { path: '/vaktcomply/certification-timeline', label: 'Zert.-Plan', icon: CalendarDays },
         ],
       },
@@ -198,6 +200,11 @@ export default function Layout() {
   const { data: updateInfo } = useUpdateCheck()
   const isAdminOrOwner = user?.roles.some((r) => r.toLowerCase() === 'admin' || r.toLowerCase() === 'owner') ?? false
   const demoMode = useDemoMode()
+
+  // Collapsed-sidebar flyout: which module path is currently hovered
+  const [flyoutPath, setFlyoutPath] = useState<string | null>(null)
+  const [flyoutTop, setFlyoutTop] = useState(0)
+  const flyoutTimerRef = useRef<ReturnType<typeof setTimeout>>()
   const { data: overdueControls } = useOverdueControls()
   const overdueCount = overdueControls?.length ?? 0
   const { data: autoEvidence } = useAutoEvidence()
@@ -218,6 +225,19 @@ export default function Layout() {
   function openSearch() {
     window.dispatchEvent(new CustomEvent('vakt:open-search'))
   }
+
+  function openFlyout(path: string, e: React.MouseEvent) {
+    clearTimeout(flyoutTimerRef.current)
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    setFlyoutTop(rect.top)
+    setFlyoutPath(path)
+  }
+
+  function closeFlyout() {
+    flyoutTimerRef.current = setTimeout(() => { setFlyoutPath(null) }, 120)
+  }
+
+  useEffect(() => () => { clearTimeout(flyoutTimerRef.current) }, [])
 
   useEffect(() => {
     if (demoMode === true) document.title = 'Vakt Demo'
@@ -333,7 +353,10 @@ export default function Layout() {
       {backupStatus?.stale && !backupDismissed && !demoMode && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between text-sm shrink-0">
           <span className="text-amber-800">
-            ⚠ {t('backup.staleWarning')} — <code>make backup</code> ausführen
+            ⚠ {t('backup.staleWarning')} —{' '}
+            <Link to="/settings?tab=system" className="underline font-medium hover:text-amber-900">
+              {t('backup.staleAction')}
+            </Link>
           </span>
           <button onClick={() => { setBackupDismissed(true); }} aria-label={t('common.close')} className="text-amber-600 hover:text-amber-800 ml-4">✕</button>
         </div>
@@ -438,9 +461,11 @@ export default function Layout() {
                 <div key={path}>
                   <Link
                     to={path}
-                    onClick={() => { setSidebarOpen(false); }}
+                    onClick={() => { setSidebarOpen(false); setFlyoutPath(null) }}
                     aria-current={active ? 'page' : undefined}
                     title={sidebarCollapsed ? label : undefined}
+                    onMouseEnter={sidebarCollapsed && hasChildren ? (e) => { openFlyout(path, e) } : undefined}
+                    onMouseLeave={sidebarCollapsed && hasChildren ? closeFlyout : undefined}
                     className={cn(
                       'flex items-center rounded-md text-[13px] font-medium transition-all duration-150',
                       sidebarCollapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-[9px]',
@@ -521,8 +546,38 @@ export default function Layout() {
           </div>
         </nav>
 
-        {/* Bottom — minimal: collapse + © */}
+        {/* Bottom — user row + collapse + © */}
         <div className={cn('pb-4 border-t border-border pt-3 space-y-[2px]', sidebarCollapsed ? 'px-2' : 'px-3')}>
+          {/* User identity link */}
+          {user && (
+            <Link
+              to="/account"
+              onClick={() => { setSidebarOpen(false) }}
+              title={sidebarCollapsed ? (user.display_name || user.email) : undefined}
+              aria-label={t('nav.userProfile')}
+              className={cn(
+                'flex items-center rounded-md transition-all duration-150 text-secondary hover:bg-muted/50 hover:text-primary',
+                sidebarCollapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-2',
+              )}
+            >
+              <span
+                aria-hidden="true"
+                className="w-6 h-6 rounded-full bg-brand/15 text-brand flex items-center justify-center text-[11px] font-semibold shrink-0"
+              >
+                {(user.display_name || user.email || '?').charAt(0).toUpperCase()}
+              </span>
+              {!sidebarCollapsed && (
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[12px] font-medium truncate text-primary">
+                    {user.display_name || user.email}
+                  </span>
+                  {user.display_name && user.email && (
+                    <span className="block text-[10px] text-secondary truncate">{user.email}</span>
+                  )}
+                </span>
+              )}
+            </Link>
+          )}
           <button
             onClick={toggleSidebarCollapsed}
             aria-label={sidebarCollapsed ? 'Sidebar ausklappen' : 'Sidebar einklappen'}
@@ -544,6 +599,80 @@ export default function Layout() {
           )}
         </div>
       </aside>
+
+      {/* Collapsed-sidebar flyout panel */}
+      {sidebarCollapsed && flyoutPath && (() => {
+        const item = MODULES_NAV.find((m) => m.path === flyoutPath)
+        if (!item) return null
+        const allItems: NavChild[] = [
+          ...(item.children ?? []),
+          ...(item.childGroups?.flatMap((g) => g.items) ?? []),
+        ]
+        if (allItems.length === 0) return null
+        return (
+          <div
+            role="navigation"
+            aria-label={`${item.label} Unternavigation`}
+            className="fixed left-[56px] z-40 bg-surface border border-border rounded-r-lg shadow-xl py-2 min-w-[200px]"
+            style={{ top: flyoutTop }}
+            onMouseEnter={() => { clearTimeout(flyoutTimerRef.current) }}
+            onMouseLeave={closeFlyout}
+          >
+            <p className="px-3 pb-1.5 text-[10px] font-semibold text-secondary uppercase tracking-wider opacity-60">
+              {item.label}
+            </p>
+            {/* Group headers for childGroups modules */}
+            {item.childGroups ? item.childGroups.map((group) => (
+              <div key={group.label}>
+                <p className="px-3 pt-2 pb-0.5 text-[9px] font-semibold text-secondary uppercase tracking-wider opacity-50">
+                  {group.label}
+                </p>
+                {group.items.map((c) => {
+                  const CIcon = c.icon
+                  const childActive = location.pathname === c.path || location.pathname.startsWith(c.path + '/')
+                  return (
+                    <Link
+                      key={c.path}
+                      to={c.path}
+                      onClick={() => { setSidebarOpen(false); setFlyoutPath(null) }}
+                      aria-current={childActive ? 'page' : undefined}
+                      className={cn(
+                        'flex items-center gap-2 mx-1 px-2 py-[6px] rounded-md text-[12px] font-medium transition-all duration-150',
+                        childActive
+                          ? 'text-brand bg-brand/10 dark:bg-muted/50'
+                          : 'text-secondary hover:text-primary hover:bg-muted/50',
+                      )}
+                    >
+                      <CIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                      <span className="flex-1 truncate">{c.label}</span>
+                    </Link>
+                  )
+                })}
+              </div>
+            )) : allItems.map((c) => {
+              const CIcon = c.icon
+              const childActive = location.pathname === c.path || location.pathname.startsWith(c.path + '/')
+              return (
+                <Link
+                  key={c.path}
+                  to={c.path}
+                  onClick={() => { setSidebarOpen(false); setFlyoutPath(null) }}
+                  aria-current={childActive ? 'page' : undefined}
+                  className={cn(
+                    'flex items-center gap-2 mx-1 px-2 py-[6px] rounded-md text-[12px] font-medium transition-all duration-150',
+                    childActive
+                      ? 'text-brand bg-brand/10 dark:bg-muted/50'
+                      : 'text-secondary hover:text-primary hover:bg-muted/50',
+                  )}
+                >
+                  <CIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                  <span className="flex-1 truncate">{c.label}</span>
+                </Link>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {/* Main */}
       <main id="main-content" role="main" className="flex-1 overflow-auto bg-bg flex flex-col min-w-0 pb-16 md:pb-0">
@@ -644,7 +773,7 @@ export default function Layout() {
           aria-label="Weitere Module öffnen"
           className="flex-1 flex flex-col items-center py-2 text-xs transition-colors text-secondary hover:text-brand"
         >
-          <ChevronUp className="h-5 w-5 mb-1" aria-hidden="true" />
+          <Menu className="h-5 w-5 mb-1" aria-hidden="true" />
           Mehr
         </button>
       </nav>
