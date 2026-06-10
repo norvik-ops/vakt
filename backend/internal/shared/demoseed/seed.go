@@ -792,22 +792,22 @@ func runSeed(ctx context.Context, db *pgxpool.Pool, masterKeyHex, orgName, orgSl
 	var auditPlanID string
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO ck_audit_plans (org_id, year, scope, status)
-		VALUES ($1::uuid, 2026, 'Gesamtes ISMS (ISO 27001:2022)', 'active')
+		VALUES ($1::uuid, 2026, 'Gesamtes ISMS (ISO 27001:2022)', 'in_progress')
 		RETURNING id`, orgID).Scan(&auditPlanID); err != nil {
 		return "", "", fmt.Errorf("demoseed: audit plan: %w", err)
 	}
 	auditSeeds := []struct {
-		title, auditType, status, scheduledDate string
+		title, auditType, status, scope, plannedDate string
 	}{
-		{"Internes ISMS-Audit Q1 2026", "isms_internal", "completed", now.AddDate(0, -3, 0).Format("2006-01-02")},
-		{"Lieferantenaudit IT-Dienstleister", "supplier_audit", "planned", now.AddDate(0, 2, 0).Format("2006-01-02")},
-		{"Compliance-Prüfung DSGVO/NIS2", "compliance_check", "planned", now.AddDate(0, 4, 0).Format("2006-01-02")},
+		{"Internes ISMS-Audit Q1 2026", "isms_internal", "completed", "ISO 27001 ISMS", now.AddDate(0, -3, 0).Format("2006-01-02")},
+		{"Lieferantenaudit IT-Dienstleister", "supplier_audit", "planned", "Kritische IT-Lieferanten", now.AddDate(0, 2, 0).Format("2006-01-02")},
+		{"Compliance-Prüfung DSGVO/NIS2", "compliance_check", "planned", "DSGVO & NIS2", now.AddDate(0, 4, 0).Format("2006-01-02")},
 	}
 	for _, a := range auditSeeds {
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO ck_audit_program_audits (org_id, plan_id, title, audit_type, scheduled_date, status)
-			VALUES ($1::uuid, $2::uuid, $3, $4, $5::date, $6)`,
-			orgID, auditPlanID, a.title, a.auditType, a.scheduledDate, a.status); err != nil {
+			INSERT INTO ck_audit_program_audits (org_id, audit_plan_id, title, audit_type, scope, planned_date, status)
+			VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6::date, $7)`,
+			orgID, auditPlanID, a.title, a.auditType, a.scope, a.plannedDate, a.status); err != nil {
 			return "", "", fmt.Errorf("demoseed: audit %q: %w", a.title, err)
 		}
 	}
