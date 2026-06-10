@@ -1155,14 +1155,14 @@ func (s *Service) SaveLDAPConfig(ctx context.Context, orgID string, in SaveLDAPC
 	}
 
 	return s.repo.UpsertConfig(ctx, orgID, ProviderLDAP, map[string]any{
-		"host":               in.Host,
-		"port":               in.Port,
-		"bind_dn":            in.BindDN,
-		"bind_password":      encPW,
-		"base_dn":            in.BaseDN,
-		"use_tls":            in.UseTLS,
+		"host":                in.Host,
+		"port":                in.Port,
+		"bind_dn":             in.BindDN,
+		"bind_password":       encPW,
+		"base_dn":             in.BaseDN,
+		"use_tls":             in.UseTLS,
 		"is_active_directory": in.IsActiveDirectory,
-		"privileged_groups": groups,
+		"privileged_groups":   groups,
 	})
 }
 
@@ -1674,7 +1674,7 @@ func (s *Service) SyncAllEnabled(ctx context.Context) error {
 			} else {
 				log.Info().Str("org_id", ci.OrgID).Msg("cloud sync: sonarqube completed")
 			}
-		// Personio is push-only — no daily pull sync
+			// Personio is push-only — no daily pull sync
 		}
 	}
 	return nil

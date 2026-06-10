@@ -294,9 +294,9 @@ func (c *LDAPEvidenceCollector) collectDisabledUsers(ctx context.Context, orgID 
 
 	count := len(result.Entries)
 	details := map[string]any{
-		"collected_at":     time.Now().UTC().Format(time.RFC3339),
-		"disabled_count":   count,
-		"status":           "ok",
+		"collected_at":   time.Now().UTC().Format(time.RFC3339),
+		"disabled_count": count,
+		"status":         "ok",
 	}
 
 	title := fmt.Sprintf("LDAP/AD Offboarding-Nachweis: %d Accounts deaktiviert", count)
@@ -332,9 +332,9 @@ func (c *LDAPEvidenceCollector) collectActiveUserCount(ctx context.Context, orgI
 
 	count := len(result.Entries)
 	details := map[string]any{
-		"collected_at":  time.Now().UTC().Format(time.RFC3339),
-		"active_users":  count,
-		"status":        "ok",
+		"collected_at": time.Now().UTC().Format(time.RFC3339),
+		"active_users": count,
+		"status":       "ok",
 	}
 
 	title := fmt.Sprintf("LDAP/AD Asset-Übersicht: %d aktive User-Accounts im Verzeichnis", count)
@@ -351,4 +351,3 @@ func (c *LDAPEvidenceCollector) addEvidence(ctx context.Context, orgID, controlI
 	}
 	return c.evidence.AddCollectorEvidence(ctx, orgID, controlID, "", ldapSource, title, data)
 }
-

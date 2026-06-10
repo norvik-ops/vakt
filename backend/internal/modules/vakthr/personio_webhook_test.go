@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -37,38 +36,6 @@ func (m *mockPersonioSecrets) GetDecryptedPersonioSecret(_ context.Context, orgI
 func (m *mockPersonioSecrets) RecordPersonioWebhook(_ context.Context, orgID string) error {
 	m.recordedOrgID = orgID
 	return nil
-}
-
-// mockHRSvc is a minimal Service stub for testing the webhook handler.
-type mockHRSvc struct {
-	triggeredOrgID    string
-	triggeredPersonioID int
-	triggerErr        error
-}
-
-func (m *mockHRSvc) TriggerPersonioOffboarding(_ context.Context, orgID string, personioEmployeeID int, _ time.Time) error {
-	m.triggeredOrgID = orgID
-	m.triggeredPersonioID = personioEmployeeID
-	return m.triggerErr
-}
-
-// buildWebhookPayload returns a signed Personio employee.departed webhook payload.
-func buildWebhookPayload(t *testing.T, secret string, employeeID int, date string) ([]byte, string) {
-	t.Helper()
-	payload := map[string]any{
-		"event": "employee.departed",
-		"data": map[string]any{
-			"employee_id": employeeID,
-			"date":        date,
-		},
-	}
-	body, err := json.Marshal(payload)
-	require.NoError(t, err)
-
-	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write(body)
-	sig := hex.EncodeToString(mac.Sum(nil))
-	return body, sig
 }
 
 func newWebhookEcho() *echo.Echo {
@@ -166,13 +133,6 @@ func signBody(secret string, body []byte) string {
 	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write(body)
 	return hex.EncodeToString(mac.Sum(nil))
-}
-
-// nopTrigger can be used when we want to test the webhook handler without a real Service.
-type nopTrigger struct{}
-
-func (nopTrigger) TriggerPersonioOffboarding(_ context.Context, _ string, _ int, _ time.Time) error {
-	return nil
 }
 
 // TestHandlePersonioWebhook_NoPIIInPayloadStruct ensures the personioWebhookPayload struct

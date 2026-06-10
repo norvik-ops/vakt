@@ -73,9 +73,9 @@ func hcloudTestMux(servers, firewalls, sshKeys, images []map[string]any) *http.S
 func TestHetznerCollector_CollectsServerInventory(t *testing.T) {
 	servers := []map[string]any{
 		{
-			"id":     1,
-			"name":   "web-01",
-			"status": "running",
+			"id":          1,
+			"name":        "web-01",
+			"status":      "running",
 			"server_type": map[string]any{"name": "cx21", "cores": 2, "memory": 4.0},
 			"datacenter": map[string]any{
 				"location": map[string]any{"name": "nbg1"},

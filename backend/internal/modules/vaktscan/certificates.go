@@ -61,7 +61,7 @@ func ScanTLSCertificate(domain string) (*CertInfo, error) {
 	}
 	dialer := &tls.Dialer{
 		Config: &tls.Config{
-			InsecureSkipVerify: true, //nolint:gosec // intentional — we collect metadata only, not trusting the chain
+			InsecureSkipVerify: true, // #nosec G402 -- certificate scanner must connect without chain validation to inspect cert metadata
 			ServerName:         strings.Split(domain, ":")[0],
 		},
 	}

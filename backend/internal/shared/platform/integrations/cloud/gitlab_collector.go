@@ -130,9 +130,9 @@ func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabC
 
 	// Inventory evidence
 	invDetails := map[string]any{
-		"collected_at":   time.Now().UTC().Format(time.RFC3339),
-		"project_count":  len(projects),
-		"gitlab_url":     cfg.GitLabURL,
+		"collected_at":  time.Now().UTC().Format(time.RFC3339),
+		"project_count": len(projects),
+		"gitlab_url":    cfg.GitLabURL,
 	}
 	if err := c.addEvidence(ctx, orgID, firstControlID(assetControls), "GitLab Projekt-Inventar", invDetails); err != nil {
 		log.Warn().Err(err).Msg("gitlab_collector: write inventory evidence")
@@ -169,9 +169,9 @@ func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabC
 	// SAST summary evidence
 	if len(sastProjects) > 0 {
 		sastDetails := map[string]any{
-			"collected_at":   time.Now().UTC().Format(time.RFC3339),
-			"sast_projects":  sastProjects,
-			"project_count":  len(sastProjects),
+			"collected_at":  time.Now().UTC().Format(time.RFC3339),
+			"sast_projects": sastProjects,
+			"project_count": len(sastProjects),
 		}
 		if err := c.addEvidence(ctx, orgID, firstControlID(sdlcControls),
 			fmt.Sprintf("GitLab SAST aktiv in %d Projekten", len(sastProjects)), sastDetails); err == nil {
@@ -181,11 +181,11 @@ func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabC
 
 	// Branch-protection summary evidence
 	summaryDetails := map[string]any{
-		"collected_at":              time.Now().UTC().Format(time.RFC3339),
-		"total_projects":            len(projects),
-		"unprotected_branch_count":  len(unprotectedBranches),
-		"no_approval_count":         len(noApprovalProjects),
-		"sast_active_count":         len(sastProjects),
+		"collected_at":             time.Now().UTC().Format(time.RFC3339),
+		"total_projects":           len(projects),
+		"unprotected_branch_count": len(unprotectedBranches),
+		"no_approval_count":        len(noApprovalProjects),
+		"sast_active_count":        len(sastProjects),
 	}
 	if err := c.addEvidence(ctx, orgID, firstControlID(sdlcControls),
 		"GitLab Branch-Protection & Approval-Übersicht", summaryDetails); err == nil {
@@ -283,10 +283,6 @@ func (c *GitLabCollector) collectMRApprovals(ctx context.Context, cfg GitLabConf
 
 // collectSASTPresence returns true if any recent successful job has "sast" in its name.
 func (c *GitLabCollector) collectSASTPresence(ctx context.Context, cfg GitLabConfig, p gitlabProject) (bool, error) {
-	branch := p.DefaultBranch
-	if branch == "" {
-		branch = "main"
-	}
 	apiURL := fmt.Sprintf("%s/api/v4/projects/%d/jobs?scope=success&per_page=100",
 		strings.TrimRight(cfg.GitLabURL, "/"), p.ID)
 
@@ -405,16 +401,16 @@ func (c *GitLabCollector) gitlabGetAll(ctx context.Context, startURL, token stri
 		}
 
 		if resp.StatusCode == http.StatusUnauthorized {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return nil, fmt.Errorf("gitlab API: unauthorized (401) — token ungültig")
 		}
 		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return nil, fmt.Errorf("gitlab API: status %d for %s", resp.StatusCode, nextURL)
 		}
 
 		body, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if err != nil {
 			return nil, err
 		}
@@ -429,13 +425,12 @@ func (c *GitLabCollector) gitlabGetAll(ctx context.Context, startURL, token stri
 		if nextURL == "" {
 			// Also check X-Next-Page header
 			if next := resp.Header.Get("X-Next-Page"); next != "" {
-				// Reconstruct URL with page param
+				// Reconstruct URL with page param, stripping any existing query string first.
 				base := startURL
 				if idx := strings.Index(base, "?"); idx != -1 {
 					base = base[:idx]
 				}
-				// parse query from startURL
-				u, parseErr := url.Parse(startURL)
+				u, parseErr := url.Parse(base)
 				if parseErr == nil {
 					q := u.Query()
 					q.Set("page", next)
@@ -494,4 +489,3 @@ func (c *GitLabCollector) CountUnprotectedBranches(ctx context.Context, cfg GitL
 	}
 	return len(projects), unprotectedCount, nil
 }
-

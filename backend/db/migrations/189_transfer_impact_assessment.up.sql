@@ -38,7 +38,7 @@ ON CONFLICT DO NOTHING;
 CREATE TABLE IF NOT EXISTS po_data_transfers (
     id                          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id                      UUID        NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    processing_activity_id      UUID        REFERENCES po_processing_activities(id) ON DELETE SET NULL,
+    processing_activity_id      UUID        REFERENCES po_vvt_entries(id) ON DELETE SET NULL,
     recipient_name              TEXT        NOT NULL,
     recipient_country           TEXT        NOT NULL,
     recipient_country_name      TEXT        NOT NULL,

@@ -304,7 +304,7 @@ export default function RiskDetailPage() {
                     <Input
                       type="number" min={1} max={5} placeholder="–"
                       value={residualForm[key]}
-                      onChange={(e) => setResidualForm((f) => ({ ...f, [key]: e.target.value }))}
+                      onChange={(e) => { setResidualForm((f) => ({ ...f, [key]: e.target.value })); }}
                     />
                   </div>
                 ))}
@@ -327,7 +327,7 @@ export default function RiskDetailPage() {
               </Button>
 
               {/* Risk acceptance section (only when treatment_status = accepted) */}
-              {risk.treatment_status === 'accepted' && (
+              {risk.status === 'accepted' && (
                 <div className="border-t pt-4 space-y-2">
                   <p className="text-xs font-medium">Formale Risikoakzeptanz</p>
                   {risk.risk_accepted_at ? (
@@ -340,7 +340,7 @@ export default function RiskDetailPage() {
                   ) : (
                     <>
                       {!showAcceptDialog ? (
-                        <Button size="sm" variant="outline" onClick={() => setShowAcceptDialog(true)}>
+                        <Button size="sm" variant="outline" onClick={() => { setShowAcceptDialog(true); }}>
                           Risiko formal akzeptieren
                         </Button>
                       ) : (
@@ -350,7 +350,7 @@ export default function RiskDetailPage() {
                             rows={3}
                             placeholder="Begründung für die Risikoakzeptanz…"
                             value={justification}
-                            onChange={(e) => setJustification(e.target.value)}
+                            onChange={(e) => { setJustification(e.target.value); }}
                           />
                           <div className="flex gap-2">
                             <Button
@@ -365,7 +365,7 @@ export default function RiskDetailPage() {
                             >
                               {acceptRisk.isPending ? 'Akzeptieren …' : 'Bestätigen'}
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => setShowAcceptDialog(false)}>
+                            <Button size="sm" variant="ghost" onClick={() => { setShowAcceptDialog(false); }}>
                               Abbrechen
                             </Button>
                           </div>

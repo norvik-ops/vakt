@@ -28,8 +28,8 @@ type PrometheusCollector struct {
 // NewPrometheusCollector creates a new PrometheusCollector.
 func NewPrometheusCollector(db *pgxpool.Pool, evidence EvidenceWriter) *PrometheusCollector {
 	return &PrometheusCollector{
-		db:       db,
-		evidence: evidence,
+		db:         db,
+		evidence:   evidence,
 		httpClient: &http.Client{Timeout: 30 * time.Second},
 	}
 }
@@ -162,9 +162,9 @@ func (c *PrometheusCollector) collectUptime(ctx context.Context, orgID string, c
 	}
 
 	details := map[string]any{
-		"collected_at":  time.Now().UTC().Format(time.RFC3339),
-		"uptime_24h":    fmt.Sprintf("%.2f%%", uptime),
-		"status":        status,
+		"collected_at": time.Now().UTC().Format(time.RFC3339),
+		"uptime_24h":   fmt.Sprintf("%.2f%%", uptime),
+		"status":       status,
 	}
 
 	if status == "warning" {

@@ -34,10 +34,10 @@ func TestIONOSCollector_CollectsServerInventory(t *testing.T) {
 				{
 					"id": "srv-1",
 					"properties": map[string]any{
-						"name":   "prod-web",
+						"name":    "prod-web",
 						"vmState": "RUNNING",
-						"cores":  4,
-						"ram":    8192,
+						"cores":   4,
+						"ram":     8192,
 					},
 				},
 			},

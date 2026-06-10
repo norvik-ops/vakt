@@ -97,11 +97,11 @@ function StageForm({
       { stage, input: form },
       {
         onSuccess: () => {
-          toast({ title: 'Stufe eingereicht', description: `${STAGE_LABELS[stage]} wurde gespeichert.` })
+          toast(`${STAGE_LABELS[stage]} wurde gespeichert.`)
           onSuccess()
         },
         onError: (err) => {
-          toast({ title: 'Fehler', description: err.message, variant: 'destructive' })
+          toast(err.message, 'error')
         },
       },
     )
@@ -209,10 +209,10 @@ export function NIS2StagePanel({ incidentId }: { incidentId: string }) {
       },
       {
         onSuccess: () => {
-          toast({ title: 'NIS2-Meldepflicht bewertet' })
+          toast('NIS2-Meldepflicht bewertet')
         },
         onError: (err) => {
-          toast({ title: 'Fehler', description: err.message, variant: 'destructive' })
+          toast(err.message, 'error')
         },
       },
     )

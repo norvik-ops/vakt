@@ -75,7 +75,7 @@ export function useUpdateManagementReviewOutputs(id: string) {
 
 export function useApproveManagementReview(id: string) {
   const queryClient = useQueryClient()
-  return useMutation<ManagementReview, Error, void>({
+  return useMutation<ManagementReview>({
     mutationFn: () =>
       apiFetch<ManagementReview>(`/vaktcomply/management-reviews/${id}/approve`, {
         method: 'POST',

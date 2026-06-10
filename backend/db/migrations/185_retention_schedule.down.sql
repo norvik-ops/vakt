@@ -1,7 +1,7 @@
 DROP TABLE IF EXISTS po_deletion_reminders;
 DROP TABLE IF EXISTS po_retention_templates;
 
-ALTER TABLE po_processing_activities
+ALTER TABLE po_vvt_entries
     DROP COLUMN IF EXISTS retention_period_months,
     DROP COLUMN IF EXISTS retention_type,
     DROP COLUMN IF EXISTS retention_event_description,

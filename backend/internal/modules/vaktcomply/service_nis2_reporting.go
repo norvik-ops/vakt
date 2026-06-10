@@ -14,7 +14,6 @@ import (
 	"github.com/matharnica/vakt/internal/shared/notify"
 )
 
-
 // NIS2ReportabilityCheck holds the three NIS2 Art.23 meldepflicht criteria.
 type NIS2ReportabilityCheck struct {
 	CausesSignificantDisruption bool `json:"causes_significant_disruption"`
@@ -29,15 +28,15 @@ func (c NIS2ReportabilityCheck) IsReportable() bool {
 
 // NIS2ReportInput holds form data for a single reporting stage.
 type NIS2ReportInput struct {
-	AffectedServices       string  `json:"affected_services"`
-	InitialAssessment      string  `json:"initial_assessment"`
-	RootCause              string  `json:"root_cause"`
-	AffectedUsersEstimate  *int    `json:"affected_users_estimate,omitempty"`
-	MeasuresTaken          string  `json:"measures_taken"`
-	EstimatedRecovery      *string `json:"estimated_recovery,omitempty"`
-	FullRootCauseAnalysis  string  `json:"full_root_cause_analysis"`
-	PermanentMeasures      string  `json:"permanent_measures"`
-	EffectivenessEvidence  string  `json:"effectiveness_evidence"`
+	AffectedServices      string  `json:"affected_services"`
+	InitialAssessment     string  `json:"initial_assessment"`
+	RootCause             string  `json:"root_cause"`
+	AffectedUsersEstimate *int    `json:"affected_users_estimate,omitempty"`
+	MeasuresTaken         string  `json:"measures_taken"`
+	EstimatedRecovery     *string `json:"estimated_recovery,omitempty"`
+	FullRootCauseAnalysis string  `json:"full_root_cause_analysis"`
+	PermanentMeasures     string  `json:"permanent_measures"`
+	EffectivenessEvidence string  `json:"effectiveness_evidence"`
 }
 
 // NIS2ReportStatus is returned by GET /incidents/{id}/nis2-status.

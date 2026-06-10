@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Globe, ShieldCheck, ShieldAlert, AlertTriangle } from 'lucide-react'
+import { Plus, Globe } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
@@ -167,7 +167,7 @@ export default function TransfersPage() {
           <SkeletonTable rows={4} cols={3} />
         ) : !transfers || transfers.length === 0 ? (
           <EmptyState
-            icon={<Globe className="w-8 h-8 text-secondary" />}
+            icon={Globe}
             title="Keine Übermittlungen dokumentiert"
             description="Füge Drittlandübermittlungen hinzu, um TIA-Pflichten nach Art. 46 DSGVO zu verwalten."
           />

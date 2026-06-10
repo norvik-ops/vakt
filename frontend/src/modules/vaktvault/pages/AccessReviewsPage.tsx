@@ -8,7 +8,7 @@ import { apiFetch } from '../../../api/client'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
 import { PageHeader } from '../../../shared/components/PageHeader'
-import type { AccessReview, AccessReviewDetail, ReviewDecision } from '../types'
+import type { AccessReview, AccessReviewDetail, AccessReviewItem, ReviewDecision } from '../types'
 
 function ReviewRow({
   review,
@@ -35,7 +35,7 @@ function ReviewRow({
           {isCompleted ? 'Abgeschlossen' : 'Offen'}
         </Badge>
         {!isCompleted && (
-          <Button size="sm" variant="outline" onClick={() => onOpen(review)}>
+          <Button size="sm" variant="outline" onClick={() => { onOpen(review); }}>
             <Eye className="w-3 h-3 mr-1" /> Review starten
           </Button>
         )}
@@ -72,7 +72,7 @@ export default function AccessReviewsPage() {
         body: JSON.stringify({ decisions: decs }),
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['vault', 'access-reviews'] })
+      void qc.invalidateQueries({ queryKey: ['vault', 'access-reviews'] })
       setSelectedReview(null)
       setDecisions({})
     },
@@ -80,7 +80,7 @@ export default function AccessReviewsPage() {
 
   const handleComplete = () => {
     if (!selectedReview || !reviewDetail) return
-    const decs: ReviewDecision[] = reviewDetail.items.map(item => ({
+    const decs: ReviewDecision[] = reviewDetail.items.map((item: AccessReviewItem) => ({
       env_id: item.env_id,
       secret_key: item.secret_key,
       action: decisions[`${item.env_id}:${item.secret_key}`] ?? 'keep',
@@ -93,8 +93,8 @@ export default function AccessReviewsPage() {
       <PageHeader
         title="Quartalsweise Zugriffsreviews"
         description="Überprüfen Sie vierteljährlich, welche Secrets noch benötigt werden und widerrufen Sie veraltete Zugänge."
-        action={
-          <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
+        actions={
+          <Button onClick={() => { createMutation.mutate(); }} disabled={createMutation.isPending}>
             <Plus className="w-4 h-4 mr-2" />
             {createMutation.isPending ? 'Erstellen…' : 'Review starten'}
           </Button>
@@ -105,7 +105,7 @@ export default function AccessReviewsPage() {
 
       {!isLoading && !reviews?.length && (
         <EmptyState
-          icon={<ShieldCheck className="w-8 h-8" />}
+          icon={ShieldCheck}
           title="Noch keine Access-Reviews"
           description="Starten Sie Ihren ersten quartalsweisen Zugriffsreview, um veraltete Secrets zu identifizieren."
         />
@@ -151,14 +151,14 @@ export default function AccessReviewsPage() {
                       <Button
                         size="sm"
                         variant={decision === 'keep' ? 'default' : 'outline'}
-                        onClick={() => setDecisions(d => ({ ...d, [key]: 'keep' }))}
+                        onClick={() => { setDecisions(d => ({ ...d, [key]: 'keep' })); }}
                       >
                         Behalten
                       </Button>
                       <Button
                         size="sm"
                         variant={decision === 'revoke' ? 'destructive' : 'outline'}
-                        onClick={() => setDecisions(d => ({ ...d, [key]: 'revoke' }))}
+                        onClick={() => { setDecisions(d => ({ ...d, [key]: 'revoke' })); }}
                       >
                         Widerrufen
                       </Button>

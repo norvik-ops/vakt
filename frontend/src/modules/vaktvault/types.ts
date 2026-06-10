@@ -103,7 +103,11 @@ export interface AccessLogPage {
 }
 
 // S70-5: Vault Access Review (quarterly)
-export type ReviewDecision = 'keep' | 'revoke' | 'pending'
+export interface ReviewDecision {
+  env_id: string
+  secret_key: string
+  action: 'keep' | 'revoke'
+}
 
 export interface AccessReview {
   id: string
@@ -118,6 +122,15 @@ export interface AccessReview {
   created_at: string
 }
 
+export interface AccessReviewItem {
+  secret_key: string
+  env_id: string
+  project_name?: string
+  last_accessed_at?: string
+  is_stale: boolean
+}
+
 export interface AccessReviewDetail extends AccessReview {
   notes?: string
+  items: AccessReviewItem[]
 }

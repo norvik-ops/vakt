@@ -108,8 +108,8 @@ export default function PrivacyDesignPage() {
         body: JSON.stringify(input),
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['vaktprivacy', 'privacy-design-summary'] })
-      qc.invalidateQueries({ queryKey: ['vaktprivacy', 'privacy-design', selectedActivity?.id] })
+      void qc.invalidateQueries({ queryKey: ['vaktprivacy', 'privacy-design-summary'] })
+      void qc.invalidateQueries({ queryKey: ['vaktprivacy', 'privacy-design', selectedActivity?.id] })
       setSelectedActivity(null)
     },
   })
@@ -177,7 +177,7 @@ export default function PrivacyDesignPage() {
 
       {!isLoading && !vvtEntries?.length && (
         <EmptyState
-          icon={<ShieldCheck className="w-8 h-8" />}
+          icon={ShieldCheck}
           title="Keine Verarbeitungstätigkeiten"
           description="Legen Sie zuerst Verarbeitungstätigkeiten in der VVT an."
         />
@@ -207,7 +207,7 @@ export default function PrivacyDesignPage() {
               <Textarea
                 rows={3}
                 value={form.design_measures}
-                onChange={e => setForm(f => ({ ...f, design_measures: e.target.value }))}
+                onChange={e => { setForm(f => ({ ...f, design_measures: e.target.value })); }}
                 placeholder="z.B. Datenverschlüsselung, Pseudonymisierung, Datensparsamkeit bei Systemdesign…"
               />
             </div>
@@ -222,7 +222,7 @@ export default function PrivacyDesignPage() {
                   <input
                     type="checkbox"
                     checked={form[field] as boolean}
-                    onChange={e => setForm(f => ({ ...f, [field]: e.target.checked }))}
+                    onChange={e => { setForm(f => ({ ...f, [field]: e.target.checked })); }}
                   />
                   {label}
                 </label>
@@ -241,7 +241,7 @@ export default function PrivacyDesignPage() {
                   <input
                     type="checkbox"
                     checked={form[field] as boolean}
-                    onChange={e => setForm(f => ({ ...f, [field]: e.target.checked }))}
+                    onChange={e => { setForm(f => ({ ...f, [field]: e.target.checked })); }}
                   />
                   {label}
                 </label>
@@ -253,7 +253,7 @@ export default function PrivacyDesignPage() {
               <Textarea
                 rows={2}
                 value={form.default_settings_note}
-                onChange={e => setForm(f => ({ ...f, default_settings_note: e.target.value }))}
+                onChange={e => { setForm(f => ({ ...f, default_settings_note: e.target.value })); }}
                 placeholder="z.B. Opt-in statt Opt-out, minimale Profilsichtbarkeit…"
               />
             </div>
@@ -262,7 +262,7 @@ export default function PrivacyDesignPage() {
               <Label>Gesamtbewertung</Label>
               <Select
                 value={form.assessment_result}
-                onValueChange={v => setForm(f => ({ ...f, assessment_result: v }))}
+                onValueChange={v => { setForm(f => ({ ...f, assessment_result: v })); }}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -276,7 +276,7 @@ export default function PrivacyDesignPage() {
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setSelectedActivity(null)}>Abbrechen</Button>
+              <Button type="button" variant="outline" onClick={() => { setSelectedActivity(null); }}>Abbrechen</Button>
               <Button type="submit" disabled={upsertMutation.isPending}>
                 {upsertMutation.isPending ? 'Speichern…' : 'Speichern'}
               </Button>
@@ -338,7 +338,7 @@ function ActivityRow({ activity, onEdit }: { activity: VVTEntry; onEdit: (a: VVT
         ) : (
           <Badge variant="outline" className="text-xs">Keine Bewertung</Badge>
         )}
-        <Button size="sm" variant="ghost" onClick={() => onEdit(activity)}>
+        <Button size="sm" variant="ghost" onClick={() => { onEdit(activity); }}>
           <PenSquare className="w-3 h-3" />
         </Button>
       </div>

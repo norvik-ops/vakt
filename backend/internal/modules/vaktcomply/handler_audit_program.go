@@ -48,22 +48,22 @@ type AuditProgramAudit struct {
 
 // AuditFinding is a finding recorded during an audit.
 type AuditFinding struct {
-	ID                 string  `json:"id"`
-	OrgID              string  `json:"org_id"`
-	AuditID            string  `json:"audit_id"`
-	Title              string  `json:"title"`
-	Description        string  `json:"description"`
-	Severity           string  `json:"severity"`
-	AffectedControlID  *string `json:"affected_control_id,omitempty"`
-	CAPAid             *string `json:"capa_id,omitempty"`
-	CreatedAt          string  `json:"created_at"`
+	ID                string  `json:"id"`
+	OrgID             string  `json:"org_id"`
+	AuditID           string  `json:"audit_id"`
+	Title             string  `json:"title"`
+	Description       string  `json:"description"`
+	Severity          string  `json:"severity"`
+	AffectedControlID *string `json:"affected_control_id,omitempty"`
+	CAPAid            *string `json:"capa_id,omitempty"`
+	CreatedAt         string  `json:"created_at"`
 }
 
 // AuditProgramSummary holds aggregate stats for the audit program dashboard.
 type AuditProgramSummary struct {
-	AuditsPlannedThisYear int `json:"audits_planned_this_year"`
-	AuditsCompleted       int `json:"audits_completed"`
-	OpenFindings          int `json:"open_findings"`
+	AuditsPlannedThisYear  int `json:"audits_planned_this_year"`
+	AuditsCompleted        int `json:"audits_completed"`
+	OpenFindings           int `json:"open_findings"`
 	OverdueCAPAsFromAudits int `json:"overdue_capas_from_audits"`
 }
 

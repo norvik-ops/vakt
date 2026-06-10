@@ -15,13 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testGitHubClient(srv *httptest.Server) *Client {
-	return &Client{
-		token:      "test-token",
-		httpClient: &http.Client{Timeout: 5 * time.Second},
-	}
-}
-
 // makeGHASServer returns a test server that handles dependabot/secret/code scanning
 // endpoints using paths relative to a test-overridden base. The Client.doGitHubRequest
 // uses full URLs, so we set up a redirect mux.
@@ -51,7 +44,7 @@ func makeGHASServer(
 // rewriteURLClient wraps an HTTP client to rewrite github.com URLs to the test server.
 func rewriteURLClient(srv *httptest.Server) *http.Client {
 	return &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout:   5 * time.Second,
 		Transport: &rewriteTransport{base: srv.URL, inner: http.DefaultTransport},
 	}
 }
@@ -151,9 +144,9 @@ func TestListCodeScanningAlerts_FiltersLowSeverity(t *testing.T) {
 			"number": 10,
 			"state":  "open",
 			"rule": map[string]any{
-				"id":                     "js/sql-injection",
+				"id":                      "js/sql-injection",
 				"security_severity_level": "critical",
-				"severity":               "error",
+				"severity":                "error",
 			},
 			"tool": map[string]any{"name": "CodeQL"},
 		},
@@ -161,9 +154,9 @@ func TestListCodeScanningAlerts_FiltersLowSeverity(t *testing.T) {
 			"number": 11,
 			"state":  "open",
 			"rule": map[string]any{
-				"id":                     "js/xss",
+				"id":                      "js/xss",
 				"security_severity_level": "low", // should be filtered out
-				"severity":               "warning",
+				"severity":                "warning",
 			},
 			"tool": map[string]any{"name": "CodeQL"},
 		},

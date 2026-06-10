@@ -36,9 +36,9 @@ func buildKeycloakMux(users []any, passwordPolicy string, ssoMaxLifespan int) *h
 		}
 		w.Header().Set("Content-Type", "application/json")
 		payload := map[string]any{
-			"realm":                  "company",
-			"passwordPolicy":         passwordPolicy,
-			"ssoSessionMaxLifespan":  ssoMaxLifespan,
+			"realm":                 "company",
+			"passwordPolicy":        passwordPolicy,
+			"ssoSessionMaxLifespan": ssoMaxLifespan,
 		}
 		json.NewEncoder(w).Encode(payload) //nolint:errcheck
 	})
@@ -53,14 +53,14 @@ func buildKeycloakMux(users []any, passwordPolicy string, ssoMaxLifespan int) *h
 	mux.HandleFunc("/admin/realms/company/users/", func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(r.URL.Path, "/")
 		last := parts[len(parts)-1]
-		if last == "credentials" {
+		switch last {
+		case "credentials":
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, `[]`)
-		} else if last == "realm" {
-			// role-mappings/realm
+		case "realm":
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, `[]`)
-		} else {
+		default:
 			http.NotFound(w, r)
 		}
 	})

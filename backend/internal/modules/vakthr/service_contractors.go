@@ -18,22 +18,22 @@ const TaskContractorExpiryCheck = "hr:contractor_expiry_check"
 
 // Contractor represents an external contractor or freelancer.
 type Contractor struct {
-	ID                    string     `json:"id"`
-	OrgID                 string     `json:"org_id"`
-	FirstName             string     `json:"first_name"`
-	LastName              string     `json:"last_name"`
-	Email                 string     `json:"email,omitempty"`
-	Company               string     `json:"company,omitempty"`
-	ContractStart         string     `json:"contract_start"` // YYYY-MM-DD
-	ContractEnd           string     `json:"contract_end"`   // YYYY-MM-DD
-	AccessScope           []string   `json:"access_scope"`
-	NDASigned             bool       `json:"nda_signed"`
-	AVVSigned             bool       `json:"avv_signed"`
-	Status                string     `json:"status"` // active | expiring_soon | offboarding | terminated
-	ChecklistRunID        *string    `json:"checklist_run_id,omitempty"`
+	ID                     string     `json:"id"`
+	OrgID                  string     `json:"org_id"`
+	FirstName              string     `json:"first_name"`
+	LastName               string     `json:"last_name"`
+	Email                  string     `json:"email,omitempty"`
+	Company                string     `json:"company,omitempty"`
+	ContractStart          string     `json:"contract_start"` // YYYY-MM-DD
+	ContractEnd            string     `json:"contract_end"`   // YYYY-MM-DD
+	AccessScope            []string   `json:"access_scope"`
+	NDASigned              bool       `json:"nda_signed"`
+	AVVSigned              bool       `json:"avv_signed"`
+	Status                 string     `json:"status"` // active | expiring_soon | offboarding | terminated
+	ChecklistRunID         *string    `json:"checklist_run_id,omitempty"`
 	OffboardingCompletedAt *time.Time `json:"offboarding_completed_at,omitempty"`
-	CreatedAt             time.Time  `json:"created_at"`
-	UpdatedAt             time.Time  `json:"updated_at"`
+	CreatedAt              time.Time  `json:"created_at"`
+	UpdatedAt              time.Time  `json:"updated_at"`
 }
 
 // CreateContractorInput is the request body for POST /vakthr/contractors.

@@ -89,11 +89,11 @@ function RotateDialog({
       { rotated_at: rotatedAt, rotation_interval_days: keyItem.rotation_interval_days ?? undefined, notes },
       {
         onSuccess: () => {
-          toast({ title: 'Schlüssel rotiert', description: `${keyItem.name} wurde erfolgreich rotiert.` })
+          toast(`${keyItem.name} wurde erfolgreich rotiert.`)
           onClose()
         },
         onError: (err) => {
-          toast({ title: 'Fehler', description: err.message, variant: 'destructive' })
+          toast(err.message, 'error')
         },
       },
     )
@@ -142,12 +142,12 @@ export default function CryptoKeysPage() {
   function handleCreate() {
     createKey.mutate(form, {
       onSuccess: () => {
-        toast({ title: 'Schlüssel angelegt' })
+        toast('Schlüssel angelegt')
         setCreateOpen(false)
         setForm(emptyForm())
       },
       onError: (err) => {
-        toast({ title: 'Fehler', description: err.message, variant: 'destructive' })
+        toast(err.message, 'error')
       },
     })
   }
@@ -155,8 +155,8 @@ export default function CryptoKeysPage() {
   function handleDelete(k: CryptoKey) {
     if (!confirm(`Schlüssel "${k.name}" wirklich löschen?`)) return
     deleteKey.mutate(k.id, {
-      onSuccess: () => { toast({ title: 'Schlüssel gelöscht' }) },
-      onError: (err) => { toast({ title: 'Fehler', description: err.message, variant: 'destructive' }) },
+      onSuccess: () => { toast('Schlüssel gelöscht') },
+      onError: (err) => { toast(err.message, 'error') },
     })
   }
 
@@ -238,7 +238,7 @@ export default function CryptoKeysPage() {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-1.5">
                         {k.is_weak_algorithm && (
-                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" title="Schwacher Algorithmus" />
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" aria-label="Schwacher Algorithmus" />
                         )}
                         {k.name}
                       </div>

@@ -100,14 +100,14 @@ func (c *HetznerCollector) collectServers(ctx context.Context, client *hcloud.Cl
 
 	summaries := make([]map[string]any, 0, len(servers))
 	for _, s := range servers {
-		if location != "" && s.Datacenter.Location.Name != location {
+		if location != "" && s.Location.Name != location {
 			continue
 		}
 		entry := map[string]any{
 			"name":     s.Name,
 			"type":     s.ServerType.Name,
 			"status":   string(s.Status),
-			"location": s.Datacenter.Location.Name,
+			"location": s.Location.Name,
 		}
 		if s.Image != nil {
 			entry["os"] = s.Image.Name
@@ -116,9 +116,9 @@ func (c *HetznerCollector) collectServers(ctx context.Context, client *hcloud.Cl
 	}
 
 	details := map[string]any{
-		"collected_at":  time.Now().UTC().Format(time.RFC3339),
-		"server_count":  len(summaries),
-		"servers":       summaries,
+		"collected_at": time.Now().UTC().Format(time.RFC3339),
+		"server_count": len(summaries),
+		"servers":      summaries,
 	}
 
 	controlID := firstControlID(controls)
@@ -155,9 +155,9 @@ func (c *HetznerCollector) collectFirewalls(ctx context.Context, client *hcloud.
 	}
 
 	details := map[string]any{
-		"collected_at":    time.Now().UTC().Format(time.RFC3339),
-		"firewall_count":  len(firewalls),
-		"firewalls":       summaries,
+		"collected_at":   time.Now().UTC().Format(time.RFC3339),
+		"firewall_count": len(firewalls),
+		"firewalls":      summaries,
 	}
 
 	controlID := firstControlID(controls)
@@ -222,9 +222,9 @@ func (c *HetznerCollector) collectSnapshots(ctx context.Context, client *hcloud.
 	}
 
 	details := map[string]any{
-		"collected_at":         time.Now().UTC().Format(time.RFC3339),
-		"server_count":         len(servers),
-		"snapshot_count":       len(snapshots),
+		"collected_at":             time.Now().UTC().Format(time.RFC3339),
+		"server_count":             len(servers),
+		"snapshot_count":           len(snapshots),
 		"servers_without_snapshot": withoutBackup,
 	}
 

@@ -26,7 +26,7 @@ const TRIGGER_LABELS: Record<string, string> = {
 export default function EnrollmentRulesPage() {
   const { data: rules, isLoading } = useEnrollmentRules()
   const { data: campaignsData } = useCampaigns()
-  const campaigns = Array.isArray(campaignsData) ? campaignsData : (campaignsData as { data?: unknown[] })?.data ?? []
+  const campaigns = Array.isArray(campaignsData) ? campaignsData : (campaignsData as unknown as { data?: unknown[] })?.data ?? []
   const createRule = useCreateEnrollmentRule()
   const updateRule = useUpdateEnrollmentRule()
   const deleteRule = useDeleteEnrollmentRule()

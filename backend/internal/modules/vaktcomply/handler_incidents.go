@@ -252,7 +252,7 @@ func (h *Handler) NIS2AssessReportability(c echo.Context) error {
 		return errResp(c, http.StatusInternalServerError, "failed to assess reportability", "CK_ASSESS_FAILED")
 	}
 	return c.JSON(http.StatusOK, map[string]any{
-		"is_reportable": in.NIS2ReportabilityCheck.IsReportable(),
+		"is_reportable": in.IsReportable(),
 	})
 }
 

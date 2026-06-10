@@ -104,7 +104,7 @@ export default function ISMSScopePage() {
               rows={6}
               placeholder="Beschreiben Sie den Geltungsbereich des ISMS (Organisationseinheiten, Standorte, Systeme, Prozesse) …"
               value={scopeDefinition}
-              onChange={(e) => setScopeDefinition(e.target.value)}
+              onChange={(e) => { setScopeDefinition(e.target.value); }}
             />
           </div>
 
@@ -124,20 +124,20 @@ export default function ISMSScopePage() {
                 <Input
                   placeholder="Ausgeschlossener Bereich"
                   value={ex.item}
-                  onChange={(e) => updateExclusion(idx, 'item', e.target.value)}
+                  onChange={(e) => { updateExclusion(idx, 'item', e.target.value); }}
                   className="flex-1"
                 />
                 <Input
                   placeholder="Begründung"
                   value={ex.justification}
-                  onChange={(e) => updateExclusion(idx, 'justification', e.target.value)}
+                  onChange={(e) => { updateExclusion(idx, 'justification', e.target.value); }}
                   className="flex-1"
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  onClick={() => removeExclusion(idx)}
+                  onClick={() => { removeExclusion(idx); }}
                   className="text-red-400 hover:text-red-300"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -153,7 +153,7 @@ export default function ISMSScopePage() {
               rows={3}
               placeholder="Beschreiben Sie wesentliche ausgelagerte Dienste oder Prozesse …"
               value={outsourcing}
-              onChange={(e) => setOutsourcing(e.target.value)}
+              onChange={(e) => { setOutsourcing(e.target.value); }}
             />
           </div>
 
@@ -164,7 +164,7 @@ export default function ISMSScopePage() {
               rows={2}
               placeholder="Was hat sich gegenüber der letzten Version geändert?"
               value={changeNote}
-              onChange={(e) => setChangeNote(e.target.value)}
+              onChange={(e) => { setChangeNote(e.target.value); }}
             />
           </div>
 
@@ -198,7 +198,7 @@ export default function ISMSScopePage() {
         <Card>
           <CardHeader
             className="cursor-pointer select-none"
-            onClick={() => setHistoryOpen((o) => !o)}
+            onClick={() => { setHistoryOpen((o) => !o); }}
           >
             <CardTitle className="flex items-center justify-between text-base">
               <span>Versionsverlauf ({versions.length})</span>

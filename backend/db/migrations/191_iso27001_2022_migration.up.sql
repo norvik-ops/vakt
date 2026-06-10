@@ -120,8 +120,7 @@ BEGIN
     UPDATE ck_soa_entries SET control_ref = 'A.8.28' WHERE control_ref = 'A2022-8.28';
 
     -- Update framework control mappings that reference old IDs
-    UPDATE ck_framework_control_mappings SET target_control = 'A.5.30' WHERE target_control = 'A2022-5.30';
-    UPDATE ck_framework_control_mappings SET target_control = 'A.8.6'  WHERE target_control = 'A.8.6';
-    UPDATE ck_framework_control_mappings SET source_control = 'A.5.30' WHERE source_control = 'A2022-5.30';
+    UPDATE ck_framework_control_mappings SET target_control_code = 'A.5.30' WHERE target_control_code = 'A2022-5.30';
+    UPDATE ck_framework_control_mappings SET source_control_code = 'A.5.30' WHERE source_control_code = 'A2022-5.30';
 
 END $$;

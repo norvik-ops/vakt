@@ -15,23 +15,23 @@ import (
 
 // RetentionInfo holds the retention/deletion fields for a processing activity.
 type RetentionInfo struct {
-	ProcessingActivityID     string  `json:"processing_activity_id"`
-	RetentionPeriodMonths    *int    `json:"retention_period_months,omitempty"`
-	RetentionType            string  `json:"retention_type,omitempty"`
-	RetentionEventDescription string  `json:"retention_event_description,omitempty"`
-	RetentionMaxPeriodMonths *int    `json:"retention_max_period_months,omitempty"`
-	DeletionMethod           string  `json:"deletion_method,omitempty"`
-	RetentionLegalBasis      string  `json:"retention_legal_basis,omitempty"`
+	ProcessingActivityID      string `json:"processing_activity_id"`
+	RetentionPeriodMonths     *int   `json:"retention_period_months,omitempty"`
+	RetentionType             string `json:"retention_type,omitempty"`
+	RetentionEventDescription string `json:"retention_event_description,omitempty"`
+	RetentionMaxPeriodMonths  *int   `json:"retention_max_period_months,omitempty"`
+	DeletionMethod            string `json:"deletion_method,omitempty"`
+	RetentionLegalBasis       string `json:"retention_legal_basis,omitempty"`
 }
 
 // UpdateRetentionInfoInput holds validated input for updating retention fields.
 type UpdateRetentionInfoInput struct {
-	RetentionPeriodMonths    *int    `json:"retention_period_months,omitempty"`
-	RetentionType            string  `json:"retention_type,omitempty"        validate:"omitempty,oneof=fixed event_based until_objection permanent"`
+	RetentionPeriodMonths     *int   `json:"retention_period_months,omitempty"`
+	RetentionType             string `json:"retention_type,omitempty"        validate:"omitempty,oneof=fixed event_based until_objection permanent"`
 	RetentionEventDescription string `json:"retention_event_description,omitempty" validate:"max=2000"`
-	RetentionMaxPeriodMonths *int    `json:"retention_max_period_months,omitempty"`
-	DeletionMethod           string  `json:"deletion_method,omitempty"       validate:"omitempty,oneof=secure_deletion anonymization physical_destroy archival other"`
-	RetentionLegalBasis      string  `json:"retention_legal_basis,omitempty" validate:"max=500"`
+	RetentionMaxPeriodMonths  *int   `json:"retention_max_period_months,omitempty"`
+	DeletionMethod            string `json:"deletion_method,omitempty"       validate:"omitempty,oneof=secure_deletion anonymization physical_destroy archival other"`
+	RetentionLegalBasis       string `json:"retention_legal_basis,omitempty" validate:"max=500"`
 }
 
 // RetentionSummary holds aggregate statistics for the retention dashboard.
@@ -44,25 +44,25 @@ type RetentionSummary struct {
 
 // DeletionReminder is a concrete deletion task for a data category.
 type DeletionReminder struct {
-	ID                    string  `json:"id"`
-	OrgID                 string  `json:"org_id"`
-	ProcessingActivityID  *string `json:"processing_activity_id,omitempty"`
-	Description           string  `json:"description"`
-	DataCategory          string  `json:"data_category,omitempty"`
-	DeletionDueDate       string  `json:"deletion_due_date"`
-	ReminderSentAt        *string `json:"reminder_sent_at,omitempty"`
-	CompletedAt           *string `json:"completed_at,omitempty"`
-	CompletedBy           *string `json:"completed_by,omitempty"`
-	CompletionNotes       string  `json:"completion_notes,omitempty"`
-	CreatedAt             string  `json:"created_at"`
+	ID                   string  `json:"id"`
+	OrgID                string  `json:"org_id"`
+	ProcessingActivityID *string `json:"processing_activity_id,omitempty"`
+	Description          string  `json:"description"`
+	DataCategory         string  `json:"data_category,omitempty"`
+	DeletionDueDate      string  `json:"deletion_due_date"`
+	ReminderSentAt       *string `json:"reminder_sent_at,omitempty"`
+	CompletedAt          *string `json:"completed_at,omitempty"`
+	CompletedBy          *string `json:"completed_by,omitempty"`
+	CompletionNotes      string  `json:"completion_notes,omitempty"`
+	CreatedAt            string  `json:"created_at"`
 }
 
 // CreateDeletionReminderInput holds validated input for a new deletion reminder.
 type CreateDeletionReminderInput struct {
 	ProcessingActivityID *string `json:"processing_activity_id,omitempty"`
-	Description         string  `json:"description"         validate:"required,max=1000"`
-	DataCategory        string  `json:"data_category,omitempty" validate:"max=200"`
-	DeletionDueDate     string  `json:"deletion_due_date"   validate:"required"`
+	Description          string  `json:"description"         validate:"required,max=1000"`
+	DataCategory         string  `json:"data_category,omitempty" validate:"max=200"`
+	DeletionDueDate      string  `json:"deletion_due_date"   validate:"required"`
 }
 
 // CompleteDeletionReminderInput holds notes for marking a reminder as done.

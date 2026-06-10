@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Download, CheckCircle2, XCircle, RefreshCw, ShieldCheck, AlertTriangle, Pencil } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
-import { Badge } from '../../../components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
@@ -25,16 +24,6 @@ interface SoADedicatedEntry {
   implementation_status: string
   owner: string
   evidence_note: string
-}
-
-interface SoAVersion {
-  id: string
-  version: number
-  status: string
-  created_by: string
-  approved_by: string
-  approved_at: string
-  created_at: string
 }
 
 interface SoADedicatedSummary {

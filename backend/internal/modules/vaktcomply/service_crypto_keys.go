@@ -12,23 +12,23 @@ import (
 
 // CryptoKey represents a cryptographic key or certificate in the register.
 type CryptoKey struct {
-	ID                   string     `json:"id"`
-	OrgID                string     `json:"org_id"`
-	Name                 string     `json:"name"`
-	KeyType              string     `json:"key_type"`
-	Algorithm            string     `json:"algorithm"`
-	KeyLength            *int       `json:"key_length,omitempty"`
-	Purpose              string     `json:"purpose"`
-	Location             string     `json:"location,omitempty"`
-	RotationIntervalDays *int       `json:"rotation_interval_days,omitempty"`
-	LastRotationDate     *string    `json:"last_rotation_date,omitempty"`
-	NextRotationDue      *string    `json:"next_rotation_due,omitempty"`
-	ExpiryDate           *string    `json:"expiry_date,omitempty"`
-	IsWeakAlgorithm      bool       `json:"is_weak_algorithm"`
-	RotationStatus       string     `json:"rotation_status"` // ok | due_soon | overdue | none
-	Notes                string     `json:"notes,omitempty"`
-	CreatedAt            time.Time  `json:"created_at"`
-	UpdatedAt            time.Time  `json:"updated_at"`
+	ID                   string    `json:"id"`
+	OrgID                string    `json:"org_id"`
+	Name                 string    `json:"name"`
+	KeyType              string    `json:"key_type"`
+	Algorithm            string    `json:"algorithm"`
+	KeyLength            *int      `json:"key_length,omitempty"`
+	Purpose              string    `json:"purpose"`
+	Location             string    `json:"location,omitempty"`
+	RotationIntervalDays *int      `json:"rotation_interval_days,omitempty"`
+	LastRotationDate     *string   `json:"last_rotation_date,omitempty"`
+	NextRotationDue      *string   `json:"next_rotation_due,omitempty"`
+	ExpiryDate           *string   `json:"expiry_date,omitempty"`
+	IsWeakAlgorithm      bool      `json:"is_weak_algorithm"`
+	RotationStatus       string    `json:"rotation_status"` // ok | due_soon | overdue | none
+	Notes                string    `json:"notes,omitempty"`
+	CreatedAt            time.Time `json:"created_at"`
+	UpdatedAt            time.Time `json:"updated_at"`
 }
 
 // CreateCryptoKeyInput is the validated input for creating a crypto key record.

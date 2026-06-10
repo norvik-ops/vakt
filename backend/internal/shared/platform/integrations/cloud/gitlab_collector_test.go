@@ -63,14 +63,6 @@ func gitlabTestServer(t *testing.T, projects []map[string]any, branchesProtected
 	return httptest.NewServer(mux)
 }
 
-func newTestGitLabCollector(srv *httptest.Server) *GitLabCollector {
-	c := NewGitLabCollector(nil, &mockEvidenceWriter{
-		controls: []ControlMatch{{ID: "ctrl-1", Title: "Secure Development"}},
-	})
-	c.httpClient = srv.Client()
-	return c
-}
-
 // TestGitLabCollect_NormalCollect verifies that a normal collect run produces branch-protection
 // and MR-approval evidence for all projects.
 func TestGitLabCollect_NormalCollect(t *testing.T) {

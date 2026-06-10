@@ -48,14 +48,14 @@ type ComplianceScore struct {
 // DefaultMaxAgeDays returns the recommended evidence max age for a given evidence type.
 func DefaultMaxAgeDays(evidenceType string) int {
 	defaults := map[string]int{
-		"scanner":   7,
-		"cloud":     2,
-		"identity":  7,
-		"phishing":  90,
-		"policy":    365,
-		"pentest":   365,
-		"manual":    180,
-		"bcp_test":  365,
+		"scanner":           7,
+		"cloud":             2,
+		"identity":          7,
+		"phishing":          90,
+		"policy":            365,
+		"pentest":           365,
+		"manual":            180,
+		"bcp_test":          365,
 		"management_review": 365,
 	}
 	if d, ok := defaults[evidenceType]; ok {

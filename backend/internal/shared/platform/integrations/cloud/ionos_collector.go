@@ -29,8 +29,8 @@ type IONOSCollector struct {
 // NewIONOSCollector creates a new IONOSCollector.
 func NewIONOSCollector(db *pgxpool.Pool, evidence EvidenceWriter) *IONOSCollector {
 	return &IONOSCollector{
-		db:       db,
-		evidence: evidence,
+		db:         db,
+		evidence:   evidence,
 		httpClient: &http.Client{Timeout: 30 * time.Second},
 	}
 }
@@ -188,10 +188,10 @@ func (c *IONOSCollector) collectServers(ctx context.Context, cfg IONOSConfig, or
 	}
 
 	details := map[string]any{
-		"collected_at":  time.Now().UTC().Format(time.RFC3339),
-		"datacenter":    dcName,
-		"server_count":  len(summaries),
-		"servers":       summaries,
+		"collected_at": time.Now().UTC().Format(time.RFC3339),
+		"datacenter":   dcName,
+		"server_count": len(summaries),
+		"servers":      summaries,
 	}
 
 	controlID := firstControlID(controls)

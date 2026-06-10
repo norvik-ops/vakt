@@ -13,18 +13,18 @@ import (
 
 // PrivacyDesignAssessment is one Art-25-Bewertung for a processing activity.
 type PrivacyDesignAssessment struct {
-	ID                  string     `json:"id"`
-	OrgID               string     `json:"org_id"`
-	ProcessingActivityID string    `json:"processing_activity_id"`
+	ID                   string `json:"id"`
+	OrgID                string `json:"org_id"`
+	ProcessingActivityID string `json:"processing_activity_id"`
 	// Art. 25 Abs. 1 — by Design
 	DesignMeasures     string `json:"design_measures"`
 	DesignAtConception bool   `json:"design_at_conception"`
 	RiskConsidered     bool   `json:"risk_considered"`
 	// Art. 25 Abs. 2 — by Default
-	DataMinimization  bool   `json:"data_minimization"`
-	PurposeLimitation bool   `json:"purpose_limitation"`
-	StorageLimitation bool   `json:"storage_limitation"`
-	AccessLimitation  bool   `json:"access_limitation"`
+	DataMinimization    bool   `json:"data_minimization"`
+	PurposeLimitation   bool   `json:"purpose_limitation"`
+	StorageLimitation   bool   `json:"storage_limitation"`
+	AccessLimitation    bool   `json:"access_limitation"`
 	DefaultSettingsNote string `json:"default_settings_note,omitempty"`
 	// Gesamtbewertung
 	AssessmentResult string     `json:"assessment_result"` // compliant | partially | not_assessed
@@ -50,13 +50,13 @@ type PrivacyDesignInput struct {
 
 // PrivacyDesignSummary aggregates Art-25-coverage across all processing activities.
 type PrivacyDesignSummary struct {
-	TotalActivities  int     `json:"total_activities"`
-	WithAssessment   int     `json:"with_assessment"`
-	Compliant        int     `json:"compliant"`
-	Partially        int     `json:"partially"`
-	NotAssessed      int     `json:"not_assessed"` // activities with assessment but result=not_assessed
-	PendingCount     int     `json:"pending_count"` // activities with NO assessment at all
-	PctCompliant     float64 `json:"pct_compliant"`
+	TotalActivities int     `json:"total_activities"`
+	WithAssessment  int     `json:"with_assessment"`
+	Compliant       int     `json:"compliant"`
+	Partially       int     `json:"partially"`
+	NotAssessed     int     `json:"not_assessed"`  // activities with assessment but result=not_assessed
+	PendingCount    int     `json:"pending_count"` // activities with NO assessment at all
+	PctCompliant    float64 `json:"pct_compliant"`
 }
 
 // CreateOrUpdatePrivacyDesign upserts an Art-25 assessment for a processing activity.

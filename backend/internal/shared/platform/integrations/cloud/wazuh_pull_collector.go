@@ -156,7 +156,7 @@ func (c *WazuhPullCollector) newHTTPClient(cfg WazuhConfig) *http.Client {
 	transport := http.DefaultTransport
 	if !cfg.VerifyTLS {
 		transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // intentional for self-signed on-prem
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402 -- opt-in for self-signed on-prem Wazuh instances
 		}
 	}
 	return &http.Client{
@@ -334,11 +334,11 @@ func (c *WazuhPullCollector) collectSCA(ctx context.Context, client *http.Client
 	}
 
 	details := map[string]any{
-		"collected_at":    time.Now().UTC().Format(time.RFC3339),
-		"agent_name":      agent.Name,
-		"agent_id":        agent.ID,
-		"policy_count":    len(policies),
-		"policies":        policySummaries,
+		"collected_at": time.Now().UTC().Format(time.RFC3339),
+		"agent_name":   agent.Name,
+		"agent_id":     agent.ID,
+		"policy_count": len(policies),
+		"policies":     policySummaries,
 	}
 
 	controlID := firstControlID(controls)

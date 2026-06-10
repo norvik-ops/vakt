@@ -31,21 +31,21 @@ func TestHumanValidationError_NeverLeaksRawValidatorString(t *testing.T) {
 		wantSome string   // non-empty string that must appear
 	}{
 		{
-			name:    "password too short",
-			input:   loginBody{Email: "a@b.de", Password: "short"},
-			wantNot: []string{"Key:", "Error:Field validation", "failed on the", "'min' tag", "loginBody"},
+			name:     "password too short",
+			input:    loginBody{Email: "a@b.de", Password: "short"},
+			wantNot:  []string{"Key:", "Error:Field validation", "failed on the", "'min' tag", "loginBody"},
 			wantSome: "10",
 		},
 		{
-			name:    "invalid email",
-			input:   loginBody{Email: "not-an-email", Password: "validpassword"},
-			wantNot: []string{"Key:", "Error:Field validation", "failed on the", "'email' tag"},
+			name:     "invalid email",
+			input:    loginBody{Email: "not-an-email", Password: "validpassword"},
+			wantNot:  []string{"Key:", "Error:Field validation", "failed on the", "'email' tag"},
 			wantSome: "E-Mail",
 		},
 		{
-			name:    "missing required password",
-			input:   loginBody{Email: "a@b.de", Password: ""},
-			wantNot: []string{"Key:", "Error:Field validation", "failed on the"},
+			name:     "missing required password",
+			input:    loginBody{Email: "a@b.de", Password: ""},
+			wantNot:  []string{"Key:", "Error:Field validation", "failed on the"},
 			wantSome: "Passwort",
 		},
 	}

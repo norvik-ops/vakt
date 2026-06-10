@@ -132,10 +132,10 @@ type rowScanner interface {
 
 func scanKPISnapshot(row rowScanner) (KPISnapshot, error) {
 	var (
-		snap                                                                                  KPISnapshot
+		snap                                                                                   KPISnapshot
 		complianceScore, residualRiskAvg, mttr, evidenceCoverage, slaCmpl, suppliersPct, phish pgtype.Numeric
-		openCritical, openHighRisks, openIncidents, expiringEvidence, openMajorNCs           pgtype.Int4
-		createdAt                                                                             pgtype.Timestamptz
+		openCritical, openHighRisks, openIncidents, expiringEvidence, openMajorNCs             pgtype.Int4
+		createdAt                                                                              pgtype.Timestamptz
 	)
 	err := row.Scan(
 		&snap.ID, &snap.OrgID, &snap.SnapshotDate,

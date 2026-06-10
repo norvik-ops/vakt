@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Elastic-2.0
 
 import { useState } from 'react'
-import { ClipboardCheck, Plus, ChevronDown, ChevronUp, CheckCircle2, Clock } from 'lucide-react'
+import { Plus, ChevronDown, ChevronUp, CheckCircle2, Clock } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
@@ -328,10 +328,9 @@ export default function ManagementReviewsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        icon={<ClipboardCheck className="w-5 h-5" />}
         title="Management Reviews"
         description="ISO 27001 Cl. 9.3 — Regelmäßige Leitungsbewertung des ISMS"
-        action={
+        actions={
           <Button onClick={() => { setCreateOpen(true); }}>
             <Plus className="w-4 h-4 mr-1" />
             Neues Review starten
@@ -341,7 +340,7 @@ export default function ManagementReviewsPage() {
 
       {(!reviews || reviews.length === 0) ? (
         <EmptyState
-          icon={<Clock className="w-8 h-8 text-muted-foreground" />}
+          icon={Clock}
           title="Noch keine Management Reviews"
           description="Starten Sie das erste jährliche Management Review für Ihre ISMS-Dokumentation."
           action={

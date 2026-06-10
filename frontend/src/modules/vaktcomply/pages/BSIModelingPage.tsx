@@ -76,7 +76,7 @@ const STATUS_LABELS: Record<CheckStatus | 'pending', string> = {
 }
 
 function checkStatusKey(entry: BSIModelingEntry): CheckStatus | 'pending' {
-  return (entry.check_status as CheckStatus | undefined) ?? 'pending'
+  return (entry.check_status) ?? 'pending'
 }
 
 // ─── Empty form ───────────────────────────────────────────────────────────────
@@ -114,7 +114,7 @@ function MatrixTab({
           </Button>
         </div>
         <EmptyState
-          icon={<Network className="w-8 h-8" />}
+          icon={Network}
           title="Keine Modellierungseinträge"
           description="Weisen Sie Bausteine Ihren IT-Assets zu, um die BSI-Grundschutz-Modellierung zu starten."
         />

@@ -40,6 +40,7 @@ const TEMPLATE: Template = {
   from_name: 'Legal',
   from_email: 'legal@example.com',
   html_body: '<p>test</p>',
+  attack_type: 'credential_harvesting',
   is_preset: true,
   created_at: '2026-01-01T00:00:00Z',
 }

@@ -1405,6 +1405,192 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vaktscan/certificates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List tracked TLS certificates */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Certificate list */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: components["schemas"]["Certificate"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Add a domain certificate to track */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateCertificateRequest"];
+                };
+            };
+            responses: {
+                /** @description Certificate created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Certificate"];
+                    };
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktscan/certificates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a tracked certificate */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Certificate */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Certificate"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Remove a tracked certificate */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktscan/certificates/{id}/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trigger a manual TLS rescan for a certificate */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Updated certificate after scan */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Certificate"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/vaktcomply/frameworks": {
         parameters: {
             query?: never;
@@ -3795,6 +3981,327 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vaktaware/templates/library": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List preset templates (filtered) */
+        get: {
+            parameters: {
+                query?: {
+                    category?: "credential" | "bec" | "it_software" | "hr_payroll" | "dach_specific";
+                    difficulty?: "easy" | "medium" | "hard";
+                    language?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Filtered preset templates */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PhishingTemplate"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktaware/enrollment-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List auto-enrollment rules (Pro) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Enrollment rules */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EnrollmentRule"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create auto-enrollment rule (Pro) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        /** @enum {string} */
+                        trigger_type: "new_employee" | "phishing_click";
+                        /** Format: uuid */
+                        target_campaign_id?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Created rule */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EnrollmentRule"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktaware/enrollment-rules/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Toggle enrollment rule active state (Pro) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        is_active: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        /** Delete enrollment rule (Pro) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktaware/reports/training-matrix": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Training matrix report (Pro) */
+        get: {
+            parameters: {
+                query?: {
+                    from?: string;
+                    to?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Training matrix report */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TrainingMatrixReport"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktaware/reports/training-matrix/export/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export training matrix as PDF (Pro) */
+        get: {
+            parameters: {
+                query?: {
+                    from?: string;
+                    to?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description PDF file */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/pdf": string;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktaware/reports/training-matrix/export/csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export training matrix as CSV (Pro) */
+        get: {
+            parameters: {
+                query?: {
+                    from?: string;
+                    to?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description CSV file */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/csv": string;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktaware/bsi-orp3-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** BSI ORP.3 compliance status */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ORP.3 compliance overview */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BSIOrp3Compliance"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/vaktcomply/policies": {
         parameters: {
             query?: never;
@@ -5540,6 +6047,1273 @@ export interface paths {
                 };
             };
         };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktprivacy/dsr/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get DSR summary statistics */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description DSR summary with overdue count and on-time rate */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            open_count?: number;
+                            overdue_count?: number;
+                            fulfilled_last_12m?: number;
+                            rejected_last_12m?: number;
+                            on_time_rate_pct?: number;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktprivacy/dsr/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export DSR audit log */
+        get: {
+            parameters: {
+                query?: {
+                    format?: "pdf" | "csv";
+                    period_days?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description PDF or CSV export */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktprivacy/dsr/{id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve DSR (complete, reject, or extend with Art. 12 Abs. 3 justification) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        resolution_type: "fulfilled" | "rejected" | "extended";
+                        resolution_notes?: string;
+                        /** @description Required when resolution_type = extended */
+                        extension_reason?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Resolved DSR */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description extension_reason required for extension */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktprivacy/dsr/{id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Assign DSR to a user */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        assigned_to: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Updated DSR */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/vaktprivacy/retention/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get retention completeness summary */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Retention stats for all VVT processing activities */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            total_activities?: number;
+                            with_retention_count?: number;
+                            missing_retention_count?: number;
+                            deletion_reminders_due?: number;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktprivacy/retention-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List DACH retention templates */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description System-provided DACH retention templates */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktprivacy/deletion-reminders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List deletion reminders */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description All deletion reminders for the org */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Create deletion reminder */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        description: string;
+                        data_category?: string;
+                        /** Format: date */
+                        deletion_due_date: string;
+                        /** Format: uuid */
+                        processing_activity_id?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Created deletion reminder */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktprivacy/deletion-reminders/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Mark deletion reminder as completed */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        completion_notes?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Completed */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/vaktprivacy/processing-activities/{id}/retention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get retention info for a processing activity */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Retention info */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        /** Update retention info for a processing activity */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        retention_period_months?: number;
+                        /** @enum {string} */
+                        retention_type?: "fixed" | "event_based" | "until_objection" | "permanent";
+                        retention_event_description?: string;
+                        retention_max_period_months?: number;
+                        /** @enum {string} */
+                        deletion_method?: "secure_deletion" | "anonymization" | "physical_destroy" | "archival" | "other";
+                        retention_legal_basis?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Updated */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/soa/init": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Initialize dedicated SoA with all 93 ISO 27001:2022 Annex A controls (idempotent) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Initialized or already exists */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/soa/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve current draft SoA version */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Approved */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Excluded controls without justification */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/soa/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List SoA versions */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description All SoA versions */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/soa/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get SoA summary (total, applicable, excluded, version status) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description SoA summary */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/soa/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export SoA as PDF or CSV */
+        get: {
+            parameters: {
+                query?: {
+                    format?: "pdf" | "csv";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description PDF or CSV export */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/soa/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all dedicated SoA entries */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description All 93 SoA entries */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/soa/entries/{control_ref}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                control_ref: string;
+            };
+            cookie?: never;
+        };
+        /** Get a single SoA entry */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    control_ref: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description SoA entry */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        /** Update SoA entry (applicable, justification, implementation status, owner) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    control_ref: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        applicable?: boolean;
+                        justification?: string;
+                        exclusion_reason?: string;
+                        /** @enum {string} */
+                        implementation_status?: "not_started" | "in_progress" | "implemented" | "partial";
+                        owner?: string;
+                        evidence_reference?: string;
+                        notes?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Updated SoA entry */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/interested-parties": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List interested parties */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description All interested parties for the org */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Create interested party */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        /** @enum {string} */
+                        category: "internal" | "external" | "regulatory" | "customer" | "supplier" | "other";
+                        requirements?: string;
+                        concerns?: string;
+                        /** Format: date */
+                        review_date?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Created interested party */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/interested-parties/seed-defaults": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Seed DACH default interested parties (idempotent) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Seeded */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/interested-parties/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export interested parties as PDF */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description PDF export */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/interested-parties/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Update interested party */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        category?: string;
+                        requirements?: string;
+                        concerns?: string;
+                        /** Format: date */
+                        review_date?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Updated interested party */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        /** Delete interested party */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/audit-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List audit plans */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description All audit plans */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Create audit plan */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        year: number;
+                        scope?: string;
+                        notes?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Created audit plan */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/audit-program": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List audit program audits */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description All audits in the program */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Create audit program audit */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        title: string;
+                        /** @enum {string} */
+                        audit_type: "isms_internal" | "compliance_check" | "supplier_audit" | "process_audit" | "follow_up";
+                        /** Format: date */
+                        scheduled_date?: string;
+                        lead_auditor?: string;
+                        /** Format: uuid */
+                        plan_id?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Created audit */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/audit-program/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get audit program summary statistics */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Audit program summary */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/audit-program/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get audit program audit */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Audit detail */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/audit-program/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete an audit */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        summary?: string;
+                        /** @enum {string} */
+                        overall_rating?: "satisfactory" | "minor_issues" | "major_issues" | "critical";
+                        /** Format: date */
+                        completed_date?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Completed audit */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/audit-program/{id}/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** List findings for an audit */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Findings list (major_nc/minor_nc have linked CAPA IDs) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Create audit finding (auto-creates CAPA for major_nc/minor_nc) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        title: string;
+                        description?: string;
+                        /** @enum {string} */
+                        severity: "major_nc" | "minor_nc" | "observation" | "ofi";
+                    };
+                };
+            };
+            responses: {
+                /** @description Created finding */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/audit-program/{id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Export audit report as PDF */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description PDF report */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -7641,6 +9415,1735 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vaktcomply/isms-scope/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all ISMS scope versions for the organisation */
+        get: operations["listISMSScopeVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/isms-scope/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve the current draft ISMS scope (admin only) */
+        post: operations["approveISMSScope"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/isms-scope/export-pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export the current ISMS scope as PDF (Pro) */
+        get: operations["exportISMSScopePDF"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/isms-scope": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the current ISMS scope document */
+        get: operations["getISMSScope"];
+        put?: never;
+        /** Create or version the ISMS scope document */
+        post: operations["createOrUpdateISMSScope"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/management-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List management reviews */
+        get: operations["listManagementReviews"];
+        put?: never;
+        /** Create a new management review */
+        post: operations["createManagementReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/management-reviews/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get a management review */
+        get: operations["getManagementReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/management-reviews/{id}/inputs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update input-phase fields of a management review */
+        patch: operations["updateManagementReviewInputs"];
+        trace?: never;
+    };
+    "/vaktcomply/management-reviews/{id}/outputs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update output-phase fields of a management review */
+        patch: operations["updateManagementReviewOutputs"];
+        trace?: never;
+    };
+    "/vaktcomply/management-reviews/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a management review (admin only) */
+        post: operations["approveManagementReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/management-reviews/{id}/export-pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Export a management review as PDF (Pro) */
+        get: operations["exportManagementReviewPDF"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/capas/{id}/nc-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update NC root-cause and effectiveness fields on a CAPA */
+        patch: operations["updateCAPANCFields"];
+        trace?: never;
+    };
+    "/vaktcomply/capas/{id}/effectiveness-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record the outcome of a CAPA effectiveness check */
+        post: operations["completeCAPAEffectivenessCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/risks/{id}/residual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update inherent and residual risk scores */
+        patch: operations["updateRiskResidualFields"];
+        trace?: never;
+    };
+    "/vaktcomply/risks/{id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Formally accept a residual risk */
+        post: operations["acceptRisk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi-modeling/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Aggregate check-status statistics for the BSI modeling matrix */
+        get: operations["getBSIModelingStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi-modeling/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get suggested BSI Bausteine for an asset type */
+        get: operations["getBSIBausteinSuggestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi-modeling/export-pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export BSI modeling matrix as PDF (Pro) */
+        get: operations["exportBSIModelingPDF"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi-modeling/export-xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export BSI modeling matrix as XLSX (Pro) */
+        get: operations["exportBSIModelingXLSX"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi-modeling": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the full BSI modeling matrix for the organisation */
+        get: operations["getBSIModelingMatrix"];
+        put?: never;
+        /** Add a Baustein-to-Asset mapping */
+        post: operations["createBSIModeling"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi-modeling/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a BSI modeling entry */
+        delete: operations["deleteBSIModeling"];
+        options?: never;
+        head?: never;
+        /** Update a BSI modeling entry */
+        patch: operations["updateBSIModeling"];
+        trace?: never;
+    };
+    "/vaktcomply/pentests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List penetration test records */
+        get: operations["listPentests"];
+        put?: never;
+        /** Create a new pentest record */
+        post: operations["createPentest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/pentests/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get a pentest record */
+        get: operations["getPentest"];
+        put?: never;
+        post?: never;
+        /** Delete a pentest record */
+        delete: operations["deletePentest"];
+        options?: never;
+        head?: never;
+        /** Update a pentest record */
+        patch: operations["updatePentest"];
+        trace?: never;
+    };
+    "/vaktcomply/pentests/{id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload a pentest report file (Pro) */
+        post: operations["uploadPentestReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/pentests/{id}/link-evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Link a pentest record as evidence to a control */
+        post: operations["linkPentestAsEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/kpi-dashboard/export-pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export the ISMS KPI dashboard as PDF (Pro) */
+        get: operations["exportKPIReportPDF"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/kpi-dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the ISMS KPI dashboard (latest snapshot + 90-day history) */
+        get: operations["getKPIDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/hetzner/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Hetzner Cloud integration config (secrets masked) */
+        get: operations["getHetznerConfig"];
+        /** Save Hetzner Cloud integration config */
+        put: operations["saveHetznerConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/hetzner/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trigger Hetzner evidence sync */
+        post: operations["syncHetzner"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/hetzner/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Hetzner sync status + server count */
+        get: operations["getHetznerStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/hetzner/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List recent Hetzner evidence items */
+        get: operations["getHetznerEvidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/ionos/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get IONOS Cloud integration config (secrets masked) */
+        get: operations["getIONOSConfig"];
+        /** Save IONOS Cloud integration config */
+        put: operations["saveIONOSConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/ionos/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trigger IONOS evidence sync */
+        post: operations["syncIONOS"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/ionos/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get IONOS sync status + server/datacenter counts */
+        get: operations["getIONOSStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/ionos/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List recent IONOS evidence items */
+        get: operations["getIONOSEvidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/wazuh/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Wazuh integration config (secrets masked) */
+        get: operations["getWazuhConfig"];
+        /** Save Wazuh integration config */
+        put: operations["saveWazuhConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/wazuh/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trigger Wazuh pull sync */
+        post: operations["syncWazuh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/wazuh/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Wazuh sync status + agent counts */
+        get: operations["getWazuhStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/wazuh/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List recent Wazuh evidence items */
+        get: operations["getWazuhEvidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/prometheus/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Prometheus/Alertmanager integration config (secrets masked) */
+        get: operations["getPrometheusConfig"];
+        /** Save Prometheus/Alertmanager integration config */
+        put: operations["savePrometheusConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/prometheus/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trigger Prometheus evidence sync */
+        post: operations["syncPrometheus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/prometheus/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Prometheus sync status + target/alert counts */
+        get: operations["getPrometheusStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/prometheus/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List recent Prometheus evidence items */
+        get: operations["getPrometheusEvidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/entra-id/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Entra ID / Microsoft Graph integration config (secrets masked) */
+        get: operations["getEntraIDConfig"];
+        /** Save Entra ID / Microsoft Graph integration config */
+        put: operations["saveEntraIDConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/entra-id/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trigger Entra ID / Microsoft Graph evidence sync */
+        post: operations["syncEntraID"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/entra-id/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Entra ID sync status and identity risk metrics */
+        get: operations["getEntraIDStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/entra-id/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List recent Entra ID evidence items */
+        get: operations["getEntraIDEvidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/keycloak/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Keycloak integration config (secrets masked) */
+        get: operations["getKeycloakConfig"];
+        /** Save Keycloak integration config */
+        put: operations["saveKeycloakConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/keycloak/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trigger Keycloak evidence sync */
+        post: operations["syncKeycloak"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/keycloak/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Keycloak sync status and user/MFA metrics */
+        get: operations["getKeycloakStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/keycloak/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List recent Keycloak evidence items */
+        get: operations["getKeycloakEvidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/ldap/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get LDAP/AD integration config (secrets masked) */
+        get: operations["getLDAPConfig"];
+        /** Save LDAP/AD integration config */
+        put: operations["saveLDAPConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/ldap/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trigger LDAP/AD evidence sync */
+        post: operations["syncLDAP"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/ldap/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get LDAP/AD sync status and directory user metrics */
+        get: operations["getLDAPStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/ldap/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List recent LDAP/AD evidence items */
+        get: operations["getLDAPEvidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/gitlab/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get GitLab integration config (secrets masked) */
+        get: operations["getGitLabConfig"];
+        /** Save GitLab integration config */
+        put: operations["saveGitLabConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/gitlab/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trigger GitLab evidence sync */
+        post: operations["syncGitLab"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/gitlab/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get GitLab sync status and project metrics */
+        get: operations["getGitLabStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/gitlab/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List recent GitLab evidence items */
+        get: operations["getGitLabEvidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/sonarqube/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get SonarQube integration config (secrets masked) */
+        get: operations["getSonarQubeConfig"];
+        /** Save SonarQube integration config */
+        put: operations["saveSonarQubeConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/sonarqube/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trigger SonarQube evidence sync */
+        post: operations["syncSonarQube"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/sonarqube/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get SonarQube sync status and quality gate metrics */
+        get: operations["getSonarQubeStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/sonarqube/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List recent SonarQube evidence items */
+        get: operations["getSonarQubeEvidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/personio/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Personio webhook config (secrets masked) */
+        get: operations["getPersonioConfig"];
+        /** Save Personio webhook secret */
+        put: operations["savePersonioConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/personio/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Personio webhook status and offboarding metrics */
+        get: operations["getPersonioStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vakthr/webhooks/personio/{org_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Personio employee.departed webhook endpoint (no auth, HMAC-verified) */
+        post: operations["handlePersonioWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/incidents/{id}/nis2/assess": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark incident as NIS2-reportable and set 3-stage deadlines */
+        post: operations["assessNIS2Reportability"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/incidents/{id}/nis2-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get NIS2 reporting status for an incident */
+        get: operations["getNIS2Status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/incidents/{id}/nis2/submit/{stage}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                stage: "early_warning" | "full_report" | "final_report";
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit NIS2 report stage content */
+        post: operations["submitNIS2Stage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/authority-contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List authority contacts (built-in + org-specific) */
+        get: operations["listAuthorityContacts"];
+        put?: never;
+        /** Create a custom authority contact */
+        post: operations["createAuthorityContact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/compliance-score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get evidence-based compliance score */
+        get: operations["getComplianceScore"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/controls/stale": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List controls with stale or missing evidence */
+        get: operations["listStaleControls"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/crypto-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List cryptographic keys */
+        get: operations["listCryptoKeys"];
+        put?: never;
+        /** Create a cryptographic key entry */
+        post: operations["createCryptoKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/crypto-keys/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a cryptographic key entry */
+        delete: operations["deleteCryptoKey"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/crypto-keys/{id}/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a key rotation event */
+        post: operations["rotateCryptoKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktscan/assets/classification-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get asset classification summary */
+        get: operations["getAssetClassificationSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/frameworks/mapping-coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get cross-framework mapping coverage matrix */
+        get: operations["getMappingCoverage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/frameworks/{id}/implementation-path": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get implementation path for a framework (topological order) */
+        get: operations["getImplementationPath"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktscan/certificates/expiring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List certificates expiring within 30 days */
+        get: operations["getExpiringCertificates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktscan/certificates/check-now": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trigger immediate certificate rescan for the org */
+        post: operations["scanAllCertificatesNow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktscan/sla-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List SLA policies for the org */
+        get: operations["listSLAPolicies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktscan/sla-policies/{severity}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Upsert an SLA policy for a specific severity */
+        put: operations["upsertSLAPolicy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktscan/sla-policies/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset all SLA policies to DACH defaults */
+        post: operations["resetSLAPolicies"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktscan/sla/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get SLA compliance summary */
+        get: operations["getSLASummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vakthr/mover-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List mover events (role changes) */
+        get: operations["listMoverEvents"];
+        put?: never;
+        /** Create a new mover event */
+        post: operations["createMoverEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vakthr/mover-events/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a mover event */
+        get: operations["getMoverEvent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vakthr/mover-events/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update mover event status */
+        patch: operations["updateMoverEventStatus"];
+        trace?: never;
+    };
+    "/vakthr/mover-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List mover checklist templates */
+        get: operations["listMoverTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktprivacy/adequacy-decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all adequacy decisions (19 countries) */
+        get: operations["listAdequacyDecisions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktprivacy/transfers/compliance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get transfer compliance status summary */
+        get: operations["getTransferComplianceStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktprivacy/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List data transfers for the org */
+        get: operations["listDataTransfers"];
+        put?: never;
+        /** Create a new data transfer record */
+        post: operations["createDataTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktprivacy/transfers/{id}/tia": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List TIAs for a data transfer */
+        get: operations["listTIAs"];
+        put?: never;
+        /** Create a TIA for a data transfer */
+        post: operations["createTIA"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktprivacy/privacy-design/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Privacy by Design summary stats */
+        get: operations["getPrivacyDesignSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktprivacy/processing-activities/{id}/privacy-design": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get privacy by design assessment for a processing activity */
+        get: operations["getPrivacyDesign"];
+        put?: never;
+        /** Create or update privacy by design assessment */
+        post: operations["createOrUpdatePrivacyDesign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vakthr/contractors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List contractors and freelancers */
+        get: operations["listContractors"];
+        put?: never;
+        /** Create a contractor record */
+        post: operations["createContractor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vakthr/contractors/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a contractor by ID */
+        get: operations["getContractor"];
+        /** Update a contractor */
+        put: operations["updateContractor"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktvault/access-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List vault access reviews */
+        get: operations["listAccessReviews"];
+        put?: never;
+        /** Create a new vault access review */
+        post: operations["createAccessReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktvault/access-reviews/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an access review by ID */
+        get: operations["getAccessReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktvault/access-reviews/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark an access review as completed */
+        post: operations["completeAccessReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7773,6 +11276,40 @@ export interface components {
             environment?: "prod" | "staging" | "dev";
             /** Format: date-time */
             created_at?: string;
+        };
+        Certificate: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            org_id?: string;
+            domain?: string;
+            issuer?: string;
+            subject?: string;
+            sans?: string[];
+            /** Format: date-time */
+            not_before?: string | null;
+            /** Format: date-time */
+            not_after?: string | null;
+            /** Format: uuid */
+            asset_id?: string | null;
+            /** @enum {string} */
+            source?: "manual" | "scan";
+            /** @enum {string} */
+            status?: "valid" | "expiring" | "expired" | "error" | "unknown";
+            /** Format: date-time */
+            last_checked_at?: string | null;
+            error_msg?: string | null;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        CreateCertificateRequest: {
+            domain: string;
+            /** Format: uuid */
+            asset_id?: string | null;
+            /** @enum {string} */
+            source?: "manual" | "scan";
         };
         CreateAssetRequest: {
             name: string;
@@ -7996,15 +11533,75 @@ export interface components {
             status: "in_progress" | "completed";
         };
         PhishingTemplate: {
-            /** Format: uuid */
             id?: string;
             name?: string;
             subject?: string;
+            from_name?: string;
+            from_email?: string;
             /** @description HTML body of the phishing email */
-            body?: string;
-            preset?: boolean;
+            html_body?: string;
+            attack_type?: string;
+            category?: string;
+            /** @enum {string} */
+            difficulty?: "easy" | "medium" | "hard";
+            language?: string;
+            placeholders?: string[];
+            is_preset?: boolean;
             /** Format: date-time */
             created_at?: string;
+        };
+        EnrollmentRule: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            org_id?: string;
+            name?: string;
+            /** @enum {string} */
+            trigger_type?: "new_employee" | "phishing_click";
+            /** Format: uuid */
+            target_campaign_id?: string;
+            is_active?: boolean;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        TrainingMatrixReport: {
+            period?: {
+                /** Format: date-time */
+                from?: string;
+                /** Format: date-time */
+                to?: string;
+            };
+            org_name?: string;
+            campaigns?: {
+                id?: string;
+                name?: string;
+                recipient_count?: number;
+                click_rate?: number;
+                completion_rate?: number;
+                started_at?: string;
+                completed_at?: string;
+            }[];
+            total_stats?: {
+                total_campaigns?: number;
+                total_participants?: number;
+                avg_click_rate?: number;
+                total_trainings_completed?: number;
+            };
+            bsi_compliance?: components["schemas"]["BSIOrp3Compliance"];
+            /** Format: date-time */
+            generated_at?: string;
+        };
+        BSIOrp3Compliance: {
+            fulfilled_count?: number;
+            total_count?: number;
+            requirements?: {
+                id?: string;
+                title?: string;
+                fulfilled?: boolean;
+                evidence_ids?: string[];
+            }[];
         };
         CreateTemplateInput: {
             name: string;
@@ -8313,6 +11910,554 @@ export interface components {
             version_number: number;
             /** Format: date-time */
             created_at: string;
+        };
+        ISMSScope: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            version: number;
+            /** @enum {string} */
+            status: "draft" | "approved";
+            scope_definition: string;
+            exclusions?: Record<string, never>[];
+            outsourcing_dependencies: string;
+            change_note: string;
+            approved_by?: string | null;
+            /** Format: date-time */
+            approved_at?: string | null;
+            created_by: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        ImprovementDecision: {
+            decision: string;
+            responsible: string;
+            /** Format: date */
+            due_date: string;
+        };
+        ManagementReview: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            /** Format: date */
+            review_date: string;
+            /** @enum {string} */
+            review_type: "annual" | "extraordinary";
+            participant_ids?: string[];
+            /** @enum {string} */
+            status: "draft" | "approved";
+            audit_findings_summary?: string;
+            incident_summary?: string;
+            risk_status_summary?: string;
+            previous_actions_status?: string;
+            kpi_snapshot?: {
+                [key: string]: unknown;
+            };
+            context_changes?: string;
+            customer_feedback?: string;
+            improvement_decisions?: components["schemas"]["ImprovementDecision"][];
+            resource_decisions?: string;
+            isms_changes?: string;
+            /** Format: date */
+            next_review_date?: string | null;
+            approved_by?: string | null;
+            /** Format: date-time */
+            approved_at?: string | null;
+            created_by: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        Pentest: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            title: string;
+            scope?: string;
+            /** Format: date */
+            pentest_date: string;
+            /** @enum {string} */
+            tester_type: "internal" | "external";
+            tester_name?: string;
+            /** @enum {string|null} */
+            methodology?: "blackbox" | "greybox" | "whitebox" | null;
+            findings_critical: number;
+            findings_high: number;
+            findings_medium: number;
+            findings_low: number;
+            /** @enum {string} */
+            status: "in_progress" | "completed" | "remediation" | "closed";
+            /** Format: date */
+            retest_date?: string | null;
+            notes?: string;
+            created_by: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        BSIModelingEntry: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            /** Format: uuid */
+            asset_id: string;
+            /** Format: uuid */
+            control_id: string;
+            /** @enum {string} */
+            priority: "R1" | "R2" | "R3";
+            justification_for_exclusion?: string;
+            /** @enum {string|null} */
+            check_status?: "yes" | "partial" | "no" | "not_applicable" | null;
+            interview_notes?: string;
+            site_visit_notes?: string;
+            asset_name: string;
+            control_title: string;
+            /** Format: uuid */
+            framework_id: string;
+            created_by: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        BSIModelingStats: {
+            total: number;
+            count_yes: number;
+            count_partial: number;
+            count_no: number;
+            count_na: number;
+            count_pending: number;
+        };
+        KPISnapshot: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            /** Format: date */
+            snapshot_date: string;
+            /** Format: float */
+            kpi_compliance_score?: number | null;
+            kpi_open_critical_controls?: number | null;
+            kpi_open_high_risks?: number | null;
+            /** Format: float */
+            kpi_residual_risk_avg?: number | null;
+            kpi_open_incidents?: number | null;
+            /** Format: float */
+            kpi_incident_mttr_days?: number | null;
+            /** Format: float */
+            kpi_evidence_coverage?: number | null;
+            kpi_expiring_evidence_count?: number | null;
+            /** Format: float */
+            kpi_finding_sla_compliance?: number | null;
+            kpi_open_major_ncs?: number | null;
+            /** Format: float */
+            kpi_suppliers_overdue_pct?: number | null;
+            /** Format: float */
+            kpi_phishing_click_rate?: number | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        KPIDashboard: {
+            current?: components["schemas"]["KPISnapshot"] | null;
+            history: components["schemas"]["KPISnapshot"][];
+        };
+        CloudSyncResult: {
+            ok: boolean;
+            evidence_created: number;
+            error?: string | null;
+        };
+        CloudEvidenceItem: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            description: string;
+            source: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        CloudSyncStatus: {
+            provider: string;
+            enabled: boolean;
+            /** Format: date-time */
+            last_sync_at?: string | null;
+            last_sync_status?: string | null;
+            last_sync_error?: string | null;
+            evidence_count: number;
+        };
+        HetznerConfigResponse: {
+            /** @description "****" if set */
+            api_token: string;
+            location: string;
+            is_configured: boolean;
+        };
+        SaveHetznerConfigInput: {
+            api_token: string;
+            location?: string;
+        };
+        HetznerStatus: components["schemas"]["CloudSyncStatus"] & {
+            server_count?: number;
+        };
+        IONOSConfigResponse: {
+            username: string;
+            /** @description "****" if set */
+            password: string;
+            /** @description "****" if set */
+            token: string;
+            is_configured: boolean;
+        };
+        SaveIONOSConfigInput: {
+            username?: string;
+            password?: string;
+            token?: string;
+        };
+        IONOSStatus: components["schemas"]["CloudSyncStatus"] & {
+            server_count?: number;
+            datacenter_count?: number;
+        };
+        WazuhConfigResponse: {
+            base_url: string;
+            username: string;
+            /** @description "****" if set */
+            password: string;
+            verify_tls: boolean;
+            is_configured: boolean;
+        };
+        SaveWazuhConfigInput: {
+            base_url: string;
+            username: string;
+            password: string;
+            verify_tls?: boolean;
+        };
+        WazuhStatus: components["schemas"]["CloudSyncStatus"] & {
+            agent_count?: number;
+            agents_offline?: number;
+        };
+        PrometheusConfigResponse: {
+            prometheus_url: string;
+            alertmanager_url: string;
+            /** @description "****" if set */
+            token: string;
+            is_configured: boolean;
+        };
+        SavePrometheusConfigInput: {
+            prometheus_url: string;
+            alertmanager_url?: string;
+            token?: string;
+        };
+        PrometheusStatus: components["schemas"]["CloudSyncStatus"] & {
+            target_count?: number;
+            active_alert_count?: number;
+        };
+        EntraIDConfigResponse: {
+            tenant_id: string;
+            client_id: string;
+            /** @description "****" if set */
+            client_secret: string;
+            is_configured: boolean;
+        };
+        SaveEntraIDConfigInput: {
+            tenant_id: string;
+            client_id: string;
+            client_secret: string;
+        };
+        EntraIDStatus: components["schemas"]["CloudSyncStatus"] & {
+            /** Format: float */
+            mfa_enrollment_pct?: number;
+            risky_user_count?: number;
+            inactive_user_count?: number;
+        };
+        KeycloakConfigResponse: {
+            keycloak_url: string;
+            realm: string;
+            client_id: string;
+            /** @description "****" if set */
+            client_secret: string;
+            is_configured: boolean;
+        };
+        SaveKeycloakConfigInput: {
+            keycloak_url: string;
+            realm: string;
+            client_id: string;
+            client_secret: string;
+        };
+        KeycloakStatus: components["schemas"]["CloudSyncStatus"] & {
+            user_count?: number;
+            /** Format: float */
+            mfa_enrollment_pct?: number;
+        };
+        LDAPConfigResponse: {
+            host: string;
+            port: number;
+            bind_dn: string;
+            /** @description "****" if set */
+            bind_password: string;
+            base_dn: string;
+            use_tls: boolean;
+            is_active_directory: boolean;
+            privileged_groups?: string[];
+            is_configured: boolean;
+        };
+        SaveLDAPConfigInput: {
+            host: string;
+            port: number;
+            bind_dn: string;
+            bind_password: string;
+            base_dn: string;
+            use_tls?: boolean;
+            is_active_directory?: boolean;
+            privileged_groups?: string[];
+        };
+        LDAPStatus: components["schemas"]["CloudSyncStatus"] & {
+            user_count?: number;
+            inactive_count?: number;
+            privileged_count?: number;
+        };
+        GitLabConfigResponse: {
+            gitlab_url: string;
+            /** @description "****" if set */
+            access_token: string;
+            group_id: string;
+            is_configured: boolean;
+        };
+        SaveGitLabConfigInput: {
+            gitlab_url: string;
+            access_token: string;
+            group_id?: string;
+        };
+        GitLabStatus: components["schemas"]["CloudSyncStatus"] & {
+            project_count?: number;
+            unprotected_branches_count?: number;
+        };
+        SonarQubeConfigResponse: {
+            base_url: string;
+            /** @description "****" if set */
+            token: string;
+            is_configured: boolean;
+        };
+        SaveSonarQubeConfigInput: {
+            base_url: string;
+            token: string;
+        };
+        SonarQubeStatus: components["schemas"]["CloudSyncStatus"] & {
+            project_count?: number;
+            quality_gate_failed_count?: number;
+            hotspot_count?: number;
+        };
+        PersonioConfigResponse: {
+            /** @description "****" if set */
+            webhook_secret: string;
+            is_configured: boolean;
+        };
+        SavePersonioConfigInput: {
+            webhook_secret: string;
+        };
+        PersonioStatus: components["schemas"]["CloudSyncStatus"] & {
+            webhook_url?: string;
+            webhook_configured?: boolean;
+            offboardings_triggered?: number;
+            offboardings_completed_on_time?: number;
+        };
+        CryptoKey: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            org_id?: string;
+            name?: string;
+            /** @enum {string} */
+            key_type?: "symmetric" | "asymmetric" | "certificate" | "hmac" | "signing" | "other";
+            algorithm?: string;
+            key_length?: number | null;
+            purpose?: string;
+            location?: string | null;
+            rotation_interval_days?: number | null;
+            /** Format: date */
+            last_rotation_date?: string | null;
+            /** Format: date */
+            next_rotation_due?: string | null;
+            /** Format: date */
+            expiry_date?: string | null;
+            is_weak_algorithm?: boolean;
+            /** @enum {string} */
+            rotation_status?: "ok" | "due_soon" | "overdue" | "none";
+            notes?: string | null;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        SLAPolicy: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            org_id?: string;
+            /** @enum {string} */
+            severity?: "critical" | "high" | "medium" | "low" | "info";
+            remediation_days?: number;
+            notification_advance_days?: number;
+            is_default?: boolean;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        MoverEvent: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            org_id?: string;
+            /** Format: uuid */
+            employee_id?: string;
+            from_department?: string;
+            from_job_title?: string;
+            to_department?: string;
+            to_job_title?: string;
+            /** Format: date */
+            effective_date?: string;
+            /** @enum {string} */
+            status?: "pending" | "in_progress" | "completed" | "overdue" | "cancelled";
+            /** Format: date */
+            due_date?: string;
+            /** Format: date-time */
+            completed_at?: string | null;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        AdequacyDecision: {
+            country_code?: string;
+            country_name?: string;
+            has_adequacy?: boolean;
+            /** Format: date */
+            decision_date?: string | null;
+            decision_reference?: string | null;
+            notes?: string | null;
+            /** Format: date */
+            last_updated?: string;
+        };
+        DataTransfer: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            org_id?: string;
+            /** Format: uuid */
+            processing_activity_id?: string | null;
+            recipient_name?: string;
+            recipient_country?: string;
+            recipient_country_name?: string;
+            data_categories?: string[];
+            transfer_mechanism?: string;
+            scc_version?: string | null;
+            status?: string;
+            is_active?: boolean;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        TransferImpactAssessment: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            org_id?: string;
+            /** Format: uuid */
+            transfer_id?: string;
+            legal_system_notes?: string;
+            /** @enum {string} */
+            surveillance_risk?: "low" | "medium" | "high";
+            data_subject_rights_available?: boolean;
+            encryption_in_transit?: boolean;
+            encryption_at_rest?: boolean;
+            pseudonymization_applied?: boolean;
+            access_controls_documented?: boolean;
+            supplementary_measures?: string | null;
+            /** @enum {string} */
+            outcome?: "adequate" | "adequate_with_measures" | "inadequate";
+            /** Format: uuid */
+            reviewed_by?: string | null;
+            /** Format: date-time */
+            reviewed_at?: string | null;
+            /** Format: date */
+            valid_until?: string | null;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        PrivacyDesignAssessment: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            org_id?: string;
+            /** Format: uuid */
+            processing_activity_id?: string;
+            design_measures?: string;
+            design_at_conception?: boolean;
+            risk_considered?: boolean;
+            data_minimization?: boolean;
+            purpose_limitation?: boolean;
+            storage_limitation?: boolean;
+            access_limitation?: boolean;
+            default_settings_note?: string | null;
+            /** @enum {string} */
+            assessment_result?: "compliant" | "partially" | "not_assessed";
+            /** Format: uuid */
+            reviewed_by?: string | null;
+            /** Format: date-time */
+            reviewed_at?: string | null;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        Contractor: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            org_id?: string;
+            first_name?: string;
+            last_name?: string;
+            email?: string | null;
+            company?: string | null;
+            /** Format: date */
+            contract_start?: string;
+            /** Format: date */
+            contract_end?: string;
+            access_scope?: string[];
+            nda_signed?: boolean;
+            avv_signed?: boolean;
+            /** @enum {string} */
+            status?: "active" | "expiring_soon" | "offboarding" | "terminated";
+            /** Format: uuid */
+            checklist_run_id?: string | null;
+            /** Format: date-time */
+            offboarding_completed_at?: string | null;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        AccessReview: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            org_id?: string;
+            period_label?: string;
+            /** @enum {string} */
+            status?: "open" | "completed";
+            /** Format: uuid */
+            reviewed_by?: string | null;
+            /** Format: date-time */
+            completed_at?: string | null;
+            total_entries?: number;
+            stale_entries?: number;
+            revoked_entries?: number;
+            /** Format: date-time */
+            created_at?: string;
         };
     };
     responses: never;
@@ -10059,6 +14204,3143 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccessConceptVersionSummary"];
+                };
+            };
+        };
+    };
+    listISMSScopeVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of scope versions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ISMSScope"][];
+                };
+            };
+        };
+    };
+    approveISMSScope: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Approved scope */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ISMSScope"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    exportISMSScopePDF: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PDF document */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Not implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getISMSScope: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current scope or null if none exists */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ISMSScope"];
+                };
+            };
+            /** @description No scope defined yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    createOrUpdateISMSScope: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    scope_definition: string;
+                    exclusions?: Record<string, never>[];
+                    outsourcing_dependencies?: string;
+                    change_note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description New scope version created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ISMSScope"];
+                };
+            };
+        };
+    };
+    listManagementReviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of management reviews */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagementReview"][];
+                };
+            };
+        };
+    };
+    createManagementReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date */
+                    review_date: string;
+                    /** @enum {string} */
+                    review_type: "annual" | "extraordinary";
+                    participant_ids?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagementReview"];
+                };
+            };
+        };
+    };
+    getManagementReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Management review */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagementReview"];
+                };
+            };
+        };
+    };
+    updateManagementReviewInputs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    audit_findings_summary?: string;
+                    incident_summary?: string;
+                    risk_status_summary?: string;
+                    previous_actions_status?: string;
+                    kpi_snapshot?: {
+                        [key: string]: unknown;
+                    };
+                    context_changes?: string;
+                    customer_feedback?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated review */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagementReview"];
+                };
+            };
+        };
+    };
+    updateManagementReviewOutputs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    improvement_decisions?: components["schemas"]["ImprovementDecision"][];
+                    resource_decisions?: string;
+                    isms_changes?: string;
+                    /** Format: date */
+                    next_review_date?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated review */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagementReview"];
+                };
+            };
+        };
+    };
+    approveManagementReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Approved review */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagementReview"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    exportManagementReviewPDF: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PDF document */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Not implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateCAPANCFields: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string|null} */
+                    nc_classification?: "minor_nc" | "major_nc" | "observation" | null;
+                    immediate_containment?: string;
+                    root_cause?: string;
+                    similar_ncs_assessed?: boolean | null;
+                    similar_ncs_notes?: string;
+                    /** Format: date */
+                    effectiveness_check_date?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated CAPA */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    completeCAPAEffectivenessCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    confirmed: boolean;
+                    evidence_note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated CAPA */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    updateRiskResidualFields: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    inherent_likelihood?: number | null;
+                    inherent_impact?: number | null;
+                    residual_likelihood?: number | null;
+                    residual_impact?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated risk */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    acceptRisk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    justification: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Risk accepted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Risk treatment_status is not accepted */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getBSIModelingStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stats */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSIModelingStats"];
+                };
+            };
+        };
+    };
+    getBSIBausteinSuggestions: {
+        parameters: {
+            query?: {
+                asset_type?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of suggested control IDs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+        };
+    };
+    exportBSIModelingPDF: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Not implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    exportBSIModelingXLSX: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Not implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getBSIModelingMatrix: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of modeling entries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSIModelingEntry"][];
+                };
+            };
+        };
+    };
+    createBSIModeling: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    asset_id: string;
+                    /** Format: uuid */
+                    control_id: string;
+                    /** @enum {string} */
+                    priority: "R1" | "R2" | "R3";
+                    justification_for_exclusion?: string;
+                    /** @enum {string|null} */
+                    check_status?: "yes" | "partial" | "no" | "not_applicable" | null;
+                    interview_notes?: string;
+                    site_visit_notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSIModelingEntry"];
+                };
+            };
+            /** @description Duplicate asset/control combination */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteBSIModeling: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateBSIModeling: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    priority: "R1" | "R2" | "R3";
+                    justification_for_exclusion?: string;
+                    /** @enum {string|null} */
+                    check_status?: "yes" | "partial" | "no" | "not_applicable" | null;
+                    interview_notes?: string;
+                    site_visit_notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated entry */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSIModelingEntry"];
+                };
+            };
+        };
+    };
+    listPentests: {
+        parameters: {
+            query?: {
+                tester_type?: "internal" | "external";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of pentest records */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pentest"][];
+                };
+            };
+        };
+    };
+    createPentest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    scope?: string;
+                    /** Format: date */
+                    pentest_date: string;
+                    /** @enum {string} */
+                    tester_type: "internal" | "external";
+                    tester_name?: string;
+                    /** @enum {string|null} */
+                    methodology?: "blackbox" | "greybox" | "whitebox" | null;
+                    findings_critical?: number;
+                    findings_high?: number;
+                    findings_medium?: number;
+                    findings_low?: number;
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pentest"];
+                };
+            };
+        };
+    };
+    getPentest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pentest record */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pentest"];
+                };
+            };
+        };
+    };
+    deletePentest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updatePentest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    scope?: string;
+                    /** @enum {string} */
+                    tester_type: "internal" | "external";
+                    tester_name?: string;
+                    /** @enum {string|null} */
+                    methodology?: "blackbox" | "greybox" | "whitebox" | null;
+                    findings_critical?: number;
+                    findings_high?: number;
+                    findings_medium?: number;
+                    findings_low?: number;
+                    /** @enum {string} */
+                    status: "in_progress" | "completed" | "remediation" | "closed";
+                    /** Format: date */
+                    retest_date?: string | null;
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pentest"];
+                };
+            };
+        };
+    };
+    uploadPentestReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Not implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    linkPentestAsEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    control_id: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Not implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    exportKPIReportPDF: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Not implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getKPIDashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description KPI dashboard */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KPIDashboard"];
+                };
+            };
+        };
+    };
+    getHetznerConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Hetzner config */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HetznerConfigResponse"];
+                };
+            };
+        };
+    };
+    saveHetznerConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveHetznerConfigInput"];
+            };
+        };
+        responses: {
+            /** @description Saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    syncHetzner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudSyncResult"];
+                };
+            };
+        };
+    };
+    getHetznerStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Hetzner status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HetznerStatus"];
+                };
+            };
+        };
+    };
+    getHetznerEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evidence items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudEvidenceItem"][];
+                };
+            };
+        };
+    };
+    getIONOSConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description IONOS config */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IONOSConfigResponse"];
+                };
+            };
+        };
+    };
+    saveIONOSConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveIONOSConfigInput"];
+            };
+        };
+        responses: {
+            /** @description Saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    syncIONOS: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudSyncResult"];
+                };
+            };
+        };
+    };
+    getIONOSStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description IONOS status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IONOSStatus"];
+                };
+            };
+        };
+    };
+    getIONOSEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evidence items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudEvidenceItem"][];
+                };
+            };
+        };
+    };
+    getWazuhConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Wazuh config */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WazuhConfigResponse"];
+                };
+            };
+        };
+    };
+    saveWazuhConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveWazuhConfigInput"];
+            };
+        };
+        responses: {
+            /** @description Saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    syncWazuh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudSyncResult"];
+                };
+            };
+        };
+    };
+    getWazuhStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Wazuh status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WazuhStatus"];
+                };
+            };
+        };
+    };
+    getWazuhEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evidence items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudEvidenceItem"][];
+                };
+            };
+        };
+    };
+    getPrometheusConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Prometheus config */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrometheusConfigResponse"];
+                };
+            };
+        };
+    };
+    savePrometheusConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavePrometheusConfigInput"];
+            };
+        };
+        responses: {
+            /** @description Saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    syncPrometheus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudSyncResult"];
+                };
+            };
+        };
+    };
+    getPrometheusStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Prometheus status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrometheusStatus"];
+                };
+            };
+        };
+    };
+    getPrometheusEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evidence items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudEvidenceItem"][];
+                };
+            };
+        };
+    };
+    getEntraIDConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Entra ID config */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntraIDConfigResponse"];
+                };
+            };
+        };
+    };
+    saveEntraIDConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveEntraIDConfigInput"];
+            };
+        };
+        responses: {
+            /** @description Saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    syncEntraID: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudSyncResult"];
+                };
+            };
+        };
+    };
+    getEntraIDStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Entra ID status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntraIDStatus"];
+                };
+            };
+        };
+    };
+    getEntraIDEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evidence items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudEvidenceItem"][];
+                };
+            };
+        };
+    };
+    getKeycloakConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Keycloak config */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeycloakConfigResponse"];
+                };
+            };
+        };
+    };
+    saveKeycloakConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveKeycloakConfigInput"];
+            };
+        };
+        responses: {
+            /** @description Saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    syncKeycloak: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudSyncResult"];
+                };
+            };
+        };
+    };
+    getKeycloakStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Keycloak status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeycloakStatus"];
+                };
+            };
+        };
+    };
+    getKeycloakEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evidence items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudEvidenceItem"][];
+                };
+            };
+        };
+    };
+    getLDAPConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description LDAP config */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LDAPConfigResponse"];
+                };
+            };
+        };
+    };
+    saveLDAPConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveLDAPConfigInput"];
+            };
+        };
+        responses: {
+            /** @description Saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    syncLDAP: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudSyncResult"];
+                };
+            };
+        };
+    };
+    getLDAPStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description LDAP status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LDAPStatus"];
+                };
+            };
+        };
+    };
+    getLDAPEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evidence items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudEvidenceItem"][];
+                };
+            };
+        };
+    };
+    getGitLabConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GitLab config */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GitLabConfigResponse"];
+                };
+            };
+        };
+    };
+    saveGitLabConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveGitLabConfigInput"];
+            };
+        };
+        responses: {
+            /** @description Saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    syncGitLab: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudSyncResult"];
+                };
+            };
+        };
+    };
+    getGitLabStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GitLab status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GitLabStatus"];
+                };
+            };
+        };
+    };
+    getGitLabEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evidence items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudEvidenceItem"][];
+                };
+            };
+        };
+    };
+    getSonarQubeConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description SonarQube config */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SonarQubeConfigResponse"];
+                };
+            };
+        };
+    };
+    saveSonarQubeConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveSonarQubeConfigInput"];
+            };
+        };
+        responses: {
+            /** @description Saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    syncSonarQube: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudSyncResult"];
+                };
+            };
+        };
+    };
+    getSonarQubeStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description SonarQube status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SonarQubeStatus"];
+                };
+            };
+        };
+    };
+    getSonarQubeEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evidence items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudEvidenceItem"][];
+                };
+            };
+        };
+    };
+    getPersonioConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Personio config */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonioConfigResponse"];
+                };
+            };
+        };
+    };
+    savePersonioConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavePersonioConfigInput"];
+            };
+        };
+        responses: {
+            /** @description Saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    getPersonioStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Personio status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonioStatus"];
+                };
+            };
+        };
+    };
+    handlePersonioWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    event?: string;
+                    data?: {
+                        employee_id?: number;
+                        /** Format: date */
+                        date?: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Webhook accepted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid HMAC signature */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    assessNIS2Reportability: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date-time */
+                    detected_at: string;
+                    check: {
+                        causes_significant_disruption?: boolean;
+                        affects_third_parties?: boolean;
+                        causes_financial_damage?: boolean;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Reportability assessed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getNIS2Status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description NIS2 reporting status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        is_reportable?: boolean;
+                        reporting_stage?: string;
+                        /** Format: date-time */
+                        detected_at?: string | null;
+                        deadlines?: {
+                            /** Format: date-time */
+                            early_warning?: string | null;
+                            /** Format: date-time */
+                            full_report?: string | null;
+                            /** Format: date-time */
+                            final_report?: string | null;
+                        };
+                        completed_stages?: string[];
+                        reports?: {
+                            id?: string;
+                            stage?: string;
+                            /** Format: date-time */
+                            submitted_at?: string | null;
+                            pdf_path?: string;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    submitNIS2Stage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                stage: "early_warning" | "full_report" | "final_report";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    affected_services?: string;
+                    initial_assessment?: string;
+                    root_cause?: string;
+                    affected_users_estimate?: number | null;
+                    measures_taken?: string;
+                    estimated_recovery?: string | null;
+                    full_root_cause_analysis?: string;
+                    permanent_measures?: string;
+                    effectiveness_evidence?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Stage report saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id?: string;
+                        stage?: string;
+                        /** Format: date-time */
+                        submitted_at?: string | null;
+                        pdf_path?: string;
+                    };
+                };
+            };
+        };
+    };
+    listAuthorityContacts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of authority contacts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id?: string;
+                        country?: string;
+                        sector?: string;
+                        authority_name?: string;
+                        report_url?: string;
+                        email?: string;
+                        phone?: string;
+                        notes?: string;
+                        is_primary?: boolean;
+                        is_builtin?: boolean;
+                        created_at?: string;
+                    }[];
+                };
+            };
+        };
+    };
+    createAuthorityContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    country: string;
+                    sector?: string;
+                    authority_name: string;
+                    report_url?: string;
+                    email?: string;
+                    phone?: string;
+                    notes?: string;
+                    is_primary?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Authority contact created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getComplianceScore: {
+        parameters: {
+            query?: {
+                framework_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Compliance score */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        total_controls?: number;
+                        ok_count?: number;
+                        stale_count?: number;
+                        missing_count?: number;
+                        na_count?: number;
+                        score_pct?: number;
+                    };
+                };
+            };
+        };
+    };
+    listStaleControls: {
+        parameters: {
+            query?: {
+                framework_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of stale controls */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id?: string;
+                        code?: string;
+                        title?: string;
+                        evidence_status?: string;
+                        /** Format: date-time */
+                        evidence_expires_at?: string | null;
+                        evidence_max_age_days?: number | null;
+                    }[];
+                };
+            };
+        };
+    };
+    listCryptoKeys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of crypto keys */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoKey"][];
+                };
+            };
+        };
+    };
+    createCryptoKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** @enum {string} */
+                    key_type: "symmetric" | "asymmetric" | "certificate" | "hmac" | "signing" | "other";
+                    algorithm: string;
+                    key_length?: number | null;
+                    purpose: string;
+                    location?: string;
+                    rotation_interval_days?: number | null;
+                    /** Format: date */
+                    last_rotation_date?: string | null;
+                    /** Format: date */
+                    expiry_date?: string | null;
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Crypto key created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoKey"];
+                };
+            };
+        };
+    };
+    deleteCryptoKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rotateCryptoKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date */
+                    rotated_at: string;
+                    rotation_interval_days?: number | null;
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Key rotation recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoKey"];
+                };
+            };
+        };
+    };
+    getAssetClassificationSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Classification summary */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        total_count?: number;
+                        classified_count?: number;
+                        unclassified_count?: number;
+                        by_level?: {
+                            [key: string]: number;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    getMappingCoverage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Mapping coverage across all framework pairs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        pairs?: {
+                            framework_a_name?: string;
+                            framework_b_name?: string;
+                            mapping_count?: number;
+                            is_mapped?: boolean;
+                        }[];
+                        total_meaningful_pairs?: number;
+                        mapped_pairs?: number;
+                        /** Format: double */
+                        coverage_pct?: number;
+                    };
+                };
+            };
+        };
+    };
+    getImplementationPath: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ordered list of implementation steps */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        step_nr?: number;
+                        framework_id?: string;
+                        control_code?: string;
+                        control_title?: string;
+                        current_status?: string;
+                        prerequisites_met?: boolean;
+                        blocking_prereqs?: {
+                            framework?: string;
+                            control_code?: string;
+                            dependency_type?: string;
+                        }[];
+                    }[];
+                };
+            };
+        };
+    };
+    getExpiringCertificates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of expiring certificates */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id?: string;
+                        common_name?: string;
+                        /** Format: date-time */
+                        not_after?: string;
+                        status?: string;
+                    }[];
+                };
+            };
+        };
+    };
+    scanAllCertificatesNow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Scan triggered */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listSLAPolicies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of SLA policies */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SLAPolicy"][];
+                };
+            };
+        };
+    };
+    upsertSLAPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                severity: "critical" | "high" | "medium" | "low" | "info";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    remediation_days: number;
+                    notification_advance_days?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated SLA policy */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SLAPolicy"];
+                };
+            };
+        };
+    };
+    resetSLAPolicies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Policies reset */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getSLASummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description SLA summary counts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        total_open?: number;
+                        overdue?: number;
+                        at_risk?: number;
+                        on_track?: number;
+                        by_severity?: {
+                            [key: string]: number;
+                        };
+                        overdue_by_severity?: {
+                            [key: string]: number;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    listMoverEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of mover events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MoverEvent"][];
+                };
+            };
+        };
+    };
+    createMoverEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    employee_id: string;
+                    old_role: string;
+                    new_role: string;
+                    /** Format: date */
+                    effective_date: string;
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created mover event */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MoverEvent"];
+                };
+            };
+        };
+    };
+    getMoverEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Mover event */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MoverEvent"];
+                };
+            };
+        };
+    };
+    updateMoverEventStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "pending" | "in_progress" | "completed" | "cancelled";
+                };
+            };
+        };
+        responses: {
+            /** @description Updated mover event */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listMoverTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of mover templates */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listAdequacyDecisions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of adequacy decisions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdequacyDecision"][];
+                };
+            };
+        };
+    };
+    getTransferComplianceStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Compliance status summary */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        total_transfers?: number;
+                        adequate?: number;
+                        requires_tia?: number;
+                        tia_adequate?: number;
+                        tia_adequate_with_measures?: number;
+                        tia_inadequate?: number;
+                        under_review?: number;
+                    };
+                };
+            };
+        };
+    };
+    listDataTransfers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of data transfers */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataTransfer"][];
+                };
+            };
+        };
+    };
+    createDataTransfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    recipient_name: string;
+                    recipient_country: string;
+                    /** @enum {string} */
+                    transfer_mechanism: "adequacy_decision" | "scc" | "bcr" | "derogation" | "other";
+                    data_categories?: string[];
+                    scc_version?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created data transfer */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataTransfer"];
+                };
+            };
+        };
+    };
+    listTIAs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of TIAs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferImpactAssessment"][];
+                };
+            };
+        };
+    };
+    createTIA: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    legal_system_notes: string;
+                    /** @enum {string} */
+                    surveillance_risk: "low" | "medium" | "high";
+                    data_subject_rights_available?: boolean;
+                    encryption_in_transit?: boolean;
+                    encryption_at_rest?: boolean;
+                    pseudonymization_applied?: boolean;
+                    access_controls_documented?: boolean;
+                    supplementary_measures?: string;
+                    /** @enum {string} */
+                    outcome: "adequate" | "adequate_with_measures" | "inadequate";
+                    /** Format: date */
+                    valid_until?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created TIA */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferImpactAssessment"];
+                };
+            };
+        };
+    };
+    getPrivacyDesignSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Summary of privacy design assessments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        total?: number;
+                        compliant?: number;
+                        partially?: number;
+                        not_assessed?: number;
+                        total_activities?: number;
+                    };
+                };
+            };
+        };
+    };
+    getPrivacyDesign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Privacy design assessment */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyDesignAssessment"];
+                };
+            };
+            /** @description No assessment found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    createOrUpdatePrivacyDesign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    design_measures: string;
+                    design_at_conception?: boolean;
+                    risk_considered?: boolean;
+                    data_minimization?: boolean;
+                    purpose_limitation?: boolean;
+                    storage_limitation?: boolean;
+                    access_limitation?: boolean;
+                    default_settings_note?: string;
+                    /** @enum {string} */
+                    assessment_result: "compliant" | "partially" | "not_assessed";
+                };
+            };
+        };
+        responses: {
+            /** @description Created or updated assessment */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyDesignAssessment"];
+                };
+            };
+        };
+    };
+    listContractors: {
+        parameters: {
+            query?: {
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of contractors */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Contractor"][];
+                };
+            };
+        };
+    };
+    createContractor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    first_name: string;
+                    last_name: string;
+                    /** Format: email */
+                    email?: string;
+                    company?: string;
+                    /** Format: date */
+                    contract_start: string;
+                    /** Format: date */
+                    contract_end: string;
+                    access_scope?: string[];
+                    nda_signed?: boolean;
+                    avv_signed?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Created contractor */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Contractor"];
+                };
+            };
+        };
+    };
+    getContractor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Contractor */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Contractor"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateContractor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    first_name?: string;
+                    last_name?: string;
+                    /** Format: email */
+                    email?: string;
+                    company?: string;
+                    /** Format: date */
+                    contract_start?: string;
+                    /** Format: date */
+                    contract_end?: string;
+                    access_scope?: string[];
+                    nda_signed?: boolean;
+                    avv_signed?: boolean;
+                    /** @enum {string} */
+                    status?: "active" | "expiring_soon" | "offboarding" | "terminated";
+                };
+            };
+        };
+        responses: {
+            /** @description Updated contractor */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Contractor"];
+                };
+            };
+        };
+    };
+    listAccessReviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of access reviews */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessReview"][];
+                };
+            };
+        };
+    };
+    createAccessReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    period_label: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created access review */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessReview"];
+                };
+            };
+        };
+    };
+    getAccessReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Access review */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessReview"];
+                };
+            };
+        };
+    };
+    completeAccessReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    revoked_entries?: number;
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Completed access review */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessReview"];
                 };
             };
         };

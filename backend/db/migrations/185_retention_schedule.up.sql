@@ -1,7 +1,7 @@
 -- S68-5: Löschfristen-Management (DSGVO Art. 5(1)(e), Art. 30 Abs.1(f))
 -- Retention period tracking for VVT entries and deletion reminders.
 
-ALTER TABLE po_processing_activities
+ALTER TABLE po_vvt_entries
     ADD COLUMN IF NOT EXISTS retention_period_months       INTEGER,
     ADD COLUMN IF NOT EXISTS retention_type                TEXT
         CHECK (retention_type IN ('fixed', 'event_based', 'until_objection', 'permanent'))
@@ -17,7 +17,7 @@ ALTER TABLE po_processing_activities
 CREATE TABLE IF NOT EXISTS po_deletion_reminders (
     id                      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id                  UUID        NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    processing_activity_id  UUID        REFERENCES po_processing_activities(id) ON DELETE CASCADE,
+    processing_activity_id  UUID        REFERENCES po_vvt_entries(id) ON DELETE CASCADE,
     description             TEXT        NOT NULL,
     data_category           TEXT,
     deletion_due_date       DATE        NOT NULL,

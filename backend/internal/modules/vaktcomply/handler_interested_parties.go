@@ -14,17 +14,17 @@ import (
 
 // InterestedParty is a stakeholder entry for ISO 27001 Clause 4.2.
 type InterestedParty struct {
-	ID               string  `json:"id"`
-	OrgID            string  `json:"org_id"`
-	Name             string  `json:"name"`
-	Category         string  `json:"category"`
-	Requirements     string  `json:"requirements,omitempty"`
-	Concerns         string  `json:"concerns,omitempty"`
-	ReviewDate       *string `json:"review_date,omitempty"`
-	ReviewOverdue    bool    `json:"review_overdue"`
-	IsSystemDefault  bool    `json:"is_system_default"`
-	CreatedAt        string  `json:"created_at"`
-	UpdatedAt        string  `json:"updated_at"`
+	ID              string  `json:"id"`
+	OrgID           string  `json:"org_id"`
+	Name            string  `json:"name"`
+	Category        string  `json:"category"`
+	Requirements    string  `json:"requirements,omitempty"`
+	Concerns        string  `json:"concerns,omitempty"`
+	ReviewDate      *string `json:"review_date,omitempty"`
+	ReviewOverdue   bool    `json:"review_overdue"`
+	IsSystemDefault bool    `json:"is_system_default"`
+	CreatedAt       string  `json:"created_at"`
+	UpdatedAt       string  `json:"updated_at"`
 }
 
 // CreateInterestedPartyInput holds validated input for a new interested party.

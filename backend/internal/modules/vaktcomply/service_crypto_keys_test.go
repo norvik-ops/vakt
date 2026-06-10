@@ -26,11 +26,11 @@ func TestIsWeakAlgorithm(t *testing.T) {
 		{"AES-128-CBC", nil, false},
 		{"Ed25519", nil, false},
 		{"TLS-ECDSA-P256", nil, false},
-		{"RSA", intPtr(1024), true},   // RSA < 2048 bit → weak
-		{"RSA", intPtr(2048), false},  // RSA = 2048 bit → ok
-		{"RSA", intPtr(4096), false},  // RSA = 4096 bit → ok
-		{"DSA", intPtr(1024), true},   // DSA < 2048 bit → weak
-		{"DSA", intPtr(2048), false},  // DSA = 2048 bit → ok
+		{"RSA", intPtr(1024), true},  // RSA < 2048 bit → weak
+		{"RSA", intPtr(2048), false}, // RSA = 2048 bit → ok
+		{"RSA", intPtr(4096), false}, // RSA = 4096 bit → ok
+		{"DSA", intPtr(1024), true},  // DSA < 2048 bit → weak
+		{"DSA", intPtr(2048), false}, // DSA = 2048 bit → ok
 	}
 	for _, tt := range tests {
 		label := tt.algorithm

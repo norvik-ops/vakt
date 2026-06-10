@@ -64,14 +64,14 @@ type sonarHotspotsResponse struct {
 }
 
 type sonarHotspot struct {
-	Key         string `json:"key"`
-	Component   string `json:"component"`
-	SecurityCategory string `json:"securityCategory"`
+	Key                      string `json:"key"`
+	Component                string `json:"component"`
+	SecurityCategory         string `json:"securityCategory"`
 	VulnerabilityProbability string `json:"vulnerabilityProbability"`
-	Status      string `json:"status"`
-	Message     string `json:"message"`
-	RuleKey     string `json:"ruleKey"`
-	Project     string `json:"project"`
+	Status                   string `json:"status"`
+	Message                  string `json:"message"`
+	RuleKey                  string `json:"ruleKey"`
+	Project                  string `json:"project"`
 }
 
 type sonarIssuesResponse struct {
@@ -105,9 +105,9 @@ func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg Sona
 
 	// Inventory
 	invDetails := map[string]any{
-		"collected_at":   time.Now().UTC().Format(time.RFC3339),
-		"project_count":  len(projects),
-		"sonarqube_url":  cfg.BaseURL,
+		"collected_at":  time.Now().UTC().Format(time.RFC3339),
+		"project_count": len(projects),
+		"sonarqube_url": cfg.BaseURL,
 	}
 	if err := c.addEvidence(ctx, orgID, firstControlID(assetControls), "SonarQube Projekt-Inventar", invDetails); err == nil {
 		total++
@@ -122,20 +122,21 @@ func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg Sona
 			log.Warn().Err(err).Str("project", p.Key).Msg("sonarqube_collector: quality gate status failed")
 			continue
 		}
-		if status == "ERROR" || status == "WARN" {
+		switch status {
+		case "ERROR", "WARN":
 			failedQG = append(failedQG, p.Name)
 			details := map[string]any{
-				"collected_at":   time.Now().UTC().Format(time.RFC3339),
-				"project_key":    p.Key,
-				"project_name":   p.Name,
-				"qg_status":      status,
-				"warning":        fmt.Sprintf("SonarQube: %s Quality Gate %s.", p.Name, status),
+				"collected_at": time.Now().UTC().Format(time.RFC3339),
+				"project_key":  p.Key,
+				"project_name": p.Name,
+				"qg_status":    status,
+				"warning":      fmt.Sprintf("SonarQube: %s Quality Gate %s.", p.Name, status),
 			}
 			if err := c.addEvidence(ctx, orgID, firstControlID(sdlcControls),
 				fmt.Sprintf("SonarQube Quality Gate FAILED: %s", p.Name), details); err == nil {
 				total++
 			}
-		} else if status == "OK" {
+		case "OK":
 			okQG = append(okQG, p.Name)
 		}
 	}
@@ -143,7 +144,7 @@ func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg Sona
 	// Summary: all OK
 	if len(failedQG) == 0 && len(okQG) > 0 {
 		details := map[string]any{
-			"collected_at": time.Now().UTC().Format(time.RFC3339),
+			"collected_at":  time.Now().UTC().Format(time.RFC3339),
 			"project_count": len(okQG),
 			"projects":      okQG,
 		}
@@ -172,8 +173,8 @@ func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg Sona
 	// Hotspot summary evidence
 	if hotspotCount > 0 {
 		details := map[string]any{
-			"collected_at":   time.Now().UTC().Format(time.RFC3339),
-			"hotspot_count":  hotspotCount,
+			"collected_at":  time.Now().UTC().Format(time.RFC3339),
+			"hotspot_count": hotspotCount,
 		}
 		if err := c.addEvidence(ctx, orgID, firstControlID(vulnControls),
 			fmt.Sprintf("SonarQube: %d unreviewed Security Hotspots importiert", hotspotCount), details); err == nil {

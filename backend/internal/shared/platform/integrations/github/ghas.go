@@ -180,9 +180,9 @@ func (c *Client) ListCodeScanningAlerts(ctx context.Context, owner, repo string)
 		Number int    `json:"number"`
 		State  string `json:"state"`
 		Rule   struct {
-			ID              string `json:"id"`
+			ID               string `json:"id"`
 			SecuritySeverity string `json:"security_severity_level"`
-			Severity        string `json:"severity"`
+			Severity         string `json:"severity"`
 		} `json:"rule"`
 		Tool struct {
 			Name string `json:"name"`

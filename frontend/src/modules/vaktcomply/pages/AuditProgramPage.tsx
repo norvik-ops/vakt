@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ClipboardList, Plus, Pencil, CheckCircle2, AlertTriangle, Download, ChevronDown } from 'lucide-react'
+import { ClipboardList, Plus, CheckCircle2, AlertTriangle, Download, ChevronDown } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
-import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
 import { Input } from '../../../components/ui/input'
@@ -12,16 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { apiFetch } from '../../../api/client'
 import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
 import { EmptyState } from '../../../shared/components/EmptyState'
-
-interface AuditPlan {
-  id: string
-  title: string
-  year: number
-  scope: string
-  objectives: string
-  status: string
-  created_at: string
-}
 
 interface AuditProgramAudit {
   id: string
@@ -187,7 +176,7 @@ export default function AuditProgramPage() {
   const { data: findings = [] } = useAuditFindings(expandedAudit)
 
   function handleCreateAudit() {
-    createMut.mutate(auditForm as Partial<AuditProgramAudit>, { onSuccess: () => { setCreateOpen(false); } })
+    createMut.mutate(auditForm, { onSuccess: () => { setCreateOpen(false); } })
   }
 
   function handleComplete() {

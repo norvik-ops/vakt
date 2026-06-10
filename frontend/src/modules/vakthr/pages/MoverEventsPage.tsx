@@ -82,8 +82,7 @@ export default function MoverEventsPage() {
     staleTime: 2 * 60 * 1000,
   })
 
-  const { data: employeesData } = useEmployees(1, 100)
-  const employees = employeesData?.data ?? []
+  const { data: employees = [] } = useEmployees(1, 100)
 
   const createMutation = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
@@ -136,7 +135,7 @@ export default function MoverEventsPage() {
           <SkeletonTable rows={4} cols={3} />
         ) : !events || events.length === 0 ? (
           <EmptyState
-            icon={<ArrowRightLeft className="w-8 h-8 text-secondary" />}
+            icon={ArrowRightLeft}
             title="Keine Rollenwechsel erfasst"
             description="Erfasse Rollenwechsel, um sicherzustellen dass alte Berechtigungen entzogen und neue korrekt vergeben werden."
           />

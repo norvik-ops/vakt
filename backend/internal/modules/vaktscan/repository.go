@@ -318,38 +318,6 @@ func (r *Repository) enrichEnvironments(ctx context.Context, assets []Asset) {
 	}
 }
 
-// enrichClassifications fetches the classification column for a slice of assets
-// in a single query. Same post-sqlc-generation pattern as enrichEnvironments.
-func (r *Repository) enrichClassifications(ctx context.Context, assets []Asset) {
-	if len(assets) == 0 {
-		return
-	}
-	ids := make([]string, len(assets))
-	for i, a := range assets {
-		ids[i] = a.ID
-	}
-	rows, err := r.db.Query(ctx,
-		`SELECT id, COALESCE(classification, 'internal') FROM vb_assets WHERE id = ANY($1)`, ids)
-	if err != nil {
-		return
-	}
-	defer rows.Close()
-	m := make(map[string]string, len(assets))
-	for rows.Next() {
-		var id, cls string
-		if rows.Scan(&id, &cls) == nil {
-			m[id] = cls
-		}
-	}
-	for i := range assets {
-		if cls, ok := m[assets[i].ID]; ok {
-			assets[i].Classification = cls
-		} else {
-			assets[i].Classification = "internal"
-		}
-	}
-}
-
 // GetClassificationSummary returns asset counts grouped by classification level.
 func (r *Repository) GetClassificationSummary(ctx context.Context, orgID string) (*ClassificationSummary, error) {
 	rows, err := r.db.Query(ctx,

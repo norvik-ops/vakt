@@ -175,7 +175,7 @@ type AuditorLink struct {
 	ExpiresAt         time.Time `json:"expires_at"`
 	UsedCount         int       `json:"used_count"`
 	MaxUses           *int      `json:"max_uses,omitempty"`
-	Description       string    `json:"description,omitempty"`     // S67-5
+	Description       string    `json:"description,omitempty"`        // S67-5
 	AllowedFrameworks []string  `json:"allowed_frameworks,omitempty"` // S67-5
 	CreatedAt         time.Time `json:"created_at"`
 	// ShareURL is populated on creation with the raw token embedded.
@@ -188,7 +188,7 @@ type AuditorLinkListItem struct {
 	OrgID             string     `json:"org_id"`
 	FrameworkID       string     `json:"framework_id"`
 	Label             string     `json:"label"`
-	Description       string     `json:"description,omitempty"` // S67-5
+	Description       string     `json:"description,omitempty"`        // S67-5
 	AllowedFrameworks []string   `json:"allowed_frameworks,omitempty"` // S67-5
 	CreatedBy         string     `json:"created_by"`
 	ExpiresAt         time.Time  `json:"expires_at"`
@@ -315,8 +315,8 @@ type Risk struct {
 	// Residualrisiko-Berechnung (S61-4, Migration 164)
 	InherentLikelihood          *int       `json:"inherent_likelihood,omitempty"`
 	InherentImpact              *int       `json:"inherent_impact,omitempty"`
-	InherentScore               *int       `json:"inherent_score,omitempty"`  // computed: InherentLikelihood * InherentImpact
-	ResidualScore               *int       `json:"residual_score,omitempty"`  // computed: ResidualLikelihood * ResidualImpact
+	InherentScore               *int       `json:"inherent_score,omitempty"` // computed: InherentLikelihood * InherentImpact
+	ResidualScore               *int       `json:"residual_score,omitempty"` // computed: ResidualLikelihood * ResidualImpact
 	RiskAcceptedBy              *string    `json:"risk_accepted_by,omitempty"`
 	RiskAcceptedAt              *time.Time `json:"risk_accepted_at,omitempty"`
 	RiskAcceptanceJustification string     `json:"risk_acceptance_justification"`
@@ -385,15 +385,15 @@ type Incident struct {
 	NotifiedWarn72h bool `json:"-"`
 	NotifiedWarn30d bool `json:"-"`
 	// NIS2 Art.23 stage-based reporting workflow (Migration 175)
-	NIS2Reportable                  *bool      `json:"nis2_reportable,omitempty"`
-	NIS2ReportingStage              *string    `json:"nis2_reporting_stage,omitempty"`
-	NIS2DetectedAt                  *time.Time `json:"nis2_detected_at,omitempty"`
-	NIS2EarlyWarningDue             *time.Time `json:"nis2_early_warning_due,omitempty"`
-	NIS2FullReportDue               *time.Time `json:"nis2_full_report_due,omitempty"`
-	NIS2FinalReportDue              *time.Time `json:"nis2_final_report_due,omitempty"`
-	NIS2EarlyWarningSubmittedAt     *time.Time `json:"nis2_early_warning_submitted_at,omitempty"`
-	NIS2FullReportSubmittedAt       *time.Time `json:"nis2_full_report_submitted_at,omitempty"`
-	NIS2FinalReportSubmittedAt      *time.Time `json:"nis2_final_report_submitted_at,omitempty"`
+	NIS2Reportable              *bool      `json:"nis2_reportable,omitempty"`
+	NIS2ReportingStage          *string    `json:"nis2_reporting_stage,omitempty"`
+	NIS2DetectedAt              *time.Time `json:"nis2_detected_at,omitempty"`
+	NIS2EarlyWarningDue         *time.Time `json:"nis2_early_warning_due,omitempty"`
+	NIS2FullReportDue           *time.Time `json:"nis2_full_report_due,omitempty"`
+	NIS2FinalReportDue          *time.Time `json:"nis2_final_report_due,omitempty"`
+	NIS2EarlyWarningSubmittedAt *time.Time `json:"nis2_early_warning_submitted_at,omitempty"`
+	NIS2FullReportSubmittedAt   *time.Time `json:"nis2_full_report_submitted_at,omitempty"`
+	NIS2FinalReportSubmittedAt  *time.Time `json:"nis2_final_report_submitted_at,omitempty"`
 	// Computed deadline status — populated by service layer, not stored
 	DeadlineStatus *IncidentDeadlineStatus `json:"deadline_status,omitempty"`
 	CreatedAt      time.Time               `json:"created_at"`
@@ -739,19 +739,19 @@ type Supplier struct {
 	AssessmentStatus string     `json:"assessment_status"` // none | pending | completed
 	LastAssessmentAt *time.Time `json:"last_assessment_at,omitempty"`
 	// ISO 27001 A.5.19-21 fields (Migration 176 / S67-2)
-	Category                string     `json:"category,omitempty"`
-	DataAccess              bool       `json:"data_access"`
-	AvvDocumentID           *string    `json:"avv_document_id,omitempty"`
-	LastAssessmentScore     *int       `json:"last_assessment_score,omitempty"`
-	NextAssessmentDue       *time.Time `json:"next_assessment_due,omitempty"`
-	SupplierStatus          string     `json:"supplier_status,omitempty"` // active | inactive | terminated
-	ContractStart           *time.Time `json:"contract_start,omitempty"`
-	DataProtectionScore     *int       `json:"data_protection_score,omitempty"`
-	AvailabilityScore       *int       `json:"availability_score,omitempty"`
-	SecurityCertifications  string     `json:"security_certifications,omitempty"`
-	AuditRights             *bool      `json:"audit_rights,omitempty"`
-	SubProcessorsKnown      *bool      `json:"sub_processors_known,omitempty"`
-	IncidentNotification    *bool      `json:"incident_notification,omitempty"`
+	Category               string     `json:"category,omitempty"`
+	DataAccess             bool       `json:"data_access"`
+	AvvDocumentID          *string    `json:"avv_document_id,omitempty"`
+	LastAssessmentScore    *int       `json:"last_assessment_score,omitempty"`
+	NextAssessmentDue      *time.Time `json:"next_assessment_due,omitempty"`
+	SupplierStatus         string     `json:"supplier_status,omitempty"` // active | inactive | terminated
+	ContractStart          *time.Time `json:"contract_start,omitempty"`
+	DataProtectionScore    *int       `json:"data_protection_score,omitempty"`
+	AvailabilityScore      *int       `json:"availability_score,omitempty"`
+	SecurityCertifications string     `json:"security_certifications,omitempty"`
+	AuditRights            *bool      `json:"audit_rights,omitempty"`
+	SubProcessorsKnown     *bool      `json:"sub_processors_known,omitempty"`
+	IncidentNotification   *bool      `json:"incident_notification,omitempty"`
 	// Computed — not stored in DB
 	ContractStatus string    `json:"contract_status,omitempty"`
 	CreatedAt      time.Time `json:"created_at"`

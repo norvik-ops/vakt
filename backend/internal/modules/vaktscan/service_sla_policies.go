@@ -39,8 +39,8 @@ type SLASummary struct {
 
 // EnsureDefaultSLAPolicies creates default SLA policies for the org if none exist.
 // Defaults: critical=7d, high=30d, medium=90d, low=180d, info=365d.
-func (svc *Service) EnsureDefaultSLAPolicies(ctx context.Context, orgID string) error {
-	existing, err := svc.repo.ListSLAPolicies(ctx, orgID)
+func (s *Service) EnsureDefaultSLAPolicies(ctx context.Context, orgID string) error {
+	existing, err := s.repo.ListSLAPolicies(ctx, orgID)
 	if err != nil {
 		return fmt.Errorf("list sla policies: %w", err)
 	}
@@ -60,7 +60,7 @@ func (svc *Service) EnsureDefaultSLAPolicies(ctx context.Context, orgID string) 
 		{"info", 365, 30},
 	}
 	for _, d := range defaults {
-		if err := svc.repo.CreateSLAPolicy(ctx, orgID, d.severity, d.remDays, d.advanceDays, true); err != nil {
+		if err := s.repo.CreateSLAPolicy(ctx, orgID, d.severity, d.remDays, d.advanceDays, true); err != nil {
 			log.Warn().Err(err).Str("severity", d.severity).Msg("failed to create default SLA policy")
 		}
 	}
@@ -68,8 +68,8 @@ func (svc *Service) EnsureDefaultSLAPolicies(ctx context.Context, orgID string) 
 }
 
 // GetSLASummary returns a summary of open findings against their SLA deadlines.
-func (svc *Service) GetSLASummary(ctx context.Context, orgID string) (*SLASummary, error) {
-	rows, err := svc.repo.GetSLASummaryRows(ctx, orgID)
+func (s *Service) GetSLASummary(ctx context.Context, orgID string) (*SLASummary, error) {
+	rows, err := s.repo.GetSLASummaryRows(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("get sla summary: %w", err)
 	}

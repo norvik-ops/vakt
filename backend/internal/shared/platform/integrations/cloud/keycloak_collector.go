@@ -165,7 +165,7 @@ func (c *KeycloakCollector) getAllUsers(ctx context.Context, cfg KeycloakConfig,
 		}
 
 		raw, readErr := io.ReadAll(io.LimitReader(resp.Body, 4*1024*1024))
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if readErr != nil {
 			return all, fmt.Errorf("read users response: %w", readErr)
 		}
@@ -211,7 +211,7 @@ func (c *KeycloakCollector) collectMFAStatus(ctx context.Context, orgID, baseURL
 			continue
 		}
 		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
 			continue
@@ -281,8 +281,8 @@ func (c *KeycloakCollector) collectPasswordPolicy(ctx context.Context, orgID, ba
 	}
 
 	var realm struct {
-		PasswordPolicy       string `json:"passwordPolicy"`
-		SSOSessionMaxLifespan int   `json:"ssoSessionMaxLifespan"` // seconds
+		PasswordPolicy        string `json:"passwordPolicy"`
+		SSOSessionMaxLifespan int    `json:"ssoSessionMaxLifespan"` // seconds
 	}
 	if err := json.Unmarshal(raw, &realm); err != nil {
 		return 0, fmt.Errorf("parse realm: %w", err)
@@ -295,10 +295,10 @@ func (c *KeycloakCollector) collectPasswordPolicy(ctx context.Context, orgID, ba
 	}
 
 	details := map[string]any{
-		"collected_at":   time.Now().UTC().Format(time.RFC3339),
-		"policy_string":  realm.PasswordPolicy,
-		"min_length":     policyLen,
-		"status":         status,
+		"collected_at":  time.Now().UTC().Format(time.RFC3339),
+		"policy_string": realm.PasswordPolicy,
+		"min_length":    policyLen,
+		"status":        status,
 	}
 
 	title := fmt.Sprintf("Keycloak Password-Policy: %s", realm.PasswordPolicy)
@@ -332,10 +332,10 @@ func (c *KeycloakCollector) collectInactiveUsers(ctx context.Context, orgID stri
 	}
 
 	details := map[string]any{
-		"collected_at":    time.Now().UTC().Format(time.RFC3339),
-		"inactive_users":  inactive,
-		"threshold_days":  90,
-		"status":          status,
+		"collected_at":   time.Now().UTC().Format(time.RFC3339),
+		"inactive_users": inactive,
+		"threshold_days": 90,
+		"status":         status,
 	}
 
 	title := fmt.Sprintf("Keycloak Inaktive Accounts: %d User seit >90 Tagen nie eingeloggt", inactive)
@@ -368,7 +368,7 @@ func (c *KeycloakCollector) collectAdminRoles(ctx context.Context, orgID, baseUR
 			continue
 		}
 		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
 			continue

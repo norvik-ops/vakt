@@ -184,7 +184,7 @@ type WazuhConfigResponse struct {
 // WazuhStatus extends SyncStatus with agent counts.
 type WazuhStatus struct {
 	SyncStatus
-	AgentCount   int `json:"agent_count"`
+	AgentCount    int `json:"agent_count"`
 	AgentsOffline int `json:"agents_offline"`
 }
 
@@ -290,9 +290,9 @@ type KeycloakStatus struct {
 // LDAPConfig holds LDAP/Active-Directory connection parameters.
 type LDAPConfig struct {
 	Host              string   `json:"host"`
-	Port              int      `json:"port"`                // 389 or 636
+	Port              int      `json:"port"` // 389 or 636
 	BindDN            string   `json:"bind_dn"`
-	BindPassword      string   `json:"bind_password"`       // stored encrypted
+	BindPassword      string   `json:"bind_password"` // stored encrypted
 	BaseDN            string   `json:"base_dn"`
 	UseTLS            bool     `json:"use_tls"`
 	IsActiveDirectory bool     `json:"is_active_directory"` // affects timestamp parsing
@@ -359,8 +359,8 @@ type GitLabConfigResponse struct {
 // GitLabStatus extends SyncStatus with project metrics.
 type GitLabStatus struct {
 	SyncStatus
-	ProjectCount              int `json:"project_count"`
-	UnprotectedBranchesCount  int `json:"unprotected_branches_count"`
+	ProjectCount             int `json:"project_count"`
+	UnprotectedBranchesCount int `json:"unprotected_branches_count"`
 }
 
 // --- SonarQube ---
@@ -380,16 +380,16 @@ type SaveSonarQubeConfigInput struct {
 // SonarQubeConfigResponse is returned from GET /sonarqube/config (secrets masked).
 type SonarQubeConfigResponse struct {
 	BaseURL      string `json:"base_url"`
-	Token        string `json:"token"`   // "****" if set
+	Token        string `json:"token"` // "****" if set
 	IsConfigured bool   `json:"is_configured"`
 }
 
 // SonarQubeStatus extends SyncStatus with quality gate metrics.
 type SonarQubeStatus struct {
 	SyncStatus
-	ProjectCount          int `json:"project_count"`
+	ProjectCount           int `json:"project_count"`
 	QualityGateFailedCount int `json:"quality_gate_failed_count"`
-	HotspotCount          int `json:"hotspot_count"`
+	HotspotCount           int `json:"hotspot_count"`
 }
 
 // --- Personio ---
@@ -414,8 +414,8 @@ type PersonioConfigResponse struct {
 // PersonioStatus is returned from GET /personio/status.
 type PersonioStatus struct {
 	SyncStatus
-	WebhookURL               string `json:"webhook_url"`
-	WebhookConfigured        bool   `json:"webhook_configured"`
-	OffboardingsTriggered    int    `json:"offboardings_triggered"`
-	OffboardingsOnTime       int    `json:"offboardings_completed_on_time"`
+	WebhookURL            string `json:"webhook_url"`
+	WebhookConfigured     bool   `json:"webhook_configured"`
+	OffboardingsTriggered int    `json:"offboardings_triggered"`
+	OffboardingsOnTime    int    `json:"offboardings_completed_on_time"`
 }

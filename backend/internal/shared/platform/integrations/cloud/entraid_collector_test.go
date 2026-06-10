@@ -17,16 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// newEntraIDTestCollector creates a collector with mock base URLs pointing at the test server.
-func newEntraIDTestCollector(loginURL, graphURL string) *EntraIDCollector {
-	return &EntraIDCollector{
-		evidence:     &mockEvidenceWriter{controls: []ControlMatch{{ID: "ctrl-1", Title: "Access Control"}}},
-		loginBaseURL: loginURL,
-		graphBaseURL: graphURL,
-		httpClient:   &http.Client{Timeout: 5 * time.Second},
-	}
-}
-
 func entraIDTokenHandler(t *testing.T) http.HandlerFunc {
 	t.Helper()
 	return func(w http.ResponseWriter, r *http.Request) {

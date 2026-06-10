@@ -265,10 +265,10 @@ func (c *EntraIDCollector) collectConditionalAccess(ctx context.Context, orgID, 
 	}
 
 	details := map[string]any{
-		"collected_at":   time.Now().UTC().Format(time.RFC3339),
-		"total_policies": total,
+		"collected_at":    time.Now().UTC().Format(time.RFC3339),
+		"total_policies":  total,
 		"active_policies": active,
-		"policy_names":   policyNames,
+		"policy_names":    policyNames,
 	}
 
 	title := fmt.Sprintf("Entra ID Conditional Access: %d aktive Policies", active)
@@ -367,10 +367,10 @@ func (c *EntraIDCollector) collectInactiveUsers(ctx context.Context, orgID, toke
 	}
 
 	details := map[string]any{
-		"collected_at":    time.Now().UTC().Format(time.RFC3339),
-		"inactive_users":  count,
-		"threshold_days":  90,
-		"status":          status,
+		"collected_at":   time.Now().UTC().Format(time.RFC3339),
+		"inactive_users": count,
+		"threshold_days": 90,
+		"status":         status,
 	}
 
 	title := fmt.Sprintf("Entra ID Inaktive Accounts: %d User seit >90 Tagen nicht eingeloggt", count)

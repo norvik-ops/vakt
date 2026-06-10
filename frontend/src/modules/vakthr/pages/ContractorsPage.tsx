@@ -74,7 +74,7 @@ export default function ContractorsPage() {
     mutationFn: (input: CreateContractorInput) =>
       apiFetch('/api/v1/vakthr/contractors', { method: 'POST', body: JSON.stringify(input) }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['hr', 'contractors'] })
+      void qc.invalidateQueries({ queryKey: ['hr', 'contractors'] })
       setShowCreate(false)
       setForm({ first_name: '', last_name: '', contract_start: '', contract_end: '' })
     },
@@ -90,8 +90,8 @@ export default function ContractorsPage() {
       <PageHeader
         title="Auftragnehmer & Freelancer"
         description="Vertragslaufzeiten, Zugangsbereiche und NDA/AVV-Status externer Mitarbeiter"
-        action={
-          <Button onClick={() => setShowCreate(true)}>
+        actions={
+          <Button onClick={() => { setShowCreate(true); }}>
             <Plus className="w-4 h-4 mr-2" /> Auftragnehmer anlegen
           </Button>
         }
@@ -101,7 +101,7 @@ export default function ContractorsPage() {
 
       {!isLoading && !contractors?.length && (
         <EmptyState
-          icon={<UserCog className="w-8 h-8" />}
+          icon={UserCog}
           title="Noch keine Auftragnehmer"
           description="Legen Sie externe Auftragnehmer und Freelancer an, um deren Vertragslaufzeiten zu überwachen."
         />
@@ -150,43 +150,43 @@ export default function ContractorsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Vorname *</Label>
-                <Input value={form.first_name} onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))} required />
+                <Input value={form.first_name} onChange={e => { setForm(f => ({ ...f, first_name: e.target.value })); }} required />
               </div>
               <div>
                 <Label>Nachname *</Label>
-                <Input value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))} required />
+                <Input value={form.last_name} onChange={e => { setForm(f => ({ ...f, last_name: e.target.value })); }} required />
               </div>
             </div>
             <div>
               <Label>E-Mail</Label>
-              <Input type="email" value={form.email ?? ''} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+              <Input type="email" value={form.email ?? ''} onChange={e => { setForm(f => ({ ...f, email: e.target.value })); }} />
             </div>
             <div>
               <Label>Unternehmen</Label>
-              <Input value={form.company ?? ''} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} />
+              <Input value={form.company ?? ''} onChange={e => { setForm(f => ({ ...f, company: e.target.value })); }} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Vertragsbeginn *</Label>
-                <Input type="date" value={form.contract_start} onChange={e => setForm(f => ({ ...f, contract_start: e.target.value }))} required />
+                <Input type="date" value={form.contract_start} onChange={e => { setForm(f => ({ ...f, contract_start: e.target.value })); }} required />
               </div>
               <div>
                 <Label>Vertragsende *</Label>
-                <Input type="date" value={form.contract_end} onChange={e => setForm(f => ({ ...f, contract_end: e.target.value }))} required />
+                <Input type="date" value={form.contract_end} onChange={e => { setForm(f => ({ ...f, contract_end: e.target.value })); }} required />
               </div>
             </div>
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={form.nda_signed ?? false} onChange={e => setForm(f => ({ ...f, nda_signed: e.target.checked }))} />
+                <input type="checkbox" checked={form.nda_signed ?? false} onChange={e => { setForm(f => ({ ...f, nda_signed: e.target.checked })); }} />
                 NDA unterzeichnet
               </label>
               <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={form.avv_signed ?? false} onChange={e => setForm(f => ({ ...f, avv_signed: e.target.checked }))} />
+                <input type="checkbox" checked={form.avv_signed ?? false} onChange={e => { setForm(f => ({ ...f, avv_signed: e.target.checked })); }} />
                 AVV unterzeichnet
               </label>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Abbrechen</Button>
+              <Button type="button" variant="outline" onClick={() => { setShowCreate(false); }}>Abbrechen</Button>
               <Button type="submit" disabled={createMutation.isPending}>
                 {createMutation.isPending ? 'Speichern…' : 'Anlegen'}
               </Button>

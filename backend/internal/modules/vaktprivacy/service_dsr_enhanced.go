@@ -103,9 +103,9 @@ func (s *Service) ResolveDSR(ctx context.Context, orgID, id, resolvedByUserID st
 	// Update the record
 	var row struct {
 		ID, OrgID, RequesterName, RequesterEmail, Type, Status, Notes string
-		DueDate                                                        *string
-		ReceivedAt, CreatedAt, UpdatedAt                               time.Time
-		CompletedAt, ExtensionDueAt                                    *time.Time
+		DueDate                                                       *string
+		ReceivedAt, CreatedAt, UpdatedAt                              time.Time
+		CompletedAt, ExtensionDueAt                                   *time.Time
 	}
 	err := s.db.QueryRow(ctx, `
 		UPDATE po_dsr SET
@@ -135,7 +135,7 @@ func (s *Service) ResolveDSR(ctx context.Context, orgID, id, resolvedByUserID st
 		Type: row.Type, Status: row.Status, Notes: row.Notes,
 		DueDate: row.DueDate, ReceivedAt: row.ReceivedAt, CompletedAt: row.CompletedAt,
 		ExtensionDueAt: row.ExtensionDueAt,
-		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		CreatedAt:      row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
 	return dsr, nil
 }
