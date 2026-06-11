@@ -47,17 +47,17 @@ export function useCreateAlertChannel() {
 
 export function useDeleteAlertChannel() {
   const qc = useQueryClient()
-  return useMutation<void, Error, string>({
-    mutationFn: (id) => apiFetch<void>(`/alerting/channels/${id}`, { method: 'DELETE' }),
+  return useMutation<undefined, Error, string>({
+    mutationFn: (id) => apiFetch<undefined>(`/alerting/channels/${id}`, { method: 'DELETE' }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['alerting', 'channels'] }),
   })
 }
 
 export function useToggleAlertChannel() {
   const qc = useQueryClient()
-  return useMutation<void, Error, { id: string; enabled: boolean }>({
+  return useMutation<undefined, Error, { id: string; enabled: boolean }>({
     mutationFn: ({ id, enabled }) =>
-      apiFetch<void>(`/alerting/channels/${id}/toggle`, {
+      apiFetch<undefined>(`/alerting/channels/${id}/toggle`, {
         method: 'PUT',
         body: JSON.stringify({ enabled }),
       }),
@@ -66,8 +66,8 @@ export function useToggleAlertChannel() {
 }
 
 export function useTestAlertChannel() {
-  return useMutation<void, Error, string>({
-    mutationFn: (id) => apiFetch<void>(`/alerting/channels/${id}/test`, { method: 'POST' }),
+  return useMutation<undefined, Error, string>({
+    mutationFn: (id) => apiFetch<undefined>(`/alerting/channels/${id}/test`, { method: 'POST' }),
   })
 }
 

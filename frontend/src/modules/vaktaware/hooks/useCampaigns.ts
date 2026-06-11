@@ -9,7 +9,7 @@ export function useCampaigns() {
     queryKey: ['vaktaware', 'campaigns'],
     queryFn: async () => {
       const resp = await apiFetch<{ data: Campaign[] } | Campaign[]>(`${BASE}/campaigns`)
-      return Array.isArray(resp) ? resp : (resp.data ?? [])
+      return Array.isArray(resp) ? resp : resp.data
     },
     staleTime: 30_000,
   })

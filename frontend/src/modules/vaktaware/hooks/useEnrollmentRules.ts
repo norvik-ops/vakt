@@ -28,9 +28,9 @@ export function useCreateEnrollmentRule() {
 
 export function useUpdateEnrollmentRule() {
   const queryClient = useQueryClient()
-  return useMutation<void, Error, { id: string; isActive: boolean }>({
+  return useMutation<undefined, Error, { id: string; isActive: boolean }>({
     mutationFn: ({ id, isActive }) =>
-      apiFetch<void>(`${BASE}/enrollment-rules/${id}`, {
+      apiFetch<undefined>(`${BASE}/enrollment-rules/${id}`, {
         method: 'PUT',
         body: JSON.stringify({ is_active: isActive }),
       }),
@@ -42,9 +42,9 @@ export function useUpdateEnrollmentRule() {
 
 export function useDeleteEnrollmentRule() {
   const queryClient = useQueryClient()
-  return useMutation<void, Error, string>({
+  return useMutation<undefined, Error, string>({
     mutationFn: (id) =>
-      apiFetch<void>(`${BASE}/enrollment-rules/${id}`, { method: 'DELETE' }),
+      apiFetch<undefined>(`${BASE}/enrollment-rules/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['vaktaware', 'enrollment-rules'] })
     },

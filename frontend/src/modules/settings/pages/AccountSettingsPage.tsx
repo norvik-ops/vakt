@@ -124,7 +124,7 @@ function SetupDialog({ open, onClose }: { open: boolean; onClose: () => void }) 
       {
         onSuccess: (data) => {
           setBackupCodes(data.backup_codes)
-          if (data.recovery_codes && data.recovery_codes.length > 0) {
+          if (data.recovery_codes.length > 0) {
             setRecoveryCodes(data.recovery_codes)
           }
           setStep('backup')
