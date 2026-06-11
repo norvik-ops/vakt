@@ -26,7 +26,7 @@ type CreateChannelResponse struct {
 type CreateChannelInput struct {
 	Name   string   `json:"name"   validate:"required,min=1,max=80"`
 	Type   string   `json:"type"   validate:"required,oneof=slack teams webhook email"`
-	URL    string   `json:"url"    validate:"required"`
+	URL    string   `json:"url"    validate:"required,url"`
 	Events []string `json:"events" validate:"required,min=1"`
 }
 

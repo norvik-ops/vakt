@@ -1509,7 +1509,8 @@ type UserNotifications struct {
 type Users struct {
 	ID                string             `json:"id"`
 	Email             string             `json:"email"`
-	PasswordHash      pgtype.Text        `json:"password_hash"`
+	// json:"-" intentionally overrides sqlc default — never serialize password hashes in API responses
+	PasswordHash      pgtype.Text        `json:"-"`
 	DisplayName       pgtype.Text        `json:"display_name"`
 	AvatarUrl         pgtype.Text        `json:"avatar_url"`
 	OidcSubject       pgtype.Text        `json:"oidc_subject"`

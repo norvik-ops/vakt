@@ -93,7 +93,7 @@ func (h *Handler) TestConnection(c echo.Context) error {
 	if err != nil {
 		log.Error().Err(err).Msg("ldap connection test failed")
 		return c.JSON(http.StatusBadGateway, map[string]string{
-			"error": "LDAP connection failed: " + err.Error(),
+			"error": "LDAP connection failed — check server logs for details",
 			"code":  "LDAP_CONNECTION_ERROR",
 		})
 	}
@@ -121,7 +121,7 @@ func (h *Handler) Sync(c echo.Context) error {
 	if err != nil {
 		log.Error().Err(err).Msg("ldap sync failed")
 		return c.JSON(http.StatusBadGateway, map[string]string{
-			"error": "LDAP sync failed: " + err.Error(),
+			"error": "LDAP sync failed — check server logs for details",
 			"code":  "LDAP_SYNC_ERROR",
 		})
 	}

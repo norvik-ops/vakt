@@ -460,6 +460,13 @@ func RunOpenVASScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) 
 		target = payload.AssetName
 	}
 
+	// Block scans against private/loopback addresses to prevent SSRF-style
+	// internal infrastructure scanning unless the operator has explicitly
+	// opted in via VAKT_SCAN_ALLOW_PRIVATE=true.
+	if os.Getenv("VAKT_SCAN_ALLOW_PRIVATE") != "true" && isPrivateOrLoopback(target) {
+		return fmt.Errorf("openvas: scan target %q is in a private or loopback range — set VAKT_SCAN_ALLOW_PRIVATE=true to allow", target)
+	}
+
 	log.Info().Str("scan_id", payload.ScanID).Str("target", target).Msg("openvas: creating GVM task")
 
 	taskID, err := client.createTask(ctx, target)

@@ -37,7 +37,9 @@ type EphemeralSession struct {
 // randomHex returns n random bytes encoded as a hex string (2n characters).
 func randomHex(n int) string {
 	b := make([]byte, n)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		panic("crypto/rand failed: " + err.Error())
+	}
 	return hex.EncodeToString(b)
 }
 
@@ -46,7 +48,9 @@ func randomHex(n int) string {
 func randomPassword(n int) string {
 	// Each base64 character encodes 6 bits; we need ceil(n*6/8) raw bytes.
 	raw := make([]byte, (n*6+7)/8)
-	rand.Read(raw)
+	if _, err := rand.Read(raw); err != nil {
+		panic("crypto/rand failed: " + err.Error())
+	}
 	s := hex.EncodeToString(raw) // hex gives us only [0-9a-f], always URL-safe
 	if len(s) > n {
 		s = s[:n]

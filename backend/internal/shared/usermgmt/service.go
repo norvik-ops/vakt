@@ -10,6 +10,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/matharnica/vakt/internal/shared/password"
 )
 
 // SMTPConfig holds the SMTP settings needed to send invitation emails.
@@ -247,6 +249,11 @@ func (s *Service) AcceptInvitation(ctx context.Context, in AcceptInviteInput) er
 	).Scan(&invID, &orgID, &email, &role)
 	if err != nil {
 		return fmt.Errorf("invitation not found or expired")
+	}
+
+	// Enforce platform password policy before hashing.
+	if err := password.ValidateStrength(in.Password); err != nil {
+		return err
 	}
 
 	// Hash the new password using bcrypt — same cost as the auth service.

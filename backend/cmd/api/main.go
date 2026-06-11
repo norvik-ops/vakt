@@ -836,9 +836,9 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 
 	// 2FA/TOTP — local account second factor
 	if cfg.SecretKey != "" {
-		totpRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
-			middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(5.0 / 60.0), Burst: 5, ExpiresIn: 5 * time.Minute},
-		))
+		// Redis-backed rate limiter (5 attempts / 5 min per IP) — shared across
+		// replicas and survives restarts, unlike the Echo in-memory store.
+		totpRateLimiter := sharedmw.TOTPRateLimit(rdb)
 		auth.RegisterTOTP(api.Group("/auth"), pool, totpKey, auth.AuthMiddleware(pasetoKey, pool, rdb), authSvc, totpRateLimiter)
 		log.Info().Msg("2FA/TOTP routes registered")
 	}

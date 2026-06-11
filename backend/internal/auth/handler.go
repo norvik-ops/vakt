@@ -268,7 +268,13 @@ func (h *Handler) Login(c echo.Context) error {
 		})
 	}
 
-	// Successful login — clear any accumulated failure counter.
+	// Successful login — clear per-email failure counter so the user's own
+	// typos don't count against them on the next attempt.
+	// The per-IP counter is intentionally NOT cleared here: clearing it on any
+	// successful login from that IP would let an attacker reset a near-threshold
+	// IP counter by piggybacking on a legitimate login from the same network.
+	// The ExpireNX fix ensures the 15-min TTL runs from the first failure and
+	// expires naturally without any explicit clear needed.
 	h.service.clearLoginFailures(c.Request().Context(), body.Email)
 
 	// Set access token as httpOnly cookie (XSS protection).

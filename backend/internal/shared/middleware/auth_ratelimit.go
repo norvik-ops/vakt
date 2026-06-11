@@ -56,6 +56,50 @@ func AuthRateLimit(rdb *redis.Client) echo.MiddlewareFunc {
 	}
 }
 
+const (
+	// totpRLLimit is the maximum number of TOTP verification attempts allowed
+	// per IP per totpRLWindow.  5 attempts per 5 minutes matches the TOTP code
+	// rotation period and prevents brute-force sweeps without blocking genuine
+	// retries caused by clock skew.
+	totpRLLimit = 5
+	// totpRLWindow is the rolling window over which totpRLLimit is applied.
+	totpRLWindow = 5 * time.Minute
+)
+
+// TOTPRateLimit returns an Echo middleware that enforces an IP-based rate limit
+// of 5 TOTP verification attempts per 5 minutes using Redis as the backing store.
+//
+// Redis-backed storage ensures the limit is shared across replicas and survives
+// process restarts — unlike the Echo in-memory rate limiter which resets on
+// every restart and is not effective behind a load balancer.
+//
+// Fails open when Redis is unavailable so that a Redis outage does not lock
+// users out of 2FA-protected endpoints.
+func TOTPRateLimit(rdb *redis.Client) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			ip := c.RealIP()
+			key := fmt.Sprintf("totp_rl:%s", ip)
+			ctx := c.Request().Context()
+
+			count, err := incrWithTTL(ctx, rdb, key, totpRLWindow)
+			if err != nil {
+				// Fail open: if Redis is unavailable we do not block legitimate users.
+				return next(c)
+			}
+
+			if count > totpRLLimit {
+				return c.JSON(http.StatusTooManyRequests, map[string]string{
+					"error": "Too many TOTP attempts",
+					"code":  "TOTP_RATE_LIMIT",
+				})
+			}
+
+			return next(c)
+		}
+	}
+}
+
 // incrWithTTL atomically increments key and, on the first increment, sets its
 // expiry to ttl.  Returns the new counter value.
 func incrWithTTL(ctx context.Context, rdb *redis.Client, key string, ttl time.Duration) (int64, error) {

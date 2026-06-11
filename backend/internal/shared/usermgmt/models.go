@@ -39,5 +39,5 @@ type UpdateRoleInput struct {
 type AcceptInviteInput struct {
 	Token    string `json:"token"    validate:"required"`
 	Name     string `json:"name"     validate:"required,min=2,max=100"`
-	Password string `json:"password" validate:"required,min=8,max=72"`
+	Password string `json:"password" validate:"required,min=10,max=72"`
 }

@@ -152,7 +152,7 @@ func TestMiddlewareAcceptsCookie(t *testing.T) {
 		return c.JSON(http.StatusOK, map[string]string{"ok": "true"})
 	}
 
-	h := auth.PasetoMiddleware(key)(handler)
+	h := auth.PasetoMiddleware(key, nil)(handler)
 	err = h(c)
 	require.NoError(t, err)
 
@@ -178,7 +178,7 @@ func TestMiddlewareRejectsNoCookieNoHeader(t *testing.T) {
 		return c.JSON(http.StatusOK, map[string]string{"ok": "true"})
 	}
 
-	h := auth.PasetoMiddleware(key)(handler)
+	h := auth.PasetoMiddleware(key, nil)(handler)
 	err = h(c)
 	require.NoError(t, err)
 

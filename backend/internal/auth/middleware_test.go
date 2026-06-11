@@ -35,7 +35,8 @@ func executeWithPasetoMiddleware(
 	}
 
 	// Build chain: PasetoMiddleware first, then extra middlewares, then handler.
-	middlewares := append([]echo.MiddlewareFunc{auth.PasetoMiddleware(key)}, extra...)
+	// nil db: deny-list PG fallback disabled in unit tests (no real Postgres).
+	middlewares := append([]echo.MiddlewareFunc{auth.PasetoMiddleware(key, nil)}, extra...)
 	h := handler
 	for i := len(middlewares) - 1; i >= 0; i-- {
 		h = middlewares[i](h)
@@ -81,7 +82,7 @@ func TestAuthMiddleware_ValidToken(t *testing.T) {
 		gotRoles, _ = c.Get("roles").([]string)
 		return c.JSON(http.StatusOK, map[string]string{"ok": "true"})
 	}
-	h := auth.PasetoMiddleware(key)(handler)
+	h := auth.PasetoMiddleware(key, nil)(handler)
 	err = h(c)
 	require.NoError(t, err)
 
@@ -127,7 +128,7 @@ func TestRequireRole_AllowedRole(t *testing.T) {
 	handler := func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"ok": "true"})
 	}
-	chain := auth.PasetoMiddleware(key)(auth.RequireRole("Admin", "SecurityAnalyst")(handler))
+	chain := auth.PasetoMiddleware(key, nil)(auth.RequireRole("Admin", "SecurityAnalyst")(handler))
 	err = chain(c)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -153,7 +154,7 @@ func TestRequireRole_ForbiddenRole(t *testing.T) {
 	handler := func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"ok": "true"})
 	}
-	chain := auth.PasetoMiddleware(key)(auth.RequireRole("Admin", "SecurityAnalyst")(handler))
+	chain := auth.PasetoMiddleware(key, nil)(auth.RequireRole("Admin", "SecurityAnalyst")(handler))
 	err = chain(c)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusForbidden, rec.Code)

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
+	"net/url"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -44,8 +46,47 @@ func (s *Service) GetOrgConfig(ctx context.Context, orgID string) (*OrgSIEMConfi
 	return cfg, nil
 }
 
+// validateSIEMEndpoint rejects SIEM endpoint URLs that resolve to loopback,
+// private, link-local, or the cloud metadata service (169.254.169.254).
+func validateSIEMEndpoint(rawURL string) error {
+	if rawURL == "" {
+		return nil // empty = disabled, no validation needed
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid SIEM endpoint URL: %w", err)
+	}
+	if u.Scheme != "https" && u.Scheme != "http" {
+		return fmt.Errorf("SIEM endpoint URL scheme must be http or https")
+	}
+	host := u.Hostname()
+	if host == "" {
+		return fmt.Errorf("SIEM endpoint URL is missing a host")
+	}
+	addrs, err := net.LookupHost(host)
+	if err != nil {
+		return fmt.Errorf("cannot resolve SIEM endpoint host %q: %w", host, err)
+	}
+	for _, addr := range addrs {
+		ip := net.ParseIP(addr)
+		if ip == nil {
+			continue
+		}
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+			return fmt.Errorf("SIEM endpoint URL resolves to a private/internal address — not allowed")
+		}
+		if ip.Equal(net.ParseIP("169.254.169.254")) {
+			return fmt.Errorf("SIEM endpoint URL resolves to cloud metadata service — not allowed")
+		}
+	}
+	return nil
+}
+
 // SetOrgConfig upserts the org's SIEM config.
 func (s *Service) SetOrgConfig(ctx context.Context, orgID string, cfg OrgSIEMConfig) error {
+	if err := validateSIEMEndpoint(cfg.Endpoint); err != nil {
+		return err
+	}
 	_, err := s.db.Exec(ctx,
 		`INSERT INTO org_siem_config (org_id, enabled, adapter, endpoint, token, updated_at)
 		      VALUES ($1::uuid, $2, $3, $4, $5, NOW())

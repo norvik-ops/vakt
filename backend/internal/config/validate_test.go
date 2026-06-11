@@ -11,7 +11,7 @@ func baseValidConfig() config.Config {
 	return config.Config{
 		DBUrl:     "postgres://vakt:pass@localhost/vakt",
 		RedisUrl:  "redis://localhost:6379",
-		SecretKey: "deadbeef01020304deadbeef01020304deadbeef01020304deadbeef01020304",
+		SecretKey: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
 	}
 }
 

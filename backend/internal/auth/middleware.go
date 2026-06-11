@@ -53,11 +53,14 @@ func checkDenyList(ctx context.Context, rdb *redis.Client, fb *denyListFallback,
 // with "user_id", "org_id", and "roles".  It does not handle API keys; use
 // AuthMiddleware for the full (DB-backed) authentication chain.
 //
+// db is used as a PostgreSQL fallback for the token deny-list when Redis is
+// unavailable. Pass nil to disable the fallback (tests only).
+//
 // rdb is an optional Redis client used to check the token deny-list populated by
 // the logout endpoint. Pass nil (or omit) to skip the deny-list check — this
 // should only be done in tests. Production wiring MUST pass a Redis client so
 // that logged-out tokens are rejected, matching the behaviour of AuthMiddleware.
-func PasetoMiddleware(key paseto.V4SymmetricKey, rdb ...*redis.Client) echo.MiddlewareFunc {
+func PasetoMiddleware(key paseto.V4SymmetricKey, db *pgxpool.Pool, rdb ...*redis.Client) echo.MiddlewareFunc {
 	var redisClient *redis.Client
 	if len(rdb) > 0 {
 		redisClient = rdb[0]
@@ -87,8 +90,14 @@ func PasetoMiddleware(key paseto.V4SymmetricKey, rdb ...*redis.Client) echo.Midd
 			}
 
 			// Check token deny-list (logout revocation).
+			// Use the PostgreSQL fallback when available so that revoked tokens
+			// remain rejected even during a Redis outage (matches AuthMiddleware).
 			if redisClient != nil {
-				if checkDenyList(c.Request().Context(), redisClient, nil, tokenStr) {
+				var fb *denyListFallback
+				if db != nil {
+					fb = &denyListFallback{db: db}
+				}
+				if checkDenyList(c.Request().Context(), redisClient, fb, tokenStr) {
 					return c.JSON(http.StatusUnauthorized, map[string]string{
 						"error": "token has been revoked",
 						"code":  "AUTH_TOKEN_REVOKED",

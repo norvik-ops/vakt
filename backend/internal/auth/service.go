@@ -509,11 +509,13 @@ func (s *Service) recordLoginFailure(ctx context.Context, email string) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	key := loginFailKey(email)
-	// Use a pipeline: INCR then SET EX only if the key was just created.
-	// We use SetNX so that an existing TTL is preserved (not reset on each failure).
+	// Use a pipeline: INCR then ExpireNX so the TTL is set only on the FIRST
+	// increment. Subsequent failures preserve the original expiry window,
+	// preventing an attacker from extending the lockout window by submitting
+	// a steady stream of bad passwords (sliding-window attack).
 	pipe := s.redis.Pipeline()
 	incrCmd := pipe.Incr(ctx, key)
-	pipe.Expire(ctx, key, loginLockoutTTL)
+	pipe.ExpireNX(ctx, key, loginLockoutTTL)
 	if _, err := pipe.Exec(ctx); err != nil {
 		log.Warn().Err(err).Str("email_redacted", logsafe.RedactEmail(email)).Msg("login: failed to record login failure")
 		return
@@ -527,6 +529,17 @@ func (s *Service) clearLoginFailures(ctx context.Context, email string) {
 	defer cancel()
 	if err := s.redis.Del(ctx, loginFailKey(email)).Err(); err != nil && err != redis.Nil {
 		log.Warn().Err(err).Str("email_redacted", logsafe.RedactEmail(email)).Msg("login: failed to clear login failures")
+	}
+}
+
+// clearIPLoginFailures deletes the per-IP login failure counter after a
+// successful login so that legitimate users are not locked out by a prior burst
+// of failures (e.g. mistyped password) from the same IP.
+func (s *Service) clearIPLoginFailures(ctx context.Context, ip string) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	if err := s.redis.Del(ctx, loginIPFailKey(ip)).Err(); err != nil && err != redis.Nil {
+		log.Warn().Err(err).Str("ip", ip).Msg("login: failed to clear IP login failures")
 	}
 }
 
@@ -554,9 +567,11 @@ func (s *Service) recordIPLoginFailure(ctx context.Context, ip string) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	key := loginIPFailKey(ip)
+	// ExpireNX: set TTL only on the first increment so the lockout window is
+	// anchored to the first failure, not extended by each subsequent attempt.
 	pipe := s.redis.Pipeline()
 	incrCmd := pipe.Incr(ctx, key)
-	pipe.Expire(ctx, key, ipLockoutTTL)
+	pipe.ExpireNX(ctx, key, ipLockoutTTL)
 	if _, err := pipe.Exec(ctx); err != nil {
 		log.Warn().Err(err).Str("ip", ip).Msg("login: failed to record IP login failure")
 		return

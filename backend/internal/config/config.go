@@ -87,7 +87,7 @@ type Config struct {
 	// PromoteSecret is the shared secret sent in X-Promote-Secret header.
 	PromoteSecret string
 	// CORSOrigins is the list of allowed CORS origins loaded from VAKT_CORS_ORIGINS
-	// (comma-separated). Defaults to ["*"] when not set, preserving dev behaviour.
+	// (comma-separated). Defaults to ["http://localhost", "http://localhost:5173"] when VAKT_CORS_ORIGINS is not set.
 	CORSOrigins []string
 	// MetricsEnabled controls whether the /metrics endpoint is registered.
 	// Set VAKT_METRICS_ENABLED=true to expose Prometheus metrics (still IP-allowlisted).
@@ -131,6 +131,13 @@ func (c *Config) Validate() error {
 	}
 	if allSame {
 		return fmt.Errorf("VAKT_SECRET_KEY is cryptographically weak: all %d bytes are identical (0x%02x) — regenerate with: openssl rand -hex 32", len(keyBytes), keyBytes[0])
+	}
+	distinctBytes := make(map[byte]struct{})
+	for _, b := range keyBytes {
+		distinctBytes[b] = struct{}{}
+	}
+	if len(distinctBytes) < 16 {
+		return fmt.Errorf("VAKT_SECRET_KEY has insufficient entropy (< 16 distinct bytes) — use a cryptographically random key")
 	}
 	return nil
 }

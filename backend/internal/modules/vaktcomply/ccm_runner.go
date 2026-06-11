@@ -3,7 +3,9 @@ package vaktcomply
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -27,11 +29,47 @@ func RunCheck(ctx context.Context, db *pgxpool.Pool, check CCMCheck) (status str
 	}
 }
 
+// validateCCMURL validates that the given URL is safe to contact from the CCM runner.
+// It rejects non-HTTP(S) schemes, URLs that resolve to loopback, private, or
+// link-local addresses, and the cloud metadata service at 169.254.169.254.
+func validateCCMURL(rawURL string) error {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+	if u.Scheme != "https" && u.Scheme != "http" {
+		return fmt.Errorf("URL scheme must be http or https")
+	}
+	host := u.Hostname()
+	addrs, err := net.LookupHost(host)
+	if err != nil {
+		return fmt.Errorf("cannot resolve host %q: %w", host, err)
+	}
+	for _, addr := range addrs {
+		ip := net.ParseIP(addr)
+		if ip == nil {
+			continue
+		}
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+			return fmt.Errorf("CCM URL resolves to a private/internal address — not allowed")
+		}
+		// Block Cloud Metadata Service
+		if ip.Equal(net.ParseIP("169.254.169.254")) {
+			return fmt.Errorf("CCM URL resolves to cloud metadata service — not allowed")
+		}
+	}
+	return nil
+}
+
 // runHTTPEndpointCheck performs a GET request and passes if the response status is 2xx.
 func runHTTPEndpointCheck(ctx context.Context, check CCMCheck) (string, string, error) {
 	url, ok := check.Config["url"]
 	if !ok || url == "" {
 		return "fail", "config missing: url", nil
+	}
+
+	if err := validateCCMURL(url); err != nil {
+		return "fail", fmt.Sprintf("URL validation failed: %s", err.Error()), nil
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}

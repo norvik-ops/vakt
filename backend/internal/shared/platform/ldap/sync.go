@@ -4,10 +4,24 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"regexp"
 	"strings"
 
 	ldaplib "github.com/go-ldap/ldap/v3"
 )
+
+// ldapFilterSafeRe validates that a user-supplied LDAP filter only contains
+// characters that are safe in an LDAP filter expression. Filters that pass
+// this check may still be syntactically invalid, but cannot inject
+// metacharacters not already present in RFC 4515 filter syntax.
+//
+// Decision: we validate the whole filter string rather than escaping it because
+// the configured UserFilter is a complete LDAP filter expression
+// (e.g. "(&(objectClass=person)(uid=*))"), not a bare attribute value. Calling
+// ldaplib.EscapeFilter on such a string would double-escape the parentheses and
+// break the filter entirely. Instead we apply an allowlist that permits only
+// chars used in RFC 4515 filter syntax plus common attribute-value characters.
+var ldapFilterSafeRe = regexp.MustCompile(`^[\(\)&|!=<>~*a-zA-Z0-9=,._ @\-\/:]+$`)
 
 // LDAPUser holds normalised user data retrieved from the directory.
 type LDAPUser struct {
@@ -43,6 +57,14 @@ func (s *Syncer) ListUsers(ctx context.Context) ([]LDAPUser, error) {
 	filter := s.cfg.UserFilter
 	if filter == "" {
 		filter = "(objectClass=person)"
+	}
+	// Validate the filter against the allowlist to guard against injection of
+	// unexpected metacharacters. The filter is administrator-supplied, but
+	// defence-in-depth is worthwhile given that LDAP injection is a known attack
+	// vector (CWE-90). Reject rather than silently sanitize so the operator is
+	// alerted to a misconfiguration.
+	if filter != "(objectClass=person)" && !ldapFilterSafeRe.MatchString(filter) {
+		return nil, fmt.Errorf("ldap user filter contains disallowed characters — only RFC 4515 filter syntax is permitted")
 	}
 
 	req := ldaplib.NewSearchRequest(

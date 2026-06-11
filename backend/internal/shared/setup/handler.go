@@ -10,6 +10,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/matharnica/vakt/internal/shared/httputil"
 )
 
 // Handler holds HTTP handler methods for the setup endpoints.
@@ -93,7 +95,7 @@ func (h *Handler) PostSetup(c echo.Context) error {
 	}
 	if err := h.validate.Struct(input); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
+			"error": httputil.HumanValidationError(err),
 			"code":  "SETUP_VALIDATION_ERROR",
 		})
 	}

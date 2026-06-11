@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
@@ -31,6 +32,11 @@ func RunSyftScan(ctx context.Context, db *pgxpool.Pool, orgID, assetID, target s
 	// Verify syft is available before attempting the scan.
 	if _, err := exec.LookPath("syft"); err != nil {
 		return fmt.Errorf("syft not found in PATH: install syft (https://github.com/anchore/syft)")
+	}
+
+	// Reject argument-injection patterns in the target (same guard as RunTrivyScan/RunNucleiScan).
+	if strings.HasPrefix(target, "-") || strings.ContainsAny(target, `\`) {
+		return fmt.Errorf("syft: invalid scan target %q", target)
 	}
 
 	log.Info().

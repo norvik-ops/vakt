@@ -12,8 +12,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/smtp"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -90,6 +92,37 @@ func (s *Service) decrypt(ciphertext []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
+// validateAlertingURL rejects URLs that resolve to loopback, private, link-local,
+// or the cloud metadata service (169.254.169.254). Email-type channels pass an
+// email address here, not a URL — callers must skip validation for type=email.
+func validateAlertingURL(rawURL string) error {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+	if u.Scheme != "https" && u.Scheme != "http" {
+		return fmt.Errorf("alerting channel URL scheme must be http or https")
+	}
+	host := u.Hostname()
+	addrs, err := net.LookupHost(host)
+	if err != nil {
+		return fmt.Errorf("cannot resolve host %q: %w", host, err)
+	}
+	for _, addr := range addrs {
+		ip := net.ParseIP(addr)
+		if ip == nil {
+			continue
+		}
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+			return fmt.Errorf("alerting channel URL resolves to a private/internal address — not allowed")
+		}
+		if ip.Equal(net.ParseIP("169.254.169.254")) {
+			return fmt.Errorf("alerting channel URL resolves to cloud metadata service — not allowed")
+		}
+	}
+	return nil
+}
+
 // ListChannels returns all notification channels for the org.
 func (s *Service) ListChannels(ctx context.Context, orgID string) ([]Channel, error) {
 	return s.repo.ListChannels(ctx, orgID)
@@ -98,6 +131,14 @@ func (s *Service) ListChannels(ctx context.Context, orgID string) ([]Channel, er
 // CreateChannel encrypts the URL, generates an HMAC secret, and stores a new notification channel.
 // It returns the created channel, the plaintext hex HMAC secret (shown once), and any error.
 func (s *Service) CreateChannel(ctx context.Context, orgID string, in CreateChannelInput) (*Channel, string, error) {
+	// SSRF guard: validate webhook/slack/teams URLs before storing.
+	// Email-type channels store an email address, not a URL — skip URL validation.
+	if in.Type != "email" {
+		if err := validateAlertingURL(in.URL); err != nil {
+			return nil, "", fmt.Errorf("channel URL rejected: %w", err)
+		}
+	}
+
 	encryptedURL, err := s.encrypt([]byte(in.URL))
 	if err != nil {
 		return nil, "", fmt.Errorf("encrypt url: %w", err)

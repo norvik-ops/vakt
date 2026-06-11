@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/services/crossevidence"
@@ -429,8 +430,21 @@ func (s *Service) ListTargets(ctx context.Context, orgID, groupID string) ([]Tar
 
 // ── Landing pages ─────────────────────────────────────────────────────────────
 
+// landingPagePolicy defines the HTML elements/attributes allowed in
+// phishing-simulation landing pages. Arbitrary JavaScript (onclick, onerror,
+// javascript: hrefs, <script> tags) is stripped before content reaches the DB.
+var landingPagePolicy = func() *bluemonday.Policy {
+	p := bluemonday.UGCPolicy()
+	// UGCPolicy already allows <a href>, <img src>, <p>, <br>, <strong>, <em>.
+	// Allow id/class/style so custom branded pages render correctly.
+	p.AllowAttrs("id", "class", "style").OnElements("div", "p", "span", "table", "tr", "td", "th", "h1", "h2", "h3", "h4", "img", "a")
+	return p
+}()
+
 func (s *Service) CreateLandingPage(ctx context.Context, orgID, name, html string) (*LandingPage, error) {
-	return s.repo.CreateLandingPage(ctx, orgID, name, html)
+	// Sanitize before storing — prevents Stored XSS via phishing landing pages.
+	sanitized := landingPagePolicy.Sanitize(html)
+	return s.repo.CreateLandingPage(ctx, orgID, name, sanitized)
 }
 
 func (s *Service) ListLandingPages(ctx context.Context, orgID string) ([]LandingPage, error) {

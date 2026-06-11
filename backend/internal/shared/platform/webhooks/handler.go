@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/auth"
+	"github.com/matharnica/vakt/internal/shared/httputil"
 )
 
 // Handler holds HTTP handler methods for outgoing webhook endpoints.
@@ -69,7 +70,7 @@ func (h *Handler) Create(c echo.Context) error {
 	}
 	if err := h.validate.Struct(input); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
+			"error": httputil.HumanValidationError(err),
 			"code":  "WEBHOOK_VALIDATION_ERROR",
 		})
 	}
@@ -99,7 +100,7 @@ func (h *Handler) Update(c echo.Context) error {
 	}
 	if err := h.validate.Struct(input); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
+			"error": httputil.HumanValidationError(err),
 			"code":  "WEBHOOK_VALIDATION_ERROR",
 		})
 	}

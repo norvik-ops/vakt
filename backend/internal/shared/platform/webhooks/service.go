@@ -226,8 +226,7 @@ func validateWebhookURL(rawURL string) error {
 	host := u.Hostname()
 	ips, err := net.LookupHost(host)
 	if err != nil {
-		// DNS failure is non-fatal at save time — block only on confirmed private IPs.
-		return nil
+		return fmt.Errorf("webhook URL hostname could not be resolved: %w", err)
 	}
 	privateRanges := []string{
 		"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
