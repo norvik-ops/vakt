@@ -84,22 +84,22 @@ func trimSpace(s string) string {
 // ── CRA ↔ ISO 27001 + NIS2 ──────────────────────────────────────────────────
 
 var craMappings = []frameworkPair{
-	{src: "CRA", srcCode: "CRA-1.1",  tgt: "ISO27001", tgtCode: "A.8.26", mtype: "equivalent"}, // Application security requirements
-	{src: "CRA", srcCode: "CRA-1.2",  tgt: "ISO27001", tgtCode: "A.5.1",  mtype: "equivalent"}, // Policies for IS
-	{src: "CRA", srcCode: "CRA-1.3",  tgt: "ISO27001", tgtCode: "A.8.8",  mtype: "equivalent"}, // Technical vulnerability management
-	{src: "CRA", srcCode: "CRA-1.4",  tgt: "ISO27001", tgtCode: "A.8.8",  mtype: "partial"},    // Vuln mgmt (partial)
-	{src: "CRA", srcCode: "CRA-1.5",  tgt: "ISO27001", tgtCode: "A.8.25", mtype: "equivalent"}, // Secure development life cycle
-	{src: "CRA", srcCode: "CRA-1.6",  tgt: "ISO27001", tgtCode: "A.8.8",  mtype: "equivalent"}, // Patch management
-	{src: "CRA", srcCode: "CRA-1.7",  tgt: "ISO27001", tgtCode: "A.8.8",  mtype: "equivalent"}, // Vuln disclosure
-	{src: "CRA", srcCode: "CRA-1.8",  tgt: "ISO27001", tgtCode: "A.8.3",  mtype: "equivalent"}, // Information access restriction
-	{src: "CRA", srcCode: "CRA-1.9",  tgt: "ISO27001", tgtCode: "A.8.24", mtype: "equivalent"}, // Use of cryptography
+	{src: "CRA", srcCode: "CRA-1.1", tgt: "ISO27001", tgtCode: "A.8.26", mtype: "equivalent"},  // Application security requirements
+	{src: "CRA", srcCode: "CRA-1.2", tgt: "ISO27001", tgtCode: "A.5.1", mtype: "equivalent"},   // Policies for IS
+	{src: "CRA", srcCode: "CRA-1.3", tgt: "ISO27001", tgtCode: "A.8.8", mtype: "equivalent"},   // Technical vulnerability management
+	{src: "CRA", srcCode: "CRA-1.4", tgt: "ISO27001", tgtCode: "A.8.8", mtype: "partial"},      // Vuln mgmt (partial)
+	{src: "CRA", srcCode: "CRA-1.5", tgt: "ISO27001", tgtCode: "A.8.25", mtype: "equivalent"},  // Secure development life cycle
+	{src: "CRA", srcCode: "CRA-1.6", tgt: "ISO27001", tgtCode: "A.8.8", mtype: "equivalent"},   // Patch management
+	{src: "CRA", srcCode: "CRA-1.7", tgt: "ISO27001", tgtCode: "A.8.8", mtype: "equivalent"},   // Vuln disclosure
+	{src: "CRA", srcCode: "CRA-1.8", tgt: "ISO27001", tgtCode: "A.8.3", mtype: "equivalent"},   // Information access restriction
+	{src: "CRA", srcCode: "CRA-1.9", tgt: "ISO27001", tgtCode: "A.8.24", mtype: "equivalent"},  // Use of cryptography
 	{src: "CRA", srcCode: "CRA-1.10", tgt: "ISO27001", tgtCode: "A.8.15", mtype: "equivalent"}, // Logging
-	{src: "CRA", srcCode: "CRA-2.1",  tgt: "ISO27001", tgtCode: "A.5.24", mtype: "equivalent"}, // Incident management planning
-	{src: "CRA", srcCode: "CRA-2.2",  tgt: "ISO27001", tgtCode: "A.8.8",  mtype: "partial"},    // Vuln handling after incident
-	{src: "CRA", srcCode: "CRA-2.3",  tgt: "ISO27001", tgtCode: "A.5.24", mtype: "partial"},    // Incident response
-	{src: "CRA", srcCode: "CRA-3.1",  tgt: "ISO27001", tgtCode: "A.8.26", mtype: "equivalent"}, // Security requirements
-	{src: "CRA", srcCode: "CRA-3.2",  tgt: "ISO27001", tgtCode: "A.8.8",  mtype: "partial"},    // Vulnerability testing
-	{src: "CRA", srcCode: "CRA-3.3",  tgt: "ISO27001", tgtCode: "A.8.25", mtype: "partial"},    // Secure dev process
+	{src: "CRA", srcCode: "CRA-2.1", tgt: "ISO27001", tgtCode: "A.5.24", mtype: "equivalent"},  // Incident management planning
+	{src: "CRA", srcCode: "CRA-2.2", tgt: "ISO27001", tgtCode: "A.8.8", mtype: "partial"},      // Vuln handling after incident
+	{src: "CRA", srcCode: "CRA-2.3", tgt: "ISO27001", tgtCode: "A.5.24", mtype: "partial"},     // Incident response
+	{src: "CRA", srcCode: "CRA-3.1", tgt: "ISO27001", tgtCode: "A.8.26", mtype: "equivalent"},  // Security requirements
+	{src: "CRA", srcCode: "CRA-3.2", tgt: "ISO27001", tgtCode: "A.8.8", mtype: "partial"},      // Vulnerability testing
+	{src: "CRA", srcCode: "CRA-3.3", tgt: "ISO27001", tgtCode: "A.8.25", mtype: "partial"},     // Secure dev process
 }
 
 var craNIS2Mappings = []frameworkPair{
@@ -165,21 +165,21 @@ func (s *Service) SeedNIS2DORAMappings(ctx context.Context, orgID string) error 
 // Maps NIS2 controls to the 15 DORA-S.x controls for small/non-interconnected entities.
 
 var nis2DORASimplifiedMappings = []frameworkPair{
-	{src: "NIS2", srcCode: "NIS2-A.1", tgt: "DORA", tgtCode: "DORA-S.1",  mtype: "equivalent"}, // Governance → Org. Rahmen
-	{src: "NIS2", srcCode: "NIS2-A.1", tgt: "DORA", tgtCode: "DORA-S.2",  mtype: "equivalent"}, // Risikoanalyse → IKT-Risikobewertung
-	{src: "NIS2", srcCode: "NIS2-A.2", tgt: "DORA", tgtCode: "DORA-S.1",  mtype: "partial"},    // Policy → Org. Rahmen
-	{src: "NIS2", srcCode: "NIS2-A.1", tgt: "DORA", tgtCode: "DORA-S.4",  mtype: "equivalent"}, // Risikoanalyse → Policy (vereinfacht)
-	{src: "NIS2", srcCode: "NIS2-A.8", tgt: "DORA", tgtCode: "DORA-S.3",  mtype: "equivalent"}, // Asset-Management → IKT-Asset-Inventar
-	{src: "NIS2", srcCode: "NIS2-E.1", tgt: "DORA", tgtCode: "DORA-S.5",  mtype: "partial"},    // Netz-/IS-Sicherheit → Sicherheitsleitlinie
-	{src: "NIS2", srcCode: "NIS2-H.1", tgt: "DORA", tgtCode: "DORA-S.5",  mtype: "partial"},    // Kryptografie → Sicherheitsleitlinie
-	{src: "NIS2", srcCode: "NIS2-F.1", tgt: "DORA", tgtCode: "DORA-S.5",  mtype: "partial"},    // Zugriffssteuerung → Sicherheitsleitlinie
-	{src: "NIS2", srcCode: "NIS2-E.3", tgt: "DORA", tgtCode: "DORA-S.6",  mtype: "equivalent"}, // Schwachstellenmanagement → Schutzmaßnahmen
-	{src: "NIS2", srcCode: "NIS2-E.4", tgt: "DORA", tgtCode: "DORA-S.6",  mtype: "partial"},    // Patch-Management → Schutzmaßnahmen
-	{src: "NIS2", srcCode: "NIS2-B.1", tgt: "DORA", tgtCode: "DORA-S.7",  mtype: "partial"},    // Incident-Handling → Anomalie-Erkennung
-	{src: "NIS2", srcCode: "NIS2-B.1", tgt: "DORA", tgtCode: "DORA-S.8",  mtype: "equivalent"}, // Incident-Handling → Reaktionsplan
-	{src: "NIS2", srcCode: "NIS2-B.3", tgt: "DORA", tgtCode: "DORA-S.8",  mtype: "partial"},    // Incident-Klassifizierung → Reaktionsplan
-	{src: "NIS2", srcCode: "NIS2-C.4", tgt: "DORA", tgtCode: "DORA-S.9",  mtype: "equivalent"}, // BCM Backup → Backup & Wiederherstellung
-	{src: "NIS2", srcCode: "NIS2-C.3", tgt: "DORA", tgtCode: "DORA-S.9",  mtype: "partial"},    // BCM Tests → Backup-Tests
+	{src: "NIS2", srcCode: "NIS2-A.1", tgt: "DORA", tgtCode: "DORA-S.1", mtype: "equivalent"},  // Governance → Org. Rahmen
+	{src: "NIS2", srcCode: "NIS2-A.1", tgt: "DORA", tgtCode: "DORA-S.2", mtype: "equivalent"},  // Risikoanalyse → IKT-Risikobewertung
+	{src: "NIS2", srcCode: "NIS2-A.2", tgt: "DORA", tgtCode: "DORA-S.1", mtype: "partial"},     // Policy → Org. Rahmen
+	{src: "NIS2", srcCode: "NIS2-A.1", tgt: "DORA", tgtCode: "DORA-S.4", mtype: "equivalent"},  // Risikoanalyse → Policy (vereinfacht)
+	{src: "NIS2", srcCode: "NIS2-A.8", tgt: "DORA", tgtCode: "DORA-S.3", mtype: "equivalent"},  // Asset-Management → IKT-Asset-Inventar
+	{src: "NIS2", srcCode: "NIS2-E.1", tgt: "DORA", tgtCode: "DORA-S.5", mtype: "partial"},     // Netz-/IS-Sicherheit → Sicherheitsleitlinie
+	{src: "NIS2", srcCode: "NIS2-H.1", tgt: "DORA", tgtCode: "DORA-S.5", mtype: "partial"},     // Kryptografie → Sicherheitsleitlinie
+	{src: "NIS2", srcCode: "NIS2-F.1", tgt: "DORA", tgtCode: "DORA-S.5", mtype: "partial"},     // Zugriffssteuerung → Sicherheitsleitlinie
+	{src: "NIS2", srcCode: "NIS2-E.3", tgt: "DORA", tgtCode: "DORA-S.6", mtype: "equivalent"},  // Schwachstellenmanagement → Schutzmaßnahmen
+	{src: "NIS2", srcCode: "NIS2-E.4", tgt: "DORA", tgtCode: "DORA-S.6", mtype: "partial"},     // Patch-Management → Schutzmaßnahmen
+	{src: "NIS2", srcCode: "NIS2-B.1", tgt: "DORA", tgtCode: "DORA-S.7", mtype: "partial"},     // Incident-Handling → Anomalie-Erkennung
+	{src: "NIS2", srcCode: "NIS2-B.1", tgt: "DORA", tgtCode: "DORA-S.8", mtype: "equivalent"},  // Incident-Handling → Reaktionsplan
+	{src: "NIS2", srcCode: "NIS2-B.3", tgt: "DORA", tgtCode: "DORA-S.8", mtype: "partial"},     // Incident-Klassifizierung → Reaktionsplan
+	{src: "NIS2", srcCode: "NIS2-C.4", tgt: "DORA", tgtCode: "DORA-S.9", mtype: "equivalent"},  // BCM Backup → Backup & Wiederherstellung
+	{src: "NIS2", srcCode: "NIS2-C.3", tgt: "DORA", tgtCode: "DORA-S.9", mtype: "partial"},     // BCM Tests → Backup-Tests
 	{src: "NIS2", srcCode: "NIS2-C.1", tgt: "DORA", tgtCode: "DORA-S.10", mtype: "equivalent"}, // BCM-Richtlinie → BCP (vereinfacht)
 	{src: "NIS2", srcCode: "NIS2-C.2", tgt: "DORA", tgtCode: "DORA-S.10", mtype: "partial"},    // BCM-Planung → BCP
 	{src: "NIS2", srcCode: "NIS2-A.1", tgt: "DORA", tgtCode: "DORA-S.11", mtype: "partial"},    // Risikoanalyse → Resilienztests
@@ -260,9 +260,9 @@ func (s *Service) SeedEUAIActISO42001Mappings(ctx context.Context, orgID string)
 
 var euAIActISO27001Mappings = []frameworkPair{
 	{src: "EUAIACT", srcCode: "AIACT-7.3", tgt: "ISO27001", tgtCode: "A.8.25", mtype: "equivalent"}, // Secure development life cycle
-	{src: "EUAIACT", srcCode: "AIACT-7.3", tgt: "ISO27001", tgtCode: "A.8.8",  mtype: "partial"},    // Vulnerability management
+	{src: "EUAIACT", srcCode: "AIACT-7.3", tgt: "ISO27001", tgtCode: "A.8.8", mtype: "partial"},     // Vulnerability management
 	{src: "EUAIACT", srcCode: "AIACT-4.1", tgt: "ISO27001", tgtCode: "A.8.15", mtype: "equivalent"}, // Logging
-	{src: "EUAIACT", srcCode: "AIACT-7.2", tgt: "ISO27001", tgtCode: "A.8.8",  mtype: "partial"},    // Vulnerability handling
+	{src: "EUAIACT", srcCode: "AIACT-7.2", tgt: "ISO27001", tgtCode: "A.8.8", mtype: "partial"},     // Vulnerability handling
 	{src: "EUAIACT", srcCode: "AIACT-8.1", tgt: "ISO27001", tgtCode: "A.5.31", mtype: "equivalent"}, // Legal/regulatory requirements
 }
 
@@ -274,9 +274,9 @@ func (s *Service) SeedEUAIActISO27001Mappings(ctx context.Context, orgID string)
 // ── ISO 42001 ↔ ISO 27001 ────────────────────────────────────────────────────
 
 var iso42001ISO27001Mappings = []frameworkPair{
-	{src: "ISO42001", srcCode: "42001-5.1", tgt: "ISO27001", tgtCode: "A.5.1",  mtype: "equivalent"}, // Policies for IS
-	{src: "ISO42001", srcCode: "42001-6.1", tgt: "ISO27001", tgtCode: "A.5.1",  mtype: "partial"},    // IS policies (partial)
-	{src: "ISO42001", srcCode: "42001-7.1", tgt: "ISO27001", tgtCode: "A.6.3",  mtype: "partial"},    // IS awareness/education/training
+	{src: "ISO42001", srcCode: "42001-5.1", tgt: "ISO27001", tgtCode: "A.5.1", mtype: "equivalent"},  // Policies for IS
+	{src: "ISO42001", srcCode: "42001-6.1", tgt: "ISO27001", tgtCode: "A.5.1", mtype: "partial"},     // IS policies (partial)
+	{src: "ISO42001", srcCode: "42001-7.1", tgt: "ISO27001", tgtCode: "A.6.3", mtype: "partial"},     // IS awareness/education/training
 	{src: "ISO42001", srcCode: "42001-7.3", tgt: "ISO27001", tgtCode: "A.5.37", mtype: "equivalent"}, // Documented operating procedures
 	{src: "ISO42001", srcCode: "42001-9.1", tgt: "ISO27001", tgtCode: "A.5.31", mtype: "equivalent"}, // Legal/regulatory requirements
 }
@@ -292,21 +292,21 @@ func (s *Service) SeedISO42001ISO27001Mappings(ctx context.Context, orgID string
 // Codes follow the ISO HLS (High-Level Structure) clauses 4–10 + Annex A.
 
 var prEN18286ISO42001Mappings = []frameworkPair{
-	{src: "PREN18286", srcCode: "18286-4.1",  tgt: "ISO42001", tgtCode: "42001-4.1",  mtype: "equivalent"}, // Kontext / Context
-	{src: "PREN18286", srcCode: "18286-4.2",  tgt: "ISO42001", tgtCode: "42001-4.2",  mtype: "equivalent"}, // Interessierte Parteien
-	{src: "PREN18286", srcCode: "18286-5.1",  tgt: "ISO42001", tgtCode: "42001-5.1",  mtype: "equivalent"}, // Leadership
-	{src: "PREN18286", srcCode: "18286-6.1",  tgt: "ISO42001", tgtCode: "42001-6.1",  mtype: "equivalent"}, // Risikomanagement
-	{src: "PREN18286", srcCode: "18286-6.2",  tgt: "ISO42001", tgtCode: "42001-6.2",  mtype: "partial"},    // KI-spezifische Ziele
-	{src: "PREN18286", srcCode: "18286-7.1",  tgt: "ISO42001", tgtCode: "42001-7.1",  mtype: "equivalent"}, // Ressourcen
-	{src: "PREN18286", srcCode: "18286-7.3",  tgt: "ISO42001", tgtCode: "42001-7.3",  mtype: "equivalent"}, // Bewusstsein
-	{src: "PREN18286", srcCode: "18286-8.1",  tgt: "ISO42001", tgtCode: "42001-8.1",  mtype: "equivalent"}, // Operational planning
-	{src: "PREN18286", srcCode: "18286-8.2",  tgt: "ISO42001", tgtCode: "42001-8.3",  mtype: "partial"},    // KI-System-Entwicklungsprozess
-	{src: "PREN18286", srcCode: "18286-9.1",  tgt: "ISO42001", tgtCode: "42001-9.1",  mtype: "equivalent"}, // Monitoring, Messung
-	{src: "PREN18286", srcCode: "18286-9.2",  tgt: "ISO42001", tgtCode: "42001-9.2",  mtype: "equivalent"}, // Internes Audit
-	{src: "PREN18286", srcCode: "18286-9.3",  tgt: "ISO42001", tgtCode: "42001-9.3",  mtype: "equivalent"}, // Management Review
+	{src: "PREN18286", srcCode: "18286-4.1", tgt: "ISO42001", tgtCode: "42001-4.1", mtype: "equivalent"},   // Kontext / Context
+	{src: "PREN18286", srcCode: "18286-4.2", tgt: "ISO42001", tgtCode: "42001-4.2", mtype: "equivalent"},   // Interessierte Parteien
+	{src: "PREN18286", srcCode: "18286-5.1", tgt: "ISO42001", tgtCode: "42001-5.1", mtype: "equivalent"},   // Leadership
+	{src: "PREN18286", srcCode: "18286-6.1", tgt: "ISO42001", tgtCode: "42001-6.1", mtype: "equivalent"},   // Risikomanagement
+	{src: "PREN18286", srcCode: "18286-6.2", tgt: "ISO42001", tgtCode: "42001-6.2", mtype: "partial"},      // KI-spezifische Ziele
+	{src: "PREN18286", srcCode: "18286-7.1", tgt: "ISO42001", tgtCode: "42001-7.1", mtype: "equivalent"},   // Ressourcen
+	{src: "PREN18286", srcCode: "18286-7.3", tgt: "ISO42001", tgtCode: "42001-7.3", mtype: "equivalent"},   // Bewusstsein
+	{src: "PREN18286", srcCode: "18286-8.1", tgt: "ISO42001", tgtCode: "42001-8.1", mtype: "equivalent"},   // Operational planning
+	{src: "PREN18286", srcCode: "18286-8.2", tgt: "ISO42001", tgtCode: "42001-8.3", mtype: "partial"},      // KI-System-Entwicklungsprozess
+	{src: "PREN18286", srcCode: "18286-9.1", tgt: "ISO42001", tgtCode: "42001-9.1", mtype: "equivalent"},   // Monitoring, Messung
+	{src: "PREN18286", srcCode: "18286-9.2", tgt: "ISO42001", tgtCode: "42001-9.2", mtype: "equivalent"},   // Internes Audit
+	{src: "PREN18286", srcCode: "18286-9.3", tgt: "ISO42001", tgtCode: "42001-9.3", mtype: "equivalent"},   // Management Review
 	{src: "PREN18286", srcCode: "18286-10.1", tgt: "ISO42001", tgtCode: "42001-10.1", mtype: "equivalent"}, // Verbesserung
-	{src: "PREN18286", srcCode: "18286-A.1",  tgt: "ISO42001", tgtCode: "42001-A4.2", mtype: "partial"},    // KI-Impact-Assessment
-	{src: "PREN18286", srcCode: "18286-A.2",  tgt: "ISO42001", tgtCode: "42001-A4.3", mtype: "partial"},    // Transparenz & Dokumentation
+	{src: "PREN18286", srcCode: "18286-A.1", tgt: "ISO42001", tgtCode: "42001-A4.2", mtype: "partial"},     // KI-Impact-Assessment
+	{src: "PREN18286", srcCode: "18286-A.2", tgt: "ISO42001", tgtCode: "42001-A4.3", mtype: "partial"},     // Transparenz & Dokumentation
 }
 
 // SeedPREN18286ISO42001Mappings seeds prEN 18286 ↔ ISO 42001 draft stub mappings.
@@ -322,55 +322,55 @@ func (s *Service) SeedPREN18286ISO42001Mappings(ctx context.Context, orgID strin
 // Source: BSI C5:2026 Annex B cross-reference table + ENISA CSP mapping guidance.
 var c5ISO27001Mappings = []frameworkPair{
 	// OIS — Organisation der Informationssicherheit
-	{src: "C5", srcCode: "C5-OIS-01", tgt: "ISO27001", tgtCode: "A.5.1",  mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-OIS-02", tgt: "ISO27001", tgtCode: "A.5.2",  mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-OIS-03", tgt: "ISO27001", tgtCode: "A.5.4",  mtype: "partial"},
-	{src: "C5", srcCode: "C5-OIS-04", tgt: "ISO27001", tgtCode: "A.5.3",  mtype: "partial"},
+	{src: "C5", srcCode: "C5-OIS-01", tgt: "ISO27001", tgtCode: "A.5.1", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-OIS-02", tgt: "ISO27001", tgtCode: "A.5.2", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-OIS-03", tgt: "ISO27001", tgtCode: "A.5.4", mtype: "partial"},
+	{src: "C5", srcCode: "C5-OIS-04", tgt: "ISO27001", tgtCode: "A.5.3", mtype: "partial"},
 	{src: "C5", srcCode: "C5-OIS-05", tgt: "ISO27001", tgtCode: "A.5.35", mtype: "partial"},
 	{src: "C5", srcCode: "C5-OIS-06", tgt: "ISO27001", tgtCode: "A.5.36", mtype: "partial"},
-	{src: "C5", srcCode: "C5-OIS-07", tgt: "ISO27001", tgtCode: "A.5.7",  mtype: "partial"},
+	{src: "C5", srcCode: "C5-OIS-07", tgt: "ISO27001", tgtCode: "A.5.7", mtype: "partial"},
 	{src: "C5", srcCode: "C5-OIS-08", tgt: "ISO27001", tgtCode: "A.5.31", mtype: "partial"},
-	{src: "C5", srcCode: "C5-OIS-09", tgt: "ISO27001", tgtCode: "A.6.7",  mtype: "partial"},
-	{src: "C5", srcCode: "C5-OIS-10", tgt: "ISO27001", tgtCode: "A.5.5",  mtype: "partial"},
+	{src: "C5", srcCode: "C5-OIS-09", tgt: "ISO27001", tgtCode: "A.6.7", mtype: "partial"},
+	{src: "C5", srcCode: "C5-OIS-10", tgt: "ISO27001", tgtCode: "A.5.5", mtype: "partial"},
 	// SP — Sicherheitsrichtlinien
-	{src: "C5", srcCode: "C5-SP-01",  tgt: "ISO27001", tgtCode: "A.5.1",  mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-SP-02",  tgt: "ISO27001", tgtCode: "A.5.36", mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-SP-03",  tgt: "ISO27001", tgtCode: "A.5.35", mtype: "partial"},
+	{src: "C5", srcCode: "C5-SP-01", tgt: "ISO27001", tgtCode: "A.5.1", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-SP-02", tgt: "ISO27001", tgtCode: "A.5.36", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-SP-03", tgt: "ISO27001", tgtCode: "A.5.35", mtype: "partial"},
 	// HR — Personal
-	{src: "C5", srcCode: "C5-HR-01",  tgt: "ISO27001", tgtCode: "A.6.1",  mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-HR-02",  tgt: "ISO27001", tgtCode: "A.6.2",  mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-HR-03",  tgt: "ISO27001", tgtCode: "A.6.3",  mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-HR-04",  tgt: "ISO27001", tgtCode: "A.6.4",  mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-HR-05",  tgt: "ISO27001", tgtCode: "A.6.5",  mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-HR-06",  tgt: "ISO27001", tgtCode: "A.6.6",  mtype: "partial"},
-	{src: "C5", srcCode: "C5-HR-07",  tgt: "ISO27001", tgtCode: "A.7.1",  mtype: "partial"},
-	{src: "C5", srcCode: "C5-HR-08",  tgt: "ISO27001", tgtCode: "A.7.3",  mtype: "partial"},
+	{src: "C5", srcCode: "C5-HR-01", tgt: "ISO27001", tgtCode: "A.6.1", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-HR-02", tgt: "ISO27001", tgtCode: "A.6.2", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-HR-03", tgt: "ISO27001", tgtCode: "A.6.3", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-HR-04", tgt: "ISO27001", tgtCode: "A.6.4", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-HR-05", tgt: "ISO27001", tgtCode: "A.6.5", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-HR-06", tgt: "ISO27001", tgtCode: "A.6.6", mtype: "partial"},
+	{src: "C5", srcCode: "C5-HR-07", tgt: "ISO27001", tgtCode: "A.7.1", mtype: "partial"},
+	{src: "C5", srcCode: "C5-HR-08", tgt: "ISO27001", tgtCode: "A.7.3", mtype: "partial"},
 	// AM — Asset Management
-	{src: "C5", srcCode: "C5-AM-01",  tgt: "ISO27001", tgtCode: "A.5.9",  mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-AM-02",  tgt: "ISO27001", tgtCode: "A.5.10", mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-AM-03",  tgt: "ISO27001", tgtCode: "A.5.11", mtype: "partial"},
-	{src: "C5", srcCode: "C5-AM-04",  tgt: "ISO27001", tgtCode: "A.5.12", mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-AM-05",  tgt: "ISO27001", tgtCode: "A.5.13", mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-AM-06",  tgt: "ISO27001", tgtCode: "A.5.14", mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-AM-07",  tgt: "ISO27001", tgtCode: "A.8.1",  mtype: "partial"},
-	{src: "C5", srcCode: "C5-AM-08",  tgt: "ISO27001", tgtCode: "A.7.10", mtype: "partial"},
-	{src: "C5", srcCode: "C5-AM-09",  tgt: "ISO27001", tgtCode: "A.8.10", mtype: "partial"},
-	{src: "C5", srcCode: "C5-AM-10",  tgt: "ISO27001", tgtCode: "A.8.11", mtype: "partial"},
-	{src: "C5", srcCode: "C5-AM-11",  tgt: "ISO27001", tgtCode: "A.8.12", mtype: "partial"},
-	{src: "C5", srcCode: "C5-AM-12",  tgt: "ISO27001", tgtCode: "A.5.34", mtype: "partial"},
+	{src: "C5", srcCode: "C5-AM-01", tgt: "ISO27001", tgtCode: "A.5.9", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-AM-02", tgt: "ISO27001", tgtCode: "A.5.10", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-AM-03", tgt: "ISO27001", tgtCode: "A.5.11", mtype: "partial"},
+	{src: "C5", srcCode: "C5-AM-04", tgt: "ISO27001", tgtCode: "A.5.12", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-AM-05", tgt: "ISO27001", tgtCode: "A.5.13", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-AM-06", tgt: "ISO27001", tgtCode: "A.5.14", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-AM-07", tgt: "ISO27001", tgtCode: "A.8.1", mtype: "partial"},
+	{src: "C5", srcCode: "C5-AM-08", tgt: "ISO27001", tgtCode: "A.7.10", mtype: "partial"},
+	{src: "C5", srcCode: "C5-AM-09", tgt: "ISO27001", tgtCode: "A.8.10", mtype: "partial"},
+	{src: "C5", srcCode: "C5-AM-10", tgt: "ISO27001", tgtCode: "A.8.11", mtype: "partial"},
+	{src: "C5", srcCode: "C5-AM-11", tgt: "ISO27001", tgtCode: "A.8.12", mtype: "partial"},
+	{src: "C5", srcCode: "C5-AM-12", tgt: "ISO27001", tgtCode: "A.5.34", mtype: "partial"},
 	// PS — Physische Sicherheit
-	{src: "C5", srcCode: "C5-PS-01",  tgt: "ISO27001", tgtCode: "A.7.1",  mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-PS-02",  tgt: "ISO27001", tgtCode: "A.7.2",  mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-PS-03",  tgt: "ISO27001", tgtCode: "A.7.3",  mtype: "partial"},
-	{src: "C5", srcCode: "C5-PS-04",  tgt: "ISO27001", tgtCode: "A.7.4",  mtype: "partial"},
-	{src: "C5", srcCode: "C5-PS-05",  tgt: "ISO27001", tgtCode: "A.7.5",  mtype: "partial"},
-	{src: "C5", srcCode: "C5-PS-06",  tgt: "ISO27001", tgtCode: "A.7.8",  mtype: "partial"},
-	{src: "C5", srcCode: "C5-PS-07",  tgt: "ISO27001", tgtCode: "A.7.11", mtype: "partial"},
-	{src: "C5", srcCode: "C5-PS-08",  tgt: "ISO27001", tgtCode: "A.7.12", mtype: "partial"},
+	{src: "C5", srcCode: "C5-PS-01", tgt: "ISO27001", tgtCode: "A.7.1", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-PS-02", tgt: "ISO27001", tgtCode: "A.7.2", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-PS-03", tgt: "ISO27001", tgtCode: "A.7.3", mtype: "partial"},
+	{src: "C5", srcCode: "C5-PS-04", tgt: "ISO27001", tgtCode: "A.7.4", mtype: "partial"},
+	{src: "C5", srcCode: "C5-PS-05", tgt: "ISO27001", tgtCode: "A.7.5", mtype: "partial"},
+	{src: "C5", srcCode: "C5-PS-06", tgt: "ISO27001", tgtCode: "A.7.8", mtype: "partial"},
+	{src: "C5", srcCode: "C5-PS-07", tgt: "ISO27001", tgtCode: "A.7.11", mtype: "partial"},
+	{src: "C5", srcCode: "C5-PS-08", tgt: "ISO27001", tgtCode: "A.7.12", mtype: "partial"},
 	// OPS — Betrieb
-	{src: "C5", srcCode: "C5-OPS-01", tgt: "ISO27001", tgtCode: "A.8.8",  mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-OPS-01", tgt: "ISO27001", tgtCode: "A.8.8", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-OPS-02", tgt: "ISO27001", tgtCode: "A.8.32", mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-OPS-03", tgt: "ISO27001", tgtCode: "A.8.9",  mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-OPS-03", tgt: "ISO27001", tgtCode: "A.8.9", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-OPS-04", tgt: "ISO27001", tgtCode: "A.8.20", mtype: "partial"},
 	{src: "C5", srcCode: "C5-OPS-05", tgt: "ISO27001", tgtCode: "A.8.22", mtype: "partial"},
 	{src: "C5", srcCode: "C5-OPS-06", tgt: "ISO27001", tgtCode: "A.8.21", mtype: "equivalent"},
@@ -380,12 +380,12 @@ var c5ISO27001Mappings = []frameworkPair{
 	{src: "C5", srcCode: "C5-OPS-10", tgt: "ISO27001", tgtCode: "A.5.33", mtype: "partial"},
 	{src: "C5", srcCode: "C5-OPS-11", tgt: "ISO27001", tgtCode: "A.8.13", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-OPS-12", tgt: "ISO27001", tgtCode: "A.8.14", mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-OPS-13", tgt: "ISO27001", tgtCode: "A.8.6",  mtype: "partial"},
+	{src: "C5", srcCode: "C5-OPS-13", tgt: "ISO27001", tgtCode: "A.8.6", mtype: "partial"},
 	{src: "C5", srcCode: "C5-OPS-14", tgt: "ISO27001", tgtCode: "A.5.29", mtype: "partial"},
 	{src: "C5", srcCode: "C5-OPS-15", tgt: "ISO27001", tgtCode: "A.5.30", mtype: "partial"},
 	{src: "C5", srcCode: "C5-OPS-16", tgt: "ISO27001", tgtCode: "A.8.33", mtype: "partial"},
 	{src: "C5", srcCode: "C5-OPS-17", tgt: "ISO27001", tgtCode: "A.8.34", mtype: "partial"},
-	{src: "C5", srcCode: "C5-OPS-18", tgt: "ISO27001", tgtCode: "A.8.7",  mtype: "partial"},
+	{src: "C5", srcCode: "C5-OPS-18", tgt: "ISO27001", tgtCode: "A.8.7", mtype: "partial"},
 	{src: "C5", srcCode: "C5-OPS-19", tgt: "ISO27001", tgtCode: "A.8.19", mtype: "partial"},
 	{src: "C5", srcCode: "C5-OPS-20", tgt: "ISO27001", tgtCode: "A.8.31", mtype: "partial"},
 	// IAM — Identitäts- und Zugriffsverwaltung
@@ -393,11 +393,11 @@ var c5ISO27001Mappings = []frameworkPair{
 	{src: "C5", srcCode: "C5-IAM-02", tgt: "ISO27001", tgtCode: "A.5.16", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-IAM-03", tgt: "ISO27001", tgtCode: "A.5.17", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-IAM-04", tgt: "ISO27001", tgtCode: "A.5.18", mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-IAM-05", tgt: "ISO27001", tgtCode: "A.8.2",  mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-IAM-06", tgt: "ISO27001", tgtCode: "A.8.3",  mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-IAM-07", tgt: "ISO27001", tgtCode: "A.8.5",  mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-IAM-05", tgt: "ISO27001", tgtCode: "A.8.2", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-IAM-06", tgt: "ISO27001", tgtCode: "A.8.3", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-IAM-07", tgt: "ISO27001", tgtCode: "A.8.5", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-IAM-08", tgt: "ISO27001", tgtCode: "A.8.18", mtype: "partial"},
-	{src: "C5", srcCode: "C5-IAM-09", tgt: "ISO27001", tgtCode: "A.8.4",  mtype: "partial"},
+	{src: "C5", srcCode: "C5-IAM-09", tgt: "ISO27001", tgtCode: "A.8.4", mtype: "partial"},
 	// CRY — Kryptographie
 	{src: "C5", srcCode: "C5-CRY-01", tgt: "ISO27001", tgtCode: "A.8.24", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-CRY-02", tgt: "ISO27001", tgtCode: "A.8.25", mtype: "equivalent"},
@@ -410,7 +410,7 @@ var c5ISO27001Mappings = []frameworkPair{
 	{src: "C5", srcCode: "C5-COS-04", tgt: "ISO27001", tgtCode: "A.5.14", mtype: "partial"},
 	{src: "C5", srcCode: "C5-COS-05", tgt: "ISO27001", tgtCode: "A.8.26", mtype: "partial"},
 	// DEV — Entwicklung & Änderungsmanagement
-	{src: "C5", srcCode: "C5-DEV-01", tgt: "ISO27001", tgtCode: "A.5.8",  mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-DEV-01", tgt: "ISO27001", tgtCode: "A.5.8", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-DEV-02", tgt: "ISO27001", tgtCode: "A.8.25", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-DEV-03", tgt: "ISO27001", tgtCode: "A.8.26", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-DEV-04", tgt: "ISO27001", tgtCode: "A.8.27", mtype: "equivalent"},
@@ -434,7 +434,7 @@ var c5ISO27001Mappings = []frameworkPair{
 	{src: "C5", srcCode: "C5-SIM-02", tgt: "ISO27001", tgtCode: "A.5.25", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-SIM-03", tgt: "ISO27001", tgtCode: "A.5.26", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-SIM-04", tgt: "ISO27001", tgtCode: "A.5.27", mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-SIM-05", tgt: "ISO27001", tgtCode: "A.6.8",  mtype: "partial"},
+	{src: "C5", srcCode: "C5-SIM-05", tgt: "ISO27001", tgtCode: "A.6.8", mtype: "partial"},
 	{src: "C5", srcCode: "C5-SIM-06", tgt: "ISO27001", tgtCode: "A.5.28", mtype: "partial"},
 	// BCM — Business Continuity Management
 	{src: "C5", srcCode: "C5-BCM-01", tgt: "ISO27001", tgtCode: "A.5.29", mtype: "equivalent"},
@@ -458,8 +458,8 @@ func (s *Service) SeedC5ISO27001Mappings(ctx context.Context, orgID string) erro
 var c5NIS2Mappings = []frameworkPair{
 	{src: "C5", srcCode: "C5-OIS-01", tgt: "NIS2", tgtCode: "NIS2-A.1", mtype: "partial"},
 	{src: "C5", srcCode: "C5-OIS-02", tgt: "NIS2", tgtCode: "NIS2-A.1", mtype: "partial"},
-	{src: "C5", srcCode: "C5-SP-01",  tgt: "NIS2", tgtCode: "NIS2-A.1", mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-SP-02",  tgt: "NIS2", tgtCode: "NIS2-A.1", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-SP-01", tgt: "NIS2", tgtCode: "NIS2-A.1", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-SP-02", tgt: "NIS2", tgtCode: "NIS2-A.1", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-SIM-01", tgt: "NIS2", tgtCode: "NIS2-B.1", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-SIM-02", tgt: "NIS2", tgtCode: "NIS2-B.1", mtype: "partial"},
 	{src: "C5", srcCode: "C5-SIM-05", tgt: "NIS2", tgtCode: "NIS2-B.5", mtype: "equivalent"},
@@ -477,15 +477,15 @@ var c5NIS2Mappings = []frameworkPair{
 	{src: "C5", srcCode: "C5-OPS-06", tgt: "NIS2", tgtCode: "NIS2-E.8", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-COS-01", tgt: "NIS2", tgtCode: "NIS2-E.8", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-COS-02", tgt: "NIS2", tgtCode: "NIS2-E.8", mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-HR-03",  tgt: "NIS2", tgtCode: "NIS2-G.2", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-HR-03", tgt: "NIS2", tgtCode: "NIS2-G.2", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-CRY-01", tgt: "NIS2", tgtCode: "NIS2-H.1", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-CRY-02", tgt: "NIS2", tgtCode: "NIS2-H.1", mtype: "partial"},
 	{src: "C5", srcCode: "C5-IAM-01", tgt: "NIS2", tgtCode: "NIS2-F.1", mtype: "equivalent"},
 	{src: "C5", srcCode: "C5-IAM-07", tgt: "NIS2", tgtCode: "NIS2-F.1", mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-AM-01",  tgt: "NIS2", tgtCode: "NIS2-A.8", mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-AM-04",  tgt: "NIS2", tgtCode: "NIS2-A.8", mtype: "partial"},
-	{src: "C5", srcCode: "C5-HR-01",  tgt: "NIS2", tgtCode: "NIS2-A.6", mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-HR-05",  tgt: "NIS2", tgtCode: "NIS2-A.6", mtype: "partial"},
+	{src: "C5", srcCode: "C5-AM-01", tgt: "NIS2", tgtCode: "NIS2-A.8", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-AM-04", tgt: "NIS2", tgtCode: "NIS2-A.8", mtype: "partial"},
+	{src: "C5", srcCode: "C5-HR-01", tgt: "NIS2", tgtCode: "NIS2-A.6", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-HR-05", tgt: "NIS2", tgtCode: "NIS2-A.6", mtype: "partial"},
 	{src: "C5", srcCode: "C5-DEV-01", tgt: "NIS2", tgtCode: "NIS2-E.1", mtype: "partial"},
 	{src: "C5", srcCode: "C5-DEV-03", tgt: "NIS2", tgtCode: "NIS2-E.1", mtype: "partial"},
 }
@@ -501,39 +501,39 @@ func (s *Service) SeedC5NIS2Mappings(ctx context.Context, orgID string) error {
 // Source: OpenKRITIS KRITIS-DachG mapping table (BGBl. 2026 I Nr. 66, March 2026).
 var kritisISO27001Mappings = []frameworkPair{
 	// DG.1 — Registrierung (§4 Abs.2)
-	{src: "KRITIS", srcCode: "KRITIS-DG.1",  tgt: "ISO27001", tgtCode: "A.5.5",  mtype: "partial"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.1",  tgt: "ISO27001", tgtCode: "A.5.31", mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.1", tgt: "ISO27001", tgtCode: "A.5.5", mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.1", tgt: "ISO27001", tgtCode: "A.5.31", mtype: "partial"},
 	// DG.2 — Kritikalitätsbewertung (§5)
-	{src: "KRITIS", srcCode: "KRITIS-DG.2",  tgt: "ISO27001", tgtCode: "A.5.30", mtype: "partial"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.2",  tgt: "ISO27001", tgtCode: "A.5.2",  mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.2", tgt: "ISO27001", tgtCode: "A.5.30", mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.2", tgt: "ISO27001", tgtCode: "A.5.2", mtype: "partial"},
 	// DG.3 — Risikoanalyse & ISMS (§6)
-	{src: "KRITIS", srcCode: "KRITIS-DG.3",  tgt: "ISO27001", tgtCode: "A.5.1",  mtype: "equivalent"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.3",  tgt: "ISO27001", tgtCode: "A.5.4",  mtype: "partial"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.3",  tgt: "ISO27001", tgtCode: "A.5.29", mtype: "partial"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.3",  tgt: "ISO27001", tgtCode: "A.5.30", mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.3", tgt: "ISO27001", tgtCode: "A.5.1", mtype: "equivalent"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.3", tgt: "ISO27001", tgtCode: "A.5.4", mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.3", tgt: "ISO27001", tgtCode: "A.5.29", mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.3", tgt: "ISO27001", tgtCode: "A.5.30", mtype: "partial"},
 	// DG.4 — Lieferkettenmanagement (§7)
-	{src: "KRITIS", srcCode: "KRITIS-DG.4",  tgt: "ISO27001", tgtCode: "A.5.19", mtype: "equivalent"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.4",  tgt: "ISO27001", tgtCode: "A.5.20", mtype: "equivalent"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.4",  tgt: "ISO27001", tgtCode: "A.5.21", mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.4", tgt: "ISO27001", tgtCode: "A.5.19", mtype: "equivalent"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.4", tgt: "ISO27001", tgtCode: "A.5.20", mtype: "equivalent"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.4", tgt: "ISO27001", tgtCode: "A.5.21", mtype: "partial"},
 	// DG.5 — Sicherheitsmaßnahmen (§8)
-	{src: "KRITIS", srcCode: "KRITIS-DG.5",  tgt: "ISO27001", tgtCode: "A.5.15", mtype: "partial"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.5",  tgt: "ISO27001", tgtCode: "A.8.5",  mtype: "partial"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.5",  tgt: "ISO27001", tgtCode: "A.8.24", mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.5", tgt: "ISO27001", tgtCode: "A.5.15", mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.5", tgt: "ISO27001", tgtCode: "A.8.5", mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.5", tgt: "ISO27001", tgtCode: "A.8.24", mtype: "partial"},
 	// DG.6 — Zugriffskontrolle (§8 Abs.3)
-	{src: "KRITIS", srcCode: "KRITIS-DG.6",  tgt: "ISO27001", tgtCode: "A.5.15", mtype: "equivalent"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.6",  tgt: "ISO27001", tgtCode: "A.5.16", mtype: "equivalent"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.6",  tgt: "ISO27001", tgtCode: "A.5.18", mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.6", tgt: "ISO27001", tgtCode: "A.5.15", mtype: "equivalent"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.6", tgt: "ISO27001", tgtCode: "A.5.16", mtype: "equivalent"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.6", tgt: "ISO27001", tgtCode: "A.5.18", mtype: "partial"},
 	// DG.7 — Physische Sicherheit (§9)
-	{src: "KRITIS", srcCode: "KRITIS-DG.7",  tgt: "ISO27001", tgtCode: "A.7.1",  mtype: "equivalent"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.7",  tgt: "ISO27001", tgtCode: "A.7.2",  mtype: "equivalent"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.7",  tgt: "ISO27001", tgtCode: "A.7.3",  mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.7", tgt: "ISO27001", tgtCode: "A.7.1", mtype: "equivalent"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.7", tgt: "ISO27001", tgtCode: "A.7.2", mtype: "equivalent"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.7", tgt: "ISO27001", tgtCode: "A.7.3", mtype: "partial"},
 	// DG.8 — Umgebungsrisiken (§9 Abs.2)
-	{src: "KRITIS", srcCode: "KRITIS-DG.8",  tgt: "ISO27001", tgtCode: "A.7.5",  mtype: "partial"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.8",  tgt: "ISO27001", tgtCode: "A.7.11", mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.8", tgt: "ISO27001", tgtCode: "A.7.5", mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.8", tgt: "ISO27001", tgtCode: "A.7.11", mtype: "partial"},
 	// DG.9 — Überwachung & Logging (§10)
-	{src: "KRITIS", srcCode: "KRITIS-DG.9",  tgt: "ISO27001", tgtCode: "A.8.15", mtype: "equivalent"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.9",  tgt: "ISO27001", tgtCode: "A.8.16", mtype: "equivalent"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.9",  tgt: "ISO27001", tgtCode: "A.8.17", mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.9", tgt: "ISO27001", tgtCode: "A.8.15", mtype: "equivalent"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.9", tgt: "ISO27001", tgtCode: "A.8.16", mtype: "equivalent"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.9", tgt: "ISO27001", tgtCode: "A.8.17", mtype: "partial"},
 	// DG.10 — Backup & Wiederherstellung (§10 Abs.2)
 	{src: "KRITIS", srcCode: "KRITIS-DG.10", tgt: "ISO27001", tgtCode: "A.8.13", mtype: "equivalent"},
 	{src: "KRITIS", srcCode: "KRITIS-DG.10", tgt: "ISO27001", tgtCode: "A.8.14", mtype: "equivalent"},
@@ -545,18 +545,18 @@ var kritisISO27001Mappings = []frameworkPair{
 	{src: "KRITIS", srcCode: "KRITIS-DG.12", tgt: "ISO27001", tgtCode: "A.8.21", mtype: "equivalent"},
 	{src: "KRITIS", srcCode: "KRITIS-DG.12", tgt: "ISO27001", tgtCode: "A.8.22", mtype: "partial"},
 	// DG.13 — Schwachstellenmanagement (§12)
-	{src: "KRITIS", srcCode: "KRITIS-DG.13", tgt: "ISO27001", tgtCode: "A.8.8",  mtype: "equivalent"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.13", tgt: "ISO27001", tgtCode: "A.8.8", mtype: "equivalent"},
 	{src: "KRITIS", srcCode: "KRITIS-DG.13", tgt: "ISO27001", tgtCode: "A.8.32", mtype: "equivalent"},
 	// DG.14 — Vorfallsmanagement (§12 Abs.2)
 	{src: "KRITIS", srcCode: "KRITIS-DG.14", tgt: "ISO27001", tgtCode: "A.5.24", mtype: "equivalent"},
 	{src: "KRITIS", srcCode: "KRITIS-DG.14", tgt: "ISO27001", tgtCode: "A.5.25", mtype: "equivalent"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.14", tgt: "ISO27001", tgtCode: "A.6.8",  mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.14", tgt: "ISO27001", tgtCode: "A.6.8", mtype: "partial"},
 	// DG.15 — Meldepflichten (§13)
-	{src: "KRITIS", srcCode: "KRITIS-DG.15", tgt: "ISO27001", tgtCode: "A.5.5",  mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.15", tgt: "ISO27001", tgtCode: "A.5.5", mtype: "partial"},
 	{src: "KRITIS", srcCode: "KRITIS-DG.15", tgt: "ISO27001", tgtCode: "A.5.24", mtype: "partial"},
 	// DG.16 — Schulungen & Awareness (§14)
-	{src: "KRITIS", srcCode: "KRITIS-DG.16", tgt: "ISO27001", tgtCode: "A.6.3",  mtype: "equivalent"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.16", tgt: "ISO27001", tgtCode: "A.6.5",  mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.16", tgt: "ISO27001", tgtCode: "A.6.3", mtype: "equivalent"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.16", tgt: "ISO27001", tgtCode: "A.6.5", mtype: "partial"},
 	// DG.18 — Resilienzplan (§13 Abs.4)
 	{src: "KRITIS", srcCode: "KRITIS-DG.18", tgt: "ISO27001", tgtCode: "A.5.30", mtype: "equivalent"},
 	{src: "KRITIS", srcCode: "KRITIS-DG.18", tgt: "ISO27001", tgtCode: "A.5.29", mtype: "partial"},
@@ -564,17 +564,17 @@ var kritisISO27001Mappings = []frameworkPair{
 	{src: "KRITIS", srcCode: "KRITIS-DG.19", tgt: "ISO27001", tgtCode: "A.5.30", mtype: "partial"},
 	{src: "KRITIS", srcCode: "KRITIS-DG.19", tgt: "ISO27001", tgtCode: "A.8.14", mtype: "partial"},
 	// DG.20 — Leitungsverantwortung (§16)
-	{src: "KRITIS", srcCode: "KRITIS-DG.20", tgt: "ISO27001", tgtCode: "A.5.2",  mtype: "equivalent"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.20", tgt: "ISO27001", tgtCode: "A.5.4",  mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.20", tgt: "ISO27001", tgtCode: "A.5.2", mtype: "equivalent"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.20", tgt: "ISO27001", tgtCode: "A.5.4", mtype: "partial"},
 	// DG.21 — Auditierung (§17)
 	{src: "KRITIS", srcCode: "KRITIS-DG.21", tgt: "ISO27001", tgtCode: "A.5.35", mtype: "equivalent"},
 	{src: "KRITIS", srcCode: "KRITIS-DG.21", tgt: "ISO27001", tgtCode: "A.5.36", mtype: "partial"},
 	// DG.22 — Nachweispflichten (§18)
 	{src: "KRITIS", srcCode: "KRITIS-DG.22", tgt: "ISO27001", tgtCode: "A.5.36", mtype: "partial"},
 	// DG.23–DG.26 — Behördenkooperation, Strafrecht, Haftung, Sanktionen (§19–§22)
-	{src: "KRITIS", srcCode: "KRITIS-DG.23", tgt: "ISO27001", tgtCode: "A.5.5",  mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.23", tgt: "ISO27001", tgtCode: "A.5.5", mtype: "partial"},
 	{src: "KRITIS", srcCode: "KRITIS-DG.24", tgt: "ISO27001", tgtCode: "A.5.31", mtype: "partial"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.25", tgt: "ISO27001", tgtCode: "A.5.4",  mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.25", tgt: "ISO27001", tgtCode: "A.5.4", mtype: "partial"},
 	{src: "KRITIS", srcCode: "KRITIS-DG.26", tgt: "ISO27001", tgtCode: "A.5.36", mtype: "partial"},
 }
 
@@ -586,12 +586,12 @@ func (s *Service) SeedKRITISISO27001Mappings(ctx context.Context, orgID string) 
 // ── KRITIS-DachG ↔ NIS2 mappings ─────────────────────────────────────────────
 
 var kritisNIS2Mappings = []frameworkPair{
-	{src: "KRITIS", srcCode: "KRITIS-DG.3",  tgt: "NIS2", tgtCode: "NIS2-A.1", mtype: "equivalent"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.4",  tgt: "NIS2", tgtCode: "NIS2-D.1", mtype: "equivalent"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.5",  tgt: "NIS2", tgtCode: "NIS2-F.1", mtype: "partial"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.6",  tgt: "NIS2", tgtCode: "NIS2-F.1", mtype: "equivalent"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.7",  tgt: "NIS2", tgtCode: "NIS2-E.3", mtype: "partial"},
-	{src: "KRITIS", srcCode: "KRITIS-DG.9",  tgt: "NIS2", tgtCode: "NIS2-E.3", mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.3", tgt: "NIS2", tgtCode: "NIS2-A.1", mtype: "equivalent"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.4", tgt: "NIS2", tgtCode: "NIS2-D.1", mtype: "equivalent"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.5", tgt: "NIS2", tgtCode: "NIS2-F.1", mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.6", tgt: "NIS2", tgtCode: "NIS2-F.1", mtype: "equivalent"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.7", tgt: "NIS2", tgtCode: "NIS2-E.3", mtype: "partial"},
+	{src: "KRITIS", srcCode: "KRITIS-DG.9", tgt: "NIS2", tgtCode: "NIS2-E.3", mtype: "partial"},
 	{src: "KRITIS", srcCode: "KRITIS-DG.10", tgt: "NIS2", tgtCode: "NIS2-C.4", mtype: "equivalent"},
 	{src: "KRITIS", srcCode: "KRITIS-DG.11", tgt: "NIS2", tgtCode: "NIS2-H.1", mtype: "equivalent"},
 	{src: "KRITIS", srcCode: "KRITIS-DG.12", tgt: "NIS2", tgtCode: "NIS2-E.8", mtype: "equivalent"},
@@ -627,34 +627,34 @@ func (s *Service) SeedKRITISNIS2Mappings(ctx context.Context, orgID string) erro
 
 var prEN18286EUAIActMappings = []frameworkPair{
 	// Art. 9 — Risikomanagementsystem
-	{src: "PREN18286", srcCode: "18286-6.1",  tgt: "EUAIACT", tgtCode: "AIACT-1.1",  mtype: "equivalent"},
-	{src: "PREN18286", srcCode: "18286-6.2",  tgt: "EUAIACT", tgtCode: "AIACT-1.2",  mtype: "partial"},
+	{src: "PREN18286", srcCode: "18286-6.1", tgt: "EUAIACT", tgtCode: "AIACT-1.1", mtype: "equivalent"},
+	{src: "PREN18286", srcCode: "18286-6.2", tgt: "EUAIACT", tgtCode: "AIACT-1.2", mtype: "partial"},
 	// Art. 10 — Datenverwaltung
-	{src: "PREN18286", srcCode: "18286-8.2",  tgt: "EUAIACT", tgtCode: "AIACT-2.1",  mtype: "equivalent"},
-	{src: "PREN18286", srcCode: "18286-A.1",  tgt: "EUAIACT", tgtCode: "AIACT-2.2",  mtype: "partial"},
+	{src: "PREN18286", srcCode: "18286-8.2", tgt: "EUAIACT", tgtCode: "AIACT-2.1", mtype: "equivalent"},
+	{src: "PREN18286", srcCode: "18286-A.1", tgt: "EUAIACT", tgtCode: "AIACT-2.2", mtype: "partial"},
 	// Art. 11 — Technische Dokumentation
-	{src: "PREN18286", srcCode: "18286-7.1",  tgt: "EUAIACT", tgtCode: "AIACT-3.1",  mtype: "equivalent"},
-	{src: "PREN18286", srcCode: "18286-A.2",  tgt: "EUAIACT", tgtCode: "AIACT-3.1",  mtype: "partial"},
+	{src: "PREN18286", srcCode: "18286-7.1", tgt: "EUAIACT", tgtCode: "AIACT-3.1", mtype: "equivalent"},
+	{src: "PREN18286", srcCode: "18286-A.2", tgt: "EUAIACT", tgtCode: "AIACT-3.1", mtype: "partial"},
 	// Art. 12 — Aufzeichnungspflichten (Logging)
-	{src: "PREN18286", srcCode: "18286-9.1",  tgt: "EUAIACT", tgtCode: "AIACT-4.1",  mtype: "equivalent"},
+	{src: "PREN18286", srcCode: "18286-9.1", tgt: "EUAIACT", tgtCode: "AIACT-4.1", mtype: "equivalent"},
 	// Art. 13 — Transparenz und Nutzerinformation
-	{src: "PREN18286", srcCode: "18286-A.2",  tgt: "EUAIACT", tgtCode: "AIACT-5.1",  mtype: "equivalent"},
-	{src: "PREN18286", srcCode: "18286-7.3",  tgt: "EUAIACT", tgtCode: "AIACT-5.1",  mtype: "partial"},
+	{src: "PREN18286", srcCode: "18286-A.2", tgt: "EUAIACT", tgtCode: "AIACT-5.1", mtype: "equivalent"},
+	{src: "PREN18286", srcCode: "18286-7.3", tgt: "EUAIACT", tgtCode: "AIACT-5.1", mtype: "partial"},
 	// Art. 14 — Menschliche Aufsicht
-	{src: "PREN18286", srcCode: "18286-6.2",  tgt: "EUAIACT", tgtCode: "AIACT-6.1",  mtype: "equivalent"},
-	{src: "PREN18286", srcCode: "18286-8.1",  tgt: "EUAIACT", tgtCode: "AIACT-6.1",  mtype: "partial"},
+	{src: "PREN18286", srcCode: "18286-6.2", tgt: "EUAIACT", tgtCode: "AIACT-6.1", mtype: "equivalent"},
+	{src: "PREN18286", srcCode: "18286-8.1", tgt: "EUAIACT", tgtCode: "AIACT-6.1", mtype: "partial"},
 	// Art. 17 — Qualitätsmanagementsystem (Kernzweck von prEN 18286, Annex ZA)
-	{src: "PREN18286", srcCode: "18286-4.1",  tgt: "EUAIACT", tgtCode: "AIACT-9.1",  mtype: "equivalent"},
-	{src: "PREN18286", srcCode: "18286-4.2",  tgt: "EUAIACT", tgtCode: "AIACT-9.1",  mtype: "equivalent"},
-	{src: "PREN18286", srcCode: "18286-5.1",  tgt: "EUAIACT", tgtCode: "AIACT-9.1",  mtype: "equivalent"},
-	{src: "PREN18286", srcCode: "18286-6.1",  tgt: "EUAIACT", tgtCode: "AIACT-9.1",  mtype: "equivalent"},
-	{src: "PREN18286", srcCode: "18286-7.1",  tgt: "EUAIACT", tgtCode: "AIACT-9.1",  mtype: "equivalent"},
-	{src: "PREN18286", srcCode: "18286-8.1",  tgt: "EUAIACT", tgtCode: "AIACT-9.1",  mtype: "equivalent"},
-	{src: "PREN18286", srcCode: "18286-9.2",  tgt: "EUAIACT", tgtCode: "AIACT-9.2",  mtype: "equivalent"},
-	{src: "PREN18286", srcCode: "18286-9.3",  tgt: "EUAIACT", tgtCode: "AIACT-9.2",  mtype: "partial"},
-	{src: "PREN18286", srcCode: "18286-10.1", tgt: "EUAIACT", tgtCode: "AIACT-9.1",  mtype: "partial"},
+	{src: "PREN18286", srcCode: "18286-4.1", tgt: "EUAIACT", tgtCode: "AIACT-9.1", mtype: "equivalent"},
+	{src: "PREN18286", srcCode: "18286-4.2", tgt: "EUAIACT", tgtCode: "AIACT-9.1", mtype: "equivalent"},
+	{src: "PREN18286", srcCode: "18286-5.1", tgt: "EUAIACT", tgtCode: "AIACT-9.1", mtype: "equivalent"},
+	{src: "PREN18286", srcCode: "18286-6.1", tgt: "EUAIACT", tgtCode: "AIACT-9.1", mtype: "equivalent"},
+	{src: "PREN18286", srcCode: "18286-7.1", tgt: "EUAIACT", tgtCode: "AIACT-9.1", mtype: "equivalent"},
+	{src: "PREN18286", srcCode: "18286-8.1", tgt: "EUAIACT", tgtCode: "AIACT-9.1", mtype: "equivalent"},
+	{src: "PREN18286", srcCode: "18286-9.2", tgt: "EUAIACT", tgtCode: "AIACT-9.2", mtype: "equivalent"},
+	{src: "PREN18286", srcCode: "18286-9.3", tgt: "EUAIACT", tgtCode: "AIACT-9.2", mtype: "partial"},
+	{src: "PREN18286", srcCode: "18286-10.1", tgt: "EUAIACT", tgtCode: "AIACT-9.1", mtype: "partial"},
 	// Art. 18 — Aufbewahrung der technischen Dokumentation
-	{src: "PREN18286", srcCode: "18286-9.1",  tgt: "EUAIACT", tgtCode: "AIACT-10.1", mtype: "partial"},
+	{src: "PREN18286", srcCode: "18286-9.1", tgt: "EUAIACT", tgtCode: "AIACT-10.1", mtype: "partial"},
 }
 
 // SeedPREN18286EUAIActMappings seeds prEN 18286 ↔ EU AI Act (Annex ZA stub) mappings.
@@ -670,15 +670,15 @@ func (s *Service) SeedPREN18286EUAIActMappings(ctx context.Context, orgID string
 
 var kritisDORAMappings = []frameworkPair{
 	// ISMS / Governance
-	{src: "KRITIS", srcCode: "KRITIS-DG.3",  tgt: "DORA", tgtCode: "DORA-1.1", mtype: "equivalent"}, // Risikoanalyse → IKT-Rahmen
-	{src: "KRITIS", srcCode: "KRITIS-DG.3",  tgt: "DORA", tgtCode: "DORA-1.2", mtype: "partial"},    // Risikoanalyse → IKT-Risikobewertung
-	{src: "KRITIS", srcCode: "KRITIS-DG.20", tgt: "DORA", tgtCode: "DORA-1.1", mtype: "partial"},    // Leitungsverantwortung → Rahmen
+	{src: "KRITIS", srcCode: "KRITIS-DG.3", tgt: "DORA", tgtCode: "DORA-1.1", mtype: "equivalent"}, // Risikoanalyse → IKT-Rahmen
+	{src: "KRITIS", srcCode: "KRITIS-DG.3", tgt: "DORA", tgtCode: "DORA-1.2", mtype: "partial"},    // Risikoanalyse → IKT-Risikobewertung
+	{src: "KRITIS", srcCode: "KRITIS-DG.20", tgt: "DORA", tgtCode: "DORA-1.1", mtype: "partial"},   // Leitungsverantwortung → Rahmen
 	// Schutzmaßnahmen / Zugriffskontrolle
-	{src: "KRITIS", srcCode: "KRITIS-DG.5",  tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},    // Sicherheitsmaßnahmen → Schutz
-	{src: "KRITIS", srcCode: "KRITIS-DG.6",  tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},    // Zugriffskontrolle → Schutz
-	{src: "KRITIS", srcCode: "KRITIS-DG.11", tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},    // Kryptographie → Schutz
+	{src: "KRITIS", srcCode: "KRITIS-DG.5", tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},  // Sicherheitsmaßnahmen → Schutz
+	{src: "KRITIS", srcCode: "KRITIS-DG.6", tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},  // Zugriffskontrolle → Schutz
+	{src: "KRITIS", srcCode: "KRITIS-DG.11", tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"}, // Kryptographie → Schutz
 	// Erkennung / Monitoring
-	{src: "KRITIS", srcCode: "KRITIS-DG.9",  tgt: "DORA", tgtCode: "DORA-1.5", mtype: "equivalent"}, // Überwachung/Logging → Anomalie-Erkennung
+	{src: "KRITIS", srcCode: "KRITIS-DG.9", tgt: "DORA", tgtCode: "DORA-1.5", mtype: "equivalent"}, // Überwachung/Logging → Anomalie-Erkennung
 	// Backup & Wiederherstellung
 	{src: "KRITIS", srcCode: "KRITIS-DG.10", tgt: "DORA", tgtCode: "DORA-1.7", mtype: "equivalent"}, // Backup → Wiederherstellung
 	{src: "KRITIS", srcCode: "KRITIS-DG.19", tgt: "DORA", tgtCode: "DORA-1.7", mtype: "partial"},    // BCM-Tests → Tests
@@ -693,8 +693,8 @@ var kritisDORAMappings = []frameworkPair{
 	{src: "KRITIS", srcCode: "KRITIS-DG.18", tgt: "DORA", tgtCode: "DORA-1.6", mtype: "equivalent"}, // Resilienzplan → BCP
 	{src: "KRITIS", srcCode: "KRITIS-DG.19", tgt: "DORA", tgtCode: "DORA-1.6", mtype: "partial"},    // BCM-Tests → BCP-Tests
 	// Lieferkette / Drittparteien
-	{src: "KRITIS", srcCode: "KRITIS-DG.4",  tgt: "DORA", tgtCode: "DORA-4.1", mtype: "equivalent"}, // Lieferkettenmanagement → TPICT-Richtlinie
-	{src: "KRITIS", srcCode: "KRITIS-DG.4",  tgt: "DORA", tgtCode: "DORA-4.2", mtype: "partial"},    // Lieferkette → TPICT-Register
+	{src: "KRITIS", srcCode: "KRITIS-DG.4", tgt: "DORA", tgtCode: "DORA-4.1", mtype: "equivalent"}, // Lieferkettenmanagement → TPICT-Richtlinie
+	{src: "KRITIS", srcCode: "KRITIS-DG.4", tgt: "DORA", tgtCode: "DORA-4.2", mtype: "partial"},    // Lieferkette → TPICT-Register
 }
 
 // SeedKRITISDORAMappings seeds KRITIS-DachG ↔ DORA bidirectional mappings.
@@ -709,36 +709,36 @@ func (s *Service) SeedKRITISDORAMappings(ctx context.Context, orgID string) erro
 
 var bsiKRITISMappings = []frameworkPair{
 	// DG.3 — ISMS
-	{src: "BSI", srcCode: "BSI-ORP.1",     tgt: "KRITIS", tgtCode: "KRITIS-DG.3",  mtype: "equivalent"}, // Organisation IS → ISMS
-	{src: "BSI", srcCode: "BSI-ORP.2",     tgt: "KRITIS", tgtCode: "KRITIS-DG.16", mtype: "equivalent"}, // Personal → Schulungen/Awareness
+	{src: "BSI", srcCode: "BSI-ORP.1", tgt: "KRITIS", tgtCode: "KRITIS-DG.3", mtype: "equivalent"},  // Organisation IS → ISMS
+	{src: "BSI", srcCode: "BSI-ORP.2", tgt: "KRITIS", tgtCode: "KRITIS-DG.16", mtype: "equivalent"}, // Personal → Schulungen/Awareness
 	// DG.4 — Lieferkette
-	{src: "BSI", srcCode: "BSI-OPS.2.3",   tgt: "KRITIS", tgtCode: "KRITIS-DG.4",  mtype: "equivalent"}, // IT-Service-Provider → Lieferkette
+	{src: "BSI", srcCode: "BSI-OPS.2.3", tgt: "KRITIS", tgtCode: "KRITIS-DG.4", mtype: "equivalent"}, // IT-Service-Provider → Lieferkette
 	// DG.7/DG.8 — Physische Sicherheit
-	{src: "BSI", srcCode: "BSI-INF.1",     tgt: "KRITIS", tgtCode: "KRITIS-DG.7",  mtype: "equivalent"}, // Gebäude → Physische Sicherheit
-	{src: "BSI", srcCode: "BSI-INF.2",     tgt: "KRITIS", tgtCode: "KRITIS-DG.7",  mtype: "partial"},    // Rechenzentrum → Physische Sicherheit
-	{src: "BSI", srcCode: "BSI-INF.4",     tgt: "KRITIS", tgtCode: "KRITIS-DG.8",  mtype: "partial"},    // IT-Verkabelung → Umgebungsrisiken
+	{src: "BSI", srcCode: "BSI-INF.1", tgt: "KRITIS", tgtCode: "KRITIS-DG.7", mtype: "equivalent"}, // Gebäude → Physische Sicherheit
+	{src: "BSI", srcCode: "BSI-INF.2", tgt: "KRITIS", tgtCode: "KRITIS-DG.7", mtype: "partial"},    // Rechenzentrum → Physische Sicherheit
+	{src: "BSI", srcCode: "BSI-INF.4", tgt: "KRITIS", tgtCode: "KRITIS-DG.8", mtype: "partial"},    // IT-Verkabelung → Umgebungsrisiken
 	// DG.9 — Monitoring/Logging
-	{src: "BSI", srcCode: "BSI-OPS.1.1.5", tgt: "KRITIS", tgtCode: "KRITIS-DG.9",  mtype: "equivalent"}, // Protokollierung → Monitoring
-	{src: "BSI", srcCode: "BSI-DER.1",     tgt: "KRITIS", tgtCode: "KRITIS-DG.9",  mtype: "partial"},    // Detektion → Überwachung
+	{src: "BSI", srcCode: "BSI-OPS.1.1.5", tgt: "KRITIS", tgtCode: "KRITIS-DG.9", mtype: "equivalent"}, // Protokollierung → Monitoring
+	{src: "BSI", srcCode: "BSI-DER.1", tgt: "KRITIS", tgtCode: "KRITIS-DG.9", mtype: "partial"},        // Detektion → Überwachung
 	// DG.10 — Backup
-	{src: "BSI", srcCode: "BSI-CON.3",     tgt: "KRITIS", tgtCode: "KRITIS-DG.10", mtype: "equivalent"}, // Datensicherung → Backup
+	{src: "BSI", srcCode: "BSI-CON.3", tgt: "KRITIS", tgtCode: "KRITIS-DG.10", mtype: "equivalent"}, // Datensicherung → Backup
 	// DG.11 — Kryptographie
-	{src: "BSI", srcCode: "BSI-CON.1",     tgt: "KRITIS", tgtCode: "KRITIS-DG.11", mtype: "equivalent"}, // Kryptokonzept → Kryptographie
+	{src: "BSI", srcCode: "BSI-CON.1", tgt: "KRITIS", tgtCode: "KRITIS-DG.11", mtype: "equivalent"}, // Kryptokonzept → Kryptographie
 	// DG.12 — Netzwerk
-	{src: "BSI", srcCode: "BSI-NET.1.1",   tgt: "KRITIS", tgtCode: "KRITIS-DG.12", mtype: "equivalent"}, // Netzarchitektur → Netzwerksicherheit
-	{src: "BSI", srcCode: "BSI-NET.1.2",   tgt: "KRITIS", tgtCode: "KRITIS-DG.12", mtype: "partial"},    // Netzwerkmanagement → Netzwerksicherheit
+	{src: "BSI", srcCode: "BSI-NET.1.1", tgt: "KRITIS", tgtCode: "KRITIS-DG.12", mtype: "equivalent"}, // Netzarchitektur → Netzwerksicherheit
+	{src: "BSI", srcCode: "BSI-NET.1.2", tgt: "KRITIS", tgtCode: "KRITIS-DG.12", mtype: "partial"},    // Netzwerkmanagement → Netzwerksicherheit
 	// DG.13 — Schwachstellenmanagement
 	{src: "BSI", srcCode: "BSI-OPS.1.1.2", tgt: "KRITIS", tgtCode: "KRITIS-DG.13", mtype: "equivalent"}, // Patch-Management → Schwachstellen
 	// DG.14/DG.15 — Vorfallsmanagement und Meldung
-	{src: "BSI", srcCode: "BSI-DER.2.1",   tgt: "KRITIS", tgtCode: "KRITIS-DG.14", mtype: "equivalent"}, // Incident-Handling → Vorfallsmanagement
-	{src: "BSI", srcCode: "BSI-DER.2.2",   tgt: "KRITIS", tgtCode: "KRITIS-DG.14", mtype: "partial"},    // IT-Forensik → Vorfallsbehandlung
-	{src: "BSI", srcCode: "BSI-DER.2.1",   tgt: "KRITIS", tgtCode: "KRITIS-DG.15", mtype: "partial"},    // Incident-Handling → Meldepflichten
+	{src: "BSI", srcCode: "BSI-DER.2.1", tgt: "KRITIS", tgtCode: "KRITIS-DG.14", mtype: "equivalent"}, // Incident-Handling → Vorfallsmanagement
+	{src: "BSI", srcCode: "BSI-DER.2.2", tgt: "KRITIS", tgtCode: "KRITIS-DG.14", mtype: "partial"},    // IT-Forensik → Vorfallsbehandlung
+	{src: "BSI", srcCode: "BSI-DER.2.1", tgt: "KRITIS", tgtCode: "KRITIS-DG.15", mtype: "partial"},    // Incident-Handling → Meldepflichten
 	// DG.18/DG.19 — BCM / Resilienzplan
-	{src: "BSI", srcCode: "BSI-BCM.1",     tgt: "KRITIS", tgtCode: "KRITIS-DG.18", mtype: "equivalent"}, // BCM-Konzeption → Resilienzplan
-	{src: "BSI", srcCode: "BSI-BCM.2",     tgt: "KRITIS", tgtCode: "KRITIS-DG.19", mtype: "equivalent"}, // BCM-Übungen → BCM-Tests
+	{src: "BSI", srcCode: "BSI-BCM.1", tgt: "KRITIS", tgtCode: "KRITIS-DG.18", mtype: "equivalent"}, // BCM-Konzeption → Resilienzplan
+	{src: "BSI", srcCode: "BSI-BCM.2", tgt: "KRITIS", tgtCode: "KRITIS-DG.19", mtype: "equivalent"}, // BCM-Übungen → BCM-Tests
 	// DG.20/DG.21 — Leitungsverantwortung/Audit
-	{src: "BSI", srcCode: "BSI-ORP.1",     tgt: "KRITIS", tgtCode: "KRITIS-DG.20", mtype: "partial"},    // Organisation → Leitungsverantwortung
-	{src: "BSI", srcCode: "BSI-DER.3.1",   tgt: "KRITIS", tgtCode: "KRITIS-DG.21", mtype: "equivalent"}, // Revisionen → Auditierung
+	{src: "BSI", srcCode: "BSI-ORP.1", tgt: "KRITIS", tgtCode: "KRITIS-DG.20", mtype: "partial"},      // Organisation → Leitungsverantwortung
+	{src: "BSI", srcCode: "BSI-DER.3.1", tgt: "KRITIS", tgtCode: "KRITIS-DG.21", mtype: "equivalent"}, // Revisionen → Auditierung
 }
 
 // SeedBSIKRITISMappings seeds BSI IT-Grundschutz ↔ KRITIS-DachG bidirectional mappings.
@@ -752,53 +752,53 @@ func (s *Service) SeedBSIKRITISMappings(ctx context.Context, orgID string) error
 
 var c5BSIMappings = []frameworkPair{
 	// OIS ↔ ORP (Organisation der IS)
-	{src: "C5", srcCode: "C5-OIS-01", tgt: "BSI", tgtCode: "BSI-ORP.1",     mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-OIS-02", tgt: "BSI", tgtCode: "BSI-ORP.1",     mtype: "partial"},
-	{src: "C5", srcCode: "C5-OIS-03", tgt: "BSI", tgtCode: "BSI-ORP.1",     mtype: "partial"},
+	{src: "C5", srcCode: "C5-OIS-01", tgt: "BSI", tgtCode: "BSI-ORP.1", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-OIS-02", tgt: "BSI", tgtCode: "BSI-ORP.1", mtype: "partial"},
+	{src: "C5", srcCode: "C5-OIS-03", tgt: "BSI", tgtCode: "BSI-ORP.1", mtype: "partial"},
 	// HR ↔ ORP.2 (Personal)
-	{src: "C5", srcCode: "C5-HR-01",  tgt: "BSI", tgtCode: "BSI-ORP.2",     mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-HR-02",  tgt: "BSI", tgtCode: "BSI-ORP.2",     mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-HR-03",  tgt: "BSI", tgtCode: "BSI-ORP.3",     mtype: "equivalent"}, // Sensibilisierung/Schulung
-	{src: "C5", srcCode: "C5-HR-04",  tgt: "BSI", tgtCode: "BSI-ORP.2",     mtype: "partial"},
-	{src: "C5", srcCode: "C5-HR-05",  tgt: "BSI", tgtCode: "BSI-ORP.2",     mtype: "partial"},
+	{src: "C5", srcCode: "C5-HR-01", tgt: "BSI", tgtCode: "BSI-ORP.2", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-HR-02", tgt: "BSI", tgtCode: "BSI-ORP.2", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-HR-03", tgt: "BSI", tgtCode: "BSI-ORP.3", mtype: "equivalent"}, // Sensibilisierung/Schulung
+	{src: "C5", srcCode: "C5-HR-04", tgt: "BSI", tgtCode: "BSI-ORP.2", mtype: "partial"},
+	{src: "C5", srcCode: "C5-HR-05", tgt: "BSI", tgtCode: "BSI-ORP.2", mtype: "partial"},
 	// AM ↔ ORP.4 / ISMS (Asset Management)
-	{src: "C5", srcCode: "C5-AM-01",  tgt: "BSI", tgtCode: "BSI-ORP.4",     mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-AM-04",  tgt: "BSI", tgtCode: "BSI-ORP.4",     mtype: "partial"},
+	{src: "C5", srcCode: "C5-AM-01", tgt: "BSI", tgtCode: "BSI-ORP.4", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-AM-04", tgt: "BSI", tgtCode: "BSI-ORP.4", mtype: "partial"},
 	// PS ↔ INF (Physische Sicherheit)
-	{src: "C5", srcCode: "C5-PS-01",  tgt: "BSI", tgtCode: "BSI-INF.1",     mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-PS-02",  tgt: "BSI", tgtCode: "BSI-INF.2",     mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-PS-03",  tgt: "BSI", tgtCode: "BSI-INF.1",     mtype: "partial"},
-	{src: "C5", srcCode: "C5-PS-07",  tgt: "BSI", tgtCode: "BSI-INF.3",     mtype: "partial"}, // Stromversorgung
-	{src: "C5", srcCode: "C5-PS-08",  tgt: "BSI", tgtCode: "BSI-INF.4",     mtype: "partial"}, // Verkabelung
+	{src: "C5", srcCode: "C5-PS-01", tgt: "BSI", tgtCode: "BSI-INF.1", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-PS-02", tgt: "BSI", tgtCode: "BSI-INF.2", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-PS-03", tgt: "BSI", tgtCode: "BSI-INF.1", mtype: "partial"},
+	{src: "C5", srcCode: "C5-PS-07", tgt: "BSI", tgtCode: "BSI-INF.3", mtype: "partial"}, // Stromversorgung
+	{src: "C5", srcCode: "C5-PS-08", tgt: "BSI", tgtCode: "BSI-INF.4", mtype: "partial"}, // Verkabelung
 	// OPS ↔ OPS + CON (Betrieb)
 	{src: "C5", srcCode: "C5-OPS-01", tgt: "BSI", tgtCode: "BSI-OPS.1.1.2", mtype: "equivalent"}, // Patch-Management
 	{src: "C5", srcCode: "C5-OPS-07", tgt: "BSI", tgtCode: "BSI-OPS.1.1.5", mtype: "equivalent"}, // Protokollierung
 	{src: "C5", srcCode: "C5-OPS-08", tgt: "BSI", tgtCode: "BSI-OPS.1.1.5", mtype: "partial"},    // Log-Management
-	{src: "C5", srcCode: "C5-OPS-11", tgt: "BSI", tgtCode: "BSI-CON.3",     mtype: "equivalent"}, // Backup
-	{src: "C5", srcCode: "C5-OPS-12", tgt: "BSI", tgtCode: "BSI-CON.3",     mtype: "partial"},    // Recovery
+	{src: "C5", srcCode: "C5-OPS-11", tgt: "BSI", tgtCode: "BSI-CON.3", mtype: "equivalent"},     // Backup
+	{src: "C5", srcCode: "C5-OPS-12", tgt: "BSI", tgtCode: "BSI-CON.3", mtype: "partial"},        // Recovery
 	// IAM ↔ ORP.4 / SYS (Identitäts- und Zugriffsverwaltung)
-	{src: "C5", srcCode: "C5-IAM-01", tgt: "BSI", tgtCode: "BSI-ORP.4",     mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-IAM-02", tgt: "BSI", tgtCode: "BSI-ORP.4",     mtype: "partial"},
+	{src: "C5", srcCode: "C5-IAM-01", tgt: "BSI", tgtCode: "BSI-ORP.4", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-IAM-02", tgt: "BSI", tgtCode: "BSI-ORP.4", mtype: "partial"},
 	// CRY ↔ CON.1 (Kryptographie)
-	{src: "C5", srcCode: "C5-CRY-01", tgt: "BSI", tgtCode: "BSI-CON.1",     mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-CRY-02", tgt: "BSI", tgtCode: "BSI-CON.1",     mtype: "partial"},
+	{src: "C5", srcCode: "C5-CRY-01", tgt: "BSI", tgtCode: "BSI-CON.1", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-CRY-02", tgt: "BSI", tgtCode: "BSI-CON.1", mtype: "partial"},
 	// COS ↔ NET (Kommunikationssicherheit)
-	{src: "C5", srcCode: "C5-COS-01", tgt: "BSI", tgtCode: "BSI-NET.1.1",   mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-COS-02", tgt: "BSI", tgtCode: "BSI-NET.1.1",   mtype: "partial"},
-	{src: "C5", srcCode: "C5-COS-03", tgt: "BSI", tgtCode: "BSI-NET.1.2",   mtype: "partial"},
+	{src: "C5", srcCode: "C5-COS-01", tgt: "BSI", tgtCode: "BSI-NET.1.1", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-COS-02", tgt: "BSI", tgtCode: "BSI-NET.1.1", mtype: "partial"},
+	{src: "C5", srcCode: "C5-COS-03", tgt: "BSI", tgtCode: "BSI-NET.1.2", mtype: "partial"},
 	// DEV ↔ CON.8 / OPS.1.1.6 (Entwicklung)
-	{src: "C5", srcCode: "C5-DEV-01", tgt: "BSI", tgtCode: "BSI-CON.8",     mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-DEV-05", tgt: "BSI", tgtCode: "BSI-CON.8",     mtype: "partial"},
+	{src: "C5", srcCode: "C5-DEV-01", tgt: "BSI", tgtCode: "BSI-CON.8", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-DEV-05", tgt: "BSI", tgtCode: "BSI-CON.8", mtype: "partial"},
 	// SSO ↔ OPS.2 (Dienstleister)
-	{src: "C5", srcCode: "C5-SSO-01", tgt: "BSI", tgtCode: "BSI-OPS.2.3",   mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-SSO-02", tgt: "BSI", tgtCode: "BSI-OPS.2.3",   mtype: "partial"},
+	{src: "C5", srcCode: "C5-SSO-01", tgt: "BSI", tgtCode: "BSI-OPS.2.3", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-SSO-02", tgt: "BSI", tgtCode: "BSI-OPS.2.3", mtype: "partial"},
 	// SIM ↔ DER.2 (Vorfallsmanagement)
-	{src: "C5", srcCode: "C5-SIM-01", tgt: "BSI", tgtCode: "BSI-DER.2.1",   mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-SIM-02", tgt: "BSI", tgtCode: "BSI-DER.2.1",   mtype: "partial"},
+	{src: "C5", srcCode: "C5-SIM-01", tgt: "BSI", tgtCode: "BSI-DER.2.1", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-SIM-02", tgt: "BSI", tgtCode: "BSI-DER.2.1", mtype: "partial"},
 	// BCM ↔ BCM (Business Continuity)
-	{src: "C5", srcCode: "C5-BCM-01", tgt: "BSI", tgtCode: "BSI-BCM.1",     mtype: "equivalent"},
-	{src: "C5", srcCode: "C5-BCM-02", tgt: "BSI", tgtCode: "BSI-BCM.1",     mtype: "partial"},
-	{src: "C5", srcCode: "C5-BCM-03", tgt: "BSI", tgtCode: "BSI-CON.3",     mtype: "partial"},
+	{src: "C5", srcCode: "C5-BCM-01", tgt: "BSI", tgtCode: "BSI-BCM.1", mtype: "equivalent"},
+	{src: "C5", srcCode: "C5-BCM-02", tgt: "BSI", tgtCode: "BSI-BCM.1", mtype: "partial"},
+	{src: "C5", srcCode: "C5-BCM-03", tgt: "BSI", tgtCode: "BSI-CON.3", mtype: "partial"},
 }
 
 // SeedC5BSIMappings seeds BSI C5:2026 ↔ BSI IT-Grundschutz bidirectional mappings.
@@ -813,21 +813,21 @@ func (s *Service) SeedC5BSIMappings(ctx context.Context, orgID string) error {
 // Gap: NIS2 Art. 23 reporting obligations to national CSIRTs are NOT covered by TISAX.
 
 var tisaxNIS2Mappings = []frameworkPair{
-	{src: "TISAX", srcCode: "TISAX-1.1.1", tgt: "NIS2", tgtCode: "NIS2-A.1",  mtype: "equivalent"}, // IS-Politik → Governance
-	{src: "TISAX", srcCode: "TISAX-1.1.3", tgt: "NIS2", tgtCode: "NIS2-A.2",  mtype: "partial"},    // Leadership → Policy
-	{src: "TISAX", srcCode: "TISAX-3.1.2", tgt: "NIS2", tgtCode: "NIS2-G.2",  mtype: "equivalent"}, // Schulung → Awareness
-	{src: "TISAX", srcCode: "TISAX-4.1.1", tgt: "NIS2", tgtCode: "NIS2-A.8",  mtype: "equivalent"}, // Asset-Inventar → Asset Management
-	{src: "TISAX", srcCode: "TISAX-4.1.3", tgt: "NIS2", tgtCode: "NIS2-A.8",  mtype: "partial"},    // Klassifizierung → Asset Management
-	{src: "TISAX", srcCode: "TISAX-5.1.1", tgt: "NIS2", tgtCode: "NIS2-F.1",  mtype: "equivalent"}, // Zugriffssteuerung → Zugriffskontrolle
-	{src: "TISAX", srcCode: "TISAX-5.1.2", tgt: "NIS2", tgtCode: "NIS2-F.1",  mtype: "partial"},    // Authentifizierung → MFA
-	{src: "TISAX", srcCode: "TISAX-6.1.1", tgt: "NIS2", tgtCode: "NIS2-H.1",  mtype: "equivalent"}, // Kryptographie → Verschlüsselung
-	{src: "TISAX", srcCode: "TISAX-7.1.1", tgt: "NIS2", tgtCode: "NIS2-E.3",  mtype: "equivalent"}, // Schwachstellen → Vulnerability-Mgmt
-	{src: "TISAX", srcCode: "TISAX-7.1.2", tgt: "NIS2", tgtCode: "NIS2-E.4",  mtype: "equivalent"}, // Patch-Management → Patch
-	{src: "TISAX", srcCode: "TISAX-8.1.1", tgt: "NIS2", tgtCode: "NIS2-B.1",  mtype: "equivalent"}, // Vorfallsmanagement → Incident Response
-	{src: "TISAX", srcCode: "TISAX-9.1.1", tgt: "NIS2", tgtCode: "NIS2-C.1",  mtype: "equivalent"}, // BCM → Continuity
-	{src: "TISAX", srcCode: "TISAX-9.1.2", tgt: "NIS2", tgtCode: "NIS2-C.4",  mtype: "equivalent"}, // Backup → BCM Backup
-	{src: "TISAX", srcCode: "TISAX-2.1.3", tgt: "NIS2", tgtCode: "NIS2-D.1",  mtype: "partial"},    // Lieferanten → Supply Chain
-	{src: "TISAX", srcCode: "TISAX-2.1.4", tgt: "NIS2", tgtCode: "NIS2-E.8",  mtype: "partial"},    // Mobiles Arbeiten → Netzwerksicherheit
+	{src: "TISAX", srcCode: "TISAX-1.1.1", tgt: "NIS2", tgtCode: "NIS2-A.1", mtype: "equivalent"}, // IS-Politik → Governance
+	{src: "TISAX", srcCode: "TISAX-1.1.3", tgt: "NIS2", tgtCode: "NIS2-A.2", mtype: "partial"},    // Leadership → Policy
+	{src: "TISAX", srcCode: "TISAX-3.1.2", tgt: "NIS2", tgtCode: "NIS2-G.2", mtype: "equivalent"}, // Schulung → Awareness
+	{src: "TISAX", srcCode: "TISAX-4.1.1", tgt: "NIS2", tgtCode: "NIS2-A.8", mtype: "equivalent"}, // Asset-Inventar → Asset Management
+	{src: "TISAX", srcCode: "TISAX-4.1.3", tgt: "NIS2", tgtCode: "NIS2-A.8", mtype: "partial"},    // Klassifizierung → Asset Management
+	{src: "TISAX", srcCode: "TISAX-5.1.1", tgt: "NIS2", tgtCode: "NIS2-F.1", mtype: "equivalent"}, // Zugriffssteuerung → Zugriffskontrolle
+	{src: "TISAX", srcCode: "TISAX-5.1.2", tgt: "NIS2", tgtCode: "NIS2-F.1", mtype: "partial"},    // Authentifizierung → MFA
+	{src: "TISAX", srcCode: "TISAX-6.1.1", tgt: "NIS2", tgtCode: "NIS2-H.1", mtype: "equivalent"}, // Kryptographie → Verschlüsselung
+	{src: "TISAX", srcCode: "TISAX-7.1.1", tgt: "NIS2", tgtCode: "NIS2-E.3", mtype: "equivalent"}, // Schwachstellen → Vulnerability-Mgmt
+	{src: "TISAX", srcCode: "TISAX-7.1.2", tgt: "NIS2", tgtCode: "NIS2-E.4", mtype: "equivalent"}, // Patch-Management → Patch
+	{src: "TISAX", srcCode: "TISAX-8.1.1", tgt: "NIS2", tgtCode: "NIS2-B.1", mtype: "equivalent"}, // Vorfallsmanagement → Incident Response
+	{src: "TISAX", srcCode: "TISAX-9.1.1", tgt: "NIS2", tgtCode: "NIS2-C.1", mtype: "equivalent"}, // BCM → Continuity
+	{src: "TISAX", srcCode: "TISAX-9.1.2", tgt: "NIS2", tgtCode: "NIS2-C.4", mtype: "equivalent"}, // Backup → BCM Backup
+	{src: "TISAX", srcCode: "TISAX-2.1.3", tgt: "NIS2", tgtCode: "NIS2-D.1", mtype: "partial"},    // Lieferanten → Supply Chain
+	{src: "TISAX", srcCode: "TISAX-2.1.4", tgt: "NIS2", tgtCode: "NIS2-E.8", mtype: "partial"},    // Mobiles Arbeiten → Netzwerksicherheit
 }
 
 // SeedTISAXNIS2Mappings seeds TISAX ↔ NIS2 bidirectional mappings.
@@ -841,25 +841,25 @@ func (s *Service) SeedTISAXNIS2Mappings(ctx context.Context, orgID string) error
 // Source: ISO 27017:2015 Annex A correlation table.
 
 var iso27017ISO27001Mappings = []frameworkPair{
-	{src: "ISO27017", srcCode: "27017-6.3.1",     tgt: "ISO27001", tgtCode: "A.5.19", mtype: "partial"},    // Shared responsibility → Supply chain
-	{src: "ISO27017", srcCode: "27017-6.3.2",     tgt: "ISO27001", tgtCode: "A.5.11", mtype: "equivalent"}, // Asset return → Return of assets
-	{src: "ISO27017", srcCode: "27017-8.1.1",     tgt: "ISO27001", tgtCode: "A.5.9",  mtype: "equivalent"}, // Cloud asset inventory
-	{src: "ISO27017", srcCode: "27017-8.1.3",     tgt: "ISO27001", tgtCode: "A.5.10", mtype: "partial"},    // Asset acceptable use
-	{src: "ISO27017", srcCode: "27017-9.1.2",     tgt: "ISO27001", tgtCode: "A.5.15", mtype: "equivalent"}, // Access control
-	{src: "ISO27017", srcCode: "27017-9.4.4",     tgt: "ISO27001", tgtCode: "A.8.18", mtype: "equivalent"}, // Privileged utilities
-	{src: "ISO27017", srcCode: "27017-10.1.1",    tgt: "ISO27001", tgtCode: "A.8.24", mtype: "equivalent"}, // Encryption at rest/transit
-	{src: "ISO27017", srcCode: "27017-10.1.2",    tgt: "ISO27001", tgtCode: "A.8.25", mtype: "equivalent"}, // Key management
-	{src: "ISO27017", srcCode: "27017-11.2.7",    tgt: "ISO27001", tgtCode: "A.7.10", mtype: "equivalent"}, // Storage media disposal
-	{src: "ISO27017", srcCode: "27017-12.1.3",    tgt: "ISO27001", tgtCode: "A.8.6",  mtype: "partial"},    // Capacity management
-	{src: "ISO27017", srcCode: "27017-12.4.1",    tgt: "ISO27001", tgtCode: "A.8.15", mtype: "equivalent"}, // Event logging
-	{src: "ISO27017", srcCode: "27017-12.6.1",    tgt: "ISO27001", tgtCode: "A.8.8",  mtype: "equivalent"}, // Vulnerability management
-	{src: "ISO27017", srcCode: "27017-13.1.3",    tgt: "ISO27001", tgtCode: "A.8.22", mtype: "equivalent"}, // Network segregation
-	{src: "ISO27017", srcCode: "27017-15.1.1",    tgt: "ISO27001", tgtCode: "A.5.19", mtype: "equivalent"}, // Supplier relationships
-	{src: "ISO27017", srcCode: "27017-15.2.1",    tgt: "ISO27001", tgtCode: "A.5.22", mtype: "equivalent"}, // Supplier monitoring
-	{src: "ISO27017", srcCode: "27017-CLD.6.3.1", tgt: "ISO27001", tgtCode: "A.5.2",  mtype: "partial"},    // Shared security — roles
-	{src: "ISO27017", srcCode: "27017-CLD.9.5.1", tgt: "ISO27001", tgtCode: "A.8.22", mtype: "equivalent"}, // Segregation in VE
-	{src: "ISO27017", srcCode: "27017-CLD.9.5.2", tgt: "ISO27001", tgtCode: "A.8.9",  mtype: "partial"},    // VM hardening
-	{src: "ISO27017", srcCode: "27017-CLD.12.4.5",tgt: "ISO27001", tgtCode: "A.8.16", mtype: "equivalent"}, // Cloud monitoring
+	{src: "ISO27017", srcCode: "27017-6.3.1", tgt: "ISO27001", tgtCode: "A.5.19", mtype: "partial"},         // Shared responsibility → Supply chain
+	{src: "ISO27017", srcCode: "27017-6.3.2", tgt: "ISO27001", tgtCode: "A.5.11", mtype: "equivalent"},      // Asset return → Return of assets
+	{src: "ISO27017", srcCode: "27017-8.1.1", tgt: "ISO27001", tgtCode: "A.5.9", mtype: "equivalent"},       // Cloud asset inventory
+	{src: "ISO27017", srcCode: "27017-8.1.3", tgt: "ISO27001", tgtCode: "A.5.10", mtype: "partial"},         // Asset acceptable use
+	{src: "ISO27017", srcCode: "27017-9.1.2", tgt: "ISO27001", tgtCode: "A.5.15", mtype: "equivalent"},      // Access control
+	{src: "ISO27017", srcCode: "27017-9.4.4", tgt: "ISO27001", tgtCode: "A.8.18", mtype: "equivalent"},      // Privileged utilities
+	{src: "ISO27017", srcCode: "27017-10.1.1", tgt: "ISO27001", tgtCode: "A.8.24", mtype: "equivalent"},     // Encryption at rest/transit
+	{src: "ISO27017", srcCode: "27017-10.1.2", tgt: "ISO27001", tgtCode: "A.8.25", mtype: "equivalent"},     // Key management
+	{src: "ISO27017", srcCode: "27017-11.2.7", tgt: "ISO27001", tgtCode: "A.7.10", mtype: "equivalent"},     // Storage media disposal
+	{src: "ISO27017", srcCode: "27017-12.1.3", tgt: "ISO27001", tgtCode: "A.8.6", mtype: "partial"},         // Capacity management
+	{src: "ISO27017", srcCode: "27017-12.4.1", tgt: "ISO27001", tgtCode: "A.8.15", mtype: "equivalent"},     // Event logging
+	{src: "ISO27017", srcCode: "27017-12.6.1", tgt: "ISO27001", tgtCode: "A.8.8", mtype: "equivalent"},      // Vulnerability management
+	{src: "ISO27017", srcCode: "27017-13.1.3", tgt: "ISO27001", tgtCode: "A.8.22", mtype: "equivalent"},     // Network segregation
+	{src: "ISO27017", srcCode: "27017-15.1.1", tgt: "ISO27001", tgtCode: "A.5.19", mtype: "equivalent"},     // Supplier relationships
+	{src: "ISO27017", srcCode: "27017-15.2.1", tgt: "ISO27001", tgtCode: "A.5.22", mtype: "equivalent"},     // Supplier monitoring
+	{src: "ISO27017", srcCode: "27017-CLD.6.3.1", tgt: "ISO27001", tgtCode: "A.5.2", mtype: "partial"},      // Shared security — roles
+	{src: "ISO27017", srcCode: "27017-CLD.9.5.1", tgt: "ISO27001", tgtCode: "A.8.22", mtype: "equivalent"},  // Segregation in VE
+	{src: "ISO27017", srcCode: "27017-CLD.9.5.2", tgt: "ISO27001", tgtCode: "A.8.9", mtype: "partial"},      // VM hardening
+	{src: "ISO27017", srcCode: "27017-CLD.12.4.5", tgt: "ISO27001", tgtCode: "A.8.16", mtype: "equivalent"}, // Cloud monitoring
 }
 
 // SeedISO27017ISO27001Mappings seeds ISO 27017 ↔ ISO 27001:2022 bidirectional mappings.
@@ -877,13 +877,13 @@ var iso27018ISO27001Mappings = []frameworkPair{
 	{src: "ISO27018", srcCode: "27018-A.3.1", tgt: "ISO27001", tgtCode: "A.5.36", mtype: "partial"},    // Data subject rights
 	{src: "ISO27018", srcCode: "27018-A.3.2", tgt: "ISO27001", tgtCode: "A.8.10", mtype: "equivalent"}, // PII deletion/return
 	{src: "ISO27018", srcCode: "27018-A.4.1", tgt: "ISO27001", tgtCode: "A.5.19", mtype: "equivalent"}, // Sub-processor disclosure
-	{src: "ISO27018", srcCode: "27018-A.4.2", tgt: "ISO27001", tgtCode: "A.5.5",  mtype: "partial"},    // Govt access requests
+	{src: "ISO27018", srcCode: "27018-A.4.2", tgt: "ISO27001", tgtCode: "A.5.5", mtype: "partial"},     // Govt access requests
 	{src: "ISO27018", srcCode: "27018-A.4.3", tgt: "ISO27001", tgtCode: "A.5.14", mtype: "partial"},    // Processing locations
 	{src: "ISO27018", srcCode: "27018-A.5.1", tgt: "ISO27001", tgtCode: "A.8.24", mtype: "equivalent"}, // Encryption at rest
 	{src: "ISO27018", srcCode: "27018-A.5.2", tgt: "ISO27001", tgtCode: "A.8.24", mtype: "equivalent"}, // Encryption in transit
 	{src: "ISO27018", srcCode: "27018-A.5.3", tgt: "ISO27001", tgtCode: "A.5.15", mtype: "equivalent"}, // Access control for PII
 	{src: "ISO27018", srcCode: "27018-A.6.1", tgt: "ISO27001", tgtCode: "A.5.24", mtype: "equivalent"}, // Breach notification
-	{src: "ISO27018", srcCode: "27018-A.7.1", tgt: "ISO27001", tgtCode: "A.6.6",  mtype: "equivalent"}, // Confidentiality agreements
+	{src: "ISO27018", srcCode: "27018-A.7.1", tgt: "ISO27001", tgtCode: "A.6.6", mtype: "equivalent"},  // Confidentiality agreements
 	{src: "ISO27018", srcCode: "27018-A.7.2", tgt: "ISO27001", tgtCode: "A.8.12", mtype: "partial"},    // Copy restriction → DLP
 	{src: "ISO27018", srcCode: "27018-A.8.1", tgt: "ISO27001", tgtCode: "A.8.15", mtype: "equivalent"}, // PII access logging
 	{src: "ISO27018", srcCode: "27018-A.8.2", tgt: "ISO27001", tgtCode: "A.5.35", mtype: "equivalent"}, // Compliance audit
@@ -897,13 +897,13 @@ func (s *Service) SeedISO27018ISO27001Mappings(ctx context.Context, orgID string
 // ── ISO 27017 ↔ NIS2 mappings ─────────────────────────────────────────────────
 
 var iso27017NIS2Mappings = []frameworkPair{
-	{src: "ISO27017", srcCode: "27017-9.1.2",     tgt: "NIS2", tgtCode: "NIS2-F.1",  mtype: "equivalent"}, // Access control → Zugriff/MFA
-	{src: "ISO27017", srcCode: "27017-10.1.1",    tgt: "NIS2", tgtCode: "NIS2-H.1",  mtype: "equivalent"}, // Encryption → Kryptographie
-	{src: "ISO27017", srcCode: "27017-12.4.1",    tgt: "NIS2", tgtCode: "NIS2-E.3",  mtype: "partial"},    // Logging → Monitoring
-	{src: "ISO27017", srcCode: "27017-12.6.1",    tgt: "NIS2", tgtCode: "NIS2-E.3",  mtype: "equivalent"}, // Vuln mgmt → Schwachstellen
-	{src: "ISO27017", srcCode: "27017-13.1.3",    tgt: "NIS2", tgtCode: "NIS2-E.8",  mtype: "equivalent"}, // Network segregation → Netzwerk
-	{src: "ISO27017", srcCode: "27017-15.1.1",    tgt: "NIS2", tgtCode: "NIS2-D.1",  mtype: "equivalent"}, // Supplier → Lieferkette
-	{src: "ISO27017", srcCode: "27017-CLD.6.3.1", tgt: "NIS2", tgtCode: "NIS2-A.1",  mtype: "partial"},    // Shared responsibility → Governance
+	{src: "ISO27017", srcCode: "27017-9.1.2", tgt: "NIS2", tgtCode: "NIS2-F.1", mtype: "equivalent"},  // Access control → Zugriff/MFA
+	{src: "ISO27017", srcCode: "27017-10.1.1", tgt: "NIS2", tgtCode: "NIS2-H.1", mtype: "equivalent"}, // Encryption → Kryptographie
+	{src: "ISO27017", srcCode: "27017-12.4.1", tgt: "NIS2", tgtCode: "NIS2-E.3", mtype: "partial"},    // Logging → Monitoring
+	{src: "ISO27017", srcCode: "27017-12.6.1", tgt: "NIS2", tgtCode: "NIS2-E.3", mtype: "equivalent"}, // Vuln mgmt → Schwachstellen
+	{src: "ISO27017", srcCode: "27017-13.1.3", tgt: "NIS2", tgtCode: "NIS2-E.8", mtype: "equivalent"}, // Network segregation → Netzwerk
+	{src: "ISO27017", srcCode: "27017-15.1.1", tgt: "NIS2", tgtCode: "NIS2-D.1", mtype: "equivalent"}, // Supplier → Lieferkette
+	{src: "ISO27017", srcCode: "27017-CLD.6.3.1", tgt: "NIS2", tgtCode: "NIS2-A.1", mtype: "partial"}, // Shared responsibility → Governance
 }
 
 // SeedISO27017NIS2Mappings seeds ISO 27017 ↔ NIS2 bidirectional mappings.
@@ -920,38 +920,38 @@ var iso27017C5Mappings = []frameworkPair{
 	// Shared responsibility / ISMS
 	{src: "ISO27017", srcCode: "27017-CLD.6.3.1", tgt: "C5", tgtCode: "C5-OIS-01", mtype: "equivalent"}, // Shared security roles → ISMS
 	{src: "ISO27017", srcCode: "27017-CLD.6.3.1", tgt: "C5", tgtCode: "C5-SSO-01", mtype: "partial"},    // Shared responsibility → provider policy
-	{src: "ISO27017", srcCode: "27017-6.3.1",     tgt: "C5", tgtCode: "C5-OIS-03", mtype: "partial"},    // Cloud-specific roles → interfaces & dependencies
+	{src: "ISO27017", srcCode: "27017-6.3.1", tgt: "C5", tgtCode: "C5-OIS-03", mtype: "partial"},        // Cloud-specific roles → interfaces & dependencies
 	// Access control (IAM)
-	{src: "ISO27017", srcCode: "27017-9.1.2",     tgt: "C5", tgtCode: "C5-IAM-01", mtype: "equivalent"}, // Access control policy → IAM policy
-	{src: "ISO27017", srcCode: "27017-9.1.2",     tgt: "C5", tgtCode: "C5-IAM-02", mtype: "partial"},    // Access management → rights assignment
-	{src: "ISO27017", srcCode: "27017-9.4.1",     tgt: "C5", tgtCode: "C5-IAM-04", mtype: "equivalent"}, // Access restriction → rights withdrawal
+	{src: "ISO27017", srcCode: "27017-9.1.2", tgt: "C5", tgtCode: "C5-IAM-01", mtype: "equivalent"}, // Access control policy → IAM policy
+	{src: "ISO27017", srcCode: "27017-9.1.2", tgt: "C5", tgtCode: "C5-IAM-02", mtype: "partial"},    // Access management → rights assignment
+	{src: "ISO27017", srcCode: "27017-9.4.1", tgt: "C5", tgtCode: "C5-IAM-04", mtype: "equivalent"}, // Access restriction → rights withdrawal
 	// Cryptography
-	{src: "ISO27017", srcCode: "27017-10.1.1",    tgt: "C5", tgtCode: "C5-CRY-04", mtype: "equivalent"}, // Encryption policy → transport encryption
-	{src: "ISO27017", srcCode: "27017-10.1.1",    tgt: "C5", tgtCode: "C5-CRY-05", mtype: "equivalent"}, // Encryption → at-rest encryption
-	{src: "ISO27017", srcCode: "27017-10.1.2",    tgt: "C5", tgtCode: "C5-CRY-07", mtype: "equivalent"}, // Key management → key rotation
-	{src: "ISO27017", srcCode: "27017-10.1.2",    tgt: "C5", tgtCode: "C5-CRY-10", mtype: "equivalent"}, // Key management → key storage
+	{src: "ISO27017", srcCode: "27017-10.1.1", tgt: "C5", tgtCode: "C5-CRY-04", mtype: "equivalent"}, // Encryption policy → transport encryption
+	{src: "ISO27017", srcCode: "27017-10.1.1", tgt: "C5", tgtCode: "C5-CRY-05", mtype: "equivalent"}, // Encryption → at-rest encryption
+	{src: "ISO27017", srcCode: "27017-10.1.2", tgt: "C5", tgtCode: "C5-CRY-07", mtype: "equivalent"}, // Key management → key rotation
+	{src: "ISO27017", srcCode: "27017-10.1.2", tgt: "C5", tgtCode: "C5-CRY-10", mtype: "equivalent"}, // Key management → key storage
 	// Operations
-	{src: "ISO27017", srcCode: "27017-12.1.3",    tgt: "C5", tgtCode: "C5-OPS-01", mtype: "equivalent"}, // Capacity management → capacity planning
-	{src: "ISO27017", srcCode: "27017-12.4.1",    tgt: "C5", tgtCode: "C5-OPS-10", mtype: "equivalent"}, // Event logging → logging policy
-	{src: "ISO27017", srcCode: "27017-12.4.1",    tgt: "C5", tgtCode: "C5-OPS-13", mtype: "partial"},    // Event logging → SIEM
-	{src: "ISO27017", srcCode: "27017-12.6.1",    tgt: "C5", tgtCode: "C5-OPS-25", mtype: "equivalent"}, // Vulnerability management → vuln scans
-	{src: "ISO27017", srcCode: "27017-12.6.1",    tgt: "C5", tgtCode: "C5-OPS-27", mtype: "partial"},    // Vulnerability management → patch policy
+	{src: "ISO27017", srcCode: "27017-12.1.3", tgt: "C5", tgtCode: "C5-OPS-01", mtype: "equivalent"}, // Capacity management → capacity planning
+	{src: "ISO27017", srcCode: "27017-12.4.1", tgt: "C5", tgtCode: "C5-OPS-10", mtype: "equivalent"}, // Event logging → logging policy
+	{src: "ISO27017", srcCode: "27017-12.4.1", tgt: "C5", tgtCode: "C5-OPS-13", mtype: "partial"},    // Event logging → SIEM
+	{src: "ISO27017", srcCode: "27017-12.6.1", tgt: "C5", tgtCode: "C5-OPS-25", mtype: "equivalent"}, // Vulnerability management → vuln scans
+	{src: "ISO27017", srcCode: "27017-12.6.1", tgt: "C5", tgtCode: "C5-OPS-27", mtype: "partial"},    // Vulnerability management → patch policy
 	// Network security
-	{src: "ISO27017", srcCode: "27017-13.1.3",    tgt: "C5", tgtCode: "C5-COS-01", mtype: "equivalent"}, // Network segregation → network controls
-	{src: "ISO27017", srcCode: "27017-13.1.3",    tgt: "C5", tgtCode: "C5-COS-06", mtype: "equivalent"}, // Network segregation → multi-tenant separation
+	{src: "ISO27017", srcCode: "27017-13.1.3", tgt: "C5", tgtCode: "C5-COS-01", mtype: "equivalent"}, // Network segregation → network controls
+	{src: "ISO27017", srcCode: "27017-13.1.3", tgt: "C5", tgtCode: "C5-COS-06", mtype: "equivalent"}, // Network segregation → multi-tenant separation
 	// Virtual machine / cloud-specific
-	{src: "ISO27017", srcCode: "27017-CLD.9.5.1", tgt: "C5", tgtCode: "C5-OPS-30", mtype: "equivalent"}, // VM segregation → data separation policy
-	{src: "ISO27017", srcCode: "27017-CLD.9.5.1", tgt: "C5", tgtCode: "C5-OPS-31", mtype: "partial"},    // VM segregation → data separation implementation
-	{src: "ISO27017", srcCode: "27017-CLD.9.5.2", tgt: "C5", tgtCode: "C5-OPS-26", mtype: "equivalent"}, // VM hardening → system hardening
-	{src: "ISO27017", srcCode: "27017-CLD.9.5.2", tgt: "C5", tgtCode: "C5-OPS-35", mtype: "partial"},    // VM hardening → container security
-	{src: "ISO27017", srcCode: "27017-CLD.12.4.5",tgt: "C5", tgtCode: "C5-OPS-13", mtype: "equivalent"}, // Cloud monitoring → SIEM
-	{src: "ISO27017", srcCode: "27017-CLD.12.4.5",tgt: "C5", tgtCode: "C5-OPS-15", mtype: "partial"},    // Cloud monitoring → privileged action audit
+	{src: "ISO27017", srcCode: "27017-CLD.9.5.1", tgt: "C5", tgtCode: "C5-OPS-30", mtype: "equivalent"},  // VM segregation → data separation policy
+	{src: "ISO27017", srcCode: "27017-CLD.9.5.1", tgt: "C5", tgtCode: "C5-OPS-31", mtype: "partial"},     // VM segregation → data separation implementation
+	{src: "ISO27017", srcCode: "27017-CLD.9.5.2", tgt: "C5", tgtCode: "C5-OPS-26", mtype: "equivalent"},  // VM hardening → system hardening
+	{src: "ISO27017", srcCode: "27017-CLD.9.5.2", tgt: "C5", tgtCode: "C5-OPS-35", mtype: "partial"},     // VM hardening → container security
+	{src: "ISO27017", srcCode: "27017-CLD.12.4.5", tgt: "C5", tgtCode: "C5-OPS-13", mtype: "equivalent"}, // Cloud monitoring → SIEM
+	{src: "ISO27017", srcCode: "27017-CLD.12.4.5", tgt: "C5", tgtCode: "C5-OPS-15", mtype: "partial"},    // Cloud monitoring → privileged action audit
 	// Supplier management
-	{src: "ISO27017", srcCode: "27017-15.1.1",    tgt: "C5", tgtCode: "C5-SSO-01", mtype: "equivalent"}, // Supplier relationships → provider policy
-	{src: "ISO27017", srcCode: "27017-15.1.1",    tgt: "C5", tgtCode: "C5-SSO-02", mtype: "partial"},    // Supplier security → provider risk assessment
-	{src: "ISO27017", srcCode: "27017-15.2.1",    tgt: "C5", tgtCode: "C5-SSO-05", mtype: "equivalent"}, // Supplier monitoring → compliance monitoring
+	{src: "ISO27017", srcCode: "27017-15.1.1", tgt: "C5", tgtCode: "C5-SSO-01", mtype: "equivalent"}, // Supplier relationships → provider policy
+	{src: "ISO27017", srcCode: "27017-15.1.1", tgt: "C5", tgtCode: "C5-SSO-02", mtype: "partial"},    // Supplier security → provider risk assessment
+	{src: "ISO27017", srcCode: "27017-15.2.1", tgt: "C5", tgtCode: "C5-SSO-05", mtype: "equivalent"}, // Supplier monitoring → compliance monitoring
 	// Asset management
-	{src: "ISO27017", srcCode: "27017-11.2.7",    tgt: "C5", tgtCode: "C5-AM-07",  mtype: "equivalent"}, // Storage media disposal → hardware disposal
+	{src: "ISO27017", srcCode: "27017-11.2.7", tgt: "C5", tgtCode: "C5-AM-07", mtype: "equivalent"}, // Storage media disposal → hardware disposal
 }
 
 // SeedISO27017C5Mappings seeds ISO 27017 ↔ BSI C5:2026 bidirectional mappings.
@@ -966,22 +966,22 @@ func (s *Service) SeedISO27017C5Mappings(ctx context.Context, orgID string) erro
 // ISO 27018 Annex A controls for public cloud PII processors.
 
 var iso27018DsgvoTOMMappings = []frameworkPair{
-	{src: "ISO27018", srcCode: "27018-A.1.1", tgt: "DSGVO-TOM", tgtCode: "TOM-8",  mtype: "equivalent"}, // Purpose limitation → Trennungsgebot
+	{src: "ISO27018", srcCode: "27018-A.1.1", tgt: "DSGVO-TOM", tgtCode: "TOM-8", mtype: "equivalent"},  // Purpose limitation → Trennungsgebot
 	{src: "ISO27018", srcCode: "27018-A.1.2", tgt: "DSGVO-TOM", tgtCode: "TOM-13", mtype: "partial"},    // Consent management → Überprüfungsverfahren
-	{src: "ISO27018", srcCode: "27018-A.2.1", tgt: "DSGVO-TOM", tgtCode: "TOM-4",  mtype: "equivalent"}, // Legal basis for transfers → Weitergabekontrolle
+	{src: "ISO27018", srcCode: "27018-A.2.1", tgt: "DSGVO-TOM", tgtCode: "TOM-4", mtype: "equivalent"},  // Legal basis for transfers → Weitergabekontrolle
 	{src: "ISO27018", srcCode: "27018-A.3.1", tgt: "DSGVO-TOM", tgtCode: "TOM-13", mtype: "partial"},    // Data subject rights → Überprüfungsverfahren
-	{src: "ISO27018", srcCode: "27018-A.3.2", tgt: "DSGVO-TOM", tgtCode: "TOM-8",  mtype: "partial"},    // PII deletion/return → Trennungsgebot
-	{src: "ISO27018", srcCode: "27018-A.4.1", tgt: "DSGVO-TOM", tgtCode: "TOM-6",  mtype: "equivalent"}, // Sub-processor disclosure → Auftragskontrolle
-	{src: "ISO27018", srcCode: "27018-A.4.2", tgt: "DSGVO-TOM", tgtCode: "TOM-3",  mtype: "partial"},    // Government access requests → Zugriffskontrolle
-	{src: "ISO27018", srcCode: "27018-A.4.3", tgt: "DSGVO-TOM", tgtCode: "TOM-8",  mtype: "partial"},    // Processing locations → Trennungsgebot
+	{src: "ISO27018", srcCode: "27018-A.3.2", tgt: "DSGVO-TOM", tgtCode: "TOM-8", mtype: "partial"},     // PII deletion/return → Trennungsgebot
+	{src: "ISO27018", srcCode: "27018-A.4.1", tgt: "DSGVO-TOM", tgtCode: "TOM-6", mtype: "equivalent"},  // Sub-processor disclosure → Auftragskontrolle
+	{src: "ISO27018", srcCode: "27018-A.4.2", tgt: "DSGVO-TOM", tgtCode: "TOM-3", mtype: "partial"},     // Government access requests → Zugriffskontrolle
+	{src: "ISO27018", srcCode: "27018-A.4.3", tgt: "DSGVO-TOM", tgtCode: "TOM-8", mtype: "partial"},     // Processing locations → Trennungsgebot
 	{src: "ISO27018", srcCode: "27018-A.5.1", tgt: "DSGVO-TOM", tgtCode: "TOM-10", mtype: "equivalent"}, // Encryption at rest → Verschlüsselung
-	{src: "ISO27018", srcCode: "27018-A.5.2", tgt: "DSGVO-TOM", tgtCode: "TOM-4",  mtype: "partial"},    // Encryption in transit → Weitergabekontrolle
+	{src: "ISO27018", srcCode: "27018-A.5.2", tgt: "DSGVO-TOM", tgtCode: "TOM-4", mtype: "partial"},     // Encryption in transit → Weitergabekontrolle
 	{src: "ISO27018", srcCode: "27018-A.5.2", tgt: "DSGVO-TOM", tgtCode: "TOM-10", mtype: "equivalent"}, // Encryption in transit → Verschlüsselung
-	{src: "ISO27018", srcCode: "27018-A.5.3", tgt: "DSGVO-TOM", tgtCode: "TOM-3",  mtype: "equivalent"}, // Access control for PII → Zugriffskontrolle
-	{src: "ISO27018", srcCode: "27018-A.6.1", tgt: "DSGVO-TOM", tgtCode: "TOM-7",  mtype: "partial"},    // Breach notification → Verfügbarkeitskontrolle
-	{src: "ISO27018", srcCode: "27018-A.7.1", tgt: "DSGVO-TOM", tgtCode: "TOM-2",  mtype: "equivalent"}, // Confidentiality agreements → Zugangskontrolle
-	{src: "ISO27018", srcCode: "27018-A.7.2", tgt: "DSGVO-TOM", tgtCode: "TOM-3",  mtype: "partial"},    // Copy restriction → Zugriffskontrolle
-	{src: "ISO27018", srcCode: "27018-A.8.1", tgt: "DSGVO-TOM", tgtCode: "TOM-5",  mtype: "equivalent"}, // PII access logging → Eingabekontrolle
+	{src: "ISO27018", srcCode: "27018-A.5.3", tgt: "DSGVO-TOM", tgtCode: "TOM-3", mtype: "equivalent"},  // Access control for PII → Zugriffskontrolle
+	{src: "ISO27018", srcCode: "27018-A.6.1", tgt: "DSGVO-TOM", tgtCode: "TOM-7", mtype: "partial"},     // Breach notification → Verfügbarkeitskontrolle
+	{src: "ISO27018", srcCode: "27018-A.7.1", tgt: "DSGVO-TOM", tgtCode: "TOM-2", mtype: "equivalent"},  // Confidentiality agreements → Zugangskontrolle
+	{src: "ISO27018", srcCode: "27018-A.7.2", tgt: "DSGVO-TOM", tgtCode: "TOM-3", mtype: "partial"},     // Copy restriction → Zugriffskontrolle
+	{src: "ISO27018", srcCode: "27018-A.8.1", tgt: "DSGVO-TOM", tgtCode: "TOM-5", mtype: "equivalent"},  // PII access logging → Eingabekontrolle
 	{src: "ISO27018", srcCode: "27018-A.8.2", tgt: "DSGVO-TOM", tgtCode: "TOM-13", mtype: "equivalent"}, // Compliance audit → Überprüfungsverfahren
 }
 
@@ -995,19 +995,19 @@ func (s *Service) SeedISO27018DsgvoTOMMappings(ctx context.Context, orgID string
 // to ISO 27001 Annex A controls; confirmed by BSI IT-Sicherheitsgesetz commentary.
 
 var dsgvoTOMISO27001Mappings = []frameworkPair{
-	{src: "DSGVO-TOM", srcCode: "TOM-1",  tgt: "ISO27001", tgtCode: "A.7.1",  mtype: "equivalent"}, // Zutrittskontrolle → physical security perimeter
-	{src: "DSGVO-TOM", srcCode: "TOM-1",  tgt: "ISO27001", tgtCode: "A.7.2",  mtype: "partial"},    // Zutrittskontrolle → physical entry controls
-	{src: "DSGVO-TOM", srcCode: "TOM-2",  tgt: "ISO27001", tgtCode: "A.8.5",  mtype: "equivalent"}, // Zugangskontrolle → secure authentication
-	{src: "DSGVO-TOM", srcCode: "TOM-2",  tgt: "ISO27001", tgtCode: "A.5.15", mtype: "partial"},    // Zugangskontrolle → access control policy
-	{src: "DSGVO-TOM", srcCode: "TOM-3",  tgt: "ISO27001", tgtCode: "A.5.15", mtype: "equivalent"}, // Zugriffskontrolle → access control
-	{src: "DSGVO-TOM", srcCode: "TOM-3",  tgt: "ISO27001", tgtCode: "A.5.18", mtype: "partial"},    // Zugriffskontrolle → access rights management
-	{src: "DSGVO-TOM", srcCode: "TOM-4",  tgt: "ISO27001", tgtCode: "A.8.24", mtype: "equivalent"}, // Weitergabekontrolle → cryptography / TLS
-	{src: "DSGVO-TOM", srcCode: "TOM-5",  tgt: "ISO27001", tgtCode: "A.8.15", mtype: "equivalent"}, // Eingabekontrolle → logging
-	{src: "DSGVO-TOM", srcCode: "TOM-6",  tgt: "ISO27001", tgtCode: "A.5.20", mtype: "equivalent"}, // Auftragskontrolle → supplier security in agreements
-	{src: "DSGVO-TOM", srcCode: "TOM-6",  tgt: "ISO27001", tgtCode: "A.5.19", mtype: "partial"},    // Auftragskontrolle → information security for suppliers
-	{src: "DSGVO-TOM", srcCode: "TOM-7",  tgt: "ISO27001", tgtCode: "A.8.14", mtype: "equivalent"}, // Verfügbarkeitskontrolle → redundancy/availability
-	{src: "DSGVO-TOM", srcCode: "TOM-8",  tgt: "ISO27001", tgtCode: "A.8.22", mtype: "equivalent"}, // Trennungsgebot → network segregation
-	{src: "DSGVO-TOM", srcCode: "TOM-9",  tgt: "ISO27001", tgtCode: "A.8.24", mtype: "partial"},    // Pseudonymisierung → cryptography
+	{src: "DSGVO-TOM", srcCode: "TOM-1", tgt: "ISO27001", tgtCode: "A.7.1", mtype: "equivalent"},   // Zutrittskontrolle → physical security perimeter
+	{src: "DSGVO-TOM", srcCode: "TOM-1", tgt: "ISO27001", tgtCode: "A.7.2", mtype: "partial"},      // Zutrittskontrolle → physical entry controls
+	{src: "DSGVO-TOM", srcCode: "TOM-2", tgt: "ISO27001", tgtCode: "A.8.5", mtype: "equivalent"},   // Zugangskontrolle → secure authentication
+	{src: "DSGVO-TOM", srcCode: "TOM-2", tgt: "ISO27001", tgtCode: "A.5.15", mtype: "partial"},     // Zugangskontrolle → access control policy
+	{src: "DSGVO-TOM", srcCode: "TOM-3", tgt: "ISO27001", tgtCode: "A.5.15", mtype: "equivalent"},  // Zugriffskontrolle → access control
+	{src: "DSGVO-TOM", srcCode: "TOM-3", tgt: "ISO27001", tgtCode: "A.5.18", mtype: "partial"},     // Zugriffskontrolle → access rights management
+	{src: "DSGVO-TOM", srcCode: "TOM-4", tgt: "ISO27001", tgtCode: "A.8.24", mtype: "equivalent"},  // Weitergabekontrolle → cryptography / TLS
+	{src: "DSGVO-TOM", srcCode: "TOM-5", tgt: "ISO27001", tgtCode: "A.8.15", mtype: "equivalent"},  // Eingabekontrolle → logging
+	{src: "DSGVO-TOM", srcCode: "TOM-6", tgt: "ISO27001", tgtCode: "A.5.20", mtype: "equivalent"},  // Auftragskontrolle → supplier security in agreements
+	{src: "DSGVO-TOM", srcCode: "TOM-6", tgt: "ISO27001", tgtCode: "A.5.19", mtype: "partial"},     // Auftragskontrolle → information security for suppliers
+	{src: "DSGVO-TOM", srcCode: "TOM-7", tgt: "ISO27001", tgtCode: "A.8.14", mtype: "equivalent"},  // Verfügbarkeitskontrolle → redundancy/availability
+	{src: "DSGVO-TOM", srcCode: "TOM-8", tgt: "ISO27001", tgtCode: "A.8.22", mtype: "equivalent"},  // Trennungsgebot → network segregation
+	{src: "DSGVO-TOM", srcCode: "TOM-9", tgt: "ISO27001", tgtCode: "A.8.24", mtype: "partial"},     // Pseudonymisierung → cryptography
 	{src: "DSGVO-TOM", srcCode: "TOM-10", tgt: "ISO27001", tgtCode: "A.8.24", mtype: "equivalent"}, // Verschlüsselung → cryptography
 	{src: "DSGVO-TOM", srcCode: "TOM-11", tgt: "ISO27001", tgtCode: "A.8.17", mtype: "equivalent"}, // Integrität → clock synchronisation / integrity
 	{src: "DSGVO-TOM", srcCode: "TOM-12", tgt: "ISO27001", tgtCode: "A.5.30", mtype: "equivalent"}, // Wiederherstellung → IKT readiness for BCM
@@ -1026,52 +1026,52 @@ func (s *Service) SeedDsgvoTOMISO27001Mappings(ctx context.Context, orgID string
 
 var tisaxISO27001Mappings = []frameworkPair{
 	// Policy & governance
-	{src: "TISAX", srcCode: "TISAX-1.1.1", tgt: "ISO27001", tgtCode: "A.5.1",  mtype: "equivalent"}, // IS policy → IS policies
-	{src: "TISAX", srcCode: "TISAX-1.1.2", tgt: "ISO27001", tgtCode: "A.5.1",  mtype: "partial"},    // Policy review → IS policies review
-	{src: "TISAX", srcCode: "TISAX-1.1.3", tgt: "ISO27001", tgtCode: "A.5.2",  mtype: "equivalent"}, // Leadership commitment → IS roles & responsibilities
+	{src: "TISAX", srcCode: "TISAX-1.1.1", tgt: "ISO27001", tgtCode: "A.5.1", mtype: "equivalent"}, // IS policy → IS policies
+	{src: "TISAX", srcCode: "TISAX-1.1.2", tgt: "ISO27001", tgtCode: "A.5.1", mtype: "partial"},    // Policy review → IS policies review
+	{src: "TISAX", srcCode: "TISAX-1.1.3", tgt: "ISO27001", tgtCode: "A.5.2", mtype: "equivalent"}, // Leadership commitment → IS roles & responsibilities
 	// Organization
-	{src: "TISAX", srcCode: "TISAX-2.1.1", tgt: "ISO27001", tgtCode: "A.5.2",  mtype: "equivalent"}, // Roles & responsibilities → IS roles
-	{src: "TISAX", srcCode: "TISAX-2.1.2", tgt: "ISO27001", tgtCode: "A.5.5",  mtype: "equivalent"}, // Contact with authorities → information security in PM
-	{src: "TISAX", srcCode: "TISAX-2.1.3", tgt: "ISO27001", tgtCode: "A.5.8",  mtype: "equivalent"}, // IS in project management → IS in PM
-	{src: "TISAX", srcCode: "TISAX-2.1.4", tgt: "ISO27001", tgtCode: "A.6.7",  mtype: "equivalent"}, // Mobile working → remote working security
+	{src: "TISAX", srcCode: "TISAX-2.1.1", tgt: "ISO27001", tgtCode: "A.5.2", mtype: "equivalent"}, // Roles & responsibilities → IS roles
+	{src: "TISAX", srcCode: "TISAX-2.1.2", tgt: "ISO27001", tgtCode: "A.5.5", mtype: "equivalent"}, // Contact with authorities → information security in PM
+	{src: "TISAX", srcCode: "TISAX-2.1.3", tgt: "ISO27001", tgtCode: "A.5.8", mtype: "equivalent"}, // IS in project management → IS in PM
+	{src: "TISAX", srcCode: "TISAX-2.1.4", tgt: "ISO27001", tgtCode: "A.6.7", mtype: "equivalent"}, // Mobile working → remote working security
 	// HR security
-	{src: "TISAX", srcCode: "TISAX-3.1.1", tgt: "ISO27001", tgtCode: "A.6.1",  mtype: "equivalent"}, // Pre-employment screening → screening
-	{src: "TISAX", srcCode: "TISAX-3.1.2", tgt: "ISO27001", tgtCode: "A.6.3",  mtype: "equivalent"}, // IS awareness & training → awareness/education
-	{src: "TISAX", srcCode: "TISAX-3.1.3", tgt: "ISO27001", tgtCode: "A.6.4",  mtype: "equivalent"}, // Disciplinary process → disciplinary process
-	{src: "TISAX", srcCode: "TISAX-3.1.4", tgt: "ISO27001", tgtCode: "A.6.5",  mtype: "equivalent"}, // Termination/change → responsibilities after termination
+	{src: "TISAX", srcCode: "TISAX-3.1.1", tgt: "ISO27001", tgtCode: "A.6.1", mtype: "equivalent"}, // Pre-employment screening → screening
+	{src: "TISAX", srcCode: "TISAX-3.1.2", tgt: "ISO27001", tgtCode: "A.6.3", mtype: "equivalent"}, // IS awareness & training → awareness/education
+	{src: "TISAX", srcCode: "TISAX-3.1.3", tgt: "ISO27001", tgtCode: "A.6.4", mtype: "equivalent"}, // Disciplinary process → disciplinary process
+	{src: "TISAX", srcCode: "TISAX-3.1.4", tgt: "ISO27001", tgtCode: "A.6.5", mtype: "equivalent"}, // Termination/change → responsibilities after termination
 	// Asset management
-	{src: "TISAX", srcCode: "TISAX-4.1.1", tgt: "ISO27001", tgtCode: "A.5.9",  mtype: "equivalent"}, // Asset inventory → inventory of assets
-	{src: "TISAX", srcCode: "TISAX-4.1.2", tgt: "ISO27001", tgtCode: "A.5.9",  mtype: "partial"},    // Asset ownership → inventory of assets
+	{src: "TISAX", srcCode: "TISAX-4.1.1", tgt: "ISO27001", tgtCode: "A.5.9", mtype: "equivalent"},  // Asset inventory → inventory of assets
+	{src: "TISAX", srcCode: "TISAX-4.1.2", tgt: "ISO27001", tgtCode: "A.5.9", mtype: "partial"},     // Asset ownership → inventory of assets
 	{src: "TISAX", srcCode: "TISAX-4.1.3", tgt: "ISO27001", tgtCode: "A.5.12", mtype: "equivalent"}, // Classification → classification of information
 	{src: "TISAX", srcCode: "TISAX-4.1.4", tgt: "ISO27001", tgtCode: "A.5.13", mtype: "equivalent"}, // Labelling → labelling of information
 	{src: "TISAX", srcCode: "TISAX-4.1.5", tgt: "ISO27001", tgtCode: "A.7.10", mtype: "equivalent"}, // Asset disposal → storage media management
 	// Access control
 	{src: "TISAX", srcCode: "TISAX-5.1.1", tgt: "ISO27001", tgtCode: "A.5.15", mtype: "equivalent"}, // Access control policy → access control
 	{src: "TISAX", srcCode: "TISAX-5.1.2", tgt: "ISO27001", tgtCode: "A.5.18", mtype: "equivalent"}, // User access management → access rights management
-	{src: "TISAX", srcCode: "TISAX-5.1.3", tgt: "ISO27001", tgtCode: "A.8.2",  mtype: "equivalent"}, // Privileged access → privileged access rights
-	{src: "TISAX", srcCode: "TISAX-5.1.4", tgt: "ISO27001", tgtCode: "A.8.5",  mtype: "equivalent"}, // MFA → secure authentication
+	{src: "TISAX", srcCode: "TISAX-5.1.3", tgt: "ISO27001", tgtCode: "A.8.2", mtype: "equivalent"},  // Privileged access → privileged access rights
+	{src: "TISAX", srcCode: "TISAX-5.1.4", tgt: "ISO27001", tgtCode: "A.8.5", mtype: "equivalent"},  // MFA → secure authentication
 	{src: "TISAX", srcCode: "TISAX-5.1.5", tgt: "ISO27001", tgtCode: "A.8.20", mtype: "equivalent"}, // Network/service access → network security
 	// Cryptography
 	{src: "TISAX", srcCode: "TISAX-6.1.1", tgt: "ISO27001", tgtCode: "A.8.24", mtype: "equivalent"}, // Cryptography policy → use of cryptography
 	{src: "TISAX", srcCode: "TISAX-6.1.2", tgt: "ISO27001", tgtCode: "A.8.24", mtype: "partial"},    // Key management → use of cryptography
 	{src: "TISAX", srcCode: "TISAX-6.1.3", tgt: "ISO27001", tgtCode: "A.8.24", mtype: "partial"},    // Encryption of sensitive data → cryptography
 	// Physical security
-	{src: "TISAX", srcCode: "TISAX-7.1.1", tgt: "ISO27001", tgtCode: "A.7.1",  mtype: "equivalent"}, // Physical perimeter → physical security perimeter
-	{src: "TISAX", srcCode: "TISAX-7.1.2", tgt: "ISO27001", tgtCode: "A.7.2",  mtype: "equivalent"}, // Physical access controls → physical entry controls
-	{src: "TISAX", srcCode: "TISAX-7.1.3", tgt: "ISO27001", tgtCode: "A.7.8",  mtype: "equivalent"}, // Equipment security → equipment siting/protection
-	{src: "TISAX", srcCode: "TISAX-7.1.4", tgt: "ISO27001", tgtCode: "A.7.7",  mtype: "equivalent"}, // Clear desk/screen → clear desk/clear screen
+	{src: "TISAX", srcCode: "TISAX-7.1.1", tgt: "ISO27001", tgtCode: "A.7.1", mtype: "equivalent"}, // Physical perimeter → physical security perimeter
+	{src: "TISAX", srcCode: "TISAX-7.1.2", tgt: "ISO27001", tgtCode: "A.7.2", mtype: "equivalent"}, // Physical access controls → physical entry controls
+	{src: "TISAX", srcCode: "TISAX-7.1.3", tgt: "ISO27001", tgtCode: "A.7.8", mtype: "equivalent"}, // Equipment security → equipment siting/protection
+	{src: "TISAX", srcCode: "TISAX-7.1.4", tgt: "ISO27001", tgtCode: "A.7.7", mtype: "equivalent"}, // Clear desk/screen → clear desk/clear screen
 	// Operations
 	{src: "TISAX", srcCode: "TISAX-8.1.1", tgt: "ISO27001", tgtCode: "A.5.37", mtype: "equivalent"}, // Documented procedures → documented operating procedures
 	{src: "TISAX", srcCode: "TISAX-8.1.2", tgt: "ISO27001", tgtCode: "A.8.32", mtype: "equivalent"}, // Change management → change management
-	{src: "TISAX", srcCode: "TISAX-8.1.3", tgt: "ISO27001", tgtCode: "A.8.7",  mtype: "equivalent"}, // Malware protection → protection against malware
+	{src: "TISAX", srcCode: "TISAX-8.1.3", tgt: "ISO27001", tgtCode: "A.8.7", mtype: "equivalent"},  // Malware protection → protection against malware
 	{src: "TISAX", srcCode: "TISAX-8.1.4", tgt: "ISO27001", tgtCode: "A.8.13", mtype: "equivalent"}, // Backup → information backup
 	{src: "TISAX", srcCode: "TISAX-8.1.5", tgt: "ISO27001", tgtCode: "A.8.15", mtype: "equivalent"}, // Logging & monitoring → logging
-	{src: "TISAX", srcCode: "TISAX-8.1.6", tgt: "ISO27001", tgtCode: "A.8.8",  mtype: "equivalent"}, // Vulnerability management → vuln management
+	{src: "TISAX", srcCode: "TISAX-8.1.6", tgt: "ISO27001", tgtCode: "A.8.8", mtype: "equivalent"},  // Vulnerability management → vuln management
 	{src: "TISAX", srcCode: "TISAX-8.1.7", tgt: "ISO27001", tgtCode: "A.8.31", mtype: "equivalent"}, // Dev/test/prod separation → separation of environments
 	// Network
 	{src: "TISAX", srcCode: "TISAX-9.1.1", tgt: "ISO27001", tgtCode: "A.8.20", mtype: "equivalent"}, // Network security → network security controls
 	{src: "TISAX", srcCode: "TISAX-9.1.2", tgt: "ISO27001", tgtCode: "A.8.24", mtype: "partial"},    // Secure transfer → cryptography
-	{src: "TISAX", srcCode: "TISAX-9.1.3", tgt: "ISO27001", tgtCode: "A.6.6",  mtype: "equivalent"}, // NDAs → confidentiality agreements
+	{src: "TISAX", srcCode: "TISAX-9.1.3", tgt: "ISO27001", tgtCode: "A.6.6", mtype: "equivalent"},  // NDAs → confidentiality agreements
 	// Secure development
 	{src: "TISAX", srcCode: "TISAX-10.1.1", tgt: "ISO27001", tgtCode: "A.8.26", mtype: "equivalent"}, // Security requirements → application security
 	{src: "TISAX", srcCode: "TISAX-10.1.2", tgt: "ISO27001", tgtCode: "A.8.25", mtype: "equivalent"}, // Secure dev processes → secure development lifecycle
@@ -1082,7 +1082,7 @@ var tisaxISO27001Mappings = []frameworkPair{
 	{src: "TISAX", srcCode: "TISAX-11.1.3", tgt: "ISO27001", tgtCode: "A.5.22", mtype: "equivalent"}, // Supplier monitoring → monitoring/review of supplier services
 	// Incident management
 	{src: "TISAX", srcCode: "TISAX-12.1.1", tgt: "ISO27001", tgtCode: "A.5.24", mtype: "equivalent"}, // Incident response → IS incident management
-	{src: "TISAX", srcCode: "TISAX-12.1.2", tgt: "ISO27001", tgtCode: "A.6.8",  mtype: "equivalent"}, // Incident reporting → IS event reporting
+	{src: "TISAX", srcCode: "TISAX-12.1.2", tgt: "ISO27001", tgtCode: "A.6.8", mtype: "equivalent"},  // Incident reporting → IS event reporting
 	{src: "TISAX", srcCode: "TISAX-12.1.3", tgt: "ISO27001", tgtCode: "A.5.24", mtype: "partial"},    // OEM reporting → incident management
 	{src: "TISAX", srcCode: "TISAX-12.1.4", tgt: "ISO27001", tgtCode: "A.5.27", mtype: "equivalent"}, // Post-incident review → learning from incidents
 	// BCM
@@ -1108,30 +1108,30 @@ func (s *Service) SeedTISAXISO27001Mappings(ctx context.Context, orgID string) e
 
 var bsiDORAMappings = []frameworkPair{
 	// DORA Art. 5-8: ICT Risk Management Framework
-	{src: "BSI", srcCode: "BSI-ISMS.1",    tgt: "DORA", tgtCode: "DORA-1.1", mtype: "equivalent"}, // ISMS governance → ICT risk framework
-	{src: "BSI", srcCode: "BSI-ORP.1",     tgt: "DORA", tgtCode: "DORA-1.2", mtype: "equivalent"}, // IS organisation → ICT governance
-	{src: "BSI", srcCode: "BSI-ORP.4",     tgt: "DORA", tgtCode: "DORA-1.2", mtype: "partial"},    // IAM → ICT governance
-	{src: "BSI", srcCode: "BSI-DER.1",     tgt: "DORA", tgtCode: "DORA-1.3", mtype: "partial"},    // Detection → threat intelligence
+	{src: "BSI", srcCode: "BSI-ISMS.1", tgt: "DORA", tgtCode: "DORA-1.1", mtype: "equivalent"},    // ISMS governance → ICT risk framework
+	{src: "BSI", srcCode: "BSI-ORP.1", tgt: "DORA", tgtCode: "DORA-1.2", mtype: "equivalent"},     // IS organisation → ICT governance
+	{src: "BSI", srcCode: "BSI-ORP.4", tgt: "DORA", tgtCode: "DORA-1.2", mtype: "partial"},        // IAM → ICT governance
+	{src: "BSI", srcCode: "BSI-DER.1", tgt: "DORA", tgtCode: "DORA-1.3", mtype: "partial"},        // Detection → threat intelligence
 	{src: "BSI", srcCode: "BSI-OPS.1.1.5", tgt: "DORA", tgtCode: "DORA-1.3", mtype: "partial"},    // Logging → threat intelligence feed
 	{src: "BSI", srcCode: "BSI-OPS.1.1.2", tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},    // Patch management → ICT protection measures
-	{src: "BSI", srcCode: "BSI-NET.1.1",   tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},    // Network architecture → ICT protection
-	{src: "BSI", srcCode: "BSI-CON.1",     tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},    // Crypto concept → ICT protection measures
-	{src: "BSI", srcCode: "BSI-BCM.1",     tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},    // BCM → ICT protection/recovery
-	{src: "BSI", srcCode: "BSI-CON.3",     tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},    // Backup → ICT protection measures
+	{src: "BSI", srcCode: "BSI-NET.1.1", tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},      // Network architecture → ICT protection
+	{src: "BSI", srcCode: "BSI-CON.1", tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},        // Crypto concept → ICT protection measures
+	{src: "BSI", srcCode: "BSI-BCM.1", tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},        // BCM → ICT protection/recovery
+	{src: "BSI", srcCode: "BSI-CON.3", tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},        // Backup → ICT protection measures
 	{src: "BSI", srcCode: "BSI-OPS.1.1.5", tgt: "DORA", tgtCode: "DORA-1.5", mtype: "equivalent"}, // Logging → ICT detection/monitoring
-	{src: "BSI", srcCode: "BSI-DER.1",     tgt: "DORA", tgtCode: "DORA-1.5", mtype: "equivalent"}, // Detection → ICT detection
+	{src: "BSI", srcCode: "BSI-DER.1", tgt: "DORA", tgtCode: "DORA-1.5", mtype: "equivalent"},     // Detection → ICT detection
 	// DORA Art. 17-23: ICT Incident Management
-	{src: "BSI", srcCode: "BSI-DER.2.1",   tgt: "DORA", tgtCode: "DORA-2.1", mtype: "equivalent"}, // Incident handling → ICT incident management
-	{src: "BSI", srcCode: "BSI-DER.2.2",   tgt: "DORA", tgtCode: "DORA-2.2", mtype: "partial"},    // IT forensics → ICT incident classification
-	{src: "BSI", srcCode: "BSI-DER.2.1",   tgt: "DORA", tgtCode: "DORA-2.3", mtype: "partial"},    // Incident handling → major incident reporting
+	{src: "BSI", srcCode: "BSI-DER.2.1", tgt: "DORA", tgtCode: "DORA-2.1", mtype: "equivalent"}, // Incident handling → ICT incident management
+	{src: "BSI", srcCode: "BSI-DER.2.2", tgt: "DORA", tgtCode: "DORA-2.2", mtype: "partial"},    // IT forensics → ICT incident classification
+	{src: "BSI", srcCode: "BSI-DER.2.1", tgt: "DORA", tgtCode: "DORA-2.3", mtype: "partial"},    // Incident handling → major incident reporting
 	// DORA Art. 24-27: DORA Testing
-	{src: "BSI", srcCode: "BSI-DER.3.1",   tgt: "DORA", tgtCode: "DORA-3.1", mtype: "equivalent"}, // Revisions/audits → DORA ICT testing
-	{src: "BSI", srcCode: "BSI-DER.3.2",   tgt: "DORA", tgtCode: "DORA-3.2", mtype: "equivalent"}, // Penetration tests → TLPT
+	{src: "BSI", srcCode: "BSI-DER.3.1", tgt: "DORA", tgtCode: "DORA-3.1", mtype: "equivalent"}, // Revisions/audits → DORA ICT testing
+	{src: "BSI", srcCode: "BSI-DER.3.2", tgt: "DORA", tgtCode: "DORA-3.2", mtype: "equivalent"}, // Penetration tests → TLPT
 	// DORA Art. 28-44: Third-Party ICT Risk
-	{src: "BSI", srcCode: "BSI-OPS.2.3",   tgt: "DORA", tgtCode: "DORA-4.1", mtype: "equivalent"}, // IT service provider mgmt → TPICT management
-	{src: "BSI", srcCode: "BSI-OPS.2.4",   tgt: "DORA", tgtCode: "DORA-4.1", mtype: "partial"},    // Remote access to IT systems → TPICT
-	{src: "BSI", srcCode: "BSI-OPS.2.3",   tgt: "DORA", tgtCode: "DORA-4.2", mtype: "partial"},    // IT service provider → TPICT contractual requirements
-	{src: "BSI", srcCode: "BSI-INF.1",     tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},    // Building/infrastructure → ICT physical protection
+	{src: "BSI", srcCode: "BSI-OPS.2.3", tgt: "DORA", tgtCode: "DORA-4.1", mtype: "equivalent"}, // IT service provider mgmt → TPICT management
+	{src: "BSI", srcCode: "BSI-OPS.2.4", tgt: "DORA", tgtCode: "DORA-4.1", mtype: "partial"},    // Remote access to IT systems → TPICT
+	{src: "BSI", srcCode: "BSI-OPS.2.3", tgt: "DORA", tgtCode: "DORA-4.2", mtype: "partial"},    // IT service provider → TPICT contractual requirements
+	{src: "BSI", srcCode: "BSI-INF.1", tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},      // Building/infrastructure → ICT physical protection
 }
 
 // SeedBSIDORAMappings seeds BSI IT-Grundschutz ↔ DORA bidirectional mappings.
@@ -1147,22 +1147,22 @@ func (s *Service) SeedBSIDORAMappings(ctx context.Context, orgID string) error {
 // mapping based on the BSI C5:2026 intermediate layer.
 
 var iso27017BSIMappings = []frameworkPair{
-	{src: "ISO27017", srcCode: "27017-CLD.6.3.1", tgt: "BSI", tgtCode: "BSI-OPS.2.3",   mtype: "equivalent"}, // Shared responsibility → IT-Service-Provider
-	{src: "ISO27017", srcCode: "27017-CLD.6.3.1", tgt: "BSI", tgtCode: "BSI-ORP.1",     mtype: "partial"},    // Shared roles → IS organisation
-	{src: "ISO27017", srcCode: "27017-9.1.2",     tgt: "BSI", tgtCode: "BSI-ORP.4",     mtype: "equivalent"}, // Access control → IAM
-	{src: "ISO27017", srcCode: "27017-9.4.1",     tgt: "BSI", tgtCode: "BSI-ORP.4",     mtype: "partial"},    // Access restriction → IAM
-	{src: "ISO27017", srcCode: "27017-10.1.1",    tgt: "BSI", tgtCode: "BSI-CON.1",     mtype: "equivalent"}, // Encryption policy → crypto concept
-	{src: "ISO27017", srcCode: "27017-10.1.2",    tgt: "BSI", tgtCode: "BSI-CON.1",     mtype: "partial"},    // Key management → crypto concept
-	{src: "ISO27017", srcCode: "27017-12.1.3",    tgt: "BSI", tgtCode: "BSI-OPS.1.1.2", mtype: "partial"},    // Capacity management → operations
-	{src: "ISO27017", srcCode: "27017-12.4.1",    tgt: "BSI", tgtCode: "BSI-OPS.1.1.5", mtype: "equivalent"}, // Event logging → logging/monitoring
-	{src: "ISO27017", srcCode: "27017-12.6.1",    tgt: "BSI", tgtCode: "BSI-OPS.1.1.2", mtype: "equivalent"}, // Vulnerability mgmt → patch management
-	{src: "ISO27017", srcCode: "27017-13.1.3",    tgt: "BSI", tgtCode: "BSI-NET.1.1",   mtype: "equivalent"}, // Network segregation → network architecture
-	{src: "ISO27017", srcCode: "27017-15.1.1",    tgt: "BSI", tgtCode: "BSI-OPS.2.3",   mtype: "equivalent"}, // Supplier relationships → IT-Service-Provider
-	{src: "ISO27017", srcCode: "27017-15.2.1",    tgt: "BSI", tgtCode: "BSI-OPS.2.3",   mtype: "partial"},    // Supplier monitoring → IT-Service-Provider
-	{src: "ISO27017", srcCode: "27017-CLD.9.5.1", tgt: "BSI", tgtCode: "BSI-SYS.1.6",   mtype: "equivalent"}, // VM segregation → virtualisation security
-	{src: "ISO27017", srcCode: "27017-CLD.9.5.2", tgt: "BSI", tgtCode: "BSI-SYS.1.6",   mtype: "partial"},    // VM hardening → virtualisation security
-	{src: "ISO27017", srcCode: "27017-CLD.12.4.5",tgt: "BSI", tgtCode: "BSI-DER.1",     mtype: "equivalent"}, // Cloud monitoring → detection
-	{src: "ISO27017", srcCode: "27017-CLD.12.4.5",tgt: "BSI", tgtCode: "BSI-OPS.1.1.5", mtype: "partial"},    // Cloud monitoring → logging
+	{src: "ISO27017", srcCode: "27017-CLD.6.3.1", tgt: "BSI", tgtCode: "BSI-OPS.2.3", mtype: "equivalent"}, // Shared responsibility → IT-Service-Provider
+	{src: "ISO27017", srcCode: "27017-CLD.6.3.1", tgt: "BSI", tgtCode: "BSI-ORP.1", mtype: "partial"},      // Shared roles → IS organisation
+	{src: "ISO27017", srcCode: "27017-9.1.2", tgt: "BSI", tgtCode: "BSI-ORP.4", mtype: "equivalent"},       // Access control → IAM
+	{src: "ISO27017", srcCode: "27017-9.4.1", tgt: "BSI", tgtCode: "BSI-ORP.4", mtype: "partial"},          // Access restriction → IAM
+	{src: "ISO27017", srcCode: "27017-10.1.1", tgt: "BSI", tgtCode: "BSI-CON.1", mtype: "equivalent"},      // Encryption policy → crypto concept
+	{src: "ISO27017", srcCode: "27017-10.1.2", tgt: "BSI", tgtCode: "BSI-CON.1", mtype: "partial"},         // Key management → crypto concept
+	{src: "ISO27017", srcCode: "27017-12.1.3", tgt: "BSI", tgtCode: "BSI-OPS.1.1.2", mtype: "partial"},     // Capacity management → operations
+	{src: "ISO27017", srcCode: "27017-12.4.1", tgt: "BSI", tgtCode: "BSI-OPS.1.1.5", mtype: "equivalent"},  // Event logging → logging/monitoring
+	{src: "ISO27017", srcCode: "27017-12.6.1", tgt: "BSI", tgtCode: "BSI-OPS.1.1.2", mtype: "equivalent"},  // Vulnerability mgmt → patch management
+	{src: "ISO27017", srcCode: "27017-13.1.3", tgt: "BSI", tgtCode: "BSI-NET.1.1", mtype: "equivalent"},    // Network segregation → network architecture
+	{src: "ISO27017", srcCode: "27017-15.1.1", tgt: "BSI", tgtCode: "BSI-OPS.2.3", mtype: "equivalent"},    // Supplier relationships → IT-Service-Provider
+	{src: "ISO27017", srcCode: "27017-15.2.1", tgt: "BSI", tgtCode: "BSI-OPS.2.3", mtype: "partial"},       // Supplier monitoring → IT-Service-Provider
+	{src: "ISO27017", srcCode: "27017-CLD.9.5.1", tgt: "BSI", tgtCode: "BSI-SYS.1.6", mtype: "equivalent"}, // VM segregation → virtualisation security
+	{src: "ISO27017", srcCode: "27017-CLD.9.5.2", tgt: "BSI", tgtCode: "BSI-SYS.1.6", mtype: "partial"},    // VM hardening → virtualisation security
+	{src: "ISO27017", srcCode: "27017-CLD.12.4.5", tgt: "BSI", tgtCode: "BSI-DER.1", mtype: "equivalent"},  // Cloud monitoring → detection
+	{src: "ISO27017", srcCode: "27017-CLD.12.4.5", tgt: "BSI", tgtCode: "BSI-OPS.1.1.5", mtype: "partial"}, // Cloud monitoring → logging
 }
 
 // SeedISO27017BSIMappings seeds ISO 27017 ↔ BSI IT-Grundschutz bidirectional mappings.
@@ -1212,16 +1212,16 @@ func (s *Service) SeedISO27018C5Mappings(ctx context.Context, orgID string) erro
 // cites ISO 27017 cloud controls as accepted evidence for Art. 28 compliance.
 
 var iso27017DORAMappings = []frameworkPair{
-	{src: "ISO27017", srcCode: "27017-15.1.1",    tgt: "DORA", tgtCode: "DORA-4.1", mtype: "equivalent"}, // Supplier relationships → TPICT management
-	{src: "ISO27017", srcCode: "27017-15.2.1",    tgt: "DORA", tgtCode: "DORA-4.2", mtype: "equivalent"}, // Supplier monitoring → TPICT contractual requirements
-	{src: "ISO27017", srcCode: "27017-CLD.6.3.1", tgt: "DORA", tgtCode: "DORA-4.1", mtype: "partial"},    // Shared responsibility → TPICT management
-	{src: "ISO27017", srcCode: "27017-12.4.1",    tgt: "DORA", tgtCode: "DORA-1.5", mtype: "equivalent"}, // Event logging → ICT detection/monitoring
-	{src: "ISO27017", srcCode: "27017-12.6.1",    tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},    // Vulnerability mgmt → ICT protection measures
-	{src: "ISO27017", srcCode: "27017-13.1.3",    tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},    // Network segregation → ICT protection
-	{src: "ISO27017", srcCode: "27017-10.1.1",    tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},    // Encryption → ICT protection measures
-	{src: "ISO27017", srcCode: "27017-CLD.9.5.1", tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},    // VM segregation → ICT protection
-	{src: "ISO27017", srcCode: "27017-12.1.3",    tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},    // Capacity management → ICT protection
-	{src: "ISO27017", srcCode: "27017-CLD.12.4.5",tgt: "DORA", tgtCode: "DORA-1.5", mtype: "partial"},    // Cloud monitoring → ICT detection
+	{src: "ISO27017", srcCode: "27017-15.1.1", tgt: "DORA", tgtCode: "DORA-4.1", mtype: "equivalent"},  // Supplier relationships → TPICT management
+	{src: "ISO27017", srcCode: "27017-15.2.1", tgt: "DORA", tgtCode: "DORA-4.2", mtype: "equivalent"},  // Supplier monitoring → TPICT contractual requirements
+	{src: "ISO27017", srcCode: "27017-CLD.6.3.1", tgt: "DORA", tgtCode: "DORA-4.1", mtype: "partial"},  // Shared responsibility → TPICT management
+	{src: "ISO27017", srcCode: "27017-12.4.1", tgt: "DORA", tgtCode: "DORA-1.5", mtype: "equivalent"},  // Event logging → ICT detection/monitoring
+	{src: "ISO27017", srcCode: "27017-12.6.1", tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},     // Vulnerability mgmt → ICT protection measures
+	{src: "ISO27017", srcCode: "27017-13.1.3", tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},     // Network segregation → ICT protection
+	{src: "ISO27017", srcCode: "27017-10.1.1", tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},     // Encryption → ICT protection measures
+	{src: "ISO27017", srcCode: "27017-CLD.9.5.1", tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},  // VM segregation → ICT protection
+	{src: "ISO27017", srcCode: "27017-12.1.3", tgt: "DORA", tgtCode: "DORA-1.4", mtype: "partial"},     // Capacity management → ICT protection
+	{src: "ISO27017", srcCode: "27017-CLD.12.4.5", tgt: "DORA", tgtCode: "DORA-1.5", mtype: "partial"}, // Cloud monitoring → ICT detection
 }
 
 // SeedISO27017DORAMappings seeds ISO 27017 ↔ DORA bidirectional mappings.
@@ -1235,15 +1235,15 @@ func (s *Service) SeedISO27017DORAMappings(ctx context.Context, orgID string) er
 // ISO 27017 as evidence for KRITIS cloud-outsourcing requirements.
 
 var iso27017KRITISMappings = []frameworkPair{
-	{src: "ISO27017", srcCode: "27017-CLD.6.3.1", tgt: "KRITIS", tgtCode: "KRITIS-DG.3",  mtype: "equivalent"}, // Shared responsibility → ISMS
-	{src: "ISO27017", srcCode: "27017-15.1.1",    tgt: "KRITIS", tgtCode: "KRITIS-DG.4",  mtype: "equivalent"}, // Supplier relationships → supply chain
-	{src: "ISO27017", srcCode: "27017-12.4.1",    tgt: "KRITIS", tgtCode: "KRITIS-DG.9",  mtype: "equivalent"}, // Event logging → monitoring
-	{src: "ISO27017", srcCode: "27017-CLD.12.4.5",tgt: "KRITIS", tgtCode: "KRITIS-DG.9",  mtype: "partial"},    // Cloud monitoring → monitoring
-	{src: "ISO27017", srcCode: "27017-12.6.1",    tgt: "KRITIS", tgtCode: "KRITIS-DG.13", mtype: "equivalent"}, // Vulnerability mgmt → vulnerability management
-	{src: "ISO27017", srcCode: "27017-13.1.3",    tgt: "KRITIS", tgtCode: "KRITIS-DG.12", mtype: "equivalent"}, // Network segregation → network security
-	{src: "ISO27017", srcCode: "27017-CLD.9.5.1", tgt: "KRITIS", tgtCode: "KRITIS-DG.12", mtype: "partial"},    // VM segregation → network/environment security
-	{src: "ISO27017", srcCode: "27017-10.1.1",    tgt: "KRITIS", tgtCode: "KRITIS-DG.11", mtype: "equivalent"}, // Encryption → cryptography
-	{src: "ISO27017", srcCode: "27017-10.1.2",    tgt: "KRITIS", tgtCode: "KRITIS-DG.11", mtype: "partial"},    // Key management → cryptography
+	{src: "ISO27017", srcCode: "27017-CLD.6.3.1", tgt: "KRITIS", tgtCode: "KRITIS-DG.3", mtype: "equivalent"}, // Shared responsibility → ISMS
+	{src: "ISO27017", srcCode: "27017-15.1.1", tgt: "KRITIS", tgtCode: "KRITIS-DG.4", mtype: "equivalent"},    // Supplier relationships → supply chain
+	{src: "ISO27017", srcCode: "27017-12.4.1", tgt: "KRITIS", tgtCode: "KRITIS-DG.9", mtype: "equivalent"},    // Event logging → monitoring
+	{src: "ISO27017", srcCode: "27017-CLD.12.4.5", tgt: "KRITIS", tgtCode: "KRITIS-DG.9", mtype: "partial"},   // Cloud monitoring → monitoring
+	{src: "ISO27017", srcCode: "27017-12.6.1", tgt: "KRITIS", tgtCode: "KRITIS-DG.13", mtype: "equivalent"},   // Vulnerability mgmt → vulnerability management
+	{src: "ISO27017", srcCode: "27017-13.1.3", tgt: "KRITIS", tgtCode: "KRITIS-DG.12", mtype: "equivalent"},   // Network segregation → network security
+	{src: "ISO27017", srcCode: "27017-CLD.9.5.1", tgt: "KRITIS", tgtCode: "KRITIS-DG.12", mtype: "partial"},   // VM segregation → network/environment security
+	{src: "ISO27017", srcCode: "27017-10.1.1", tgt: "KRITIS", tgtCode: "KRITIS-DG.11", mtype: "equivalent"},   // Encryption → cryptography
+	{src: "ISO27017", srcCode: "27017-10.1.2", tgt: "KRITIS", tgtCode: "KRITIS-DG.11", mtype: "partial"},      // Key management → cryptography
 }
 
 // SeedISO27017KRITISMappings seeds ISO 27017 ↔ KRITIS-DachG bidirectional mappings.
@@ -1257,18 +1257,18 @@ func (s *Service) SeedISO27017KRITISMappings(ctx context.Context, orgID string) 
 // operated by essential/important entities; ISO 42001 is the primary AI-MS standard.
 
 var iso42001NIS2Mappings = []frameworkPair{
-	{src: "ISO42001", srcCode: "42001-4.1",  tgt: "NIS2", tgtCode: "NIS2-A.1",  mtype: "partial"},    // Context understanding → governance
-	{src: "ISO42001", srcCode: "42001-5.1",  tgt: "NIS2", tgtCode: "NIS2-A.1",  mtype: "partial"},    // Leadership for AI → governance
-	{src: "ISO42001", srcCode: "42001-6.1",  tgt: "NIS2", tgtCode: "NIS2-A.3",  mtype: "equivalent"}, // AI risk assessment → risk management
-	{src: "ISO42001", srcCode: "42001-6.2",  tgt: "NIS2", tgtCode: "NIS2-A.3",  mtype: "partial"},    // AI objectives → risk treatment
-	{src: "ISO42001", srcCode: "42001-7.1",  tgt: "NIS2", tgtCode: "NIS2-G.2",  mtype: "equivalent"}, // Competence for AI → awareness/training
-	{src: "ISO42001", srcCode: "42001-8.1",  tgt: "NIS2", tgtCode: "NIS2-E.3",  mtype: "partial"},    // AI lifecycle management → vulnerability management
-	{src: "ISO42001", srcCode: "42001-8.2",  tgt: "NIS2", tgtCode: "NIS2-A.3",  mtype: "equivalent"}, // AI impact assessment → risk management
-	{src: "ISO42001", srcCode: "42001-8.5",  tgt: "NIS2", tgtCode: "NIS2-E.3",  mtype: "equivalent"}, // AI monitoring → continuous monitoring
-	{src: "ISO42001", srcCode: "42001-9.1",  tgt: "NIS2", tgtCode: "NIS2-F.3",  mtype: "equivalent"}, // Internal audits → effectiveness testing
-	{src: "ISO42001", srcCode: "42001-A3.1", tgt: "NIS2", tgtCode: "NIS2-A.3",  mtype: "partial"},    // Risk assessment procedure → risk management
-	{src: "ISO42001", srcCode: "42001-A4.1", tgt: "NIS2", tgtCode: "NIS2-E.1",  mtype: "partial"},    // AI design/spec → network/IS security
-	{src: "ISO42001", srcCode: "42001-A5.1", tgt: "NIS2", tgtCode: "NIS2-A.3",  mtype: "partial"},    // Training data requirements → risk assessment
+	{src: "ISO42001", srcCode: "42001-4.1", tgt: "NIS2", tgtCode: "NIS2-A.1", mtype: "partial"},    // Context understanding → governance
+	{src: "ISO42001", srcCode: "42001-5.1", tgt: "NIS2", tgtCode: "NIS2-A.1", mtype: "partial"},    // Leadership for AI → governance
+	{src: "ISO42001", srcCode: "42001-6.1", tgt: "NIS2", tgtCode: "NIS2-A.3", mtype: "equivalent"}, // AI risk assessment → risk management
+	{src: "ISO42001", srcCode: "42001-6.2", tgt: "NIS2", tgtCode: "NIS2-A.3", mtype: "partial"},    // AI objectives → risk treatment
+	{src: "ISO42001", srcCode: "42001-7.1", tgt: "NIS2", tgtCode: "NIS2-G.2", mtype: "equivalent"}, // Competence for AI → awareness/training
+	{src: "ISO42001", srcCode: "42001-8.1", tgt: "NIS2", tgtCode: "NIS2-E.3", mtype: "partial"},    // AI lifecycle management → vulnerability management
+	{src: "ISO42001", srcCode: "42001-8.2", tgt: "NIS2", tgtCode: "NIS2-A.3", mtype: "equivalent"}, // AI impact assessment → risk management
+	{src: "ISO42001", srcCode: "42001-8.5", tgt: "NIS2", tgtCode: "NIS2-E.3", mtype: "equivalent"}, // AI monitoring → continuous monitoring
+	{src: "ISO42001", srcCode: "42001-9.1", tgt: "NIS2", tgtCode: "NIS2-F.3", mtype: "equivalent"}, // Internal audits → effectiveness testing
+	{src: "ISO42001", srcCode: "42001-A3.1", tgt: "NIS2", tgtCode: "NIS2-A.3", mtype: "partial"},   // Risk assessment procedure → risk management
+	{src: "ISO42001", srcCode: "42001-A4.1", tgt: "NIS2", tgtCode: "NIS2-E.1", mtype: "partial"},   // AI design/spec → network/IS security
+	{src: "ISO42001", srcCode: "42001-A5.1", tgt: "NIS2", tgtCode: "NIS2-A.3", mtype: "partial"},   // Training data requirements → risk assessment
 }
 
 // SeedISO42001NIS2Mappings seeds ISO 42001 ↔ NIS2 bidirectional mappings.
@@ -1283,38 +1283,38 @@ func (s *Service) SeedISO42001NIS2Mappings(ctx context.Context, orgID string) er
 
 var craC5Mappings = []frameworkPair{
 	// Product security design → C5 DEV / PSS
-	{src: "CRA", srcCode: "CRA-1.1",  tgt: "C5", tgtCode: "C5-DEV-01", mtype: "equivalent"}, // Security by design → secure dev requirements
-	{src: "CRA", srcCode: "CRA-1.1",  tgt: "C5", tgtCode: "C5-PSS-01", mtype: "partial"},    // Security by design → customer security recommendations
-	{src: "CRA", srcCode: "CRA-1.2",  tgt: "C5", tgtCode: "C5-OIS-08", mtype: "equivalent"}, // Risk assessment → risk analysis
+	{src: "CRA", srcCode: "CRA-1.1", tgt: "C5", tgtCode: "C5-DEV-01", mtype: "equivalent"}, // Security by design → secure dev requirements
+	{src: "CRA", srcCode: "CRA-1.1", tgt: "C5", tgtCode: "C5-PSS-01", mtype: "partial"},    // Security by design → customer security recommendations
+	{src: "CRA", srcCode: "CRA-1.2", tgt: "C5", tgtCode: "C5-OIS-08", mtype: "equivalent"}, // Risk assessment → risk analysis
 	// PSIRT / vulnerability management
-	{src: "CRA", srcCode: "CRA-1.3",  tgt: "C5", tgtCode: "C5-PSS-02", mtype: "equivalent"}, // PSIRT/VDP → vulnerability identification
-	{src: "CRA", srcCode: "CRA-1.3",  tgt: "C5", tgtCode: "C5-OPS-18", mtype: "partial"},    // PSIRT → vulnerability management policy
+	{src: "CRA", srcCode: "CRA-1.3", tgt: "C5", tgtCode: "C5-PSS-02", mtype: "equivalent"}, // PSIRT/VDP → vulnerability identification
+	{src: "CRA", srcCode: "CRA-1.3", tgt: "C5", tgtCode: "C5-OPS-18", mtype: "partial"},    // PSIRT → vulnerability management policy
 	// SBOM
-	{src: "CRA", srcCode: "CRA-1.4",  tgt: "C5", tgtCode: "C5-OPS-29", mtype: "equivalent"}, // SBOM → third-party components monitoring
+	{src: "CRA", srcCode: "CRA-1.4", tgt: "C5", tgtCode: "C5-OPS-29", mtype: "equivalent"}, // SBOM → third-party components monitoring
 	// Secure defaults / hardening
-	{src: "CRA", srcCode: "CRA-1.5",  tgt: "C5", tgtCode: "C5-OPS-26", mtype: "equivalent"}, // Secure by default → system hardening
-	{src: "CRA", srcCode: "CRA-1.5",  tgt: "C5", tgtCode: "C5-PSS-11", mtype: "partial"},    // Secure defaults → VM/container image hardening
+	{src: "CRA", srcCode: "CRA-1.5", tgt: "C5", tgtCode: "C5-OPS-26", mtype: "equivalent"}, // Secure by default → system hardening
+	{src: "CRA", srcCode: "CRA-1.5", tgt: "C5", tgtCode: "C5-PSS-11", mtype: "partial"},    // Secure defaults → VM/container image hardening
 	// Patch management
-	{src: "CRA", srcCode: "CRA-1.6",  tgt: "C5", tgtCode: "C5-OPS-27", mtype: "equivalent"}, // Security updates → patch policy
-	{src: "CRA", srcCode: "CRA-1.6",  tgt: "C5", tgtCode: "C5-OPS-28", mtype: "partial"},    // Security updates → patch implementation
+	{src: "CRA", srcCode: "CRA-1.6", tgt: "C5", tgtCode: "C5-OPS-27", mtype: "equivalent"}, // Security updates → patch policy
+	{src: "CRA", srcCode: "CRA-1.6", tgt: "C5", tgtCode: "C5-OPS-28", mtype: "partial"},    // Security updates → patch implementation
 	// Known vulnerability protection
-	{src: "CRA", srcCode: "CRA-1.7",  tgt: "C5", tgtCode: "C5-OPS-25", mtype: "equivalent"}, // Known vuln protection → vulnerability scans
+	{src: "CRA", srcCode: "CRA-1.7", tgt: "C5", tgtCode: "C5-OPS-25", mtype: "equivalent"}, // Known vuln protection → vulnerability scans
 	// Authentication
-	{src: "CRA", srcCode: "CRA-1.8",  tgt: "C5", tgtCode: "C5-PSS-05", mtype: "equivalent"}, // Authentication controls → customer auth mechanisms
-	{src: "CRA", srcCode: "CRA-1.8",  tgt: "C5", tgtCode: "C5-PSS-09", mtype: "partial"},    // Authentication → authorisation mechanisms
+	{src: "CRA", srcCode: "CRA-1.8", tgt: "C5", tgtCode: "C5-PSS-05", mtype: "equivalent"}, // Authentication controls → customer auth mechanisms
+	{src: "CRA", srcCode: "CRA-1.8", tgt: "C5", tgtCode: "C5-PSS-09", mtype: "partial"},    // Authentication → authorisation mechanisms
 	// Cryptography
-	{src: "CRA", srcCode: "CRA-1.9",  tgt: "C5", tgtCode: "C5-CRY-04", mtype: "equivalent"}, // Encryption → transport encryption
-	{src: "CRA", srcCode: "CRA-1.9",  tgt: "C5", tgtCode: "C5-CRY-05", mtype: "partial"},    // Encryption → at-rest
+	{src: "CRA", srcCode: "CRA-1.9", tgt: "C5", tgtCode: "C5-CRY-04", mtype: "equivalent"}, // Encryption → transport encryption
+	{src: "CRA", srcCode: "CRA-1.9", tgt: "C5", tgtCode: "C5-CRY-05", mtype: "partial"},    // Encryption → at-rest
 	// Logging
 	{src: "CRA", srcCode: "CRA-1.10", tgt: "C5", tgtCode: "C5-OPS-10", mtype: "equivalent"}, // Logging/auditability → logging policy
 	// Incident reporting (CRA Art. 14 → ENISA)
-	{src: "CRA", srcCode: "CRA-2.1",  tgt: "C5", tgtCode: "C5-OPS-19", mtype: "partial"},    // ENISA reporting → incident management policy
+	{src: "CRA", srcCode: "CRA-2.1", tgt: "C5", tgtCode: "C5-OPS-19", mtype: "partial"}, // ENISA reporting → incident management policy
 	// Vulnerability disclosure
-	{src: "CRA", srcCode: "CRA-2.2",  tgt: "C5", tgtCode: "C5-PSS-03", mtype: "equivalent"}, // VDP → customer vuln notification
+	{src: "CRA", srcCode: "CRA-2.2", tgt: "C5", tgtCode: "C5-PSS-03", mtype: "equivalent"}, // VDP → customer vuln notification
 	// Secure development lifecycle
-	{src: "CRA", srcCode: "CRA-3.1",  tgt: "C5", tgtCode: "C5-DEV-01", mtype: "equivalent"}, // Secure SDLC → secure dev requirements
+	{src: "CRA", srcCode: "CRA-3.1", tgt: "C5", tgtCode: "C5-DEV-01", mtype: "equivalent"}, // Secure SDLC → secure dev requirements
 	// Customer information
-	{src: "CRA", srcCode: "CRA-4.1",  tgt: "C5", tgtCode: "C5-PSS-01", mtype: "equivalent"}, // User information guide → customer security recommendations
+	{src: "CRA", srcCode: "CRA-4.1", tgt: "C5", tgtCode: "C5-PSS-01", mtype: "equivalent"}, // User information guide → customer security recommendations
 }
 
 // SeedCRAC5Mappings seeds CRA ↔ BSI C5:2026 bidirectional mappings.
@@ -1329,26 +1329,26 @@ func (s *Service) SeedCRAC5Mappings(ctx context.Context, orgID string) error {
 
 var craBSIMappings = []frameworkPair{
 	// CRA-1.x: Product security requirements
-	{src: "CRA", srcCode: "CRA-1.1",  tgt: "BSI", tgtCode: "BSI-CON.8",     mtype: "equivalent"}, // Security by design → software development
-	{src: "CRA", srcCode: "CRA-1.2",  tgt: "BSI", tgtCode: "BSI-ISMS.1",    mtype: "equivalent"}, // Risk assessment → ISMS governance
-	{src: "CRA", srcCode: "CRA-1.3",  tgt: "BSI", tgtCode: "BSI-DER.2.1",   mtype: "partial"},    // PSIRT → incident handling
-	{src: "CRA", srcCode: "CRA-1.4",  tgt: "BSI", tgtCode: "BSI-OPS.1.1.2", mtype: "partial"},    // SBOM → patch/asset management
-	{src: "CRA", srcCode: "CRA-1.5",  tgt: "BSI", tgtCode: "BSI-SYS.1.1",   mtype: "partial"},    // Secure defaults → server hardening
-	{src: "CRA", srcCode: "CRA-1.5",  tgt: "BSI", tgtCode: "BSI-OPS.1.1.6", mtype: "partial"},    // Secure defaults → software release & integrity
-	{src: "CRA", srcCode: "CRA-1.6",  tgt: "BSI", tgtCode: "BSI-OPS.1.1.2", mtype: "equivalent"}, // Security updates → patch management
-	{src: "CRA", srcCode: "CRA-1.7",  tgt: "BSI", tgtCode: "BSI-OPS.1.1.2", mtype: "partial"},    // Known vuln protection → patch management
-	{src: "CRA", srcCode: "CRA-1.8",  tgt: "BSI", tgtCode: "BSI-ORP.4",     mtype: "equivalent"}, // Authentication controls → IAM
-	{src: "CRA", srcCode: "CRA-1.9",  tgt: "BSI", tgtCode: "BSI-CON.1",     mtype: "equivalent"}, // Encryption → crypto concept
+	{src: "CRA", srcCode: "CRA-1.1", tgt: "BSI", tgtCode: "BSI-CON.8", mtype: "equivalent"},      // Security by design → software development
+	{src: "CRA", srcCode: "CRA-1.2", tgt: "BSI", tgtCode: "BSI-ISMS.1", mtype: "equivalent"},     // Risk assessment → ISMS governance
+	{src: "CRA", srcCode: "CRA-1.3", tgt: "BSI", tgtCode: "BSI-DER.2.1", mtype: "partial"},       // PSIRT → incident handling
+	{src: "CRA", srcCode: "CRA-1.4", tgt: "BSI", tgtCode: "BSI-OPS.1.1.2", mtype: "partial"},     // SBOM → patch/asset management
+	{src: "CRA", srcCode: "CRA-1.5", tgt: "BSI", tgtCode: "BSI-SYS.1.1", mtype: "partial"},       // Secure defaults → server hardening
+	{src: "CRA", srcCode: "CRA-1.5", tgt: "BSI", tgtCode: "BSI-OPS.1.1.6", mtype: "partial"},     // Secure defaults → software release & integrity
+	{src: "CRA", srcCode: "CRA-1.6", tgt: "BSI", tgtCode: "BSI-OPS.1.1.2", mtype: "equivalent"},  // Security updates → patch management
+	{src: "CRA", srcCode: "CRA-1.7", tgt: "BSI", tgtCode: "BSI-OPS.1.1.2", mtype: "partial"},     // Known vuln protection → patch management
+	{src: "CRA", srcCode: "CRA-1.8", tgt: "BSI", tgtCode: "BSI-ORP.4", mtype: "equivalent"},      // Authentication controls → IAM
+	{src: "CRA", srcCode: "CRA-1.9", tgt: "BSI", tgtCode: "BSI-CON.1", mtype: "equivalent"},      // Encryption → crypto concept
 	{src: "CRA", srcCode: "CRA-1.10", tgt: "BSI", tgtCode: "BSI-OPS.1.1.5", mtype: "equivalent"}, // Logging → logging/monitoring
 	// CRA-2.x: Vulnerability handling
-	{src: "CRA", srcCode: "CRA-2.1",  tgt: "BSI", tgtCode: "BSI-DER.2.1",   mtype: "partial"},    // ENISA reporting → incident handling
-	{src: "CRA", srcCode: "CRA-2.2",  tgt: "BSI", tgtCode: "BSI-DER.2.1",   mtype: "partial"},    // VDP → incident response process
-	{src: "CRA", srcCode: "CRA-2.3",  tgt: "BSI", tgtCode: "BSI-DER.2.2",   mtype: "partial"},    // CVD → IT forensics / remediation
+	{src: "CRA", srcCode: "CRA-2.1", tgt: "BSI", tgtCode: "BSI-DER.2.1", mtype: "partial"}, // ENISA reporting → incident handling
+	{src: "CRA", srcCode: "CRA-2.2", tgt: "BSI", tgtCode: "BSI-DER.2.1", mtype: "partial"}, // VDP → incident response process
+	{src: "CRA", srcCode: "CRA-2.3", tgt: "BSI", tgtCode: "BSI-DER.2.2", mtype: "partial"}, // CVD → IT forensics / remediation
 	// CRA-3.x: Technical measures
-	{src: "CRA", srcCode: "CRA-3.1",  tgt: "BSI", tgtCode: "BSI-CON.8",     mtype: "equivalent"}, // Secure SDLC → software development
-	{src: "CRA", srcCode: "CRA-3.2",  tgt: "BSI", tgtCode: "BSI-DER.3.2",   mtype: "equivalent"}, // Penetration testing → penetration tests
-	{src: "CRA", srcCode: "CRA-3.3",  tgt: "BSI", tgtCode: "BSI-OPS.1.1.2", mtype: "partial"},    // Config management → operations/hardening
-	{src: "CRA", srcCode: "CRA-3.4",  tgt: "BSI", tgtCode: "BSI-SYS.1.1",   mtype: "partial"},    // Exploit mitigation → server security
+	{src: "CRA", srcCode: "CRA-3.1", tgt: "BSI", tgtCode: "BSI-CON.8", mtype: "equivalent"},   // Secure SDLC → software development
+	{src: "CRA", srcCode: "CRA-3.2", tgt: "BSI", tgtCode: "BSI-DER.3.2", mtype: "equivalent"}, // Penetration testing → penetration tests
+	{src: "CRA", srcCode: "CRA-3.3", tgt: "BSI", tgtCode: "BSI-OPS.1.1.2", mtype: "partial"},  // Config management → operations/hardening
+	{src: "CRA", srcCode: "CRA-3.4", tgt: "BSI", tgtCode: "BSI-SYS.1.1", mtype: "partial"},    // Exploit mitigation → server security
 }
 
 // SeedCRABSIMappings seeds CRA ↔ BSI IT-Grundschutz bidirectional mappings.
@@ -1365,13 +1365,13 @@ func (s *Service) SeedCRABSIMappings(ctx context.Context, orgID string) error {
 var tisaxC5Mappings = []frameworkPair{
 	// Policy & ISMS
 	{src: "TISAX", srcCode: "TISAX-1.1.1", tgt: "C5", tgtCode: "C5-OIS-01", mtype: "equivalent"}, // IS policy → ISMS
-	{src: "TISAX", srcCode: "TISAX-1.1.1", tgt: "C5", tgtCode: "C5-SP-01",  mtype: "partial"},    // IS policy → policy documentation
+	{src: "TISAX", srcCode: "TISAX-1.1.1", tgt: "C5", tgtCode: "C5-SP-01", mtype: "partial"},     // IS policy → policy documentation
 	{src: "TISAX", srcCode: "TISAX-2.1.1", tgt: "C5", tgtCode: "C5-OIS-04", mtype: "equivalent"}, // Roles & responsibilities → separation of duties
 	// HR security
-	{src: "TISAX", srcCode: "TISAX-3.1.2", tgt: "C5", tgtCode: "C5-HR-03",  mtype: "equivalent"}, // IS awareness training → employee training
+	{src: "TISAX", srcCode: "TISAX-3.1.2", tgt: "C5", tgtCode: "C5-HR-03", mtype: "equivalent"}, // IS awareness training → employee training
 	// Asset management
-	{src: "TISAX", srcCode: "TISAX-4.1.1", tgt: "C5", tgtCode: "C5-AM-02",  mtype: "equivalent"}, // Asset inventory → asset inventory
-	{src: "TISAX", srcCode: "TISAX-4.1.3", tgt: "C5", tgtCode: "C5-AM-09",  mtype: "equivalent"}, // Asset classification → asset classification
+	{src: "TISAX", srcCode: "TISAX-4.1.1", tgt: "C5", tgtCode: "C5-AM-02", mtype: "equivalent"}, // Asset inventory → asset inventory
+	{src: "TISAX", srcCode: "TISAX-4.1.3", tgt: "C5", tgtCode: "C5-AM-09", mtype: "equivalent"}, // Asset classification → asset classification
 	// Access control / IAM
 	{src: "TISAX", srcCode: "TISAX-5.1.1", tgt: "C5", tgtCode: "C5-IAM-01", mtype: "equivalent"}, // Access control policy → IAM policy
 	{src: "TISAX", srcCode: "TISAX-5.1.2", tgt: "C5", tgtCode: "C5-IAM-02", mtype: "equivalent"}, // User access management → rights assignment
@@ -1382,8 +1382,8 @@ var tisaxC5Mappings = []frameworkPair{
 	{src: "TISAX", srcCode: "TISAX-6.1.2", tgt: "C5", tgtCode: "C5-CRY-07", mtype: "equivalent"}, // Key management → key rotation
 	{src: "TISAX", srcCode: "TISAX-6.1.2", tgt: "C5", tgtCode: "C5-CRY-10", mtype: "partial"},    // Key management → key storage
 	// Physical security
-	{src: "TISAX", srcCode: "TISAX-7.1.1", tgt: "C5", tgtCode: "C5-PS-01",  mtype: "equivalent"}, // Physical perimeter → physical security
-	{src: "TISAX", srcCode: "TISAX-7.1.2", tgt: "C5", tgtCode: "C5-PS-02",  mtype: "equivalent"}, // Physical access → physical access controls
+	{src: "TISAX", srcCode: "TISAX-7.1.1", tgt: "C5", tgtCode: "C5-PS-01", mtype: "equivalent"}, // Physical perimeter → physical security
+	{src: "TISAX", srcCode: "TISAX-7.1.2", tgt: "C5", tgtCode: "C5-PS-02", mtype: "equivalent"}, // Physical access → physical access controls
 	// Operations
 	{src: "TISAX", srcCode: "TISAX-8.1.3", tgt: "C5", tgtCode: "C5-OPS-04", mtype: "equivalent"}, // Malware protection → malware policy
 	{src: "TISAX", srcCode: "TISAX-8.1.4", tgt: "C5", tgtCode: "C5-OPS-06", mtype: "equivalent"}, // Backup → backup policy
@@ -1414,17 +1414,17 @@ func (s *Service) SeedTISAXC5Mappings(ctx context.Context, orgID string) error {
 // The overlap is explicit in Recital 79 NIS2 and EU AI Act Art. 9/17.
 
 var euAIActNIS2Mappings = []frameworkPair{
-	{src: "AIACT", srcCode: "AIACT-1.1", tgt: "NIS2", tgtCode: "NIS2-A.3",  mtype: "equivalent"}, // AI risk management → NIS2 risk management
-	{src: "AIACT", srcCode: "AIACT-1.2", tgt: "NIS2", tgtCode: "NIS2-A.3",  mtype: "partial"},    // Risk assessment process → NIS2 risk analysis
-	{src: "AIACT", srcCode: "AIACT-2.1", tgt: "NIS2", tgtCode: "NIS2-A.3",  mtype: "partial"},    // Training data requirements → risk management
-	{src: "AIACT", srcCode: "AIACT-3.1", tgt: "NIS2", tgtCode: "NIS2-F.2",  mtype: "partial"},    // Technical documentation → policies/procedures
-	{src: "AIACT", srcCode: "AIACT-4.1", tgt: "NIS2", tgtCode: "NIS2-E.3",  mtype: "equivalent"}, // AI logging → monitoring/detection
-	{src: "AIACT", srcCode: "AIACT-5.1", tgt: "NIS2", tgtCode: "NIS2-A.1",  mtype: "partial"},    // Transparency → governance
-	{src: "AIACT", srcCode: "AIACT-6.1", tgt: "NIS2", tgtCode: "NIS2-A.3",  mtype: "partial"},    // Human oversight → risk treatment
-	{src: "AIACT", srcCode: "AIACT-9.1", tgt: "NIS2", tgtCode: "NIS2-A.1",  mtype: "partial"},    // QMS → governance/policy
-	{src: "AIACT", srcCode: "AIACT-9.2", tgt: "NIS2", tgtCode: "NIS2-F.3",  mtype: "equivalent"}, // Conformity assessment → effectiveness testing
-	{src: "AIACT", srcCode: "AIACT-12.1",tgt: "NIS2", tgtCode: "NIS2-G.2",  mtype: "partial"},    // Deployer transparency → training/awareness
-	{src: "AIACT", srcCode: "AIACT-13.1",tgt: "NIS2", tgtCode: "NIS2-G.2",  mtype: "partial"},    // Deepfake disclosure → awareness/training
+	{src: "AIACT", srcCode: "AIACT-1.1", tgt: "NIS2", tgtCode: "NIS2-A.3", mtype: "equivalent"}, // AI risk management → NIS2 risk management
+	{src: "AIACT", srcCode: "AIACT-1.2", tgt: "NIS2", tgtCode: "NIS2-A.3", mtype: "partial"},    // Risk assessment process → NIS2 risk analysis
+	{src: "AIACT", srcCode: "AIACT-2.1", tgt: "NIS2", tgtCode: "NIS2-A.3", mtype: "partial"},    // Training data requirements → risk management
+	{src: "AIACT", srcCode: "AIACT-3.1", tgt: "NIS2", tgtCode: "NIS2-F.2", mtype: "partial"},    // Technical documentation → policies/procedures
+	{src: "AIACT", srcCode: "AIACT-4.1", tgt: "NIS2", tgtCode: "NIS2-E.3", mtype: "equivalent"}, // AI logging → monitoring/detection
+	{src: "AIACT", srcCode: "AIACT-5.1", tgt: "NIS2", tgtCode: "NIS2-A.1", mtype: "partial"},    // Transparency → governance
+	{src: "AIACT", srcCode: "AIACT-6.1", tgt: "NIS2", tgtCode: "NIS2-A.3", mtype: "partial"},    // Human oversight → risk treatment
+	{src: "AIACT", srcCode: "AIACT-9.1", tgt: "NIS2", tgtCode: "NIS2-A.1", mtype: "partial"},    // QMS → governance/policy
+	{src: "AIACT", srcCode: "AIACT-9.2", tgt: "NIS2", tgtCode: "NIS2-F.3", mtype: "equivalent"}, // Conformity assessment → effectiveness testing
+	{src: "AIACT", srcCode: "AIACT-12.1", tgt: "NIS2", tgtCode: "NIS2-G.2", mtype: "partial"},   // Deployer transparency → training/awareness
+	{src: "AIACT", srcCode: "AIACT-13.1", tgt: "NIS2", tgtCode: "NIS2-G.2", mtype: "partial"},   // Deepfake disclosure → awareness/training
 }
 
 // SeedEUAIActNIS2Mappings seeds EU AI Act ↔ NIS2 bidirectional mappings.
