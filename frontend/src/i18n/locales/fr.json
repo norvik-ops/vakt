@@ -1269,6 +1269,17 @@
       "toastCreated": "Clé API créée.",
       "toastRevoked": "Clé API révoquée.",
       "securityHint": "Les clés API sont stockées chiffrées avec AES-256-GCM."
+    },
+    "sessionsPage": {
+      "title": "Sessions actives",
+      "description": "Gérez toutes les sessions de connexion actives de votre compte.",
+      "colDevice": "Appareil",
+      "colExpiry": "Expiration",
+      "colActions": "Actions",
+      "loadError": "Impossible de charger les sessions.",
+      "noSessions": "Aucune session active.",
+      "revokeSession": "Révoquer",
+      "revokingAll": "Révocation…"
     }
   },
   "admin": {

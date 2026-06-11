@@ -1269,6 +1269,17 @@
       "toastCreated": "API key created.",
       "toastRevoked": "API key revoked.",
       "securityHint": "API keys are stored encrypted with AES-256-GCM."
+    },
+    "sessionsPage": {
+      "title": "Active Sessions",
+      "description": "Manage all active login sessions for your account.",
+      "colDevice": "Device",
+      "colExpiry": "Expires",
+      "colActions": "Actions",
+      "loadError": "Failed to load sessions.",
+      "noSessions": "No active sessions.",
+      "revokeSession": "Revoke",
+      "revokingAll": "Revoking…"
     }
   },
   "admin": {

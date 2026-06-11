@@ -27,7 +27,8 @@ test.describe('SecPrivacy — DSR', () => {
   })
 
   test('export button is visible and clickable', async ({ page }) => {
-    const exportBtn = page.getByRole('button', { name: /exportieren|export/i })
+    // DSR page exposes two export buttons: PDF audit log and CSV download
+    const exportBtn = page.getByRole('button', { name: /audit-pdf|csv|exportieren|export/i }).first()
     await expect(exportBtn).toBeVisible()
   })
 })

@@ -1195,6 +1195,17 @@
       "toastCreated": "API-sleutel aangemaakt.",
       "toastRevoked": "API-sleutel ingetrokken.",
       "securityHint": "API-sleutels worden versleuteld opgeslagen met AES-256-GCM."
+    },
+    "sessionsPage": {
+      "title": "Actieve sessies",
+      "description": "Beheer alle actieve aanmeldsessies van uw account.",
+      "colDevice": "Apparaat",
+      "colExpiry": "Verloopt",
+      "colActions": "Acties",
+      "loadError": "Sessies konden niet worden geladen.",
+      "noSessions": "Geen actieve sessies.",
+      "revokeSession": "Intrekken",
+      "revokingAll": "Intrekken…"
     }
   },
   "admin": {

@@ -1269,6 +1269,17 @@
       "toastCreated": "API-Schlüssel erstellt.",
       "toastRevoked": "API-Schlüssel widerrufen.",
       "securityHint": "API-Schlüssel werden AES-256-GCM verschlüsselt gespeichert."
+    },
+    "sessionsPage": {
+      "title": "Aktive Sitzungen",
+      "description": "Verwalten Sie alle aktiven Anmeldesitzungen Ihres Kontos.",
+      "colDevice": "Gerät",
+      "colExpiry": "Läuft ab",
+      "colActions": "Aktionen",
+      "loadError": "Sitzungen konnten nicht geladen werden.",
+      "noSessions": "Keine aktiven Sitzungen.",
+      "revokeSession": "Widerrufen",
+      "revokingAll": "Wird widerrufen…"
     }
   },
   "admin": {
