@@ -110,7 +110,7 @@ function CreateDialog({ open, onClose }: CreateDialogProps) {
             <Input
               id="to-name"
               value={form.name}
-              onChange={(e) => set('name', e.target.value)}
+              onChange={(e) => { set('name', e.target.value) }}
               placeholder="z.B. Webserver Produktion"
               required
             />
@@ -119,7 +119,7 @@ function CreateDialog({ open, onClose }: CreateDialogProps) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Typ *</Label>
-              <Select value={form.type} onValueChange={(v) => set('type', v as BSITargetObjectType)}>
+              <Select value={form.type} onValueChange={(v) => { set('type', v as BSITargetObjectType) }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -135,7 +135,7 @@ function CreateDialog({ open, onClose }: CreateDialogProps) {
               <Label>Absicherungsniveau</Label>
               <Select
                 value={form.absicherungsniveau ?? 'standard'}
-                onValueChange={(v) => set('absicherungsniveau', v as BSIAbsicherungsniveau)}
+                onValueChange={(v) => { set('absicherungsniveau', v as BSIAbsicherungsniveau) }}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -153,7 +153,7 @@ function CreateDialog({ open, onClose }: CreateDialogProps) {
             <Label>Beschreibung</Label>
             <Input
               value={form.description ?? ''}
-              onChange={(e) => set('description', e.target.value)}
+              onChange={(e) => { set('description', e.target.value) }}
               placeholder="Optional"
             />
           </div>
@@ -185,7 +185,7 @@ export default function BSITargetObjectsPage() {
 
   function handleDelete(id: string, name: string) {
     if (!window.confirm(`Zielobjekt „${name}" wirklich löschen? Alle Check-Ergebnisse gehen verloren.`)) return
-    void deleteMutation.mutate(id)
+    deleteMutation.mutate(id)
   }
 
   return (
@@ -194,7 +194,7 @@ export default function BSITargetObjectsPage() {
         title="Strukturanalyse — Zielobjekte"
         description="IT-Systeme, Anwendungen und Räume für den IT-Grundschutz-Check erfassen"
         actions={
-          <Button size="sm" onClick={() => setShowCreate(true)}>
+          <Button size="sm" onClick={() => { setShowCreate(true) }}>
             <Plus className="w-4 h-4 mr-1" />
             Zielobjekt anlegen
           </Button>
@@ -212,7 +212,7 @@ export default function BSITargetObjectsPage() {
             <p className="text-xs text-secondary">
               Legen Sie Ihre IT-Systeme, Anwendungen und Räume an, um den IT-Grundschutz-Check zu starten.
             </p>
-            <Button size="sm" className="mt-2" onClick={() => setShowCreate(true)}>
+            <Button size="sm" className="mt-2" onClick={() => { setShowCreate(true) }}>
               <Plus className="w-4 h-4 mr-1" />
               Erstes Zielobjekt anlegen
             </Button>
@@ -262,7 +262,7 @@ export default function BSITargetObjectsPage() {
                   size="icon"
                   variant="ghost"
                   className="w-7 h-7 text-red-400 hover:text-red-300"
-                  onClick={() => handleDelete(obj.id, obj.name)}
+                  onClick={() => { handleDelete(obj.id, obj.name) }}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
@@ -272,7 +272,7 @@ export default function BSITargetObjectsPage() {
         })}
       </div>
 
-      <CreateDialog open={showCreate} onClose={() => setShowCreate(false)} />
+      <CreateDialog open={showCreate} onClose={() => { setShowCreate(false) }} />
     </div>
   )
 }

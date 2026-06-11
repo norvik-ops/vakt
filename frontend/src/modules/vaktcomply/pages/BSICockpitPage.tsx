@@ -15,7 +15,6 @@ function GaugeCard({ pct }: { pct: number }) {
     pct >= 80 ? '#22c55e' : pct >= 50 ? '#eab308' : '#ef4444'
   const radius = 52
   const circumference = 2 * Math.PI * radius
-  const dashOffset = circumference * (1 - pct / 100)
 
   return (
     <div className="rounded-lg border border-border bg-surface p-5 flex flex-col items-center gap-2">
@@ -254,7 +253,7 @@ export default function BSICockpitPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setShowAllGaps((v) => !v)}
+                onClick={() => { setShowAllGaps((v) => !v) }}
                 className="w-full text-xs"
               >
                 {showAllGaps ? 'Weniger anzeigen' : `Alle ${gapReport.gaps.length} Gaps anzeigen`}
