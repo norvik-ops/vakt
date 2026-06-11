@@ -4,6 +4,7 @@ export interface Framework {
   version: string
   created_at: string
   control_count?: number
+  framework_variant?: 'full' | 'simplified'
 }
 
 export interface ReadinessReport {

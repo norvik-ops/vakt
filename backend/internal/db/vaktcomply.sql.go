@@ -1070,16 +1070,17 @@ func (q *Queries) CreateCKEvidenceFile(ctx context.Context, arg CreateCKEvidence
 const createCKFramework = `-- name: CreateCKFramework :one
 
 
-INSERT INTO ck_frameworks (org_id, name, version, is_builtin)
-VALUES ($1, $2, $3, $4)
-RETURNING id, org_id, name, version, is_builtin, created_at
+INSERT INTO ck_frameworks (org_id, name, version, is_builtin, framework_variant)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, org_id, name, version, is_builtin, created_at, framework_variant
 `
 
 type CreateCKFrameworkParams struct {
-	OrgID     string `json:"org_id"`
-	Name      string `json:"name"`
-	Version   string `json:"version"`
-	IsBuiltin bool   `json:"is_builtin"`
+	OrgID            string `json:"org_id"`
+	Name             string `json:"name"`
+	Version          string `json:"version"`
+	IsBuiltin        bool   `json:"is_builtin"`
+	FrameworkVariant string `json:"framework_variant"`
 }
 
 // Vakt Comply queries — sqlc migration in v0.6.x (ADR-0005).
@@ -1097,6 +1098,7 @@ func (q *Queries) CreateCKFramework(ctx context.Context, arg CreateCKFrameworkPa
 		arg.Name,
 		arg.Version,
 		arg.IsBuiltin,
+		arg.FrameworkVariant,
 	)
 	var i CkFrameworks
 	err := row.Scan(
@@ -1106,8 +1108,26 @@ func (q *Queries) CreateCKFramework(ctx context.Context, arg CreateCKFrameworkPa
 		&i.Version,
 		&i.IsBuiltin,
 		&i.CreatedAt,
+		&i.FrameworkVariant,
 	)
 	return i, err
+}
+
+const updateCKFrameworkVariant = `-- name: UpdateCKFrameworkVariant :exec
+UPDATE ck_frameworks
+SET framework_variant = $1
+WHERE id = $2 AND org_id = $3
+`
+
+type UpdateCKFrameworkVariantParams struct {
+	FrameworkVariant string `json:"framework_variant"`
+	ID               string `json:"id"`
+	OrgID            string `json:"org_id"`
+}
+
+func (q *Queries) UpdateCKFrameworkVariant(ctx context.Context, arg UpdateCKFrameworkVariantParams) error {
+	_, err := q.db.Exec(ctx, updateCKFrameworkVariant, arg.FrameworkVariant, arg.ID, arg.OrgID)
+	return err
 }
 
 const createCKIncident = `-- name: CreateCKIncident :one
@@ -2293,7 +2313,7 @@ func (q *Queries) FindCKExpiringCerts(ctx context.Context, arg FindCKExpiringCer
 }
 
 const findCKFrameworkByName = `-- name: FindCKFrameworkByName :one
-SELECT id, org_id, name, version, is_builtin, created_at
+SELECT id, org_id, name, version, is_builtin, created_at, framework_variant
 FROM ck_frameworks
 WHERE org_id = $1 AND name = $2
 LIMIT 1
@@ -2314,6 +2334,7 @@ func (q *Queries) FindCKFrameworkByName(ctx context.Context, arg FindCKFramework
 		&i.Version,
 		&i.IsBuiltin,
 		&i.CreatedAt,
+		&i.FrameworkVariant,
 	)
 	return i, err
 }
@@ -3174,7 +3195,7 @@ func (q *Queries) GetCKExpiringEvidenceAllFrameworks(ctx context.Context, arg Ge
 }
 
 const getCKFramework = `-- name: GetCKFramework :one
-SELECT id, org_id, name, version, is_builtin, created_at
+SELECT id, org_id, name, version, is_builtin, created_at, framework_variant
 FROM ck_frameworks
 WHERE id = $1 AND org_id = $2
 `
@@ -3194,6 +3215,7 @@ func (q *Queries) GetCKFramework(ctx context.Context, arg GetCKFrameworkParams) 
 		&i.Version,
 		&i.IsBuiltin,
 		&i.CreatedAt,
+		&i.FrameworkVariant,
 	)
 	return i, err
 }
@@ -4078,7 +4100,7 @@ func (q *Queries) LinkCKSupplierRisk(ctx context.Context, arg LinkCKSupplierRisk
 }
 
 const listAllBuiltinCKFrameworks = `-- name: ListAllBuiltinCKFrameworks :many
-SELECT id, org_id, name, version, is_builtin, created_at
+SELECT id, org_id, name, version, is_builtin, created_at, framework_variant
 FROM ck_frameworks
 WHERE is_builtin = TRUE
 ORDER BY created_at ASC
@@ -4100,6 +4122,7 @@ func (q *Queries) ListAllBuiltinCKFrameworks(ctx context.Context) ([]CkFramework
 			&i.Version,
 			&i.IsBuiltin,
 			&i.CreatedAt,
+			&i.FrameworkVariant,
 		); err != nil {
 			return nil, err
 		}
@@ -5730,7 +5753,7 @@ func (q *Queries) ListCKEvidenceHistory(ctx context.Context, arg ListCKEvidenceH
 }
 
 const listCKFrameworks = `-- name: ListCKFrameworks :many
-SELECT id, org_id, name, version, is_builtin, created_at
+SELECT id, org_id, name, version, is_builtin, created_at, framework_variant
 FROM ck_frameworks
 WHERE org_id = $1
 ORDER BY created_at ASC
@@ -5752,6 +5775,7 @@ func (q *Queries) ListCKFrameworks(ctx context.Context, orgID string) ([]CkFrame
 			&i.Version,
 			&i.IsBuiltin,
 			&i.CreatedAt,
+			&i.FrameworkVariant,
 		); err != nil {
 			return nil, err
 		}

@@ -210,11 +210,12 @@ services:
           cpus: '0.25'
 
   # AI Copilot via lokales LLM — seit v0.6.x default-on (Community-Feature).
-  # Default-Modell qwen2.5:3b wird beim ersten Start automatisch von ollama-init
-  # gezogen (~1.9 GB Disk; läuft nur einmal, danach idle).
+  # Default-Modell qwen2.5:7b wird beim ersten Start automatisch von ollama-init
+  # gezogen (~4.5 GB Disk; läuft nur einmal, danach idle).
+  # Mindestanforderung: 8 GB RAM (Minimum), 16 GB RAM (Empfohlen).
   # Zum Deaktivieren: VAKT_AI_PROVIDER=disabled in .env setzen.
-  # Auf 4-GB-Gesamt-RAM-VMs ebenfalls deaktivieren — der 4g-Limit unten
-  # würde sonst die anderen Container ausquetschen.
+  # Auf VMs mit < 8 GB RAM deaktivieren — ollama + ollama-init dann ebenfalls
+  # entfernen oder stoppen, damit der RAM-Footprint entfällt.
   ollama:
     image: ollama/ollama:latest
     volumes:
@@ -229,7 +230,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4g
+          memory: 6g
           cpus: '2.0'
 
   # Pre-pull des Default-Modells beim ersten Start. Läuft genau einmal pro
@@ -240,8 +241,8 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - >
-        echo 'Pre-pulling default model ${VAKT_AI_MODEL:-qwen2.5:3b} (one-time)...';
-        OLLAMA_HOST=http://ollama:11434 ollama pull ${VAKT_AI_MODEL:-qwen2.5:3b};
+        echo 'Pre-pulling default model ${VAKT_AI_MODEL:-qwen2.5:7b} (one-time)...';
+        OLLAMA_HOST=http://ollama:11434 ollama pull ${VAKT_AI_MODEL:-qwen2.5:7b};
         echo 'Model ready.'
     depends_on:
       ollama:

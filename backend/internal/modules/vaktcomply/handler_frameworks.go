@@ -24,13 +24,24 @@ func (h *Handler) ListFrameworks(c echo.Context) error {
 }
 
 // EnableFramework handles POST /api/v1/vaktcomply/frameworks/:name/enable.
+// Accepts optional body {"variant": "full"|"simplified"} for DORA Art. 16.
 func (h *Handler) EnableFramework(c echo.Context) error {
 	name := c.Param("name")
 	if name == "" {
 		return errResp(c, http.StatusBadRequest, "framework name is required", "CK_BAD_REQUEST")
 	}
 
-	fw, err := h.service.EnableFramework(c.Request().Context(), orgID(c), name)
+	var input EnableFrameworkInput
+	if c.Request().ContentLength != 0 {
+		if err := c.Bind(&input); err != nil {
+			return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+		}
+		if err := h.validate.Struct(&input); err != nil {
+			return errResp(c, http.StatusUnprocessableEntity, err.Error(), "CK_VALIDATION_FAILED")
+		}
+	}
+
+	fw, err := h.service.EnableFramework(c.Request().Context(), orgID(c), name, input.Variant)
 	if err != nil {
 		log.Error().Err(err).Str("name", name).Msg("enable framework")
 		return errResp(c, http.StatusInternalServerError, "failed to enable framework", "CK_ENABLE_FRAMEWORK_FAILED")
@@ -41,6 +52,35 @@ func (h *Handler) EnableFramework(c echo.Context) error {
 		IPAddress: c.RealIP(),
 	})
 	return c.JSON(http.StatusCreated, fw)
+}
+
+// SwitchDORAVariant handles PUT /api/v1/vaktcomply/frameworks/dora/variant.
+func (h *Handler) SwitchDORAVariant(c echo.Context) error {
+	var input SwitchDORAVariantInput
+	if err := c.Bind(&input); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+	if err := h.validate.Struct(&input); err != nil {
+		return errResp(c, http.StatusUnprocessableEntity, err.Error(), "CK_VALIDATION_FAILED")
+	}
+
+	// Find the org's DORA framework.
+	fw, err := h.service.FindFrameworkByName(c.Request().Context(), orgID(c), "DORA")
+	if err != nil || fw == nil {
+		return errResp(c, http.StatusNotFound, "DORA framework not enabled for this organisation", "CK_DORA_NOT_FOUND")
+	}
+
+	updated, err := h.service.SwitchDORAVariant(c.Request().Context(), orgID(c), fw.ID, input.Variant)
+	if err != nil {
+		log.Error().Err(err).Str("variant", input.Variant).Msg("switch dora variant")
+		return errResp(c, http.StatusInternalServerError, "failed to switch DORA variant", "CK_DORA_VARIANT_FAILED")
+	}
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
+		OrgID: orgID(c), UserID: userID(c), Action: "update",
+		ResourceType: "vakt-comply/framework", ResourceID: fw.ID, ResourceName: "DORA",
+		IPAddress: c.RealIP(),
+	})
+	return c.JSON(http.StatusOK, updated)
 }
 
 // DeleteFramework handles DELETE /api/v1/vaktcomply/frameworks/:id.

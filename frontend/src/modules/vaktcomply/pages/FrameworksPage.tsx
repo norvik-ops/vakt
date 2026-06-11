@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { ExportButton } from '../../../shared/components/ExportButton'
 import { EmptyState } from '../../../shared/components/EmptyState'
-import { useFrameworks, useEnableFramework, useDeleteFramework } from '../hooks/useFrameworks'
+import { useFrameworks, useEnableFramework, useDeleteFramework, useSwitchDORAVariant } from '../hooks/useFrameworks'
 import { FrameworkSetupWizard } from '../components/FrameworkSetupWizard'
 import type { Framework } from '../types'
 import { formatLocale } from '../../../shared/utils/locale'
@@ -113,12 +113,18 @@ function ScoreCircle({ score }: { score: number }) {
   )
 }
 
-function EnabledFrameworkCard({ framework, onDelete }: { framework: Framework; onDelete: (fw: Framework) => void }) {
+function EnabledFrameworkCard({ framework, onDelete, onSwitchVariant }: {
+  framework: Framework
+  onDelete: (fw: Framework) => void
+  onSwitchVariant?: (fw: Framework) => void
+}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const enabledDate = new Date(framework.created_at).toLocaleDateString(formatLocale(), {
     year: 'numeric', month: 'short', day: 'numeric',
   })
+  const isDORA = framework.name === 'DORA'
+  const variant = framework.framework_variant ?? 'full'
 
   return (
     <Card className="hover:border-brand transition-colors">
@@ -127,7 +133,14 @@ function EnabledFrameworkCard({ framework, onDelete }: { framework: Framework; o
           className="flex-1 cursor-pointer"
           onClick={() => { navigate(`/vaktcomply/frameworks/${framework.id}`); }}
         >
-          <CardTitle className="text-base">{framework.name}</CardTitle>
+          <div className="flex items-center gap-2 flex-wrap">
+            <CardTitle className="text-base">{framework.name}</CardTitle>
+            {isDORA && (
+              <Badge variant={variant === 'simplified' ? 'outline' : 'secondary'} className="text-[10px]">
+                {variant === 'simplified' ? 'Vereinfacht (Art. 16)' : 'Vollständig (Art. 5–15)'}
+              </Badge>
+            )}
+          </div>
           <CardDescription className="mt-0.5">v{framework.version}</CardDescription>
         </div>
         <ScoreCircle score={0} />
@@ -135,13 +148,24 @@ function EnabledFrameworkCard({ framework, onDelete }: { framework: Framework; o
       <CardContent>
         <div className="flex items-center justify-between text-sm text-secondary">
           <span>{framework.control_count != null ? `${framework.control_count} ${t('vaktcomply.controlDetailPage.controlsCount')} · ` : ''}{t('vaktcomply.controlDetailPage.activatedOn')} {enabledDate}</span>
-          <button
-            onClick={() => { onDelete(framework); }}
-            className="p-1.5 rounded text-secondary hover:text-red-500 hover:bg-red-500/10 transition-colors"
-            title={t('vaktcomply.frameworksPage.disableFramework')}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {isDORA && onSwitchVariant && (
+              <button
+                onClick={() => { onSwitchVariant(framework); }}
+                className="p-1.5 rounded text-secondary hover:text-brand hover:bg-brand/10 transition-colors text-xs"
+                title="DORA-Rahmenversion wechseln"
+              >
+                ⇄
+              </button>
+            )}
+            <button
+              onClick={() => { onDelete(framework); }}
+              className="p-1.5 rounded text-secondary hover:text-red-500 hover:bg-red-500/10 transition-colors"
+              title={t('vaktcomply.frameworksPage.disableFramework')}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -157,6 +181,9 @@ export default function FrameworksPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [deleteTarget, setDeleteTarget] = useState<Framework | null>(null)
+  const [switchVariantTarget, setSwitchVariantTarget] = useState<Framework | null>(null)
+  // showDORAVariantModal: DORA just activated, ask user which variant they want
+  const [showDORAVariantModal, setShowDORAVariantModal] = useState(false)
   const [wizardFramework, setWizardFramework] = useState<{
     id: string
     name: string
@@ -166,6 +193,7 @@ export default function FrameworksPage() {
   const { data: frameworks, isLoading, isError } = useFrameworks()
   const enableFramework = useEnableFramework()
   const deleteFramework = useDeleteFramework()
+  const switchDORAVariant = useSwitchDORAVariant()
 
   const enabledKeys = new Set((frameworks ?? []).map((f) => f.name.split(' ')[0].toUpperCase()))
 
@@ -188,9 +216,13 @@ export default function FrameworksPage() {
 
   function handleEnable(key: string) {
     const catalogueEntry = FRAMEWORK_CATALOGUE.find((fw) => fw.key === key)
-    enableFramework.mutate(key, {
+    if (key === 'DORA') {
+      // For DORA, show variant selection modal before enabling
+      setShowDORAVariantModal(true)
+      return
+    }
+    enableFramework.mutate({ name: key }, {
       onSuccess: (activatedFramework) => {
-        // Only show wizard if it hasn't been shown for this framework before
         if (localStorage.getItem(wizardSeenKey(activatedFramework.id)) !== '1') {
           setWizardFramework({
             id: activatedFramework.id,
@@ -200,6 +232,32 @@ export default function FrameworksPage() {
           })
         }
       },
+    })
+  }
+
+  function handleEnableDORAWithVariant(variant: 'full' | 'simplified') {
+    setShowDORAVariantModal(false)
+    const catalogueEntry = FRAMEWORK_CATALOGUE.find((fw) => fw.key === 'DORA')
+    enableFramework.mutate({ name: 'DORA', variant }, {
+      onSuccess: (activatedFramework) => {
+        if (localStorage.getItem(wizardSeenKey(activatedFramework.id)) !== '1') {
+          setWizardFramework({
+            id: activatedFramework.id,
+            name: activatedFramework.name,
+            description: catalogueEntry?.description,
+            controlCount: activatedFramework.control_count ?? undefined,
+          })
+        }
+      },
+    })
+  }
+
+  function handleSwitchVariantConfirm() {
+    if (!switchVariantTarget) return
+    const current = switchVariantTarget.framework_variant ?? 'full'
+    const next: 'full' | 'simplified' = current === 'full' ? 'simplified' : 'full'
+    switchDORAVariant.mutate(next, {
+      onSuccess: () => { setSwitchVariantTarget(null); },
     })
   }
 
@@ -267,7 +325,12 @@ export default function FrameworksPage() {
           {!isLoading && !isError && frameworks && frameworks.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {frameworks.map((fw) => (
-                <EnabledFrameworkCard key={fw.id} framework={fw} onDelete={setDeleteTarget} />
+                <EnabledFrameworkCard
+                  key={fw.id}
+                  framework={fw}
+                  onDelete={setDeleteTarget}
+                  onSwitchVariant={fw.name === 'DORA' ? setSwitchVariantTarget : undefined}
+                />
               ))}
             </div>
           )}
@@ -364,6 +427,62 @@ export default function FrameworksPage() {
           }}
         />
       )}
+
+      {/* DORA Variant Selection Modal — shown on first DORA activation */}
+      <Dialog open={showDORAVariantModal} onOpenChange={(open) => { if (!open) setShowDORAVariantModal(false) }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>DORA-Rahmenwerk aktivieren</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-secondary py-2">
+            Wähle den für dein Institut zutreffenden DORA-Anwendungsrahmen.
+          </p>
+          <div className="space-y-3">
+            <button
+              className="w-full text-left p-4 rounded-lg border border-border hover:border-brand hover:bg-brand/5 transition-colors"
+              onClick={() => { handleEnableDORAWithVariant('full'); }}
+            >
+              <p className="font-semibold text-sm text-primary">Vollständiger Rahmen (Art. 5–15)</p>
+              <p className="text-xs text-secondary mt-1">Für bedeutende Banken, große Versicherungen und systemrelevante Finanzinstitute. 23 Controls mit TLPT-Anforderungen und vollständigem Drittparteien-Register.</p>
+            </button>
+            <button
+              className="w-full text-left p-4 rounded-lg border border-border hover:border-brand hover:bg-brand/5 transition-colors"
+              onClick={() => { handleEnableDORAWithVariant('simplified'); }}
+            >
+              <p className="font-semibold text-sm text-primary">Vereinfachter Rahmen (Art. 16)</p>
+              <p className="text-xs text-secondary mt-1">Für kleine und nicht-verflochtene Finanzinstitute gem. DORA Art. 16 (RTS EU 2024/1774 Kap. II). 15 Controls, kein TLPT erforderlich. Du kannst später zum vollständigen Rahmen wechseln.</p>
+            </button>
+          </div>
+          <DialogFooter className="mt-2">
+            <Button variant="outline" onClick={() => { setShowDORAVariantModal(false); }}>{t('common.cancel')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DORA Variant Switch Confirmation */}
+      <Dialog open={!!switchVariantTarget} onOpenChange={(open) => { if (!open) setSwitchVariantTarget(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>DORA-Rahmenversion wechseln</DialogTitle>
+          </DialogHeader>
+          {switchVariantTarget && (
+            <p className="text-sm text-secondary py-2">
+              {switchVariantTarget.framework_variant === 'full'
+                ? 'Wechsel vom vollständigen zum vereinfachten Rahmen (Art. 16): Die vollständigen Controls (DORA-1.x–5.x) werden als „nicht anwendbar" markiert. Vorhandene Nachweise bleiben erhalten. 15 vereinfachte Controls (DORA-S.*) werden angelegt.'
+                : 'Wechsel vom vereinfachten zum vollständigen Rahmen (Art. 5–15): Die vereinfachten Controls (DORA-S.*) werden als „nicht anwendbar" markiert. Vorhandene Nachweise bleiben erhalten. Vollständige DORA-Controls werden als „nicht implementiert" angelegt.'}
+            </p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setSwitchVariantTarget(null); }}>{t('common.cancel')}</Button>
+            <Button
+              onClick={handleSwitchVariantConfirm}
+              disabled={switchDORAVariant.isPending}
+            >
+              {switchDORAVariant.isPending ? 'Wird gewechselt…' : 'Rahmenversion wechseln'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete confirmation */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>

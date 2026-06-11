@@ -24,17 +24,17 @@ Vakt enthält einen **lokalen KI-Berater**, der auf deiner eigenen Infrastruktur
 
 | Setup | RAM | CPU | Geschwindigkeit | Anwendbar für |
 |-------|-----|-----|-----------------|----------------|
-| **Minimum** | 4 GB (+1.5 GB Modell) | 2 vCPU | 3–8 tok/s | Funktioniert, spürbar zäh — gut für Test/Demo |
-| **Empfohlen** | 8 GB (+2 GB Modell) | 4 vCPU | 8–15 tok/s | KMU-Standard, gut nutzbar |
+| **Minimum** | 8 GB (+4.5 GB Modell) | 4 vCPU | 5–9 tok/s | Funktioniert, bei Lastspitzen etwas zäh |
+| **Empfohlen** | 16 GB (+4.5 GB Modell) | 4 vCPU | 5–9 tok/s | KMU-Standard, komfortabel nutzbar |
 | **Komfort** | 16 GB+ | NVIDIA T4 oder besser | 50–100+ tok/s | Wenn die KI häufig genutzt wird |
 
-**Konkrete Erwartung (Default-Modell auf 4 vCPU):**
+**Konkrete Erwartung (Default-Modell `qwen2.5:7b` auf 4 vCPU):**
 
-- Compliance-Berater-Antwort (~300 Tokens): **20–40 Sekunden**
-- Policy-Draft (~600 Tokens): **40–80 Sekunden**
-- Incident-Guide (~250 Tokens): **15–35 Sekunden**
+- Compliance-Berater-Antwort (~300 Tokens): **35–60 Sekunden**
+- Policy-Draft (~600 Tokens): **70–120 Sekunden**
+- Incident-Guide (~250 Tokens): **28–50 Sekunden**
 
-→ Faustregel: Wenn die KI 5-10× pro Tag genutzt wird, ist CPU-Inference angenehm tolerabel. Bei intensiver Nutzung lohnt eine GPU.
+→ Faustregel: Wenn die KI 5–10× pro Tag genutzt wird, ist CPU-Inference tolerabel. Bei intensiver Nutzung lohnt eine GPU oder Mistral EU.
 
 ### Cloud-Modell (Mistral AI EU)
 
@@ -49,28 +49,28 @@ Konfiguration: siehe [Konfigurations-Abschnitt](#cloud-alternative-mistral-eu) u
 
 ## Modell-Auswahl
 
-### Standard: `qwen2.5:3b`
+### Standard: `qwen2.5:7b`
 
-Vakt verwendet ab v0.6+ **`qwen2.5:3b`** als Default-Modell. Begründung:
+Vakt verwendet **`qwen2.5:7b`** als Default-Modell. Begründung:
 
 - **Apache 2.0 Lizenz** — keine Einschränkungen für kommerzielle Nutzung
-- **3 Mrd. Parameter** — guter Sweet-Spot zwischen Größe und Qualität
-- **~1.9 GB RAM-Footprint** mit Q4-Quantisierung
-- **Deutsche Sprache** — bessere DE-Performance als Llama-3.2 in Compliance-Texten
-- **Schnell auf CPU** — ~12–18 Token/Sekunde auf 4 modernen vCPU
+- **7 Mrd. Parameter** — spürbar bessere Qualität bei deutschen Compliance-Texten
+- **~4.5 GB RAM-Footprint** mit Q4-Quantisierung
+- **Deutsche Sprache** — deutlich bessere DE-Performance als alle Llama-Modelle gleicher Größe
+- **CPU-fähig** — ~5–9 Token/Sekunde auf 4 vCPU; für 5–10 Anfragen/Tag gut tolerabel
 
 ### Alternative Modelle
 
 Alle laufen über Ollama, alle CPU-fähig:
 
-| Modell | RAM | Lizenz | Stärken |
-|--------|-----|--------|---------|
-| `qwen2.5:3b` *(Default)* | 1.9 GB | Apache 2.0 | DE-Qualität, ausbalanciert |
-| `llama3.2:1b` | 1.3 GB | Llama Community | Schonendster Footprint — für sehr kleine VMs |
-| `llama3.2:3b` | 2.0 GB | Llama Community | Meta, gut ausbalanciert |
-| `phi3.5:mini` | 2.3 GB | MIT | Microsoft, sehr gut bei strukturierten Outputs (Policies) |
-| `gemma2:2b` | 1.6 GB | Gemma Terms (restriktiv) | Google, sehr klein |
-| `qwen2.5:7b` | 4.5 GB | Apache 2.0 | Wenn RAM da ist: deutlich bessere Qualität |
+| Modell | RAM | Lizenz | Wann sinnvoll |
+|--------|-----|--------|---------------|
+| `qwen2.5:7b` *(Default)* | 4.5 GB | Apache 2.0 | Standard — beste DE-Compliance-Qualität |
+| `qwen2.5:3b` | 1.9 GB | Apache 2.0 | VMs mit knapp 8 GB RAM |
+| `phi3.5:mini` | 2.3 GB | MIT | Sehr gut bei strukturierten Outputs (Policies) |
+| `llama3.2:3b` | 2.0 GB | Llama Community | Alternative zu qwen2.5:3b |
+| `llama3.2:1b` | 1.3 GB | Llama Community | VMs mit < 8 GB RAM, spürbar geringere Qualität |
+| `gemma2:2b` | 1.6 GB | Gemma Terms (restriktiv) | Nicht empfohlen — restriktivere Lizenz |
 
 **Modell wechseln:**
 

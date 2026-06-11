@@ -35,7 +35,11 @@ func (s *Service) DeleteFramework(ctx context.Context, orgID, frameworkID string
 
 // EnableFramework creates a new framework (and seeds its controls) for the organisation.
 // If the framework is already enabled, it returns the existing record.
-func (s *Service) EnableFramework(ctx context.Context, orgID, name string) (*Framework, error) {
+// variant is "full" or "simplified" (only meaningful for DORA); empty string defaults to "full".
+func (s *Service) EnableFramework(ctx context.Context, orgID, name, variant string) (*Framework, error) {
+	if variant == "" {
+		variant = "full"
+	}
 	exists, err := s.repo.FrameworkExists(ctx, orgID, name)
 	if err != nil {
 		return nil, err
@@ -60,13 +64,13 @@ func (s *Service) EnableFramework(ctx context.Context, orgID, name string) (*Fra
 		version = "1.0"
 	}
 
-	fw, err := s.repo.CreateFramework(ctx, orgID, name, version, isBuiltin)
+	fw, err := s.repo.CreateFramework(ctx, orgID, name, version, isBuiltin, variant)
 	if err != nil {
 		return nil, fmt.Errorf("enable framework %s: %w", name, err)
 	}
 
 	// Seed controls from built-in template.
-	controls := builtinControls(fw.ID, orgID, name)
+	controls := builtinControls(fw.ID, orgID, name, variant)
 	if len(controls) > 0 {
 		if err := s.repo.BulkInsertControls(ctx, controls); err != nil {
 			log.Warn().Err(err).Str("framework", name).Msg("failed to seed controls")
@@ -179,7 +183,7 @@ func (s *Service) InstallFrameworkPlugin(ctx context.Context, orgID string, plug
 		version = "1.0"
 	}
 
-	fw, err := s.repo.CreateFramework(ctx, orgID, plugin.Name, version, false)
+	fw, err := s.repo.CreateFramework(ctx, orgID, plugin.Name, version, false, "full")
 	if err != nil {
 		return nil, fmt.Errorf("create plugin framework %s: %w", plugin.Name, err)
 	}
@@ -218,7 +222,7 @@ func (s *Service) ReseedBuiltinControls(ctx context.Context) {
 		return
 	}
 	for _, fw := range frameworks {
-		controls := builtinControls(fw.ID, fw.OrgID, fw.Name)
+		controls := builtinControls(fw.ID, fw.OrgID, fw.Name, fw.FrameworkVariant)
 		if len(controls) == 0 {
 			continue
 		}
@@ -228,6 +232,70 @@ func (s *Service) ReseedBuiltinControls(ctx context.Context) {
 			log.Info().Str("framework", fw.Name).Int("controls", len(controls)).Msg("reseeded builtin controls")
 		}
 	}
+}
+
+// SwitchDORAVariant switches an enabled DORA framework between "full" (Art. 5–15)
+// and "simplified" (Art. 16) variants.
+//
+// When switching:
+//   - Controls from the OLD variant are marked not_applicable (evidence is preserved).
+//   - Controls from the NEW variant that don't yet exist are inserted as not_implemented.
+//   - The framework_variant column is updated.
+func (s *Service) SwitchDORAVariant(ctx context.Context, orgID, frameworkID, newVariant string) (*Framework, error) {
+	fw, err := s.repo.GetFramework(ctx, orgID, frameworkID)
+	if err != nil {
+		return nil, fmt.Errorf("get framework: %w", err)
+	}
+	if fw.Name != "DORA" {
+		return nil, fmt.Errorf("framework is not DORA")
+	}
+	if fw.FrameworkVariant == newVariant {
+		return fw, nil // already on requested variant — nothing to do
+	}
+
+	// Determine which control ID prefix belongs to the OLD variant.
+	oldPrefix := "DORA-"    // full variant: DORA-1.x … DORA-5.x
+	if newVariant == "full" { // switching from simplified → the old ones have DORA-S. prefix
+		oldPrefix = "DORA-S."
+	}
+
+	// Load all current controls.
+	allControls, err := s.repo.ListControls(ctx, orgID, frameworkID)
+	if err != nil {
+		return nil, fmt.Errorf("list controls: %w", err)
+	}
+
+	// Mark old-variant controls as not_applicable.
+	for _, ctrl := range allControls {
+		isOldVariant := false
+		if newVariant == "full" {
+			// we're switching full→simplified, old controls have numeric prefix e.g. DORA-1.1
+			isOldVariant = strings.HasPrefix(ctrl.ControlID, "DORA-") && !strings.HasPrefix(ctrl.ControlID, "DORA-S.")
+		} else {
+			// switching simplified→full, old controls have DORA-S. prefix
+			isOldVariant = strings.HasPrefix(ctrl.ControlID, oldPrefix)
+		}
+		if !isOldVariant {
+			continue
+		}
+		_ = s.repo.UpdateControl(ctx, orgID, ctrl.ID, true, "not applicable — switched to "+newVariant+" framework variant", "", "", nil, nil)
+	}
+
+	// Seed new-variant controls (BulkInsertControls is ON CONFLICT DO UPDATE for title/desc).
+	newControls := builtinControls(frameworkID, orgID, "DORA", newVariant)
+	if len(newControls) > 0 {
+		if err := s.repo.BulkInsertControls(ctx, newControls); err != nil {
+			return nil, fmt.Errorf("seed new variant controls: %w", err)
+		}
+	}
+
+	// Persist new variant in DB.
+	if err := s.repo.UpdateFrameworkVariant(ctx, orgID, frameworkID, newVariant); err != nil {
+		return nil, fmt.Errorf("update framework variant: %w", err)
+	}
+
+	fw.FrameworkVariant = newVariant
+	return fw, nil
 }
 
 // GetControlMappings returns all global cross-framework mappings for a given control,

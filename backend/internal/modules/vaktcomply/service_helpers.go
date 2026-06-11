@@ -129,8 +129,8 @@ func builtinVersion(name string) string {
 }
 
 // builtinControls seeds a small set of representative controls for well-known frameworks.
-// In production expand or load from embedded JSON/CSV files.
-func builtinControls(frameworkID, orgID, name string) []Control {
+// variant is only used for DORA ("full" → doraControls, "simplified" → doraSimplifiedControls).
+func builtinControls(frameworkID, orgID, name, variant string) []Control {
 	switch name {
 	case "NIS2":
 		return nis2Controls(frameworkID, orgID)
@@ -141,6 +141,9 @@ func builtinControls(frameworkID, orgID, name string) []Control {
 	case "CRA":
 		return craControls(frameworkID, orgID)
 	case "DORA":
+		if variant == "simplified" {
+			return doraSimplifiedControls(frameworkID, orgID)
+		}
 		return doraControls(frameworkID, orgID)
 	case "EUAIACT":
 		return euAiActControls(frameworkID, orgID)
@@ -989,6 +992,70 @@ func craControls(frameworkID, orgID string) []Control {
 
 // doraControls returns controls for DORA — Digital Operational Resilience Act (EU 2022/2554).
 // Applies to financial entities (banks, insurers, investment firms, fintechs) and their ICT providers.
+// doraSimplifiedControls returns the 15 controls for the DORA Simplified ICT Risk Framework
+// defined in RTS EU 2024/1774 Chapter II (Art. 3–10), applicable to "small and non-interconnected"
+// financial entities under DORA Art. 16.
+func doraSimplifiedControls(frameworkID, orgID string) []Control {
+	c := func(id, title, desc, domain, evType string, w int) Control {
+		return Control{FrameworkID: frameworkID, OrgID: orgID, ControlID: id, Title: title, Description: desc, Domain: domain, EvidenceType: evType, Weight: w}
+	}
+	return []Control{
+		// Art. 3 — Allgemeine Anforderungen
+		c("DORA-S.1", "Organisatorischer Rahmen und Governance (vereinfacht)",
+			"Stelle sicher, dass die Geschäftsleitung die Gesamtverantwortung für den IKT-Risikomanagementrahmen trägt und die internen Zuständigkeiten klar geregelt sind. Nachweis: Governance-Dokument, Beschluss der Geschäftsführung, Aufgabenverteilung.",
+			"Governance & Organisation", "manual", 3),
+		c("DORA-S.2", "IKT-Risikobewertung (vereinfacht)",
+			"Führe mindestens jährlich eine vereinfachte Bewertung der IKT-Risiken durch, die alle kritischen Systeme und Abhängigkeiten berücksichtigt. Nachweis: Risikobewertungsdokument mit Datum, Risikoeigentümer, Bewertungsmatrix.",
+			"Governance & Organisation", "manual", 3),
+		c("DORA-S.3", "IKT-Asset-Inventar (vereinfacht)",
+			"Führe ein aktuelles Inventar aller IKT-Assets, die für die Erbringung der Finanzdienstleistung wesentlich sind. Nachweis: Asset-Liste mit Klassifizierung (kritisch/nicht-kritisch), letzte Aktualisierung.",
+			"Governance & Organisation", "manual", 2),
+		// Art. 4 — IKT-Risikomanagement-Policy
+		c("DORA-S.4", "IKT-Risikomanagement-Policy (vereinfacht)",
+			"Erstelle und halte eine dokumentierte Policy für das IKT-Risikomanagement, die Schutzziele, Risikotoleranz und Verantwortlichkeiten definiert. Nachweis: Policy-Dokument mit Genehmigungsdatum, Versionierung.",
+			"Risikomanagement-Policy", "manual", 3),
+		c("DORA-S.5", "IKT-Sicherheitsleitlinie",
+			"Dokumentiere Sicherheitsanforderungen für den Betrieb kritischer IKT-Systeme (Zugriffskontrollen, Verschlüsselung, Netzwerksicherheit). Nachweis: Sicherheitsleitlinie, technische Konfigurationsstandards.",
+			"Risikomanagement-Policy", "manual", 2),
+		// Art. 5 — Schutz und Erkennung
+		c("DORA-S.6", "Technische Schutzmaßnahmen (vereinfacht)",
+			"Implementiere grundlegende technische Sicherheitskontrollen: Firewalls, Zugriffskontrolle, Patch-Management, Antiviren-/EDR-Schutz. Nachweis: Maßnahmenkatalog, Konfigurationsnachweis, Patch-Protokoll.",
+			"Schutz & Erkennung", "manual", 3),
+		c("DORA-S.7", "Erkennung von IKT-Anomalien (vereinfacht)",
+			"Implementiere angemessene Mechanismen zur Erkennung von Anomalien und IKT-Vorfällen (z.B. Logging, Alerting, einfaches SIEM). Nachweis: Logging-Konfiguration, Alert-Regeln, Eskalationsprozess.",
+			"Schutz & Erkennung", "automated", 2),
+		// Art. 6 — Reaktion und Wiederherstellung
+		c("DORA-S.8", "Reaktionsplan für IKT-Vorfälle (vereinfacht)",
+			"Definiere einen einfachen Reaktionsplan für IKT-Vorfälle mit klaren Eskalationspfaden, Kommunikationskanälen und Zuständigkeiten. Nachweis: Incident-Response-Plan, Kontaktliste, Testablauf.",
+			"Reaktion & Wiederherstellung", "manual", 3),
+		c("DORA-S.9", "Backup und Wiederherstellung (vereinfacht)",
+			"Stelle regelmäßige Backups kritischer Daten und Systeme sicher und verifiziere die Wiederherstellungsfähigkeit durch Tests. Nachweis: Backup-Policy, Backup-Protokoll, Restore-Test-Ergebnis mit Datum.",
+			"Reaktion & Wiederherstellung", "automated", 3),
+		c("DORA-S.10", "Business-Continuity-Plan (vereinfacht)",
+			"Erstelle einen einfachen Business-Continuity-Plan für kritische IKT-Systeme mit RTO/RPO-Vorgaben. Nachweis: BCP-Dokument, RTO/RPO-Tabelle, letzte Testübung.",
+			"Reaktion & Wiederherstellung", "manual", 2),
+		// Art. 7 — Tests
+		c("DORA-S.11", "IKT-Resilienztests (vereinfacht)",
+			"Führe jährlich angemessene Tests der IKT-Resilienz durch, z.B. Vulnerability Scans oder einfache Penetrationstests. TLPT ist für den vereinfachten Rahmen nicht verpflichtend. Nachweis: Testplan, Bericht mit Datum, Maßnahmenverfolgung.",
+			"Tests", "manual", 2),
+		// Art. 8 — Drittparteien-IKT-Risiko (vereinfacht)
+		c("DORA-S.12", "Drittparteien-IKT-Risiko (vereinfacht)",
+			"Identifiziere und bewerte die IKT-Risiken durch Drittanbieter. Für den vereinfachten Rahmen ist kein vollständiges CTPP-Register erforderlich. Nachweis: Liste kritischer IKT-Drittanbieter, Risikobewertung, wesentliche Vertragsklauseln.",
+			"Drittparteienrisiken", "manual", 2),
+		c("DORA-S.13", "Ausstiegsstrategie für kritische IKT-Drittanbieter (vereinfacht)",
+			"Definiere für jeden kritischen IKT-Drittanbieter eine grundlegende Ausstiegsstrategie, um Abhängigkeitsrisiken zu begrenzen. Nachweis: Exit-Plan-Dokument oder -Abschnitt im Drittparteienregister.",
+			"Drittparteienrisiken", "manual", 1),
+		// Art. 9 — Meldeverfahren
+		c("DORA-S.14", "Meldeverfahren für schwerwiegende IKT-Vorfälle (vereinfacht)",
+			"Stelle sicher, dass schwerwiegende IKT-Vorfälle gemäß DORA Art. 19–20 fristgerecht an die zuständige Behörde (BaFin) gemeldet werden. Nachweis: Meldetemplate, Klassifizierungsschema, Meldungsarchiv.",
+			"Incident-Meldung", "manual", 3),
+		// Art. 10 — Berichterstattung an Leitungsorgan
+		c("DORA-S.15", "Berichterstattung an das Leitungsorgan",
+			"Berichte mindestens jährlich an das Leitungsorgan über den Stand des IKT-Risikomanagements, aufgetretene Vorfälle und Verbesserungsmaßnahmen. Nachweis: Berichtsdokument mit Datum, Sitzungsprotokoll.",
+			"Governance & Organisation", "manual", 2),
+	}
+}
+
 func doraControls(frameworkID, orgID string) []Control {
 	c := func(id, title, desc, domain, evType string, w int) Control {
 		return Control{FrameworkID: frameworkID, OrgID: orgID, ControlID: id, Title: title, Description: desc, Domain: domain, EvidenceType: evType, Weight: w}

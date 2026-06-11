@@ -515,12 +515,13 @@ type CkFrameworkMappings struct {
 }
 
 type CkFrameworks struct {
-	ID        string             `json:"id"`
-	OrgID     string             `json:"org_id"`
-	Name      string             `json:"name"`
-	Version   string             `json:"version"`
-	IsBuiltin bool               `json:"is_builtin"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID              string             `json:"id"`
+	OrgID           string             `json:"org_id"`
+	Name            string             `json:"name"`
+	Version         string             `json:"version"`
+	IsBuiltin       bool               `json:"is_builtin"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	FrameworkVariant string            `json:"framework_variant"`
 }
 
 type CkIncidentReports struct {

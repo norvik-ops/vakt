@@ -31,9 +31,28 @@ export function useFramework(frameworkId: string) {
 
 export function useEnableFramework() {
   const queryClient = useQueryClient()
-  return useMutation<Framework, Error, string>({
-    mutationFn: (name: string) =>
-      apiFetch<Framework>(`/vaktcomply/frameworks/${name}/enable`, { method: 'POST' }),
+  return useMutation<Framework, Error, { name: string; variant?: 'full' | 'simplified' }>({
+    mutationFn: ({ name, variant }) =>
+      apiFetch<Framework>(`/vaktcomply/frameworks/${name}/enable`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: variant ? JSON.stringify({ variant }) : undefined,
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'frameworks'] })
+    },
+  })
+}
+
+export function useSwitchDORAVariant() {
+  const queryClient = useQueryClient()
+  return useMutation<Framework, Error, 'full' | 'simplified'>({
+    mutationFn: (variant) =>
+      apiFetch<Framework>('/vaktcomply/frameworks/dora/variant', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variant }),
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'frameworks'] })
     },

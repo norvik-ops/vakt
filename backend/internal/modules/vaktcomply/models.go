@@ -8,13 +8,24 @@ import (
 
 // Framework represents a compliance framework enabled for an organisation.
 type Framework struct {
-	ID             string    `json:"id"`
-	OrgID          string    `json:"org_id"`
-	Name           string    `json:"name"`
-	Version        string    `json:"version"`
-	IsBuiltin      bool      `json:"is_builtin"`
-	ReadinessScore float64   `json:"readiness_score,omitempty"`
-	CreatedAt      time.Time `json:"created_at"`
+	ID               string    `json:"id"`
+	OrgID            string    `json:"org_id"`
+	Name             string    `json:"name"`
+	Version          string    `json:"version"`
+	IsBuiltin        bool      `json:"is_builtin"`
+	ReadinessScore   float64   `json:"readiness_score,omitempty"`
+	FrameworkVariant string    `json:"framework_variant"` // "full" | "simplified" (DORA Art.16)
+	CreatedAt        time.Time `json:"created_at"`
+}
+
+// EnableFrameworkInput holds optional body params for POST /frameworks/:name/enable.
+type EnableFrameworkInput struct {
+	Variant string `json:"variant" validate:"omitempty,oneof=full simplified"`
+}
+
+// SwitchDORAVariantInput holds validated input for PUT /frameworks/dora/variant.
+type SwitchDORAVariantInput struct {
+	Variant string `json:"variant" validate:"required,oneof=full simplified"`
 }
 
 // Control represents an individual compliance control within a framework.

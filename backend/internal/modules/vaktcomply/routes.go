@@ -62,6 +62,8 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	// to gate CRA behind a Pro license — FeatureCRA must be active to enable the CRA framework.
 	g.POST("/frameworks/CRA/enable", h.EnableFramework, rw, features.Require(features.FeatureCRA))
 	g.POST("/frameworks/:name/enable", h.EnableFramework, rw)
+	// CRITICAL: dora/variant must be registered BEFORE /:id to avoid route collision.
+	g.PUT("/frameworks/dora/variant", h.SwitchDORAVariant, rw)
 	g.DELETE("/frameworks/:id", h.DeleteFramework, rw)
 	// CRITICAL: overdue-reviews and export/xlsx are static paths and must be registered BEFORE /controls/:id
 	// to prevent Echo from matching them as param routes.

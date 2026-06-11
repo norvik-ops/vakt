@@ -32,13 +32,18 @@ func NewRepository(pool *pgxpool.Pool) *Repository {
 // domain type. ReadinessScore is not stored in the table — it's computed
 // per-call in service layer.
 func frameworkFromCkFrameworks(r db.CkFrameworks) Framework {
+	variant := r.FrameworkVariant
+	if variant == "" {
+		variant = "full"
+	}
 	return Framework{
-		ID:        r.ID,
-		OrgID:     r.OrgID,
-		Name:      r.Name,
-		Version:   r.Version,
-		IsBuiltin: r.IsBuiltin,
-		CreatedAt: ckTsToTime(r.CreatedAt),
+		ID:               r.ID,
+		OrgID:            r.OrgID,
+		Name:             r.Name,
+		Version:          r.Version,
+		IsBuiltin:        r.IsBuiltin,
+		FrameworkVariant: variant,
+		CreatedAt:        ckTsToTime(r.CreatedAt),
 	}
 }
 
@@ -421,18 +426,32 @@ func policyDateFromTimePtr(t *time.Time) pgtype.Date {
 // --- Frameworks ---
 
 // CreateFramework inserts a new framework for an organisation.
-func (r *Repository) CreateFramework(ctx context.Context, orgID, name, version string, isBuiltin bool) (*Framework, error) {
+// variant is "full" or "simplified" (DORA Art. 16); empty defaults to "full".
+func (r *Repository) CreateFramework(ctx context.Context, orgID, name, version string, isBuiltin bool, variant string) (*Framework, error) {
+	if variant == "" {
+		variant = "full"
+	}
 	row, err := r.q.CreateCKFramework(ctx, db.CreateCKFrameworkParams{
-		OrgID:     orgID,
-		Name:      name,
-		Version:   version,
-		IsBuiltin: isBuiltin,
+		OrgID:            orgID,
+		Name:             name,
+		Version:          version,
+		IsBuiltin:        isBuiltin,
+		FrameworkVariant: variant,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create framework: %w", err)
 	}
 	f := frameworkFromCkFrameworks(row)
 	return &f, nil
+}
+
+// UpdateFrameworkVariant sets the framework_variant column for a framework.
+func (r *Repository) UpdateFrameworkVariant(ctx context.Context, orgID, frameworkID, variant string) error {
+	return r.q.UpdateCKFrameworkVariant(ctx, db.UpdateCKFrameworkVariantParams{
+		FrameworkVariant: variant,
+		ID:               frameworkID,
+		OrgID:            orgID,
+	})
 }
 
 // ListFrameworks returns all frameworks enabled for an organisation.

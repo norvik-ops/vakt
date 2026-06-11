@@ -169,7 +169,7 @@ func TestBuiltinVersion(t *testing.T) {
 // --- builtinControls ---
 
 func TestBuiltinControls_NIS2(t *testing.T) {
-	controls := builtinControls("fw-1", "org-1", "NIS2")
+	controls := builtinControls("fw-1", "org-1", "NIS2", "")
 	assert.NotEmpty(t, controls)
 	for _, c := range controls {
 		assert.Equal(t, "fw-1", c.FrameworkID)
@@ -182,17 +182,17 @@ func TestBuiltinControls_NIS2(t *testing.T) {
 }
 
 func TestBuiltinControls_ISO27001(t *testing.T) {
-	controls := builtinControls("fw-2", "org-1", "ISO27001")
+	controls := builtinControls("fw-2", "org-1", "ISO27001", "")
 	assert.NotEmpty(t, controls)
 }
 
 func TestBuiltinControls_BSI(t *testing.T) {
-	controls := builtinControls("fw-3", "org-1", "BSI")
+	controls := builtinControls("fw-3", "org-1", "BSI", "")
 	assert.NotEmpty(t, controls)
 }
 
 func TestBuiltinControls_Unknown(t *testing.T) {
-	controls := builtinControls("fw-4", "org-1", "MyCustomFramework")
+	controls := builtinControls("fw-4", "org-1", "MyCustomFramework", "")
 	assert.Empty(t, controls)
 }
 

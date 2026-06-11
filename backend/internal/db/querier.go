@@ -594,6 +594,7 @@ type Querier interface {
 	//   - maturity_score = NULL → behalten; sonst überschreiben.
 	//   - due_date = NULL → behalten; sonst überschreiben.
 	UpdateCKControl(ctx context.Context, arg UpdateCKControlParams) (int64, error)
+	UpdateCKFrameworkVariant(ctx context.Context, arg UpdateCKFrameworkVariantParams) error
 	// Partial Update via COALESCE + NULLIF. approved_by hat eine Spezialregel:
 	// "" wird zu NULL (explizit löschen), nil-Input behält den Wert.
 	UpdateCKControlException(ctx context.Context, arg UpdateCKControlExceptionParams) (CkControlExceptions, error)

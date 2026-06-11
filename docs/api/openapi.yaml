@@ -423,6 +423,10 @@ components:
           type: integer
         score:
           type: number
+        framework_variant:
+          type: string
+          enum: [full, simplified]
+          description: "DORA framework variant — 'full' (Art. 5–15) or 'simplified' (Art. 16). Ignored for non-DORA frameworks."
 
     Control:
       type: object
@@ -2872,9 +2876,45 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                variant:
+                  type: string
+                  enum: [full, simplified]
+                  description: "For DORA only — 'full' (Art. 5–15, default) or 'simplified' (Art. 16)"
       responses:
         '201':
           description: Framework enabled
+
+  /vaktcomply/frameworks/dora/variant:
+    put:
+      summary: Switch the enabled DORA framework between full (Art. 5–15) and simplified (Art. 16) variant
+      tags: [vaktcomply]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [variant]
+              properties:
+                variant:
+                  type: string
+                  enum: [full, simplified]
+      responses:
+        '200':
+          description: DORA framework updated with new variant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Framework'
+        '404':
+          description: DORA framework not enabled for this organisation
 
   /vaktcomply/frameworks/{id}/controls:
     get:

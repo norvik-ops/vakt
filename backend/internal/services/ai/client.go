@@ -92,7 +92,7 @@ func (c *AIClient) send(ctx context.Context, messages []chatMessage, maxTokens i
 		MaxTokens: maxTokens,
 	})
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/v1/chat/completions", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("build request: %w", err)
 	}
@@ -152,7 +152,7 @@ func (c *AIClient) StreamGenerate(ctx context.Context, system, userPrompt string
 		return nil, fmt.Errorf("marshal stream request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/v1/chat/completions", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("build stream request: %w", err)
 	}
@@ -219,7 +219,7 @@ func (c *AIClient) IsAvailable(ctx context.Context) bool {
 	if c.baseURL == "" {
 		return false
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/v1/models", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/models", nil)
 	if err != nil {
 		return false
 	}

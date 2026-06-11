@@ -6,16 +6,16 @@ Diese Anleitung führt dich von null bis zu einer laufenden Vakt-Instanz.
 
 ## Systemanforderungen
 
-| | Minimum | Empfohlen | Mit KI-Berater (Standard) |
-|---|---|---|---|
-| **CPU** | 2 vCPU | 4 vCPU | 4 vCPU — kein GPU nötig |
-| **RAM** | 2 GB | 4 GB | 4 GB (+2 GB für das Modell) |
-| **Disk** | 20 GB SSD | 40 GB SSD | 40 GB SSD (+3 GB für das Modell) |
-| **Docker Engine** | 24+ | 24+ | 24+ |
-| **Docker Compose** | v2 | v2 | v2 |
-| **Betriebssystem** | Linux (empfohlen), macOS, Windows (WSL2) | Linux | Linux |
+| | Minimum | Empfohlen | Mit KI (Minimum) | Mit KI (Empfohlen) |
+|---|---|---|---|---|
+| **CPU** | 2 vCPU | 4 vCPU | 4 vCPU | 4 vCPU |
+| **RAM** | 2 GB | 4 GB | **8 GB** | **16 GB** |
+| **Disk** | 20 GB SSD | 40 GB SSD | 40 GB SSD (+5 GB für das Modell) | 40 GB SSD (+5 GB für das Modell) |
+| **Docker Engine** | 24+ | 24+ | 24+ | 24+ |
+| **Docker Compose** | v2 | v2 | v2 | v2 |
+| **Betriebssystem** | Linux (empfohlen), macOS, Windows (WSL2) | Linux | Linux | Linux |
 
-Der KI-Berater läuft standardmäßig lokal über einen Ollama-Container — rein auf CPU, kein GPU, kein Cloud-API-Key erforderlich. Wer ihn nicht braucht, kann ihn mit `VAKT_AI_PROVIDER=disabled` abschalten.
+Der KI-Berater läuft standardmäßig lokal über einen Ollama-Container — rein auf CPU, kein GPU, kein Cloud-API-Key erforderlich. Das Default-Modell `qwen2.5:7b` (~4.5 GB RAM, Apache 2.0) wird beim ersten `docker compose up` automatisch gezogen; kein manueller Schritt nötig. Wer ihn nicht braucht, kann ihn mit `VAKT_AI_PROVIDER=disabled` abschalten — zusätzlich sollten `ollama` und `ollama-init` gestoppt werden (`docker compose stop ollama ollama-init`), damit der RAM-Footprint entfällt.
 
 ---
 
@@ -99,13 +99,20 @@ Die vollständige Referenz aller Variablen findest du in der [Konfigurationsrefe
 
 ### Option A: Lokal mit Ollama (Standard, empfohlen)
 
-Der Ollama-Container ist bereits in `docker-compose.yml` enthalten. Nach dem ersten Start das Modell einmalig laden:
+Der Ollama-Container ist bereits in `docker-compose.yml` enthalten und startet automatisch mit `docker compose up`. Der `ollama-init`-Container zieht das Default-Modell `qwen2.5:7b` beim ersten Start automatisch (~4.5 GB, einmalig). Kein manueller Schritt nötig — nach dem Download steht die KI offline zur Verfügung.
+
+Modell wechseln (optional):
 
 ```bash
-docker compose exec ollama ollama pull qwen2.5:3b
-```
+# Anderes Modell ziehen
+docker compose exec ollama ollama pull phi3.5:mini
 
-Das Modell (~2 GB) wird lokal gespeichert und steht danach offline zur Verfügung.
+# In .env anpassen
+VAKT_AI_MODEL=phi3.5:mini
+
+# API neu starten
+docker compose restart api worker
+```
 
 ### Option B: Cloud-Provider (z. B. Mistral AI)
 
@@ -125,6 +132,14 @@ Alle OpenAI-kompatiblen Endpunkte funktionieren: OpenAI, Mistral, Groq, Ollama, 
 ```env
 VAKT_AI_PROVIDER=disabled
 ```
+
+Damit werden die KI-Buttons im UI ausgeblendet. Um auch den RAM-Footprint zu entfernen, Ollama-Container stoppen:
+
+```bash
+docker compose stop ollama ollama-init
+```
+
+Alternativ die Services `ollama` und `ollama-init` aus der `docker-compose.yml` entfernen (empfohlen für dauerhaft kleine VMs mit < 8 GB RAM).
 
 ---
 

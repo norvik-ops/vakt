@@ -8,29 +8,29 @@
 -- ── Frameworks ──────────────────────────────────────────────────────────────
 
 -- name: CreateCKFramework :one
-INSERT INTO ck_frameworks (org_id, name, version, is_builtin)
-VALUES ($1, $2, $3, $4)
-RETURNING id, org_id, name, version, is_builtin, created_at;
+INSERT INTO ck_frameworks (org_id, name, version, is_builtin, framework_variant)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, org_id, name, version, is_builtin, created_at, framework_variant;
 
 -- name: ListCKFrameworks :many
-SELECT id, org_id, name, version, is_builtin, created_at
+SELECT id, org_id, name, version, is_builtin, created_at, framework_variant
 FROM ck_frameworks
 WHERE org_id = $1
 ORDER BY created_at ASC;
 
 -- name: GetCKFramework :one
-SELECT id, org_id, name, version, is_builtin, created_at
+SELECT id, org_id, name, version, is_builtin, created_at, framework_variant
 FROM ck_frameworks
 WHERE id = $1 AND org_id = $2;
 
 -- name: FindCKFrameworkByName :one
-SELECT id, org_id, name, version, is_builtin, created_at
+SELECT id, org_id, name, version, is_builtin, created_at, framework_variant
 FROM ck_frameworks
 WHERE org_id = $1 AND name = $2
 LIMIT 1;
 
 -- name: ListAllBuiltinCKFrameworks :many
-SELECT id, org_id, name, version, is_builtin, created_at
+SELECT id, org_id, name, version, is_builtin, created_at, framework_variant
 FROM ck_frameworks
 WHERE is_builtin = TRUE
 ORDER BY created_at ASC;
@@ -41,6 +41,11 @@ SELECT EXISTS(SELECT 1 FROM ck_frameworks WHERE org_id = $1 AND name = $2);
 -- name: DeleteCKFramework :execrows
 DELETE FROM ck_frameworks
 WHERE id = $1 AND org_id = $2;
+
+-- name: UpdateCKFrameworkVariant :exec
+UPDATE ck_frameworks
+SET framework_variant = $1
+WHERE id = $2 AND org_id = $3;
 
 -- ── Controls ────────────────────────────────────────────────────────────────
 

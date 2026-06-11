@@ -232,7 +232,7 @@ func Load() (*Config, error) {
 		AIProvider:          getEnv("VAKT_AI_PROVIDER", "disabled"),
 		AIBaseURL:           getEnv("VAKT_AI_BASE_URL", "http://ollama:11434/v1"),
 		AIAPIKey:            getEnv("VAKT_AI_API_KEY", ""),
-		AIModel:             getEnv("VAKT_AI_MODEL", "llama3.2:3b"),
+		AIModel:             getEnv("VAKT_AI_MODEL", "qwen2.5:7b"),
 		AIRateLimitRPM:      getEnvInt("VAKT_AI_RATE_LIMIT_RPM", 30),
 		AIDailyTokenLimit:   getEnvInt("VAKT_AI_DAILY_TOKEN_LIMIT_PER_ORG", 0),
 		AICacheTTLSeconds:   getEnvInt("VAKT_AI_CACHE_TTL_SECONDS", 3600),
