@@ -325,53 +325,141 @@ func (s *Service) SeedFrameworkMappings(ctx context.Context) error {
 		bsi  = "BSI"
 	)
 
-	// ISO 27001 (2013 numbering as stored in DB) ↔ NIS2 bidirectional mappings.
-	// NIS2 Art. 21 §2 sub-clauses mapped to the nearest ISO 27001 controls present in the DB.
+	// ISO 27001:2022 ↔ NIS2 / §30 BISG bidirectional mappings.
+	// Source: BSI Onepager "NIS-2 und ISO/IEC 27001:2022" (§30 Abs. 2 S. 2 Nr. 1–10).
+	// §30 BISG Nr. = NIS2 Art. 21 §2 sub-clause (a)–(j); NIS2 control IDs as stored in DB.
 	isoNIS2 := []entry{
-		// §2(a) — risk analysis / policies: A.5.1 ↔ NIS2-A.1 (IS-Richtlinie)
-		{iso, "A.5.1", nis2, "NIS2-A.1", "equivalent"},
-		// §2(b) — incident handling: A.16.1 ↔ NIS2-B.1 (Incident-Response-Richtlinie)
-		{iso, "A.16.1", nis2, "NIS2-B.1", "equivalent"},
-		// §2(b) — incident handling: A.16.1 ↔ NIS2-B.5 (24h-Meldung)
-		{iso, "A.16.1", nis2, "NIS2-B.5", "partial"},
-		// §2(c) — monitoring / business continuity: A.12.1 ↔ NIS2-C.1 (BCM-Richtlinie)
-		{iso, "A.12.1", nis2, "NIS2-C.1", "partial"},
-		// §2(c) — business continuity: A.17.1 ↔ NIS2-C.1
-		{iso, "A.17.1", nis2, "NIS2-C.1", "equivalent"},
-		// §2(e) — vulnerability management: A.12.6 ↔ NIS2-E.3
-		{iso, "A.12.6", nis2, "NIS2-E.3", "equivalent"},
-		// §2(e) — vulnerability management: A.12.6 ↔ NIS2-E.4 (Patch-Management)
-		{iso, "A.12.6", nis2, "NIS2-E.4", "partial"},
-		// §2(g) — awareness training: A.8.1 is asset mgmt; closest for training in DB is A.6.1.1 (roles)
-		// Map to NIS2-G.2 (Sicherheitsschulung)
-		{iso, "A.6.1", nis2, "NIS2-G.2", "partial"},
-		// §2(h) — cryptography: A.10.1 ↔ NIS2-H.1 (Kryptographierichtlinie)
-		{iso, "A.10.1", nis2, "NIS2-H.1", "equivalent"},
-		// §2(i) — supply chain: A.18.1 ↔ NIS2-D.1 (Lieferanten-Sicherheitsrichtlinie)
-		{iso, "A.18.1", nis2, "NIS2-D.1", "partial"},
+		// §30 Nr. 1 / §2(a) — Risikoanalyse + IT-Sicherheitskonzept → NIS2-A.1
+		{iso, "A.5.1",  nis2, "NIS2-A.1", "equivalent"}, // Policies for IS
+		{iso, "A.5.2",  nis2, "NIS2-A.1", "partial"},    // IS roles and responsibilities
+		{iso, "A.5.3",  nis2, "NIS2-A.1", "partial"},    // Segregation of duties
+		{iso, "A.5.4",  nis2, "NIS2-A.1", "partial"},    // Management responsibilities
+		{iso, "A.5.7",  nis2, "NIS2-A.1", "partial"},    // Threat intelligence
+		{iso, "A.5.31", nis2, "NIS2-A.1", "partial"},    // Legal/regulatory requirements
+		{iso, "A.5.35", nis2, "NIS2-A.1", "partial"},    // Independent review of IS
+		{iso, "A.5.36", nis2, "NIS2-A.1", "equivalent"}, // Compliance with IS policies
+		{iso, "A.8.34", nis2, "NIS2-A.1", "partial"},    // Protection during audit testing
+
+		// §30 Nr. 2 / §2(b) — Bewältigung von Sicherheitsvorfällen → NIS2-B.1, NIS2-B.5
+		{iso, "A.5.24", nis2, "NIS2-B.1", "equivalent"}, // Incident management planning
+		{iso, "A.5.25", nis2, "NIS2-B.1", "partial"},    // Assessment of IS events
+		{iso, "A.5.26", nis2, "NIS2-B.1", "partial"},    // Response to IS incidents
+		{iso, "A.5.27", nis2, "NIS2-B.1", "partial"},    // Learning from incidents
+		{iso, "A.5.28", nis2, "NIS2-B.1", "partial"},    // Collection of evidence
+		{iso, "A.6.8",  nis2, "NIS2-B.1", "partial"},    // IS event reporting
+		{iso, "A.8.15", nis2, "NIS2-B.1", "partial"},    // Logging (incident evidence)
+		{iso, "A.8.16", nis2, "NIS2-B.1", "partial"},    // Monitoring activities
+		{iso, "A.8.17", nis2, "NIS2-B.1", "partial"},    // Clock synchronisation
+		{iso, "A.6.8",  nis2, "NIS2-B.5", "equivalent"}, // IS event reporting (24h-Meldung)
+		{iso, "A.5.24", nis2, "NIS2-B.5", "partial"},    // Incident planning includes notification
+
+		// §30 Nr. 3 / §2(c) — Business Continuity Management → NIS2-C.1, NIS2-C.4
+		{iso, "A.5.29", nis2, "NIS2-C.1", "equivalent"}, // IS during disruption
+		{iso, "A.5.30", nis2, "NIS2-C.1", "equivalent"}, // ICT readiness for BCM
+		{iso, "A.5.26", nis2, "NIS2-C.1", "partial"},    // Response to incidents (crisis)
+		{iso, "A.7.11", nis2, "NIS2-C.1", "partial"},    // Supporting utilities
+		{iso, "A.8.14", nis2, "NIS2-C.1", "partial"},    // Redundancy of processing
+		{iso, "A.8.13", nis2, "NIS2-C.4", "equivalent"}, // Information backup
+
+		// §30 Nr. 4 / §2(d) — Sichere Lieferkette → NIS2-D.1
+		{iso, "A.5.19", nis2, "NIS2-D.1", "equivalent"}, // IS in supplier relationships
+		{iso, "A.5.20", nis2, "NIS2-D.1", "equivalent"}, // IS in supplier agreements
+		{iso, "A.5.21", nis2, "NIS2-D.1", "partial"},    // IS in ICT supply chain
+		{iso, "A.5.22", nis2, "NIS2-D.1", "partial"},    // Supplier service monitoring
+		{iso, "A.8.30", nis2, "NIS2-D.1", "partial"},    // Outsourced development
+
+		// §30 Nr. 5 / §2(e) — Sicherheitsmaßnahmen + Schwachstellenmanagement → NIS2-E.3, NIS2-E.4
+		{iso, "A.8.8",  nis2, "NIS2-E.3", "equivalent"}, // Technical vulnerability management
+		{iso, "A.8.9",  nis2, "NIS2-E.3", "partial"},    // Configuration management
+		{iso, "A.8.7",  nis2, "NIS2-E.3", "partial"},    // Protection against malware
+		{iso, "A.5.23", nis2, "NIS2-E.3", "partial"},    // IS for use of cloud services
+		{iso, "A.5.21", nis2, "NIS2-E.3", "partial"},    // IS in ICT supply chain
+		{iso, "A.7.3",  nis2, "NIS2-E.3", "partial"},    // Securing offices, rooms, facilities
+		{iso, "A.7.5",  nis2, "NIS2-E.3", "partial"},    // Protecting against physical threats
+		{iso, "A.7.13", nis2, "NIS2-E.3", "partial"},    // Equipment maintenance
+		{iso, "A.8.16", nis2, "NIS2-E.3", "partial"},    // Monitoring activities
+		{iso, "A.8.20", nis2, "NIS2-E.3", "partial"},    // Network security
+		{iso, "A.8.22", nis2, "NIS2-E.3", "partial"},    // Segregation of networks
+		{iso, "A.8.25", nis2, "NIS2-E.3", "partial"},    // Secure development life cycle
+		{iso, "A.8.29", nis2, "NIS2-E.3", "partial"},    // Security testing
+		{iso, "A.8.31", nis2, "NIS2-E.3", "partial"},    // Separation of dev/test/prod
+		{iso, "A.8.33", nis2, "NIS2-E.3", "partial"},    // Test information
+		{iso, "A.8.34", nis2, "NIS2-E.3", "partial"},    // Protection during audit testing
+		{iso, "A.8.8",  nis2, "NIS2-E.4", "equivalent"}, // Vuln mgmt covers patching
+		{iso, "A.8.32", nis2, "NIS2-E.4", "partial"},    // Change management (patches)
+
+		// §30 Nr. 7 / §2(g) — Schulungen + Sensibilisierungsmaßnahmen → NIS2-G.2
+		{iso, "A.6.3",  nis2, "NIS2-G.2", "equivalent"}, // IS awareness, education, training
+		{iso, "A.8.7",  nis2, "NIS2-G.2", "partial"},    // Malware protection (user-behaviour)
+
+		// §30 Nr. 8 / §2(h) — Kryptografische Verfahren → NIS2-H.1
+		{iso, "A.8.24", nis2, "NIS2-H.1", "equivalent"}, // Use of cryptography
+		{iso, "A.5.31", nis2, "NIS2-H.1", "partial"},    // Legal requirements on cryptography
+
+		// §30 Nr. 9 / §2(i) — Personalsicherheit, Zugriffskontrolle + Assetmanagement
+		// Asset management → NIS2-A.8
+		{iso, "A.5.9",  nis2, "NIS2-A.8", "equivalent"}, // Inventory of assets
+		{iso, "A.5.10", nis2, "NIS2-A.8", "partial"},    // Acceptable use of assets
+		{iso, "A.5.11", nis2, "NIS2-A.8", "partial"},    // Return of assets
+		{iso, "A.5.12", nis2, "NIS2-A.8", "partial"},    // Classification of information
+		{iso, "A.5.13", nis2, "NIS2-A.8", "partial"},    // Labelling of information
+		{iso, "A.5.14", nis2, "NIS2-A.8", "partial"},    // Information transfer
+		{iso, "A.7.10", nis2, "NIS2-A.8", "partial"},    // Storage media
+		// HR / people security → NIS2-A.6
+		{iso, "A.6.1",  nis2, "NIS2-A.6", "equivalent"}, // Screening
+		{iso, "A.6.2",  nis2, "NIS2-A.6", "partial"},    // Terms and conditions of employment
+		{iso, "A.6.4",  nis2, "NIS2-A.6", "partial"},    // Disciplinary process
+		{iso, "A.6.5",  nis2, "NIS2-A.6", "partial"},    // Responsibilities after termination
+		{iso, "A.7.1",  nis2, "NIS2-A.6", "partial"},    // Physical security perimeters
+		{iso, "A.7.4",  nis2, "NIS2-A.6", "partial"},    // Physical security monitoring
+		{iso, "A.7.7",  nis2, "NIS2-A.6", "partial"},    // Clear desk and clear screen
+		// Access control → NIS2-F.1
+		{iso, "A.5.15", nis2, "NIS2-F.1", "equivalent"}, // Access control policy
+		{iso, "A.5.16", nis2, "NIS2-F.1", "equivalent"}, // Identity management
+		{iso, "A.5.17", nis2, "NIS2-F.1", "partial"},    // Authentication information
+		{iso, "A.5.18", nis2, "NIS2-F.1", "partial"},    // Access rights
+		{iso, "A.5.28", nis2, "NIS2-F.1", "partial"},    // Collection of evidence
+		{iso, "A.8.2",  nis2, "NIS2-F.1", "partial"},    // Privileged access rights
+		{iso, "A.8.3",  nis2, "NIS2-F.1", "partial"},    // Information access restriction
+		{iso, "A.8.18", nis2, "NIS2-F.1", "partial"},    // Use of privileged utility programs
+		{iso, "A.8.21", nis2, "NIS2-F.1", "partial"},    // Security of network services
+
+		// §30 Nr. 10 / §2(j) — Multi-Faktor-Authentisierung + gesicherte Kommunikation
+		// MFA → NIS2-F.1 (secure authentication is part of access control)
+		{iso, "A.8.5",  nis2, "NIS2-F.1", "equivalent"}, // Secure authentication (incl. MFA)
+		// Secure communications → NIS2-E.8
+		{iso, "A.8.20", nis2, "NIS2-E.8", "equivalent"}, // Network security
+		{iso, "A.8.21", nis2, "NIS2-E.8", "equivalent"}, // Security of network services
+		{iso, "A.8.22", nis2, "NIS2-E.8", "partial"},    // Segregation of networks
+		{iso, "A.7.2",  nis2, "NIS2-E.8", "partial"},    // Physical entry controls
+
+		// ENISA TIG v1.2 — additions: Req. 6.x (Secure Development) → NIS2-E.1
+		// Source: ENISA Technical Implementation Guidance EU 2024/2690, Req. 6.2.1
+		{iso, "A.8.26", nis2, "NIS2-E.1", "equivalent"}, // Application security requirements
+		{iso, "A.8.27", nis2, "NIS2-E.1", "partial"},    // Secure systems architecture
+		{iso, "A.8.28", nis2, "NIS2-E.1", "partial"},    // Secure coding
+		{iso, "A.5.8",  nis2, "NIS2-E.1", "partial"},    // IS in project management
+
+		// ENISA TIG v1.2 — Req. 13.x (Physical Security) missing A.7.x entries
+		{iso, "A.7.8",  nis2, "NIS2-E.3", "partial"},    // Workplace security (clean desk/area)
+		{iso, "A.7.12", nis2, "NIS2-E.3", "partial"},    // Cabling security
 	}
 
-	// ISO 27001 (2013 numbering) ↔ BSI Grundschutz bidirectional mappings.
+	// ISO 27001:2022 ↔ BSI IT-Grundschutz bidirectional mappings.
 	// BSI codes as stored in DB: BSI-ORP.1, BSI-ORP.2, BSI-DER.2.1, BSI-OPS.1.1.2, BSI-CON.3, BSI-NET.1.1, BSI-SYS.1.1.
 	isoBSI := []entry{
-		// A.5.1 (Policies) ↔ BSI-ORP.1 (Organisation)
-		{iso, "A.5.1", bsi, "BSI-ORP.1", "equivalent"},
-		// A.6.1 (Internal Organisation / Personnel) ↔ BSI-ORP.2 (Personnel)
-		{iso, "A.6.1", bsi, "BSI-ORP.2", "partial"},
-		// A.8.1 (Asset Management) ↔ BSI-OPS.1.1.2 (IT-Administration/Operations)
-		{iso, "A.8.1", bsi, "BSI-OPS.1.1.2", "partial"},
-		// A.12.6 (Vulnerability Management / Patch) ↔ BSI-OPS.1.1.2 (proper IT administration incl. patching)
-		{iso, "A.12.6", bsi, "BSI-OPS.1.1.2", "equivalent"},
-		// A.12.3 (Data Backup) ↔ BSI-CON.3 (Data Backup Policy)
-		{iso, "A.12.3", bsi, "BSI-CON.3", "equivalent"},
-		// A.12.1 (Operations / Monitoring) ↔ BSI-OPS.1.1.2
-		{iso, "A.12.1", bsi, "BSI-OPS.1.1.2", "partial"},
-		// A.10.1 (Cryptography) — no direct BSI-CON.1 in DB; map to BSI-SYS.1.1 (General Server, incl. crypto hardening)
-		{iso, "A.10.1", bsi, "BSI-SYS.1.1", "informative"},
-		// A.16.1 (Incident Management) ↔ BSI-DER.2.1 (Incident Management)
-		{iso, "A.16.1", bsi, "BSI-DER.2.1", "equivalent"},
-		// A.9.1 (Zugangskontrolle) ↔ BSI-NET.1.1 (Network architecture — includes access control)
-		{iso, "A.9.1", bsi, "BSI-NET.1.1", "informative"},
+		{iso, "A.5.1",  bsi, "BSI-ORP.1",    "equivalent"}, // Policies ↔ Organisation
+		{iso, "A.5.2",  bsi, "BSI-ORP.1",    "partial"},    // IS roles ↔ Organisation
+		{iso, "A.6.1",  bsi, "BSI-ORP.2",    "partial"},    // Screening ↔ Personnel
+		{iso, "A.6.2",  bsi, "BSI-ORP.2",    "partial"},    // Terms ↔ Personnel
+		{iso, "A.5.9",  bsi, "BSI-OPS.1.1.2","partial"},    // Asset inventory ↔ IT-Admin
+		{iso, "A.8.8",  bsi, "BSI-OPS.1.1.2","equivalent"}, // Vuln mgmt/patching ↔ IT-Admin
+		{iso, "A.5.37", bsi, "BSI-OPS.1.1.2","partial"},    // Documented procedures ↔ IT-Admin
+		{iso, "A.8.13", bsi, "BSI-CON.3",    "equivalent"}, // Backup ↔ Data Backup Policy
+		{iso, "A.8.24", bsi, "BSI-SYS.1.1",  "informative"},// Cryptography ↔ General Server
+		{iso, "A.5.24", bsi, "BSI-DER.2.1",  "equivalent"}, // Incident mgmt ↔ Incident Handling
+		{iso, "A.5.15", bsi, "BSI-NET.1.1",  "informative"},// Access control policy ↔ Network Architecture
+		{iso, "A.8.20", bsi, "BSI-NET.1.1",  "equivalent"}, // Network security ↔ Network Architecture
 	}
 
 	seed := func(entries []entry) error {
@@ -394,60 +482,60 @@ func (s *Service) SeedFrameworkMappings(ctx context.Context) error {
 	}
 
 	// CIS Controls v8 (IG1) ↔ ISO 27001:2022 bidirectional mappings.
-	// CIS group codes as stored in DB (e.g. "CIS-1.1") mapped to ISO 27001 control IDs.
+	// CIS group codes as stored in DB (e.g. "CIS-1.1") mapped to ISO 27001:2022 control IDs.
 	const cis = "CIS"
 
 	isoCIS := []entry{
-		// CIS 1 (Asset Inventory) ↔ ISO A.8.1 (Asset Inventory)
-		{iso, "A.8.1", cis, "CIS-1.1", "equivalent"},
-		{iso, "A.8.1", cis, "CIS-1.2", "partial"},
-		// CIS 2 (Software Inventory) ↔ ISO A.8.1
-		{iso, "A.8.1", cis, "CIS-2.1", "equivalent"},
-		// CIS 3 (Data Protection) ↔ ISO A.8.2 (Classification) + A.8.3 (Handling)
-		{iso, "A.8.2", cis, "CIS-3.2", "equivalent"},
-		{iso, "A.8.3", cis, "CIS-3.3", "equivalent"},
-		// CIS 4 (Secure Configuration) ↔ ISO A.12.6 (Vulnerability Management / Hardening)
-		{iso, "A.12.6", cis, "CIS-4.1", "equivalent"},
-		{iso, "A.12.6", cis, "CIS-4.4", "partial"},
-		// CIS 5 (Account Management) ↔ ISO A.9.2 (User Access Provisioning)
-		{iso, "A.9.2", cis, "CIS-5.1", "equivalent"},
-		{iso, "A.9.2", cis, "CIS-5.3", "equivalent"},
-		// CIS 6 (Access Control) ↔ ISO A.9.1 (Business requirements) + A.9.4 (System access)
-		{iso, "A.9.1", cis, "CIS-6.1", "equivalent"},
-		{iso, "A.9.4", cis, "CIS-6.3", "equivalent"},
-		// CIS 7 (Vulnerability Management) ↔ ISO A.12.6
-		{iso, "A.12.6", cis, "CIS-7.1", "equivalent"},
-		{iso, "A.12.6", cis, "CIS-7.2", "equivalent"},
-		// CIS 8 (Audit Logs) ↔ ISO A.12.4 (Logging and Monitoring)
-		{iso, "A.12.4", cis, "CIS-8.2", "equivalent"},
-		{iso, "A.12.4", cis, "CIS-8.4", "equivalent"},
-		// CIS 9 (Email/Web) ↔ ISO A.6.1 (closest: internal organisation / communication security)
-		{iso, "A.6.1", cis, "CIS-9.3", "partial"},
-		// CIS 10 (Malware) ↔ ISO A.12.2 (Protection from malware)
-		{iso, "A.12.2", cis, "CIS-10.1", "equivalent"},
-		// CIS 11 (Data Recovery) ↔ ISO A.12.3 (Backup)
-		{iso, "A.12.3", cis, "CIS-11.1", "equivalent"},
-		{iso, "A.12.3", cis, "CIS-11.2", "equivalent"},
-		{iso, "A.12.3", cis, "CIS-11.4", "partial"},
-		// CIS 12 (Network Infrastructure) ↔ ISO A.13.1 (Network controls)
-		{iso, "A.13.1", cis, "CIS-12.1", "equivalent"},
-		// CIS 13 (Network Monitoring) ↔ ISO A.12.4 (Logging) + A.13.1
-		{iso, "A.12.4", cis, "CIS-13.1", "partial"},
-		// CIS 14 (Security Awareness) ↔ ISO A.7.2 (Awareness, education, training)
-		{iso, "A.7.2", cis, "CIS-14.1", "equivalent"},
-		{iso, "A.7.2", cis, "CIS-14.2", "equivalent"},
-		{iso, "A.7.2", cis, "CIS-14.3", "partial"},
-		// CIS 15 (Service Provider Management) ↔ ISO A.15.1 (Supplier relationships)
-		{iso, "A.15.1", cis, "CIS-15.1", "equivalent"},
-		{iso, "A.15.1", cis, "CIS-15.2", "equivalent"},
-		// CIS 16 (Application Security) ↔ ISO A.14.1 (Security requirements in development)
-		{iso, "A.14.1", cis, "CIS-16.1", "equivalent"},
-		{iso, "A.14.1", cis, "CIS-16.3", "partial"},
-		// CIS 17 (Incident Response) ↔ ISO A.16.1 (Management of incidents)
-		{iso, "A.16.1", cis, "CIS-17.1", "equivalent"},
-		{iso, "A.16.1", cis, "CIS-17.2", "partial"},
-		// CIS 18 (Penetration Testing) ↔ ISO A.12.6 (Vulnerability management)
-		{iso, "A.12.6", cis, "CIS-18.2", "informative"},
+		// CIS 1 (Asset Inventory) ↔ ISO A.5.9 (Inventory of assets)
+		{iso, "A.5.9",  cis, "CIS-1.1", "equivalent"},
+		{iso, "A.5.9",  cis, "CIS-1.2", "partial"},
+		// CIS 2 (Software Inventory) ↔ ISO A.5.9
+		{iso, "A.5.9",  cis, "CIS-2.1", "equivalent"},
+		// CIS 3 (Data Protection) ↔ ISO A.5.12 (Classification) + A.7.10 (Media)
+		{iso, "A.5.12", cis, "CIS-3.2", "equivalent"},
+		{iso, "A.7.10", cis, "CIS-3.3", "equivalent"},
+		// CIS 4 (Secure Configuration) ↔ ISO A.8.8 (Technical vulnerability mgmt / hardening)
+		{iso, "A.8.8",  cis, "CIS-4.1", "equivalent"},
+		{iso, "A.8.8",  cis, "CIS-4.4", "partial"},
+		// CIS 5 (Account Management) ↔ ISO A.5.16 (Identity management)
+		{iso, "A.5.16", cis, "CIS-5.1", "equivalent"},
+		{iso, "A.5.16", cis, "CIS-5.3", "equivalent"},
+		// CIS 6 (Access Control) ↔ ISO A.5.15 (Access control policy) + A.8.3 (Access restriction)
+		{iso, "A.5.15", cis, "CIS-6.1", "equivalent"},
+		{iso, "A.8.3",  cis, "CIS-6.3", "equivalent"},
+		// CIS 7 (Vulnerability Management) ↔ ISO A.8.8
+		{iso, "A.8.8",  cis, "CIS-7.1", "equivalent"},
+		{iso, "A.8.8",  cis, "CIS-7.2", "equivalent"},
+		// CIS 8 (Audit Logs) ↔ ISO A.8.15 (Logging)
+		{iso, "A.8.15", cis, "CIS-8.2", "equivalent"},
+		{iso, "A.8.15", cis, "CIS-8.4", "equivalent"},
+		// CIS 9 (Email/Web) ↔ ISO A.6.3 (Awareness training covers email/web threats)
+		{iso, "A.6.3",  cis, "CIS-9.3", "partial"},
+		// CIS 10 (Malware) ↔ ISO A.8.7 (Protection against malware)
+		{iso, "A.8.7",  cis, "CIS-10.1", "equivalent"},
+		// CIS 11 (Data Recovery) ↔ ISO A.8.13 (Information backup)
+		{iso, "A.8.13", cis, "CIS-11.1", "equivalent"},
+		{iso, "A.8.13", cis, "CIS-11.2", "equivalent"},
+		{iso, "A.8.13", cis, "CIS-11.4", "partial"},
+		// CIS 12 (Network Infrastructure) ↔ ISO A.8.20 (Network security)
+		{iso, "A.8.20", cis, "CIS-12.1", "equivalent"},
+		// CIS 13 (Network Monitoring) ↔ ISO A.8.15 (Logging)
+		{iso, "A.8.15", cis, "CIS-13.1", "partial"},
+		// CIS 14 (Security Awareness) ↔ ISO A.6.3 (IS awareness, education and training)
+		{iso, "A.6.3",  cis, "CIS-14.1", "equivalent"},
+		{iso, "A.6.3",  cis, "CIS-14.2", "equivalent"},
+		{iso, "A.6.3",  cis, "CIS-14.3", "partial"},
+		// CIS 15 (Service Provider Management) ↔ ISO A.5.19 (IS in supplier relationships)
+		{iso, "A.5.19", cis, "CIS-15.1", "equivalent"},
+		{iso, "A.5.19", cis, "CIS-15.2", "equivalent"},
+		// CIS 16 (Application Security) ↔ ISO A.8.26 (Application security requirements)
+		{iso, "A.8.26", cis, "CIS-16.1", "equivalent"},
+		{iso, "A.8.26", cis, "CIS-16.3", "partial"},
+		// CIS 17 (Incident Response) ↔ ISO A.5.24 (Incident management planning)
+		{iso, "A.5.24", cis, "CIS-17.1", "equivalent"},
+		{iso, "A.5.24", cis, "CIS-17.2", "partial"},
+		// CIS 18 (Penetration Testing) ↔ ISO A.8.8 (Vulnerability management)
+		{iso, "A.8.8",  cis, "CIS-18.2", "informative"},
 	}
 
 	if err := seed(isoNIS2); err != nil {
@@ -772,21 +860,35 @@ func (s *Service) GetTISAXGapAnalysis(ctx context.Context, orgID, frameworkID st
 	return buildTISAXGapAnalysis(frameworkID, controls), nil
 }
 
-// tisaxToISO27001Mappings is the static TISAX → ISO 27001 control mapping table.
+// tisaxToISO27001Mappings is the static TISAX → ISO 27001:2022 control mapping table.
+// All target IDs use 2022 Annex A numbering (A.5.x–A.8.x).
 var tisaxToISO27001Mappings = map[string]string{
-	"TISAX-1.1.1": "A.5.1.1", "TISAX-1.1.2": "A.5.1.2", "TISAX-1.1.3": "A.6.1.1",
-	"TISAX-2.1.1": "A.6.1.1", "TISAX-2.1.3": "A.6.1.5", "TISAX-2.1.4": "A.6.2.1",
-	"TISAX-3.1.1": "A.7.1.1", "TISAX-3.1.2": "A.7.2.2", "TISAX-3.1.3": "A.7.2.3", "TISAX-3.1.4": "A.7.3.1",
-	"TISAX-4.1.1": "A.8.1.1", "TISAX-4.1.2": "A.8.1.2", "TISAX-4.1.3": "A.8.2.1", "TISAX-4.1.4": "A.8.2.2", "TISAX-4.1.5": "A.8.3.1",
-	"TISAX-5.1.1": "A.9.1.1", "TISAX-5.1.2": "A.9.2.1", "TISAX-5.1.3": "A.9.2.3", "TISAX-5.1.4": "A.9.4.2", "TISAX-5.1.5": "A.9.1.2",
-	"TISAX-6.1.1": "A.10.1.1", "TISAX-6.1.2": "A.10.1.2", "TISAX-6.1.3": "A.10.1.1",
-	"TISAX-7.1.1": "A.11.1.1", "TISAX-7.1.2": "A.11.1.2", "TISAX-7.1.3": "A.11.2.1", "TISAX-7.1.4": "A.11.2.9",
-	"TISAX-8.1.2": "A.12.1.2", "TISAX-8.1.3": "A.12.2.1", "TISAX-8.1.4": "A.12.3.1", "TISAX-8.1.5": "A.12.4.1", "TISAX-8.1.6": "A.12.6.1",
-	"TISAX-9.1.1": "A.13.1.1", "TISAX-9.1.2": "A.13.2.1", "TISAX-9.1.3": "A.13.2.4",
-	"TISAX-11.1.1": "A.15.1.1", "TISAX-11.1.2": "A.15.1.2", "TISAX-11.1.3": "A.15.2.1",
-	"TISAX-12.1.1": "A.16.1.1", "TISAX-12.1.2": "A.16.1.2", "TISAX-12.1.4": "A.16.1.6",
-	"TISAX-13.1.1": "A.17.1.1", "TISAX-13.1.2": "A.17.1.3",
-	"TISAX-14.1.1": "A.18.1.1", "TISAX-14.1.2": "A.18.2.2",
+	// TISAX 1.x — Information Security Policies
+	"TISAX-1.1.1": "A.5.1", "TISAX-1.1.2": "A.5.1", "TISAX-1.1.3": "A.5.2",
+	// TISAX 2.x — Organization of Information Security
+	"TISAX-2.1.1": "A.5.2", "TISAX-2.1.3": "A.5.8", "TISAX-2.1.4": "A.8.1",
+	// TISAX 3.x — Human Resource Security
+	"TISAX-3.1.1": "A.6.1", "TISAX-3.1.2": "A.6.3", "TISAX-3.1.3": "A.6.4", "TISAX-3.1.4": "A.6.5",
+	// TISAX 4.x — Asset Management
+	"TISAX-4.1.1": "A.5.9", "TISAX-4.1.2": "A.5.9", "TISAX-4.1.3": "A.5.12", "TISAX-4.1.4": "A.5.13", "TISAX-4.1.5": "A.7.10",
+	// TISAX 5.x — Access Control
+	"TISAX-5.1.1": "A.5.15", "TISAX-5.1.2": "A.5.16", "TISAX-5.1.3": "A.8.2", "TISAX-5.1.4": "A.8.5", "TISAX-5.1.5": "A.5.15",
+	// TISAX 6.x — Cryptography
+	"TISAX-6.1.1": "A.8.24", "TISAX-6.1.2": "A.8.24", "TISAX-6.1.3": "A.8.24",
+	// TISAX 7.x — Physical and Environmental Security
+	"TISAX-7.1.1": "A.7.1", "TISAX-7.1.2": "A.7.2", "TISAX-7.1.3": "A.7.8", "TISAX-7.1.4": "A.7.7",
+	// TISAX 8.x — Operations Security
+	"TISAX-8.1.2": "A.8.32", "TISAX-8.1.3": "A.8.7", "TISAX-8.1.4": "A.8.13", "TISAX-8.1.5": "A.8.15", "TISAX-8.1.6": "A.8.8",
+	// TISAX 9.x — Communications Security
+	"TISAX-9.1.1": "A.8.20", "TISAX-9.1.2": "A.5.14", "TISAX-9.1.3": "A.6.6",
+	// TISAX 11.x — Supplier Relationships
+	"TISAX-11.1.1": "A.5.19", "TISAX-11.1.2": "A.5.20", "TISAX-11.1.3": "A.5.22",
+	// TISAX 12.x — Incident Management
+	"TISAX-12.1.1": "A.5.24", "TISAX-12.1.2": "A.6.8", "TISAX-12.1.4": "A.5.27",
+	// TISAX 13.x — Business Continuity Management
+	"TISAX-13.1.1": "A.5.29", "TISAX-13.1.2": "A.5.29",
+	// TISAX 14.x — Compliance
+	"TISAX-14.1.1": "A.5.31", "TISAX-14.1.2": "A.5.36",
 }
 
 // SeedTISAXMappings idempotently seeds the static TISAX → ISO 27001 mappings into ck_framework_mappings.

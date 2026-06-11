@@ -124,6 +124,8 @@ func builtinVersion(name string) string {
 		"TISAX":     "6.0",
 		"DSGVO-TOM": "2018",
 		"CIS":       "8.1",
+		"ISO27017":  "2015",
+		"ISO27018":  "2019",
 	}
 	return versions[name]
 }
@@ -155,6 +157,14 @@ func builtinControls(frameworkID, orgID, name, variant string) []Control {
 		return dsgvoTOMControls(frameworkID, orgID)
 	case "CIS":
 		return cisControls(frameworkID, orgID)
+	case "C5":
+		return c5Controls(frameworkID, orgID)
+	case "KRITIS":
+		return kritisControls(frameworkID, orgID)
+	case "ISO27017":
+		return iso27017Controls(frameworkID, orgID)
+	case "ISO27018":
+		return iso27018Controls(frameworkID, orgID)
 	}
 	return nil
 }
@@ -903,11 +913,114 @@ func bsiControls(frameworkID, orgID string) []Control {
 		c("BSI-NET.4.1.A1", "Absicherung von Sprach- und Datenkommunikation",
 			"Schütze Telefon- und Videokonferenzsysteme vor Abhören und Manipulation: verschlüsselte Übertragung (SRTP, ZRTP), Authentifizierung, Patch-Management für Kommunikationssysteme. Nachweis: Systemkonfiguration, Protokoll-Analyse.",
 			"Netze", "automated", 2),
+
+		// ── APP: Anwendungen (Kompendium 2023) ────────────────────────────
+		c("BSI-OPS.1.1.6.A1", "Software-Freigabe und Integrität",
+			"Stelle sicher, dass Software nur aus vertrauenswürdigen Quellen bezogen und die Integrität vor der Installation geprüft wird. Verwalte eine Whitelist erlaubter Anwendungen. Nachweis: Software-Register, Installationsrichtlinie, Signatürprüfung.",
+			"Anwendungen", "manual", 2),
+		c("BSI-APP.1.2.A1", "Browser-Härtung",
+			"Konfiguriere Webbrowser sicher: deaktiviere unnötige Plugins, aktiviere Safe Browsing, erzwinge HTTPS. Nachweis: Browser-Konfiguration, Gruppenrichtlinien-Dokumentation.",
+			"Anwendungen", "automated", 2),
+		c("BSI-APP.1.4.A1", "Anforderungen an mobile Anwendungen",
+			"Definiere Sicherheitsanforderungen für mobile Apps: sichere Datenspeicherung, verschlüsselte Kommunikation, keine unnötigen Berechtigungen. Nachweis: Anforderungskatalog, App-Sicherheitstest-Bericht.",
+			"Anwendungen", "manual", 2),
+		c("BSI-APP.2.3.A1", "Sicherer Betrieb von Verzeichnisdiensten",
+			"Betreibe Active Directory / LDAP nach BSI-Vorgaben: privilegierte Konten einschränken, Tiered-Administration-Modell, regelmäßige Audits der Gruppenrichtlinien. Nachweis: AD-Auditbericht, Konfigurationsdokumentation.",
+			"Anwendungen", "manual", 3),
+		c("BSI-APP.4.4.A2", "Kubernetes-Absicherung",
+			"Sichere Kubernetes-Cluster ab: RBAC, Network Policies, Pod Security Admission, Secrets-Verschlüsselung, Image-Signaturen. Nachweis: Konfiguration, Penetrationstest-Bericht, CIS-Benchmark-Scan.",
+			"Anwendungen", "automated", 3),
+		c("BSI-APP.5.1.A1", "Sichere Konfiguration von Groupware",
+			"Konfiguriere E-Mail- und Collaboration-Systeme (Exchange, Teams, Google Workspace) sicher: SPF/DKIM/DMARC, verschlüsselte Kommunikation, Administrationskontrollen. Nachweis: Konfigurationsnachweis, E-Mail-Header-Analyse.",
+			"Anwendungen", "automated", 2),
+		c("BSI-NET.4.5.A1", "Sicherer Einsatz von Videokonferenzsystemen",
+			"Sichere Videokonferenz-Tools ab: Ende-zu-Ende-Verschlüsselung, Passwortschutz für Meetings, Lobby-Funktion, Aufzeichnungsberechtigungen. Nachweis: Konfigurationsrichtlinie, Schulungsnachweis.",
+			"Anwendungen", "manual", 1),
+
+		// ── SYS: Erweiterung IT-Systeme ────────────────────────────────────
+		c("BSI-SYS.1.6.A1", "Container-Absicherung",
+			"Sichere Container-Deployments ab: minimale Base-Images, rootless Betrieb, Read-only Filesystems, regelmäßige Image-Scans auf Schwachstellen. Nachweis: Container-Sicherheitsrichtlinie, Scan-Berichte (Trivy/Grype), CI/CD-Integration.",
+			"IT-Systeme", "automated", 3),
+		c("BSI-SYS.2.1.A1", "Schutz von Desktop-Systemen",
+			"Härte Client-Systeme ab: Full-Disk-Encryption, EDR-Lösung, automatische Sicherheitsupdates, lokale Firewall. Nachweis: Endpoint-Management-Konfiguration, Compliance-Report.",
+			"IT-Systeme", "automated", 2),
+		c("BSI-SYS.3.1.A1", "Regelungen für mobile Endgeräte",
+			"Definiere und erzwinge MDM-Richtlinien für alle mobilen Geräte: Bildschirmsperre, Fernlöschung, VPN-Pflicht in öffentlichen Netzen, App-Whitelist. Nachweis: MDM-Konfiguration, Compliance-Dashboard.",
+			"IT-Systeme", "automated", 2),
+		c("BSI-SYS.4.1.A1", "Drucker und Multifunktionsgeräte",
+			"Schütze Drucker und MFPs: Standardpasswörter ändern, Netzwerksegmentierung, Festplattenverschlüsselung, Audit-Logging aktivieren. Nachweis: Gerätekonfiguration, Netzwerksegmentierungsnachweis.",
+			"IT-Systeme", "manual", 1),
+		c("BSI-SYS.4.5.A1", "Sicherheit von Wechseldatenträgern",
+			"Manage Wechseldatenträger sicher: USB-Richtlinie, verschlüsselte Träger, Malware-Scan vor Verwendung, Protokollierung des Einsatzes. Nachweis: USB-Richtlinie, DLP-Konfiguration, Scan-Protokolle.",
+			"IT-Systeme", "manual", 2),
+
+		// ── DER: Erweiterung Detektion und Reaktion ───────────────────────
+		c("BSI-DER.1.A2", "SIEM und zentrale Log-Aggregation",
+			"Betreibe ein Intrusion Detection System (IDS/SIEM): zentrale Log-Aggregation, regelbasierte Alarmierung, Korrelation sicherheitsrelevanter Ereignisse. Nachweis: SIEM-Konfiguration, Alert-Regeln, Incident-Eskalationsprozess.",
+			"Detektion und Reaktion", "automated", 3),
+		c("BSI-DER.3.2.A1", "Durchführung von Penetrationstests",
+			"Führe jährlich oder nach wesentlichen Systemänderungen Penetrationstests durch, vorzugsweise durch externe akkreditierte Tester. Dokumentiere Ergebnisse und behebe Findings fristgerecht. Nachweis: Pentest-Bericht, Maßnahmenplan, Nachtest-Ergebnis.",
+			"Detektion und Reaktion", "manual", 3),
+
+		// ── OPS: Erweiterung Betrieb ───────────────────────────────────────
+		c("BSI-OPS.1.1.4.A2", "Zentrale Anti-Malware-Verwaltung",
+			"Betreibe Anti-Malware-Lösungen auf allen Systemen: regelmäßige Signatur-Updates, verhaltensbasierte Erkennung, zentrale Verwaltungskonsole. Nachweis: AV-Management-Dashboard, Update-Protokolle, Scan-Berichte.",
+			"Betrieb", "automated", 2),
+		c("BSI-OPS.1.1.7.A1", "Systemverwaltung",
+			"Verwalte alle IT-Systeme zentral: Configuration Management Database (CMDB), automatisiertes Konfigurationsmanagement (Ansible/Puppet/Chef), Change-Management-Prozess. Nachweis: CMDB-Export, Konfigurations-Baseline, Change-Log.",
+			"Betrieb", "automated", 2),
+		c("BSI-OPS.2.4.A1", "Regelungen zur Cloud-Nutzung",
+			"Definiere verbindliche Richtlinien für die Cloud-Nutzung: DSGVO-konforme Anbieterauswahl, Datenverschlüsselung, Zugriffskontrolle, Exit-Strategie. Nachweis: Cloud-Richtlinie, Anbieter-Verträge (AVV), Datenschutz-Dokumentation.",
+			"Betrieb", "manual", 3),
+
+		// ── CON: Erweiterung Konzepte ──────────────────────────────────────
+		// BSI-CON.2.A1 (Datenschutz) is defined in the baseline section above.
+		c("BSI-CON.4.A1", "Auswahl und Einsatz von Standardsoftware",
+			"Definiere Kriterien für die Auswahl von Standardsoftware: Sicherheitszertifizierung, Support-Zeitraum, Lizenzmodell, DSGVO-Konformität. Nachweis: Auswahlkriterien-Dokumentation, Beschaffungsprotokoll.",
+			"Konzepte", "manual", 1),
+		c("BSI-CON.5.A1", "Anforderungen an Entwicklung und Beschaffung",
+			"Stelle sicher, dass bei der Entwicklung und Beschaffung von IT-Systemen Sicherheitsanforderungen frühzeitig berücksichtigt werden (Security by Design). Nachweis: Anforderungskatalog, Sicherheitskonzept.",
+			"Konzepte", "manual", 2),
+		c("BSI-CON.6.A1", "Löschen und Vernichten",
+			"Definiere und befolge Verfahren für das sichere Löschen und Vernichten von Datenträgern und Dokumenten: zertifizierte Vernichtung (DIN 66399), sichere Löschverfahren (DoD 5220.22-M). Nachweis: Vernichtungsnachweis, Richtlinie, Zertifikate.",
+			"Konzepte", "manual", 2),
+
+		// ── ORP: Erweiterung Organisation ─────────────────────────────────
+		c("BSI-ORP.5.A1", "Compliance Management",
+			"Stelle die Einhaltung aller relevanten rechtlichen, regulatorischen und vertraglichen Anforderungen sicher. Führe ein Compliance-Register und führe regelmäßige Compliance-Reviews durch. Nachweis: Compliance-Register, Review-Protokolle, Maßnahmenplan.",
+			"Organisation", "manual", 2),
+
+		// ── BCM: Business Continuity Management ───────────────────────────
+		c("BSI-BCM.1.A1", "BCM-Richtlinie und Geltungsbereich",
+			"Erstelle eine BCM-Richtlinie, die Ziele, Umfang, Verantwortlichkeiten und Anforderungen für das Business Continuity Management definiert. Nachweis: BCM-Richtlinie, Genehmigungsprotokoll, Versionierung.",
+			"Business Continuity", "manual", 3),
+		c("BSI-BCM.1.A2", "Business-Impact-Analyse (BIA)",
+			"Führe eine Business-Impact-Analyse durch: identifiziere kritische Prozesse, bestimme RTO/RPO-Anforderungen, bewerte finanzielle und operationelle Auswirkungen von Ausfällen. Nachweis: BIA-Bericht, RTO/RPO-Matrix.",
+			"Business Continuity", "manual", 3),
+		c("BSI-BCM.2.A1", "BCM-Übungen und Tests",
+			"Teste Notfallpläne regelmäßig durch Tischübungen (Tabletop), Teilübungen und vollständige Failover-Tests. Dokumentiere Ergebnisse und implementiere Verbesserungen. Nachweis: Übungsprotokoll, Testbericht, Verbesserungsmaßnahmen.",
+			"Business Continuity", "manual", 3),
+
+		// ── INF: Erweiterung Infrastruktur ─────────────────────────────────
+		c("BSI-INF.3.A1", "Elektrische Verkabelung",
+			"Schütze elektrische Infrastruktur vor Ausfällen: redundante Versorgung (USV, Notstromaggregat), Überspannungsschutz, regelmäßige Wartung. Nachweis: Wartungsprotokoll, USV-Konfiguration, Prüfbericht.",
+			"Infrastruktur", "manual", 2),
+		c("BSI-INF.5.A1", "Schutz von Serverräumen",
+			"Schütze Serverräume mit physischen Zutrittssicherungen: Zutrittskontrollsystem, Videoüberwachung, Brandmeldeanlage, Klimatisierung mit Überwachung. Nachweis: Zutrittskontrollprotokoll, Wartungsnachweis, Alarmierungstest.",
+			"Infrastruktur", "manual", 2),
+		c("BSI-INF.7.A1", "Regelungen für Büroräume",
+			"Implementiere Büroraumsicherheit: Clean-Desk-Policy, Sicherung unbeaufsichtigter Rechner, Sichtschutzfolien an exponierten Arbeitsplätzen. Nachweis: Clean-Desk-Richtlinie, Begehungsprotokoll.",
+			"Infrastruktur", "manual", 1),
+		c("BSI-INF.8.A1", "Sichere Nutzung von häuslichen Arbeitsplätzen",
+			"Definiere Sicherheitsanforderungen für Heimarbeitsplätze: gesichertes WLAN, VPN-Pflicht, Bildschirmsperre, keine unverschlüsselten Datenträger. Nachweis: Richtlinie Heimarbeit, VPN-Nutzungsnachweis.",
+			"Infrastruktur", "manual", 2),
 	}
 }
 
 // craControls returns controls for the EU Cyber Resilience Act (CRA, 2024).
 // Applies to manufacturers of products with digital elements sold in the EU.
+// 23 controls: CRA-1.x (10) Annex I Part I, CRA-2.x (3) Annex I Part II vuln handling,
+// CRA-3.x (6) Annex I Part II technical, CRA-4.x (4) Annex II user information.
 func craControls(frameworkID, orgID string) []Control {
 	c := func(id, title, desc, domain, evType string, w int) Control {
 		return Control{FrameworkID: frameworkID, OrgID: orgID, ControlID: id, Title: title, Description: desc, Domain: domain, EvidenceType: evType, Weight: w}
@@ -1260,6 +1373,37 @@ func euAiActControls(frameworkID, orgID string) []Control {
 		c("AIACT-11.3", "Systemische Risiken bei GPAI-Modellen (Art. 55)",
 			"Bewerte und manage systemische Risiken bei GPAI-Modellen mit systemischem Risiko: adversarielle Tests, Incident-Reporting an EU-Behörden, Cybersicherheitsmaßnahmen. Nachweis: Risikobewertungsbericht, Test-Protokolle, Incident-Meldungsverfahren.",
 			"GPAI-Compliance", "manual", 2),
+		// Art. 26 — Betreiberpflichten (Deployer Obligations)
+		// Für Unternehmen, die Hochrisiko-KI-Systeme EINSETZEN (nicht entwickeln).
+		// Die meisten DACH-KMU sind Betreiber, nicht Anbieter.
+		c("AIACT-12.1", "Verwendungszweck-Compliance als Betreiber (Art. 26 Abs. 1)",
+			"Stelle sicher, dass Hochrisiko-KI-Systeme ausschließlich gemäß der Gebrauchsanweisung des Anbieters eingesetzt werden. Führe ein Verzeichnis aller eingesetzten Hochrisiko-KI-Systeme. Nachweis: KI-System-Register, Nutzungsrichtlinie, Schulungsnachweise für Betreiberpersonal.",
+			"Betreiberpflichten", "manual", 3),
+		c("AIACT-12.2", "Menschliche Aufsicht als Betreiber (Art. 26 Abs. 2)",
+			"Weise geeignete qualifizierte Personen zur menschlichen Aufsicht über Hochrisiko-KI-Systeme zu. Dokumentiere Qualifikationen und Zuständigkeiten. Führe Schulungsnachweise. Nachweis: Stellenbeschreibung, Schulungszertifikate, Aufsichtsprotokoll.",
+			"Betreiberpflichten", "manual", 3),
+		c("AIACT-12.3", "Grundrechte-Folgenabschätzung als Betreiber (Art. 26 Abs. 9 / Art. 27)",
+			"Führe eine Grundrechte-Folgenabschätzung (GRFA) vor dem erstmaligen Einsatz von Hochrisiko-KI-Systemen durch, die öffentliche Dienstleistungen erbringen oder Entscheidungen über Personen treffen. Nachweis: GRFA-Dokumentation, Genehmigungsprotokoll, Registrierungsnachweis (EU-Datenbank Art. 49).",
+			"Betreiberpflichten", "manual", 3),
+		c("AIACT-12.4", "Datenschutz-Impact-Assessment für KI (Art. 26 Abs. 8 / DSGVO Art. 35)",
+			"Führe bei Hochrisiko-KI-Systemen mit biometrischen, personenbezogenen oder entscheidungsrelevanten Daten eine DSGVO-DPIA durch. Koordiniere mit dem Datenschutzbeauftragten. Nachweis: DPIA-Bericht, DSB-Konsultationsprotokoll, Risikoregister.",
+			"Betreiberpflichten", "manual", 3),
+		c("AIACT-12.5", "Protokollierung und Monitoring als Betreiber (Art. 26 Abs. 5–6)",
+			"Speichere die vom KI-System generierten Protokolle für den gesetzlichen Mindestzeitraum (6 Monate oder nach sektorrechtlichen Anforderungen). Melde schwerwiegende Vorfälle und Fehlfunktionen an den Anbieter. Nachweis: Log-Archiv, Aufbewahrungsrichtlinie, Vorfallsmeldungsverfahren.",
+			"Betreiberpflichten", "automated", 2),
+		c("AIACT-12.6", "Information der betroffenen Personen (Art. 26 Abs. 11)",
+			"Informiere betroffene natürliche Personen transparent darüber, dass sie einer automatisierten Entscheidung durch ein Hochrisiko-KI-System unterliegen, soweit nicht durch Unions- oder nationales Recht ausgeschlossen. Nachweis: Datenschutzhinweis, Informationspflicht-Dokumentation.",
+			"Betreiberpflichten", "manual", 2),
+		// Art. 50 — Transparenzpflichten für General-Purpose AI Interaktion
+		c("AIACT-13.1", "Kennzeichnung KI-generierter Inhalte (Art. 50 Abs. 2)",
+			"Kennzeichne alle durch KI erzeugten Text-, Bild-, Audio- und Videoinhalte als KI-generiert (maschinenlesbar oder sichtbar), sofern die Inhalte nicht offensichtlich künstlich sind. Gilt ab August 2026. Nachweis: Implementierungsnachweis, Wasserzeichen-/Metadaten-Dokumentation, Prozessbeschreibung.",
+			"KI-Transparenz", "automated", 2),
+		c("AIACT-13.2", "Offenlegung KI-Interaktion (Art. 50 Abs. 1)",
+			"Informiere Nutzer klar und erkennbar, wenn sie mit einem KI-System (Chatbot, virtuellem Assistenten) interagieren, sofern dies nicht offensichtlich ist. Ausnahme: strafrechtliche Verfolgung. Nachweis: UX-Dokumentation, Datenschutzhinweis, technischer Nachweis der Offenlegung.",
+			"KI-Transparenz", "manual", 2),
+		c("AIACT-13.3", "Deepfake-Offenlegungspflicht (Art. 50 Abs. 4)",
+			"Beim Einsatz von KI für synthetische Medien (Deepfakes), die Personen zeigen oder Ereignisse darstellen, die nicht stattgefunden haben: Offenlegungspflicht in maschinenlesbarem Format. Gilt für journalistische, künstlerische und Satire-Ausnahmen eingeschränkt. Nachweis: Policy, technische Implementierung.",
+			"KI-Transparenz", "manual", 1),
 	}
 }
 
@@ -1873,5 +2017,431 @@ func cisControls(frameworkID, orgID string) []Control {
 		c("CIS-18.3", "Penetrationstests von Webanwendungen durchführen",
 			"Führen Sie mindestens jährliche Penetrationstests aller öffentlich zugänglichen Webanwendungen durch. Nachweis: Pentest-Bericht (OWASP-Methodik), Behebungsnachweise.",
 			"Penetrationstests", 2),
+	}
+}
+
+// c5Controls returns controls for BSI Cloud Computing Compliance Criteria Catalogue C5:2026.
+// Source: BSI C5:2026, veröffentlicht 07.04.2026, 168 Sicherheitskriterien + 6 General Conditions.
+// Kriterien-Codes entsprechen direkt dem BSI-Dokument (GC-01…PSS-12).
+func c5Controls(frameworkID, orgID string) []Control {
+	c := func(id, title, desc, domain, evType string, w int) Control {
+		return Control{FrameworkID: frameworkID, OrgID: orgID, ControlID: "C5-" + id, Title: title, Description: desc, Domain: domain, EvidenceType: evType, Weight: w}
+	}
+	return []Control{
+		// ── GC: Allgemeine Bedingungen (General Conditions — informativ, nicht prüfpflichtig) ──
+		c("GC-01", "Anwendbares Recht und Rechtsraum", "CSP dokumentiert anwendbares Recht, Gerichtsstand, Länder und Zonen. Nachweis: AGB, DPA, Standort-Dokumentation.", "Allgemeine Bedingungen", "document", 1),
+		c("GC-02", "Verfügbarkeit und Störungshandling im Normalbetrieb", "CSP beschreibt SLAs, Wartungsfenster und Incident-Handling im Normalbetrieb. Nachweis: SLA-Dokument, Incident-Report-Vorlagen.", "Allgemeine Bedingungen", "document", 1),
+		c("GC-03", "Wiederherstellungsparameter im Notbetrieb", "CSP veröffentlicht RTO/RPO-Werte und Notbetriebs-Parameter. Nachweis: Verfügbarkeitsgarantien, BCP-Auszüge.", "Allgemeine Bedingungen", "document", 1),
+		c("GC-04", "Ansatz zur Sicherstellung der Dienstverfügbarkeit", "CSP beschreibt Redundanzarchitektur und Verfügbarkeitsmaßnahmen. Nachweis: Architektur-Beschreibung, Verfügbarkeitsstatistiken.", "Allgemeine Bedingungen", "document", 1),
+		c("GC-05", "Umgang mit Ermittlungsanfragen von Behörden", "CSP legt dar, wie Behördenanfragen behandelt werden. Nachweis: Transparenzbericht, Richtlinie zu Behördenanfragen.", "Allgemeine Bedingungen", "document", 1),
+		c("GC-06", "Zertifizierungen und Testate", "CSP nennt aktuelle Zertifizierungen (ISO 27001, SOC 2, C5-Testat). Nachweis: Gültige Zertifikate oder Testatsberichte.", "Allgemeine Bedingungen", "document", 2),
+
+		// ── OIS: Organisation der Informationssicherheit ──
+		c("OIS-01", "Informationssicherheitsmanagementsystem (ISMS)", "CSP betreibt ein ISMS nach anerkanntem Standard (ISO 27001 oder vergleichbar). Nachweis: ISMS-Scope, ISO-27001-Zertifikat oder C5-Testat.", "Organisation der IS", "document", 3),
+		c("OIS-02", "Informationssicherheitsrichtlinie", "Leitungsorgan verabschiedet IS-Richtlinie mit Zielen, Geltungsbereich, Verantwortlichkeiten. Nachweis: Unterzeichnete Richtlinie, Revisionshistorie.", "Organisation der IS", "manual", 2),
+		c("OIS-03", "Schnittstellen und Abhängigkeiten", "CSP dokumentiert Abhängigkeiten zu Unterauftragnehmern und internen Schnittstellen. Nachweis: Schnittstellendokumentation, Dienstleister-Verzeichnis.", "Organisation der IS", "document", 2),
+		c("OIS-04", "Aufgabentrennung", "Kritische Aufgaben sind durch Rollentrennung abgesichert (z.B. Entwicklung/Betrieb, Revisor/Entwickler). Nachweis: Rollenmatrix, Zugriffsdokumentation.", "Organisation der IS", "manual", 2),
+		c("OIS-05", "Bedrohungsanalyse", "CSP betreibt strukturierte Auswertung von Bedrohungsinformationen (Threat Intelligence). Nachweis: TI-Feeds, Auswertungsberichte, Prozessbeschreibung.", "Organisation der IS", "manual", 2),
+		c("OIS-06", "Kontakt zu Behörden und Interessengruppen", "CSP pflegt Kontakt zu relevanten Behörden (BSI, CERT-Bund) und Branchen-CERTs. Nachweis: Kontaktlisten, Meldeverfahrens-Dokumentation.", "Organisation der IS", "document", 1),
+		c("OIS-07", "Risikomanagement-Policy", "CSP hat eine dokumentierte Risikomanagement-Policy mit Risikokriterien und -appetit. Nachweis: Policy-Dokument, Genehmigung durch Leitungsorgan.", "Organisation der IS", "manual", 3),
+		c("OIS-08", "Anwendung der Risikomanagement-Policy — Risikoanalyse", "CSP führt regelmäßige Risikoanalysen für Cloud-Dienste durch. Nachweis: Risikoregister, Bewertungsberichte mit Datum.", "Organisation der IS", "manual", 3),
+		c("OIS-09", "Anwendung der Risikomanagement-Policy — Risikobehandlung", "Identifizierte Risiken werden behandelt (Mitigierung, Akzeptanz, Transfer). Nachweis: Risikobehandlungsplan, Maßnahmennachweise.", "Organisation der IS", "manual", 3),
+		c("OIS-10", "Informationssicherheit im Projektmanagement", "IS-Anforderungen sind in den Projektentwicklungs-Prozess integriert. Nachweis: Projekt-Templates mit IS-Checkliste, Abnahmedokumentation.", "Organisation der IS", "manual", 2),
+
+		// ── SP: Sicherheitsrichtlinien und -verfahren ──
+		c("SP-01", "Dokumentation, Kommunikation und Bereitstellung von Richtlinien", "Richtlinien sind aktuell, zugänglich und an alle relevanten Mitarbeitenden kommuniziert. Nachweis: Richtlinienverzeichnis, Zugriffsnachweise, Lesungsbestätigungen.", "Sicherheitsrichtlinien", "document", 2),
+		c("SP-02", "Überprüfung und Genehmigung von Richtlinien", "Richtlinien werden mindestens jährlich reviewed und von autorisierten Stellen genehmigt. Nachweis: Review-Protokolle, Genehmigungsunterschriften.", "Sicherheitsrichtlinien", "manual", 2),
+		c("SP-03", "Ausnahmen von bestehenden Richtlinien", "Ausnahmen werden formal beantragt, genehmigt, dokumentiert und zeitlich befristet. Nachweis: Ausnahmen-Register, Genehmigungen mit Ablaufdatum.", "Sicherheitsrichtlinien", "manual", 2),
+
+		// ── HR: Personal ──
+		c("HR-01", "Überprüfung von Qualifikation und Vertrauenswürdigkeit", "Vor Einstellung wird die Eignung (Referenzen, ggf. polizeiliches Führungszeugnis) für sicherheitssensible Stellen geprüft. Nachweis: Screening-Prozess, Checklisten.", "Personal", "manual", 2),
+		c("HR-02", "Beschäftigungsbedingungen", "Mitarbeitende unterzeichnen Vertraulichkeits- und IS-Verpflichtungen. Nachweis: Unterzeichnete Verträge, Vertraulichkeitserklärungen.", "Personal", "document", 2),
+		c("HR-03", "Schulungs- und Sensibilisierungsprogramm für IS", "Regelmäßige IS-Schulungen für alle Mitarbeitenden (mind. jährlich). Nachweis: Schulungsplan, Teilnehmerlisten, Abschlussnachweise.", "Personal", "manual", 2),
+		c("HR-04", "Disziplinarmaßnahmen", "Verfahren für IS-Verstöße sind definiert und bekannt. Nachweis: Disziplinarrichtlinie, Eskalationsverfahren.", "Personal", "document", 1),
+		c("HR-05", "Verantwortlichkeiten bei Beschäftigungsende oder -wechsel", "Rückgabe von Assets und Entzug von Zugriffsrechten bei Austritt ist geregelt. Nachweis: Offboarding-Checkliste, Zugriffsprotokoll.", "Personal", "manual", 2),
+		c("HR-06", "Vertraulichkeitsvereinbarungen", "NDAs mit Mitarbeitenden, Subunternehmern und externen Parteien. Nachweis: Unterzeichnete NDAs.", "Personal", "document", 2),
+		c("HR-07", "Telearbeit — Richtlinie", "Richtlinie für sicheres Arbeiten außerhalb des Unternehmensgeländes. Nachweis: Remote-Work-Policy, Sicherheitsanforderungen.", "Personal", "document", 1),
+		c("HR-08", "Telearbeit — Umsetzung", "Technische und organisatorische Maßnahmen für sicheres Remote-Working (VPN, verschlüsselte Geräte). Nachweis: Konfigurationsnachweise, VPN-Protokolle.", "Personal", "automated", 2),
+
+		// ── AM: Asset Management ──
+		c("AM-01", "Asset-Management-Rahmen", "Prozess für Erfassung, Klassifizierung und Verwaltung von Assets ist dokumentiert. Nachweis: Asset-Management-Policy, Prozessbeschreibung.", "Asset Management", "document", 2),
+		c("AM-02", "Asset-Inventar", "Vollständiges Inventar aller informationsverarbeitenden Assets inkl. Eigentümer. Nachweis: Asset-Inventar (aktuell, mit Datum), Prüfbericht.", "Asset Management", "automated", 3),
+		c("AM-03", "Hardware-Asset-Inventar", "Physische IT-Assets sind vollständig erfasst mit Standort und Lebenszyklus-Status. Nachweis: Hardware-Inventar, CMDB-Auszug.", "Asset Management", "automated", 2),
+		c("AM-04", "Software-Asset-Inventar", "Installierte Software ist vollständig erfasst inkl. Versionsstand. Nachweis: Software-Inventar (CMDB), automatisierte Scan-Ergebnisse.", "Asset Management", "automated", 2),
+		c("AM-05", "Richtlinie für ordnungsgemäße und sichere Nutzung von Assets", "Akzeptable Nutzungsrichtlinie für alle Asset-Typen. Nachweis: Acceptable-Use-Policy, Schulungsnachweise.", "Asset Management", "document", 1),
+		c("AM-06", "Inbetriebnahme von Hardware", "Neue Hardware wird vor Inbetriebnahme auf Sicherheits-Konfiguration geprüft und inventarisiert. Nachweis: Inbetriebnahme-Checkliste, Konfigurationsnachweise.", "Asset Management", "manual", 2),
+		c("AM-07", "Außerbetriebnahme von Hardware", "Hardware wird sicher außer Betrieb genommen inkl. Datenlöschung/Vernichtung. Nachweis: Außerbetriebnahme-Protokoll, Vernichtungszertifikat.", "Asset Management", "manual", 2),
+		c("AM-08", "Ordnungsgemäße Nutzung, sichere Handhabung und Rückgabe von Assets", "Mitarbeitende bestätigen Nutzungsregeln und geben Assets bei Austritt zurück. Nachweis: Übergabeprotokolle, Rückgabebestätigungen.", "Asset Management", "manual", 2),
+		c("AM-09", "Asset-Klassifizierung und -Kennzeichnung", "Informationsassets sind nach Schutzbedarf klassifiziert und entsprechend gekennzeichnet. Nachweis: Klassifizierungsschema, Kennzeichnungsnachweise.", "Asset Management", "manual", 2),
+		c("AM-10", "Schutz von Hardware im Wartezustand", "Außer Betrieb gestellte oder wartende Hardware ist physisch gesichert. Nachweis: Inventar für Assets im Wartezustand, Zugangsprotokolle.", "Asset Management", "manual", 1),
+		c("AM-11", "Transport von Hardware", "Physischer Transport von Hardware wird sicher durchgeführt (Versiegelung, Protokollierung). Nachweis: Transport-Protokolle, Kuriervereinbarungen.", "Asset Management", "document", 1),
+		c("AM-12", "Wechselmedien und Endgeräte", "Wechselmedien (USB, Festplatten) werden kontrolliert und gesichert eingesetzt. Nachweis: Wechselmedia-Policy, Verschlüsselungsnachweise, Inventar.", "Asset Management", "manual", 2),
+
+		// ── PS: Physische Sicherheit ──
+		c("PS-01", "Anforderungen an physische Sicherheit und Umweltkontrolle", "Sicherheitsanforderungen für Rechenzentren und Büros sind definiert und umgesetzt. Nachweis: Sicherheitsrichtlinie, Begehungsberichte.", "Physische Sicherheit", "manual", 3),
+		c("PS-02", "Redundanzmodell", "Dokumentiertes Redundanzmodell für Strom, Kühlung und Konnektivität. Nachweis: Architekturdiagramme, SLA-Belegung, Testberichte.", "Physische Sicherheit", "document", 3),
+		c("PS-03", "Perimeterschutz", "Physische Absicherung des Rechenzentrums (Zäune, Schleusen, Türsicherungen). Nachweis: Begehungsprotokoll, Fotos/Videos, Sicherheitskonzept.", "Physische Sicherheit", "manual", 3),
+		c("PS-04", "Physische Zugangskontrolle", "Nur autorisierte Personen erhalten Zutritt zu Rechenzentren (Ausweisleser, PIN, Biometrie). Nachweis: Zugangsprotokoll, Zutrittsregeln, Review-Nachweise.", "Physische Sicherheit", "manual", 3),
+		c("PS-05", "Schutz vor externen Bedrohungen und Umwelteinflüssen", "Maßnahmen gegen Feuer, Wasser, Extremwetter und andere Umweltrisiken. Nachweis: Feuerschutzanlage, Wasserleckage-Sensoren, Klimakonzept.", "Physische Sicherheit", "manual", 2),
+		c("PS-06", "Schutz vor Stromausfällen und ähnlichen Risiken", "USV und Notstromversorgung (Diesel-Generator) für kritische Systeme. Nachweis: USV-Protokolle, Generator-Testberichte, SLA.", "Physische Sicherheit", "automated", 3),
+		c("PS-07", "Überwachung von Betriebs- und Umgebungsparametern", "Kontinuierliche Überwachung von Temperatur, Feuchtigkeit, Strom und Sicherheit. Nachweis: Monitoring-Dashboard, Alert-Konfiguration, Eventlogs.", "Physische Sicherheit", "automated", 2),
+		c("PS-08", "Anforderungen an die Arbeitplatzsicherheit", "Sicherheitsanforderungen für Büroarbeitsplätze (Clean Desk, Bildschirmsperre). Nachweis: Clean-Desk-Policy, Stichproben-Protokolle.", "Physische Sicherheit", "manual", 1),
+
+		// ── OPS: Betrieb ──
+		c("OPS-01", "Kapazitätsmanagement — Planung", "Kapazitätsplanung für Rechen-, Speicher- und Netzwerkressourcen. Nachweis: Kapazitätsplan, Wachstumsprognosen.", "Betrieb", "document", 2),
+		c("OPS-02", "Kapazitätsmanagement — Monitoring", "Automatisiertes Monitoring von Ressourcenauslastung mit Alerting. Nachweis: Monitoring-Konfiguration, Auslastungsberichte, Alert-Protokolle.", "Betrieb", "automated", 2),
+		c("OPS-03", "Kapazitätsmanagement — Steuerung", "Prozess zur Ressourcenskalierung bei Kapazitätsengpässen. Nachweis: Eskalationsprozess, Skalierungsprotokoll.", "Betrieb", "manual", 1),
+		c("OPS-04", "Schutz vor Schadsoftware — Richtlinien und Verfahren", "Richtlinie zur Malware-Prävention und -Behandlung. Nachweis: Anti-Malware-Policy, Prozessbeschreibung.", "Betrieb", "document", 3),
+		c("OPS-05", "Schutz vor Schadsoftware — Implementierung", "EDR/AV-Lösung auf allen relevanten Systemen. Nachweis: Deployment-Nachweis, Scan-Berichte, Signatur-Aktualitätsnachweise.", "Betrieb", "automated", 3),
+		c("OPS-06", "Datensicherung und -wiederherstellung — Richtlinien", "Backup-Richtlinie mit RPO/RTO und Aufbewahrungsfristen. Nachweis: Backup-Policy, RPO/RTO-Dokumentation.", "Betrieb", "document", 3),
+		c("OPS-07", "Datensicherung — Monitoring", "Automatisierte Überwachung von Backup-Jobs mit Alerting bei Fehlern. Nachweis: Monitoring-Dashboard, Backup-Fehler-Protokolle.", "Betrieb", "automated", 2),
+		c("OPS-08", "Datensicherung — Regelmäßige Tests", "Restore-Tests mindestens vierteljährlich mit Ergebnisdokumentation. Nachweis: Restore-Test-Protokolle mit Datum und Ergebnis.", "Betrieb", "manual", 3),
+		c("OPS-09", "Datensicherung — Speicherung", "Backups werden getrennt vom Produktionssystem und verschlüsselt gespeichert. Nachweis: Backup-Speicherort-Dokumentation, Verschlüsselungsnachweise.", "Betrieb", "manual", 2),
+		c("OPS-10", "Protokollierung und Monitoring — Richtlinien", "Logging-Richtlinie mit Anforderungen an Protokolltypen, Aufbewahrung und Schutz. Nachweis: Logging-Policy, Protokollklassifizierung.", "Betrieb", "document", 2),
+		c("OPS-11", "Protokollierung — Richtlinie für Cloud-Dienst-Daten", "Richtlinie zu Logging von Kundendaten (wann, was, wie lange). Nachweis: Datenschutzfreundliche Logging-Policy, Kundendokumentation.", "Betrieb", "document", 2),
+		c("OPS-12", "Protokollierung — Zugriff, Aufbewahrung und Löschung", "Logs sind vor unbefugtem Zugriff geschützt, Aufbewahrungsfristen dokumentiert. Nachweis: Zugriffskontrollen für Logs, Retention-Policy.", "Betrieb", "manual", 2),
+		c("OPS-13", "Protokollierung — SIEM", "SIEM-System zur Korrelation und Analyse von Sicherheitsereignissen. Nachweis: SIEM-Konfiguration, Use-Case-Dokumentation, Alert-Regeln.", "Betrieb", "automated", 3),
+		c("OPS-14", "Protokollierung — Aufbewahrungsdauer", "Logs werden mindestens 12 Monate (sicherheitsrelevante: 24 Monate) aufbewahrt. Nachweis: Retention-Konfiguration, Nachweis der Aufbewahrungsdauer.", "Betrieb", "automated", 2),
+		c("OPS-15", "Protokollierung — Nachvollziehbarkeit", "Aktionen von privilegierten Nutzern sind vollständig protokolliert und nachvollziehbar. Nachweis: Admin-Aktions-Logs, Integritätsnachweise.", "Betrieb", "automated", 3),
+		c("OPS-16", "Protokollierung — Konfiguration", "Log-Quellen, -Felder und -Formate sind standardisiert konfiguriert. Nachweis: Logging-Konfiguration, Standardformat-Dokumentation.", "Betrieb", "automated", 2),
+		c("OPS-17", "Protokollierung — Verfügbarkeit der Monitoring-Software", "Monitoring-Infrastruktur ist hochverfügbar (redundant, ausfallsicher). Nachweis: Redundanzkonzept, Verfügbarkeitsstatistiken.", "Betrieb", "automated", 2),
+		c("OPS-18", "Schwachstellenmanagement — Richtlinien", "Richtlinie für Identifikation, Bewertung und Behebung von Schwachstellen. Nachweis: Vulnerability-Management-Policy, SLAs für Behebungsfristen.", "Betrieb", "document", 3),
+		c("OPS-19", "Störungsmanagement — Richtlinien und Verfahren", "Incident-Management-Prozess mit Klassifizierung und Eskalation. Nachweis: Incident-Management-Richtlinie, Eskalationspfade.", "Betrieb", "document", 3),
+		c("OPS-20", "Störungsmanagement — Umsetzung", "Incidents werden gemäß definiertem Prozess bearbeitet, dokumentiert und abgeschlossen. Nachweis: Incident-Tickets, Post-Mortem-Berichte.", "Betrieb", "manual", 3),
+		c("OPS-21", "Ausfallmanagement — Umsetzung", "Kritische Systemausfälle werden nach dokumentiertem Verfahren behandelt. Nachweis: Runbook/Playbook, Notfallprotokolle.", "Betrieb", "manual", 3),
+		c("OPS-22", "Penetrationstests", "Regelmäßige Penetrationstests (mind. jährlich). Nachweis: Pentest-Bericht, Scope-Dokumentation, Behebungsnachweise.", "Betrieb", "manual", 3),
+		c("OPS-23", "Messungen, Analysen und Assessments von Schwachstellen/Vorfällen", "Regelmäßige Auswertung von Schwachstellen- und Vorfallsdaten für Verbesserungen. Nachweis: Kennzahlenberichte, Trend-Analysen.", "Betrieb", "manual", 2),
+		c("OPS-24", "Einbeziehung von Cloud-Service-Kunden bei Vorfällen", "Kunden werden bei sicherheitsrelevanten Vorfällen zeitnah informiert. Nachweis: Kommunikationsrichtlinie, Muster-Benachrichtigungen, Vorfallsprotokolle.", "Betrieb", "manual", 2),
+		c("OPS-25", "Schwachstellenscans", "Regelmäßige automatisierte Schwachstellenscans aller exponierten Systeme. Nachweis: Scan-Konfiguration, Scan-Berichte, Eskalationsprotokoll.", "Betrieb", "automated", 3),
+		c("OPS-26", "System-Hardening", "Systeme werden nach Sicherheits-Baselines (CIS, BSI) gehärtet. Nachweis: Hardening-Checklisten, Compliance-Scan-Ergebnisse.", "Betrieb", "automated", 3),
+		c("OPS-27", "Patch-Management — Richtlinien", "Patch-Management-Richtlinie mit Fristen nach Kritikalität (kritisch ≤7 Tage). Nachweis: Patch-Policy, SLA-Tabelle.", "Betrieb", "document", 3),
+		c("OPS-28", "Patch-Management — Umsetzung", "Patches werden gemäß Richtlinie eingespielt und Compliance überwacht. Nachweis: Patch-Berichte, Compliance-Dashboard, Ausnahmen-Register.", "Betrieb", "automated", 3),
+		c("OPS-29", "Extern bezogene Komponenten", "Software-Drittkomponenten werden auf Schwachstellen überwacht (SCA, SBOM). Nachweis: SBOM, SCA-Scan-Berichte, Update-Protokolle.", "Betrieb", "automated", 2),
+		c("OPS-30", "Datentrennung — Richtlinien", "Richtlinie zur logischen Trennung von Kundendaten (Multi-Tenancy). Nachweis: Trennungskonzept, Architektur-Dokumentation.", "Betrieb", "document", 3),
+		c("OPS-31", "Datentrennung — Umsetzung", "Technische Maßnahmen zur Datentrennung sind implementiert und verifiziert. Nachweis: Konfigurationsnachweise, Isolationstest-Ergebnisse.", "Betrieb", "automated", 3),
+		c("OPS-32", "Confidential Computing — Richtlinien", "Richtlinie für Einsatz von Confidential Computing (TEE). Nachweis: Policy-Dokument, Anwendungsbereich.", "Betrieb", "document", 2),
+		c("OPS-33", "Confidential Computing — Remote Attestation", "Remote-Attestation-Mechanismus für TEE-basierte Workloads. Nachweis: Attestierungs-Protokolle, Konfigurationsnachweise.", "Betrieb", "automated", 2),
+		c("OPS-34", "Container-Management — Richtlinien", "Richtlinie für sicheres Container-Management (Images, Registry, Runtime). Nachweis: Container-Sicherheits-Policy, Image-Scan-Strategie.", "Betrieb", "document", 2),
+		c("OPS-35", "Container-Management — Umsetzung", "Sichere Container-Images (gescannt, signiert), Laufzeit-Policies (PSP/Admission). Nachweis: Image-Scan-Berichte, Kubernetes-Policies, Runtime-Security-Konfiguration.", "Betrieb", "automated", 2),
+
+		// ── IAM: Identitäts- und Zugriffsverwaltung ──
+		c("IAM-01", "Richtlinie für Identitäten und Zugriffsrechte", "Umfassende Zugriffsrichtlinie (least privilege, need-to-know). Nachweis: IAM-Policy, Rollenkonzept.", "Identitäts- und Zugriffsverwaltung", "document", 3),
+		c("IAM-02", "Vergabe und Änderung von Identitäten und Zugriffsrechten", "Zugriffsrechte werden nach formalen Genehmigungsverfahren vergeben und geändert. Nachweis: Ticket-System, Genehmigungsprotokolle.", "Identitäts- und Zugriffsverwaltung", "manual", 3),
+		c("IAM-03", "Risikobasiertes Verfahren für Sperrung und Entzug von Identitäten", "Risikobasiertes Verfahren für sofortige Sperrung bei Verdacht oder Austritt. Nachweis: Sperrprotokoll, automatisierter Offboarding-Prozess.", "Identitäts- und Zugriffsverwaltung", "automated", 3),
+		c("IAM-04", "Entzug oder Anpassung von Zugriffsrechten bei Aufgabenwechsel", "Rechte werden bei Rollenwechsel zeitnah entzogen/angepasst. Nachweis: Mover-Checkliste, Review-Protokoll.", "Identitäts- und Zugriffsverwaltung", "manual", 2),
+		c("IAM-05", "Regelmäßige Überprüfung von Zugriffsrechten", "Access Reviews (mind. halbjährlich) für alle Benutzerkonten. Nachweis: Access-Review-Berichte, Korrekturnachweise.", "Identitäts- und Zugriffsverwaltung", "manual", 3),
+		c("IAM-06", "Privilegierte Zugriffsrechte", "Privilegierte Konten werden separat verwaltet (PAM), nur temporär vergeben. Nachweis: PAM-Konfiguration, Just-in-Time-Zugriffs-Protokolle.", "Identitäts- und Zugriffsverwaltung", "automated", 3),
+		c("IAM-07", "Zugriff auf Cloud-Kundendaten", "Zugriff auf Kundendaten durch CSP-Mitarbeitende ist protokolliert und auf das Minimum beschränkt. Nachweis: Zugriffsprotokoll, Break-Glass-Verfahren, Kundeninformation.", "Identitäts- und Zugriffsverwaltung", "automated", 3),
+		c("IAM-08", "Authentifizierungsmechanismen", "Starke Authentifizierung (MFA) für alle privilegierten und Remote-Zugänge. Nachweis: MFA-Konfiguration, Ausnahmen-Register.", "Identitäts- und Zugriffsverwaltung", "automated", 3),
+		c("IAM-09", "Vertraulichkeit von Authentifizierungsinformationen", "Passwörter werden verschlüsselt gespeichert (bcrypt/Argon2), nie im Klartext. Nachweis: Passwort-Hashing-Konfiguration, Code-Review.", "Identitäts- und Zugriffsverwaltung", "automated", 2),
+
+		// ── CRY: Kryptographie und Schlüsselmanagement ──
+		c("CRY-01", "Richtlinie für den Einsatz kryptografischer Mechanismen", "Kryptografie-Policy mit zugelassenen Algorithmen und Mindestschlüssellängen. Nachweis: Crypto-Policy, Algorithmen-Liste.", "Kryptographie", "document", 3),
+		c("CRY-02", "Kryptografisches Change-Management", "Verfahren für den Wechsel kryptografischer Algorithmen bei Schwachstellen. Nachweis: Change-Prozess, Crypto-Agility-Konzept.", "Kryptographie", "manual", 2),
+		c("CRY-03", "Überprüfung von Kryptografiepraktiken", "Regelmäßige Überprüfung eingesetzter Kryptografie auf Aktualität. Nachweis: Review-Berichte, Algorithmen-Inventar.", "Kryptographie", "manual", 2),
+		c("CRY-04", "Schutz von Daten bei Übertragung (Transportverschlüsselung)", "TLS 1.2/1.3 für alle externen Übertragungen, kein veraltetes SSL/TLS. Nachweis: TLS-Konfiguration, Scan-Ergebnisse (z.B. SSL Labs).", "Kryptographie", "automated", 3),
+		c("CRY-05", "Verschlüsselung sensibler Daten at-Rest", "Sensible Daten werden at-rest verschlüsselt (AES-256). Nachweis: Verschlüsselungskonfiguration, Storage-Dokumentation.", "Kryptographie", "automated", 3),
+		c("CRY-06", "Sichere Schlüsselgenerierung", "Kryptografische Schlüssel werden sicher generiert (CSPRNG, HSM). Nachweis: Schlüsselgenerierungs-Verfahren, HSM-Konfiguration.", "Kryptographie", "manual", 2),
+		c("CRY-07", "Rotation kryptografischer Schlüssel", "Schlüssel werden nach definierter Lebensdauer rotiert. Nachweis: Rotation-Policy, Schlüssel-Inventar mit Ablaufdaten.", "Kryptographie", "manual", 3),
+		c("CRY-08", "Ausstellung von Public-Key-Zertifikaten", "Zertifikate werden von vertrauenswürdigen CAs ausgestellt, Revokation ist möglich. Nachweis: Zertifikats-Inventar, CA-Dokumentation.", "Kryptographie", "automated", 2),
+		c("CRY-09", "Sichere Schlüsselbereitstellung", "Schlüssel werden sicher provisioniert (kein Klartextübertragung). Nachweis: Key-Provisioning-Prozess, HSM-Integration.", "Kryptographie", "manual", 2),
+		c("CRY-10", "Sichere Schlüsselaufbewahrung", "Schlüssel werden in HSM oder dediziertem KMS aufbewahrt, nie im Code. Nachweis: KMS-Konfiguration, Code-Review.", "Kryptographie", "automated", 3),
+		c("CRY-11", "Kryptografische Schlüsselarchivierung", "Archivierung von Schlüsseln für verschlüsselte Langzeitspeicherung. Nachweis: Archivierungskonzept, Archiv-Zugangsprotokolle.", "Kryptographie", "manual", 1),
+		c("CRY-12", "Kryptografisches Schlüsseltransitions-Management", "Prozess für sicheren Übergang zu neuen Schlüsseln bei Rotation. Nachweis: Transitionsplan, Test-Ergebnisse.", "Kryptographie", "manual", 2),
+		c("CRY-13", "Umgang mit kompromittierten Schlüsseln", "Verfahren für sofortige Revokation und Schlüsselaustausch bei Kompromittierung. Nachweis: Incident-Playbook für Schlüssel-Kompromittierung.", "Kryptographie", "manual", 3),
+		c("CRY-14", "Sichere Deaktivierung kryptografischer Schlüssel", "Außer-Dienst-Stellung von Schlüsseln ist dokumentiert und sicher. Nachweis: Deaktivierungs-Protokoll.", "Kryptographie", "manual", 1),
+		c("CRY-15", "Anforderungen an Pre-Shared Keys", "PSKs sind ausreichend lang und zufällig, werden sicher geteilt. Nachweis: PSK-Generierungsverfahren, Sicherheitsanforderungen.", "Kryptographie", "manual", 1),
+		c("CRY-16", "Betriebskontinuität für das Schlüsselmanagement", "Schlüsselmanagement-Systeme sind hochverfügbar (Redundanz, Failover). Nachweis: Redundanzkonzept, Failover-Test.", "Kryptographie", "automated", 2),
+		c("CRY-17", "Kryptografischer Schlüssel-Lebenszyklus-Management", "Vollständiger Schlüssel-Lebenszyklus (Generierung→Rotation→Archivierung→Zerstörung) ist dokumentiert. Nachweis: KMS-Konfiguration, Lifecycle-Policy.", "Kryptographie", "automated", 3),
+		c("CRY-18", "Nutzung externer Schlüsselverwaltungssysteme", "Externe KMS-Integration (AWS KMS, Azure Key Vault) ist dokumentiert und sicher konfiguriert. Nachweis: Integration-Dokumentation, Zugriffsprotokolle.", "Kryptographie", "automated", 2),
+		c("CRY-19", "Sicherer Umgang mit kundenverwalteten Schlüsseln (BYOK/HYOK)", "BYOK/HYOK-Mechanismus ist sicher implementiert und dokumentiert. Nachweis: BYOK-Architektur, Schlüsseltransferdokumentation.", "Kryptographie", "manual", 2),
+
+		// ── COS: Kommunikationssicherheit ──
+		c("COS-01", "Technische Schutzmaßnahmen", "Netzwerk-Sicherheitsmaßnahmen (Firewall, IDS/IPS) sind implementiert. Nachweis: Firewall-Regelwerke, IDS-Konfiguration.", "Kommunikationssicherheit", "automated", 3),
+		c("COS-02", "Sicherheitsanforderungen für Verbindungen im CSP-Netzwerk", "Interne Netzwerkverbindungen sind nach definiertem Sicherheitsstandard gesichert. Nachweis: Netzwerk-Sicherheitsrichtlinie, Konfigurationsnachweise.", "Kommunikationssicherheit", "automated", 2),
+		c("COS-03", "Monitoring von Verbindungen im CSP-Netzwerk", "Netzwerkverbindungen werden kontinuierlich auf Anomalien überwacht. Nachweis: NDR/NTA-Konfiguration, Alert-Protokolle.", "Kommunikationssicherheit", "automated", 2),
+		c("COS-04", "Netzwerkübergreifender Zugriff", "Zugriffe über Netzwerkgrenzen hinweg sind kontrolliert (DMZ, Proxy). Nachweis: Netzwerktopologie, Firewall-Regeln.", "Kommunikationssicherheit", "manual", 2),
+		c("COS-05", "Netzwerke für Verwaltung", "Management-Netzwerke sind von Produktionsnetzwerken getrennt. Nachweis: Netzwerksegmentierungsdokumentation, VLAN-Konfiguration.", "Kommunikationssicherheit", "automated", 3),
+		c("COS-06", "Trennung des Datenverkehrs in gemeinsam genutzten Netzumgebungen", "Multi-Tenant-Netzwerktrennung verhindert Datenlecks zwischen Kunden. Nachweis: VLAN/VxLAN-Konfiguration, Isolationstest-Ergebnisse.", "Kommunikationssicherheit", "automated", 3),
+		c("COS-07", "Dokumentation der Netzwerktopologie", "Aktuelle Netzwerktopologie-Dokumentation inkl. Segmentierung und Datenflüsse. Nachweis: Netzwerkdiagramme, Datenflusskarte.", "Kommunikationssicherheit", "document", 2),
+		c("COS-08", "Richtlinien für die Datenübertragung", "Richtlinien für sichere Datenübertragung (intern und extern). Nachweis: Data-Transfer-Policy, Verschlüsselungsanforderungen.", "Kommunikationssicherheit", "document", 2),
+
+		// ── PI: Portabilität und Interoperabilität ──
+		c("PI-01", "Sicherheit von Ein- und Ausgabeschnittstellen", "Schnittstellen für Datenmigration/-export sind abgesichert (Auth, Verschlüsselung). Nachweis: API-Sicherheitsdokumentation, Auth-Konfiguration.", "Portabilität", "manual", 2),
+		c("PI-02", "Vertragliche Vereinbarungen zur Datenbereitstellung", "Vertragliche Regelungen für Datenportabilität und Übergabe bei Vertragsende. Nachweis: SLA/DPA-Klauseln zu Datenportabilität, Exit-Prozess.", "Portabilität", "document", 2),
+		c("PI-03", "Sichere Löschung von Daten", "Kundendaten werden bei Vertragsende sicher und nachweislich gelöscht. Nachweis: Löschzertifikat, Löschprozess-Dokumentation.", "Portabilität", "manual", 3),
+
+		// ── DEV: Beschaffung, Entwicklung und Änderung von Systemen ──
+		c("DEV-01", "Richtlinien für Entwicklung/Beschaffung von Systemkomponenten", "Sicherheitsanforderungen sind Teil des Entwicklungs-/Beschaffungsprozesses (SSDLC). Nachweis: SSDLC-Policy, Sicherheitsanforderungskatalog.", "Entwicklung & Änderung", "document", 3),
+		c("DEV-02", "Auslagerung der Entwicklung", "Ausgelagerte Entwicklung unterliegt gleichen Sicherheitsanforderungen. Nachweis: Entwickler-Verträge mit Sicherheitsklauseln, Audit-Recht.", "Entwicklung & Änderung", "document", 2),
+		c("DEV-03", "Richtlinien für Änderungen an Systemkomponenten", "Change-Management-Richtlinie für alle sicherheitsrelevanten Systemänderungen. Nachweis: Change-Policy, Genehmigungsverfahren.", "Entwicklung & Änderung", "document", 2),
+		c("DEV-04", "Schulung zu CI/CD-Sicherheit", "Entwickler werden in sicherer Continuous Delivery geschult. Nachweis: Schulungsunterlagen, Teilnehmerlisten.", "Entwicklung & Änderung", "manual", 1),
+		c("DEV-05", "Designdokumentation für Sicherheitsfunktionen", "Sicherheitsrelevante Design-Entscheidungen sind dokumentiert. Nachweis: Security-Design-Dokument, Threat-Model.", "Entwicklung & Änderung", "document", 2),
+		c("DEV-06", "Risikobewertung und Priorisierung von Änderungen", "Änderungen werden nach Sicherheitsrisiko bewertet und priorisiert. Nachweis: Change-Risk-Assessment, Priorisierungsmatrix.", "Entwicklung & Änderung", "manual", 2),
+		c("DEV-07", "Tests von Änderungen", "Sicherheitstests sind Teil des Änderungsprozesses (SAST, DAST, Review). Nachweis: Test-Berichte, Security-Gate-Ergebnisse.", "Entwicklung & Änderung", "automated", 3),
+		c("DEV-08", "Protokollierung von Änderungen", "Alle Änderungen werden in einem Änderungsprotokoll (Audit Trail) erfasst. Nachweis: Change-Log, Versionskontrolle.", "Entwicklung & Änderung", "automated", 2),
+		c("DEV-09", "Versionskontrolle", "Quellcode und Konfigurationen werden in einer Versionskontrolle (Git) verwaltet. Nachweis: Repository-Konfiguration, Branch-Schutz-Regeln.", "Entwicklung & Änderung", "automated", 2),
+		c("DEV-10", "Freigabe in der Produktionsumgebung", "Deployments in Produktion durchlaufen formalen Genehmigungsprozess. Nachweis: Deployment-Genehmigungsprotokolle, 4-Augen-Prinzip.", "Entwicklung & Änderung", "manual", 2),
+		c("DEV-11", "Schutz von Entwicklungs- und Testumgebungen", "Dev/Test-Umgebungen sind vom Produktionsbetrieb getrennt und gesichert. Nachweis: Umgebungskonzept, Zugriffskontrollen.", "Entwicklung & Änderung", "manual", 2),
+		c("DEV-12", "Trennung von Umgebungen", "Strikte Trennung zwischen Entwicklungs-, Test- und Produktionsumgebungen. Nachweis: Umgebungsarchitektur, Netzwerktrennung.", "Entwicklung & Änderung", "automated", 3),
+		c("DEV-13", "Transparenz über Software-Komponenten", "SBOM (Software Bill of Materials) für alle eingesetzten Komponenten. Nachweis: SBOM (SPDX oder CycloneDX), Aktualisierungshistorie.", "Entwicklung & Änderung", "automated", 2),
+		c("DEV-14", "Sicherer Einsatz von Fremd-Hardware und -Software", "Drittkomponenten werden auf Integrität und Sicherheit geprüft. Nachweis: Komponenten-Prüfungsprotokoll, Supply-Chain-Sicherheitskonzept.", "Entwicklung & Änderung", "manual", 2),
+		c("DEV-15", "Ausnahmen vom Change-Management-Prozess", "Notfall-Changes sind geregelt und werden nachträglich dokumentiert. Nachweis: Emergency-Change-Richtlinie, Notfall-Änderungsprotokoll.", "Entwicklung & Änderung", "manual", 1),
+
+		// ── SSO: Steuerung und Überwachung von Dienstleistern ──
+		c("SSO-01", "Richtlinien und Verfahren zur Steuerung von Dienstleistern", "Richtlinie für Auswahl, Beauftragung und Überwachung von Unterauftragnehmern. Nachweis: Third-Party-Management-Policy.", "Dienstleister-Steuerung", "document", 3),
+		c("SSO-02", "Risikobewertung von Dienstleistern", "Dienstleister werden vor Beauftragung und regelmäßig hinsichtlich IS-Risiken bewertet. Nachweis: Vendor-Risk-Assessment, Bewertungsberichte.", "Dienstleister-Steuerung", "manual", 3),
+		c("SSO-03", "Datenverarbeitung durch Dienstleister", "AVVs mit allen datenverarbeitenden Unterauftragnehmern. Nachweis: AVV-Verzeichnis, unterzeichnete AVVs.", "Dienstleister-Steuerung", "document", 3),
+		c("SSO-04", "Verzeichnis der Dienstleister", "Aktuelles Verzeichnis aller wesentlichen Unterauftragnehmer. Nachweis: Unterauftragnehmer-Verzeichnis (aktuell, mit Rollen).", "Dienstleister-Steuerung", "document", 2),
+		c("SSO-05", "Monitoring der Anforderungserfüllung durch Dienstleister", "Regelmäßige Überprüfung der Compliance-Einhaltung durch Dienstleister (Audits, Zertifikate). Nachweis: Audit-Berichte, Zertifikats-Nachweise.", "Dienstleister-Steuerung", "manual", 2),
+		c("SSO-06", "Vertragliche Kündigungs-/Ausstiegsstrategie für Dienstleister", "Ausstiegsstrategie für kritische Dienstleister ist dokumentiert. Nachweis: Exit-Strategie, Vertragskündigungsklauseln.", "Dienstleister-Steuerung", "document", 2),
+		c("SSO-07", "Sicherstellung von Transparenz innerhalb von Dienstleistern", "Unterauftragnehmer informieren über ihre eigenen Unterauftragnehmer. Nachweis: Sub-Subunternehmerliste, Vertragsklauseln zur Weitergabe.", "Dienstleister-Steuerung", "document", 1),
+		c("SSO-08", "Kontrolle des Austauschs mit Funktionskomponenten-Lieferanten", "Schnittstellen zu Software-Komponentenlieferanten (z.B. OSS) sind kontrolliert. Nachweis: OSS-Policy, Komponenten-Review-Prozess.", "Dienstleister-Steuerung", "manual", 1),
+
+		// ── SIM: Security Incident Management ──
+		c("SIM-01", "Richtlinie für das Sicherheitsvorfallsmanagement", "Incident-Management-Richtlinie mit Klassifizierung, Eskalation und Kommunikation. Nachweis: Incident-Response-Policy.", "Sicherheitsvorfallsmanagement", "document", 3),
+		c("SIM-02", "Sicherheitsvorfalls-Reaktionspläne", "Dokumentierte Incident-Response-Pläne für relevante Vorfallstypen. Nachweis: IR-Playbooks, Runbooks.", "Sicherheitsvorfallsmanagement", "document", 3),
+		c("SIM-03", "Bearbeitung von Sicherheitsvorfällen", "Vorfälle werden gemäß Prozess bearbeitet, dokumentiert und abgeschlossen. Nachweis: Incident-Tickets, Timeline-Dokumentation.", "Sicherheitsvorfallsmanagement", "manual", 3),
+		c("SIM-04", "Dokumentation und Reporting von Sicherheitsvorfällen", "Vorfälle werden vollständig dokumentiert und an relevante Stakeholder berichtet. Nachweis: Vorfallsdokumentation, Berichtsvorlagen, Post-Mortem.", "Sicherheitsvorfallsmanagement", "manual", 2),
+		c("SIM-05", "Meldepflicht des Personals", "Mitarbeitende sind verpflichtet, Sicherheitsereignisse zu melden. Nachweis: Schulungsnachweis, Eskalationskontakt-Dokumentation.", "Sicherheitsvorfallsmanagement", "manual", 2),
+		c("SIM-06", "Auswertungs- und Lernprozess", "Lessons Learned nach Vorfällen fließen in Verbesserungen ein. Nachweis: Post-Mortem-Protokolle, Maßnahmenverfolgung.", "Sicherheitsvorfallsmanagement", "manual", 2),
+
+		// ── BCM: Business Continuity Management ──
+		c("BCM-01", "Business-Continuity- und Notfallmanagementsystem", "Dokumentiertes BCM-System mit Scope, Strategie und Verantwortlichkeiten. Nachweis: BCM-Policy, BIA, BCM-Rahmenwerk.", "Business Continuity Management", "document", 3),
+		c("BCM-02", "Business-Impact-Analyse (BIA)", "Regelmäßige BIA identifiziert kritische Dienste und Abhängigkeiten. Nachweis: BIA-Bericht (aktuell ≤12 Monate), RTO/RPO-Tabelle.", "Business Continuity Management", "manual", 3),
+		c("BCM-03", "Business-Continuity-Pläne", "Dokumentierte BCPs für alle kritischen Dienste. Nachweis: BCP-Dokumente, Wiederherstellungs-Prozeduren.", "Business Continuity Management", "document", 3),
+		c("BCM-04", "Tests der Business Continuity", "BCM-Tests (Tabletop, Full-DR) mindestens jährlich. Nachweis: Test-Berichte mit Datum, Ergebnis und Verbesserungsmaßnahmen.", "Business Continuity Management", "manual", 3),
+
+		// ── COM: Compliance ──
+		c("COM-01", "Identifikation anwendbarer Anforderungen", "Alle rechtlichen, regulatorischen und vertraglichen Anforderungen sind erfasst. Nachweis: Compliance-Register, Gesetzgebungsübersicht.", "Compliance", "document", 2),
+		c("COM-02", "Richtlinie für Planung und Durchführung von Audits", "Interne Audit-Richtlinie mit Planung, Unabhängigkeit und Berichterstattung. Nachweis: Audit-Policy, Auditplan.", "Compliance", "document", 2),
+		c("COM-03", "Interne Audits des ISMS", "Mindestens jährliche interne ISMS-Audits durch unabhängige Auditoren. Nachweis: Audit-Berichte, Maßnahmenverfolgung.", "Compliance", "manual", 3),
+		c("COM-04", "Informationen zur IS-Performance und Management-Assessment", "Regelmäßiges Management-Review der IS-Kennzahlen und ISMS-Leistung. Nachweis: Management-Review-Protokoll, KPI-Dashboard.", "Compliance", "manual", 2),
+
+		// ── INQ: Umgang mit behördlichen Ermittlungsanfragen ──
+		c("INQ-01", "Rechtliche Bewertung von Ermittlungsanfragen", "Behördenanfragen werden rechtlich geprüft, bevor Daten herausgegeben werden. Nachweis: Richtlinie, Rechtsgutachten.", "Behördenanfragen", "manual", 2),
+		c("INQ-02", "Information der Cloud-Kunden über Ermittlungsanfragen", "Kunden werden über Behördenanfragen informiert (soweit rechtlich zulässig). Nachweis: Benachrichtigungsrichtlinie, Transparenzbericht.", "Behördenanfragen", "document", 2),
+		c("INQ-03", "Begrenzung des Zugriffs auf Daten bei Ermittlungsanfragen", "Datenzugriff durch Behörden wird auf das rechtlich Notwendige beschränkt. Nachweis: Zugriffsprotokoll, Rechtsgrundlagen-Dokumentation.", "Behördenanfragen", "manual", 2),
+		c("INQ-04", "Kommunikation technischer Offenlegungsverfahren", "CSP kommuniziert technische Verfahren für Datenzugriffe durch Behörden. Nachweis: Technische Dokumentation, Kundenkommunikation.", "Behördenanfragen", "document", 1),
+
+		// ── PSS: Produktsicherheit für Cloud-Kundschaft ──
+		c("PSS-01", "Empfehlungen für Cloud-Kundschaft", "CSP stellt Sicherheitsleitfäden und Konfigurationsempfehlungen für Kunden bereit. Nachweis: Security-Hardening-Guide, Kundendokumentation.", "Produktsicherheit für Kunden", "document", 2),
+		c("PSS-02", "Identifikation von Schwachstellen im Cloud-Dienst", "Prozess zur Identifikation und Behebung von Schwachstellen in der Kundenoberfläche. Nachweis: Vulnerability-Disclosure-Policy, CVE-Tracking.", "Produktsicherheit für Kunden", "automated", 3),
+		c("PSS-03", "Information der Kunden über bekannte Schwachstellen", "Kunden werden zeitnah über sicherheitsrelevante Schwachstellen informiert. Nachweis: Security-Advisories, Kundenbenachrichtigungen.", "Produktsicherheit für Kunden", "manual", 2),
+		c("PSS-04", "Fehlerbehandlung und Logging-Mechanismen", "Applikation behandelt Fehler sicher (kein Sensitive Data Exposure). Nachweis: Code-Review, SAST-Berichte, Error-Handling-Policy.", "Produktsicherheit für Kunden", "automated", 2),
+		c("PSS-05", "Authentifizierungsmechanismen (Kundenebene)", "Starke Authentifizierung für Kundenportale und APIs (MFA-Unterstützung). Nachweis: Auth-Konfiguration, MFA-Dokumentation.", "Produktsicherheit für Kunden", "automated", 3),
+		c("PSS-06", "Session-Management", "Sichere Session-Verwaltung (Timeout, Invalidierung, Token-Rotation). Nachweis: Session-Konfiguration, OWASP-Checkliste.", "Produktsicherheit für Kunden", "automated", 2),
+		c("PSS-07", "Vertraulichkeit von Authentifizierungsinformationen (Kundenebene)", "Kunden-Passwörter werden verschlüsselt gespeichert, nie im Klartext. Nachweis: Hashing-Konfiguration, Sicherheitsarchitektur.", "Produktsicherheit für Kunden", "automated", 2),
+		c("PSS-08", "Rollen- und Rechterahmen", "Rollenbasiertes Zugriffsmodell (RBAC) für Kunden-Tenants. Nachweis: RBAC-Konzept, Rechte-Matrix, API-Dokumentation.", "Produktsicherheit für Kunden", "manual", 2),
+		c("PSS-09", "Autorisierungsmechanismen", "Zugriffskontrolle auf API- und Anwendungsebene (AuthZ). Nachweis: AuthZ-Konfiguration, Tests.", "Produktsicherheit für Kunden", "automated", 3),
+		c("PSS-10", "Software-Defined Networking", "SDN-Komponenten sind sicher konfiguriert und abgehärtet. Nachweis: SDN-Konfiguration, Security-Policy.", "Produktsicherheit für Kunden", "automated", 2),
+		c("PSS-11", "Images für virtuelle Maschinen und Container", "VM/Container-Images sind gehärtet, gescannt und signiert. Nachweis: Image-Scan-Berichte, Signierungs-Konfiguration, Base-Image-Policy.", "Produktsicherheit für Kunden", "automated", 3),
+		c("PSS-12", "Region der Datenverarbeitung und -speicherung", "Datenverarbeitungs- und Speicherorte sind dokumentiert und vertraglich festgelegt. Nachweis: Datenhaltungskonzept, DPA, Region-Dokumentation.", "Produktsicherheit für Kunden", "document", 2),
+	}
+}
+
+// kritisControls returns controls for KRITIS-Dachgesetz (KRITISDachG).
+// Source: Dachgesetz zur Stärkung der physischen Resilienz kritischer Anlagen,
+// in Kraft getreten 11. März 2026 (BGBl. 2026 I Nr. 66).
+// Bezieht sich auf §§ 8, 12, 13, 16, 18, 20 KRITIS-DachG.
+func kritisControls(frameworkID, orgID string) []Control {
+	c := func(id, title, desc, domain, evType string, w int) Control {
+		return Control{FrameworkID: frameworkID, OrgID: orgID, ControlID: "KRITIS-" + id, Title: title, Description: desc, Domain: domain, EvidenceType: evType, Weight: w}
+	}
+	return []Control{
+		// ── Registrierungspflichten (§§ 8, 9) ──
+		c("DG.1", "Registrierung beim BSI (§8 Abs.1)", "Betreiber kritischer Anlagen registrieren sich innerhalb der Frist beim BSI und melden relevante Anlagen. Nachweis: BSI-Registrierungsnachweis, Registrierungsnummer.", "Registrierung & Meldepflichten", "document", 3),
+		c("DG.2", "Aktualisierung der Registrierungsdaten (§8 Abs.6)", "Registrierungsdaten werden bei Änderungen zeitnah aktualisiert. Nachweis: Aktualisierungsprotokoll, BSI-Bestätigung.", "Registrierung & Meldepflichten", "document", 2),
+
+		// ── Risikoanalyse (§12) ──
+		c("DG.3", "Risikoanalyse und Risikobewertung durch Betreiber (§12 Abs.1)", "Betreiber führen eine systematische Risikoanalyse für die kritische Anlage durch, die Bedrohungsszenarien, Abhängigkeiten und Schutzmaßnahmen umfasst. Nachweis: Risikoanalysedokument (≤12 Monate), Methodik, Eigentümer.", "Risikoanalyse", "manual", 3),
+
+		// ── Resilienzmaßnahmen (§13) ──
+		c("DG.4", "Maßnahmen zur Gewährleistung der Resilienz (§13 Abs.1)", "Betreiber implementieren angemessene technische, sicherheitsbezogene und organisatorische Maßnahmen zum Schutz der kritischen Anlage und ihrer Dienste. Nachweis: Maßnahmenplan, Umsetzungsnachweise.", "Resilienzmaßnahmen", "manual", 3),
+		c("DG.5", "Verhältnismäßigkeit und Stand der Technik (§13 Abs.2)", "Maßnahmen entsprechen dem Stand der Technik und sind verhältnismäßig (Kosten-Nutzen-Analyse). Nachweis: Technologiebewertung, Vergleich mit Branchenstandards.", "Resilienzmaßnahmen", "manual", 2),
+
+		// ── §13 Abs.3 Nr.1 — Notfallvorsorge ──
+		c("DG.6", "Notfallvorsorge (§13 Abs.3 Nr.1)", "Maßnahmen zur Verhütung von Vorfällen (präventive Maßnahmen, Notfallvorsorgeplan). Nachweis: Notfallvorsorgeplan, präventive Maßnahmenübersicht.", "Notfallvorsorge", "document", 2),
+
+		// ── §13 Abs.3 Nr.2 — Physische Sicherheit ──
+		c("DG.7", "Physischer Schutz — Bauliche und technische Maßnahmen (§13 Abs.3 Nr.2a)", "Strukturelle und technische Absicherung des Perimeters (Zäune, Sicherheitsglas, Tore). Nachweis: Sicherheitskonzept, Begehungsprotokoll, Fotos.", "Physische Sicherheit", "manual", 3),
+		c("DG.8", "Physischer Schutz — Umgebungsüberwachung (§13 Abs.3 Nr.2b)", "Instrumente zur Überwachung von Umgebungsparametern (Temperatur, Feuer, Wasser, Erschütterung). Nachweis: Sensorliste, Alarmkonfiguration, Testberichte.", "Physische Sicherheit", "automated", 2),
+		c("DG.9", "Physischer Schutz — Detektionseinrichtungen (§13 Abs.3 Nr.2c)", "Einbruchmeldesysteme, Bewegungsmelder und Videoüberwachung. Nachweis: Anlagendokumentation, Wartungsberichte, Alarmprotokoll.", "Physische Sicherheit", "automated", 3),
+		c("DG.10", "Physischer Schutz — Zutrittskontrolle (§13 Abs.3 Nr.2d)", "Zutrittskontrollsystem mit Autorisierungsmanagement und Protokollierung. Nachweis: Zutrittskontrollkonzept, Zugangsprotokoll, Review-Nachweis.", "Physische Sicherheit", "manual", 3),
+
+		// ── §13 Abs.3 Nr.3 — Krisenmanagement ──
+		c("DG.11", "Risiko- und Krisenmanagement (§13 Abs.3 Nr.3a)", "Dokumentiertes Risiko- und Krisenmanagement-Verfahren mit Eskalationspfaden. Nachweis: Krisenmanagement-Konzept, Eskalationsmatrix.", "Krisenmanagement", "document", 3),
+		c("DG.12", "Alarmierungsverfahren (§13 Abs.3 Nr.3b)", "Vorab definierte Alarmierungs- und Eskalationsverfahren für Vorfälle. Nachweis: Alarmierungsplan, Kontaktliste (aktuell), Test-Protokoll.", "Krisenmanagement", "manual", 3),
+
+		// ── §13 Abs.3 Nr.4 — Business Continuity ──
+		c("DG.13", "Aufrechterhaltung des Betriebs (§13 Abs.3 Nr.4a)", "Maßnahmen zur Aufrechterhaltung des Betriebs (Notstrom, redundante Systeme, Ersatzteillager). Nachweis: BCM-Plan, Redundanzkonzept, Notstrom-Testprotokoll.", "Business Continuity", "manual", 3),
+		c("DG.14", "Alternative Lieferketten (§13 Abs.3 Nr.4b)", "Identifikation alternativer Lieferketten für kritische Ressourcen. Nachweis: Lieferkettenanalyse, Notlieferanten-Verzeichnis.", "Business Continuity", "document", 2),
+
+		// ── §13 Abs.3 Nr.5 — Personalsicherheit ──
+		c("DG.15", "Personal- und Dienstleistersicherheit (§13 Abs.3 Nr.5)", "Sicherheitsanforderungen für Mitarbeitende und externe Dienstleister mit Zugang zur kritischen Anlage (Überprüfung, Einweisung, NDAs). Nachweis: Personalsicherheits-Richtlinie, Einweisungsnachweise, Vertraulichkeitsverpflichtungen.", "Personalsicherheit", "manual", 2),
+
+		// ── §13 Abs.3 Nr.6 — Schulungen ──
+		c("DG.16", "Schulungen, Übungen und Sensibilisierung (§13 Abs.3 Nr.6)", "Regelmäßige Schulungen und Übungen für alle relevanten Mitarbeitenden (mind. jährlich). Nachweis: Schulungsplan, Teilnehmerlisten, Übungsberichte.", "Schulungen", "manual", 2),
+
+		// ── Resilienzplan (§13 Abs.4) ──
+		c("DG.18", "Resilienzplan (§13 Abs.4)", "Schriftlicher Resilienzplan dokumentiert alle Maßnahmen, Zuständigkeiten und Aktualisierungshistorie. Nachweis: Resilienzplan-Dokument (aktuell, unterschrieben), Versionierung.", "Resilienzplan", "document", 3),
+
+		// ── Nachweispflichten (§16) ──
+		c("DG.19", "Einreichung von Nachweisen (§16 Abs.1/3)", "Betreiber reichen alle 4 Jahre Nachweise über implementierte Maßnahmen beim BBK/BSI ein. Nachweis: Eingereichter Nachweisbericht, Bestätigung der Behörde.", "Nachweispflichten", "document", 3),
+		c("DG.20", "Zusätzliche Nachweise und Resilienzplan (§16 Abs.2)", "Auf Anforderung werden zusätzliche Nachweise und der Resilienzplan an die Behörde übermittelt. Nachweis: Übermittlungsprotokolle, Behördenanfragen.", "Nachweispflichten", "document", 2),
+		c("DG.21", "Behördliche Audits (§16 Abs.4)", "Betreiber ermöglichen behördliche Vor-Ort-Prüfungen. Nachweis: Audit-Unterstützungsprotokoll, Prüfbericht.", "Nachweispflichten", "manual", 2),
+		c("DG.22", "Mängelbeseitigungsplan (§16 Abs.5)", "Bei festgestellten Mängeln wird ein Mängelbeseitigungsplan erstellt und eingereicht. Nachweis: Mängelbeseitigungsplan, Umsetzungsnachweise.", "Nachweispflichten", "manual", 2),
+
+		// ── Meldepflichten (§18) ──
+		c("DG.23", "Vorfallsmeldepflicht 24 Stunden (§18 Abs.1)", "Erhebliche Störungen der kritischen Anlage werden innerhalb von 24 Stunden beim BBK/BSI gemeldet. Nachweis: Meldeprotokoll, Eingangsbestätigungen, Meldeverfahrensdokumentation.", "Meldepflichten", "manual", 3),
+		c("DG.24", "Informationen zu Vorfallsmeldungen (§18 Abs.2)", "Vorfallsmeldungen enthalten alle vorgeschriebenen Informationen. Nachweis: Meldevorlagen, ausgefüllte Meldungen.", "Meldepflichten", "document", 2),
+		c("DG.25", "Öffentliche Informationspflicht (§18 Abs.9)", "Bei Vorfällen mit öffentlicher Relevanz werden Bevölkerung/Betroffene informiert. Nachweis: Kommunikationsplan, Veröffentlichungen.", "Meldepflichten", "manual", 2),
+
+		// ── Leitungsverantwortung (§20) ──
+		c("DG.26", "Leitungsverantwortung (§20 Abs.1)", "Das Leitungsorgan trägt die Gesamtverantwortung für die Umsetzung der Resilienzmaßnahmen und genehmigt den Resilienzplan. Nachweis: Unterschriebener Resilienzplan, Beschlussprotokoll.", "Leitungsverantwortung", "document", 3),
+	}
+}
+
+// iso27017Controls returns controls for ISO/IEC 27017:2015 — Cloud Security.
+// This standard provides guidelines for information security controls applicable
+// to cloud service providers AND cloud service customers.
+func iso27017Controls(frameworkID, orgID string) []Control {
+	c := func(id, title, desc, domain, evType string, w int) Control {
+		return Control{FrameworkID: frameworkID, OrgID: orgID, ControlID: id, Title: title, Description: desc, Domain: domain, EvidenceType: evType, Weight: w}
+	}
+	return []Control{
+		// ── Gemeinsame Verantwortlichkeiten (CSP + CSC) ──────────────────
+		c("27017-6.3.1", "Gemeinsame Rollen und Verantwortlichkeiten",
+			"Dokumentiere die geteilten Verantwortlichkeiten zwischen Cloud-Anbieter (CSP) und Cloud-Nutzer (CSC) in einem Shared-Responsibility-Model. Definiere für jede Sicherheitsfunktion, wer zuständig ist. Nachweis: Shared-Responsibility-Matrix, Vertragsanhang.",
+			"Governance", "document", 3),
+		c("27017-6.3.2", "Entfernen und Rückgabe von Assets bei Vertragsende",
+			"Stelle sicher, dass beim Vertragsende alle Kundendaten vollständig zurückgegeben oder nachweislich gelöscht werden. Definiere Exit-Prozeduren im Vertrag. Nachweis: Datenrückgabe-/Löschungsprotokoll, Vertragsklausel, Exit-Plan.",
+			"Governance", "document", 3),
+		// ── Asset Management ──────────────────────────────────────────────
+		c("27017-8.1.1", "Inventarisierung von Cloud-Assets",
+			"Führe ein vollständiges Inventar aller genutzten Cloud-Ressourcen (VMs, Buckets, Datenbanken, APIs). Automatisiere das Asset-Discovery wo möglich. Nachweis: Cloud-Asset-Register, Discovery-Tool-Report, Aktualisierungsfrequenz.",
+			"Asset Management", "automated", 2),
+		c("27017-8.1.3", "Handhabung von Cloud-Assets",
+			"Definiere akzeptable Nutzungsregeln für Cloud-Ressourcen: Datenklassifizierung, Zugriffsrechte, Backup-Pflicht, Tagging-Standards. Nachweis: Cloud-Nutzungsrichtlinie, Tagging-Compliance-Report.",
+			"Asset Management", "manual", 2),
+		// ── Zugriffskontrolle ─────────────────────────────────────────────
+		c("27017-9.1.2", "Zugriff auf Cloud-Dienste und -Ressourcen",
+			"Implementiere Least-Privilege-Zugriff auf alle Cloud-Ressourcen: IAM-Rollen, Service Accounts, MFA für privilegierte Zugriffe, regelmäßige Access Reviews. Nachweis: IAM-Konfiguration, Access-Review-Protokoll, MFA-Aktivierungsnachweis.",
+			"Zugriffskontrolle", "automated", 3),
+		c("27017-9.4.4", "Schutz von privilegierten Utility-Programmen",
+			"Kontrolliere und protokolliere den Zugriff auf Cloud-Management-APIs und Admin-Konsolen. Nutze separate privilegierte Konten, nie mit persönlicher Identität. Nachweis: Admin-Zugriffsprotokoll, PAM-Konfiguration.",
+			"Zugriffskontrolle", "automated", 3),
+		// ── Kryptographie ─────────────────────────────────────────────────
+		c("27017-10.1.1", "Verschlüsselung in der Cloud",
+			"Verschlüssele alle Daten at-rest und in-transit in Cloud-Umgebungen: AES-256 für ruhende Daten, TLS 1.2+ für Übertragungen, Customer-Managed Keys (CMK) für sensitive Daten. Nachweis: Verschlüsselungskonfiguration, KMS-Einstellungen, Zertifikatsstatus.",
+			"Kryptographie", "automated", 3),
+		c("27017-10.1.2", "Schlüsselverwaltung in der Cloud",
+			"Verwalte kryptografische Schlüssel für Cloud-Dienste: Schlüsselrotation (jährlich), Hardware Security Modules (HSM) für kritische Schlüssel, Key-Escrow-Richtlinie. Nachweis: KMS-Konfiguration, Rotationsprotokoll, HSM-Nutzungsnachweis.",
+			"Kryptographie", "automated", 3),
+		// ── Physische und Umgebungssicherheit ─────────────────────────────
+		c("27017-11.2.7", "Entsorgung von Cloud-Speichermedien",
+			"Stelle sicher, dass beim Ableben/Austausch von Storage beim CSP Daten nachweislich gelöscht werden. Fordere Löschzertifikate. Nachweis: Löschzertifikat des CSP, Vertragsklausel zur sicheren Entsorgung.",
+			"Physische Sicherheit", "document", 2),
+		// ── Betriebssicherheit ────────────────────────────────────────────
+		c("27017-12.1.3", "Kapazitätsmanagement in der Cloud",
+			"Überwache und manage Cloud-Ressourcennutzung: automatisches Scaling, Budget-Alerts, Capacity-Reservierungen für kritische Workloads. Nachweis: Monitoring-Dashboard, Scaling-Konfiguration, Budget-Alert-Setup.",
+			"Betriebssicherheit", "automated", 2),
+		c("27017-12.4.1", "Ereignisprotokollierung in der Cloud",
+			"Aktiviere umfassendes Logging für alle Cloud-Dienste (CloudTrail/Audit Logs): API-Aufrufe, Konfigurationsänderungen, Datenzugriffe. Zentralisiere Logs in unveränderlichem Storage. Nachweis: Logging-Konfiguration, Log-Archiv, Integritätsprüfung.",
+			"Betriebssicherheit", "automated", 3),
+		c("27017-12.6.1", "Schwachstellenmanagement für Cloud-Dienste",
+			"Überwache Cloud-spezifische Schwachstellen: CSP-Security-Bulletins, Fehlkonfigurationen (CSPM-Tool), Container-Image-Schwachstellen. Definiere SLAs für die Behebung. Nachweis: CSPM-Scan-Ergebnisse, Patch-Protokoll, SLA-Dokumentation.",
+			"Betriebssicherheit", "automated", 3),
+		// ── Kommunikationssicherheit ──────────────────────────────────────
+		c("27017-13.1.3", "Netzwerksegmentierung in der Cloud",
+			"Implementiere Netzwerksegmentierung in Cloud-Umgebungen: Virtual Private Clouds (VPC), Security Groups, Network ACLs, Private Endpoints für kritische Dienste. Nachweis: Netzwerkarchitektur-Diagramm, VPC-Konfiguration, Flow-Log-Analyse.",
+			"Kommunikationssicherheit", "automated", 3),
+		// ── Lieferantenbeziehungen ────────────────────────────────────────
+		c("27017-15.1.1", "Informationssicherheitsrichtlinie für Lieferanten (CSP)",
+			"Prüfe und dokumentiere die Sicherheitszertifizierungen des Cloud-Anbieters (ISO 27001, SOC 2, C5-Attestierung, BSI-C5). Stelle sicher, dass Sicherheitsanforderungen im Vertrag verankert sind. Nachweis: CSP-Zertifikate, Vertragsanhang, jährliche Überprüfung.",
+			"Lieferantenmanagement", "document", 3),
+		c("27017-15.2.1", "Überwachung und Review von Cloud-Anbietern",
+			"Überwache kontinuierlich die Sicherheitsperformance des Cloud-Anbieters: Status-Dashboard des CSP, Incident-Kommunikation, jährliche Security-Review. Nachweis: CSP-Monitoring-Dashboard, Incident-Kommunikationsprotokoll, Review-Bericht.",
+			"Lieferantenmanagement", "manual", 2),
+		// ── Cloud-spezifische Controls (CLD-Klausel) ──────────────────────
+		c("27017-CLD.6.3.1", "Gemeinsame Sicherheitsmaßnahmen CSP und CSC",
+			"Definiere explizit, welche Sicherheitsmaßnahmen der CSP implementiert und welche der CSC selbst implementieren muss. Basis: CSP-Sicherheitsweißbuch. Nachweis: Sicherheitsverantwortlichkeits-Matrix, bestätigtes CSP-Whitepaper.",
+			"Cloud-Governance", "document", 3),
+		c("27017-CLD.9.5.1", "Segregation in virtuellen Umgebungen",
+			"Stelle sicher, dass Daten und Workloads verschiedener Mandanten (Tenants) strikt getrennt sind. Nutze dedizierte Ressourcen für hochsensitive Daten. Nachweis: Mandantentrennung-Dokumentation, Isolationstest-Bericht.",
+			"Cloud-Governance", "automated", 3),
+		c("27017-CLD.9.5.2", "VM-Härtung und sichere Administration",
+			"Härte virtuelle Maschinen nach CIS-Benchmarks: keine Root-Logins via SSH, SSH-Key-Only-Authentifizierung, automatische Sicherheitsupdates, Deaktivierung nicht benötigter Dienste. Nachweis: CIS-Benchmark-Scan, VM-Konfigurationsnachweis.",
+			"Cloud-Governance", "automated", 2),
+		c("27017-CLD.12.4.5", "Monitoring und Alerting für Cloud-Dienste",
+			"Implementiere umfassendes Cloud-Monitoring: Resource-Health, Security-Events, Kostenanomalien, Performance-Schwellwerte mit automatischer Alarmierung. Nachweis: Monitoring-Konfiguration, Alert-Regeln, On-Call-Prozess.",
+			"Cloud-Governance", "automated", 2),
+	}
+}
+
+// iso27018Controls returns controls for ISO/IEC 27018:2019 — Cloud Privacy.
+// Code of practice for protection of personally identifiable information (PII)
+// in public clouds acting as PII processors (Art. 28 DSGVO processors).
+func iso27018Controls(frameworkID, orgID string) []Control {
+	c := func(id, title, desc, domain, evType string, w int) Control {
+		return Control{FrameworkID: frameworkID, OrgID: orgID, ControlID: id, Title: title, Description: desc, Domain: domain, EvidenceType: evType, Weight: w}
+	}
+	return []Control{
+		// ── Einwilligung und Zweckbindung ─────────────────────────────────
+		c("27018-A.1.1", "Zweckbindung bei PII-Verarbeitung",
+			"Verarbeite personenbezogene Daten (PII) in der Cloud ausschließlich für dokumentierte, vertraglich vereinbarte Zwecke. Keine Verarbeitung für eigene Geschäftszwecke des CSP ohne ausdrückliche Genehmigung. Nachweis: AVV-Vertrag, Verarbeitungszweck-Dokumentation.",
+			"Datenschutz-Governance", "document", 3),
+		c("27018-A.1.2", "Zustimmungsmanagement",
+			"Implementiere ein Consent-Management-System für alle PII-Verarbeitungsvorgänge, die Einwilligung erfordern. Dokumentiere Einwilligungen mit Zeitstempel und Widerrufsoptionen. Nachweis: CMP-Konfiguration, Einwilligungsprotokoll, Widerrufsprozess.",
+			"Datenschutz-Governance", "automated", 3),
+		// ── Rechtliche Grundlagen ──────────────────────────────────────────
+		c("27018-A.2.1", "Rechtliche Grundlage für PII-Übertragungen",
+			"Stelle sicher, dass alle Übertragungen von PII in die Cloud eine rechtliche Grundlage haben (Art. 6 DSGVO). Für Drittlandübertragungen: Angemessenheitsbeschluss oder SCCs dokumentieren. Nachweis: Datenschutz-Rechtsgutachten, SCC-Dokumentation, EU-US Data Privacy Framework.",
+			"Rechtliche Grundlagen", "document", 3),
+		// ── Betroffenenrechte ──────────────────────────────────────────────
+		c("27018-A.3.1", "Unterstützung bei Betroffenenrechten",
+			"Als Cloud-Auftragsverarbeiter: unterstütze den Verantwortlichen bei der Erfüllung von Auskunfts-, Berichtigungs-, Löschungs- und Widerspruchsrechten. Definiere SLAs für die Reaktion. Nachweis: Verfahrensbeschreibung, SLA-Dokumentation, Testprotokoll eines Löschvorgangs.",
+			"Betroffenenrechte", "manual", 3),
+		c("27018-A.3.2", "Löschung und Rückgabe von PII",
+			"Lösche oder gib alle PII zurück, wenn der Verarbeitungsauftrag endet oder der Auftraggeber dies verlangt. Dokumentiere den Löschvorgang nachvollziehbar. Nachweis: Löschprotokoll, Bestätigungsschreiben, technischer Löschnachweis.",
+			"Betroffenenrechte", "manual", 3),
+		// ── Transparenz und Offenlegung ───────────────────────────────────
+		c("27018-A.4.1", "Offenlegung von Sub-Auftragsverarbeitern",
+			"Informiere den Auftraggeber über alle eingesetzten Sub-Auftragsverarbeiter (Unterauftragnehmer). Stelle sicher, dass Sub-AVVs dieselben Datenschutzanforderungen enthalten. Nachweis: Sub-AV-Liste, Sub-AVV-Verträge, Benachrichtigungsprozess bei Änderungen.",
+			"Transparenz", "document", 3),
+		c("27018-A.4.2", "Behördliche Zugriffsanfragen",
+			"Definiere Verfahren für staatliche Zugriffsanfragen auf PII (§ 100g StPO, FISA): sofortige Benachrichtigung des Auftraggebers soweit rechtlich möglich, Anforderung eines Gerichtsbeschlusses, Dokumentation aller Anfragen. Nachweis: Verfahrensdokumentation, geschwärzte Anfragenübersicht.",
+			"Transparenz", "document", 3),
+		c("27018-A.4.3", "Standorte der Datenverarbeitung",
+			"Dokumentiere alle geografischen Standorte, an denen PII gespeichert oder verarbeitet wird. Stelle Auftraggeber-Kontrolle über Datenresidenz sicher. Nachweis: Rechenzentrum-Standortliste, Vertragliche Datenresidenz-Klausel, Cloud-Region-Konfiguration.",
+			"Transparenz", "document", 2),
+		// ── Datensicherheit ───────────────────────────────────────────────
+		c("27018-A.5.1", "Verschlüsselung von PII at-rest",
+			"Verschlüssele alle PII in der Cloud mit starker Verschlüsselung (AES-256). Nutze Customer-Managed Encryption Keys (CMEK) für maximale Kontrolle. Nachweis: Verschlüsselungskonfiguration, CMEK-Nachweis, Schlüsselverwaltungsrichtlinie.",
+			"Datensicherheit", "automated", 3),
+		c("27018-A.5.2", "Verschlüsselung von PII in der Übertragung",
+			"Verschlüssele alle PII-Übertragungen mit TLS 1.2 oder höher. Verbiete unverschlüsselte Protokolle (HTTP, FTP). Nachweis: TLS-Konfigurationsnachweis, SSL-Labs-Scan, Netzwerk-Policy.",
+			"Datensicherheit", "automated", 3),
+		c("27018-A.5.3", "Zugriffskontrolle für PII",
+			"Implementiere Need-to-Know-Zugriffskontrolle für PII: rollenbasierter Zugriff, Protokollierung aller PII-Zugriffe, regelmäßige Access Reviews. Nachweis: IAM-Konfiguration, Zugriffsprotokoll, Access-Review-Ergebnis.",
+			"Datensicherheit", "automated", 3),
+		// ── Vorfallsmanagement ────────────────────────────────────────────
+		c("27018-A.6.1", "Meldung von PII-Sicherheitsvorfällen",
+			"Melde PII-Sicherheitsvorfälle (Data Breaches) unverzüglich an den Auftraggeber (gem. Art. 33 DSGVO: innerhalb 72h). Dokumentiere Vorfall, Auswirkungen und ergriffene Maßnahmen. Nachweis: Incident-Response-Plan, Meldeprozess-Dokumentation, Meldeprotokoll.",
+			"Vorfallsmanagement", "manual", 3),
+		// ── Mitarbeiter und Zugriff ───────────────────────────────────────
+		c("27018-A.7.1", "Vertraulichkeitsverpflichtung für PII-Zugriff",
+			"Verpflichte alle Mitarbeiter mit PII-Zugriff auf Vertraulichkeit. Führe spezifische Datenschutzschulungen durch. Stelle Zugriff nur nach Need-to-Know bereit. Nachweis: Vertraulichkeitserklärungen, Schulungsnachweise, Zugriffsprotokoll.",
+			"Personal", "manual", 2),
+		c("27018-A.7.2", "Einschränkung von Kopierfunktionen",
+			"Verhindere das unbefugte Kopieren und Übertragen von PII aus der Cloud-Umgebung: DLP-Systeme, eingeschränkte Export-Funktionen, USB-Blockierung an Admin-Systemen. Nachweis: DLP-Konfiguration, Exportprotokoll.",
+			"Personal", "automated", 2),
+		// ── Rechenschaftspflicht ──────────────────────────────────────────
+		c("27018-A.8.1", "Aufzeichnung von PII-Zugriffen",
+			"Führe vollständige Audit-Logs aller PII-Zugriffe: wer hat wann auf welche PII zugegriffen, geändert oder gelöscht. Schütze Logs vor Manipulation. Nachweis: Audit-Log-Konfiguration, Integritätsnachweis, Log-Aufbewahrungsrichtlinie.",
+			"Rechenschaftspflicht", "automated", 3),
+		c("27018-A.8.2", "Compliance-Prüfung",
+			"Führe regelmäßige interne Audits der ISO-27018-Konformität durch. Lasse externe Audits und Zertifizierungen durch akkreditierte Stellen durchführen. Nachweis: Interner Audit-Bericht, externes Zertifikat (SOC 2 Typ II oder ISO 27018-Zertifikat).",
+			"Rechenschaftspflicht", "document", 2),
 	}
 }

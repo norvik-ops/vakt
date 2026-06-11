@@ -6,43 +6,41 @@
 package vaktcomply
 
 import (
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// ── S69-1: DORA hotfix — control ID correctness ──────────────────────────────
+// ── S69-1: DORA seeder — uses doraISO27001Mapping (2022 IDs) ─────────────────
+// doraISO27001MappingFixed was removed in the ISO 27001:2022 mapping-seed cleanup.
+// SeedDORAMappingsFixed now delegates to doraISO27001Mapping (service_helpers.go)
+// which already carries correct 2022 Annex A IDs.
 
-func TestDoraISO27001MappingFixedUsesCorrectControlIDs(t *testing.T) {
-	// All values in doraISO27001MappingFixed must use 2013-style IDs (A.X.Y format).
-	// 2022-style IDs like "A.5.30" or "A.8.6" must not appear.
-	badPatterns := []string{"A.5.30", "A.5.31", "A.5.34", "A.8.6", "A.8.9", "A.8.16"}
-	for doraCode, isoCodes := range doraISO27001MappingFixed {
-		for _, bad := range badPatterns {
-			assert.NotContains(t, isoCodes, bad,
-				"DORA mapping %s references non-existent 2022-only code %s", doraCode, bad)
+func TestDoraISO27001MappingUses2022IDs(t *testing.T) {
+	// All ISO 27001 IDs in doraISO27001Mapping must be 2022 Annex A (A.5–A.8).
+	// Legacy 2013 IDs (A.9.x–A.18.x or three-level A.x.y.z) must not appear.
+	legacyRE := regexp.MustCompile(`\bA\.(9|10|11|12|13|14|15|16|17|18)\.\d+|\bA\.\d+\.\d+\.\d+`)
+	for doraCode, isoCodes := range doraISO27001Mapping {
+		for _, isoCode := range strings.Split(isoCodes, ",") {
+			isoCode = strings.TrimSpace(isoCode)
+			assert.False(t, legacyRE.MatchString(isoCode),
+				"doraISO27001Mapping[%s] contains legacy 2013 ID %q", doraCode, isoCode)
 		}
 	}
 }
 
-func TestDoraISO27001MappingFixedAllDoraCodesValid(t *testing.T) {
-	// DORA codes must follow DORA-X.Y pattern.
-	for doraCode := range doraISO27001MappingFixed {
-		assert.Regexp(t, `^DORA-\d+\.\d+$`, doraCode,
-			"invalid DORA control code: %s", doraCode)
-	}
-}
-
-func TestDoraISO27001MappingFixedCoversAllFiveChapters(t *testing.T) {
+func TestDoraISO27001MappingCoversAllFiveChapters(t *testing.T) {
 	chapters := map[string]bool{}
-	for doraCode := range doraISO27001MappingFixed {
+	for doraCode := range doraISO27001Mapping {
 		if len(doraCode) >= 7 {
-			chapters[string(doraCode[5])] = true // "DORA-X.Y" → index 5 is X
+			chapters[string(doraCode[5])] = true
 		}
 	}
 	for _, ch := range []string{"1", "2", "3", "4", "5"} {
-		assert.True(t, chapters[ch], "no DORA chapter %s in fixed mapping", ch)
+		assert.True(t, chapters[ch], "no DORA chapter %s in doraISO27001Mapping", ch)
 	}
 }
 
