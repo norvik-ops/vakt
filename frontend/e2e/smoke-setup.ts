@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { AUTH_FILE } from '../playwright.config'
 
-setup.setTimeout(90_000)
+setup.setTimeout(120_000)
 
 setup('demo-login', async ({ page, baseURL }) => {
   const base = baseURL ?? 'http://localhost:5173'
@@ -12,7 +12,10 @@ setup('demo-login', async ({ page, baseURL }) => {
   // after the nightly reset cron (03:00 UTC) when smoke tests fire at ~03:30.
   let res: Response | undefined
   for (let attempt = 1; attempt <= 3; attempt++) {
-    res = await fetch(`${base}/api/v1/demo/start`, { method: 'POST' })
+    res = await fetch(`${base}/api/v1/demo/start`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(30_000),
+    })
     if (res.ok) break
     if (attempt < 3) await new Promise(r => setTimeout(r, 10_000))
   }
