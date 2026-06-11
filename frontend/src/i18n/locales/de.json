@@ -2094,5 +2094,34 @@
       "typeObjection": "Widerspruch (Art. 21)",
       "typePortability": "Datenübertragbarkeit (Art. 20)"
     }
+  },
+  "auditorPortal": {
+    "title": "Auditor-Portal",
+    "subtitle": "Schreibgeschützter Zugang zu Compliance-Daten",
+    "loginTitle": "Auditor-Anmeldung",
+    "loginDescription": "Gib deinen Session-Token ein, um auf die Compliance-Daten zuzugreifen.",
+    "tokenLabel": "Session-Token",
+    "tokenPlaceholder": "Session-Token eingeben...",
+    "loginButton": "Anmelden",
+    "logoutButton": "Abmelden",
+    "tabFrameworks": "Frameworks",
+    "tabRisks": "Risiken",
+    "tabIncidents": "Vorfälle",
+    "tabPolicies": "Richtlinien",
+    "noFrameworks": "Keine Frameworks verfügbar.",
+    "noRisks": "Keine Risiken vorhanden.",
+    "noIncidents": "Keine Vorfälle vorhanden.",
+    "noPolicies": "Keine Richtlinien vorhanden.",
+    "loading": "Wird geladen...",
+    "invalidToken": "Ungültiger oder abgelaufener Session-Token.",
+    "downloadZip": "Alle Daten als ZIP exportieren",
+    "downloadPdf": "PDF herunterladen",
+    "readiness": "Bereitschaft",
+    "controls": "Controls",
+    "showControls": "Controls anzeigen",
+    "hideControls": "Controls ausblenden",
+    "noControls": "Keine Controls vorhanden.",
+    "openPortal": "Im Auditor-Portal öffnen",
+    "poweredBy": "Betrieben mit Vakt"
   }
 }

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { ShieldCheck, Copy, AlertTriangle } from 'lucide-react'
+import { ShieldCheck, Copy, AlertTriangle, ExternalLink } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 
@@ -80,19 +80,27 @@ export default function AuditorAcceptPage() {
             </div>
           </div>
 
+          <Button
+            className="w-full"
+            onClick={() => {
+              // Store token in sessionStorage and navigate to the auditor portal.
+              sessionStorage.setItem('auditor_session_token', sessionToken)
+              window.location.href = '/auditor/portal'
+            }}
+          >
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Im Auditor-Portal öffnen
+          </Button>
+
           <div className="rounded-lg border border-border bg-surface p-4 space-y-2 text-sm">
-            <p className="font-semibold text-primary">Verwendung</p>
+            <p className="font-semibold text-primary">API-Zugang</p>
             <p className="text-secondary">
-              Fuege den Token als <code className="bg-muted px-1 rounded text-xs">Authorization</code>-Header
-              in deine API-Anfragen ein:
+              Alternativ: Token als <code className="bg-muted px-1 rounded text-xs">Authorization</code>-Header
+              in API-Anfragen verwenden:
             </p>
             <pre className="bg-muted rounded p-3 text-xs overflow-x-auto">
               {`Authorization: Bearer ${sessionToken}`}
             </pre>
-            <p className="text-secondary">
-              Read-only Endpunkte sind erreichbar unter{' '}
-              <code className="bg-muted px-1 rounded text-xs">/api/v1/auditor/vaktcomply/</code>
-            </p>
           </div>
         </div>
       </div>

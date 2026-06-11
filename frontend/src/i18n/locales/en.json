@@ -2094,5 +2094,34 @@
       "typeObjection": "Objection (Art. 21)",
       "typePortability": "Data portability (Art. 20)"
     }
+  },
+  "auditorPortal": {
+    "title": "Auditor Portal",
+    "subtitle": "Read-only access to compliance data",
+    "loginTitle": "Auditor Login",
+    "loginDescription": "Enter your session token to access compliance data.",
+    "tokenLabel": "Session Token",
+    "tokenPlaceholder": "Enter session token...",
+    "loginButton": "Sign in",
+    "logoutButton": "Sign out",
+    "tabFrameworks": "Frameworks",
+    "tabRisks": "Risks",
+    "tabIncidents": "Incidents",
+    "tabPolicies": "Policies",
+    "noFrameworks": "No frameworks available.",
+    "noRisks": "No risks found.",
+    "noIncidents": "No incidents found.",
+    "noPolicies": "No policies found.",
+    "loading": "Loading...",
+    "invalidToken": "Invalid or expired session token.",
+    "downloadZip": "Export all data as ZIP",
+    "downloadPdf": "Download PDF",
+    "readiness": "Readiness",
+    "controls": "Controls",
+    "showControls": "Show controls",
+    "hideControls": "Hide controls",
+    "noControls": "No controls found.",
+    "openPortal": "Open in Auditor Portal",
+    "poweredBy": "Powered by Vakt"
   }
 }

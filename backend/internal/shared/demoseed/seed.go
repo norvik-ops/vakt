@@ -458,6 +458,79 @@ func runSeed(ctx context.Context, db *pgxpool.Pool, masterKeyHex, orgName, orgSl
 		}
 	}
 
+	// ── SecVitals: BSI IT-Grundschutz Framework (S73-3a) ─────────────────────
+	var bsiFrameworkID string
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO ck_frameworks (org_id, name, version, is_builtin)
+		VALUES ($1::uuid, 'BSI IT-Grundschutz', '200-2:2021', true)
+		RETURNING id::text`, orgID).Scan(&bsiFrameworkID); err != nil {
+		return "", "", fmt.Errorf("demoseed: bsi framework: %w", err)
+	}
+	bsiSeedControls := []struct {
+		id, title, domain, desc string
+		manualStatus            string // "" | "in_progress" | "implemented"
+	}{
+		{"BSI-ISMS.1.A1", "Sicherheitsleitlinie", "Sicherheitsmanagement",
+			"Informationssicherheitsleitlinie erstellen, verabschieden und mindestens jährlich überprüfen.", "implemented"},
+		{"BSI-ISMS.1.A6", "Sicherheitskonzept", "Sicherheitsmanagement",
+			"Dokumentiertes Sicherheitskonzept nach BSI-Standard 200-2 (Basis- oder Kern-Absicherung).", "in_progress"},
+		{"BSI-ORP.3.A1", "Sensibilisierung und Schulung", "Organisation",
+			"Mindestens jährliche Security-Awareness-Trainings für alle Mitarbeitenden.", "implemented"},
+		{"BSI-OPS.1.1.3.A1", "Patch- und Änderungsmanagement", "Betrieb",
+			"Kritische Sicherheitsupdates innerhalb von 7 Tagen, sonstige innerhalb von 30 Tagen.", "implemented"},
+		{"BSI-OPS.1.1.4.A1", "Schutz vor Schadprogrammen", "Betrieb",
+			"Zentral verwaltete Antimalware-Lösung auf allen Endpunkten und Servern.", "implemented"},
+		{"BSI-DER.1.A1", "Detektion sicherheitsrelevanter Ereignisse", "Detektion und Reaktion",
+			"Verfahren zur Erkennung von Sicherheitsvorfällen (SIEM, IDS/IPS, Anomalie-Erkennung).", ""},
+		{"BSI-CON.3.A1", "Datensicherungskonzept", "Konzeption",
+			"Backup-Konzept nach 3-2-1-Regel mit halbjährlichen Restore-Tests.", "in_progress"},
+		{"BSI-NET.1.1.A1", "Sicherheitsrichtlinie Netzarchitektur", "Netz und Kommunikation",
+			"Dokumentierte Netzarchitektur mit Segmentierungskonzept und Sicherheitszonen.", ""},
+	}
+	var bsiControlIDs []string
+	for _, ctrl := range bsiSeedControls {
+		var ctrlID string
+		if err := tx.QueryRow(ctx, `
+			INSERT INTO ck_controls (framework_id, org_id, control_id, title, description, domain)
+			VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6)
+			RETURNING id::text`,
+			bsiFrameworkID, orgID, ctrl.id, ctrl.title, ctrl.desc, ctrl.domain).Scan(&ctrlID); err != nil {
+			return "", "", fmt.Errorf("demoseed: bsi control %s: %w", ctrl.id, err)
+		}
+		bsiControlIDs = append(bsiControlIDs, ctrlID)
+		if ctrl.manualStatus != "" {
+			if _, err := tx.Exec(ctx, `
+				UPDATE ck_controls SET manual_status = $1 WHERE id = $2::uuid`,
+				ctrl.manualStatus, ctrlID); err != nil {
+				return "", "", fmt.Errorf("demoseed: bsi manual_status %s: %w", ctrl.id, err)
+			}
+		}
+	}
+
+	// BSI Modeling entries: map two assets to key Bausteine.
+	if len(assetIDs) >= 2 && len(bsiControlIDs) >= 5 {
+		bsiModelingEntries := []struct {
+			assetIdx, ctrlIdx int
+			priority, status  string
+		}{
+			{0, 0, "R1", "yes"},     // Webserver → Sicherheitsleitlinie
+			{0, 3, "R1", "yes"},     // Webserver → Patch-Management
+			{0, 4, "R1", "yes"},     // Webserver → Schutz vor Schadprogrammen
+			{1, 0, "R1", "yes"},     // DB-Cluster → Sicherheitsleitlinie
+			{1, 1, "R1", "partial"}, // DB-Cluster → Sicherheitskonzept
+			{1, 6, "R1", "partial"}, // DB-Cluster → Datensicherungskonzept
+		}
+		for _, me := range bsiModelingEntries {
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO ck_bsi_modeling (org_id, asset_id, control_id, priority, check_status, created_by)
+				VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6::uuid)`,
+				orgID, assetIDs[me.assetIdx], bsiControlIDs[me.ctrlIdx],
+				me.priority, me.status, adminID); err != nil {
+				return "", "", fmt.Errorf("demoseed: bsi modeling: %w", err)
+			}
+		}
+	}
+
 	// ── SecVault ──────────────────────────────────────────────────────────────
 	masterKey, _ := hex.DecodeString(masterKeyHex)
 	if len(masterKey) > 0 {

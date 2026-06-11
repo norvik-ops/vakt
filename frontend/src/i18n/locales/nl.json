@@ -1980,5 +1980,34 @@
       "footer": "Gegevensbescherming Self-Service · Powered by Vakt",
       "footerText": "Voor vragen kunt u contact opnemen met onze functionaris voor gegevensbescherming."
     }
+  },
+  "auditorPortal": {
+    "title": "Auditorportaal",
+    "subtitle": "Alleen-lezen toegang tot nalevingsgegevens",
+    "loginTitle": "Auditor inloggen",
+    "loginDescription": "Voer uw sessietoken in om toegang te krijgen tot de nalevingsgegevens.",
+    "tokenLabel": "Sessietoken",
+    "tokenPlaceholder": "Sessietoken invoeren...",
+    "loginButton": "Inloggen",
+    "logoutButton": "Uitloggen",
+    "tabFrameworks": "Frameworks",
+    "tabRisks": "Risico's",
+    "tabIncidents": "Incidenten",
+    "tabPolicies": "Beleid",
+    "noFrameworks": "Geen frameworks beschikbaar.",
+    "noRisks": "Geen risico's gevonden.",
+    "noIncidents": "Geen incidenten gevonden.",
+    "noPolicies": "Geen beleid gevonden.",
+    "loading": "Laden...",
+    "invalidToken": "Ongeldig of verlopen sessietoken.",
+    "downloadZip": "Alle gegevens exporteren als ZIP",
+    "downloadPdf": "PDF downloaden",
+    "readiness": "Gereedheid",
+    "controls": "Controls",
+    "showControls": "Controls weergeven",
+    "hideControls": "Controls verbergen",
+    "noControls": "Geen controls gevonden.",
+    "openPortal": "Openen in auditorportaal",
+    "poweredBy": "Aangedreven door Vakt"
   }
 }

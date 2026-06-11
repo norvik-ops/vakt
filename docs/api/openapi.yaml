@@ -10322,3 +10322,140 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AccessReview'
+
+  # ── Auditor Portal (S73-1/S73-2) ────────────────────────────────────────────
+  # These routes are behind AuditorAuth middleware (Bearer auditor session token).
+  # Base: /api/v1/auditor/vaktcomply/
+
+  /auditor/vaktcomply/frameworks:
+    get:
+      summary: List frameworks (auditor read-only)
+      tags: [auditor]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of enabled frameworks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Framework'
+        '401':
+          description: Invalid or expired auditor session token
+
+  /auditor/vaktcomply/frameworks/{id}/controls:
+    get:
+      summary: List controls for a framework (auditor read-only)
+      tags: [auditor]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Controls list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Control'
+        '401':
+          description: Invalid or expired auditor session token
+
+  /auditor/vaktcomply/frameworks/{id}/report.pdf:
+    get:
+      summary: Download framework compliance report PDF (auditor, Pro)
+      tags: [auditor]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: PDF compliance report
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        '401':
+          description: Invalid or expired auditor session token
+
+  /auditor/vaktcomply/risks:
+    get:
+      summary: List risks (auditor read-only)
+      tags: [auditor]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Risks list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Risk' } }
+                  total: { type: integer }
+        '401':
+          description: Invalid or expired auditor session token
+
+  /auditor/vaktcomply/incidents:
+    get:
+      summary: List incidents (auditor read-only)
+      tags: [auditor]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Incidents list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Incident' } }
+                  total: { type: integer }
+        '401':
+          description: Invalid or expired auditor session token
+
+  /auditor/vaktcomply/policies:
+    get:
+      summary: List policies (auditor read-only)
+      tags: [auditor]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Policies list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Policy' } }
+                  total: { type: integer }
+        '401':
+          description: Invalid or expired auditor session token
+
+  /auditor/vaktcomply/export.zip:
+    get:
+      summary: Download full compliance export ZIP (auditor)
+      tags: [auditor]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: ZIP archive with JSON snapshots of all compliance data
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        '401':
+          description: Invalid or expired auditor session token

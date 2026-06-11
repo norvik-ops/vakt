@@ -30,6 +30,9 @@ type modulePermDB interface {
 // If rows exist and none grant can_read access to `module`, the middleware
 // returns 403 MODULE_ACCESS_DENIED.
 //
+// On DB errors the middleware fails closed: it returns 503 SERVICE_UNAVAILABLE
+// rather than granting access to an unknown permission state.
+//
 // Admin role always bypasses the check entirely.
 func RequireModuleAccess(db *pgxpool.Pool, module string) echo.MiddlewareFunc {
 	return requireModuleAccess(db, module)
@@ -71,15 +74,15 @@ func requireModuleAccess(db modulePermDB, module string) echo.MiddlewareFunc {
 				orgID, userID,
 			)
 			if err != nil {
-				// On DB error, fail open with a warning log so that infrastructure
-				// issues do not lock users out of the application.
-				// TODO(security): consider fail-closed once alerting + on-call is in place.
-				log.Warn().Err(err).
+				log.Error().Err(err).
 					Str("module", module).
 					Str("user_id", userID).
 					Str("org_id", orgID).
-					Msg("module permission check: db error, failing open")
-				return next(c)
+					Msg("module permission check: db error, failing closed")
+				return c.JSON(http.StatusServiceUnavailable, map[string]string{
+					"error": "permission check unavailable",
+					"code":  "PERMISSION_CHECK_UNAVAILABLE",
+				})
 			}
 			defer rows.Close()
 
@@ -98,11 +101,14 @@ func requireModuleAccess(db modulePermDB, module string) echo.MiddlewareFunc {
 				}
 			}
 			if rowErr := rows.Err(); rowErr != nil {
-				log.Warn().Err(rowErr).
+				log.Error().Err(rowErr).
 					Str("module", module).
 					Str("user_id", userID).
-					Msg("module permission check: row iteration error, failing open")
-				return next(c)
+					Msg("module permission check: row iteration error, failing closed")
+				return c.JSON(http.StatusServiceUnavailable, map[string]string{
+					"error": "permission check unavailable",
+					"code":  "PERMISSION_CHECK_UNAVAILABLE",
+				})
 			}
 
 			// Backward-compat: no rows means permissions have not been configured

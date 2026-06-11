@@ -2095,5 +2095,34 @@
       "typeObjection": "Opposition (Art. 21)",
       "typePortability": "Portabilité des données (Art. 20)"
     }
+  },
+  "auditorPortal": {
+    "title": "Portail Auditeur",
+    "subtitle": "Accès en lecture seule aux données de conformité",
+    "loginTitle": "Connexion Auditeur",
+    "loginDescription": "Entrez votre jeton de session pour accéder aux données de conformité.",
+    "tokenLabel": "Jeton de session",
+    "tokenPlaceholder": "Entrez le jeton de session...",
+    "loginButton": "Se connecter",
+    "logoutButton": "Se déconnecter",
+    "tabFrameworks": "Frameworks",
+    "tabRisks": "Risques",
+    "tabIncidents": "Incidents",
+    "tabPolicies": "Politiques",
+    "noFrameworks": "Aucun framework disponible.",
+    "noRisks": "Aucun risque trouvé.",
+    "noIncidents": "Aucun incident trouvé.",
+    "noPolicies": "Aucune politique trouvée.",
+    "loading": "Chargement...",
+    "invalidToken": "Jeton de session invalide ou expiré.",
+    "downloadZip": "Exporter toutes les données en ZIP",
+    "downloadPdf": "Télécharger le PDF",
+    "readiness": "Préparation",
+    "controls": "Contrôles",
+    "showControls": "Afficher les contrôles",
+    "hideControls": "Masquer les contrôles",
+    "noControls": "Aucun contrôle trouvé.",
+    "openPortal": "Ouvrir dans le portail auditeur",
+    "poweredBy": "Propulsé par Vakt"
   }
 }

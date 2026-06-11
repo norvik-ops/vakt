@@ -17,6 +17,7 @@ import TrustPage from './pages/TrustPage'
 import NIS2WizardPage from './pages/NIS2WizardPage'
 import MultiFrameworkWizardPage from './pages/MultiFrameworkWizardPage'
 import AuditorAcceptPage from './pages/AuditorAcceptPage'
+import AuditorPortalPage from './pages/AuditorPortalPage'
 import PolicyAcceptPage from './pages/PolicyAcceptPage'
 import InviteAcceptPage from './pages/InviteAcceptPage'
 import DSRPortalPage from './pages/DSRPortalPage'
@@ -129,6 +130,10 @@ export const router = createBrowserRouter([
   {
     path: '/auditor/accept/:token',
     element: <AuditorAcceptPage />,
+  },
+  {
+    path: '/auditor/portal',
+    element: <AuditorPortalPage />,
   },
   {
     path: '/invite/accept',

@@ -491,8 +491,11 @@ func RegisterAuditor(g *echo.Group, h *Handler) {
 	g.GET("/frameworks/:id/controls", h.ListControls)
 	// SoA PDF export requires Pro FeatureAuditPDF — basic auditor view remains Community.
 	g.GET("/frameworks/:id/soa.pdf", h.ExportSoAPDF, features.Require(features.FeatureAuditPDF))
+	// Framework compliance report PDF for external auditors (S73-2).
+	g.GET("/frameworks/:id/report.pdf", h.ExportFrameworkPDF, features.Require(features.FeatureAuditPDF))
 	g.GET("/risks", h.ListRisks)
 	g.GET("/incidents", h.ListIncidents)
 	g.GET("/policies", h.ListPolicies)
 	g.GET("/audits", h.ListAuditRecords)
+	g.GET("/export.zip", h.AuditorExportZIP)
 }

@@ -89,6 +89,15 @@ func (r *fakePermRows) RawValues() [][]byte                          { return ni
 func (r *fakePermRows) Values() ([]any, error)                       { return nil, nil }
 func (r *fakePermRows) Conn() *pgx.Conn                              { return nil }
 
+// fakeRowErrDB returns a fixed *fakePermRows so tests can inject a rows.Err().
+type fakeRowErrDB struct {
+	rows *fakePermRows
+}
+
+func (f *fakeRowErrDB) Query(_ context.Context, _ string, _ ...any) (pgx.Rows, error) {
+	return f.rows, nil
+}
+
 // ─── Test helpers ─────────────────────────────────────────────────────────────
 
 // modulePermRequest builds an Echo context with the given identity values.
@@ -197,16 +206,33 @@ func TestRequireModuleAccess_LowercaseAdmin_GrantsAccess(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
-// TestRequireModuleAccess_DBError_FailsOpen verifies that a database error during
-// the permission check fails open (grants access) rather than locking users out
-// due to an infrastructure issue. A warn log is expected (not tested here).
-func TestRequireModuleAccess_DBError_FailsOpen(t *testing.T) {
+// TestRequireModuleAccess_DBError_FailsClosed verifies that a database error
+// during the permission check fails closed (503) rather than granting access
+// to an unknown permission state.
+func TestRequireModuleAccess_DBError_FailsClosed(t *testing.T) {
 	db := &fakeModulePermDB{err: errors.New("connection refused")}
 	c, rec := modulePermRequest(t, "org-1", "user-1", []string{"SecurityAnalyst"})
 	mw := auth.RequireModuleAccessForTest(db, "vaktscan")
 	require.NoError(t, mw(okModuleHandler)(c))
-	assert.Equal(t, http.StatusOK, rec.Code,
-		"DB error during permission check must fail open, not lock users out")
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code,
+		"DB error during permission check must fail closed with 503")
+	assert.Contains(t, rec.Body.String(), "PERMISSION_CHECK_UNAVAILABLE")
+}
+
+// TestRequireModuleAccess_RowIterationError_FailsClosed verifies that a row
+// iteration error (rows.Err) also fails closed with 503.
+func TestRequireModuleAccess_RowIterationError_FailsClosed(t *testing.T) {
+	rows := &fakePermRows{
+		rows: []fakeModulePermRow{{module: "vaktscan", canRead: true}},
+		err:  errors.New("network reset"),
+	}
+	db := &fakeRowErrDB{rows: rows}
+	c, rec := modulePermRequest(t, "org-1", "user-1", []string{"SecurityAnalyst"})
+	mw := auth.RequireModuleAccessForTest(db, "vaktscan")
+	require.NoError(t, mw(okModuleHandler)(c))
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code,
+		"row iteration error must fail closed with 503")
+	assert.Contains(t, rec.Body.String(), "PERMISSION_CHECK_UNAVAILABLE")
 }
 
 // TestRequireModuleAccess_APIKey_SkipsCheck verifies that requests authenticated
