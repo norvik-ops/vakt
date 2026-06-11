@@ -9839,6 +9839,300 @@ export interface paths {
         patch: operations["updateBSIModeling"];
         trace?: never;
     };
+    "/vaktcomply/bsi/target-objects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all Zielobjekte (Strukturanalyse) */
+        get: operations["listBSITargetObjects"];
+        put?: never;
+        /** Create a Zielobjekt */
+        post: operations["createBSITargetObject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi/target-objects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a single Zielobjekt */
+        get: operations["getBSITargetObject"];
+        /** Update a Zielobjekt */
+        put: operations["updateBSITargetObject"];
+        post?: never;
+        /** Delete a Zielobjekt */
+        delete: operations["deleteBSITargetObject"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi/target-objects/{id}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get IT-Grundschutz-Check sheet for a Zielobjekt */
+        get: operations["getBSICheckSheet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi/target-objects/{id}/check/{anforderungId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Umsetzungsstatus for one Anforderung */
+        put: operations["setBSICheckResult"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi/target-objects/{id}/check/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk-set multiple Anforderung statuses (atomic) */
+        post: operations["bulkSetBSICheckResults"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi/target-objects/{id}/check/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Umsetzungsgrad summary for a Zielobjekt */
+        get: operations["getBSICheckSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi/target-objects/{id}/modeling": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Assign a Baustein to a Zielobjekt */
+        post: operations["assignBausteinToTargetObject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi/target-objects/{id}/modeling/{bausteinId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a Baustein from a Zielobjekt */
+        delete: operations["removeBausteinFromTargetObject"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi/target-objects/{id}/risks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List BSI 200-3 risk assessments for a Zielobjekt */
+        get: operations["listBSIRisks"];
+        put?: never;
+        /** Add a Gefährdung to the risk analysis */
+        post: operations["createBSIRisk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi/target-objects/{id}/risks/{riskId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update risk classification and treatment */
+        put: operations["updateBSIRisk"];
+        post?: never;
+        /** Remove a risk entry */
+        delete: operations["deleteBSIRisk"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi/target-objects/{id}/risks/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Risk summary (counts by category) for a Zielobjekt */
+        get: operations["getBSIRiskSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi/threats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all 47 elementare Gefährdungen (BSI G-0.x, static) */
+        get: operations["listBSIThreats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi/cockpit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Grundschutz-Cockpit dashboard (heatmap, top gaps, progress) */
+        get: operations["getBSICockpit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi/gap-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Full GAP report (JSON or CSV) */
+        get: operations["getBSIGapReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List BSI report export audit log */
+        get: operations["listBSIReportExports"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi/reports/{type}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview data for a BSI report (before PDF download) */
+        get: operations["getBSIReportPreview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi/reports/{type}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Generate and download a BSI reference report PDF (Pro feature) */
+        get: operations["generateBSIReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/vaktcomply/pentests": {
         parameters: {
             query?: never;
@@ -12851,6 +13145,190 @@ export interface components {
             /** Format: date-time */
             created_at?: string;
         };
+        BSITargetObject: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            org_id?: string;
+            name?: string;
+            description?: string | null;
+            /** @enum {string} */
+            type?: "it_system" | "application" | "network" | "room" | "process";
+            /** @enum {string} */
+            absicherungsniveau?: "basis" | "standard" | "kern";
+            /** @enum {string|null} */
+            schutzbedarf_v?: "normal" | "hoch" | "sehr_hoch" | null;
+            /** @enum {string|null} */
+            schutzbedarf_i?: "normal" | "hoch" | "sehr_hoch" | null;
+            /** @enum {string|null} */
+            schutzbedarf_a?: "normal" | "hoch" | "sehr_hoch" | null;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        CreateBSITargetObjectInput: {
+            name: string;
+            description?: string;
+            /** @enum {string} */
+            type: "it_system" | "application" | "network" | "room" | "process";
+            /** @enum {string} */
+            absicherungsniveau?: "basis" | "standard" | "kern";
+            /** @enum {string} */
+            schutzbedarf_v?: "normal" | "hoch" | "sehr_hoch";
+            /** @enum {string} */
+            schutzbedarf_i?: "normal" | "hoch" | "sehr_hoch";
+            /** @enum {string} */
+            schutzbedarf_a?: "normal" | "hoch" | "sehr_hoch";
+        };
+        BSICheckResult: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            org_id?: string;
+            /** Format: uuid */
+            target_object_id?: string;
+            anforderung_id?: string;
+            anforderung_title?: string;
+            baustein_id?: string;
+            /** @enum {string} */
+            umsetzungsstatus?: "ja" | "teilweise" | "nein" | "entbehrlich";
+            begruendung?: string | null;
+            verantwortlicher?: string | null;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        SetCheckResultInput: {
+            /** @enum {string} */
+            umsetzungsstatus: "ja" | "teilweise" | "nein" | "entbehrlich";
+            begruendung?: string;
+            verantwortlicher?: string;
+        };
+        BulkCheckResultItem: {
+            anforderung_id: string;
+            /** @enum {string} */
+            umsetzungsstatus: "ja" | "teilweise" | "nein" | "entbehrlich";
+            begruendung?: string;
+            verantwortlicher?: string;
+        };
+        BSICheckSummary: {
+            /** Format: uuid */
+            target_object_id?: string;
+            total?: number;
+            ja?: number;
+            teilweise?: number;
+            entbehrlich?: number;
+            nein?: number;
+            /** Format: double */
+            umsetzungsgrad_pct?: number;
+        };
+        BSICockpit: {
+            org_id?: string;
+            /** Format: double */
+            overall_pct?: number;
+            heatmap?: {
+                baustein_id?: string;
+                baustein_title?: string;
+                cells?: {
+                    /** Format: uuid */
+                    target_object_id?: string;
+                    target_object_name?: string;
+                    /** Format: double */
+                    pct?: number;
+                }[];
+            }[];
+            top_gaps?: {
+                anforderung_id?: string;
+                anforderung_title?: string;
+                baustein_id?: string;
+                affected_objects?: number;
+            }[];
+        };
+        BSIGapReport: {
+            org_id?: string;
+            /** Format: date-time */
+            generated_at?: string;
+            gaps?: {
+                baustein_id?: string;
+                anforderung_id?: string;
+                anforderung_title?: string;
+                zielobjekt?: string;
+                umsetzungsstatus?: string;
+            }[];
+        };
+        BSIThreat: {
+            /** Format: uuid */
+            id?: string;
+            /** @example G-0.14 */
+            threat_id?: string;
+            title?: string;
+            category?: string;
+            description?: string | null;
+        };
+        BSIRiskAssessment: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            org_id?: string;
+            /** Format: uuid */
+            target_object_id?: string;
+            threat_id?: string;
+            threat_title?: string;
+            /** @enum {string} */
+            eintrittshaeufigkeit?: "selten" | "mittel" | "haeufig" | "sehr_haeufig";
+            /** @enum {string} */
+            schadensauswirkung?: "vernachlaessigbar" | "begrenzt" | "betraechtlich" | "existenzbedrohend";
+            /** @enum {string} */
+            risikokategorie?: "gering" | "mittel" | "hoch" | "sehr_hoch";
+            massnahmen?: string | null;
+            /** @enum {string} */
+            status?: "offen" | "in_bearbeitung" | "akzeptiert" | "behandelt";
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        CreateBSIRiskInput: {
+            threat_id: string;
+            /** @enum {string} */
+            eintrittshaeufigkeit: "selten" | "mittel" | "haeufig" | "sehr_haeufig";
+            /** @enum {string} */
+            schadensauswirkung: "vernachlaessigbar" | "begrenzt" | "betraechtlich" | "existenzbedrohend";
+            massnahmen?: string;
+            /** @enum {string} */
+            status?: "offen" | "in_bearbeitung" | "akzeptiert" | "behandelt";
+        };
+        UpdateBSIRiskInput: {
+            /** @enum {string} */
+            eintrittshaeufigkeit?: "selten" | "mittel" | "haeufig" | "sehr_haeufig";
+            /** @enum {string} */
+            schadensauswirkung?: "vernachlaessigbar" | "begrenzt" | "betraechtlich" | "existenzbedrohend";
+            massnahmen?: string;
+            /** @enum {string} */
+            status?: "offen" | "in_bearbeitung" | "akzeptiert" | "behandelt";
+        };
+        BSIRiskSummary: {
+            /** Format: uuid */
+            target_object_id?: string;
+            gering?: number;
+            mittel?: number;
+            hoch?: number;
+            sehr_hoch?: number;
+            offen?: number;
+        };
+        BSIReportExport: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            org_id?: string;
+            /** @enum {string} */
+            report_type?: "A1" | "A2" | "A3" | "A4" | "A5" | "A6" | "full";
+            /** Format: uuid */
+            generated_by?: string;
+            sha256?: string;
+            /** Format: date-time */
+            created_at?: string;
+        };
     };
     responses: never;
     parameters: {
@@ -15250,6 +15728,519 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BSIModelingEntry"];
                 };
+            };
+        };
+    };
+    listBSITargetObjects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of Zielobjekte */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSITargetObject"][];
+                };
+            };
+        };
+    };
+    createBSITargetObject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBSITargetObjectInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSITargetObject"];
+                };
+            };
+        };
+    };
+    getBSITargetObject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Zielobjekt */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSITargetObject"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateBSITargetObject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBSITargetObjectInput"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSITargetObject"];
+                };
+            };
+        };
+    };
+    deleteBSITargetObject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getBSICheckSheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Check results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSICheckResult"][];
+                };
+            };
+        };
+    };
+    setBSICheckResult: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                anforderungId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetCheckResultInput"];
+            };
+        };
+        responses: {
+            /** @description Updated check result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSICheckResult"];
+                };
+            };
+        };
+    };
+    bulkSetBSICheckResults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkCheckResultItem"][];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getBSICheckSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Summary with progress percentage */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSICheckSummary"];
+                };
+            };
+        };
+    };
+    assignBausteinToTargetObject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    baustein_id: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Assigned */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    removeBausteinFromTargetObject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                bausteinId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listBSIRisks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Risk assessments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSIRiskAssessment"][];
+                };
+            };
+        };
+    };
+    createBSIRisk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBSIRiskInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSIRiskAssessment"];
+                };
+            };
+        };
+    };
+    updateBSIRisk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                riskId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBSIRiskInput"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSIRiskAssessment"];
+                };
+            };
+        };
+    };
+    deleteBSIRisk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                riskId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getBSIRiskSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Risk counts by category */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSIRiskSummary"];
+                };
+            };
+        };
+    };
+    listBSIThreats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of threats */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSIThreat"][];
+                };
+            };
+        };
+    };
+    getBSICockpit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cockpit data */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSICockpit"];
+                };
+            };
+        };
+    };
+    getBSIGapReport: {
+        parameters: {
+            query?: {
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GAP report */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSIGapReport"];
+                    "text/csv": string;
+                };
+            };
+        };
+    };
+    listBSIReportExports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Report export log */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSIReportExport"][];
+                };
+            };
+        };
+    };
+    getBSIReportPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type: "A1" | "A2" | "A3" | "A4" | "A5" | "A6" | "full";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Preview data */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    generateBSIReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type: "A1" | "A2" | "A3" | "A4" | "A5" | "A6" | "full";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PDF file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Feature not available on current plan */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
