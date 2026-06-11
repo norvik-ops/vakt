@@ -6,7 +6,8 @@ import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Download, ChevronDown, ChevronRight } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Badge } from '../../../components/ui/badge'
-import { Button } from '../../../components/ui/button'
+import { Button, buttonVariants } from '../../../components/ui/button'
+import { cn } from '../../../lib/utils'
 import {
   Select,
   SelectContent,
@@ -191,12 +192,10 @@ export default function BSICheckSheetPage() {
               <Download className="w-4 h-4 mr-1" />
               CSV
             </Button>
-            <Button size="sm" variant="ghost" asChild>
-              <Link to="/vaktcomply/bsi/target-objects">
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                Zurück
-              </Link>
-            </Button>
+            <Link to="/vaktcomply/bsi/target-objects" className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}>
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Zurück
+            </Link>
           </div>
         }
       />
@@ -221,9 +220,9 @@ export default function BSICheckSheetPage() {
             <p className="text-xs text-secondary">
               Weisen Sie dem Zielobjekt zunächst Bausteine über die Modellierungsseite zu.
             </p>
-            <Button size="sm" variant="outline" asChild className="mt-2">
-              <Link to="/vaktcomply/bsi-modeling">Zur Modellierung</Link>
-            </Button>
+            <Link to="/vaktcomply/bsi-modeling" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'mt-2')}>
+              Zur Modellierung
+            </Link>
           </div>
         )}
 
