@@ -21,19 +21,6 @@ var iso2013Pattern = regexp.MustCompile(
 		`|\bA\.\d+\.\d+\.\d+`, // three-level sub-control (A.x.y.z)
 )
 
-func collectISO27001IDs(pairs []frameworkPair) []string {
-	var ids []string
-	for _, p := range pairs {
-		if p.tgt == "ISO27001" {
-			ids = append(ids, p.tgtCode)
-		}
-		if p.src == "ISO27001" {
-			ids = append(ids, p.srcCode)
-		}
-	}
-	return ids
-}
-
 // TestMappingSeedsUseOnly2022IDs verifies that all static mapping tables reference
 // ISO 27001:2022 Annex A control IDs only (A.5.x–A.8.x, no 2013-legacy IDs).
 func TestMappingSeedsUseOnly2022IDs(t *testing.T) {
@@ -118,9 +105,6 @@ func TestBISGMappingCoverage(t *testing.T) {
 		"NIS2-E.8", // §30 Nr. 10: Netzwerksicherheit
 	}
 
-	// Build the isoNIS2 entries via SeedFrameworkMappings logic (table only, no DB call).
-	// We re-declare the minimal entry type for test introspection.
-	type entry struct{ srcFW, srcCode, tgtFW, tgtCode, mtype string }
 	const iso, nis2 = "ISO27001", "NIS2"
 
 	covered := make(map[string][]string) // nis2Code → []isoCode
@@ -160,11 +144,11 @@ func isoNIS2Entries() [][4]string {
 	const iso, nis2 = "ISO27001", "NIS2"
 
 	raw := []entry{
-		{iso, "A.5.1",  nis2, "NIS2-A.1", "equivalent"},
-		{iso, "A.5.2",  nis2, "NIS2-A.1", "partial"},
-		{iso, "A.5.3",  nis2, "NIS2-A.1", "partial"},
-		{iso, "A.5.4",  nis2, "NIS2-A.1", "partial"},
-		{iso, "A.5.7",  nis2, "NIS2-A.1", "partial"},
+		{iso, "A.5.1", nis2, "NIS2-A.1", "equivalent"},
+		{iso, "A.5.2", nis2, "NIS2-A.1", "partial"},
+		{iso, "A.5.3", nis2, "NIS2-A.1", "partial"},
+		{iso, "A.5.4", nis2, "NIS2-A.1", "partial"},
+		{iso, "A.5.7", nis2, "NIS2-A.1", "partial"},
 		{iso, "A.5.31", nis2, "NIS2-A.1", "partial"},
 		{iso, "A.5.35", nis2, "NIS2-A.1", "partial"},
 		{iso, "A.5.36", nis2, "NIS2-A.1", "equivalent"},
@@ -175,11 +159,11 @@ func isoNIS2Entries() [][4]string {
 		{iso, "A.5.26", nis2, "NIS2-B.1", "partial"},
 		{iso, "A.5.27", nis2, "NIS2-B.1", "partial"},
 		{iso, "A.5.28", nis2, "NIS2-B.1", "partial"},
-		{iso, "A.6.8",  nis2, "NIS2-B.1", "partial"},
+		{iso, "A.6.8", nis2, "NIS2-B.1", "partial"},
 		{iso, "A.8.15", nis2, "NIS2-B.1", "partial"},
 		{iso, "A.8.16", nis2, "NIS2-B.1", "partial"},
 		{iso, "A.8.17", nis2, "NIS2-B.1", "partial"},
-		{iso, "A.6.8",  nis2, "NIS2-B.5", "equivalent"},
+		{iso, "A.6.8", nis2, "NIS2-B.5", "equivalent"},
 		{iso, "A.5.24", nis2, "NIS2-B.5", "partial"},
 
 		{iso, "A.5.29", nis2, "NIS2-C.1", "equivalent"},
@@ -195,13 +179,13 @@ func isoNIS2Entries() [][4]string {
 		{iso, "A.5.22", nis2, "NIS2-D.1", "partial"},
 		{iso, "A.8.30", nis2, "NIS2-D.1", "partial"},
 
-		{iso, "A.8.8",  nis2, "NIS2-E.3", "equivalent"},
-		{iso, "A.8.9",  nis2, "NIS2-E.3", "partial"},
-		{iso, "A.8.7",  nis2, "NIS2-E.3", "partial"},
+		{iso, "A.8.8", nis2, "NIS2-E.3", "equivalent"},
+		{iso, "A.8.9", nis2, "NIS2-E.3", "partial"},
+		{iso, "A.8.7", nis2, "NIS2-E.3", "partial"},
 		{iso, "A.5.23", nis2, "NIS2-E.3", "partial"},
 		{iso, "A.5.21", nis2, "NIS2-E.3", "partial"},
-		{iso, "A.7.3",  nis2, "NIS2-E.3", "partial"},
-		{iso, "A.7.5",  nis2, "NIS2-E.3", "partial"},
+		{iso, "A.7.3", nis2, "NIS2-E.3", "partial"},
+		{iso, "A.7.5", nis2, "NIS2-E.3", "partial"},
 		{iso, "A.7.13", nis2, "NIS2-E.3", "partial"},
 		{iso, "A.8.16", nis2, "NIS2-E.3", "partial"},
 		{iso, "A.8.20", nis2, "NIS2-E.3", "partial"},
@@ -211,51 +195,51 @@ func isoNIS2Entries() [][4]string {
 		{iso, "A.8.31", nis2, "NIS2-E.3", "partial"},
 		{iso, "A.8.33", nis2, "NIS2-E.3", "partial"},
 		{iso, "A.8.34", nis2, "NIS2-E.3", "partial"},
-		{iso, "A.8.8",  nis2, "NIS2-E.4", "equivalent"},
+		{iso, "A.8.8", nis2, "NIS2-E.4", "equivalent"},
 		{iso, "A.8.32", nis2, "NIS2-E.4", "partial"},
 
-		{iso, "A.6.3",  nis2, "NIS2-G.2", "equivalent"},
-		{iso, "A.8.7",  nis2, "NIS2-G.2", "partial"},
+		{iso, "A.6.3", nis2, "NIS2-G.2", "equivalent"},
+		{iso, "A.8.7", nis2, "NIS2-G.2", "partial"},
 
 		{iso, "A.8.24", nis2, "NIS2-H.1", "equivalent"},
 		{iso, "A.5.31", nis2, "NIS2-H.1", "partial"},
 
-		{iso, "A.5.9",  nis2, "NIS2-A.8", "equivalent"},
+		{iso, "A.5.9", nis2, "NIS2-A.8", "equivalent"},
 		{iso, "A.5.10", nis2, "NIS2-A.8", "partial"},
 		{iso, "A.5.11", nis2, "NIS2-A.8", "partial"},
 		{iso, "A.5.12", nis2, "NIS2-A.8", "partial"},
 		{iso, "A.5.13", nis2, "NIS2-A.8", "partial"},
 		{iso, "A.5.14", nis2, "NIS2-A.8", "partial"},
 		{iso, "A.7.10", nis2, "NIS2-A.8", "partial"},
-		{iso, "A.6.1",  nis2, "NIS2-A.6", "equivalent"},
-		{iso, "A.6.2",  nis2, "NIS2-A.6", "partial"},
-		{iso, "A.6.4",  nis2, "NIS2-A.6", "partial"},
-		{iso, "A.6.5",  nis2, "NIS2-A.6", "partial"},
-		{iso, "A.7.1",  nis2, "NIS2-A.6", "partial"},
-		{iso, "A.7.4",  nis2, "NIS2-A.6", "partial"},
-		{iso, "A.7.7",  nis2, "NIS2-A.6", "partial"},
+		{iso, "A.6.1", nis2, "NIS2-A.6", "equivalent"},
+		{iso, "A.6.2", nis2, "NIS2-A.6", "partial"},
+		{iso, "A.6.4", nis2, "NIS2-A.6", "partial"},
+		{iso, "A.6.5", nis2, "NIS2-A.6", "partial"},
+		{iso, "A.7.1", nis2, "NIS2-A.6", "partial"},
+		{iso, "A.7.4", nis2, "NIS2-A.6", "partial"},
+		{iso, "A.7.7", nis2, "NIS2-A.6", "partial"},
 		{iso, "A.5.15", nis2, "NIS2-F.1", "equivalent"},
 		{iso, "A.5.16", nis2, "NIS2-F.1", "equivalent"},
 		{iso, "A.5.17", nis2, "NIS2-F.1", "partial"},
 		{iso, "A.5.18", nis2, "NIS2-F.1", "partial"},
 		{iso, "A.5.28", nis2, "NIS2-F.1", "partial"},
-		{iso, "A.8.2",  nis2, "NIS2-F.1", "partial"},
-		{iso, "A.8.3",  nis2, "NIS2-F.1", "partial"},
+		{iso, "A.8.2", nis2, "NIS2-F.1", "partial"},
+		{iso, "A.8.3", nis2, "NIS2-F.1", "partial"},
 		{iso, "A.8.18", nis2, "NIS2-F.1", "partial"},
 		{iso, "A.8.21", nis2, "NIS2-F.1", "partial"},
-		{iso, "A.8.5",  nis2, "NIS2-F.1", "equivalent"},
+		{iso, "A.8.5", nis2, "NIS2-F.1", "equivalent"},
 		{iso, "A.8.20", nis2, "NIS2-E.8", "equivalent"},
 		{iso, "A.8.21", nis2, "NIS2-E.8", "equivalent"},
 		{iso, "A.8.22", nis2, "NIS2-E.8", "partial"},
-		{iso, "A.7.2",  nis2, "NIS2-E.8", "partial"},
+		{iso, "A.7.2", nis2, "NIS2-E.8", "partial"},
 
 		// ENISA TIG v1.2 additions — Req. 6.x Secure Development → NIS2-E.1
 		{iso, "A.8.26", nis2, "NIS2-E.1", "equivalent"},
 		{iso, "A.8.27", nis2, "NIS2-E.1", "partial"},
 		{iso, "A.8.28", nis2, "NIS2-E.1", "partial"},
-		{iso, "A.5.8",  nis2, "NIS2-E.1", "partial"},
+		{iso, "A.5.8", nis2, "NIS2-E.1", "partial"},
 		// ENISA TIG v1.2 — Req. 13.x Physical Security → NIS2-E.3
-		{iso, "A.7.8",  nis2, "NIS2-E.3", "partial"},
+		{iso, "A.7.8", nis2, "NIS2-E.3", "partial"},
 		{iso, "A.7.12", nis2, "NIS2-E.3", "partial"},
 	}
 
