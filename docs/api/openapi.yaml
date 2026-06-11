@@ -1958,6 +1958,185 @@ components:
         revoked_entries: { type: integer }
         created_at: { type: string, format: date-time }
 
+    # ── Sprint 74: BSI IT-Grundschutz schemas ────────────────────────────────
+    BSITargetObject:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        type: { type: string, enum: [it_system, application, network, room, process] }
+        absicherungsniveau: { type: string, enum: [basis, standard, kern] }
+        schutzbedarf_v: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
+        schutzbedarf_i: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
+        schutzbedarf_a: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CreateBSITargetObjectInput:
+      type: object
+      required: [name, type]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        type: { type: string, enum: [it_system, application, network, room, process] }
+        absicherungsniveau: { type: string, enum: [basis, standard, kern] }
+        schutzbedarf_v: { type: string, enum: [normal, hoch, sehr_hoch] }
+        schutzbedarf_i: { type: string, enum: [normal, hoch, sehr_hoch] }
+        schutzbedarf_a: { type: string, enum: [normal, hoch, sehr_hoch] }
+
+    BSICheckResult:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        target_object_id: { type: string, format: uuid }
+        anforderung_id: { type: string }
+        anforderung_title: { type: string }
+        baustein_id: { type: string }
+        umsetzungsstatus: { type: string, enum: [ja, teilweise, nein, entbehrlich] }
+        begruendung: { type: string, nullable: true }
+        verantwortlicher: { type: string, nullable: true }
+        updated_at: { type: string, format: date-time }
+
+    SetCheckResultInput:
+      type: object
+      required: [umsetzungsstatus]
+      properties:
+        umsetzungsstatus: { type: string, enum: [ja, teilweise, nein, entbehrlich] }
+        begruendung: { type: string }
+        verantwortlicher: { type: string }
+
+    BulkCheckResultItem:
+      type: object
+      required: [anforderung_id, umsetzungsstatus]
+      properties:
+        anforderung_id: { type: string }
+        umsetzungsstatus: { type: string, enum: [ja, teilweise, nein, entbehrlich] }
+        begruendung: { type: string }
+        verantwortlicher: { type: string }
+
+    BSICheckSummary:
+      type: object
+      properties:
+        target_object_id: { type: string, format: uuid }
+        total: { type: integer }
+        ja: { type: integer }
+        teilweise: { type: integer }
+        entbehrlich: { type: integer }
+        nein: { type: integer }
+        umsetzungsgrad_pct: { type: number, format: double }
+
+    BSICockpit:
+      type: object
+      properties:
+        org_id: { type: string }
+        overall_pct: { type: number, format: double }
+        heatmap:
+          type: array
+          items:
+            type: object
+            properties:
+              baustein_id: { type: string }
+              baustein_title: { type: string }
+              cells:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    target_object_id: { type: string, format: uuid }
+                    target_object_name: { type: string }
+                    pct: { type: number, format: double }
+        top_gaps:
+          type: array
+          items:
+            type: object
+            properties:
+              anforderung_id: { type: string }
+              anforderung_title: { type: string }
+              baustein_id: { type: string }
+              affected_objects: { type: integer }
+
+    BSIGapReport:
+      type: object
+      properties:
+        org_id: { type: string }
+        generated_at: { type: string, format: date-time }
+        gaps:
+          type: array
+          items:
+            type: object
+            properties:
+              baustein_id: { type: string }
+              anforderung_id: { type: string }
+              anforderung_title: { type: string }
+              zielobjekt: { type: string }
+              umsetzungsstatus: { type: string }
+
+    BSIThreat:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        threat_id: { type: string, example: 'G-0.14' }
+        title: { type: string }
+        category: { type: string }
+        description: { type: string, nullable: true }
+
+    BSIRiskAssessment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        target_object_id: { type: string, format: uuid }
+        threat_id: { type: string }
+        threat_title: { type: string }
+        eintrittshaeufigkeit: { type: string, enum: [selten, mittel, haeufig, sehr_haeufig] }
+        schadensauswirkung: { type: string, enum: [vernachlaessigbar, begrenzt, betraechtlich, existenzbedrohend] }
+        risikokategorie: { type: string, enum: [gering, mittel, hoch, sehr_hoch] }
+        massnahmen: { type: string, nullable: true }
+        status: { type: string, enum: [offen, in_bearbeitung, akzeptiert, behandelt] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CreateBSIRiskInput:
+      type: object
+      required: [threat_id, eintrittshaeufigkeit, schadensauswirkung]
+      properties:
+        threat_id: { type: string }
+        eintrittshaeufigkeit: { type: string, enum: [selten, mittel, haeufig, sehr_haeufig] }
+        schadensauswirkung: { type: string, enum: [vernachlaessigbar, begrenzt, betraechtlich, existenzbedrohend] }
+        massnahmen: { type: string }
+        status: { type: string, enum: [offen, in_bearbeitung, akzeptiert, behandelt] }
+
+    UpdateBSIRiskInput:
+      type: object
+      properties:
+        eintrittshaeufigkeit: { type: string, enum: [selten, mittel, haeufig, sehr_haeufig] }
+        schadensauswirkung: { type: string, enum: [vernachlaessigbar, begrenzt, betraechtlich, existenzbedrohend] }
+        massnahmen: { type: string }
+        status: { type: string, enum: [offen, in_bearbeitung, akzeptiert, behandelt] }
+
+    BSIRiskSummary:
+      type: object
+      properties:
+        target_object_id: { type: string, format: uuid }
+        gering: { type: integer }
+        mittel: { type: integer }
+        hoch: { type: integer }
+        sehr_hoch: { type: integer }
+        offen: { type: integer }
+
+    BSIReportExport:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        report_type: { type: string, enum: [A1, A2, A3, A4, A5, A6, full] }
+        generated_by: { type: string, format: uuid }
+        sha256: { type: string }
+        created_at: { type: string, format: date-time }
+
 tags:
   - name: auth
     description: Authentication
@@ -8293,6 +8472,388 @@ paths:
       responses:
         '204':
           description: Deleted
+
+  # ── Sprint 74: BSI IT-Grundschutz-Check (S74-1–S74-4) ────────────────────
+
+  /vaktcomply/bsi/target-objects:
+    get:
+      summary: List all Zielobjekte (Strukturanalyse)
+      operationId: listBSITargetObjects
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of Zielobjekte
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BSITargetObject' }
+    post:
+      summary: Create a Zielobjekt
+      operationId: createBSITargetObject
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBSITargetObjectInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BSITargetObject' }
+
+  /vaktcomply/bsi/target-objects/{id}:
+    get:
+      summary: Get a single Zielobjekt
+      operationId: getBSITargetObject
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Zielobjekt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BSITargetObject' }
+        '404':
+          description: Not found
+    put:
+      summary: Update a Zielobjekt
+      operationId: updateBSITargetObject
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBSITargetObjectInput' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BSITargetObject' }
+    delete:
+      summary: Delete a Zielobjekt
+      operationId: deleteBSITargetObject
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '204':
+          description: Deleted
+
+  /vaktcomply/bsi/target-objects/{id}/check:
+    get:
+      summary: Get IT-Grundschutz-Check sheet for a Zielobjekt
+      operationId: getBSICheckSheet
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Check results
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BSICheckResult' }
+
+  /vaktcomply/bsi/target-objects/{id}/check/{anforderungId}:
+    put:
+      summary: Set Umsetzungsstatus for one Anforderung
+      operationId: setBSICheckResult
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: anforderungId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetCheckResultInput' }
+      responses:
+        '200':
+          description: Updated check result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BSICheckResult' }
+
+  /vaktcomply/bsi/target-objects/{id}/check/bulk:
+    post:
+      summary: Bulk-set multiple Anforderung statuses (atomic)
+      operationId: bulkSetBSICheckResults
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: '#/components/schemas/BulkCheckResultItem' }
+      responses:
+        '204':
+          description: Updated
+
+  /vaktcomply/bsi/target-objects/{id}/check/summary:
+    get:
+      summary: Get Umsetzungsgrad summary for a Zielobjekt
+      operationId: getBSICheckSummary
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Summary with progress percentage
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BSICheckSummary' }
+
+  /vaktcomply/bsi/target-objects/{id}/modeling:
+    post:
+      summary: Assign a Baustein to a Zielobjekt
+      operationId: assignBausteinToTargetObject
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [baustein_id]
+              properties:
+                baustein_id: { type: string }
+      responses:
+        '204':
+          description: Assigned
+
+  /vaktcomply/bsi/target-objects/{id}/modeling/{bausteinId}:
+    delete:
+      summary: Remove a Baustein from a Zielobjekt
+      operationId: removeBausteinFromTargetObject
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: bausteinId, in: path, required: true, schema: { type: string } }
+      responses:
+        '204':
+          description: Removed
+
+  /vaktcomply/bsi/target-objects/{id}/risks:
+    get:
+      summary: List BSI 200-3 risk assessments for a Zielobjekt
+      operationId: listBSIRisks
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Risk assessments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BSIRiskAssessment' }
+    post:
+      summary: Add a Gefährdung to the risk analysis
+      operationId: createBSIRisk
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBSIRiskInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BSIRiskAssessment' }
+
+  /vaktcomply/bsi/target-objects/{id}/risks/{riskId}:
+    put:
+      summary: Update risk classification and treatment
+      operationId: updateBSIRisk
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: riskId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateBSIRiskInput' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BSIRiskAssessment' }
+    delete:
+      summary: Remove a risk entry
+      operationId: deleteBSIRisk
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: riskId, in: path, required: true, schema: { type: string } }
+      responses:
+        '204':
+          description: Deleted
+
+  /vaktcomply/bsi/target-objects/{id}/risks/summary:
+    get:
+      summary: Risk summary (counts by category) for a Zielobjekt
+      operationId: getBSIRiskSummary
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Risk counts by category
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BSIRiskSummary' }
+
+  /vaktcomply/bsi/threats:
+    get:
+      summary: List all 47 elementare Gefährdungen (BSI G-0.x, static)
+      operationId: listBSIThreats
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of threats
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BSIThreat' }
+
+  /vaktcomply/bsi/cockpit:
+    get:
+      summary: Grundschutz-Cockpit dashboard (heatmap, top gaps, progress)
+      operationId: getBSICockpit
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Cockpit data
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BSICockpit' }
+
+  /vaktcomply/bsi/gap-report:
+    get:
+      summary: Full GAP report (JSON or CSV)
+      operationId: getBSIGapReport
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: format
+          in: query
+          schema: { type: string, enum: [json, csv] }
+      responses:
+        '200':
+          description: GAP report
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BSIGapReport' }
+            text/csv:
+              schema: { type: string }
+
+  /vaktcomply/bsi/reports:
+    get:
+      summary: List BSI report export audit log
+      operationId: listBSIReportExports
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Report export log
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BSIReportExport' }
+
+  /vaktcomply/bsi/reports/{type}/preview:
+    get:
+      summary: Preview data for a BSI report (before PDF download)
+      operationId: getBSIReportPreview
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: type, in: path, required: true, schema: { type: string, enum: [A1,A2,A3,A4,A5,A6,full] } }
+      responses:
+        '200':
+          description: Preview data
+          content:
+            application/json:
+              schema: { type: object }
+
+  /vaktcomply/bsi/reports/{type}:
+    get:
+      summary: Generate and download a BSI reference report PDF (Pro feature)
+      operationId: generateBSIReport
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: type, in: path, required: true, schema: { type: string, enum: [A1,A2,A3,A4,A5,A6,full] } }
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        '403':
+          description: Feature not available on current plan
 
   # ── Sprint 61: Pentest Tracking (S61-6) ───────────────────────────────────
 

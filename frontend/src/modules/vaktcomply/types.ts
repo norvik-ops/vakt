@@ -1427,3 +1427,164 @@ export interface ImplementationStep {
   prerequisites_met: boolean
   blocking_prereqs: PrereqRef[]
 }
+
+// ── S74: BSI IT-Grundschutz-Check ────────────────────────────────────────────
+
+export type BSITargetObjectType = 'it_system' | 'application' | 'network' | 'room' | 'process'
+export type BSIAbsicherungsniveau = 'basis' | 'standard' | 'kern'
+export type BSISchutzbedarf = 'normal' | 'hoch' | 'sehr_hoch'
+export type BSIUmsetzungsstatus = 'ja' | 'teilweise' | 'nein' | 'entbehrlich'
+export type BSIEintrittshaeufigkeit = 'selten' | 'mittel' | 'haeufig' | 'sehr_haeufig'
+export type BSISchadensauswirkung = 'vernachlaessigbar' | 'begrenzt' | 'betraechtlich' | 'existenzbedrohend'
+export type BSIRisikokategorie = 'gering' | 'mittel' | 'hoch' | 'sehr_hoch'
+export type BSIRiskStatus = 'offen' | 'in_bearbeitung' | 'akzeptiert' | 'behandelt'
+export type BSIReportType = 'A1' | 'A2' | 'A3' | 'A4' | 'A5' | 'A6' | 'full'
+
+export interface BSITargetObject {
+  id: string
+  org_id: string
+  name: string
+  description?: string
+  type: BSITargetObjectType
+  absicherungsniveau: BSIAbsicherungsniveau
+  schutzbedarf_v?: BSISchutzbedarf
+  schutzbedarf_i?: BSISchutzbedarf
+  schutzbedarf_a?: BSISchutzbedarf
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateBSITargetObjectInput {
+  name: string
+  description?: string
+  type: BSITargetObjectType
+  absicherungsniveau?: BSIAbsicherungsniveau
+  schutzbedarf_v?: BSISchutzbedarf
+  schutzbedarf_i?: BSISchutzbedarf
+  schutzbedarf_a?: BSISchutzbedarf
+}
+
+export interface BSICheckResult {
+  id: string
+  org_id: string
+  target_object_id: string
+  anforderung_id: string
+  anforderung_title: string
+  baustein_id: string
+  umsetzungsstatus: BSIUmsetzungsstatus
+  begruendung?: string
+  verantwortlicher?: string
+  updated_at: string
+}
+
+export interface SetCheckResultInput {
+  umsetzungsstatus: BSIUmsetzungsstatus
+  begruendung?: string
+  verantwortlicher?: string
+}
+
+export interface BSICheckSummary {
+  target_object_id: string
+  total: number
+  ja: number
+  teilweise: number
+  entbehrlich: number
+  nein: number
+  umsetzungsgrad_pct: number
+}
+
+export interface BSIHeatmapCell {
+  target_object_id: string
+  target_object_name: string
+  pct: number
+}
+
+export interface BSIHeatmapRow {
+  baustein_id: string
+  baustein_title: string
+  cells: BSIHeatmapCell[]
+}
+
+export interface BSITopGap {
+  anforderung_id: string
+  anforderung_title: string
+  baustein_id: string
+  affected_objects: number
+}
+
+export interface BSICockpit {
+  org_id: string
+  overall_pct: number
+  heatmap: BSIHeatmapRow[]
+  top_gaps: BSITopGap[]
+}
+
+export interface BSIGapDetail {
+  baustein_id: string
+  anforderung_id: string
+  anforderung_title: string
+  zielobjekt: string
+  umsetzungsstatus: string
+}
+
+export interface BSIGapReport {
+  org_id: string
+  generated_at: string
+  gaps: BSIGapDetail[]
+}
+
+export interface BSIThreat {
+  id: string
+  threat_id: string
+  title: string
+  category: string
+  description?: string
+}
+
+export interface BSIRiskAssessment {
+  id: string
+  org_id: string
+  target_object_id: string
+  threat_id: string
+  threat_title: string
+  eintrittshaeufigkeit: BSIEintrittshaeufigkeit
+  schadensauswirkung: BSISchadensauswirkung
+  risikokategorie: BSIRisikokategorie
+  massnahmen?: string
+  status: BSIRiskStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateBSIRiskInput {
+  threat_id: string
+  eintrittshaeufigkeit: BSIEintrittshaeufigkeit
+  schadensauswirkung: BSISchadensauswirkung
+  massnahmen?: string
+  status?: BSIRiskStatus
+}
+
+export interface UpdateBSIRiskInput {
+  eintrittshaeufigkeit?: BSIEintrittshaeufigkeit
+  schadensauswirkung?: BSISchadensauswirkung
+  massnahmen?: string
+  status?: BSIRiskStatus
+}
+
+export interface BSIRiskSummary {
+  target_object_id: string
+  gering: number
+  mittel: number
+  hoch: number
+  sehr_hoch: number
+  offen: number
+}
+
+export interface BSIReportExport {
+  id: string
+  org_id: string
+  report_type: BSIReportType
+  generated_by: string
+  sha256: string
+  created_at: string
+}

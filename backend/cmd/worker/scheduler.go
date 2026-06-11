@@ -305,6 +305,13 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		log.Error().Err(err).Msg("failed to register evidence staleness check cron")
 	}
 
+	// S74-2: daily at 06:15 UTC — update BSI check progress in KPI snapshots.
+	if _, err := scheduler.Register("15 6 * * *",
+		vaktcomply.NewBSIKPISnapshotTask(),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register BSI KPI snapshot cron")
+	}
+
 	// S68-2: daily at 08:15 UTC — mark overdue DSRs and send 3-day deadline warnings.
 	if _, err := scheduler.Register("15 8 * * *",
 		asynq.NewTask(vaktprivacy.TaskDSRDeadlineCheck, nil),

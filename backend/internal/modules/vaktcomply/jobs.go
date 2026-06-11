@@ -42,6 +42,9 @@ const (
 	// TaskISMSKPISnapshot is the task type for the daily ISMS KPI snapshot job (S61-7).
 	TaskISMSKPISnapshot = "vaktcomply:isms_kpi_snapshot"
 
+	// TaskBSIKPISnapshot is the task type for the daily BSI check progress snapshot (S74-2).
+	TaskBSIKPISnapshot = "vaktcomply:bsi_kpi_snapshot"
+
 	// Queue is the dedicated Asynq queue for Vakt Comply evidence and compliance jobs.
 	Queue = "vaktcomply"
 )
@@ -104,4 +107,10 @@ func NewAIWeeklyDigestTask() *asynq.Task {
 // Unique window of 23 hours prevents duplicate tasks within a daily cron window.
 func NewISMSKPISnapshotTask() *asynq.Task {
 	return asynq.NewTask(TaskISMSKPISnapshot, nil, asynq.Unique(23*time.Hour))
+}
+
+// NewBSIKPISnapshotTask creates the daily BSI check progress snapshot task (S74-2).
+// Unique window of 23 hours prevents duplicate tasks within a daily cron window.
+func NewBSIKPISnapshotTask() *asynq.Task {
+	return asynq.NewTask(TaskBSIKPISnapshot, nil, asynq.Unique(23*time.Hour))
 }

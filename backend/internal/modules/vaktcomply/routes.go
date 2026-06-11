@@ -481,6 +481,39 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.POST("/crypto-keys/:id/rotate", h.RotateCryptoKey, rw)
 	g.DELETE("/crypto-keys/:id", h.DeleteCryptoKey, rw)
 
+	// S74-1: IT-Grundschutz-Check — Zielobjekte (Strukturanalyse)
+	// CRITICAL: static sub-paths (/check/summary, /check/bulk, /risks/summary, /modeling) must be
+	// registered BEFORE param routes (/check/:anforderungId, /risks/:riskId) to avoid Echo conflicts.
+	g.GET("/bsi/target-objects", h.ListBSITargetObjects)
+	g.POST("/bsi/target-objects", h.CreateBSITargetObject, rw)
+	g.GET("/bsi/target-objects/:id/check/summary", h.GetBSICheckSummary)
+	g.POST("/bsi/target-objects/:id/check/bulk", h.BulkSetBSICheckResults, rw)
+	g.GET("/bsi/target-objects/:id/check", h.GetBSICheckSheet)
+	g.PUT("/bsi/target-objects/:id/check/:anforderungId", h.SetBSICheckResult, rw)
+	g.GET("/bsi/target-objects/:id/risks/summary", h.GetBSIRiskSummary)
+	g.GET("/bsi/target-objects/:id/risks", h.ListBSIRisks)
+	g.POST("/bsi/target-objects/:id/risks", h.CreateBSIRisk, rw)
+	g.PUT("/bsi/target-objects/:id/risks/:riskId", h.UpdateBSIRisk, rw)
+	g.DELETE("/bsi/target-objects/:id/risks/:riskId", h.DeleteBSIRisk, rw)
+	g.POST("/bsi/target-objects/:id/modeling", h.AssignBausteinToTargetObject, rw)
+	g.DELETE("/bsi/target-objects/:id/modeling/:bausteinId", h.RemoveBausteinFromTargetObject, rw)
+	g.GET("/bsi/target-objects/:id", h.GetBSITargetObject)
+	g.PUT("/bsi/target-objects/:id", h.UpdateBSITargetObject, rw)
+	g.DELETE("/bsi/target-objects/:id", h.DeleteBSITargetObject, rw)
+
+	// S74-2: Grundschutz-Cockpit & GAP-Report
+	g.GET("/bsi/cockpit", h.GetBSICockpit)
+	g.GET("/bsi/gap-report", h.GetBSIGapReport)
+
+	// S74-3: Risikobewertung BSI 200-3 — Gefährdungskatalog
+	g.GET("/bsi/threats", h.ListBSIThreats)
+
+	// S74-4: Referenzberichte A1–A6
+	// CRITICAL: /bsi/reports/:type/preview must be before /bsi/reports/:type to avoid route conflict.
+	g.GET("/bsi/reports", h.ListBSIReportExports)
+	g.GET("/bsi/reports/:type/preview", h.GetBSIReportPreview)
+	g.GET("/bsi/reports/:type", h.GenerateBSIReport, features.Require(features.FeatureAuditPDF))
+
 	registerAccessReviewRoutes(g, h)
 	registerExceptionRoutes(g, h)
 }

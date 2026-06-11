@@ -50,6 +50,10 @@ import ProtectionNeedsPage from './pages/ProtectionNeedsPage'
 import ISMSScopePage from './pages/ISMSScopePage'
 import PentestsPage from './pages/PentestsPage'
 import BSIModelingPage from './pages/BSIModelingPage'
+import BSITargetObjectsPage from './pages/BSITargetObjectsPage'
+import BSICheckSheetPage from './pages/BSICheckSheetPage'
+import BSICockpitPage from './pages/BSICockpitPage'
+import BSIReportsPage from './pages/BSIReportsPage'
 import ManagementReviewsPage from './pages/ManagementReviewsPage'
 import KPIDashboardPage from './pages/KPIDashboardPage'
 import CryptoKeysPage from './pages/CryptoKeysPage'
@@ -115,6 +119,10 @@ export default function SecVitalsRoutes() {
       <Route path="isms-scope" element={<ISMSScopePage />} />
       <Route path="pentests" element={<PentestsPage />} />
       <Route path="bsi-modeling" element={<BSIModelingPage />} />
+      <Route path="bsi/target-objects" element={<BSITargetObjectsPage />} />
+      <Route path="bsi/check/:id" element={<BSICheckSheetPage />} />
+      <Route path="bsi/cockpit" element={<BSICockpitPage />} />
+      <Route path="bsi/reports" element={<BSIReportsPage />} />
       <Route path="management-reviews" element={<ManagementReviewsPage />} />
       <Route path="kpi-dashboard" element={<KPIDashboardPage />} />
       <Route path="crypto-keys" element={<CryptoKeysPage />} />

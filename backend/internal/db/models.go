@@ -515,13 +515,13 @@ type CkFrameworkMappings struct {
 }
 
 type CkFrameworks struct {
-	ID              string             `json:"id"`
-	OrgID           string             `json:"org_id"`
-	Name            string             `json:"name"`
-	Version         string             `json:"version"`
-	IsBuiltin       bool               `json:"is_builtin"`
-	CreatedAt       pgtype.Timestamptz `json:"created_at"`
-	FrameworkVariant string            `json:"framework_variant"`
+	ID               string             `json:"id"`
+	OrgID            string             `json:"org_id"`
+	Name             string             `json:"name"`
+	Version          string             `json:"version"`
+	IsBuiltin        bool               `json:"is_builtin"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	FrameworkVariant string             `json:"framework_variant"`
 }
 
 type CkIncidentReports struct {
@@ -1508,8 +1508,8 @@ type UserNotifications struct {
 }
 
 type Users struct {
-	ID                string             `json:"id"`
-	Email             string             `json:"email"`
+	ID    string `json:"id"`
+	Email string `json:"email"`
 	// json:"-" intentionally overrides sqlc default — never serialize password hashes in API responses
 	PasswordHash      pgtype.Text        `json:"-"`
 	DisplayName       pgtype.Text        `json:"display_name"`

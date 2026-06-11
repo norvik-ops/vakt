@@ -276,6 +276,9 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	// S70-5: quarterly vault access review creation
 	mux.HandleFunc(vaktvault.TaskQuarterlyAccessReview, handleQuarterlyAccessReview(pool))
 
+	// S74-2: daily BSI check progress snapshot
+	mux.HandleFunc(vaktcomply.TaskBSIKPISnapshot, handleBSIKPISnapshot(pool))
+
 	return srv, mux
 }
 

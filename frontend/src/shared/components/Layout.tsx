@@ -9,6 +9,7 @@ import {
   Building2, Bot, PackageX, Mail, GraduationCap, Target, Flag, LayoutTemplate, UserCog, UserCheck,
   Plug, ClipboardCheck, CalendarClock, Inbox, Menu, X, ArrowUpCircle, ScrollText, CalendarDays,
   ChevronLeft, ChevronRight, Cpu, Landmark, ListChecks, Cloud, Banknote, ChevronDown,
+  LayoutGrid, FileBarChart,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../stores/auth'
@@ -81,6 +82,9 @@ const MODULES_NAV: NavItem[] = [
           { path: '/vaktcomply/nis2',               label: 'NIS2',       icon: Shield },
           { path: '/vaktcomply/iso27001',           label: 'ISO 27001',  icon: FileCheck },
           { path: '/vaktcomply/grundschutz',        label: 'BSI',        icon: Landmark },
+          { path: '/vaktcomply/bsi/target-objects', label: 'BSI-Check',  icon: ClipboardCheck },
+          { path: '/vaktcomply/bsi/cockpit',        label: 'BSI-Cockpit', icon: LayoutGrid },
+          { path: '/vaktcomply/bsi/reports',        label: 'BSI-Berichte', icon: FileBarChart },
           { path: '/vaktcomply/cis-controls',       label: 'CIS v8',     icon: ListChecks },
           { path: '/vaktcomply/ccm',                label: 'CCM',        icon: Cloud },
           { path: '/vaktcomply/dora/dashboard',     label: 'DORA',       icon: Banknote },

@@ -243,8 +243,8 @@ const BSI_PHASES: Phase[] = [
     label: 'IT-Grundschutz-Check',
     description: 'Anforderungen prüfen',
     done: false,
-    linkTo: '/vaktcomply/bsi-modeling',
-    linkLabel: 'Öffnen',
+    linkTo: '/vaktcomply/bsi/target-objects',
+    linkLabel: 'Starten',
   },
 ]
 
