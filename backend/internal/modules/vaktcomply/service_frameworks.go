@@ -91,6 +91,56 @@ func (s *Service) EnableFramework(ctx context.Context, orgID, name, variant stri
 		}
 	}
 
+	// S75: ISO 27001 ↔ BSI (the most-requested DACH mapping).
+	switch name {
+	case "ISO27001", "BSI":
+		if seedErr := s.SeedISO27001BSIMappings(ctx, orgID); seedErr != nil {
+			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed ISO27001↔BSI mappings (non-critical)")
+		}
+	}
+
+	// S75: DSGVO-TOM ↔ NIS2 and DSGVO-TOM ↔ BSI.
+	switch name {
+	case "DSGVO-TOM", "NIS2":
+		if seedErr := s.SeedDSGVOTOMNIS2Mappings(ctx, orgID); seedErr != nil {
+			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed DSGVO-TOM↔NIS2 mappings (non-critical)")
+		}
+	}
+	switch name {
+	case "DSGVO-TOM", "BSI":
+		if seedErr := s.SeedDSGVOTOMBSIMappings(ctx, orgID); seedErr != nil {
+			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed DSGVO-TOM↔BSI mappings (non-critical)")
+		}
+	}
+
+	// S75: CIS ↔ ISO 27001 and CIS ↔ BSI.
+	switch name {
+	case "CIS", "ISO27001":
+		if seedErr := s.SeedCISISO27001Mappings(ctx, orgID); seedErr != nil {
+			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed CIS↔ISO27001 mappings (non-critical)")
+		}
+	}
+	switch name {
+	case "CIS", "BSI":
+		if seedErr := s.SeedCISBSIMappings(ctx, orgID); seedErr != nil {
+			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed CIS↔BSI mappings (non-critical)")
+		}
+	}
+
+	// S75: TISAX ↔ BSI and TISAX ↔ DSGVO-TOM.
+	switch name {
+	case "TISAX", "BSI":
+		if seedErr := s.SeedTISAXBSIMappings(ctx, orgID); seedErr != nil {
+			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed TISAX↔BSI mappings (non-critical)")
+		}
+	}
+	switch name {
+	case "TISAX", "DSGVO-TOM":
+		if seedErr := s.SeedTISAXDSGVOTOMMappings(ctx, orgID); seedErr != nil {
+			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed TISAX↔DSGVO-TOM mappings (non-critical)")
+		}
+	}
+
 	// Auto-seed DORA ↔ ISO 27001 mappings (S37-2).
 	if name == "DORA" || name == "ISO27001" {
 		if seedErr := s.SeedDORAMappings(ctx, orgID); seedErr != nil {
@@ -544,7 +594,36 @@ func (s *Service) SeedFrameworkMappings(ctx context.Context) error {
 	if err := seed(isoBSI); err != nil {
 		return err
 	}
-	return seed(isoCIS)
+	if err := seed(isoCIS); err != nil {
+		return err
+	}
+
+	// S75: additional DACH-market mappings (seeded globally, no org-check needed).
+	for _, p := range iso27001BSIMappings {
+		if err := s.repo.SeedGlobalControlMapping(ctx, p.src, p.srcCode, p.tgt, p.tgtCode, p.mtype); err != nil {
+			log.Warn().Err(err).Str("src", p.srcCode).Str("tgt", p.tgtCode).Msg("S75 ISO27001↔BSI seed failed")
+		}
+		if err := s.repo.SeedGlobalControlMapping(ctx, p.tgt, p.tgtCode, p.src, p.srcCode, p.mtype); err != nil {
+			log.Warn().Err(err).Msg("S75 ISO27001↔BSI reverse seed failed")
+		}
+	}
+	s75Pairs := append(append(append(append(append(append(
+		nis2BSIExtendedMappings,
+		dsgvoTOMNIS2Mappings...),
+		dsgvoTOMBSIMappings...),
+		cisISO27001Mappings...),
+		cisBSIMappings...),
+		tisaxBSIMappings...),
+		tisaxDSGVOTOMMappings...)
+	for _, p := range s75Pairs {
+		if err := s.repo.SeedGlobalControlMapping(ctx, p.src, p.srcCode, p.tgt, p.tgtCode, p.mtype); err != nil {
+			log.Warn().Err(err).Str("src", p.srcCode).Str("tgt", p.tgtCode).Msg("S75 mapping seed failed")
+		}
+		if err := s.repo.SeedGlobalControlMapping(ctx, p.tgt, p.tgtCode, p.src, p.srcCode, p.mtype); err != nil {
+			log.Warn().Err(err).Msg("S75 mapping reverse seed failed")
+		}
+	}
+	return nil
 }
 
 // GetFramework returns a single framework by ID.

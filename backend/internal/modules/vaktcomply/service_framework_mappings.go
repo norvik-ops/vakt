@@ -212,8 +212,10 @@ var nis2BSIMappings = []frameworkPair{
 }
 
 // SeedNIS2BSIMappings seeds NIS2 ↔ BSI Grundschutz bidirectional mappings.
+// Includes both the original 7 base pairs and the S75-3 enrichment (all A–J thematic areas).
 func (s *Service) SeedNIS2BSIMappings(ctx context.Context, orgID string) error {
-	return s.seedBidirectionalMappings(ctx, orgID, "NIS2", "BSI", nis2BSIMappings)
+	all := append(nis2BSIMappings, nis2BSIExtendedMappings...)
+	return s.seedBidirectionalMappings(ctx, orgID, "NIS2", "BSI", all)
 }
 
 // ── NIS2 ↔ CIS ──────────────────────────────────────────────────────────────
@@ -1485,6 +1487,361 @@ type PrerequisiteEntry struct {
 	DependencyType string
 	Rationale      string
 	Source         string
+}
+
+// ── ISO 27001:2022 ↔ BSI IT-Grundschutz ──────────────────────────────────────
+
+var iso27001BSIMappings = []frameworkPair{
+	// ── A.5 Organisatorische Maßnahmen ──────────────────────────────────────
+	{src: "ISO27001", srcCode: "A.5.1", tgt: "BSI", tgtCode: "BSI-ISMS.1.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.5.1", tgt: "BSI", tgtCode: "BSI-ISMS.1.A5", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.5.2", tgt: "BSI", tgtCode: "BSI-ISMS.1.A2", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.5.2", tgt: "BSI", tgtCode: "BSI-ORP.1.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.5.4", tgt: "BSI", tgtCode: "BSI-ISMS.1.A4", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.5.5", tgt: "BSI", tgtCode: "BSI-ISMS.1.A6", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.5.9", tgt: "BSI", tgtCode: "BSI-ORP.5.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.5.12", tgt: "BSI", tgtCode: "BSI-CON.9.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.5.14", tgt: "BSI", tgtCode: "BSI-CON.9.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.5.16", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.5.17", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.5.18", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.5.19", tgt: "BSI", tgtCode: "BSI-OPS.2.2.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.5.20", tgt: "BSI", tgtCode: "BSI-OPS.2.2.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.5.23", tgt: "BSI", tgtCode: "BSI-OPS.2.4.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.5.24", tgt: "BSI", tgtCode: "BSI-DER.2.1.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.5.25", tgt: "BSI", tgtCode: "BSI-DER.2.1.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.5.26", tgt: "BSI", tgtCode: "BSI-DER.2.1.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.5.27", tgt: "BSI", tgtCode: "BSI-DER.2.2.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.5.28", tgt: "BSI", tgtCode: "BSI-DER.1.A2", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.5.29", tgt: "BSI", tgtCode: "BSI-BCM.1.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.5.30", tgt: "BSI", tgtCode: "BSI-BCM.1.A2", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.5.31", tgt: "BSI", tgtCode: "BSI-ORP.5.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.5.35", tgt: "BSI", tgtCode: "BSI-ISMS.1.A9", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.5.36", tgt: "BSI", tgtCode: "BSI-ISMS.1.A10", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.5.37", tgt: "BSI", tgtCode: "BSI-OPS.1.1.2.A1", mtype: "partial"},
+
+	// ── A.6 Personenbezogene Maßnahmen ──────────────────────────────────────
+	{src: "ISO27001", srcCode: "A.6.1", tgt: "BSI", tgtCode: "BSI-ORP.2.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.6.2", tgt: "BSI", tgtCode: "BSI-ORP.2.A2", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.6.3", tgt: "BSI", tgtCode: "BSI-ORP.3.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.6.3", tgt: "BSI", tgtCode: "BSI-ORP.2.A3", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.6.4", tgt: "BSI", tgtCode: "BSI-ORP.2.A2", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.6.5", tgt: "BSI", tgtCode: "BSI-ORP.2.A4", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.6.7", tgt: "BSI", tgtCode: "BSI-ORP.2.A4", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.6.8", tgt: "BSI", tgtCode: "BSI-DER.1.A1", mtype: "partial"},
+
+	// ── A.7 Physische Maßnahmen ──────────────────────────────────────────────
+	{src: "ISO27001", srcCode: "A.7.1", tgt: "BSI", tgtCode: "BSI-INF.1.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.7.2", tgt: "BSI", tgtCode: "BSI-INF.2.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.7.3", tgt: "BSI", tgtCode: "BSI-INF.7.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.7.4", tgt: "BSI", tgtCode: "BSI-INF.1.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.7.5", tgt: "BSI", tgtCode: "BSI-INF.5.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.7.6", tgt: "BSI", tgtCode: "BSI-INF.5.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.7.7", tgt: "BSI", tgtCode: "BSI-INF.8.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.7.8", tgt: "BSI", tgtCode: "BSI-INF.10.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.7.9", tgt: "BSI", tgtCode: "BSI-SYS.3.1.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.7.10", tgt: "BSI", tgtCode: "BSI-SYS.4.5.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.7.11", tgt: "BSI", tgtCode: "BSI-INF.3.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.7.12", tgt: "BSI", tgtCode: "BSI-INF.3.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.7.13", tgt: "BSI", tgtCode: "BSI-SYS.4.1.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.7.14", tgt: "BSI", tgtCode: "BSI-CON.6.A1", mtype: "equivalent"},
+
+	// ── A.8 Technologische Maßnahmen ────────────────────────────────────────
+	{src: "ISO27001", srcCode: "A.8.1", tgt: "BSI", tgtCode: "BSI-SYS.2.1.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.1", tgt: "BSI", tgtCode: "BSI-SYS.3.1.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.2", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.3", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.4", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.5", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.6", tgt: "BSI", tgtCode: "BSI-SYS.1.1.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.7", tgt: "BSI", tgtCode: "BSI-OPS.1.1.4.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.7", tgt: "BSI", tgtCode: "BSI-OPS.1.1.4.A2", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.8", tgt: "BSI", tgtCode: "BSI-OPS.1.1.3.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.9", tgt: "BSI", tgtCode: "BSI-OPS.1.1.2.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.10", tgt: "BSI", tgtCode: "BSI-CON.6.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.11", tgt: "BSI", tgtCode: "BSI-CON.7.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.12", tgt: "BSI", tgtCode: "BSI-DER.1.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.13", tgt: "BSI", tgtCode: "BSI-CON.3.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.14", tgt: "BSI", tgtCode: "BSI-BCM.1.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.15", tgt: "BSI", tgtCode: "BSI-OPS.1.1.5.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.15", tgt: "BSI", tgtCode: "BSI-DER.1.A2", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.16", tgt: "BSI", tgtCode: "BSI-DER.1.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.17", tgt: "BSI", tgtCode: "BSI-OPS.1.1.2.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.18", tgt: "BSI", tgtCode: "BSI-OPS.1.1.2.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.19", tgt: "BSI", tgtCode: "BSI-OPS.1.1.6.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.20", tgt: "BSI", tgtCode: "BSI-NET.3.2.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.20", tgt: "BSI", tgtCode: "BSI-NET.1.1.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.21", tgt: "BSI", tgtCode: "BSI-NET.1.2.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.22", tgt: "BSI", tgtCode: "BSI-NET.1.1.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.23", tgt: "BSI", tgtCode: "BSI-APP.1.2.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.24", tgt: "BSI", tgtCode: "BSI-CON.1.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.25", tgt: "BSI", tgtCode: "BSI-CON.8.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.25", tgt: "BSI", tgtCode: "BSI-CON.5.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.26", tgt: "BSI", tgtCode: "BSI-APP.3.1.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.27", tgt: "BSI", tgtCode: "BSI-SYS.1.1.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.28", tgt: "BSI", tgtCode: "BSI-CON.8.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.29", tgt: "BSI", tgtCode: "BSI-CON.8.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.30", tgt: "BSI", tgtCode: "BSI-OPS.1.1.2.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.31", tgt: "BSI", tgtCode: "BSI-OPS.1.1.3.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.32", tgt: "BSI", tgtCode: "BSI-OPS.1.1.3.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.8.33", tgt: "BSI", tgtCode: "BSI-OPS.1.1.2.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.34", tgt: "BSI", tgtCode: "BSI-DER.3.2.A1", mtype: "equivalent"},
+
+	// ── Weitere spezifische Paare ──────────────────────────────────────────
+	{src: "ISO27001", srcCode: "A.5.10", tgt: "BSI", tgtCode: "BSI-CON.4.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.5.33", tgt: "BSI", tgtCode: "BSI-CON.6.A1", mtype: "equivalent"},
+	{src: "ISO27001", srcCode: "A.6.6", tgt: "BSI", tgtCode: "BSI-CON.9.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.1", tgt: "BSI", tgtCode: "BSI-SYS.3.2.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.5.6", tgt: "BSI", tgtCode: "BSI-ORP.5.A1", mtype: "partial"},
+	{src: "ISO27001", srcCode: "A.8.16", tgt: "BSI", tgtCode: "BSI-OPS.1.1.7.A1", mtype: "partial"},
+}
+
+// SeedISO27001BSIMappings seeds ISO 27001:2022 ↔ BSI IT-Grundschutz bidirectional mappings.
+func (s *Service) SeedISO27001BSIMappings(ctx context.Context, orgID string) error {
+	return s.seedBidirectionalMappings(ctx, orgID, "ISO27001", "BSI", iso27001BSIMappings)
+}
+
+// ── NIS2 ↔ BSI Anreicherung ──────────────────────────────────────────────────
+
+// nis2BSIExtendedMappings extends the existing nis2BSIMappings (7 base pairs) with full A–J coverage.
+var nis2BSIExtendedMappings = []frameworkPair{
+	// ── A — Governance / Sicherheitskonzept ──────────────────────────────────
+	{src: "NIS2", srcCode: "NIS2-A.2", tgt: "BSI", tgtCode: "BSI-ISMS.1.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-A.3", tgt: "BSI", tgtCode: "BSI-ISMS.1.A2", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-A.4", tgt: "BSI", tgtCode: "BSI-ISMS.1.A4", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-A.5", tgt: "BSI", tgtCode: "BSI-ISMS.1.A9", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-A.7", tgt: "BSI", tgtCode: "BSI-ISMS.1.A6", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-A.8", tgt: "BSI", tgtCode: "BSI-ORP.5.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-A.9", tgt: "BSI", tgtCode: "BSI-ISMS.1.A10", mtype: "equivalent"},
+
+	// ── B — Incident Management ───────────────────────────────────────────────
+	{src: "NIS2", srcCode: "NIS2-B.2", tgt: "BSI", tgtCode: "BSI-DER.2.2.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-B.3", tgt: "BSI", tgtCode: "BSI-DER.1.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-B.4", tgt: "BSI", tgtCode: "BSI-DER.1.A2", mtype: "partial"},
+	{src: "NIS2", srcCode: "NIS2-B.5", tgt: "BSI", tgtCode: "BSI-DER.4.A1", mtype: "equivalent"},
+
+	// ── C — Business Continuity ───────────────────────────────────────────────
+	{src: "NIS2", srcCode: "NIS2-C.1", tgt: "BSI", tgtCode: "BSI-BCM.1.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-C.2", tgt: "BSI", tgtCode: "BSI-BCM.1.A2", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-C.3", tgt: "BSI", tgtCode: "BSI-BCM.2.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-C.5", tgt: "BSI", tgtCode: "BSI-DER.4.A1", mtype: "partial"},
+
+	// ── D — Krisenmanagement ──────────────────────────────────────────────────
+	{src: "NIS2", srcCode: "NIS2-D.1", tgt: "BSI", tgtCode: "BSI-DER.4.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-D.2", tgt: "BSI", tgtCode: "BSI-DER.2.1.A1", mtype: "partial"},
+
+	// ── E — Netz- und Systemsicherheit ───────────────────────────────────────
+	{src: "NIS2", srcCode: "NIS2-E.1", tgt: "BSI", tgtCode: "BSI-NET.1.1.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-E.2", tgt: "BSI", tgtCode: "BSI-NET.3.2.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-E.5", tgt: "BSI", tgtCode: "BSI-OPS.1.1.3.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-E.6", tgt: "BSI", tgtCode: "BSI-OPS.1.1.4.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-E.7", tgt: "BSI", tgtCode: "BSI-SYS.1.1.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-E.9", tgt: "BSI", tgtCode: "BSI-NET.1.2.A1", mtype: "equivalent"},
+
+	// ── F — Zugriffskontrolle ─────────────────────────────────────────────────
+	{src: "NIS2", srcCode: "NIS2-F.1", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-F.2", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "partial"},
+	{src: "NIS2", srcCode: "NIS2-F.3", tgt: "BSI", tgtCode: "BSI-APP.4.4.A1", mtype: "partial"},
+
+	// ── G — Kryptographie ────────────────────────────────────────────────────
+	{src: "NIS2", srcCode: "NIS2-G.1", tgt: "BSI", tgtCode: "BSI-CON.1.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-G.2", tgt: "BSI", tgtCode: "BSI-CON.1.A1", mtype: "partial"},
+
+	// ── H — Physische Sicherheit ──────────────────────────────────────────────
+	{src: "NIS2", srcCode: "NIS2-H.1", tgt: "BSI", tgtCode: "BSI-INF.2.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-H.2", tgt: "BSI", tgtCode: "BSI-INF.1.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-H.3", tgt: "BSI", tgtCode: "BSI-INF.5.A1", mtype: "partial"},
+
+	// ── I — Lieferkettensicherheit ────────────────────────────────────────────
+	{src: "NIS2", srcCode: "NIS2-I.1", tgt: "BSI", tgtCode: "BSI-OPS.2.2.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-I.2", tgt: "BSI", tgtCode: "BSI-OPS.2.4.A1", mtype: "partial"},
+
+	// ── J — Meldepflichten / Offenlegung ──────────────────────────────────────
+	{src: "NIS2", srcCode: "NIS2-J.1", tgt: "BSI", tgtCode: "BSI-DER.2.1.A1", mtype: "partial"},
+	{src: "NIS2", srcCode: "NIS2-J.2", tgt: "BSI", tgtCode: "BSI-DER.1.A1", mtype: "partial"},
+}
+
+// ── DSGVO-TOM ↔ NIS2 ─────────────────────────────────────────────────────────
+
+var dsgvoTOMNIS2Mappings = []frameworkPair{
+	{src: "DSGVO-TOM", srcCode: "TOM-1", tgt: "NIS2", tgtCode: "NIS2-H.1", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-1", tgt: "NIS2", tgtCode: "NIS2-H.2", mtype: "partial"},
+	{src: "DSGVO-TOM", srcCode: "TOM-2", tgt: "NIS2", tgtCode: "NIS2-F.1", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-3", tgt: "NIS2", tgtCode: "NIS2-F.1", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-3", tgt: "NIS2", tgtCode: "NIS2-F.2", mtype: "partial"},
+	{src: "DSGVO-TOM", srcCode: "TOM-4", tgt: "NIS2", tgtCode: "NIS2-G.1", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-5", tgt: "NIS2", tgtCode: "NIS2-E.3", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-5", tgt: "NIS2", tgtCode: "NIS2-B.3", mtype: "partial"},
+	{src: "DSGVO-TOM", srcCode: "TOM-6", tgt: "NIS2", tgtCode: "NIS2-I.1", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-7", tgt: "NIS2", tgtCode: "NIS2-C.4", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-7", tgt: "NIS2", tgtCode: "NIS2-C.1", mtype: "partial"},
+	{src: "DSGVO-TOM", srcCode: "TOM-10", tgt: "NIS2", tgtCode: "NIS2-G.1", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-12", tgt: "NIS2", tgtCode: "NIS2-C.3", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-13", tgt: "NIS2", tgtCode: "NIS2-A.5", mtype: "equivalent"},
+}
+
+// SeedDSGVOTOMNIS2Mappings seeds DSGVO-TOM ↔ NIS2 bidirectional mappings.
+func (s *Service) SeedDSGVOTOMNIS2Mappings(ctx context.Context, orgID string) error {
+	return s.seedBidirectionalMappings(ctx, orgID, "DSGVO-TOM", "NIS2", dsgvoTOMNIS2Mappings)
+}
+
+// ── DSGVO-TOM ↔ BSI ──────────────────────────────────────────────────────────
+
+var dsgvoTOMBSIMappings = []frameworkPair{
+	{src: "DSGVO-TOM", srcCode: "TOM-1", tgt: "BSI", tgtCode: "BSI-INF.2.A1", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-1", tgt: "BSI", tgtCode: "BSI-INF.1.A1", mtype: "partial"},
+	{src: "DSGVO-TOM", srcCode: "TOM-2", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-3", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-4", tgt: "BSI", tgtCode: "BSI-CON.1.A1", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-4", tgt: "BSI", tgtCode: "BSI-NET.4.1.A1", mtype: "partial"},
+	{src: "DSGVO-TOM", srcCode: "TOM-5", tgt: "BSI", tgtCode: "BSI-OPS.1.1.5.A1", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-6", tgt: "BSI", tgtCode: "BSI-OPS.2.2.A1", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-7", tgt: "BSI", tgtCode: "BSI-CON.3.A1", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-7", tgt: "BSI", tgtCode: "BSI-BCM.1.A1", mtype: "partial"},
+	{src: "DSGVO-TOM", srcCode: "TOM-10", tgt: "BSI", tgtCode: "BSI-CON.1.A1", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-12", tgt: "BSI", tgtCode: "BSI-BCM.2.A1", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-13", tgt: "BSI", tgtCode: "BSI-ISMS.1.A9", mtype: "equivalent"},
+}
+
+// SeedDSGVOTOMBSIMappings seeds DSGVO-TOM ↔ BSI IT-Grundschutz bidirectional mappings.
+func (s *Service) SeedDSGVOTOMBSIMappings(ctx context.Context, orgID string) error {
+	return s.seedBidirectionalMappings(ctx, orgID, "DSGVO-TOM", "BSI", dsgvoTOMBSIMappings)
+}
+
+// ── CIS Controls v8 ↔ ISO 27001:2022 ─────────────────────────────────────────
+
+var cisISO27001Mappings = []frameworkPair{
+	{src: "CIS", srcCode: "CIS-1.1", tgt: "ISO27001", tgtCode: "A.5.9", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-2.1", tgt: "ISO27001", tgtCode: "A.5.9", mtype: "partial"},
+	{src: "CIS", srcCode: "CIS-3.3", tgt: "ISO27001", tgtCode: "A.8.24", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-3.3", tgt: "ISO27001", tgtCode: "A.5.14", mtype: "partial"},
+	{src: "CIS", srcCode: "CIS-5.1", tgt: "ISO27001", tgtCode: "A.5.16", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-5.3", tgt: "ISO27001", tgtCode: "A.8.2", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-6.1", tgt: "ISO27001", tgtCode: "A.5.18", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-7.1", tgt: "ISO27001", tgtCode: "A.8.8", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-7.2", tgt: "ISO27001", tgtCode: "A.8.8", mtype: "partial"},
+	{src: "CIS", srcCode: "CIS-8.1", tgt: "ISO27001", tgtCode: "A.8.15", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-8.2", tgt: "ISO27001", tgtCode: "A.8.16", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-10.1", tgt: "ISO27001", tgtCode: "A.8.7", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-11.1", tgt: "ISO27001", tgtCode: "A.8.13", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-11.1", tgt: "ISO27001", tgtCode: "A.5.30", mtype: "partial"},
+	{src: "CIS", srcCode: "CIS-12.1", tgt: "ISO27001", tgtCode: "A.8.20", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-12.1", tgt: "ISO27001", tgtCode: "A.8.22", mtype: "partial"},
+	{src: "CIS", srcCode: "CIS-13.1", tgt: "ISO27001", tgtCode: "A.8.16", mtype: "partial"},
+	{src: "CIS", srcCode: "CIS-14.1", tgt: "ISO27001", tgtCode: "A.6.3", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-16.1", tgt: "ISO27001", tgtCode: "A.8.25", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-16.1", tgt: "ISO27001", tgtCode: "A.8.26", mtype: "partial"},
+	{src: "CIS", srcCode: "CIS-17.1", tgt: "ISO27001", tgtCode: "A.5.24", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-17.1", tgt: "ISO27001", tgtCode: "A.5.26", mtype: "partial"},
+	{src: "CIS", srcCode: "CIS-18.1", tgt: "ISO27001", tgtCode: "A.8.34", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-5.1", tgt: "ISO27001", tgtCode: "A.5.17", mtype: "partial"},
+	{src: "CIS", srcCode: "CIS-8.1", tgt: "ISO27001", tgtCode: "A.5.28", mtype: "partial"},
+}
+
+// SeedCISISO27001Mappings seeds CIS Controls v8 ↔ ISO 27001:2022 bidirectional mappings.
+func (s *Service) SeedCISISO27001Mappings(ctx context.Context, orgID string) error {
+	return s.seedBidirectionalMappings(ctx, orgID, "CIS", "ISO27001", cisISO27001Mappings)
+}
+
+// ── CIS Controls v8 ↔ BSI IT-Grundschutz ────────────────────────────────────
+
+var cisBSIMappings = []frameworkPair{
+	{src: "CIS", srcCode: "CIS-1.1", tgt: "BSI", tgtCode: "BSI-ORP.5.A1", mtype: "partial"},
+	{src: "CIS", srcCode: "CIS-3.3", tgt: "BSI", tgtCode: "BSI-CON.1.A1", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-5.1", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-5.3", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-6.1", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "partial"},
+	{src: "CIS", srcCode: "CIS-7.1", tgt: "BSI", tgtCode: "BSI-OPS.1.1.3.A1", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-7.2", tgt: "BSI", tgtCode: "BSI-OPS.1.1.3.A1", mtype: "partial"},
+	{src: "CIS", srcCode: "CIS-8.1", tgt: "BSI", tgtCode: "BSI-OPS.1.1.5.A1", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-8.2", tgt: "BSI", tgtCode: "BSI-DER.1.A2", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-10.1", tgt: "BSI", tgtCode: "BSI-OPS.1.1.4.A1", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-10.1", tgt: "BSI", tgtCode: "BSI-OPS.1.1.4.A2", mtype: "partial"},
+	{src: "CIS", srcCode: "CIS-11.1", tgt: "BSI", tgtCode: "BSI-CON.3.A1", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-11.1", tgt: "BSI", tgtCode: "BSI-BCM.1.A2", mtype: "partial"},
+	{src: "CIS", srcCode: "CIS-12.1", tgt: "BSI", tgtCode: "BSI-NET.1.1.A1", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-12.1", tgt: "BSI", tgtCode: "BSI-NET.3.2.A1", mtype: "partial"},
+	{src: "CIS", srcCode: "CIS-13.1", tgt: "BSI", tgtCode: "BSI-DER.1.A1", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-14.1", tgt: "BSI", tgtCode: "BSI-ORP.3.A1", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-16.1", tgt: "BSI", tgtCode: "BSI-CON.8.A1", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-17.1", tgt: "BSI", tgtCode: "BSI-DER.2.1.A1", mtype: "equivalent"},
+	{src: "CIS", srcCode: "CIS-18.1", tgt: "BSI", tgtCode: "BSI-DER.3.2.A1", mtype: "equivalent"},
+}
+
+// SeedCISBSIMappings seeds CIS Controls v8 ↔ BSI IT-Grundschutz bidirectional mappings.
+func (s *Service) SeedCISBSIMappings(ctx context.Context, orgID string) error {
+	return s.seedBidirectionalMappings(ctx, orgID, "CIS", "BSI", cisBSIMappings)
+}
+
+// ── TISAX ↔ BSI IT-Grundschutz ──────────────────────────────────────────────
+
+// tisaxBSIMappings maps actual TISAX control IDs (as defined in tisaxControls()) to BSI controls.
+var tisaxBSIMappings = []frameworkPair{
+	// ── IS-Management ──────────────────────────────────────────────────────────
+	{src: "TISAX", srcCode: "TISAX-1.1.1", tgt: "BSI", tgtCode: "BSI-ISMS.1.A1", mtype: "equivalent"},
+	{src: "TISAX", srcCode: "TISAX-2.1.1", tgt: "BSI", tgtCode: "BSI-ISMS.1.A2", mtype: "equivalent"},
+	{src: "TISAX", srcCode: "TISAX-1.1.3", tgt: "BSI", tgtCode: "BSI-ISMS.1.A6", mtype: "equivalent"},
+	// ── Zugriffskontrolle ──────────────────────────────────────────────────────
+	{src: "TISAX", srcCode: "TISAX-5.1.1", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "equivalent"},
+	{src: "TISAX", srcCode: "TISAX-5.1.2", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "partial"},
+	// ── Patch & Schwachstellen ─────────────────────────────────────────────────
+	{src: "TISAX", srcCode: "TISAX-8.1.6", tgt: "BSI", tgtCode: "BSI-OPS.1.1.3.A1", mtype: "equivalent"},
+	// ── Schutz vor Schadsoftware ───────────────────────────────────────────────
+	{src: "TISAX", srcCode: "TISAX-8.1.3", tgt: "BSI", tgtCode: "BSI-OPS.1.1.4.A1", mtype: "equivalent"},
+	// ── Netzwerksicherheit ────────────────────────────────────────────────────
+	{src: "TISAX", srcCode: "TISAX-9.1.1", tgt: "BSI", tgtCode: "BSI-NET.3.2.A1", mtype: "equivalent"},
+	// ── Kryptographie ────────────────────────────────────────────────────────
+	{src: "TISAX", srcCode: "TISAX-6.1.1", tgt: "BSI", tgtCode: "BSI-CON.1.A1", mtype: "equivalent"},
+	// ── Datensicherung ───────────────────────────────────────────────────────
+	{src: "TISAX", srcCode: "TISAX-8.1.4", tgt: "BSI", tgtCode: "BSI-CON.3.A1", mtype: "equivalent"},
+	// ── Incident Response ─────────────────────────────────────────────────────
+	{src: "TISAX", srcCode: "TISAX-12.1.1", tgt: "BSI", tgtCode: "BSI-DER.2.1.A1", mtype: "equivalent"},
+	// ── BCM ──────────────────────────────────────────────────────────────────
+	{src: "TISAX", srcCode: "TISAX-13.1.1", tgt: "BSI", tgtCode: "BSI-BCM.1.A1", mtype: "equivalent"},
+	// ── Personal ─────────────────────────────────────────────────────────────
+	{src: "TISAX", srcCode: "TISAX-3.1.1", tgt: "BSI", tgtCode: "BSI-ORP.2.A1", mtype: "equivalent"},
+	{src: "TISAX", srcCode: "TISAX-3.1.2", tgt: "BSI", tgtCode: "BSI-ORP.3.A1", mtype: "equivalent"},
+	// ── Physischer Schutz ────────────────────────────────────────────────────
+	{src: "TISAX", srcCode: "TISAX-7.1.1", tgt: "BSI", tgtCode: "BSI-INF.2.A1", mtype: "equivalent"},
+	{src: "TISAX", srcCode: "TISAX-7.1.2", tgt: "BSI", tgtCode: "BSI-INF.1.A1", mtype: "partial"},
+	{src: "TISAX", srcCode: "TISAX-7.1.4", tgt: "BSI", tgtCode: "BSI-INF.8.A1", mtype: "partial"},
+	// ── Prototypenschutz ─────────────────────────────────────────────────────
+	{src: "TISAX", srcCode: "TISAX-4.1.5", tgt: "BSI", tgtCode: "BSI-CON.7.A1", mtype: "equivalent"},
+	{src: "TISAX", srcCode: "TISAX-4.1.5", tgt: "BSI", tgtCode: "BSI-CON.6.A1", mtype: "partial"},
+	// ── Connected Vehicles ────────────────────────────────────────────────────
+	{src: "TISAX", srcCode: "TISAX-16.1.3", tgt: "BSI", tgtCode: "BSI-OPS.1.1.3.A1", mtype: "partial"},
+	{src: "TISAX", srcCode: "TISAX-16.1.2", tgt: "BSI", tgtCode: "BSI-NET.1.1.A1", mtype: "partial"},
+	{src: "TISAX", srcCode: "TISAX-10.1.2", tgt: "BSI", tgtCode: "BSI-CON.8.A1", mtype: "partial"},
+}
+
+// SeedTISAXBSIMappings seeds TISAX ↔ BSI IT-Grundschutz bidirectional mappings.
+func (s *Service) SeedTISAXBSIMappings(ctx context.Context, orgID string) error {
+	return s.seedBidirectionalMappings(ctx, orgID, "TISAX", "BSI", tisaxBSIMappings)
+}
+
+// ── TISAX ↔ DSGVO-TOM ────────────────────────────────────────────────────────
+
+// tisaxDSGVOTOMMappings maps TISAX controls to DSGVO Art. 32 TOMs.
+// Uses actual TISAX control IDs from tisaxControls().
+var tisaxDSGVOTOMMappings = []frameworkPair{
+	{src: "TISAX", srcCode: "TISAX-5.1.1", tgt: "DSGVO-TOM", tgtCode: "TOM-2", mtype: "equivalent"},   // Zugangskontrollrichtlinie → Zugangskontrolle
+	{src: "TISAX", srcCode: "TISAX-5.1.3", tgt: "DSGVO-TOM", tgtCode: "TOM-3", mtype: "equivalent"},   // Privilegierte Zugriffsrechte → Zugriffskontrolle
+	{src: "TISAX", srcCode: "TISAX-7.1.2", tgt: "DSGVO-TOM", tgtCode: "TOM-1", mtype: "partial"},      // Zugangskontrollen für Sicherheitsbereiche → Zutrittskontrolle
+	{src: "TISAX", srcCode: "TISAX-9.1.2", tgt: "DSGVO-TOM", tgtCode: "TOM-4", mtype: "equivalent"},   // Sichere Datenübertragung → Weitergabekontrolle
+	{src: "TISAX", srcCode: "TISAX-6.1.3", tgt: "DSGVO-TOM", tgtCode: "TOM-10", mtype: "equivalent"},  // Verschlüsselung sensitiver Daten → Verschlüsselung
+	{src: "TISAX", srcCode: "TISAX-8.1.5", tgt: "DSGVO-TOM", tgtCode: "TOM-5", mtype: "equivalent"},   // Protokollierung und Überwachung → Eingabekontrolle
+	{src: "TISAX", srcCode: "TISAX-10.1.2", tgt: "DSGVO-TOM", tgtCode: "TOM-11", mtype: "partial"},    // Sichere Entwicklungsprozesse → Integrität
+	{src: "TISAX", srcCode: "TISAX-11.1.2", tgt: "DSGVO-TOM", tgtCode: "TOM-6", mtype: "equivalent"},  // Sicherheitsanforderungen in Lieferantenverträgen → Auftragskontrolle
+	{src: "TISAX", srcCode: "TISAX-8.1.7", tgt: "DSGVO-TOM", tgtCode: "TOM-8", mtype: "equivalent"},   // Trennung Entwicklung/Test/Betrieb → Trennungsgebot
+	{src: "TISAX", srcCode: "TISAX-8.1.4", tgt: "DSGVO-TOM", tgtCode: "TOM-7", mtype: "equivalent"},   // Datensicherung (Backup) → Verfügbarkeitskontrolle
+	{src: "TISAX", srcCode: "TISAX-13.1.2", tgt: "DSGVO-TOM", tgtCode: "TOM-12", mtype: "equivalent"}, // BCM-Tests → Wiederherstellung
+	{src: "TISAX", srcCode: "TISAX-14.1.2", tgt: "DSGVO-TOM", tgtCode: "TOM-13", mtype: "partial"},    // Interne IS-Audits → Überprüfungsverfahren
+	{src: "TISAX", srcCode: "TISAX-4.1.3", tgt: "DSGVO-TOM", tgtCode: "TOM-9", mtype: "partial"},      // Klassifizierung von Informationen → Pseudonymisierung
+}
+
+// SeedTISAXDSGVOTOMMappings seeds TISAX ↔ DSGVO-TOM bidirectional mappings.
+func (s *Service) SeedTISAXDSGVOTOMMappings(ctx context.Context, orgID string) error {
+	return s.seedBidirectionalMappings(ctx, orgID, "TISAX", "DSGVO-TOM", tisaxDSGVOTOMMappings)
 }
 
 // SeedPrerequisiteChains idempotently inserts prerequisite relationships into

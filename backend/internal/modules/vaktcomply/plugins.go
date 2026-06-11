@@ -62,4 +62,6 @@ var builtinAvailable = []struct {
 	{"TISAX", "TISAX® / VDA ISA — Informationssicherheitsstandard der Automobilindustrie für Zulieferer mit OEM-Datenzugang."},
 	{"DSGVO-TOM", "DSGVO Art. 32 TOMs — Technische und organisatorische Maßnahmen gemäß Art. 32 DSGVO, abgeleitet aus ISO 27001."},
 	{"CIS", "CIS Controls v8 — 18 Kontrollgruppen des Center for Internet Security. IG1-Safeguards als Mindestanforderung für alle Organisationen."},
+	{"KRITIS", "KRITIS-DachG — Resilienzanforderungen für Betreiber kritischer Anlagen in Deutschland (§§ 8, 12, 13, 16, 18, 20 KRITIS-DachG, BGBl. 2026 I Nr. 66)."},
+	{"C5", "BSI C5:2020 — Cloud Computing Compliance Criteria Catalogue. Prüfgrundlage für Cloud-Dienste in Deutschland (Hetzner, IONOS, AWS-DE, Azure-DE)."},
 }

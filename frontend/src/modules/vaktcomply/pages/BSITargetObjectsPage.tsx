@@ -242,11 +242,11 @@ export default function BSITargetObjectsPage() {
                 <Badge className={`text-[11px] border ${NIVEAU_COLORS[obj.absicherungsniveau]}`}>
                   {NIVEAU_LABELS[obj.absicherungsniveau]}
                 </Badge>
-                {obj.schutzbedarf_v && (
+                {obj.protection_c && (
                   <span className="text-[11px] text-secondary font-mono">
-                    V:{SCHUTZBEDARF_LABELS[obj.schutzbedarf_v][0].toUpperCase()}
-                    {' '}I:{obj.schutzbedarf_i ? SCHUTZBEDARF_LABELS[obj.schutzbedarf_i][0].toUpperCase() : '–'}
-                    {' '}A:{obj.schutzbedarf_a ? SCHUTZBEDARF_LABELS[obj.schutzbedarf_a][0].toUpperCase() : '–'}
+                    V:{SCHUTZBEDARF_LABELS[obj.protection_c][0].toUpperCase()}
+                    {' '}I:{obj.protection_i ? SCHUTZBEDARF_LABELS[obj.protection_i][0].toUpperCase() : '–'}
+                    {' '}A:{obj.protection_a ? SCHUTZBEDARF_LABELS[obj.protection_a][0].toUpperCase() : '–'}
                   </span>
                 )}
               </div>

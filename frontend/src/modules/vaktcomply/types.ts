@@ -1437,7 +1437,7 @@ export type BSIUmsetzungsstatus = 'ja' | 'teilweise' | 'nein' | 'entbehrlich'
 export type BSIEintrittshaeufigkeit = 'selten' | 'mittel' | 'haeufig' | 'sehr_haeufig'
 export type BSISchadensauswirkung = 'vernachlaessigbar' | 'begrenzt' | 'betraechtlich' | 'existenzbedrohend'
 export type BSIRisikokategorie = 'gering' | 'mittel' | 'hoch' | 'sehr_hoch'
-export type BSIRiskStatus = 'offen' | 'in_bearbeitung' | 'akzeptiert' | 'behandelt'
+export type BSIBehandlungsoption = 'reduzieren' | 'akzeptieren' | 'vermeiden' | 'transferieren'
 export type BSIReportType = 'A1' | 'A2' | 'A3' | 'A4' | 'A5' | 'A6' | 'full'
 
 export interface BSITargetObject {
@@ -1447,9 +1447,9 @@ export interface BSITargetObject {
   description?: string
   type: BSITargetObjectType
   absicherungsniveau: BSIAbsicherungsniveau
-  schutzbedarf_v?: BSISchutzbedarf
-  schutzbedarf_i?: BSISchutzbedarf
-  schutzbedarf_a?: BSISchutzbedarf
+  protection_c?: BSISchutzbedarf
+  protection_i?: BSISchutzbedarf
+  protection_a?: BSISchutzbedarf
   created_at: string
   updated_at: string
 }
@@ -1459,9 +1459,9 @@ export interface CreateBSITargetObjectInput {
   description?: string
   type: BSITargetObjectType
   absicherungsniveau?: BSIAbsicherungsniveau
-  schutzbedarf_v?: BSISchutzbedarf
-  schutzbedarf_i?: BSISchutzbedarf
-  schutzbedarf_a?: BSISchutzbedarf
+  protection_c?: BSISchutzbedarf
+  protection_i?: BSISchutzbedarf
+  protection_a?: BSISchutzbedarf
 }
 
 export interface BSICheckResult {
@@ -1546,12 +1546,15 @@ export interface BSIRiskAssessment {
   org_id: string
   target_object_id: string
   threat_id: string
-  threat_title: string
+  threat_title?: string
   eintrittshaeufigkeit: BSIEintrittshaeufigkeit
   schadensauswirkung: BSISchadensauswirkung
   risikokategorie: BSIRisikokategorie
-  massnahmen?: string
-  status: BSIRiskStatus
+  behandlungsoption?: BSIBehandlungsoption
+  massnahme: string
+  verantwortlicher: string
+  zieldatum?: string
+  restrisiko?: BSIRisikokategorie
   created_at: string
   updated_at: string
 }
@@ -1560,19 +1563,19 @@ export interface CreateBSIRiskInput {
   threat_id: string
   eintrittshaeufigkeit: BSIEintrittshaeufigkeit
   schadensauswirkung: BSISchadensauswirkung
-  massnahmen?: string
-  status?: BSIRiskStatus
 }
 
 export interface UpdateBSIRiskInput {
   eintrittshaeufigkeit?: BSIEintrittshaeufigkeit
   schadensauswirkung?: BSISchadensauswirkung
-  massnahmen?: string
-  status?: BSIRiskStatus
+  behandlungsoption?: BSIBehandlungsoption
+  massnahme?: string
+  verantwortlicher?: string
+  zieldatum?: string
+  restrisiko?: BSIRisikokategorie
 }
 
 export interface BSIRiskSummary {
-  target_object_id: string
   gering: number
   mittel: number
   hoch: number

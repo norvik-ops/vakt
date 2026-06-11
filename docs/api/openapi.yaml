@@ -1968,9 +1968,9 @@ components:
         description: { type: string, nullable: true }
         type: { type: string, enum: [it_system, application, network, room, process] }
         absicherungsniveau: { type: string, enum: [basis, standard, kern] }
-        schutzbedarf_v: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
-        schutzbedarf_i: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
-        schutzbedarf_a: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
+        protection_c: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
+        protection_i: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
+        protection_a: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -1982,9 +1982,9 @@ components:
         description: { type: string }
         type: { type: string, enum: [it_system, application, network, room, process] }
         absicherungsniveau: { type: string, enum: [basis, standard, kern] }
-        schutzbedarf_v: { type: string, enum: [normal, hoch, sehr_hoch] }
-        schutzbedarf_i: { type: string, enum: [normal, hoch, sehr_hoch] }
-        schutzbedarf_a: { type: string, enum: [normal, hoch, sehr_hoch] }
+        protection_c: { type: string, enum: [normal, hoch, sehr_hoch] }
+        protection_i: { type: string, enum: [normal, hoch, sehr_hoch] }
+        protection_a: { type: string, enum: [normal, hoch, sehr_hoch] }
 
     BSICheckResult:
       type: object
@@ -2090,12 +2090,15 @@ components:
         org_id: { type: string, format: uuid }
         target_object_id: { type: string, format: uuid }
         threat_id: { type: string }
-        threat_title: { type: string }
+        threat_title: { type: string, nullable: true }
         eintrittshaeufigkeit: { type: string, enum: [selten, mittel, haeufig, sehr_haeufig] }
         schadensauswirkung: { type: string, enum: [vernachlaessigbar, begrenzt, betraechtlich, existenzbedrohend] }
         risikokategorie: { type: string, enum: [gering, mittel, hoch, sehr_hoch] }
-        massnahmen: { type: string, nullable: true }
-        status: { type: string, enum: [offen, in_bearbeitung, akzeptiert, behandelt] }
+        behandlungsoption: { type: string, enum: [reduzieren, akzeptieren, vermeiden, transferieren], nullable: true }
+        massnahme: { type: string }
+        verantwortlicher: { type: string }
+        zieldatum: { type: string, format: date, nullable: true }
+        restrisiko: { type: string, enum: [gering, mittel, hoch, sehr_hoch], nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -2106,21 +2109,21 @@ components:
         threat_id: { type: string }
         eintrittshaeufigkeit: { type: string, enum: [selten, mittel, haeufig, sehr_haeufig] }
         schadensauswirkung: { type: string, enum: [vernachlaessigbar, begrenzt, betraechtlich, existenzbedrohend] }
-        massnahmen: { type: string }
-        status: { type: string, enum: [offen, in_bearbeitung, akzeptiert, behandelt] }
 
     UpdateBSIRiskInput:
       type: object
       properties:
         eintrittshaeufigkeit: { type: string, enum: [selten, mittel, haeufig, sehr_haeufig] }
         schadensauswirkung: { type: string, enum: [vernachlaessigbar, begrenzt, betraechtlich, existenzbedrohend] }
-        massnahmen: { type: string }
-        status: { type: string, enum: [offen, in_bearbeitung, akzeptiert, behandelt] }
+        behandlungsoption: { type: string, enum: [reduzieren, akzeptieren, vermeiden, transferieren] }
+        massnahme: { type: string }
+        verantwortlicher: { type: string }
+        zieldatum: { type: string, format: date }
+        restrisiko: { type: string, enum: [gering, mittel, hoch, sehr_hoch] }
 
     BSIRiskSummary:
       type: object
       properties:
-        target_object_id: { type: string, format: uuid }
         gering: { type: integer }
         mittel: { type: integer }
         hoch: { type: integer }

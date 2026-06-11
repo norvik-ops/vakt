@@ -72,6 +72,23 @@ func TestMappingSeedsUseOnly2022IDs(t *testing.T) {
 			checkNotLegacy(t, p.tgtCode)
 		}
 	})
+
+	// S75 — new mapping variables that reference ISO 27001:2022 IDs.
+	t.Run("iso27001BSIMappings_ISO_codes", func(t *testing.T) {
+		for _, p := range iso27001BSIMappings {
+			if p.src == "ISO27001" {
+				checkNotLegacy(t, p.srcCode)
+			}
+		}
+	})
+
+	t.Run("cisISO27001Mappings_ISO_codes", func(t *testing.T) {
+		for _, p := range cisISO27001Mappings {
+			if p.tgt == "ISO27001" {
+				checkNotLegacy(t, p.tgtCode)
+			}
+		}
+	})
 }
 
 func checkNotLegacy(t *testing.T, id string) {
