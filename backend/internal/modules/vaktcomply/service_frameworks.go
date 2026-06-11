@@ -254,7 +254,7 @@ func (s *Service) SwitchDORAVariant(ctx context.Context, orgID, frameworkID, new
 	}
 
 	// Determine which control ID prefix belongs to the OLD variant.
-	oldPrefix := "DORA-"    // full variant: DORA-1.x … DORA-5.x
+	oldPrefix := "DORA-"      // full variant: DORA-1.x … DORA-5.x
 	if newVariant == "full" { // switching from simplified → the old ones have DORA-S. prefix
 		oldPrefix = "DORA-S."
 	}

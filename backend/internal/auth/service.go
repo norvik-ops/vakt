@@ -532,17 +532,6 @@ func (s *Service) clearLoginFailures(ctx context.Context, email string) {
 	}
 }
 
-// clearIPLoginFailures deletes the per-IP login failure counter after a
-// successful login so that legitimate users are not locked out by a prior burst
-// of failures (e.g. mistyped password) from the same IP.
-func (s *Service) clearIPLoginFailures(ctx context.Context, ip string) {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-	if err := s.redis.Del(ctx, loginIPFailKey(ip)).Err(); err != nil && err != redis.Nil {
-		log.Warn().Err(err).Str("ip", ip).Msg("login: failed to clear IP login failures")
-	}
-}
-
 // checkIPLocked returns true if the originating IP has exceeded the per-IP
 // failure threshold, regardless of which email address was targeted.
 func (s *Service) checkIPLocked(ctx context.Context, ip string) (bool, error) {
