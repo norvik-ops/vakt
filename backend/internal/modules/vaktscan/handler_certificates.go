@@ -125,7 +125,7 @@ func (h *Handler) GetExpiringCertificates(c echo.Context) error {
 			"code":  "VB_INTERNAL",
 		})
 	}
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"items": certs,
 		"count": len(certs),
 	})
@@ -142,5 +142,5 @@ func (h *Handler) ScanAllCertificatesNow(c echo.Context) error {
 			"code":  "VB_INTERNAL",
 		})
 	}
-	return c.JSON(http.StatusOK, map[string]interface{}{"scanned": n})
+	return c.JSON(http.StatusOK, map[string]any{"scanned": n})
 }

@@ -347,6 +347,8 @@ func (s *Service) recordLogin(ctx context.Context, orgID, userID, email, userAge
 }
 
 // Refresh validates the given refresh token, rotates it, and returns a new token pair.
+// Roles are loaded fresh from the DB on every refresh so that demotions and removals
+// take effect at the next token rotation (AUTH-007).
 func (s *Service) Refresh(ctx context.Context, refreshToken string) (*AuthResponse, error) {
 	redisKey := refreshRedisKey(refreshToken)
 
@@ -358,6 +360,25 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*AuthRespon
 	var payload refreshPayload
 	if err := json.Unmarshal([]byte(val), &payload); err != nil {
 		return nil, fmt.Errorf("corrupt refresh token payload: %w", err)
+	}
+
+	// Verify the user is still active and belongs to the org; load role fresh from DB.
+	var isActive bool
+	var roleName string
+	err = s.db.QueryRow(ctx, `
+		SELECT u.is_active, r.name
+		FROM users u
+		JOIN org_members om ON om.user_id = u.id
+		JOIN roles r ON r.id = om.role_id
+		WHERE u.id = $1::uuid AND om.org_id = $2::uuid`,
+		payload.UserID, payload.OrgID,
+	).Scan(&isActive, &roleName)
+	if err != nil {
+		// User removed from org or deleted — invalidate token.
+		return nil, fmt.Errorf("invalid or expired refresh token")
+	}
+	if !isActive {
+		return nil, fmt.Errorf("invalid or expired refresh token")
 	}
 
 	// Look up device hint from the session row so it carries forward to the new token.
@@ -374,7 +395,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*AuthRespon
 	// Remove old session row; the new one will be inserted by issueTokenPair.
 	_, _ = s.db.Exec(ctx, `DELETE FROM refresh_sessions WHERE token_hash = $1`, oldHash)
 
-	return s.issueTokenPair(ctx, payload.UserID, payload.OrgID, payload.Roles, deviceHint)
+	return s.issueTokenPair(ctx, payload.UserID, payload.OrgID, []string{roleName}, deviceHint)
 }
 
 // pwVersionKey returns the Redis key used to track a user's password version.

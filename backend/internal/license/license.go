@@ -44,6 +44,28 @@ const (
 	// FeatureNIS2Reporting gates NIS2/BSI incident reportability assessment, deadline tracking,
 	// and the structured notification form generator.
 	FeatureNIS2Reporting = "nis2_reporting"
+	// FeatureSecVault gates advanced vault workflows: secret rotation, git leak scans,
+	// and access reviews. Basic secret storage (projects, envs, secret CRUD, sharing,
+	// import/export) remains Community.
+	FeatureSecVault = "vaktvault_advanced"
+	// FeatureSecPrivacy gates advanced privacy workflows: DPIA management, transfer
+	// impact assessments (TIA/Schrems II), deletion reminders, and privacy-by-design
+	// assessments. VVT, AVV register, breach register, and DSR handling remain Community.
+	FeatureSecPrivacy = "vaktprivacy_advanced"
+	// FeatureBSIGrundschutz gates the BSI IT-Grundschutz workflow: enabling the BSI
+	// framework, Baustein modelling, target objects (Strukturanalyse), Grundschutz-Check,
+	// 200-3 risk assessments, cockpit/GAP report, and reference reports.
+	FeatureBSIGrundschutz = "bsi_grundschutz"
+	// FeatureISO42001 gates enabling the ISO/IEC 42001 AI-management framework (Enterprise).
+	FeatureISO42001 = "iso_42001"
+	// The following features were introduced in the platform feature registry
+	// (shared/platform/features/flags.go) and are mirrored here so issued license
+	// keys can carry them. flags.go aliases these constants.
+	FeatureSAMLAuth         = "saml_auth"
+	FeatureSCIMProvisioning = "scim_provisioning"
+	FeatureSIEM             = "siem_export"
+	FeatureAgentWriteTools  = "agent_write_tools"
+	FeatureMultiFramework   = "multi_framework"
 )
 
 var publicKeyPEM = `-----BEGIN PUBLIC KEY-----
@@ -62,9 +84,18 @@ var allFeatures = []string{
 	FeatureAPI,
 	FeatureSecReflex,
 	FeatureSecPulse,
+	FeatureSecVault,
+	FeatureSecPrivacy,
+	FeatureBSIGrundschutz,
+	FeatureISO42001,
 	FeatureGranularPermissions,
 	FeatureSupplierPortal,
 	FeatureNIS2Reporting,
+	FeatureSAMLAuth,
+	FeatureSCIMProvisioning,
+	FeatureSIEM,
+	FeatureAgentWriteTools,
+	FeatureMultiFramework,
 }
 
 // License describes the capabilities granted to this Vakt instance.
@@ -79,6 +110,11 @@ type License struct {
 	// found in ls_revoked_subscriptions. The license is downgraded to community but
 	// the frontend can use this flag to show a targeted cancellation message.
 	Revoked bool
+	// Expired is true when the license key has passed its ExpiresAt timestamp.
+	// Unlike a community license, an expired Pro/Enterprise license retains read
+	// access to Pro-module data (GET routes succeed); write operations return 402.
+	// This prevents data lock-out after subscription lapse.
+	Expired bool
 }
 
 // payload is the JSON structure embedded in a license key.
@@ -107,7 +143,31 @@ func Load(licenseKey string, isDemo bool) *License {
 	return lic
 }
 
+// legacyProFeatures lists features that every Pro license grants implicitly,
+// even when the key was issued before these feature strings were introduced.
+// A Pro key issued via Polar.sh before a new feature string was added to
+// proFeatures (e.g. bsi_grundschutz, vaktvault_advanced, vaktprivacy_advanced)
+// would otherwise receive HTTP 402 on previously-free routes.
+//
+// Add a feature here when it is included in the current proFeatures list
+// (polar/handler.go) but was NOT present in all historically issued Pro keys.
+// Remove entries once auto-renewal has had enough time to reissue all active keys
+// (typically 90 days after adding to proFeatures).
+var legacyProFeatures = []string{
+	FeatureBSIGrundschutz,  // added S74; old Pro keys lack this string
+	FeatureSecVault,        // added S70; old Pro keys lack this string
+	FeatureSecPrivacy,      // added S70; old Pro keys lack this string
+	FeatureAgentWriteTools, // added S79-4; old Pro keys lack this string
+}
+
 // Has reports whether the license grants the named feature.
+// For Pro/Enterprise licenses, features in legacyProFeatures are always granted
+// even when not explicitly listed in the key — this prevents 402 errors for
+// customers who purchased before the feature strings were added to Pro keys.
+//
+// An expired license returns false for all features so that Require() blocks
+// write operations. Use HasReadOnly() or check l.Expired before read-only
+// routes to allow continued data access after subscription lapse.
 func (l *License) Has(feature string) bool {
 	if l == nil {
 		return false
@@ -115,17 +175,73 @@ func (l *License) Has(feature string) bool {
 	if l.Demo {
 		return true
 	}
+	if l.Expired {
+		return false
+	}
 	for _, f := range l.Features {
 		if f == feature {
 			return true
 		}
 	}
+	// Fallback: Pro/Enterprise licenses implicitly include legacy Pro features.
+	if l.IsPro() {
+		for _, f := range legacyProFeatures {
+			if f == feature {
+				return true
+			}
+		}
+	}
 	return false
 }
 
-// IsPro reports whether the license is at least Pro-tier.
+// HasReadOnly reports whether the license grants read access to the named feature.
+// Unlike Has(), this returns true for expired Pro/Enterprise licenses so that
+// GET routes on Pro-module data remain accessible after subscription lapse.
+//
+// For expired Pro/Enterprise keys: read access is granted for any feature that
+// the tier would normally cover. If the key has explicit features, those are
+// respected; if the features list is empty (old key format), all Pro-tier
+// features are granted for read-only access.
+func (l *License) HasReadOnly(feature string) bool {
+	if l.Has(feature) {
+		return true
+	}
+	if l == nil || !l.Expired {
+		return false
+	}
+	if l.Tier != "pro" && l.Tier != "enterprise" {
+		return false
+	}
+	// Explicit features in the key take precedence.
+	for _, f := range l.Features {
+		if f == feature {
+			return true
+		}
+	}
+	// Legacy Pro features are always granted (even if key predates them).
+	for _, f := range legacyProFeatures {
+		if f == feature {
+			return true
+		}
+	}
+	// Keys issued without an explicit features list (old format): grant all
+	// allFeatures read-only so expired customers keep full read access.
+	if len(l.Features) == 0 {
+		for _, f := range allFeatures {
+			if f == feature {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// IsPro reports whether the license is at least Pro-tier and not expired.
 func (l *License) IsPro() bool {
 	if l == nil {
+		return false
+	}
+	if l.Expired {
 		return false
 	}
 	return l.Demo || l.Tier == "pro" || l.Tier == "enterprise"
@@ -188,12 +304,13 @@ func parse(key string) (*License, error) {
 	}
 
 	var expiresAt *time.Time
+	expired := false
 	if p.Exp != nil {
 		t := time.Unix(*p.Exp, 0).UTC()
-		if time.Now().After(t) {
-			return nil, errExpired
-		}
 		expiresAt = &t
+		if time.Now().After(t) {
+			expired = true
+		}
 	}
 
 	return &License{
@@ -202,6 +319,7 @@ func parse(key string) (*License, error) {
 		OrgName:   p.Org,
 		IssuedAt:  time.Unix(p.IssuedAt, 0).UTC(),
 		ExpiresAt: expiresAt,
+		Expired:   expired,
 	}, nil
 }
 
@@ -236,7 +354,6 @@ var (
 	errInvalidFormat    = licenseError("invalid license key format")
 	errInvalidSignature = licenseError("license signature verification failed")
 	errInvalidKey       = licenseError("invalid public key")
-	errExpired          = licenseError("license has expired")
 )
 
 type licenseError string

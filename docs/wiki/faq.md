@@ -8,11 +8,11 @@
 
 Vakt gibt es in zwei Editionen:
 
-**Community Edition (CE)** — kostenlos, für immer. Alle 5 Module vollständig nutzbar. Kein Ablaufdatum, keine Kreditkarte, keine Registrierung. Einzige Voraussetzung: eigener Server.
+**Community Edition (CE)** — kostenlos, für immer. Alle 6 Module in der Basis nutzbar (inkl. KI-Berater lokal via Ollama, NIS2 & ISO 27001, VVT/AVV/DSR, Secrets-Speicher, On-/Offboarding). Kein Ablaufdatum, keine Kreditkarte, keine Registrierung. Einzige Voraussetzung: eigener Server.
 
-**Pro** — 199 €/Monat oder 1.990 €/Jahr (zzgl. MwSt.). Schaltet spezialisierte Frameworks und erweiterte Features frei: TISAX, DORA, EU AI Act, CRA, KI-Berater, Audit-PDF-Export, SSO (OIDC/SAML) und API-Zugang. Nach dem Kauf erhältst du automatisch einen Lizenzschlüssel per E-Mail.
+**Pro** — 199 €/Monat oder 1.990 €/Jahr (zzgl. MwSt.). Schaltet spezialisierte Frameworks und erweiterte Workflows frei: BSI IT-Grundschutz (Modellierung, Grundschutz-Check, 200-3-Risiken, Cockpit, Berichte), EU AI Act, CRA, Audit-PDF-Export, NIS2-Meldungsassistent, Lieferantenportal, erweiterte Scan-/Aware-/Vault-/Privacy-Workflows (Reports & Importe, Phishing-Kampagnen, Secret-Rotation & Access Reviews, DPIA & TIA), SSO (OIDC/SAML), granulare Berechtigungen und API-Zugang. Nach dem Kauf erhältst du automatisch einen Lizenzschlüssel per E-Mail.
 
-**Enterprise** — individuelle Konditionen, dediziertes Onboarding, custom SLA, White-Label. Auf Anfrage unter hello@norvikops.de.
+**Enterprise** — alles aus Pro, zusätzlich TISAX, DORA, ISO 42001, Custom Frameworks, SCIM-Provisionierung, SIEM-Export, White-Label, dediziertes Onboarding und custom SLA. Auf Anfrage unter hello@norvikops.de.
 
 Nicht erlaubt: Vakt als gehosteten oder verwalteten Service an Dritte verkaufen (mehr dazu unter [Was ist ELv2?](#was-ist-elv2)).
 

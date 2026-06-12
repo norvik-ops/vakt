@@ -182,7 +182,7 @@ func (r *Repository) DismissAIInsight(ctx context.Context, orgID, insightID stri
 }
 
 // nullableJSON returns nil when the RawMessage is empty, so the DB column stores NULL.
-func nullableJSON(m json.RawMessage) interface{} {
+func nullableJSON(m json.RawMessage) any {
 	if len(m) == 0 {
 		return nil
 	}

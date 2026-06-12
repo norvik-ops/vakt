@@ -322,7 +322,10 @@ func handleControlTestCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
 // IKT-DORA incidents across all orgs. Runs every 5 minutes (S37-4).
 func handleDORADeadlineStatus(pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
-		rows, err := pool.Query(ctx, `SELECT id::text FROM organizations`)
+		// Exclude ephemeral demo orgs (slug LIKE 'demo-%'): they have no DORA incidents
+		// and this task runs every 5 minutes — processing thousands of short-lived demo
+		// orgs would dominate DB load on the public demo server.
+		rows, err := pool.Query(ctx, `SELECT id::text FROM organizations WHERE slug NOT LIKE 'demo-%'`)
 		if err != nil {
 			return fmt.Errorf("dora_deadline_status: list orgs: %w", err)
 		}

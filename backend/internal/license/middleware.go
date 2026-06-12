@@ -21,14 +21,32 @@ const licenceCacheTTL = 60 * time.Second
 // Require returns an Echo middleware that rejects requests when the active
 // license does not include the given feature. The license must have been
 // placed on the Echo context under the key "license" by a prior middleware.
+//
+// For expired Pro/Enterprise licenses: GET and HEAD requests are allowed
+// (read-only access preserved); write methods return 402 with a renewal prompt.
 func Require(feature string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			lic, _ := c.Get("license").(*License)
+			method := c.Request().Method
+			isReadOnly := method == http.MethodGet || method == http.MethodHead
+
+			// Expired license: allow reads, block writes.
+			if lic != nil && lic.Expired && isReadOnly && lic.HasReadOnly(feature) {
+				return next(c)
+			}
+
 			if lic == nil || !lic.Has(feature) {
+				if lic != nil && lic.Expired {
+					return c.JSON(http.StatusPaymentRequired, map[string]string{
+						"error":   "license_expired",
+						"message": "Your Vakt Pro license has expired. Renew at https://sec.norvikops.de to re-enable write access. Your data is still readable.",
+						"feature": feature,
+					})
+				}
 				return c.JSON(http.StatusPaymentRequired, map[string]string{
 					"error":   "feature_not_available",
-					"message": "This feature requires Vakt Pro. Visit https://norvikops.de/vakt for details.",
+					"message": "This feature requires Vakt Pro. Visit https://sec.norvikops.de for details.",
 					"feature": feature,
 				})
 			}
@@ -47,6 +65,7 @@ type licenseCache struct {
 	Demo      bool       `json:"demo"`
 	Community bool       `json:"community"` // true → downgraded; skip DB key lookup
 	Revoked   bool       `json:"revoked"`   // true → org is in ls_revoked_subscriptions
+	Expired   bool       `json:"expired"`   // true → key past ExpiresAt; read-only mode
 }
 
 func licenseToCache(l *License, community bool) licenseCache {
@@ -59,6 +78,7 @@ func licenseToCache(l *License, community bool) licenseCache {
 		Demo:      l.Demo,
 		Community: community,
 		Revoked:   l.Revoked,
+		Expired:   l.Expired,
 	}
 }
 
@@ -71,6 +91,7 @@ func cacheToLicense(c licenseCache) *License {
 		ExpiresAt: c.ExpiresAt,
 		Demo:      c.Demo,
 		Revoked:   c.Revoked,
+		Expired:   c.Expired,
 	}
 }
 

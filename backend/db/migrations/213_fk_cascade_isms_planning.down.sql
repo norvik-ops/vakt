@@ -1,0 +1,2 @@
+ALTER TABLE ck_protection_need_assessments DROP CONSTRAINT IF EXISTS fk_ck_protection_need_assessments_org;
+ALTER TABLE ck_bcp_plans DROP CONSTRAINT IF EXISTS fk_ck_bcp_plans_org;

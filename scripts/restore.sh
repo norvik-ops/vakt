@@ -20,11 +20,34 @@ if [ -f .env ]; then
   set -a; source .env; set +a
 fi
 
+SECRET_KEY="${VAKT_SECRET_KEY:-}"
+if [ -z "$SECRET_KEY" ]; then
+  echo "ERROR: VAKT_SECRET_KEY not set" >&2
+  exit 1
+fi
+
 DB_URL="${VAKT_DB_URL:-}"
 if [ -z "$DB_URL" ] && [ "$DRY_RUN" = false ]; then
   echo "ERROR: VAKT_DB_URL not set" >&2
   exit 1
 fi
+
+# Verify signature BEFORE extracting or touching the database.
+SIG_FILE="${BACKUP_FILE}.sig"
+if [ ! -f "$SIG_FILE" ]; then
+  echo "ERROR: Signature file not found: ${SIG_FILE} — refusing to restore unverified backup" >&2
+  exit 1
+fi
+echo "→ Verifying backup signature..."
+HMAC_KEY=$(printf 'vakt-backup-hmac:%s' "$SECRET_KEY" | sha256sum | cut -d' ' -f1)
+EXPECTED_SIG=$(cat "$SIG_FILE")
+ACTUAL_SIG=$(openssl dgst -sha256 -hmac "$HMAC_KEY" "$BACKUP_FILE" | awk '{print $NF}')
+unset HMAC_KEY
+if [ "$EXPECTED_SIG" != "$ACTUAL_SIG" ]; then
+  echo "ERROR: HMAC signature mismatch — refusing to restore (archive may be corrupted or tampered with)" >&2
+  exit 1
+fi
+echo "✓ Signature valid"
 
 WORK_DIR=$(mktemp -d)
 trap 'rm -rf "$WORK_DIR"' EXIT

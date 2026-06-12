@@ -27,14 +27,18 @@ func NewHandler(db *pgxpool.Pool) *Handler {
 // RegisterRoutes wires the authenticated admin routes for auditor invite management.
 // The provided group must already be behind the user auth middleware.
 //
-//	POST   /auditor/invites       — create invite
-//	GET    /auditor/invites       — list invites
-//	DELETE /auditor/invites/:id   — revoke invite
+//	POST   /auditor/invites         — create invite
+//	GET    /auditor/invites         — list invites
+//	DELETE /auditor/invites/:id     — revoke invite
+//	GET    /auditor/sessions        — list active sessions
+//	DELETE /auditor/sessions/:id    — revoke session (S78-7)
 func RegisterRoutes(g *echo.Group, db *pgxpool.Pool) {
 	h := NewHandler(db)
 	g.POST("/invites", h.CreateInvite)
 	g.GET("/invites", h.ListInvites)
 	g.DELETE("/invites/:id", h.RevokeInvite)
+	g.GET("/sessions", h.ListSessions)
+	g.DELETE("/sessions/:id", h.RevokeSession)
 }
 
 // RegisterPublicRoutes wires the unauthenticated route for accepting an invite.
@@ -96,6 +100,36 @@ func (h *Handler) RevokeInvite(c echo.Context) error {
 	if err := h.service.RevokeInvite(c.Request().Context(), orgID, id); err != nil {
 		log.Error().Err(err).Str("id", id).Msg("revoke auditor invite")
 		return errResp(c, http.StatusNotFound, "invite not found", "AUDITOR_NOT_FOUND")
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+
+// ListSessions handles GET /auditor/sessions — returns active auditor sessions for the org.
+func (h *Handler) ListSessions(c echo.Context) error {
+	orgID := contextOrgID(c)
+
+	sessions, err := h.service.ListSessions(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Msg("list auditor sessions")
+		return errResp(c, http.StatusInternalServerError, "failed to list sessions", "AUDITOR_LIST_FAILED")
+	}
+
+	return c.JSON(http.StatusOK, sessions)
+}
+
+// RevokeSession handles DELETE /auditor/sessions/:id — revokes a specific active session.
+func (h *Handler) RevokeSession(c echo.Context) error {
+	orgID := contextOrgID(c)
+	userID := contextUserID(c)
+	id := c.Param("id")
+	if id == "" {
+		return errResp(c, http.StatusBadRequest, "session id is required", "AUDITOR_BAD_REQUEST")
+	}
+
+	if err := h.service.RevokeSession(c.Request().Context(), orgID, id, userID); err != nil {
+		log.Error().Err(err).Str("id", id).Msg("revoke auditor session")
+		return errResp(c, http.StatusNotFound, "session not found", "AUDITOR_NOT_FOUND")
 	}
 
 	return c.NoContent(http.StatusNoContent)

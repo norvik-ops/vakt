@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/db"
 	"github.com/matharnica/vakt/internal/services/crossevidence"
@@ -551,7 +552,9 @@ func (s *Service) RotateSecret(ctx context.Context, orgID, envID, key string, in
 	// Enqueue cross-module evidence for SecVitals access-control controls.
 	if s.queue != nil {
 		if task, taskErr := crossevidence.NewRecordEvidenceTask(events.SecretRotated(orgID, key)); taskErr == nil {
-			_, _ = s.queue.EnqueueContext(ctx, task)
+			if _, enqErr := s.queue.EnqueueContext(ctx, task); enqErr != nil {
+				log.Warn().Err(enqErr).Str("org_id", orgID).Msg("vaktvault: secret-rotation evidence enqueue failed (evidence may be missed on Redis outage)")
+			}
 		}
 	}
 

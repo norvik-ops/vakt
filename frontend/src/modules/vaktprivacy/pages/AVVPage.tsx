@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { InfoBanner } from '../../../shared/components/InfoBanner'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 import { ProGate } from '../../../shared/components/ProGate'
 import { useAVVs, useCreateAVV, useUpdateAVV, useDeleteAVV } from '../hooks/useAVVs'
 import { useDownloadAVVPDF } from '../hooks/useAVVTemplates'
@@ -300,6 +301,7 @@ export default function AVVPage() {
       <InfoBanner icon={Handshake} title={t('vaktprivacy.avvPage.infoBannerTitle')}>
         <p>{t('vaktprivacy.avvPage.infoBannerDesc')}</p>
         <p className="mt-1">{t('vaktprivacy.avvPage.infoBannerTip')}</p>
+        <p className="mt-1"><TermTooltip term="AVV" explanation="Auftragsverarbeitungsvertrag — Art. 28 DSGVO: Pflichtvertrag bei Übertragung personenbezogener Daten an externe Dienstleister (Auftragsverarbeiter). Regelt Weisungsbindung, Sicherheitsmaßnahmen und Unterauftragsverarbeiter.">AVV</TermTooltip> = Auftragsverarbeitungsvertrag gemäß Art. 28 DSGVO.</p>
       </InfoBanner>
 
       <ProGate error={pdfError}>{null}</ProGate>

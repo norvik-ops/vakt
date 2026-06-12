@@ -427,6 +427,9 @@ components:
           type: string
           enum: [full, simplified]
           description: "DORA framework variant — 'full' (Art. 5–15) or 'simplified' (Art. 16). Ignored for non-DORA frameworks."
+        catalog_edition:
+          type: string
+          description: "Edition of the embedded control catalog (e.g. '2023' for BSI IT-Grundschutz Kompendium). Omitted for frameworks without a versioned catalog."
 
     Control:
       type: object
@@ -1971,8 +1974,47 @@ components:
         protection_c: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
         protection_i: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
         protection_a: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
+        override_c: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
+        override_i: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
+        override_a: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
+        override_reason: { type: string, nullable: true }
+        override_effect: { type: string, enum: [kumulation, verteilung], nullable: true }
+        effective_c: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
+        effective_i: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
+        effective_a: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
+        inherited_from_c: { type: string, format: uuid, nullable: true, description: "Source object ID contributing effective_c" }
+        inherited_from_i: { type: string, format: uuid, nullable: true, description: "Source object ID contributing effective_i" }
+        inherited_from_a: { type: string, format: uuid, nullable: true, description: "Source object ID contributing effective_a" }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+
+    BSIObjectDependency:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        source_id: { type: string, format: uuid }
+        source_name: { type: string }
+        target_id: { type: string, format: uuid }
+        target_name: { type: string }
+        dependency_type: { type: string, enum: [runs_on, located_in, connected_to, processes_for] }
+        created_at: { type: string, format: date-time }
+
+    CreateBSIObjectDependencyInput:
+      type: object
+      required: [target_id, dependency_type]
+      properties:
+        target_id: { type: string, format: uuid }
+        dependency_type: { type: string, enum: [runs_on, located_in, connected_to, processes_for] }
+
+    UpdateBSIObjectProtectionOverrideInput:
+      type: object
+      properties:
+        override_c: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
+        override_i: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
+        override_a: { type: string, enum: [normal, hoch, sehr_hoch], nullable: true }
+        override_reason: { type: string, description: "Required when any override dimension is set" }
+        override_effect: { type: string, enum: [kumulation, verteilung], nullable: true }
 
     CreateBSITargetObjectInput:
       type: object
@@ -1995,6 +2037,7 @@ components:
         anforderung_id: { type: string }
         anforderung_title: { type: string }
         baustein_id: { type: string }
+        requirement_level: { type: string, enum: [basis, standard, erhoeht], nullable: true }
         umsetzungsstatus: { type: string, enum: [ja, teilweise, nein, entbehrlich] }
         begruendung: { type: string, nullable: true }
         verantwortlicher: { type: string, nullable: true }
@@ -2861,6 +2904,7 @@ paths:
                       $ref: '#/components/schemas/Finding'
                   pagination:
                     $ref: '#/components/schemas/Pagination'
+        '401': { description: Unauthorized }
 
   /vaktscan/findings/{id}:
     get:
@@ -3015,6 +3059,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Framework'
+        '401': { description: Unauthorized }
 
   /vaktcomply/frameworks/{id}:
     get:
@@ -3230,11 +3275,19 @@ paths:
 
   /vaktcomply/risks/export/xlsx:
     get:
-      summary: Export risks as XLSX
+      summary: Export risk register as XLSX (Pro)
+      description: Returns a two-sheet XLSX workbook (Risiken + Matrix heatmap). Requires FeatureAuditPDF.
       tags: [vaktcomply]
       responses:
         '200':
           description: XLSX file
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '402':
+          description: Feature not available (Pro required)
 
   # ── SecVitals — Incidents ─────────────────────────────────────────────────
   /vaktcomply/incidents:
@@ -3322,6 +3375,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/VVTEntry'
+        '401': { description: Unauthorized }
     post:
       summary: Create a VVT entry
       tags: [vaktprivacy]
@@ -3435,6 +3489,7 @@ paths:
       responses:
         '200':
           description: Project list
+        '401': { description: Unauthorized }
     post:
       summary: Create a project
       tags: [vaktvault]
@@ -5620,6 +5675,24 @@ paths:
       responses:
         '200':
           description: PDF or CSV export
+
+  /vaktcomply/soa/export.xlsx:
+    get:
+      summary: Export SoA as XLSX (Pro)
+      description: Returns a two-sheet XLSX workbook (SoA + Zusammenfassung). Requires FeatureAuditPDF.
+      tags: [vaktcomply]
+      responses:
+        '200':
+          description: XLSX file
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '402':
+          description: Feature not available (Pro required)
+        '404':
+          description: SoA not initialized
 
   /vaktcomply/soa/entries:
     get:
@@ -8758,6 +8831,84 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/BSIRiskSummary' }
 
+  /vaktcomply/bsi/target-objects/{id}/dependencies:
+    get:
+      summary: List dependency edges for a Zielobjekt (source and target sides)
+      operationId: listBSIObjectDependencies
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: List of dependency edges
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BSIObjectDependency' }
+    post:
+      summary: Add a dependency edge from this object to another
+      operationId: createBSIObjectDependency
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBSIObjectDependencyInput' }
+      responses:
+        '201':
+          description: Dependency created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BSIObjectDependency' }
+        '409':
+          description: Dependency already exists
+        '422':
+          description: Would create a cycle
+
+  /vaktcomply/bsi/target-objects/{id}/dependencies/{depId}:
+    delete:
+      summary: Remove a dependency edge
+      operationId: deleteBSIObjectDependency
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: depId, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Deleted }
+        '404': { description: Not found }
+
+  /vaktcomply/bsi/target-objects/{id}/protection-override:
+    put:
+      summary: Set or clear the manual CIA override for a Zielobjekt
+      operationId: updateBSIObjectProtectionOverride
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateBSIObjectProtectionOverrideInput' }
+      responses:
+        '200':
+          description: Updated object with effective values
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BSITargetObject' }
+        '422':
+          description: override_reason required when override dimension is set
+
   /vaktcomply/bsi/threats:
     get:
       summary: List all 47 elementare Gefährdungen (BSI G-0.x, static)
@@ -10766,6 +10917,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Contractor'
+        '401': { description: Unauthorized }
     post:
       operationId: createContractor
       summary: Create a contractor record
@@ -10938,6 +11090,48 @@ paths:
               schema:
                 $ref: '#/components/schemas/AccessReview'
 
+  # ── Auditor Session Management (S78-7) ──────────────────────────────────────
+  # Admin-side routes behind regular user auth + RequireRole("Admin").
+
+  /auditor/sessions:
+    get:
+      operationId: listAuditorSessions
+      summary: List active auditor sessions for the organisation
+      tags: [auditor]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Active auditor sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    org_id: { type: string, format: uuid }
+                    auditor_email: { type: string }
+                    expires_at: { type: string, format: date-time }
+                    created_at: { type: string, format: date-time }
+        '401': { description: Unauthorized }
+
+  /auditor/sessions/{id}:
+    delete:
+      operationId: revokeAuditorSession
+      summary: Revoke a specific auditor session (S78-7)
+      tags: [auditor]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Session revoked }
+        '401': { description: Unauthorized }
+        '404': { description: Session not found }
+
   # ── Auditor Portal (S73-1/S73-2) ────────────────────────────────────────────
   # These routes are behind AuditorAuth middleware (Bearer auditor session token).
   # Base: /api/v1/auditor/vaktcomply/
@@ -11074,3 +11268,328 @@ paths:
               schema: { type: string, format: binary }
         '401':
           description: Invalid or expired auditor session token
+
+  # ── S79: AI Endpoints ────────────────────────────────────────────────────────
+  /vaktcomply/ai/status:
+    get:
+      summary: AI provider status
+      tags: [ai]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Provider availability and CE usage summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  available: { type: boolean }
+                  provider: { type: string }
+                  model: { type: string }
+                  monthly_usage: { type: integer }
+                  monthly_limit: { type: integer }
+  /vaktcomply/ai/usage:
+    get:
+      summary: CE monthly AI usage counter
+      tags: [ai]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Usage counter for the current calendar month
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  used: { type: integer }
+                  limit: { type: integer }
+  /vaktcomply/ai/models:
+    get:
+      summary: List locally available Ollama models
+      tags: [ai]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Model names pulled into the local Ollama instance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  models:
+                    type: array
+                    items: { type: string }
+  /vaktcomply/ai/report:
+    post:
+      summary: Generate an AI compliance report
+      tags: [ai]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type:
+                  type: string
+                  enum: [gap_analysis, risk_summary, executive_summary]
+      responses:
+        '200':
+          description: AI-generated report text
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [type, report, ai_generated]
+                properties:
+                  type: { type: string }
+                  report: { type: string }
+                  ai_generated: { type: boolean, enum: [true] }
+        '402':
+          description: CE monthly quota exceeded
+        '503':
+          description: AI provider unavailable
+  /vaktcomply/ai/advice:
+    post:
+      summary: Get prioritised compliance advice
+      tags: [ai]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                context: { type: string }
+      responses:
+        '200':
+          description: AI-generated action recommendations
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [advice, ai_generated]
+                properties:
+                  advice: { type: string }
+                  ai_generated: { type: boolean, enum: [true] }
+  /vaktcomply/ai/draft-policy:
+    post:
+      summary: Generate an information-security policy draft
+      tags: [ai]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [topic]
+              properties:
+                topic: { type: string }
+                framework: { type: string }
+      responses:
+        '200':
+          description: AI-generated policy draft
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [draft, ai_generated]
+                properties:
+                  draft: { type: string }
+                  ai_generated: { type: boolean, enum: [true] }
+  /vaktcomply/ai/incident-guide:
+    post:
+      summary: Generate an incident response guide
+      tags: [ai]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [summary]
+              properties:
+                summary: { type: string }
+                type: { type: string }
+      responses:
+        '200':
+          description: AI-generated incident response checklist
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [guide, ai_generated]
+                properties:
+                  guide: { type: string }
+                  ai_generated: { type: boolean, enum: [true] }
+  /vaktcomply/ai/chat/stream:
+    post:
+      summary: Streaming AI compliance chat (SSE)
+      tags: [ai]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt]
+              properties:
+                system: { type: string }
+                prompt: { type: string }
+                max_tokens: { type: integer, default: 600 }
+      responses:
+        '200':
+          description: SSE stream of AI response deltas
+          content:
+            text/event-stream:
+              schema: { type: string }
+  /vaktcomply/ai/controls/{id}/explain:
+    post:
+      summary: Stream an AI explanation for a compliance control gap (SSE)
+      tags: [ai]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: SSE stream of gap explanation
+          content:
+            text/event-stream:
+              schema: { type: string }
+  /vaktcomply/ai/risks/{id}/narrative:
+    post:
+      summary: Generate and persist an AI narrative for a risk
+      tags: [ai]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: AI-generated risk narrative (also persisted to ck_risks.ai_narrative)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [narrative, ai_generated]
+                properties:
+                  narrative: { type: string }
+                  ai_generated: { type: boolean, enum: [true] }
+  /vaktcomply/ai/insights:
+    get:
+      summary: List AI-generated compliance insights
+      tags: [ai]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of AI insights for the org
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    type: { type: string }
+                    title: { type: string }
+                    message: { type: string }
+                    urgency: { type: integer }
+                    ai_generated: { type: boolean }
+  /vaktcomply/ai/insights/{id}:
+    delete:
+      summary: Dismiss an AI insight
+      tags: [ai]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204':
+          description: Insight dismissed
+        '404':
+          description: Insight not found
+  /vaktcomply/ai/agent/run:
+    post:
+      summary: "Start an AI agent run (Plan/Execute/Reflect loop) — experimental, Pro+"
+      tags: [ai]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [goal]
+              properties:
+                goal: { type: string }
+                context_hints:
+                  type: array
+                  items: { type: string }
+                max_iterations: { type: integer, default: 5 }
+      responses:
+        '200':
+          description: "SSE stream of agent events (X-Vakt-Status: experimental)"
+          content:
+            text/event-stream:
+              schema: { type: string }
+        '402':
+          description: agent_write_tools feature not available on this license
+  /vaktcomply/ai/agent/runs/{run_id}/approve:
+    post:
+      summary: Approve a pending agent write-tool action
+      tags: [ai]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: run_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204':
+          description: Action approved
+        '402':
+          description: agent_write_tools feature not available
+  /vaktcomply/ai/agent/runs/{run_id}/reject:
+    post:
+      summary: Reject a pending agent write-tool action
+      tags: [ai]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: run_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204':
+          description: Action rejected
+        '402':
+          description: agent_write_tools feature not available

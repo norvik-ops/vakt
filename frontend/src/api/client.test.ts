@@ -14,6 +14,33 @@ afterEach(() => {
   if (realCookie) Object.defineProperty(document, 'cookie', realCookie)
 })
 
+// ── Double-prefix guard ───────────────────────────────────────────────────────
+
+describe('apiFetch — double-prefix guard', () => {
+  it('throws in DEV when path starts with /api/v1/', async () => {
+    // The guard exists so callers cannot accidentally produce /api/v1/api/v1/...
+    await expect(apiFetch('/api/v1/vakthr/contractors')).rejects.toThrow(
+      'apiFetch: path must not include the API base prefix',
+    )
+  })
+
+  it('uses the correct full URL for a valid relative path', async () => {
+    const spy = vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: () => Promise.resolve([]),
+    })
+    globalThis.fetch = spy
+
+    await apiFetch('/vakthr/contractors')
+
+    expect(spy).toHaveBeenCalledOnce()
+    const [url] = spy.mock.calls[0] as [string]
+    expect(url).toBe('/api/v1/vakthr/contractors')
+    expect(url).not.toContain('/api/v1/api/v1/')
+  })
+})
+
 // ── CSRF token plumbing ──────────────────────────────────────────────────────
 
 describe('apiFetch — CSRF', () => {

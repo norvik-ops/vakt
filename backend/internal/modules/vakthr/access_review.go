@@ -4,28 +4,17 @@
 package vakthr
 
 import (
-	"context"
-	"time"
+	sharedevents "github.com/matharnica/vakt/internal/shared/events"
 )
 
 // AccessReviewTrigger is called when an offboarding checklist run completes.
-// The real implementation lives in vaktcomply (injected at startup); the noop
-// is used in tests and when vaktcomply is disabled.
-type AccessReviewTrigger interface {
-	TriggerOffboardingReview(ctx context.Context, in OffboardingReviewInput) error
-}
+// Definition lives in internal/shared/events — type alias for backward compatibility.
+type AccessReviewTrigger = sharedevents.AccessReviewTrigger
 
 // OffboardingReviewInput carries the context for a triggered access review.
-type OffboardingReviewInput struct {
-	OrgID       string
-	RunID       string
-	Department  string
-	CompletedAt time.Time
-}
+// Definition lives in internal/shared/events — type alias for backward compatibility.
+type OffboardingReviewInput = sharedevents.OffboardingReviewInput
 
 // NoopAccessReviewTrigger satisfies AccessReviewTrigger without doing anything.
-type NoopAccessReviewTrigger struct{}
-
-func (n *NoopAccessReviewTrigger) TriggerOffboardingReview(_ context.Context, _ OffboardingReviewInput) error {
-	return nil
-}
+// Definition lives in internal/shared/events — type alias for backward compatibility.
+type NoopAccessReviewTrigger = sharedevents.NoopAccessReviewTrigger

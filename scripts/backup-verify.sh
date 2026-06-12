@@ -25,7 +25,10 @@ fi
 
 echo "→ Verifying HMAC-SHA256 signature..."
 EXPECTED=$(cat "$SIG_FILE")
-ACTUAL=$(openssl dgst -sha256 -hmac "$SECRET_KEY" "$BACKUP_FILE" | awk '{print $NF}')
+# Use the same derived HMAC key as backup.sh.
+HMAC_KEY=$(printf 'vakt-backup-hmac:%s' "$SECRET_KEY" | sha256sum | cut -d' ' -f1)
+ACTUAL=$(openssl dgst -sha256 -hmac "$HMAC_KEY" "$BACKUP_FILE" | awk '{print $NF}')
+unset HMAC_KEY
 if [ "$EXPECTED" != "$ACTUAL" ]; then
   echo "ERROR: HMAC signature mismatch — archive may be corrupted or tampered with" >&2
   exit 1

@@ -118,6 +118,17 @@ export async function apiFetch<T>(
   path: string,
   options?: Omit<RequestInit, 'headers'> & { headers?: Record<string, string> },
 ): Promise<T> {
+  // Guard against double-prefix: callers must use relative paths like /vakthr/...
+  // not /api/v1/vakthr/... (apiFetch already prepends API_BASE).
+  if (path.startsWith('/api/v1/')) {
+    if (import.meta.env.DEV) {
+      throw new Error(
+        `apiFetch: path must not include the API base prefix. Got: "${path}". Use "${path.slice('/api/v1'.length)}" instead.`,
+      )
+    }
+    // In production: strip silently so the app keeps working.
+    path = path.slice('/api/v1'.length)
+  }
   const method = (options?.method ?? 'GET').toUpperCase()
   const isIdempotent = IDEMPOTENT_METHODS.has(method)
 

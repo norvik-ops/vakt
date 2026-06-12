@@ -298,6 +298,7 @@ func (r *Repository) enrichEnvironments(ctx context.Context, assets []Asset) {
 	for i, a := range assets {
 		ids[i] = a.ID
 	}
+	// orgid-lint: global — IDs come from a prior org-scoped query; update by PK is safe
 	rows, err := r.db.Query(ctx,
 		`SELECT id, environment FROM vb_assets WHERE id = ANY($1)`, ids)
 	if err != nil {
@@ -383,6 +384,7 @@ func (r *Repository) CreateAsset(ctx context.Context, orgID string, input Create
 	if env == "" {
 		env = "prod"
 	}
+	// orgid-lint: global — UPDATE by PK row.ID from the RETURNING clause of the INSERT just above
 	if _, execErr := r.db.Exec(ctx,
 		`UPDATE vb_assets SET environment=$1 WHERE id=$2`, env, row.ID); execErr != nil {
 		log.Warn().Err(execErr).Str("asset_id", row.ID).Msg("could not set environment on new asset")
@@ -391,6 +393,7 @@ func (r *Repository) CreateAsset(ctx context.Context, orgID string, input Create
 	if cls == "" {
 		cls = "internal"
 	}
+	// orgid-lint: global — UPDATE by PK row.ID from the RETURNING clause of the INSERT just above
 	if _, execErr := r.db.Exec(ctx,
 		`UPDATE vb_assets SET classification=$1 WHERE id=$2`, cls, row.ID); execErr != nil {
 		log.Warn().Err(execErr).Str("asset_id", row.ID).Msg("could not set classification on new asset")
@@ -1600,6 +1603,7 @@ func (r *Repository) batchGetEOLCache(ctx context.Context, pairs [][2]string) (m
 		args = append(args, p[0], p[1])
 	}
 
+	// orgid-lint: global — vb_eol_cache is a shared product lifecycle cache with no org data
 	query := fmt.Sprintf(`
 		SELECT product, cycle, payload, fetched_at
 		FROM vb_eol_cache
@@ -1859,6 +1863,12 @@ func (r *Repository) UpsertSLAPolicy(ctx context.Context, orgID, severity string
 		              updated_at = NOW()`,
 		orgID, severity, remDays, advDays,
 	)
+	return err
+}
+
+// DeleteSLAPolicies removes all SLA policies for an org (used by the reset flow).
+func (r *Repository) DeleteSLAPolicies(ctx context.Context, orgID string) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM vb_sla_policies WHERE org_id = $1::uuid`, orgID)
 	return err
 }
 

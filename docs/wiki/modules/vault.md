@@ -55,6 +55,8 @@ Das Audit-Log ist nicht veränderbar und dient als Nachweis für regulatorische 
 
 ## Secret-Rotation
 
+> **Pro-Feature** — erfordert einen aktiven Pro-Lizenzschlüssel.
+
 Rotation kann manuell oder automatisch nach einem konfigurierbaren Intervall (in Tagen) ausgelöst werden. Drei Rotations-Strategien stehen zur Auswahl:
 
 | Strategie | Ergebnis |
@@ -124,6 +126,10 @@ Alle Secrets einer Umgebung als verschlüsselte Datei exportieren (für Backups 
 ---
 
 ## Git-Repository-Scanner
+
+> **Pro-Feature** — erfordert einen aktiven Pro-Lizenzschlüssel. Ebenfalls Pro:
+> die quartalsweisen **Access Reviews** (Zugriffsüberprüfung aller Secrets mit
+> Keep/Revoke-Entscheidung je Eintrag, automatisch alle 3 Monate angelegt).
 
 Vakt Vault kann Git-Repositories auf versehentlich eingecheckte Credentials scannen (powered by [gitleaks](https://github.com/gitleaks/gitleaks)):
 

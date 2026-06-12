@@ -48,6 +48,7 @@ func (h *Handler) ServeMetrics(c echo.Context) error {
 	// ── vakt_findings_total ───────────────────────────────────────────────────
 	fmt.Fprintln(w, "# HELP vakt_findings_total Total open findings by severity")
 	fmt.Fprintln(w, "# TYPE vakt_findings_total gauge")
+	// orgid-lint: global — Prometheus /metrics endpoint: intentional cross-org aggregate for instance-level monitoring
 	rows, err := h.db.Query(ctx, `
 		SELECT severity, COUNT(*) AS cnt
 		FROM   vb_findings
@@ -70,6 +71,7 @@ func (h *Handler) ServeMetrics(c echo.Context) error {
 	fmt.Fprintln(w, "# HELP vakt_score_current Current security score")
 	fmt.Fprintln(w, "# TYPE vakt_score_current gauge")
 	var score float64
+	// orgid-lint: global — Prometheus /metrics: cross-org average for instance monitoring
 	err = h.db.QueryRow(ctx, `
 		SELECT COALESCE(AVG(score), 0)
 		FROM   ck_score_history
@@ -84,6 +86,7 @@ func (h *Handler) ServeMetrics(c echo.Context) error {
 	fmt.Fprintln(w, "# HELP vakt_dsr_open_total Open DSRs")
 	fmt.Fprintln(w, "# TYPE vakt_dsr_open_total gauge")
 	var dsrOpen int64
+	// orgid-lint: global — Prometheus /metrics: cross-org aggregate for instance monitoring
 	err = h.db.QueryRow(ctx, `
 		SELECT COUNT(*) FROM po_dsr
 		WHERE  status NOT IN ('completed','rejected')`).Scan(&dsrOpen)
@@ -97,6 +100,7 @@ func (h *Handler) ServeMetrics(c echo.Context) error {
 	fmt.Fprintln(w, "# HELP vakt_dsr_overdue_total Overdue DSRs (past due_date)")
 	fmt.Fprintln(w, "# TYPE vakt_dsr_overdue_total gauge")
 	var dsrOverdue int64
+	// orgid-lint: global — Prometheus /metrics: cross-org aggregate for instance monitoring
 	err = h.db.QueryRow(ctx, `
 		SELECT COUNT(*) FROM po_dsr
 		WHERE  status NOT IN ('completed','rejected')

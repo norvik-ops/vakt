@@ -14,6 +14,7 @@ import (
 
 // ListBSIThreats returns all 47 elementare Gefährdungen (system-wide, static).
 func (s *Service) ListBSIThreats(ctx context.Context) ([]BSIThreat, error) {
+	// orgid-lint: global — ck_bsi_threats is a static system catalogue (47 BSI threats), not per-org
 	rows, err := s.db.Query(ctx,
 		`SELECT id, title, category, description FROM ck_bsi_threats ORDER BY id`)
 	if err != nil {

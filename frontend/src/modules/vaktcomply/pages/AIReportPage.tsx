@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Bot, AlertTriangle, Copy, Download, CheckCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -30,6 +31,7 @@ const REPORT_TYPES = [
 
 export default function AIReportPage() {
   const { formatDateTime } = useFormatDate()
+  const { t } = useTranslation()
   const [available, setAvailable] = useState<boolean | null>(null)
   const [aiModel, setAiModel] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
@@ -128,10 +130,10 @@ export default function AIReportPage() {
                     KI-Berichte benötigen einen konfigurierten AI-Provider. Setzen Sie in Ihrer{' '}
                     <code className="text-primary">.env</code>-Datei:
                   </p>
-                  <pre className="text-xs bg-surface rounded px-3 py-2 border border-border font-mono text-primary whitespace-pre">{`SHIELDSTACK_AI_PROVIDER=openai
-SHIELDSTACK_AI_BASE_URL=https://api.mistral.ai/v1
-SHIELDSTACK_AI_API_KEY=sk-...
-SHIELDSTACK_AI_MODEL=mistral-small-latest`}</pre>
+                  <pre className="text-xs bg-surface rounded px-3 py-2 border border-border font-mono text-primary whitespace-pre">{`VAKT_AI_PROVIDER=openai
+VAKT_AI_BASE_URL=https://api.mistral.ai/v1
+VAKT_AI_API_KEY=sk-...
+VAKT_AI_MODEL=mistral-small-latest`}</pre>
                   <p className="text-xs text-secondary">
                     Empfohlen: <strong>Mistral AI</strong> (EU-Server, DSGVO-freundlich, ~€0,001/Bericht).
                     Alternativ: OpenAI, Groq oder Ollama (lokal, GPU empfohlen).
@@ -260,6 +262,9 @@ SHIELDSTACK_AI_MODEL=mistral-small-latest`}</pre>
                   <pre className="text-sm text-primary leading-relaxed whitespace-pre-wrap font-sans">
                     {report}
                   </pre>
+                  <p className="mt-3 text-xs text-secondary/70 bg-amber-500/10 border border-amber-500/20 rounded px-2 py-1 inline-block">
+                    {t('ai.disclaimer')}
+                  </p>
                 </CardContent>
               </Card>
             )}

@@ -67,12 +67,12 @@ export default function ContractorsPage() {
 
   const { data: contractors, isLoading } = useQuery<Contractor[]>({
     queryKey: ['hr', 'contractors'],
-    queryFn: () => apiFetch('/api/v1/vakthr/contractors'),
+    queryFn: () => apiFetch('/vakthr/contractors'),
   })
 
   const createMutation = useMutation({
     mutationFn: (input: CreateContractorInput) =>
-      apiFetch('/api/v1/vakthr/contractors', { method: 'POST', body: JSON.stringify(input) }),
+      apiFetch('/vakthr/contractors', { method: 'POST', body: JSON.stringify(input) }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['hr', 'contractors'] })
       setShowCreate(false)
@@ -185,6 +185,13 @@ export default function ContractorsPage() {
                 AVV unterzeichnet
               </label>
             </div>
+            {createMutation.isError && (
+              <p className="text-xs text-red-400 mt-1">
+                {createMutation.error instanceof Error
+                  ? createMutation.error.message
+                  : 'Anlegen fehlgeschlagen'}
+              </p>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => { setShowCreate(false); }}>Abbrechen</Button>
               <Button type="submit" disabled={createMutation.isPending}>

@@ -17,7 +17,7 @@ func testConfig() *config.Config {
 		cfg = &config.Config{
 			Version:        "0.1.0",
 			APIPort:        "8080",
-			ModulesEnabled: "vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy",
+			ModulesEnabled: "vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,vakthr",
 		}
 	}
 	return cfg

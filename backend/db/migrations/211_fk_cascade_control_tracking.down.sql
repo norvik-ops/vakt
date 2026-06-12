@@ -1,0 +1,4 @@
+ALTER TABLE ck_evidence_history DROP CONSTRAINT IF EXISTS fk_ck_evidence_history_org;
+ALTER TABLE ck_control_exceptions DROP CONSTRAINT IF EXISTS fk_ck_control_exceptions_org;
+ALTER TABLE ck_access_review_campaigns DROP CONSTRAINT IF EXISTS fk_ck_access_review_campaigns_org;
+ALTER TABLE ck_control_changelog DROP CONSTRAINT IF EXISTS fk_ck_control_changelog_org;

@@ -1,0 +1,2 @@
+ALTER TABLE vb_risk_trend_snapshots DROP CONSTRAINT IF EXISTS fk_vb_risk_trend_snapshots_org;
+ALTER TABLE ai_pending_approvals DROP CONSTRAINT IF EXISTS fk_ai_pending_approvals_org;

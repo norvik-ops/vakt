@@ -5,6 +5,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/hibiken/asynq"
 	"github.com/rs/zerolog/log"
 
@@ -41,6 +43,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// Daily at 08:00 UTC: check AVV expiry and send alerts.
 	if _, err := scheduler.Register("0 8 * * *",
 		asynq.NewTask(vaktprivacy.TaskAVVExpiryCheck, nil),
+		asynq.Unique(23*time.Hour), asynq.Queue(vaktprivacy.Queue),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register AVV expiry cron")
 	}
@@ -48,6 +51,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// Daily at 08:00 UTC: check for overdue SLA findings.
 	if _, err := scheduler.Register("0 8 * * *",
 		asynq.NewTask(alerting.TaskSLAOverdueCheck, nil),
+		asynq.Unique(23*time.Hour),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register SLA overdue check cron")
 	}
@@ -55,6 +59,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// Daily at 08:00 UTC: check for overdue DSR requests.
 	if _, err := scheduler.Register("0 8 * * *",
 		asynq.NewTask(alerting.TaskDSROverdueCheck, nil),
+		asynq.Unique(23*time.Hour),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register DSR overdue check cron")
 	}
@@ -62,6 +67,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// Hourly: delete ephemeral demo orgs older than 4 hours.
 	if _, err := scheduler.Register("0 * * * *",
 		demo.NewCleanupTask(),
+		asynq.Unique(65*time.Minute),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register demo cleanup cron")
 	}
@@ -82,15 +88,21 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	}
 
 	// Daily at 06:00 UTC: sync BSI CERT-Bund advisories and match to assets.
-	if _, err := scheduler.Register("0 6 * * *",
-		bsi.NewBSIFeedSyncTask(),
-	); err != nil {
-		log.Error().Err(err).Msg("failed to register BSI feed sync cron")
+	// Opt-out via VAKT_BSI_FEED_ENABLED=false for air-gapped environments.
+	if cfg.BSIFeedEnabled {
+		if _, err := scheduler.Register("0 6 * * *",
+			bsi.NewBSIFeedSyncTask(),
+		); err != nil {
+			log.Error().Err(err).Msg("failed to register BSI feed sync cron")
+		}
+	} else {
+		log.Info().Msg("BSI CERT-Bund feed sync disabled (VAKT_BSI_FEED_ENABLED=false)")
 	}
 
 	// Daily at 01:00 UTC: enrich all findings with EPSS scores from FIRST.org.
 	if _, err := scheduler.Register("0 1 * * *",
 		asynq.NewTask(vaktscan.TaskEPSSEnrich, nil),
+		asynq.Unique(23*time.Hour), asynq.Queue(vaktscan.QueueScans),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register EPSS enrich cron")
 	}
@@ -100,6 +112,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// generate_series × vb_findings at request time.
 	if _, err := scheduler.Register("30 2 * * *",
 		asynq.NewTask(vaktscan.TaskRiskTrendSnapshot, nil),
+		asynq.Unique(23*time.Hour), asynq.Queue(vaktscan.QueueScans),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register risk trend snapshot cron")
 	}
@@ -107,6 +120,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// Daily at 09:00 UTC: send control-owner due-date reminders (7-day advance notice).
 	if _, err := scheduler.Register("0 9 * * *",
 		asynq.NewTask(taskControlOwnerReminder, nil),
+		asynq.Unique(23*time.Hour), asynq.Queue(vaktcomply.Queue),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register control owner reminder cron")
 	}
@@ -114,6 +128,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// Daily at 05:00 UTC: collect GitHub Actions CI run evidence for all orgs.
 	if _, err := scheduler.Register("0 5 * * *",
 		asynq.NewTask(taskGitHubCISync, nil),
+		asynq.Unique(23*time.Hour), asynq.Queue(vaktcomply.Queue),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register GitHub CI evidence sync cron")
 	}
@@ -224,6 +239,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// Daily at 08:00 UTC: process all due scheduled reports.
 	if _, err := scheduler.Register("0 8 * * *",
 		asynq.NewTask(scheduledreports.TaskProcessScheduledReports, nil),
+		asynq.Unique(23*time.Hour),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register scheduled reports cron")
 	}
@@ -231,6 +247,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// Every 5 minutes: check for failed/archived job accumulation.
 	if _, err := scheduler.Register("*/5 * * * *",
 		asynq.NewTask(taskQueueHealthCheck, nil),
+		asynq.Unique(6*time.Minute),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register queue health check cron")
 	}
@@ -238,6 +255,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// Daily at 06:30 UTC: create CAPAs for controls whose test interval has elapsed.
 	if _, err := scheduler.Register("30 6 * * *",
 		asynq.NewTask(taskControlTestCheck, nil),
+		asynq.Unique(23*time.Hour), asynq.Queue(vaktcomply.Queue),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register control test check cron")
 	}
@@ -245,6 +263,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// Every Monday at 09:00 UTC: compute and log the weekly SLO error budget report.
 	if _, err := scheduler.Register("0 9 * * 1",
 		asynq.NewTask(taskErrorBudgetReport, nil),
+		asynq.Unique(6*24*time.Hour),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register error budget report cron")
 	}
@@ -273,6 +292,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// Daily at 03:00 UTC: rescan all tracked TLS certificates and update expiry status.
 	if _, err := scheduler.Register("0 3 * * *",
 		asynq.NewTask(vaktscan.TaskCertScan, nil),
+		asynq.Unique(23*time.Hour), asynq.Queue(vaktscan.QueueScans),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register cert scan cron")
 	}
@@ -280,6 +300,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// S69-3: Daily at 04:00 UTC — update sla_status on all open findings.
 	if _, err := scheduler.Register("0 4 * * *",
 		asynq.NewTask(vaktscan.TaskSLACheck, nil),
+		asynq.Unique(23*time.Hour), asynq.Queue(vaktscan.QueueScans),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register sla check cron")
 	}
@@ -287,6 +308,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// S61-3: Daily at 09:30 UTC — alert on major_nc CAPAs with overdue effectiveness checks.
 	if _, err := scheduler.Register("30 9 * * *",
 		asynq.NewTask(taskEffectivenessCheckOverdueAlert, nil),
+		asynq.Unique(23*time.Hour), asynq.Queue(vaktcomply.Queue),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register effectiveness check overdue alert cron")
 	}
@@ -301,6 +323,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// S67-4: daily at 03:30 UTC — sweep evidence staleness for all controls.
 	if _, err := scheduler.Register("30 3 * * *",
 		asynq.NewTask(vaktcomply.TaskEvidenceStalenessCheck, nil),
+		asynq.Unique(23*time.Hour), asynq.Queue(vaktcomply.Queue),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register evidence staleness check cron")
 	}
@@ -315,6 +338,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// S68-2: daily at 08:15 UTC — mark overdue DSRs and send 3-day deadline warnings.
 	if _, err := scheduler.Register("15 8 * * *",
 		asynq.NewTask(vaktprivacy.TaskDSRDeadlineCheck, nil),
+		asynq.Unique(23*time.Hour), asynq.Queue(vaktprivacy.Queue),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register dsr deadline check cron")
 	}
@@ -322,6 +346,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// S68-5: daily at 08:20 UTC — send deletion reminder notifications for reminders due within 14 days.
 	if _, err := scheduler.Register("20 8 * * *",
 		asynq.NewTask(vaktprivacy.TaskDeletionReminderCheck, nil),
+		asynq.Unique(23*time.Hour), asynq.Queue(vaktprivacy.Queue),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register deletion reminder check cron")
 	}
@@ -329,6 +354,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// S70-4: daily at 07:30 UTC — check contractor expiry and mark expiring_soon/offboarding.
 	if _, err := scheduler.Register("30 7 * * *",
 		asynq.NewTask(vakthr.TaskContractorExpiryCheck, nil),
+		asynq.Unique(23*time.Hour), asynq.Queue(vakthr.Queue),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register contractor expiry check cron")
 	}
@@ -336,6 +362,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 	// S70-5: 1st of Jan/Apr/Jul/Oct at 06:00 UTC — create quarterly vault access reviews.
 	if _, err := scheduler.Register("0 6 1 1,4,7,10 *",
 		asynq.NewTask(vaktvault.TaskQuarterlyAccessReview, nil),
+		asynq.Unique(89*24*time.Hour), asynq.Queue(vaktvault.Queue),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register quarterly access review cron")
 	}

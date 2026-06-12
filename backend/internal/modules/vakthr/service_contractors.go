@@ -192,6 +192,7 @@ func (s *Service) UpdateContractor(ctx context.Context, orgID, id string, in Upd
 // Called daily by Asynq task hr:contractor_expiry_check.
 func (s *Service) CheckContractorExpiry(ctx context.Context) error {
 	// Mark as expiring_soon (≤14 days)
+	// orgid-lint: global — daily background job: intentionally updates expiring contractors across all orgs
 	if _, err := s.db.Exec(ctx, `
 		UPDATE hr_contractors SET status = 'expiring_soon', updated_at = NOW()
 		WHERE status = 'active'

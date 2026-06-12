@@ -238,3 +238,41 @@ curl -X PUT https://vakt.example.com/api/v1/vaktcomply/controls/$CONTROL_ID \
   -H "Content-Type: application/json" \
   -d '{"status": "implemented", "responsible": "alice@example.com"}'
 ```
+
+---
+
+## API Deprecation Policy
+
+Vakt follows a deliberate deprecation cycle so that integrations built against the API
+have time to adapt before fields or endpoints are removed.
+
+### Fields (response / request body)
+
+1. **Mark:** The field is marked `deprecated: true` in the embedded `openapi.yaml`
+   for at least **2 minor releases** before removal.
+2. **Log:** The handler logs a `warn`-level message on first use of a deprecated
+   field to assist operators monitoring their instances.
+3. **Remove:** Fields are removed only in a `major` version or a dedicated
+   `/v2` endpoint group — never silently in a minor release.
+4. **Changelog:** Every deprecation and removal is listed under
+   `### Deprecated` / `### Removed` in `CHANGELOG.md`.
+
+### Endpoints (paths)
+
+- Endpoints are deprecated and removed on the same schedule as fields.
+- Deprecated endpoints return an `X-Vakt-Deprecated: true` response header.
+- The replacement endpoint (if any) is referenced in the OpenAPI `description`
+  and in the changelog.
+
+### Versioning
+
+The API is currently at `/api/v1`. A `/v2` endpoint group will be introduced
+when breaking changes accumulate. `/v1` will remain supported for at least
+**6 months** after `/v2` launch before being sunset.
+
+### How to check
+
+```bash
+# Inspect deprecated fields in the embedded spec:
+curl -s https://vakt.example.com/api/v1/openapi.json | jq '.components.schemas | .. | .deprecated? // empty'
+```

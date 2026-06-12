@@ -10,6 +10,7 @@ import { Label } from '../../../components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { apiFetch } from '../../../api/client'
 import { EmptyState } from '../../../shared/components/EmptyState'
+import { ProGate } from '../../../shared/components/ProGate'
 import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
 
 interface PrivacyDesignSummary {
@@ -79,7 +80,7 @@ export default function PrivacyDesignPage() {
   const [selectedActivity, setSelectedActivity] = useState<VVTEntry | null>(null)
   const [form, setForm] = useState<PrivacyDesignInput>(defaultInput)
 
-  const { data: summary, isLoading: summaryLoading } = useQuery<PrivacyDesignSummary>({
+  const { data: summary, isLoading: summaryLoading, isError, error } = useQuery<PrivacyDesignSummary>({
     queryKey: ['vaktprivacy', 'privacy-design-summary'],
     queryFn: () => apiFetch('/vaktprivacy/privacy-design/summary'),
   })
@@ -136,6 +137,7 @@ export default function PrivacyDesignPage() {
   const isLoading = summaryLoading || vvtLoading
 
   return (
+    <ProGate error={isError ? error : null}>
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold">Privacy by Design (Art. 25 DSGVO)</h1>
@@ -285,6 +287,7 @@ export default function PrivacyDesignPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </ProGate>
   )
 }
 

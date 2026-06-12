@@ -139,7 +139,8 @@ func builtinControls(frameworkID, orgID, name, variant string) []Control {
 	case "ISO27001":
 		return iso27001Controls(frameworkID, orgID)
 	case "BSI":
-		return bsiControls(frameworkID, orgID)
+		controls, _ := (KompendiumProvider{}).Controls(frameworkID, orgID)
+		return controls
 	case "CRA":
 		return craControls(frameworkID, orgID)
 	case "DORA":
@@ -692,328 +693,6 @@ func iso27001Controls(frameworkID, orgID string) []Control {
 		c("A.8.32", "Änderungsmanagement", "Stelle sicher, dass alle Änderungen geplant, genehmigt und dokumentiert werden. Nachweis: Change-Tickets.", "Betrieb", "manual", 2),
 		c("A.8.33", "Testinformationen", "Schütze und kontrolliere die Verwendung von Testdaten. Nachweis: Test-Datenrichtlinie, Maskierungsnachweis.", "Systementwicklung", "manual", 1),
 		c("A.8.34", "Schutz von Informationssystemen bei Audittests", "Koordiniere Audittests und schütze Produktivsysteme vor unbeabsichtigten Auswirkungen. Nachweis: Audit-Test-Plan, Genehmigungsnachweis.", "Compliance", "manual", 1),
-	}
-}
-
-// bsiControls returns the BSI IT-Grundschutz-Kompendium baseline:
-// 33 Bausteine über alle zehn Schichten (ISMS, ORP, CON, OPS, DER, APP,
-// SYS, IND, NET, INF). Aufgebaut nach dem Pattern „Anforderung →
-// Nachweis", analog zu craControls und doraControls.
-//
-// Schichten gem. BSI-Standard 200-2 / Kompendium 2023:
-//
-//	ISMS — Sicherheitsmanagement
-//	ORP  — Organisation und Personal
-//	CON  — Konzeption und Vorgehensweise
-//	OPS  — Betrieb
-//	DER  — Detektion und Reaktion
-//	APP  — Anwendungen
-//	SYS  — IT-Systeme
-//	IND  — Industrielle IT (OT)
-//	NET  — Netze und Kommunikation
-//	INF  — Infrastruktur
-//
-// Diese 33 Bausteine bilden eine Basis-Absicherung gem. Standard 200-2 für
-// kleine bis mittlere Organisationen ab. Ein Customer mit Kern-Absicherung
-// erweitert sie um sektorale (IND.*) oder anwendungsspezifische (APP.*)
-// Bausteine. Die Reihenfolge folgt dem Kompendium.
-func bsiControls(frameworkID, orgID string) []Control {
-	c := func(id, title, desc, domain, evType string, w int) Control {
-		return Control{FrameworkID: frameworkID, OrgID: orgID, ControlID: id, Title: title, Description: desc, Domain: domain, EvidenceType: evType, Weight: w}
-	}
-	return []Control{
-		// ── ISMS: Sicherheitsmanagement (BSI-Standard 200-1/2) ──
-		c("BSI-ISMS.1.A1", "Sicherheitsleitlinie",
-			"Die Leitung verabschiedet eine schriftliche Informationssicherheitsleitlinie, in der Ziele, Geltungsbereich und Verantwortlichkeiten beschrieben sind. Mindestens jährlich überprüfen. Nachweis: unterzeichnete Leitlinie, Aktualisierungshistorie.",
-			"Sicherheitsmanagement", "manual", 3),
-		c("BSI-ISMS.1.A6", "Sicherheitskonzept",
-			"Erstelle ein dokumentiertes Sicherheitskonzept gemäß BSI-Standard 200-2 (Basis- oder Kern-Absicherung). Es beschreibt den Geltungsbereich, die Schutzbedarfsfeststellung und die Modellierung. Nachweis: Sicherheitskonzept-Dokument inkl. IT-Grundschutz-Check.",
-			"Sicherheitsmanagement", "manual", 3),
-		c("BSI-ISMS.1.A9", "Management-Review",
-			"Die Leitung führt mindestens jährlich ein dokumentiertes Management-Review der Informationssicherheit durch (Risiken, Vorfälle, Kennzahlen, Verbesserungen). Nachweis: Protokoll, Maßnahmenliste.",
-			"Sicherheitsmanagement", "manual", 2),
-
-		// ── ORP: Organisation und Personal ──
-		c("BSI-ORP.1.A1", "Festlegung von Sicherheitsrollen",
-			"Definiere die Sicherheitsrollen (ISB, IT-Verantwortliche, Auditoren) schriftlich mit klaren Aufgaben und Befugnissen. Nachweis: Stellenbeschreibungen, Organigramm, Rollenmatrix.",
-			"Organisation", "manual", 2),
-		c("BSI-ORP.2.A1", "Auswahl von Mitarbeitenden",
-			"Berücksichtige bei der Einstellung von Personen mit Zugang zu schützenswerten Informationen Eignungsprüfungen (Referenzen, ggf. Führungszeugnis). Dokumentiere den Prozess. Nachweis: Personalprozess, Stichproben.",
-			"Personal", "manual", 1),
-		c("BSI-ORP.2.A2", "Verpflichtung von Mitarbeitenden",
-			"Verpflichte Mitarbeitende vor Aufnahme der Tätigkeit schriftlich auf Vertraulichkeit, Datenschutz und Compliance-Vorgaben. Nachweis: unterzeichnete Vertraulichkeitsverpflichtungen.",
-			"Personal", "manual", 2),
-		c("BSI-ORP.3.A1", "Sensibilisierung und Schulung",
-			"Schule mindestens jährlich alle Mitarbeitenden in Informationssicherheit (Phishing, Passwörter, Social Engineering). Nachweis: Teilnehmerlisten, Trainingsunterlagen.",
-			"Personal", "manual", 2),
-		c("BSI-ORP.4.A1", "Identitäts- und Berechtigungsmanagement",
-			"Lege Identitätslebenszyklen (Beantragen, Genehmigen, Wieder-Entziehen) für alle Systeme schriftlich fest. Berechtigungen folgen dem Need-to-Know-Prinzip. Nachweis: IAM-Richtlinie, Berechtigungsmatrix, Rezertifizierung.",
-			"Organisation", "manual", 3),
-
-		// ── CON: Konzeption und Vorgehensweise ──
-		c("BSI-CON.1.A1", "Kryptokonzept",
-			"Erstelle ein Kryptokonzept, das eingesetzte Verfahren, Schlüssellängen und Algorithmen den Vorgaben von BSI-TR-02102 entsprechend beschreibt. Nachweis: Kryptokonzept-Dokument, Cipher-Suite-Konfiguration.",
-			"Konzeption", "manual", 2),
-		c("BSI-CON.2.A1", "Datenschutz",
-			"Stelle DSGVO-konforme Verarbeitung sicher (Art. 5, 25, 32 DSGVO). Pflege Verzeichnis der Verarbeitungstätigkeiten, prüfe TOMs jährlich. Nachweis: VVT, TOM-Dokumentation, DSFA (sofern erforderlich).",
-			"Konzeption", "manual", 3),
-		c("BSI-CON.3.A1", "Datensicherungskonzept",
-			"Definiere ein Datensicherungskonzept (Häufigkeit, Aufbewahrung, Offsite-Speicherung, Tests). Beachte die 3-2-1-Regel (3 Kopien, 2 Medien, 1 offsite). Teste Restore mindestens halbjährlich. Nachweis: Konzeptdokument, Backup-Logs, Restore-Test-Protokolle.",
-			"Konzeption", "automated", 3),
-		c("BSI-CON.8.A1", "Sichere Software-Entwicklung",
-			"Etabliere einen sicheren SDLC mit Threat-Modeling, Code-Reviews, SAST/DAST und Dependency-Scanning. Nachweis: Entwicklungsrichtlinie, CI-Pipeline mit Security-Scanning, Pen-Test-Berichte.",
-			"Konzeption", "automated", 2),
-
-		// ── OPS: Betrieb ──
-		c("BSI-OPS.1.1.2.A1", "Ordnungsgemäße IT-Administration",
-			"Trenne administrative Tätigkeiten von der täglichen Arbeit (separate Admin-Accounts, MFA-Pflicht für privilegierte Zugriffe). Dokumentiere alle Admin-Tätigkeiten. Nachweis: Admin-Account-Liste, MFA-Konfiguration, Audit-Log.",
-			"Betrieb", "automated", 3),
-		c("BSI-OPS.1.1.3.A1", "Patch- und Änderungsmanagement",
-			"Implementiere ein dokumentiertes Patch- und Change-Management. Kritische Sicherheitsupdates innerhalb von 7 Tagen, sonstige innerhalb von 30 Tagen. Nachweis: Patch-Richtlinie, Change-Tickets, Vulnerability-Scans.",
-			"Betrieb", "automated", 3),
-		c("BSI-OPS.1.1.4.A1", "Schutz vor Schadprogrammen",
-			"Setze auf allen Endpunkten und Servern zentral verwaltete Antimalware-Lösungen ein. Signaturen täglich aktualisieren. Nachweis: AV-Konfiguration, Verteil-Logs, Inzident-Statistik.",
-			"Betrieb", "automated", 2),
-		c("BSI-OPS.1.1.5.A1", "Protokollierung",
-			"Protokolliere sicherheitsrelevante Ereignisse zentral (Logins, Admin-Aktionen, Konfigurationsänderungen). Speichere Logs manipulationssicher (WORM oder Hash-Chain). Aufbewahrung mind. 1 Jahr. Nachweis: SIEM-Konfiguration, Logging-Konzept, Log-Stichproben.",
-			"Betrieb", "automated", 3),
-
-		// ── DER: Detektion und Reaktion ──
-		c("BSI-DER.1.A1", "Detektion sicherheitsrelevanter Ereignisse",
-			"Implementiere ein Verfahren zur Erkennung von Sicherheitsvorfällen (SIEM-Korrelationen, IDS/IPS, Anomalie-Erkennung). Dokumentiere die Schwellwerte und Alarme. Nachweis: SIEM-Use-Cases, IDS-Rulebase.",
-			"Detektion", "automated", 3),
-		c("BSI-DER.2.1.A1", "Behandlung von Sicherheitsvorfällen",
-			"Etabliere einen Incident-Response-Prozess mit Eskalationsmatrix, Kommunikationsplan und Meldungspflichten (BSI / Datenschutzaufsicht binnen 72h). Trainiere ihn jährlich. Nachweis: IR-Playbook, Tabletop-Exercise-Protokolle, Meldungs-Templates.",
-			"Reaktion", "manual", 3),
-		c("BSI-DER.2.2.A1", "Vorsorge für IT-Forensik",
-			"Bereite die Beweissicherung im Vorfeld vor (Forensik-Toolkits, Snapshot-Verfahren, Chain-of-Custody). Schule mindestens eine Person in der Beweissicherung. Nachweis: Forensik-Prozessdokumentation, Toolkit-Inventar.",
-			"Reaktion", "manual", 2),
-
-		// ── APP: Anwendungen ──
-		c("BSI-APP.1.1.A1", "Sichere Office-Konfiguration",
-			"Härtet Office-Anwendungen (Makros standardmäßig deaktiviert, Block bei externen Quellen, geschützte Ansicht). Nachweis: GPO-Konfiguration, MDM-Profil, Audit-Stichprobe.",
-			"Anwendungen", "automated", 2),
-		c("BSI-APP.4.4.A1", "Härtung von Active Directory / Identity Provider",
-			"Härtet das zentrale IdP (Active Directory, Casdoor, Keycloak): privilegierte Konten mit MFA, Tier-Modell, regelmäßige Anti-Kerberos-Roasting-Audits. Nachweis: Tier-Konzept, Audit-Berichte, BloodHound-Reports.",
-			"Anwendungen", "automated", 3),
-		c("BSI-APP.5.3.A1", "Schutz von E-Mail-Kommunikation",
-			"Implementiere SPF, DKIM, DMARC für eigene Domains. Schule Mitarbeitende in Erkennung von Phishing (verknüpft mit Vakt-Aware). Nachweis: DNS-Konfiguration, Phishing-Übungs-Reports.",
-			"Anwendungen", "automated", 2),
-
-		// ── SYS: IT-Systeme ──
-		c("BSI-SYS.1.1.A1", "Allgemeine Server-Härtung",
-			"Härte Server gem. CIS-Benchmarks oder BSI-Empfehlungen (deaktiviere Standarddienste, prüfe Patches, beschränke Login-Wege). Nachweis: Hardening-Guide, Compliance-Scans (CIS/Lynis).",
-			"IT-Systeme", "automated", 2),
-		c("BSI-SYS.1.2.A1", "Windows Server",
-			"Setze unterstützte Windows-Server-Versionen ein, deaktiviere SMBv1, aktiviere Credential Guard und LSA Protection. Nachweis: Versions-Inventar, GPO-Konfiguration, BSI-Härtungsbericht.",
-			"IT-Systeme", "automated", 2),
-		c("BSI-SYS.1.3.A1", "Linux-Server",
-			"Härte Linux-Server (SELinux/AppArmor enforced, SSH key-only, fail2ban, Login-Banner). Patche kritische Kernel-CVEs innerhalb 7 Tagen. Nachweis: Konfigurationsdateien, Patch-Reports.",
-			"IT-Systeme", "automated", 2),
-		c("BSI-SYS.2.2.3.A1", "Windows-Clients",
-			"Aktiviere Windows-Defender, BitLocker für mobile Geräte, Application-Allowlisting. Setze Standard-User ohne lokale Admin-Rechte ein. Nachweis: GPO-Konfiguration, Compliance-Scan.",
-			"IT-Systeme", "automated", 2),
-
-		// ── IND: Industrielle IT (OT) ──
-		c("BSI-IND.1.A1", "Schutz von Prozessleittechnik",
-			"Trenne OT-Netze strikt von IT-Netzen (DMZ, unidirektionale Gateways wo möglich). Inventarisiere alle OT-Komponenten. Nachweis: Netz-Diagramm, OT-Asset-Inventar, Penetrationstests.",
-			"Industrielle IT", "manual", 2),
-
-		// ── NET: Netze und Kommunikation ──
-		c("BSI-NET.1.1.A1", "Netzarchitektur und -design",
-			"Erstelle eine dokumentierte Netzarchitektur mit Zonenmodell (DMZ, Internes Netz, Management-Netz). Beachte das Prinzip der minimalen Sichtbarkeit. Nachweis: Architektur-Diagramm, Firewall-Regelwerk.",
-			"Netze", "manual", 3),
-		c("BSI-NET.1.2.A1", "Netzmanagement",
-			"Verwalte alle Netzkomponenten zentral aus einem dedizierten Management-Netz. SNMPv3, kein Telnet, keine Defaultpasswörter. Nachweis: Konfigurations-Backup, Management-Netz-Diagramm.",
-			"Netze", "automated", 2),
-		c("BSI-NET.3.1.A1", "Router und Switches",
-			"Härte Router und Switches: Default-Passwörter ändern, SSH/HTTPS-only, ACLs gegen Spoofing, BPDU-Guard, Port-Security. Nachweis: Konfigurations-Auditberichte.",
-			"Netze", "automated", 2),
-		c("BSI-NET.3.2.A1", "Firewall",
-			"Betreibe eine zentrale Firewall mit Default-Deny. Regelwerk halbjährlich überprüfen, Änderungen via Change-Management. Nachweis: Regelwerk-Export, Change-Log, Review-Protokoll.",
-			"Netze", "automated", 3),
-
-		// ── INF: Infrastruktur ──
-		c("BSI-INF.1.A1", "Allgemeines Gebäude",
-			"Sichere Zutritt zu Gebäuden mit Sensitivität durch Zutrittskontrollen (Schlüsselsystem, Karten, Logs). Pflege ein Zutrittsregister. Nachweis: Zutrittskonzept, Logs, Schlüsselverwaltung.",
-			"Infrastruktur", "manual", 2),
-		c("BSI-INF.2.A1", "Rechenzentrum",
-			"Stelle physische Sicherheit des Rechenzentrums sicher (Zutrittskontrolle, Klima, Brandschutz, USV, Einbruchmeldeanlage). Bei Cloud: Provider-Zertifikate prüfen (ISO 27001, BSI C5). Nachweis: RZ-Sicherheitskonzept oder Cloud-Provider-Audit-Report.",
-			"Infrastruktur", "manual", 3),
-		c("BSI-INF.10.A1", "Besprechungs-, Veranstaltungs- und Schulungsräume",
-			"Definiere Schutzanforderungen für Besprechungsräume (kein WLAN-Stick, verdeckte Whiteboard-Inhalte, Sperrbildschirm bei Verlassen). Nachweis: Hausordnung, Stichproben-Audit.",
-			"Infrastruktur", "manual", 1),
-
-		// ── Erweiterung ISMS: weitere A-Anforderungen ──
-		c("BSI-ISMS.1.A2", "Beauftragung eines IS-Beauftragten",
-			"Beauftrage einen Informationssicherheitsbeauftragten (ISB) schriftlich, stelle ausreichende Ressourcen bereit und positioniere ihn hierarchisch angemessen. Nachweis: Beauftragungsschreiben, Organigramm, Stellenbeschreibung.",
-			"Sicherheitsmanagement", "manual", 3),
-		c("BSI-ISMS.1.A4", "Ressourcen für Informationssicherheit",
-			"Stelle sicher, dass ausreichende personelle, finanzielle und infrastrukturelle Ressourcen für den Betrieb des ISMS bereitgestellt werden. Nachweis: Ressourcenplanung, Budgetnachweis, ISB-Stunden.",
-			"Sicherheitsmanagement", "manual", 2),
-		c("BSI-ISMS.1.A5", "IS-Leitlinie und Ziele kommunizieren",
-			"Kommuniziere die IS-Leitlinie und die konkreten Sicherheitsziele aktiv an alle Mitarbeitenden (z.B. Intranet, Onboarding, Schulungen). Nachweis: Kommunikationsnachweise, Onboarding-Unterlagen.",
-			"Sicherheitsmanagement", "manual", 2),
-		c("BSI-ISMS.1.A10", "Überprüfung und Steuerung des ISMS",
-			"Führe regelmäßige interne IS-Audits durch und steuere das ISMS durch KPIs und Kennzahlen. Berichte an die Leitung. Nachweis: Auditplan, Auditberichte, KPI-Dashboard.",
-			"Sicherheitsmanagement", "manual", 2),
-
-		// ── ORP: Erweiterung ──
-		c("BSI-ORP.2.A3", "Einweisung neuer Mitarbeitender",
-			"Weise neue Mitarbeitende beim Onboarding auf IS-Regeln, Ansprechpartner und ihre Pflichten hin. Nachweis: Onboarding-Checkliste mit IS-Einweisung, Teilnahmebestätigung.",
-			"Personal", "manual", 2),
-		c("BSI-ORP.2.A4", "Regelung für Telearbeit und mobiles Arbeiten",
-			"Lege verbindliche Regeln für Heimarbeit und mobiles Arbeiten fest (VPN-Pflicht, Sichtschutz, Speicherung auf freigegebenen Systemen). Nachweis: Telearbeitsrichtlinie, MDM-Konfiguration.",
-			"Personal", "manual", 2),
-
-		// ── CON: Erweiterung ──
-		c("BSI-CON.7.A1", "Regelung zur Nutzung mobiler Datenträger",
-			"Definiere und kommuniziere Regeln für den Einsatz mobiler Datenträger (USB-Sticks, externe Festplatten). Lege fest, welche Geräte erlaubt sind und wie sie verschlüsselt werden müssen. Nachweis: Richtlinie, technische Durchsetzung (Device-Control), Stichproben.",
-			"Konzeption", "automated", 2),
-		c("BSI-CON.9.A1", "Regelungen zu Weitergabe und Veröffentlichung von Informationen",
-			"Lege fest, welche Informationen an wen und über welche Kanäle weitergegeben werden dürfen. Stelle sicher, dass Klassifizierungsregeln eingehalten werden. Nachweis: Informationsklassifizierungsrichtlinie, Schulungsnachweise.",
-			"Konzeption", "manual", 2),
-		c("BSI-CON.10.A1", "Entwicklung und Beschaffung — Sicherheitsanforderungen",
-			"Definiere IS-Anforderungen vor der Entwicklung oder Beschaffung neuer IT-Systeme und Software (Security-by-Design, Threat Modeling). Nachweis: Anforderungsdokument, Beschaffungs-Checkliste mit IS-Kriterien.",
-			"Konzeption", "manual", 2),
-
-		// ── OPS: Erweiterung ──
-		c("BSI-OPS.1.2.5.A1", "Planung und Konzeption der Fernwartung",
-			"Lege fest, welche Systeme wie und von wem remote gewartet werden dürfen. Erzwinge MFA, verschlüsselte Verbindungen und vollständiges Logging aller Fernwartungssitzungen. Nachweis: Fernwartungskonzept, VPN/PAM-Konfiguration, Sitzungsprotokolle.",
-			"Betrieb", "automated", 3),
-		c("BSI-OPS.2.2.A1", "Sorgfaltspflichten bei Cloud-Nutzung",
-			"Prüfe Cloud-Anbieter auf IS-Konformität (ISO 27001, BSI C5, SOC 2) vor Vertragsabschluss. Regele Datenstandort, AVV, Auditrechte und Portabilität. Nachweis: Anbieter-Prüfbericht, AVV, Cloud-Nutzungskonzept.",
-			"Betrieb", "third_party", 3),
-
-		// ── APP: Erweiterung ──
-		c("BSI-APP.2.1.A1", "Planung des Verzeichnisdienstes",
-			"Plane und betreibe Verzeichnisdienste (Active Directory, LDAP, Entra ID) sicher: Tier-Modell, minimale Admin-Rechte, regelmäßige Bereinigung verwaister Konten. Nachweis: AD-Konzept, Tier-Modell-Dokumentation, Auditberichte.",
-			"Anwendungen", "automated", 3),
-		c("BSI-APP.3.1.A1", "Authentifizierung bei Web-Anwendungen",
-			"Implementiere sichere Authentifizierung in Web-Anwendungen: starke Passwörter, MFA, Session-Management (kurze Timeouts, Secure/HttpOnly-Cookies, CSRF-Schutz). Nachweis: OWASP-Konformitätsprüfung, Pentest-Bericht.",
-			"Anwendungen", "automated", 3),
-		c("BSI-APP.3.2.A1", "Absicherung von Webservern",
-			"Härte Webserver: TLS 1.2+, keine veralteten Cipher-Suites, Security-Header (HSTS, CSP, X-Frame-Options), automatische Zertifikatserneuerung. Nachweis: SSL-Labs-Scan, Security-Header-Test, Konfigurationsdokumentation.",
-			"Anwendungen", "automated", 2),
-
-		// ── SYS: Erweiterung ──
-		c("BSI-SYS.1.5.A1", "Planung von Virtualisierung",
-			"Plane und betreibe Virtualisierungsinfrastruktur sicher: Hypervisor-Härtung, VM-Isolation, separate Verwaltungsnetze. Patchzyklus für Hypervisoren einhalten. Nachweis: Virtualisierungskonzept, Hypervisor-Konfiguration, Patch-Protokoll.",
-			"IT-Systeme", "automated", 2),
-		c("BSI-SYS.3.2.A1", "Anforderungen an Mobile Device Management",
-			"Verwalte alle mobilen Endgeräte (Smartphones, Tablets, Laptops) über eine zentrale MDM-Lösung: Geräteverschlüsselung, Remote-Wipe, PIN-Pflicht, App-Whitelist. Nachweis: MDM-Konfiguration, Geräte-Compliance-Bericht.",
-			"IT-Systeme", "automated", 3),
-
-		// ── DER: Erweiterung ──
-		c("BSI-DER.4.A1", "Notfallmanagementplan",
-			"Erstelle einen Notfallmanagementplan (BCM-Plan) mit klar definierten Rollen, Reaktionszeiten (RTO, RPO) und Eskalationswegen. Teste ihn mindestens jährlich. Nachweis: BCM-Plan-Dokument, Übungsprotokolle.",
-			"Reaktion", "manual", 3),
-
-		// ── NET: Erweiterung ──
-		c("BSI-NET.4.1.A1", "Absicherung von Sprach- und Datenkommunikation",
-			"Schütze Telefon- und Videokonferenzsysteme vor Abhören und Manipulation: verschlüsselte Übertragung (SRTP, ZRTP), Authentifizierung, Patch-Management für Kommunikationssysteme. Nachweis: Systemkonfiguration, Protokoll-Analyse.",
-			"Netze", "automated", 2),
-
-		// ── APP: Anwendungen (Kompendium 2023) ────────────────────────────
-		c("BSI-OPS.1.1.6.A1", "Software-Freigabe und Integrität",
-			"Stelle sicher, dass Software nur aus vertrauenswürdigen Quellen bezogen und die Integrität vor der Installation geprüft wird. Verwalte eine Whitelist erlaubter Anwendungen. Nachweis: Software-Register, Installationsrichtlinie, Signatürprüfung.",
-			"Anwendungen", "manual", 2),
-		c("BSI-APP.1.2.A1", "Browser-Härtung",
-			"Konfiguriere Webbrowser sicher: deaktiviere unnötige Plugins, aktiviere Safe Browsing, erzwinge HTTPS. Nachweis: Browser-Konfiguration, Gruppenrichtlinien-Dokumentation.",
-			"Anwendungen", "automated", 2),
-		c("BSI-APP.1.4.A1", "Anforderungen an mobile Anwendungen",
-			"Definiere Sicherheitsanforderungen für mobile Apps: sichere Datenspeicherung, verschlüsselte Kommunikation, keine unnötigen Berechtigungen. Nachweis: Anforderungskatalog, App-Sicherheitstest-Bericht.",
-			"Anwendungen", "manual", 2),
-		c("BSI-APP.2.3.A1", "Sicherer Betrieb von Verzeichnisdiensten",
-			"Betreibe Active Directory / LDAP nach BSI-Vorgaben: privilegierte Konten einschränken, Tiered-Administration-Modell, regelmäßige Audits der Gruppenrichtlinien. Nachweis: AD-Auditbericht, Konfigurationsdokumentation.",
-			"Anwendungen", "manual", 3),
-		c("BSI-APP.4.4.A2", "Kubernetes-Absicherung",
-			"Sichere Kubernetes-Cluster ab: RBAC, Network Policies, Pod Security Admission, Secrets-Verschlüsselung, Image-Signaturen. Nachweis: Konfiguration, Penetrationstest-Bericht, CIS-Benchmark-Scan.",
-			"Anwendungen", "automated", 3),
-		c("BSI-APP.5.1.A1", "Sichere Konfiguration von Groupware",
-			"Konfiguriere E-Mail- und Collaboration-Systeme (Exchange, Teams, Google Workspace) sicher: SPF/DKIM/DMARC, verschlüsselte Kommunikation, Administrationskontrollen. Nachweis: Konfigurationsnachweis, E-Mail-Header-Analyse.",
-			"Anwendungen", "automated", 2),
-		c("BSI-NET.4.5.A1", "Sicherer Einsatz von Videokonferenzsystemen",
-			"Sichere Videokonferenz-Tools ab: Ende-zu-Ende-Verschlüsselung, Passwortschutz für Meetings, Lobby-Funktion, Aufzeichnungsberechtigungen. Nachweis: Konfigurationsrichtlinie, Schulungsnachweis.",
-			"Anwendungen", "manual", 1),
-
-		// ── SYS: Erweiterung IT-Systeme ────────────────────────────────────
-		c("BSI-SYS.1.6.A1", "Container-Absicherung",
-			"Sichere Container-Deployments ab: minimale Base-Images, rootless Betrieb, Read-only Filesystems, regelmäßige Image-Scans auf Schwachstellen. Nachweis: Container-Sicherheitsrichtlinie, Scan-Berichte (Trivy/Grype), CI/CD-Integration.",
-			"IT-Systeme", "automated", 3),
-		c("BSI-SYS.2.1.A1", "Schutz von Desktop-Systemen",
-			"Härte Client-Systeme ab: Full-Disk-Encryption, EDR-Lösung, automatische Sicherheitsupdates, lokale Firewall. Nachweis: Endpoint-Management-Konfiguration, Compliance-Report.",
-			"IT-Systeme", "automated", 2),
-		c("BSI-SYS.3.1.A1", "Regelungen für mobile Endgeräte",
-			"Definiere und erzwinge MDM-Richtlinien für alle mobilen Geräte: Bildschirmsperre, Fernlöschung, VPN-Pflicht in öffentlichen Netzen, App-Whitelist. Nachweis: MDM-Konfiguration, Compliance-Dashboard.",
-			"IT-Systeme", "automated", 2),
-		c("BSI-SYS.4.1.A1", "Drucker und Multifunktionsgeräte",
-			"Schütze Drucker und MFPs: Standardpasswörter ändern, Netzwerksegmentierung, Festplattenverschlüsselung, Audit-Logging aktivieren. Nachweis: Gerätekonfiguration, Netzwerksegmentierungsnachweis.",
-			"IT-Systeme", "manual", 1),
-		c("BSI-SYS.4.5.A1", "Sicherheit von Wechseldatenträgern",
-			"Manage Wechseldatenträger sicher: USB-Richtlinie, verschlüsselte Träger, Malware-Scan vor Verwendung, Protokollierung des Einsatzes. Nachweis: USB-Richtlinie, DLP-Konfiguration, Scan-Protokolle.",
-			"IT-Systeme", "manual", 2),
-
-		// ── DER: Erweiterung Detektion und Reaktion ───────────────────────
-		c("BSI-DER.1.A2", "SIEM und zentrale Log-Aggregation",
-			"Betreibe ein Intrusion Detection System (IDS/SIEM): zentrale Log-Aggregation, regelbasierte Alarmierung, Korrelation sicherheitsrelevanter Ereignisse. Nachweis: SIEM-Konfiguration, Alert-Regeln, Incident-Eskalationsprozess.",
-			"Detektion und Reaktion", "automated", 3),
-		c("BSI-DER.3.2.A1", "Durchführung von Penetrationstests",
-			"Führe jährlich oder nach wesentlichen Systemänderungen Penetrationstests durch, vorzugsweise durch externe akkreditierte Tester. Dokumentiere Ergebnisse und behebe Findings fristgerecht. Nachweis: Pentest-Bericht, Maßnahmenplan, Nachtest-Ergebnis.",
-			"Detektion und Reaktion", "manual", 3),
-
-		// ── OPS: Erweiterung Betrieb ───────────────────────────────────────
-		c("BSI-OPS.1.1.4.A2", "Zentrale Anti-Malware-Verwaltung",
-			"Betreibe Anti-Malware-Lösungen auf allen Systemen: regelmäßige Signatur-Updates, verhaltensbasierte Erkennung, zentrale Verwaltungskonsole. Nachweis: AV-Management-Dashboard, Update-Protokolle, Scan-Berichte.",
-			"Betrieb", "automated", 2),
-		c("BSI-OPS.1.1.7.A1", "Systemverwaltung",
-			"Verwalte alle IT-Systeme zentral: Configuration Management Database (CMDB), automatisiertes Konfigurationsmanagement (Ansible/Puppet/Chef), Change-Management-Prozess. Nachweis: CMDB-Export, Konfigurations-Baseline, Change-Log.",
-			"Betrieb", "automated", 2),
-		c("BSI-OPS.2.4.A1", "Regelungen zur Cloud-Nutzung",
-			"Definiere verbindliche Richtlinien für die Cloud-Nutzung: DSGVO-konforme Anbieterauswahl, Datenverschlüsselung, Zugriffskontrolle, Exit-Strategie. Nachweis: Cloud-Richtlinie, Anbieter-Verträge (AVV), Datenschutz-Dokumentation.",
-			"Betrieb", "manual", 3),
-
-		// ── CON: Erweiterung Konzepte ──────────────────────────────────────
-		// BSI-CON.2.A1 (Datenschutz) is defined in the baseline section above.
-		c("BSI-CON.4.A1", "Auswahl und Einsatz von Standardsoftware",
-			"Definiere Kriterien für die Auswahl von Standardsoftware: Sicherheitszertifizierung, Support-Zeitraum, Lizenzmodell, DSGVO-Konformität. Nachweis: Auswahlkriterien-Dokumentation, Beschaffungsprotokoll.",
-			"Konzepte", "manual", 1),
-		c("BSI-CON.5.A1", "Anforderungen an Entwicklung und Beschaffung",
-			"Stelle sicher, dass bei der Entwicklung und Beschaffung von IT-Systemen Sicherheitsanforderungen frühzeitig berücksichtigt werden (Security by Design). Nachweis: Anforderungskatalog, Sicherheitskonzept.",
-			"Konzepte", "manual", 2),
-		c("BSI-CON.6.A1", "Löschen und Vernichten",
-			"Definiere und befolge Verfahren für das sichere Löschen und Vernichten von Datenträgern und Dokumenten: zertifizierte Vernichtung (DIN 66399), sichere Löschverfahren (DoD 5220.22-M). Nachweis: Vernichtungsnachweis, Richtlinie, Zertifikate.",
-			"Konzepte", "manual", 2),
-
-		// ── ORP: Erweiterung Organisation ─────────────────────────────────
-		c("BSI-ORP.5.A1", "Compliance Management",
-			"Stelle die Einhaltung aller relevanten rechtlichen, regulatorischen und vertraglichen Anforderungen sicher. Führe ein Compliance-Register und führe regelmäßige Compliance-Reviews durch. Nachweis: Compliance-Register, Review-Protokolle, Maßnahmenplan.",
-			"Organisation", "manual", 2),
-
-		// ── BCM: Business Continuity Management ───────────────────────────
-		c("BSI-BCM.1.A1", "BCM-Richtlinie und Geltungsbereich",
-			"Erstelle eine BCM-Richtlinie, die Ziele, Umfang, Verantwortlichkeiten und Anforderungen für das Business Continuity Management definiert. Nachweis: BCM-Richtlinie, Genehmigungsprotokoll, Versionierung.",
-			"Business Continuity", "manual", 3),
-		c("BSI-BCM.1.A2", "Business-Impact-Analyse (BIA)",
-			"Führe eine Business-Impact-Analyse durch: identifiziere kritische Prozesse, bestimme RTO/RPO-Anforderungen, bewerte finanzielle und operationelle Auswirkungen von Ausfällen. Nachweis: BIA-Bericht, RTO/RPO-Matrix.",
-			"Business Continuity", "manual", 3),
-		c("BSI-BCM.2.A1", "BCM-Übungen und Tests",
-			"Teste Notfallpläne regelmäßig durch Tischübungen (Tabletop), Teilübungen und vollständige Failover-Tests. Dokumentiere Ergebnisse und implementiere Verbesserungen. Nachweis: Übungsprotokoll, Testbericht, Verbesserungsmaßnahmen.",
-			"Business Continuity", "manual", 3),
-
-		// ── INF: Erweiterung Infrastruktur ─────────────────────────────────
-		c("BSI-INF.3.A1", "Elektrische Verkabelung",
-			"Schütze elektrische Infrastruktur vor Ausfällen: redundante Versorgung (USV, Notstromaggregat), Überspannungsschutz, regelmäßige Wartung. Nachweis: Wartungsprotokoll, USV-Konfiguration, Prüfbericht.",
-			"Infrastruktur", "manual", 2),
-		c("BSI-INF.5.A1", "Schutz von Serverräumen",
-			"Schütze Serverräume mit physischen Zutrittssicherungen: Zutrittskontrollsystem, Videoüberwachung, Brandmeldeanlage, Klimatisierung mit Überwachung. Nachweis: Zutrittskontrollprotokoll, Wartungsnachweis, Alarmierungstest.",
-			"Infrastruktur", "manual", 2),
-		c("BSI-INF.7.A1", "Regelungen für Büroräume",
-			"Implementiere Büroraumsicherheit: Clean-Desk-Policy, Sicherung unbeaufsichtigter Rechner, Sichtschutzfolien an exponierten Arbeitsplätzen. Nachweis: Clean-Desk-Richtlinie, Begehungsprotokoll.",
-			"Infrastruktur", "manual", 1),
-		c("BSI-INF.8.A1", "Sichere Nutzung von häuslichen Arbeitsplätzen",
-			"Definiere Sicherheitsanforderungen für Heimarbeitsplätze: gesichertes WLAN, VPN-Pflicht, Bildschirmsperre, keine unverschlüsselten Datenträger. Nachweis: Richtlinie Heimarbeit, VPN-Nutzungsnachweis.",
-			"Infrastruktur", "manual", 2),
 	}
 }
 
@@ -2376,6 +2055,43 @@ func iso27017Controls(frameworkID, orgID string) []Control {
 		c("27017-CLD.12.4.5", "Monitoring und Alerting für Cloud-Dienste",
 			"Implementiere umfassendes Cloud-Monitoring: Resource-Health, Security-Events, Kostenanomalien, Performance-Schwellwerte mit automatischer Alarmierung. Nachweis: Monitoring-Konfiguration, Alert-Regeln, On-Call-Prozess.",
 			"Cloud-Governance", "automated", 2),
+		// ── Ergänzende Cloud-Controls (ISO 27017 Annex A) ────────────────────
+		c("27017-CLD.8.1.3", "Handhabung von Cloud-Assets und Speichermedien",
+			"Definiere Verfahren für den Umgang mit Cloud-Speichermedien und virtuellen Datenträgern: Klassifizierung, Backup, Migration und sichere Löschung. Nachweis: Cloud-Storage-Richtlinie, Datenklassifizierungskonzept.",
+			"Asset Management", "manual", 2),
+		c("27017-6.1.1", "Informationssicherheitsrollen in der Cloud-Organisation",
+			"Weise dedizierte Rollen für Cloud-Sicherheit zu (Cloud Security Engineer, Cloud Compliance Owner). Definiere Eskalationspfade für Cloud-Sicherheitsvorfälle. Nachweis: Organigramm, Stellenbeschreibungen, RACI-Matrix.",
+			"Governance", "document", 2),
+		c("27017-9.2.1", "Benutzerregistrierung und -abmeldung in Cloud-Diensten",
+			"Führe einen formalisierten Prozess für die Zuweisung und den Entzug von Zugängen zu Cloud-Diensten. Automatisiere Provisioning/Deprovisioning via IaC oder IAM-Workflows. Nachweis: Onboarding/Offboarding-Checkliste, IAM-Auditlog.",
+			"Zugriffskontrolle", "automated", 3),
+		c("27017-9.2.3", "Verwaltung privilegierter Zugriffsrechte in Cloud-Umgebungen",
+			"Verwalte privilegierte Cloud-Accounts (Cloud Root, Break-Glass-Accounts) nach dem Least-Privilege-Prinzip. Nutze JIT-Zugriff (Just-in-Time) und dokumentiere alle privilegierten Aktionen. Nachweis: PAM-Konfiguration, Break-Glass-Protokoll, JIT-Zugriffsregeln.",
+			"Zugriffskontrolle", "automated", 3),
+		c("27017-9.3.1", "Verwendung von geheimen Authentifizierungsinformationen",
+			"Verwalte Cloud-Credentials (API-Keys, Secrets, Zertifikate) zentral via Secrets-Manager. Rotiere Secrets automatisch, verhindere Hardcoding in Code-Repositories. Nachweis: Secrets-Manager-Konfiguration, Git-Scan-Ergebnisse, Rotationsprotokoll.",
+			"Zugriffskontrolle", "automated", 3),
+		c("27017-12.3.1", "Backup-Strategie für Cloud-Daten",
+			"Definiere und implementiere eine Cloud-spezifische Backup-Strategie (3-2-1-Cloud-Regel: 3 Kopien, 2 Standorte, 1 außerhalb des primären Cloud-Anbieters). Nachweis: Backup-Konfiguration, Cross-Region-Replikationsnachweis, Test-Restore-Protokoll.",
+			"Betriebssicherheit", "automated", 3),
+		c("27017-12.5.1", "Kontrolle von Software-Installationen in Cloud-Umgebungen",
+			"Kontrolliere und genehmige alle Software-Installationen in Cloud-Instanzen: Whitelist-basierter Ansatz, Signatürprüfung, Infrastructure-as-Code für reproduzierbare Deployments. Nachweis: Deployment-Pipeline-Konfiguration, Image-Signaturrichtlinie.",
+			"Betriebssicherheit", "automated", 2),
+		c("27017-14.1.1", "Sicherheitsanforderungen in Cloud-Projekten",
+			"Integriere Cloud-Security-Anforderungen in alle Projektphasen (Security by Design): Threat Modeling für Cloud-Architekturen, Security Reviews bei Infrastrukturänderungen. Nachweis: Cloud-Security-Checkliste, Architektur-Review-Protokolle.",
+			"Systementwicklung", "manual", 2),
+		c("27017-14.2.5", "Sichere Entwicklungsprinzipien für Cloud-Anwendungen",
+			"Wende sichere Entwicklungsprinzipien für Cloud-native Anwendungen an: Container-Hardening, Secrets-Management in CI/CD, IaC-Security-Scanning (Checkov, tfsec). Nachweis: Security-Scan-Ergebnisse, Coding-Guidelines, Pipeline-Konfiguration.",
+			"Systementwicklung", "automated", 2),
+		c("27017-13.2.1", "Richtlinie und Verfahren für Informationsübertragung",
+			"Definiere Richtlinien für sichere Dateiübertragungen zwischen Cloud-Umgebungen und On-Premise-Systemen (SFTP, HTTPS, VPN). Verbiete unverschlüsselte Protokolle. Nachweis: Übertragungsrichtlinie, DLP-Konfiguration, Proxy-Einstellungen.",
+			"Kommunikationssicherheit", "manual", 2),
+		c("27017-16.1.1", "Verantwortlichkeiten und Verfahren bei Cloud-Sicherheitsvorfällen",
+			"Definiere Cloud-spezifische Incident-Response-Verfahren: Kontaktaufnahme mit CSP-Support, CSPM-Alert-Eskalation, Forensik in Cloud-Umgebungen (Read-Only-Snapshots). Nachweis: Cloud-Incident-Response-Plan, CSP-Support-Kontakte, Eskalationsmatrix.",
+			"Incident Management", "manual", 3),
+		c("27017-18.1.3", "Schutz von Aufzeichnungen in Cloud-Umgebungen",
+			"Stelle sicher, dass Compliance-relevante Logs und Aufzeichnungen in der Cloud unveränderlich gespeichert werden (WORM-Storage, Log-Integrität via Hashing). Nachweis: Unveränderlichkeits-Konfiguration, Log-Integritätsprüfung, Retentionsrichtlinie.",
+			"Compliance", "automated", 2),
 	}
 }
 

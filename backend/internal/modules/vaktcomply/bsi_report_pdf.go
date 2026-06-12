@@ -176,7 +176,7 @@ func (r *BSIReportRenderer) RenderA5(ctx context.Context) ([]byte, error) {
 		       COALESCE(cr.umsetzungsdatum::text,'')
 		FROM ck_bsi_check_results cr
 		JOIN ck_bsi_target_objects t ON t.id = cr.target_object_id
-		LEFT JOIN ck_controls c ON c.control_id = cr.anforderung_id
+		LEFT JOIN ck_controls c ON c.control_id = cr.anforderung_id AND c.org_id = cr.org_id
 		WHERE cr.org_id=$1
 		ORDER BY t.name, cr.baustein_id, cr.anforderung_id`, r.orgID)
 	if err != nil {

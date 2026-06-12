@@ -95,9 +95,10 @@ func Register(g *echo.Group, h *Handler) {
 }
 
 // proFeatures is the full set of features included in every issued Pro key.
+// It mirrors the public pricing page (sec.norvikops.de): TISAX, DORA, ISO 42001,
+// custom frameworks (multi_framework), SCIM, and SIEM export are Enterprise-only
+// and are issued individually via the license generator, not through Polar.
 var proFeatures = []string{
-	features.FeatureTISAX,
-	features.FeatureDORA,
 	features.FeatureEUAIAct,
 	features.FeatureCRA,
 	features.FeatureAIAdvisor,
@@ -106,11 +107,14 @@ var proFeatures = []string{
 	features.FeatureAPI,
 	features.FeatureSecReflex,
 	features.FeatureSecPulse,
+	features.FeatureSecVault,
+	features.FeatureSecPrivacy,
+	features.FeatureBSIGrundschutz,
 	features.FeatureGranularPermissions,
 	features.FeatureSupplierPortal,
 	features.FeatureNIS2Reporting,
 	features.FeatureSAMLAuth,
-	features.FeatureMultiFramework,
+	features.FeatureAgentWriteTools,
 }
 
 // polarSubscription is the subscription object in Polar webhook payloads.

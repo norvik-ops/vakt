@@ -15,10 +15,9 @@ var BlockedRoutes = []BlockedRoute{
 	{Method: "PUT", Prefix: "/api/v1/admin/users"},
 	{Method: "POST", Prefix: "/api/v1/admin/orgs"},
 	{Method: "DELETE", Prefix: "/api/v1/admin/orgs"},
-	// Password & 2FA
+	// Password & 2FA — real routes are under /auth/2fa/ (setup, confirm, disable, verify…)
 	{Method: "PUT", Prefix: "/api/v1/auth/password"},
-	{Method: "POST", Prefix: "/api/v1/auth/totp"},
-	{Method: "DELETE", Prefix: "/api/v1/auth/totp"},
+	{Method: "POST", Prefix: "/api/v1/auth/2fa/"},
 	// Infrastructure settings
 	{Method: "PUT", Prefix: "/api/v1/settings/smtp"},
 	{Method: "POST", Prefix: "/api/v1/settings/smtp"},
@@ -26,14 +25,18 @@ var BlockedRoutes = []BlockedRoute{
 	{Method: "POST", Prefix: "/api/v1/settings/ldap"},
 	{Method: "PUT", Prefix: "/api/v1/settings/branding"},
 	{Method: "POST", Prefix: "/api/v1/settings/branding"},
-	// Alerting
-	{Method: "PUT", Prefix: "/api/v1/alerting/webhooks"},
-	{Method: "POST", Prefix: "/api/v1/alerting/webhooks"},
-	{Method: "DELETE", Prefix: "/api/v1/alerting/webhooks"},
-	// SecVault — no creating/deleting real secrets
-	{Method: "POST", Prefix: "/api/v1/vaktvault/secrets"},
-	{Method: "DELETE", Prefix: "/api/v1/vaktvault/secrets"},
-	{Method: "PUT", Prefix: "/api/v1/vaktvault/secrets"},
+	// Alerting channels (was incorrectly /alerting/webhooks — route is /alerting/channels)
+	{Method: "PUT", Prefix: "/api/v1/alerting/channels"},
+	{Method: "POST", Prefix: "/api/v1/alerting/channels"},
+	{Method: "DELETE", Prefix: "/api/v1/alerting/channels"},
+	// SecVault — no mutating secrets, projects, or creating share links
+	// Routes live under /vaktvault/projects/… (nested), not /vaktvault/secrets
+	{Method: "POST", Prefix: "/api/v1/vaktvault/projects"},
+	{Method: "DELETE", Prefix: "/api/v1/vaktvault/projects"},
+	{Method: "PUT", Prefix: "/api/v1/vaktvault/projects"},
+	{Method: "POST", Prefix: "/api/v1/vaktvault/git-scans"},
+	{Method: "POST", Prefix: "/api/v1/vaktvault/tokens"},
+	{Method: "DELETE", Prefix: "/api/v1/vaktvault/tokens"},
 	// Retention & score config
 	{Method: "PUT", Prefix: "/api/v1/retention"},
 	{Method: "PUT", Prefix: "/api/v1/vaktcomply/score-config"},

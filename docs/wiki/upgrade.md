@@ -21,7 +21,7 @@ docker compose run --rm migrate
 docker compose up -d
 
 # 5. Verify health
-curl -s http://localhost:8080/api/v1/health
+curl -s http://localhost/health
 # → {"status":"ok"}
 ```
 
@@ -62,7 +62,7 @@ Key env-var changes introduced in 0.5.x (apply if upgrading from < 0.5):
 | `VAKT_OLLAMA_MODEL` | `VAKT_AI_MODEL` | Rename required |
 | — | `VAKT_AI_PROVIDER` | New; default `ollama` |
 | — | `VAKT_CORS_ORIGINS` | New; default `*` |
-| — | `VAKT_METRICS_ENABLED` | New; default `false` |
+| — | `VAKT_METRICS_DISABLED` | Opt-out flag; metrics are on by default (set to `true` to disable) |
 
 ---
 
@@ -95,19 +95,53 @@ docker compose exec postgres pg_dump -U vakt vakt > backup-$(date +%Y%m%d).sql
 
 ---
 
-## Rollback Procedure
+## Rollback Strategy
 
-Rollback is only safe if no `UP` migration was applied. If migrations ran:
+**Rule: the backup taken before the upgrade IS the rollback path.**
 
-1. Restore the database backup taken before the upgrade.
-2. Pull the previous image tag (e.g. `ghcr.io/matharnica/vakt-api:0.5.3`).
-3. Start with the restored DB + old image.
+Running `DOWN` migrations over many versions is not a supported rollback — Down
+migrations over 100+ steps are error-prone and untested. Use the backup instead.
+
+### When to roll back
+
+Roll back if:
+- The health check after `update.sh` fails and the service does not recover
+- A critical regression is discovered within the first hours after upgrade
+
+### How to roll back
 
 ```bash
+# 1. Stop the broken version
 docker compose down
-# Restore backup (see pg_restore or psql)
-VAKT_VERSION=0.5.3 docker compose up -d
+
+# 2. Restore the database backup (use restore.sh or psql manually)
+./scripts/restore.sh <backup-file>
+# or: docker compose exec postgres psql -U vakt vakt < backup-YYYYMMDD.sql
+
+# 3. Start the previous image version
+VAKT_TAG=v0.X.Y docker compose up -d
 ```
+
+Replace `v0.X.Y` with the version that was running before the upgrade.
+The previous version tag is printed by `update.sh` at the start of each run.
+
+### If migrations already ran
+
+If `docker compose run --rm migrate` already completed before the failure:
+
+- The DB schema is ahead of the old image — the old image may refuse to start
+  if it encounters unknown columns it doesn't expect.
+- Restore the DB backup first, then start the old image.
+- The backup-before-migrate step in `update.sh` is mandatory for exactly this reason.
+
+### If update.sh backup step failed
+
+If `update.sh` exited at Step 1 (backup failure), no image was pulled and no
+migration ran — the current version is still running. Fix the backup issue first.
+
+> **Note:** `down` migrations (`docker compose run --rm migrate down N`) are intended only
+> for development environments where schemas are reset frequently. Never use
+> `migrate down` as a production rollback path.
 
 ---
 
@@ -133,6 +167,30 @@ helm upgrade vakt norvik/vakt -f values.yaml \
   --set migrate.runOnUpgrade=true \
   --wait
 ```
+
+---
+
+## Recurring Database Maintenance
+
+### audit_log Partition Maintenance
+
+`audit_log` is a range-partitioned table keyed on `created_at` (migration 151).
+Pre-created yearly partitions exist for 2025 – 2028; rows outside that range
+fall into `audit_log_default`.
+
+**Before 2029-01-01** an operator must create the 2029 partition:
+
+```sql
+CREATE TABLE audit_log_2029 PARTITION OF audit_log
+    FOR VALUES FROM ('2029-01-01') TO ('2030-01-01');
+```
+
+This can be run against a live database without downtime.  Rows in
+`audit_log_default` continue to be served while the partition is being created.
+
+Repeat annually for each subsequent year.  A reminder has been added to
+the [2028 milestone](https://github.com/Matharnica/vakt-app/milestones) —
+create the partition before the Vakt release closest to 2028-12-01.
 
 ---
 

@@ -17,12 +17,30 @@ import (
 
 // ── Target Objects (Strukturanalyse) ──────────────────────────────────────────
 
-// ListBSITargetObjects returns all Zielobjekte for an org.
+const bsiTargetObjectCols = `id, org_id, name, type, description,
+       protection_c, protection_i, protection_a,
+       absicherungsniveau,
+       override_c, override_i, override_a, override_reason, override_effect,
+       created_at, updated_at`
+
+func scanBSITargetObject(row interface {
+	Scan(dest ...any) error
+}) (BSITargetObject, error) {
+	var o BSITargetObject
+	err := row.Scan(
+		&o.ID, &o.OrgID, &o.Name, &o.Type, &o.Description,
+		&o.ProtectionC, &o.ProtectionI, &o.ProtectionA,
+		&o.Absicherungsniveau,
+		&o.OverrideC, &o.OverrideI, &o.OverrideA, &o.OverrideReason, &o.OverrideEffect,
+		&o.CreatedAt, &o.UpdatedAt,
+	)
+	return o, err
+}
+
+// ListBSITargetObjects returns all Zielobjekte for an org, enriched with effective CIA values.
 func (s *Service) ListBSITargetObjects(ctx context.Context, orgID string) ([]BSITargetObject, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT id, org_id, name, type, description,
-		       protection_c, protection_i, protection_a,
-		       absicherungsniveau, created_at, updated_at
+		SELECT `+bsiTargetObjectCols+`
 		FROM ck_bsi_target_objects
 		WHERE org_id = $1
 		ORDER BY name`, orgID)
@@ -33,36 +51,35 @@ func (s *Service) ListBSITargetObjects(ctx context.Context, orgID string) ([]BSI
 
 	var out []BSITargetObject
 	for rows.Next() {
-		var o BSITargetObject
-		if err := rows.Scan(&o.ID, &o.OrgID, &o.Name, &o.Type, &o.Description,
-			&o.ProtectionC, &o.ProtectionI, &o.ProtectionA,
-			&o.Absicherungsniveau, &o.CreatedAt, &o.UpdatedAt); err != nil {
+		o, err := scanBSITargetObject(rows)
+		if err != nil {
 			return nil, fmt.Errorf("scan bsi target object: %w", err)
 		}
 		out = append(out, o)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return s.enrichWithEffective(ctx, orgID, out)
 }
 
 // GetBSITargetObject returns a single Zielobjekt by ID, scoped to org.
 func (s *Service) GetBSITargetObject(ctx context.Context, orgID, id string) (*BSITargetObject, error) {
-	var o BSITargetObject
-	err := s.db.QueryRow(ctx, `
-		SELECT id, org_id, name, type, description,
-		       protection_c, protection_i, protection_a,
-		       absicherungsniveau, created_at, updated_at
+	o, err := scanBSITargetObject(s.db.QueryRow(ctx, `
+		SELECT `+bsiTargetObjectCols+`
 		FROM ck_bsi_target_objects
-		WHERE org_id = $1 AND id = $2`, orgID, id).
-		Scan(&o.ID, &o.OrgID, &o.Name, &o.Type, &o.Description,
-			&o.ProtectionC, &o.ProtectionI, &o.ProtectionA,
-			&o.Absicherungsniveau, &o.CreatedAt, &o.UpdatedAt)
+		WHERE org_id = $1 AND id = $2`, orgID, id))
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("get bsi target object: %w", err)
 	}
-	return &o, nil
+	objs, err := s.enrichWithEffective(ctx, orgID, []BSITargetObject{o})
+	if err != nil {
+		return nil, err
+	}
+	return &objs[0], nil
 }
 
 // CreateBSITargetObject creates a new Zielobjekt.
@@ -71,19 +88,13 @@ func (s *Service) CreateBSITargetObject(ctx context.Context, orgID string, in Cr
 	if niveau == "" {
 		niveau = "standard"
 	}
-	var o BSITargetObject
-	err := s.db.QueryRow(ctx, `
+	o, err := scanBSITargetObject(s.db.QueryRow(ctx, `
 		INSERT INTO ck_bsi_target_objects
 		  (org_id, name, type, description, protection_c, protection_i, protection_a, absicherungsniveau)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-		RETURNING id, org_id, name, type, description,
-		          protection_c, protection_i, protection_a,
-		          absicherungsniveau, created_at, updated_at`,
+		RETURNING `+bsiTargetObjectCols,
 		orgID, in.Name, in.Type, in.Description,
-		in.ProtectionC, in.ProtectionI, in.ProtectionA, niveau).
-		Scan(&o.ID, &o.OrgID, &o.Name, &o.Type, &o.Description,
-			&o.ProtectionC, &o.ProtectionI, &o.ProtectionA,
-			&o.Absicherungsniveau, &o.CreatedAt, &o.UpdatedAt)
+		in.ProtectionC, in.ProtectionI, in.ProtectionA, niveau))
 	if err != nil {
 		return nil, fmt.Errorf("create bsi target object: %w", err)
 	}
@@ -96,28 +107,26 @@ func (s *Service) UpdateBSITargetObject(ctx context.Context, orgID, id string, i
 	if niveau == "" {
 		niveau = "standard"
 	}
-	var o BSITargetObject
-	err := s.db.QueryRow(ctx, `
+	o, err := scanBSITargetObject(s.db.QueryRow(ctx, `
 		UPDATE ck_bsi_target_objects
 		SET name=$3, type=$4, description=$5,
 		    protection_c=$6, protection_i=$7, protection_a=$8,
 		    absicherungsniveau=$9, updated_at=NOW()
 		WHERE org_id=$1 AND id=$2
-		RETURNING id, org_id, name, type, description,
-		          protection_c, protection_i, protection_a,
-		          absicherungsniveau, created_at, updated_at`,
+		RETURNING `+bsiTargetObjectCols,
 		orgID, id, in.Name, in.Type, in.Description,
-		in.ProtectionC, in.ProtectionI, in.ProtectionA, niveau).
-		Scan(&o.ID, &o.OrgID, &o.Name, &o.Type, &o.Description,
-			&o.ProtectionC, &o.ProtectionI, &o.ProtectionA,
-			&o.Absicherungsniveau, &o.CreatedAt, &o.UpdatedAt)
+		in.ProtectionC, in.ProtectionI, in.ProtectionA, niveau))
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("update bsi target object: %w", err)
 	}
-	return &o, nil
+	objs, err := s.enrichWithEffective(ctx, orgID, []BSITargetObject{o})
+	if err != nil {
+		return nil, err
+	}
+	return &objs[0], nil
 }
 
 // DeleteBSITargetObject deletes a Zielobjekt and all associated check results.
@@ -195,18 +204,36 @@ func (s *Service) RemoveBausteinFromTargetObject(ctx context.Context, orgID, tar
 
 // ── IT-Grundschutz-Check ─────────────────────────────────────────────────────
 
-// GetCheckSheet returns all check results for a Zielobjekt, enriched with control titles.
-func (s *Service) GetCheckSheet(ctx context.Context, orgID, targetObjectID string) ([]BSICheckResult, error) {
-	rows, err := s.db.Query(ctx, `
+// checkSheetSQL and gapReportSQL are package-level constants so that unit tests
+// can assert on org_id scoping of the ck_controls JOIN (S78-2 regression guard).
+const checkSheetSQL = `
 		SELECT cr.id, cr.org_id, cr.target_object_id, cr.baustein_id, cr.anforderung_id,
-		       COALESCE(c.title, ''), cr.umsetzungsstatus,
+		       COALESCE(c.title, ''), COALESCE(c.requirement_level, 'basis'),
+		       cr.umsetzungsstatus,
 		       cr.begruendung, cr.verantwortlicher,
 		       cr.umsetzungsdatum::text, cr.notiz,
 		       cr.created_at, cr.updated_at
 		FROM ck_bsi_check_results cr
-		LEFT JOIN ck_controls c ON c.control_id = cr.anforderung_id
+		LEFT JOIN ck_controls c ON c.control_id = cr.anforderung_id AND c.org_id = cr.org_id
 		WHERE cr.org_id=$1 AND cr.target_object_id=$2
-		ORDER BY cr.baustein_id, cr.anforderung_id`, orgID, targetObjectID)
+		ORDER BY cr.baustein_id, cr.anforderung_id`
+
+const gapReportSQL = `
+		SELECT cr.baustein_id, cr.anforderung_id,
+		       COALESCE(c.title, ''),
+		       t.name,
+		       cr.umsetzungsstatus,
+		       cr.verantwortlicher,
+		       COALESCE(cr.umsetzungsdatum::text, '')
+		FROM ck_bsi_check_results cr
+		JOIN ck_bsi_target_objects t ON t.id = cr.target_object_id
+		LEFT JOIN ck_controls c ON c.control_id = cr.anforderung_id AND c.org_id = cr.org_id
+		WHERE cr.org_id=$1 AND cr.umsetzungsstatus IN ('nein','teilweise')
+		ORDER BY cr.baustein_id, cr.anforderung_id, t.name`
+
+// GetCheckSheet returns all check results for a Zielobjekt, enriched with control titles and requirement_level.
+func (s *Service) GetCheckSheet(ctx context.Context, orgID, targetObjectID string) ([]BSICheckResult, error) {
+	rows, err := s.db.Query(ctx, checkSheetSQL, orgID, targetObjectID)
 	if err != nil {
 		return nil, fmt.Errorf("get check sheet: %w", err)
 	}
@@ -218,7 +245,7 @@ func (s *Service) GetCheckSheet(ctx context.Context, orgID, targetObjectID strin
 		var dateStr *string
 		if err := rows.Scan(
 			&r.ID, &r.OrgID, &r.TargetObjectID, &r.BausteinID, &r.AnforderungID,
-			&r.AnforderungTitle, &r.Umsetzungsstatus,
+			&r.AnforderungTitle, &r.RequirementLevel, &r.Umsetzungsstatus,
 			&r.Begruendung, &r.Verantwortlicher,
 			&dateStr, &r.Notiz,
 			&r.CreatedAt, &r.UpdatedAt,
@@ -341,20 +368,8 @@ func (s *Service) GetCheckSummary(ctx context.Context, orgID, targetObjectID str
 		CountTeilweise:     teilweise,
 		CountNein:          nein,
 		CountEntbehrlich:   entbehrlich,
-		UmsetzungsgradPct:  computeUmsetzungsgrad(ja, teilweise, entbehrlich, total),
+		UmsetzungsgradPct:  s.scorer.Score(ja, teilweise, entbehrlich, total),
 	}, nil
-}
-
-// computeUmsetzungsgrad calculates the BSI 200-2 progress percentage.
-// Formula: (ja × 1.0 + teilweise × 0.5) / relevante × 100
-// where relevante = total - entbehrlich
-func computeUmsetzungsgrad(ja, teilweise, entbehrlich, total int) float64 {
-	relevante := total - entbehrlich
-	if relevante <= 0 {
-		return 100.0 // all entbehrlich = fully handled
-	}
-	punkte := float64(ja)*1.0 + float64(teilweise)*0.5
-	return punkte / float64(relevante) * 100.0
 }
 
 // ── S74-2: Grundschutz-Cockpit & GAP-Report ──────────────────────────────────
@@ -371,7 +386,7 @@ func (s *Service) GetBSICockpit(ctx context.Context, orgID string) (BSICockpit, 
 		FROM ck_bsi_check_results WHERE org_id=$1`, orgID).
 		Scan(&totalAll, &jaAll, &teilweiseAll, &entbehrlichAll)
 
-	gesamtPct := computeUmsetzungsgrad(jaAll, teilweiseAll, entbehrlichAll, totalAll)
+	gesamtPct := s.scorer.Score(jaAll, teilweiseAll, entbehrlichAll, totalAll)
 
 	// Heatmap: group by baustein_id × target_object.
 	heatmap, err := s.buildHeatmap(ctx, orgID)
@@ -442,7 +457,7 @@ func (s *Service) buildHeatmap(ctx context.Context, orgID string) ([]HeatmapRow,
 		bausteinMap[bid].Cells = append(bausteinMap[bid].Cells, HeatmapCell{
 			TargetObjectID:   tid,
 			TargetObjectName: tname,
-			FortschrittPct:   computeUmsetzungsgrad(ja, teilweise, entb, total),
+			FortschrittPct:   s.scorer.Score(ja, teilweise, entb, total),
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -498,18 +513,7 @@ func (s *Service) GetBSIGapReport(ctx context.Context, orgID string) (BSIGapRepo
 		FROM ck_bsi_check_results WHERE org_id=$1`, orgID).
 		Scan(&total, &entbehrlich, &ja, &teilweise, &nein)
 
-	rows, err := s.db.Query(ctx, `
-		SELECT cr.baustein_id, cr.anforderung_id,
-		       COALESCE(c.title, ''),
-		       t.name,
-		       cr.umsetzungsstatus,
-		       cr.verantwortlicher,
-		       COALESCE(cr.umsetzungsdatum::text, '')
-		FROM ck_bsi_check_results cr
-		JOIN ck_bsi_target_objects t ON t.id = cr.target_object_id
-		LEFT JOIN ck_controls c ON c.control_id = cr.anforderung_id
-		WHERE cr.org_id=$1 AND cr.umsetzungsstatus IN ('nein','teilweise')
-		ORDER BY cr.baustein_id, cr.anforderung_id, t.name`, orgID)
+	rows, err := s.db.Query(ctx, gapReportSQL, orgID)
 	if err != nil {
 		return BSIGapReport{}, fmt.Errorf("get gap report: %w", err)
 	}
@@ -539,7 +543,7 @@ func (s *Service) GetBSIGapReport(ctx context.Context, orgID string) (BSIGapRepo
 		GesamtJa:            ja,
 		GesamtTeilweise:     teilweise,
 		GesamtNein:          nein,
-		UmsetzungsgradPct:   computeUmsetzungsgrad(ja, teilweise, entbehrlich, total),
+		UmsetzungsgradPct:   s.scorer.Score(ja, teilweise, entbehrlich, total),
 		Gaps:                gaps,
 	}, nil
 }
@@ -557,7 +561,7 @@ func (s *Service) CalculateAndStoreBSIKPISnapshot(ctx context.Context, orgID str
 		Scan(&total, &ja, &teilweise, &entbehrlich); err != nil {
 		return fmt.Errorf("bsi kpi snapshot: count: %w", err)
 	}
-	pct := computeUmsetzungsgrad(ja, teilweise, entbehrlich, total)
+	pct := s.scorer.Score(ja, teilweise, entbehrlich, total)
 	_, err := s.db.Exec(ctx, `
 		UPDATE ck_isms_kpi_snapshots
 		SET bsi_check_pct = $2

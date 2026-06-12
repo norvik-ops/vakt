@@ -32,15 +32,20 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.PUT("/vvt/:id", h.UpdateVVT)
 	g.DELETE("/vvt/:id", h.DeleteVVT)
 
+	// Advanced privacy workflows (DPIA, TIA/transfers, deletion reminders,
+	// privacy-by-design) are Pro — gated by FeatureSecPrivacy, mirroring the
+	// public pricing page. VVT, AVV register, breach register, and DSR handling
+	// remain Community.
+	privacyPro := features.Require(features.FeatureSecPrivacy)
+
 	// DPIA (Art. 35 DSGVO)
-	g.GET("/dpias", h.ListDPIAs)
-	g.POST("/dpias", h.CreateDPIA)
-	// DPIA PDF export is a Pro feature — basic DPIA management remains Community.
-	g.GET("/dpias/export", h.ExportDPIA, features.Require(features.FeatureAuditPDF)) // must be before /dpias/:id
-	g.GET("/dpias/:id", h.GetDPIA)
-	g.PUT("/dpias/:id", h.UpdateDPIA)
-	g.POST("/dpias/:id/approve", h.ApproveDPIA)
-	g.DELETE("/dpias/:id", h.DeleteDPIA)
+	g.GET("/dpias", h.ListDPIAs, privacyPro)
+	g.POST("/dpias", h.CreateDPIA, privacyPro)
+	g.GET("/dpias/export", h.ExportDPIA, privacyPro, features.Require(features.FeatureAuditPDF)) // must be before /dpias/:id
+	g.GET("/dpias/:id", h.GetDPIA, privacyPro)
+	g.PUT("/dpias/:id", h.UpdateDPIA, privacyPro)
+	g.POST("/dpias/:id/approve", h.ApproveDPIA, privacyPro)
+	g.DELETE("/dpias/:id", h.DeleteDPIA, privacyPro)
 
 	// AVV (Art. 28 DSGVO) — static routes must come before /:id
 	g.GET("/avv-templates", h.ListAVVTemplates)
@@ -80,26 +85,26 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	// Retention / deletion reminders (S68-5)
 	g.GET("/retention/summary", h.GetRetentionSummary)
 	g.GET("/retention-templates", h.ListRetentionTemplates)
-	g.GET("/deletion-reminders", h.ListDeletionReminders)
-	g.POST("/deletion-reminders", h.CreateDeletionReminder)
-	g.PATCH("/deletion-reminders/:id/complete", h.CompleteDeletionReminder)
+	g.GET("/deletion-reminders", h.ListDeletionReminders, privacyPro)
+	g.POST("/deletion-reminders", h.CreateDeletionReminder, privacyPro)
+	g.PATCH("/deletion-reminders/:id/complete", h.CompleteDeletionReminder, privacyPro)
 	g.GET("/processing-activities/:id/retention", h.GetRetentionInfo)
 	g.PUT("/processing-activities/:id/retention", h.UpdateRetentionInfo)
 
 	// S69-6: Transfer Impact Assessment (TIA / Schrems II)
 	if h.tia != nil {
-		g.GET("/adequacy-decisions", h.ListAdequacyDecisions)
+		g.GET("/adequacy-decisions", h.ListAdequacyDecisions, privacyPro)
 		// CRITICAL: /transfers/compliance must be registered BEFORE /transfers/:id to avoid param conflict.
-		g.GET("/transfers/compliance", h.GetTransferComplianceStatus)
-		g.GET("/transfers", h.ListDataTransfers)
-		g.POST("/transfers", h.CreateDataTransfer)
-		g.GET("/transfers/:id/tia", h.ListTIAs)
-		g.POST("/transfers/:id/tia", h.CreateTIA)
+		g.GET("/transfers/compliance", h.GetTransferComplianceStatus, privacyPro)
+		g.GET("/transfers", h.ListDataTransfers, privacyPro)
+		g.POST("/transfers", h.CreateDataTransfer, privacyPro)
+		g.GET("/transfers/:id/tia", h.ListTIAs, privacyPro)
+		g.POST("/transfers/:id/tia", h.CreateTIA, privacyPro)
 	}
 
 	// S70-3: Privacy by Design (Art. 25 DSGVO)
 	// CRITICAL: /privacy-design/summary must be registered BEFORE /processing-activities/:id/privacy-design.
-	g.GET("/privacy-design/summary", h.GetPrivacyDesignSummary)
-	g.GET("/processing-activities/:id/privacy-design", h.GetPrivacyDesign)
-	g.POST("/processing-activities/:id/privacy-design", h.CreateOrUpdatePrivacyDesign)
+	g.GET("/privacy-design/summary", h.GetPrivacyDesignSummary, privacyPro)
+	g.GET("/processing-activities/:id/privacy-design", h.GetPrivacyDesign, privacyPro)
+	g.POST("/processing-activities/:id/privacy-design", h.CreateOrUpdatePrivacyDesign, privacyPro)
 }

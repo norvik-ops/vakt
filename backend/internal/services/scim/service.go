@@ -7,9 +7,19 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 )
+
+// dbPool is a minimal subset of pgxpool.Pool used by Service.
+// The interface enables DB-free unit tests without an external mock library.
+type dbPool interface {
+	Begin(ctx context.Context) (pgx.Tx, error)
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
 
 // ─── Domain types ─────────────────────────────────────────────────────────────
 
@@ -43,14 +53,27 @@ type SCIMGroupMember struct {
 	Display string `json:"display"`
 }
 
+// SessionRevoker revokes all active sessions for a user. Implemented by auth.Service.
+type SessionRevoker interface {
+	RevokeAllSessions(ctx context.Context, userID string) error
+}
+
 // Service provides SCIM provisioning operations.
 type Service struct {
-	db *pgxpool.Pool
+	db             dbPool
+	sessionRevoker SessionRevoker
 }
 
 // NewService constructs a SCIM Service.
 func NewService(db *pgxpool.Pool) *Service {
 	return &Service{db: db}
+}
+
+// WithSessionRevoker injects a session revoker so that SCIM-driven
+// deactivations immediately invalidate the user's active tokens.
+func (s *Service) WithSessionRevoker(r SessionRevoker) *Service {
+	s.sessionRevoker = r
+	return s
 }
 
 // ─── User operations ──────────────────────────────────────────────────────────
@@ -255,8 +278,17 @@ func (s *Service) DeactivateUser(ctx context.Context, orgID, userID string) erro
 		return fmt.Errorf("deactivate user: %w", err)
 	}
 
+	if err = tx.Commit(ctx); err != nil {
+		return err
+	}
 	log.Info().Str("org_id", orgID).Str("user_id", userID).Msg("scim: user deactivated")
-	return tx.Commit(ctx)
+	// Revoke active sessions so deprovisioned users lose access immediately (AUTH-007).
+	if s.sessionRevoker != nil {
+		if rErr := s.sessionRevoker.RevokeAllSessions(ctx, userID); rErr != nil {
+			log.Warn().Err(rErr).Str("user_id", userID).Msg("scim: session revocation failed after deactivation")
+		}
+	}
+	return nil
 }
 
 // ─── Group operations ─────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Info } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 import { Spinner } from '../../../components/Spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
@@ -91,7 +92,7 @@ export default function DSGVOTOMPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card data-testid="kpi-total">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-secondary">Gesamt TOMs</CardTitle>
+              <CardTitle className="text-sm font-medium text-secondary">Gesamt <TermTooltip term="TOMs" explanation="Technische und organisatorische Maßnahmen (Art. 32 DSGVO) — Sicherheitsvorkehrungen zum Schutz personenbezogener Daten: Verschlüsselung, Zugangskontrolle, Backups, Pseudonymisierung u.a.">TOMs</TermTooltip></CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-primary">{totalCount}</div>

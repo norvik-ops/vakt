@@ -166,10 +166,11 @@ type WazuhConfig struct {
 
 // SaveWazuhConfigInput is the validated HTTP input for saving Wazuh config.
 type SaveWazuhConfigInput struct {
-	BaseURL   string `json:"base_url"  validate:"required"`
-	Username  string `json:"username"  validate:"required"`
-	Password  string `json:"password"  validate:"required"`
-	VerifyTLS bool   `json:"verify_tls"`
+	BaseURL            string `json:"base_url"            validate:"required"`
+	Username           string `json:"username"            validate:"required"`
+	Password           string `json:"password"            validate:"required"`
+	VerifyTLS          bool   `json:"verify_tls"`
+	AllowPrivateTarget bool   `json:"allow_private_target"` // allow RFC1918 targets (on-premises Wazuh)
 }
 
 // WazuhConfigResponse is returned from GET /wazuh/config (secrets masked).
@@ -199,9 +200,10 @@ type PrometheusConfig struct {
 
 // SavePrometheusConfigInput is the validated HTTP input for saving Prometheus config.
 type SavePrometheusConfigInput struct {
-	PrometheusURL   string `json:"prometheus_url"  validate:"required"`
-	AlertmanagerURL string `json:"alertmanager_url"`
-	Token           string `json:"token"`
+	PrometheusURL      string `json:"prometheus_url"       validate:"required"`
+	AlertmanagerURL    string `json:"alertmanager_url"`
+	Token              string `json:"token"`
+	AllowPrivateTarget bool   `json:"allow_private_target"` // allow RFC1918 targets (on-premises Prometheus)
 }
 
 // PrometheusConfigResponse is returned from GET /prometheus/config (secret masked).
@@ -263,10 +265,11 @@ type KeycloakConfig struct {
 
 // SaveKeycloakConfigInput is the validated HTTP input for saving Keycloak config.
 type SaveKeycloakConfigInput struct {
-	KeycloakURL  string `json:"keycloak_url"  validate:"required"`
-	Realm        string `json:"realm"         validate:"required"`
-	ClientID     string `json:"client_id"     validate:"required"`
-	ClientSecret string `json:"client_secret" validate:"required"`
+	KeycloakURL        string `json:"keycloak_url"        validate:"required"`
+	Realm              string `json:"realm"               validate:"required"`
+	ClientID           string `json:"client_id"           validate:"required"`
+	ClientSecret       string `json:"client_secret"       validate:"required"`
+	AllowPrivateTarget bool   `json:"allow_private_target"` // allow RFC1918 targets (on-premises Keycloak)
 }
 
 // KeycloakConfigResponse is returned from GET /keycloak/config (secrets masked).
@@ -343,9 +346,10 @@ type GitLabConfig struct {
 
 // SaveGitLabConfigInput is the validated HTTP input for saving GitLab config.
 type SaveGitLabConfigInput struct {
-	GitLabURL   string `json:"gitlab_url"   validate:"required"`
-	AccessToken string `json:"access_token" validate:"required"`
-	GroupID     string `json:"group_id"`
+	GitLabURL          string `json:"gitlab_url"          validate:"required"`
+	AccessToken        string `json:"access_token"        validate:"required"`
+	GroupID            string `json:"group_id"`
+	AllowPrivateTarget bool   `json:"allow_private_target"` // allow RFC1918 targets (self-hosted GitLab in private network)
 }
 
 // GitLabConfigResponse is returned from GET /gitlab/config (secrets masked).
@@ -373,8 +377,9 @@ type SonarQubeConfig struct {
 
 // SaveSonarQubeConfigInput is the validated HTTP input for saving SonarQube config.
 type SaveSonarQubeConfigInput struct {
-	BaseURL string `json:"base_url" validate:"required"`
-	Token   string `json:"token"    validate:"required"`
+	BaseURL            string `json:"base_url"            validate:"required"`
+	Token              string `json:"token"               validate:"required"`
+	AllowPrivateTarget bool   `json:"allow_private_target"` // allow RFC1918 targets (self-hosted SonarQube)
 }
 
 // SonarQubeConfigResponse is returned from GET /sonarqube/config (secrets masked).

@@ -210,6 +210,7 @@ func TestRotateKey_EndToEnd(t *testing.T) {
 	newVault, _ := sharedcrypto.DeriveServiceKey(newMaster, "vakt-vault-v1")
 	newProjectKey, _ := sharedcrypto.DeriveProjectKey(newVault, projectID)
 	var rotatedVaultCT []byte
+	// orgid-lint: global — integration test: reads back a specific secret by key after key rotation, single-tenant test DB
 	require.NoError(t, pool.QueryRow(ctx, `SELECT encrypted_value FROM so_secrets WHERE key='API_KEY'`).Scan(&rotatedVaultCT))
 	got, err := sharedcrypto.Decrypt(newProjectKey, rotatedVaultCT)
 	require.NoError(t, err, "rotated so_secrets must decrypt under new project key")

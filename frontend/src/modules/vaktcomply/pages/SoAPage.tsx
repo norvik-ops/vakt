@@ -12,6 +12,8 @@ import {
 } from '../../../components/ui/table'
 import { apiFetch } from '../../../api/client'
 import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
+import { ExportButton } from '../../../shared/components/ExportButton'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 
 interface SoADedicatedEntry {
   control_ref: string
@@ -180,7 +182,7 @@ export default function SoAPage() {
     return (
       <div className="p-8 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Statement of Applicability</h1>
+          <h1 className="text-2xl font-bold"><TermTooltip term="SoA" explanation="Statement of Applicability — ISO 27001:2022 Klausel 6.1.3: dokumentierte Aussage über die Anwendbarkeit aller 93 Maßnahmen aus Anhang A, inkl. Begründung für Ausschlüsse.">Statement of Applicability</TermTooltip></h1>
           <p className="text-gray-500 text-sm mt-1">ISO 27001:2022 Anhang A — Anwendbarkeit aller 93 Maßnahmen (Klausel 6.1.3)</p>
         </div>
         <div className="flex flex-col items-center justify-center bg-gray-50 border rounded-xl p-12 gap-4">
@@ -202,7 +204,7 @@ export default function SoAPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Statement of Applicability</h1>
+          <h1 className="text-2xl font-bold"><TermTooltip term="SoA" explanation="Statement of Applicability — ISO 27001:2022 Klausel 6.1.3: dokumentierte Aussage über die Anwendbarkeit aller 93 Maßnahmen aus Anhang A, inkl. Begründung für Ausschlüsse.">Statement of Applicability</TermTooltip></h1>
           <p className="text-gray-500 text-sm mt-1">ISO 27001:2022 Anhang A — Klausel 6.1.3</p>
         </div>
         <div className="flex items-center gap-2">
@@ -214,6 +216,12 @@ export default function SoAPage() {
             <Download className="h-4 w-4 mr-1.5" />
             PDF
           </Button>
+          <ExportButton
+            endpoint="/api/v1/vaktcomply/soa/export.xlsx"
+            filename={`soa-${new Date().toISOString().slice(0, 10)}`}
+            label="XLSX"
+            format="xlsx"
+          />
           {summary?.version_status === 'draft' && (
             <Button
               size="sm"

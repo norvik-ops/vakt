@@ -349,7 +349,12 @@ func (s *Service) LoadAggregate(ctx context.Context, orgID string) (AggregateRes
 		return nil
 	})
 
-	_ = g.Wait()
+	if err := g.Wait(); err != nil {
+		// Partial-response: log at warn level and return what was collected.
+		// Individual goroutines already log their own errors and always return nil,
+		// so this branch fires only if a future goroutine is added that propagates.
+		log.Warn().Err(err).Msg("dashboard aggregate: partial error")
+	}
 
 	if fwScores == nil {
 		fwScores = []FrameworkScore{}

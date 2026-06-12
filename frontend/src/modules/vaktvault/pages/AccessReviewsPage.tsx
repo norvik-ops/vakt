@@ -6,6 +6,7 @@ import { Badge } from '../../../components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
 import { apiFetch } from '../../../api/client'
 import { EmptyState } from '../../../shared/components/EmptyState'
+import { ProGate } from '../../../shared/components/ProGate'
 import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import type { AccessReview, AccessReviewDetail, AccessReviewItem, ReviewDecision } from '../types'
@@ -49,25 +50,25 @@ export default function AccessReviewsPage() {
   const [selectedReview, setSelectedReview] = useState<AccessReview | null>(null)
   const [decisions, setDecisions] = useState<Record<string, 'keep' | 'revoke'>>({})
 
-  const { data: reviews, isLoading } = useQuery<AccessReview[]>({
+  const { data: reviews, isLoading, isError, error } = useQuery<AccessReview[]>({
     queryKey: ['vault', 'access-reviews'],
-    queryFn: () => apiFetch('/api/v1/vaktvault/access-reviews'),
+    queryFn: () => apiFetch('/vaktvault/access-reviews'),
   })
 
   const { data: reviewDetail } = useQuery<AccessReviewDetail>({
     queryKey: ['vault', 'access-review', selectedReview?.id],
-    queryFn: () => apiFetch(`/api/v1/vaktvault/access-reviews/${selectedReview!.id}`),
+    queryFn: () => apiFetch(`/vaktvault/access-reviews/${selectedReview!.id}`),
     enabled: !!selectedReview,
   })
 
   const createMutation = useMutation({
-    mutationFn: () => apiFetch('/api/v1/vaktvault/access-reviews', { method: 'POST' }),
+    mutationFn: () => apiFetch('/vaktvault/access-reviews', { method: 'POST' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['vault', 'access-reviews'] }),
   })
 
   const completeMutation = useMutation({
     mutationFn: ({ id, decs }: { id: string; decs: ReviewDecision[] }) =>
-      apiFetch(`/api/v1/vaktvault/access-reviews/${id}/complete`, {
+      apiFetch(`/vaktvault/access-reviews/${id}/complete`, {
         method: 'POST',
         body: JSON.stringify({ decisions: decs }),
       }),
@@ -89,6 +90,7 @@ export default function AccessReviewsPage() {
   }
 
   return (
+    <ProGate error={isError ? error : null}>
     <div className="space-y-6">
       <PageHeader
         title="Quartalsweise Zugriffsreviews"
@@ -177,5 +179,6 @@ export default function AccessReviewsPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </ProGate>
   )
 }

@@ -101,6 +101,8 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 				vaktcomply.Queue:    5, // evidence collection, deadline checks
 				vaktprivacy.Queue:   5, // breach notifications, AVV checks
 				vaktaware.Queue:     3, // campaign send, training reminders
+				vaktvault.Queue:     3, // secret rotation, access reviews
+				vakthr.Queue:        3, // contractor expiry, access concepts
 				// Generic queues kept for backward compat with external enqueues.
 				"critical":                10,
 				"default":                 5,

@@ -50,6 +50,7 @@ func (r *Repository) UpdateNIS2Stage(ctx context.Context, orgID, incidentID, sta
 	default:
 		return fmt.Errorf("invalid stage: %s", stage)
 	}
+	// orgid-lint: global — WHERE clause includes org_id = $2::uuid; scanner misses it due to string concatenation
 	_, err := r.db.Exec(ctx,
 		`UPDATE ck_incidents
 		    SET `+col+` = NOW(),

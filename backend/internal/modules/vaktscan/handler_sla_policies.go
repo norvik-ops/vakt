@@ -60,9 +60,7 @@ func (h *Handler) ResetSLAPolicies(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
 	ctx := c.Request().Context()
 
-	if _, err := h.service.repo.DB().Exec(ctx,
-		`DELETE FROM vb_sla_policies WHERE org_id = $1::uuid`, orgID,
-	); err != nil {
+	if err := h.service.repo.DeleteSLAPolicies(ctx, orgID); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "reset failed", "code": "VB_INTERNAL"})
 	}
 	if err := h.service.EnsureDefaultSLAPolicies(ctx, orgID); err != nil {

@@ -15,8 +15,12 @@ import (
 // All routes are protected by the SCIM Bearer token middleware (not Paseto).
 // The group must be an unauthenticated echo.Group (no Paseto middleware) because
 // SCIM clients authenticate with their own Bearer token, not a user session.
-func Register(g *echo.Group, db *pgxpool.Pool) {
+// revoker is optional — when non-nil, deactivation calls immediately revoke sessions.
+func Register(g *echo.Group, db *pgxpool.Pool, revoker ...SessionRevoker) {
 	svc := NewService(db)
+	if len(revoker) > 0 && revoker[0] != nil {
+		svc.WithSessionRevoker(revoker[0])
+	}
 	h := NewHandler(svc)
 
 	// All SCIM endpoints require FeatureSCIMProvisioning.

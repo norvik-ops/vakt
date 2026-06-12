@@ -24,7 +24,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
-	"golang.org/x/time/rate"
 
 	"github.com/matharnica/vakt/internal/admin"
 	"github.com/matharnica/vakt/internal/auth"
@@ -339,11 +338,21 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	trustcenter.Register(e, pool)
 	log.Info().Msg("trust center routes registered")
 
+	// Early Redis init — used by pre-auth rate limiters (nis2/setup) via IPRateLimitRedis
+	// which fails open when rdb is nil, so public routes stay up even without Redis.
+	var rdb *redis.Client
+	var redisOpt *redis.Options
+	if cfg.RedisUrl != "" {
+		if parsedOpt, parseErr := redis.ParseURL(cfg.RedisUrl); parseErr == nil {
+			redisOpt = parsedOpt
+			rdb = redis.NewClient(redisOpt)
+		}
+	}
+
 	// Sprint 19 / S19-1: NIS2-Self-Assessment-Wizard — public, no auth.
-	// Rate-limited gegen Abuse (5 Calls/min/IP). CE-Top-of-Funnel-Asset.
-	nis2RateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
-		middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(5.0 / 60.0), Burst: 10, ExpiresIn: 5 * time.Minute},
-	))
+	// Rate-limited against abuse (5 req/min/IP). Redis-backed via IPRateLimitRedis
+	// (fails open when Redis is unavailable, so the wizard stays reachable).
+	nis2RateLimiter := sharedmw.IPRateLimitRedis(rdb, "nis2", 5, 5*time.Minute)
 	nis2wizardHandler := nis2wizard.NewHandler(nis2wizard.NewService(pool), cfg.SecretKey)
 	nis2wizard.Register(api.Group("/public/nis2-assessment", nis2RateLimiter), nis2wizardHandler)
 	log.Info().Msg("nis2 wizard public routes registered")
@@ -370,9 +379,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	})
 
 	// Setup wizard — rate-limited, no auth (only works before first org exists).
-	setupRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
-		middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(5.0 / 60.0), Burst: 5, ExpiresIn: 5 * time.Minute},
-	))
+	setupRateLimiter := sharedmw.IPRateLimitRedis(rdb, "setup", 5, 5*time.Minute)
 	setupHandler := setup.NewHandler(pool)
 	setup.Register(api.Group("/setup", setupRateLimiter), setupHandler)
 	log.Info().Msg("setup routes registered")
@@ -382,9 +389,8 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		return e
 	}
 
-	redisOpt, err := redis.ParseURL(cfg.RedisUrl)
-	if err != nil {
-		log.Warn().Err(err).Msg("invalid Redis URL — auth/module routes disabled")
+	if redisOpt == nil {
+		log.Warn().Msg("invalid Redis URL — auth/module routes disabled")
 		return e
 	}
 
@@ -423,7 +429,6 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	}
 
 	// Auth routes — rate-limited (5 req/min per IP, S45-5), no token middleware (they issue tokens).
-	rdb := redis.NewClient(redisOpt)
 
 	// S46-3: Now that we have pool + rdb, re-register /health with full component checks.
 	// The initial registration (before DB/Redis were available) returns a minimal response.
@@ -460,11 +465,9 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	})
 
 	// Auth routes — Redis-backed IP rate limit (5 req/min) on the four
-	// credential-submission endpoints, plus a broader in-memory limiter on the
-	// full auth group for burst protection on other endpoints (S45-5).
-	authRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
-		middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(5.0 / 60.0), Burst: 5, ExpiresIn: 5 * time.Minute},
-	))
+	// credential-submission endpoints, plus a per-IP Redis limiter on the full
+	// auth group for burst protection on other endpoints (S45-5, S78-6d).
+	authRateLimiter := sharedmw.IPRateLimitRedis(rdb, "auth", 5, time.Minute)
 	redisAuthRL := sharedmw.AuthRateLimit(rdb)
 	authSvc := auth.NewService(pool, rdb, pasetoKey)
 	// ADR-0044: default fail-closed on Redis outage. Operators can opt back
@@ -487,7 +490,6 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 
 	// All subsequent routes require a valid Paseto token
 	protected := api.Group("", auth.AuthMiddleware(pasetoKey, pool, rdb))
-	protected.GET("/auth/me", authHandler.Me)
 
 	// CSRF protection: double-submit-cookie pattern on state-changing methods.
 	// API-key requests (Bearer sk_/vakt_) are exempt because they are not
@@ -517,6 +519,11 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		log.Warn().Msg("Redis not configured — using in-memory per-org rate limiter. This is NOT multi-replica safe: the effective limit scales with replica count. Configure VAKT_REDIS_URL for production deployments.")
 		protected.Use(sharedmw.OrgRateLimit())
 	}
+
+	// /auth/me is registered after CSRF and MFA middleware so it inherits the full
+	// protected chain. It is also listed in mfaExemptPaths (auth/middleware.go) so
+	// users can retrieve their own profile during the MFA setup flow.
+	protected.GET("/auth/me", authHandler.Me)
 
 	// License auto-refresh: when VAKT_LICENSE_TOKEN is set the instance polls
 	// api.norvikops.de every 24h and silently activates the latest key.
@@ -556,8 +563,9 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 
 	// SCIM 2.0 provisioning — uses its own Bearer token auth (not Paseto).
 	// Mounted on the plain api group; SCIMAuthMiddleware + feature gate are
-	// applied inside scimSvc.Register.
-	scimSvc.Register(api.Group("/scim/v2"), pool)
+	// applied inside scimSvc.Register. authSvc is wired as SessionRevoker so
+	// that SCIM-driven deactivations immediately invalidate active tokens (S78-1).
+	scimSvc.Register(api.Group("/scim/v2"), pool, authSvc)
 	log.Info().Msg("scim routes registered")
 
 	// Outgoing webhooks — created before modules so event triggers can be wired in.
@@ -581,12 +589,9 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		log.Info().Msg("vaktscan routes registered")
 	}
 
-	auditorRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
-		middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(30.0 / 60.0), Burst: 30, ExpiresIn: 5 * time.Minute},
-	))
-	auditorAcceptRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
-		middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(10.0 / 60.0), Burst: 10, ExpiresIn: 5 * time.Minute},
-	))
+	// S78-6d: Redis-backed rate limiters (multi-replica safe).
+	auditorRateLimiter := sharedmw.IPRateLimitRedis(rdb, "auditor", 30, time.Minute)
+	auditorAcceptRateLimiter := sharedmw.IPRateLimitRedis(rdb, "auditor_accept", 10, time.Minute)
 
 	// cloudEvidence bridges vaktcomply → cloud integration without a direct import.
 	// It is set inside the vaktcomply block and falls back to a no-op when vaktcomply is disabled.
@@ -643,9 +648,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		// (POST /vaktcomply/nis2-assessment/migrate-from-anonymous).
 		nis2wizard.RegisterAuthenticated(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply")), nis2wizardHandler)
 		// Auditor portal uses URL token — exempt from Bearer auth; rate-limited to 30 req/min per IP
-		portalRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
-			middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(30.0 / 60.0), Burst: 30, ExpiresIn: 5 * time.Minute},
-		))
+		portalRateLimiter := sharedmw.IPRateLimitRedis(rdb, "portal", 30, time.Minute)
 		vaktcomply.RegisterPublic(api.Group("/vaktcomply", portalRateLimiter), ckHandler)
 		// Policy acceptance — public token routes (no Bearer auth), rate-limited
 		vaktcomply.RegisterPolicyAcceptPublic(api.Group("", portalRateLimiter), ckHandler)
@@ -670,8 +673,10 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 			CostPerMTokenOut: cfg.AICostPerMTokenOut,
 			FailOpenOnOutage: aiFailOpen,
 		})
-		// Auditor portal — read-only vaktcomply access via session token (no Bearer auth)
-		vaktcomply.RegisterAuditor(api.Group("/auditor/vaktcomply", auditorRateLimiter, auditor.AuditorAuth(pool)), ckHandler)
+		// Auditor portal — read-only vaktcomply access via session token (no Bearer auth).
+		// license.DBMiddleware is added so feature gates (FeatureAuditPDF etc.) resolve
+		// correctly for the auditor's org without a Paseto token in the request (S78-6c).
+		vaktcomply.RegisterAuditor(api.Group("/auditor/vaktcomply", auditorRateLimiter, auditor.AuditorAuth(pool), license.DBMiddleware(pool, lic, rdb)), ckHandler)
 		// Auto-evidence inbox — GitHub, SecReflex, SecPulse
 		evidence_auto.RegisterRoutes(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply")), pool)
 		log.Info().Msg("vaktcomply routes registered")
@@ -718,20 +723,21 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		}
 		vaktprivacy.Register(protected.Group("/vaktprivacy", auth.RequireModuleAccess(pool, "vaktprivacy")), poHandler)
 		// DSR portal uses URL slug/token — exempt from Bearer auth; rate-limited to 30 req/min per IP
-		dsrPortalRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
-			middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(30.0 / 60.0), Burst: 30, ExpiresIn: 5 * time.Minute},
-		))
+		dsrPortalRateLimiter := sharedmw.IPRateLimitRedis(rdb, "dsr_portal", 30, time.Minute)
 		vaktprivacy.RegisterPublic(api.Group("/vaktprivacy", dsrPortalRateLimiter), poHandler)
 		log.Info().Msg("vaktprivacy routes registered")
 	}
 
-	// HR module — onboarding and offboarding workflows
-	hrSvc := vakthr.NewService(vakthr.NewRepository(pool)).
-		WithEvidenceWriter(hrEvidence).
-		WithAccessReviewTrigger(hrAccessReview)
-	hrHandler := vakthr.NewHandler(hrSvc)
-	vakthr.Register(protected.Group("/vakthr", auth.RequireModuleAccess(pool, "vakthr")), hrHandler)
-	log.Info().Msg("vakthr routes registered")
+	// HR module — onboarding and offboarding workflows (S78-6a: guarded by IsModuleEnabled)
+	var hrHandler *vakthr.Handler
+	if cfg.IsModuleEnabled("vakthr") {
+		hrSvc := vakthr.NewService(vakthr.NewRepository(pool)).
+			WithEvidenceWriter(hrEvidence).
+			WithAccessReviewTrigger(hrAccessReview)
+		hrHandler = vakthr.NewHandler(hrSvc)
+		vakthr.Register(protected.Group("/vakthr", auth.RequireModuleAccess(pool, "vakthr")), hrHandler)
+		log.Info().Msg("vakthr routes registered")
+	}
 
 	// Account self-service: DSGVO Art. 17 (delete) and Art. 20 (export).
 	accountHandler := account.NewHandler(account.NewService(pool))
@@ -752,10 +758,12 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		log.Info().Msg("cloud integration routes registered")
 
 		// Inject Personio secret provider into the HR handler so the webhook can verify HMAC sigs.
-		// The webhook is registered on the public api group (no Bearer auth — HMAC only).
-		hrHandler.WithPersonioSecrets(cloudSvc)
-		api.POST("/vakthr/webhooks/personio/:org_id", hrHandler.HandlePersonioWebhook)
-		log.Info().Msg("personio webhook route registered at /api/v1/vakthr/webhooks/personio/:org_id")
+		// Only registered when vakthr is enabled (hrHandler is nil otherwise).
+		if hrHandler != nil {
+			hrHandler.WithPersonioSecrets(cloudSvc)
+			api.POST("/vakthr/webhooks/personio/:org_id", hrHandler.HandlePersonioWebhook)
+			log.Info().Msg("personio webhook route registered at /api/v1/vakthr/webhooks/personio/:org_id")
+		}
 	}
 
 	// Outgoing webhooks — org-scoped event delivery (cross-module).
@@ -805,13 +813,11 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 
 	// User management & team invitations
 	// Public invite accept route rate-limited to 10 req/min per IP (same as auth).
-	inviteRateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStoreWithConfig(
-		middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(10.0 / 60.0), Burst: 10, ExpiresIn: 5 * time.Minute},
-	))
+	inviteRateLimiter := sharedmw.IPRateLimitRedis(rdb, "invite", 10, time.Minute)
 	umSvc := usermgmt.NewService(pool, usermgmt.SMTPConfig{
 		Host: cfg.SMTPHost, Port: cfg.SMTPPort,
 		User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
-	}, cfg.FrontendURL)
+	}, cfg.FrontendURL).WithSessionRevoker(authSvc) // S78-1: revoke sessions on remove/demote
 	usermgmt.RegisterRoutes(protected.Group("/admin"), api.Group("/invite", inviteRateLimiter), umSvc, pool)
 	log.Info().Msg("user management routes registered")
 
@@ -912,15 +918,8 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 
 	// Client-side error reporting — unauthenticated, rate-limited, best-effort.
 	// Receives structured errors from the React ErrorBoundary for ops visibility.
-	clientErrRL := middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
-		Store: middleware.NewRateLimiterMemoryStoreWithConfig(
-			middleware.RateLimiterMemoryStoreConfig{Rate: 5, Burst: 10, ExpiresIn: time.Minute},
-		),
-		IdentifierExtractor: func(c echo.Context) (string, error) { return c.RealIP(), nil },
-		DenyHandler: func(c echo.Context, _ string, _ error) error {
-			return c.NoContent(http.StatusTooManyRequests)
-		},
-	})
+	// S78-6d: Redis-backed; 5 req/min per IP, fail-open on Redis outage.
+	clientErrRL := sharedmw.IPRateLimitRedis(rdb, "client_err", 5, time.Minute)
 	api.POST("/errors", func(c echo.Context) error {
 		var payload struct {
 			Message        string `json:"message"`

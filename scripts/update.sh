@@ -7,7 +7,9 @@ set -euo pipefail
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 SERVICE_API="api"
 SERVICE_WORKER="worker"
-HEALTH_URL="${VAKT_HEALTH_URL:-http://localhost:8080/health/ready}"
+SERVICE_FRONTEND="frontend"
+SERVICE_SCANNERS="vakt-scanners"
+HEALTH_URL="${VAKT_HEALTH_URL:-http://localhost/health/ready}"
 HEALTH_RETRIES=30
 HEALTH_WAIT=2
 SKIP_BACKUP=false
@@ -46,6 +48,16 @@ echo "==> Vakt Update — $(date '+%Y-%m-%d %H:%M:%S')"
 echo "    Target tag:   ${TAG}"
 echo "    Compose file: ${COMPOSE_FILE}"
 
+# Show current running version as rollback reference.
+CURRENT_TAG=$($COMPOSE_CMD -f "$COMPOSE_FILE" images --format json "$SERVICE_API" 2>/dev/null \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d[0].get('Tag','unknown'))" 2>/dev/null \
+  || echo "unknown")
+echo "    Current tag:  ${CURRENT_TAG} (rollback reference)"
+
+# Export VAKT_TAG so all compose commands below use the pinned image version
+# (docker-compose.yml uses ${VAKT_TAG:-latest} for all vakt images).
+export VAKT_TAG="$TAG"
+
 # ── Step 1: Backup ────────────────────────────────────────────────────────────
 echo ""
 if [[ "$SKIP_BACKUP" == "false" ]]; then
@@ -54,8 +66,9 @@ if [[ "$SKIP_BACKUP" == "false" ]]; then
     bash ./scripts/backup.sh
     echo "    Backup complete."
   else
-    echo "    WARNING: backup.sh not found. Proceeding without backup."
-    echo "    Use --no-backup to suppress this warning."
+    echo "ERROR: backup.sh not found. Run update.sh from the vakt-app root directory,"
+    echo "       or use --no-backup if you have taken a manual backup."
+    exit 1
   fi
 else
   echo "==> Step 1/5: Skipping backup (--no-backup)"
@@ -63,12 +76,8 @@ fi
 
 # ── Step 2: Pull new images ───────────────────────────────────────────────────
 echo ""
-echo "==> Step 2/5: Pulling new images (tag: ${TAG})..."
-if [[ "$TAG" != "latest" ]]; then
-  VAKT_TAG="$TAG" $COMPOSE_CMD -f "$COMPOSE_FILE" pull "$SERVICE_API" "$SERVICE_WORKER"
-else
-  $COMPOSE_CMD -f "$COMPOSE_FILE" pull "$SERVICE_API" "$SERVICE_WORKER"
-fi
+echo "==> Step 2/5: Pulling new images (VAKT_TAG=${VAKT_TAG})..."
+$COMPOSE_CMD -f "$COMPOSE_FILE" pull "$SERVICE_API" "$SERVICE_WORKER" "$SERVICE_FRONTEND" "$SERVICE_SCANNERS"
 echo "    Images pulled."
 
 # ── Step 3: Run migrations ────────────────────────────────────────────────────
@@ -80,7 +89,7 @@ echo "    Migrations complete."
 # ── Step 4: Restart services ──────────────────────────────────────────────────
 echo ""
 echo "==> Step 4/5: Restarting services..."
-$COMPOSE_CMD -f "$COMPOSE_FILE" up -d --no-deps "$SERVICE_API" "$SERVICE_WORKER"
+$COMPOSE_CMD -f "$COMPOSE_FILE" up -d --no-deps "$SERVICE_SCANNERS" "$SERVICE_WORKER" "$SERVICE_API" "$SERVICE_FRONTEND"
 echo "    Services restarting..."
 
 # ── Step 5: Health check ──────────────────────────────────────────────────────

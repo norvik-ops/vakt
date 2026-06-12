@@ -8,6 +8,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/httputil"
 )
 
 type ReportType string
@@ -128,21 +130,37 @@ func GatherContext(ctx context.Context, db *pgxpool.Pool, orgID string) (*Compli
 	return cc, nil
 }
 
+// OrgSettings holds per-org AI configuration overrides.
+// Empty strings mean "use system default". Wire a resolver via WithOrgSettings.
+type OrgSettings struct {
+	ModelOverride   string
+	BaseURLOverride string
+}
+
+// OrgSettingsFunc resolves per-org AI settings from persistent storage.
+type OrgSettingsFunc func(ctx context.Context, orgID string) (OrgSettings, error)
+
 type Service struct {
-	db     *pgxpool.Pool
-	client *AIClient
-	model  string
+	db      *pgxpool.Pool
+	client  *AIClient
+	baseURL string
+	apiKey  string
+	model   string
 	// Sprint 15 / S15-1/2/3: optional. Wenn gesetzt, läuft jede AI-Anfrage durch
 	// Rate-Limit + Daily-Quota + Response-Cache und schreibt einen Usage-Record.
 	// Wenn nil: alte Semantik (unbeschränkt, kein Tracking).
 	usage *UsageTracker
+	// orgSettings is an optional function to look up per-org model/URL overrides (S79-7).
+	orgSettings OrgSettingsFunc
 }
 
 func NewService(db *pgxpool.Pool, baseURL, apiKey, model string) *Service {
 	return &Service{
-		db:     db,
-		client: NewAIClient(baseURL, apiKey, model),
-		model:  model,
+		db:      db,
+		client:  NewAIClient(baseURL, apiKey, model),
+		baseURL: baseURL,
+		apiKey:  apiKey,
+		model:   model,
 	}
 }
 
@@ -150,6 +168,13 @@ func NewService(db *pgxpool.Pool, baseURL, apiKey, model string) *Service {
 // Beim Wiring in cmd/api/main.go aufrufen, sobald rdb verfügbar ist.
 func (s *Service) WithUsageTracker(t *UsageTracker) *Service {
 	s.usage = t
+	return s
+}
+
+// WithOrgSettings attaches a per-org settings resolver (S79-7).
+// When set, gateAndGenerate will use per-org model/URL overrides if present.
+func (s *Service) WithOrgSettings(fn OrgSettingsFunc) *Service {
+	s.orgSettings = fn
 	return s
 }
 
@@ -171,24 +196,62 @@ func (s *Service) gateAndGenerate(ctx context.Context, orgID, tag, system, userP
 			return "", err
 		}
 	}
+
+	// Resolve effective model/URL — per-org overrides take precedence (S79-7).
+	// Security: BaseURLOverride is SSRF-validated; the system API key is NEVER
+	// forwarded to an org-supplied URL (use empty key — local Ollama needs none,
+	// and the org configures its own key out-of-band if pointing at a cloud provider).
+	effectiveModel := s.model
+	effectiveClient := s.client
+	if s.orgSettings != nil && orgID != "" {
+		if orgCfg, cfgErr := s.orgSettings(ctx, orgID); cfgErr == nil {
+			if orgCfg.ModelOverride != "" || orgCfg.BaseURLOverride != "" {
+				baseURL := s.baseURL
+				apiKey := s.apiKey
+				if orgCfg.BaseURLOverride != "" {
+					// Validate SSRF: reject loopback/RFC1918/IMDS/link-local targets.
+					// allowPrivate=false — org-supplied URLs must be publicly reachable.
+					if validErr := httputil.ValidateOutboundURL(orgCfg.BaseURLOverride, false); validErr != nil {
+						log.Warn().Err(validErr).Str("org_id", orgID).
+							Str("base_url_override", orgCfg.BaseURLOverride).
+							Msg("ai: rejecting org base_url_override — SSRF validation failed")
+					} else {
+						baseURL = orgCfg.BaseURLOverride
+						// Do not forward the system API key to a third-party URL.
+						// The org's endpoint is expected to accept requests without auth
+						// (self-hosted Ollama/LM Studio) or the org supplies its own key
+						// via the URL itself (not yet a stored credential).
+						apiKey = ""
+					}
+				}
+				if orgCfg.ModelOverride != "" {
+					effectiveModel = orgCfg.ModelOverride
+				}
+				effectiveClient = NewAIClient(baseURL, apiKey, effectiveModel)
+			}
+		}
+	}
+
 	// Cache-Lookup
 	msgs := buildMessages(system, userPrompt)
-	cacheKey := CacheKey(s.model, msgs)
+	cacheKey := CacheKey(effectiveModel, msgs)
 	if s.usage != nil {
 		if cached, ok := s.usage.CacheGet(ctx, cacheKey); ok {
-			s.usage.Record(ctx, UsageRecord{OrgID: orgID, Model: s.model, Status: "cache_hit", RequestID: tag})
+			s.usage.Record(ctx, UsageRecord{OrgID: orgID, Model: effectiveModel, Status: "cache_hit", RequestID: tag})
 			return cached, nil
 		}
 	}
 
 	// Call upstream.
 	start := time.Now()
-	var out string
+	var result ChatResult
 	var err error
 	if system != "" {
-		out, err = s.client.GenerateWithSystem(ctx, system, userPrompt)
+		result, err = effectiveClient.GenerateWithSystemFull(ctx, system, userPrompt)
 	} else {
-		out, err = s.client.Generate(ctx, userPrompt)
+		text, genErr := effectiveClient.Generate(ctx, userPrompt)
+		result = ChatResult{Text: text}
+		err = genErr
 	}
 	dur := int(time.Since(start).Milliseconds())
 	status := "ok"
@@ -196,16 +259,16 @@ func (s *Service) gateAndGenerate(ctx context.Context, orgID, tag, system, userP
 		status = "provider_error"
 	}
 	if s.usage != nil {
-		// Token-Counts bei nicht-streaming-Calls unbekannt; nil bewahrt das.
 		s.usage.Record(ctx, UsageRecord{
-			OrgID: orgID, Model: s.model,
+			OrgID: orgID, Model: effectiveModel,
 			DurationMs: dur, Status: status, RequestID: tag,
+			TokensIn: result.TokensIn, TokensOut: result.TokensOut,
 		})
-		if err == nil && out != "" {
-			s.usage.CacheSet(ctx, cacheKey, out)
+		if err == nil && result.Text != "" {
+			s.usage.CacheSet(ctx, cacheKey, result.Text)
 		}
 	}
-	return out, err
+	return result.Text, err
 }
 
 // buildMessages erstellt die Message-Liste mit strikter Role-Trennung —

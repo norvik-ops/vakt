@@ -918,6 +918,7 @@ func (r *Repository) CreateCampaignEnrollment(ctx context.Context, orgID, campai
 // ── Training matrix report ────────────────────────────────────────────────
 
 // ListCampaignSummariesForReport returns campaign summaries for the given period.
+// orgid-lint: join-ok — subquery JOIN uses g.id UUID PK (globally unique); outer WHERE scopes to org_id.
 func (r *Repository) ListCampaignSummariesForReport(ctx context.Context, orgID string, from, to time.Time) ([]CampaignSummary, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT c.id, c.name, c.status,
@@ -951,6 +952,7 @@ func (r *Repository) ListCampaignSummariesForReport(ctx context.Context, orgID s
 		}
 		// Compute click rate
 		var clicks, total int
+		// orgid-lint: global — scoped by campaign_id FK; campaign is org-scoped, caller holds org-verified campaign reference
 		_ = r.db.QueryRow(ctx, `SELECT COUNT(*) FROM sr_events WHERE campaign_id=$1 AND type='click'`, cs.ID).Scan(&clicks)
 		if total = cs.RecipientCount; total > 0 {
 			cs.ClickRate = float64(clicks) / float64(total) * 100

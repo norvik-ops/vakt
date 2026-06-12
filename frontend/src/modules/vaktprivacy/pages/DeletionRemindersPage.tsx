@@ -10,6 +10,7 @@ import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { apiFetch } from '../../../api/client'
 import { EmptyState } from '../../../shared/components/EmptyState'
+import { ProGate } from '../../../shared/components/ProGate'
 import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
 
 interface DeletionReminder {
@@ -115,7 +116,7 @@ function DueBadge({ date }: { date: string }) {
 
 export default function DeletionRemindersPage() {
   const { data: summary } = useRetentionSummary()
-  const { data: reminders = [], isLoading } = useDeletionReminders()
+  const { data: reminders = [], isLoading, isError, error } = useDeletionReminders()
   const { data: templates = [] } = useRetentionTemplates()
   const createMut = useCreateReminder()
   const completeMut = useCompleteReminder()
@@ -155,6 +156,7 @@ export default function DeletionRemindersPage() {
   if (isLoading) return <div className="p-8"><SkeletonTable rows={5} cols={4} /></div>
 
   return (
+    <ProGate error={isError ? error : null}>
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -389,5 +391,6 @@ export default function DeletionRemindersPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </ProGate>
   )
 }

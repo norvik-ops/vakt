@@ -722,6 +722,7 @@ func (r *Repository) CreateMoverTemplateItem(ctx context.Context, templateID, se
 }
 
 func (r *Repository) ListMoverTemplateItems(ctx context.Context, templateID string) ([]MoverTemplateItem, error) {
+	// orgid-lint: global — hr_mover_template_items is scoped by template_id FK into system-level templates
 	rows, err := r.db.Query(ctx, `
 		SELECT id::text, template_id::text, section, title,
 		       COALESCE(description,''), COALESCE(responsible_role,''), sort_order

@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: ghcr.io/matharnica/vakt-frontend:latest
+    image: ghcr.io/matharnica/vakt-frontend:${VAKT_TAG:-latest}
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -37,7 +37,7 @@ services:
   # Copies scanner binaries (Trivy, Nuclei) into the shared scanner_bins volume
   # before the API/worker start. Runs on every compose-up so updates are picked up.
   vakt-scanners:
-    image: ghcr.io/matharnica/vakt-scanners:latest
+    image: ghcr.io/matharnica/vakt-scanners:${VAKT_TAG:-latest}
     build:
       context: ./backend
       dockerfile: Dockerfile.scanners
@@ -47,20 +47,23 @@ services:
     restart: "no"
 
   migrate:
-    image: ghcr.io/matharnica/vakt-api:latest
+    image: ghcr.io/matharnica/vakt-api:${VAKT_TAG:-latest}
     build:
       context: ./backend
       dockerfile: Dockerfile
     entrypoint: ["/migrate"]
     user: "65532:65532"
     env_file: .env
+    environment:
+      # Override the localhost URL from .env — containers reach postgres by service name, not localhost.
+      VAKT_DB_URL: "postgres://vakt:${POSTGRES_PASSWORD:?}@postgres:5432/vakt?sslmode=disable"
     depends_on:
       postgres:
         condition: service_healthy
     restart: "no"
 
   api:
-    image: ghcr.io/matharnica/vakt-api:latest
+    image: ghcr.io/matharnica/vakt-api:${VAKT_TAG:-latest}
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -96,7 +99,7 @@ services:
           cpus: '1.0'
 
   worker:
-    image: ghcr.io/matharnica/vakt-api:latest
+    image: ghcr.io/matharnica/vakt-api:${VAKT_TAG:-latest}
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -210,14 +213,14 @@ services:
           cpus: '0.25'
 
   # AI Copilot via lokales LLM — seit v0.6.x default-on (Community-Feature).
-  # Default-Modell qwen2.5:7b wird beim ersten Start automatisch von ollama-init
-  # gezogen (~4.5 GB Disk; läuft nur einmal, danach idle).
-  # Mindestanforderung: 8 GB RAM (Minimum), 16 GB RAM (Empfohlen).
+  # Default-Modell qwen2.5:3b wird beim ersten Start automatisch von ollama-init
+  # gezogen (~1.9 GB Disk; läuft nur einmal, danach idle).
+  # Mindestanforderung: 4 GB RAM (Minimum), 8 GB RAM (Empfohlen).
   # Zum Deaktivieren: VAKT_AI_PROVIDER=disabled in .env setzen.
-  # Auf VMs mit < 8 GB RAM deaktivieren — ollama + ollama-init dann ebenfalls
+  # Auf VMs mit < 4 GB RAM deaktivieren — ollama + ollama-init dann ebenfalls
   # entfernen oder stoppen, damit der RAM-Footprint entfällt.
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:${OLLAMA_TAG:-0.6}
     volumes:
       - ollama_models:/root/.ollama
     restart: unless-stopped
@@ -237,12 +240,12 @@ services:
   # Volume — wenn das Modell schon da ist, ist `ollama pull` ein No-Op.
   # Restart=no damit der Container nach erfolgreichem Pull beendet bleibt.
   ollama-init:
-    image: ollama/ollama:latest
+    image: ollama/ollama:${OLLAMA_TAG:-0.6}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - >
-        echo 'Pre-pulling default model ${VAKT_AI_MODEL:-qwen2.5:7b} (one-time)...';
-        OLLAMA_HOST=http://ollama:11434 ollama pull ${VAKT_AI_MODEL:-qwen2.5:7b};
+        echo 'Pre-pulling default model ${VAKT_AI_MODEL:-qwen2.5:3b} (one-time)...';
+        OLLAMA_HOST=http://ollama:11434 ollama pull ${VAKT_AI_MODEL:-qwen2.5:3b};
         echo 'Model ready.'
     depends_on:
       ollama:

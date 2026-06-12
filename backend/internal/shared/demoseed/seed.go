@@ -503,6 +503,7 @@ func runSeed(ctx context.Context, db *pgxpool.Pool, masterKeyHex, orgName, orgSl
 		}
 		bsiControlIDs = append(bsiControlIDs, ctrlID)
 		if ctrl.manualStatus != "" {
+			// orgid-lint: global — demo seed updates a control it just inserted by PK within the same transaction
 			if _, err := tx.Exec(ctx, `
 				UPDATE ck_controls SET manual_status = $1 WHERE id = $2::uuid`,
 				ctrl.manualStatus, ctrlID); err != nil {
@@ -979,6 +980,186 @@ func runSeed(ctx context.Context, db *pgxpool.Pool, masterKeyHex, orgName, orgSl
 				true, true, true, true, false, true, 'partially')`,
 			orgID, vvtIDForPDA); err != nil {
 			return "", "", fmt.Errorf("demoseed: privacy design assessment: %w", err)
+		}
+	}
+
+	// ── S76-2: BSI Strukturanalyse — Beispielgraph Schutzbedarfsvererbung ────
+	// 2 Anwendungen → 1 Server → 1 Raum (Smoke-Plan aus der Story)
+	var toHRID, toCRMID, toSrvID, toRoomID string
+	_ = tx.QueryRow(ctx, `
+		INSERT INTO ck_bsi_target_objects (org_id, name, type, protection_c, protection_i, protection_a, absicherungsniveau, description)
+		VALUES ($1::uuid, 'HR-Portal', 'application', 'hoch', 'hoch', 'normal', 'standard',
+		        'Personalverwaltung (Fehlzeiten, Stammdaten)')
+		RETURNING id::text`, orgID).Scan(&toHRID)
+	_ = tx.QueryRow(ctx, `
+		INSERT INTO ck_bsi_target_objects (org_id, name, type, protection_c, protection_i, protection_a, absicherungsniveau, description)
+		VALUES ($1::uuid, 'CRM-System', 'application', 'normal', 'normal', 'hoch', 'standard',
+		        'Kundenverwaltung (Kontakte, Aufträge)')
+		RETURNING id::text`, orgID).Scan(&toCRMID)
+	_ = tx.QueryRow(ctx, `
+		INSERT INTO ck_bsi_target_objects (org_id, name, type, protection_c, protection_i, protection_a, absicherungsniveau, description)
+		VALUES ($1::uuid, 'Applikationsserver app-01', 'it_system', 'normal', 'normal', 'normal', 'standard',
+		        'Primärer Applikationsserver im Rechenzentrum')
+		RETURNING id::text`, orgID).Scan(&toSrvID)
+	_ = tx.QueryRow(ctx, `
+		INSERT INTO ck_bsi_target_objects (org_id, name, type, protection_c, protection_i, protection_a, absicherungsniveau, description)
+		VALUES ($1::uuid, 'Serverraum EG', 'room', 'normal', 'normal', 'normal', 'basis',
+		        'Serverraum Erdgeschoss (Zutritt Ausweis)')
+		RETURNING id::text`, orgID).Scan(&toRoomID)
+	// Edges: HR-Portal runs_on srv-01 ; CRM runs_on srv-01 ; srv-01 located_in serverraum
+	if toHRID != "" && toSrvID != "" {
+		_, _ = tx.Exec(ctx, `
+			INSERT INTO ck_bsi_target_object_dependencies (org_id, source_id, target_id, dependency_type)
+			VALUES ($1::uuid, $2::uuid, $3::uuid, 'runs_on')
+			ON CONFLICT DO NOTHING`, orgID, toHRID, toSrvID)
+	}
+	if toCRMID != "" && toSrvID != "" {
+		_, _ = tx.Exec(ctx, `
+			INSERT INTO ck_bsi_target_object_dependencies (org_id, source_id, target_id, dependency_type)
+			VALUES ($1::uuid, $2::uuid, $3::uuid, 'runs_on')
+			ON CONFLICT DO NOTHING`, orgID, toCRMID, toSrvID)
+	}
+	if toSrvID != "" && toRoomID != "" {
+		_, _ = tx.Exec(ctx, `
+			INSERT INTO ck_bsi_target_object_dependencies (org_id, source_id, target_id, dependency_type)
+			VALUES ($1::uuid, $2::uuid, $3::uuid, 'located_in')
+			ON CONFLICT DO NOTHING`, orgID, toSrvID, toRoomID)
+	}
+
+	// ── S81-6: ISO 27001:2022 Demo-Framework ─────────────────────────────────
+	// Show the central Vanta-comparison framework with realistic control statuses
+	// so sales prospects can compare Vakt against competing tools.
+	var iso27001FrameworkID string
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO ck_frameworks (org_id, name, version, is_builtin)
+		VALUES ($1::uuid, 'ISO/IEC 27001:2022', '2022', true)
+		RETURNING id::text`, orgID).Scan(&iso27001FrameworkID); err != nil {
+		return "", "", fmt.Errorf("demoseed: iso27001 framework: %w", err)
+	}
+	type isoCtrl struct {
+		id, title, domain, desc, status string
+	}
+	isoControls := []isoCtrl{
+		{"A.5.1", "Policies for information security", "Organisational Controls",
+			"A set of information security policies shall be defined, approved by management, published, communicated, and reviewed.", "implemented"},
+		{"A.5.2", "Information security roles and responsibilities", "Organisational Controls",
+			"Information security roles and responsibilities shall be defined and allocated.", "implemented"},
+		{"A.5.15", "Access control", "Organisational Controls",
+			"Rules to control physical and logical access to information and other assets shall be established and implemented.", "in_progress"},
+		{"A.5.23", "Information security for use of cloud services", "Organisational Controls",
+			"Processes for acquisition, use, management and exit from cloud services shall be established.", "in_progress"},
+		{"A.6.3", "Information security awareness, education and training", "People Controls",
+			"Personnel and relevant interested parties shall receive information security awareness, education and training.", "implemented"},
+		{"A.6.8", "Information security event reporting", "People Controls",
+			"The organisation shall provide a mechanism for personnel to report observed or suspected events.", "implemented"},
+		{"A.7.1", "Physical security perimeters", "Physical Controls",
+			"Security perimeters shall be defined and used to protect areas that contain information.", "implemented"},
+		{"A.8.1", "User end point devices", "Technological Controls",
+			"Information stored on, processed by, or accessible via user end point devices shall be protected.", "in_progress"},
+		{"A.8.5", "Secure authentication", "Technological Controls",
+			"Secure authentication technologies and procedures shall be implemented based on information access restrictions.", "implemented"},
+		{"A.8.8", "Management of technical vulnerabilities", "Technological Controls",
+			"Information about technical vulnerabilities of information systems in use shall be obtained and evaluated.", "not_started"},
+		{"A.8.16", "Monitoring activities", "Technological Controls",
+			"Networks, systems and applications shall be monitored for anomalous behaviour.", "not_started"},
+		{"A.8.24", "Use of cryptography", "Technological Controls",
+			"Rules for the effective use of cryptography, including cryptographic key management, shall be defined and implemented.", "implemented"},
+	}
+	for _, ctrl := range isoControls {
+		var ctrlID string
+		if err := tx.QueryRow(ctx, `
+			INSERT INTO ck_controls (framework_id, org_id, control_id, title, description, domain)
+			VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6)
+			RETURNING id::text`,
+			iso27001FrameworkID, orgID, ctrl.id, ctrl.title, ctrl.desc, ctrl.domain).Scan(&ctrlID); err != nil {
+			return "", "", fmt.Errorf("demoseed: iso27001 control %s: %w", ctrl.id, err)
+		}
+		if ctrl.status != "" && ctrl.status != "not_started" {
+			// orgid-lint: global — UPDATE by PK ctrlID from the RETURNING clause of the INSERT just above
+			if _, err := tx.Exec(ctx, `
+				UPDATE ck_controls SET manual_status = $1 WHERE id = $2::uuid`,
+				ctrl.status, ctrlID); err != nil {
+				return "", "", fmt.Errorf("demoseed: iso27001 control status %s: %w", ctrl.id, err)
+			}
+		}
+	}
+
+	// ── S81-6: HR Demo — Employees + Checklist Runs ───────────────────────────
+	// Seed a minimal onboarding checklist template.
+	onboardingItems, _ := json.Marshal([]map[string]interface{}{
+		{"id": "ob-1", "label": "IT-Zugang einrichten (E-Mail, VPN, Slack)", "required": true},
+		{"id": "ob-2", "label": "Sicherheitsunterweisung abgeschlossen", "required": true},
+		{"id": "ob-3", "label": "NDA und Arbeitsvertrag unterzeichnet", "required": true},
+		{"id": "ob-4", "label": "Zugang zu Code-Repositories erteilt", "required": false},
+		{"id": "ob-5", "label": "Onboarding-Buddy zugewiesen", "required": false},
+	})
+	offboardingItems, _ := json.Marshal([]map[string]interface{}{
+		{"id": "off-1", "label": "Alle IT-Zugänge widerrufen (AD, VPN, SaaS)", "required": true},
+		{"id": "off-2", "label": "Laptop und Hardware zurückgegeben", "required": true},
+		{"id": "off-3", "label": "Übergabe der Aufgaben abgeschlossen", "required": true},
+		{"id": "off-4", "label": "Zugangskarten und Schlüssel zurückgegeben", "required": true},
+	})
+	var onboardingChecklistID, offboardingChecklistID string
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO hr_checklists (org_id, type, name, items)
+		VALUES ($1::uuid, 'onboarding', 'Standard-Onboarding', $2)
+		RETURNING id::text`, orgID, string(onboardingItems)).Scan(&onboardingChecklistID); err != nil {
+		return "", "", fmt.Errorf("demoseed: onboarding checklist: %w", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO hr_checklists (org_id, type, name, items)
+		VALUES ($1::uuid, 'offboarding', 'Standard-Offboarding', $2)
+		RETURNING id::text`, orgID, string(offboardingItems)).Scan(&offboardingChecklistID); err != nil {
+		return "", "", fmt.Errorf("demoseed: offboarding checklist: %w", err)
+	}
+	hrEmployees := []struct {
+		firstName, lastName, email, department, role, status string
+		startDate                                             string
+	}{
+		{"Laura", "Schneider", "l.schneider@demo.local", "Engineering", "Backend Developer", "active",
+			now.AddDate(0, -3, 0).Format("2006-01-02")},
+		{"Felix", "Richter", "f.richter@demo.local", "Security", "ISMS Manager", "active",
+			now.AddDate(-1, 0, 0).Format("2006-01-02")},
+		{"Anna", "Braun", "a.braun@demo.local", "HR", "People Manager", "offboarding",
+			now.AddDate(-2, 0, 0).Format("2006-01-02")},
+	}
+	var newEmpID, offboardingEmpID string
+	for i, emp := range hrEmployees {
+		var empID string
+		if err := tx.QueryRow(ctx, `
+			INSERT INTO hr_employees (org_id, first_name, last_name, email, department, role, start_date, status)
+			VALUES ($1::uuid, $2, $3, $4, $5, $6, $7::date, $8)
+			RETURNING id::text`,
+			orgID, emp.firstName, emp.lastName, emp.email, emp.department, emp.role, emp.startDate, emp.status,
+		).Scan(&empID); err != nil {
+			return "", "", fmt.Errorf("demoseed: hr employee %s: %w", emp.lastName, err)
+		}
+		if i == 0 {
+			newEmpID = empID
+		}
+		if emp.status == "offboarding" {
+			offboardingEmpID = empID
+		}
+	}
+	// Onboarding run for new employee (in_progress — shows the USP)
+	if newEmpID != "" {
+		completedItems, _ := json.Marshal([]string{"ob-1", "ob-2", "ob-3"})
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO hr_checklist_runs (org_id, employee_id, checklist_id, status, completed_items)
+			VALUES ($1::uuid, $2::uuid, $3::uuid, 'in_progress', $4)`,
+			orgID, newEmpID, onboardingChecklistID, string(completedItems)); err != nil {
+			return "", "", fmt.Errorf("demoseed: onboarding run: %w", err)
+		}
+	}
+	// Offboarding run for departing employee (completed — shows audit-ready evidence)
+	if offboardingEmpID != "" {
+		allOffItems, _ := json.Marshal([]string{"off-1", "off-2", "off-3", "off-4"})
+		completedAt := now.AddDate(0, -1, 0)
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO hr_checklist_runs (org_id, employee_id, checklist_id, status, completed_items, completed_at)
+			VALUES ($1::uuid, $2::uuid, $3::uuid, 'completed', $4, $5)`,
+			orgID, offboardingEmpID, offboardingChecklistID, string(allOffItems), completedAt); err != nil {
+			return "", "", fmt.Errorf("demoseed: offboarding run: %w", err)
 		}
 	}
 

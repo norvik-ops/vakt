@@ -64,4 +64,6 @@ var builtinAvailable = []struct {
 	{"CIS", "CIS Controls v8 — 18 Kontrollgruppen des Center for Internet Security. IG1-Safeguards als Mindestanforderung für alle Organisationen."},
 	{"KRITIS", "KRITIS-DachG — Resilienzanforderungen für Betreiber kritischer Anlagen in Deutschland (§§ 8, 12, 13, 16, 18, 20 KRITIS-DachG, BGBl. 2026 I Nr. 66)."},
 	{"C5", "BSI C5:2020 — Cloud Computing Compliance Criteria Catalogue. Prüfgrundlage für Cloud-Dienste in Deutschland (Hetzner, IONOS, AWS-DE, Azure-DE)."},
+	{"ISO27017", "ISO/IEC 27017:2015 — Code of Practice für Informationssicherheitsmaßnahmen für Cloud-Dienste (CSP & CSC). Ergänzt ISO 27001 um 7 Cloud-spezifische Controls."},
+	{"ISO27018", "ISO/IEC 27018:2019 — Code of Practice zum Schutz personenbezogener Daten (PII) in Public Clouds. Auftragsverarbeiter nach Art. 28 DSGVO."},
 }

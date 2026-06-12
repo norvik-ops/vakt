@@ -23,11 +23,17 @@ type SMTPConfig struct {
 	From string
 }
 
+// SessionRevoker revokes all active sessions for a user. Implemented by auth.Service.
+type SessionRevoker interface {
+	RevokeAllSessions(ctx context.Context, userID string) error
+}
+
 // Service handles all user-management and invitation business logic.
 type Service struct {
-	db          *pgxpool.Pool
-	smtpCfg     SMTPConfig
-	frontendURL string
+	db             *pgxpool.Pool
+	smtpCfg        SMTPConfig
+	frontendURL    string
+	sessionRevoker SessionRevoker
 }
 
 // NewService constructs a user-management Service.
@@ -37,6 +43,13 @@ func NewService(db *pgxpool.Pool, smtpCfg SMTPConfig, frontendURL string) *Servi
 		smtpCfg:     smtpCfg,
 		frontendURL: frontendURL,
 	}
+}
+
+// WithSessionRevoker injects a session revoker so that Remove/Demote operations
+// immediately invalidate the affected user's active tokens.
+func (s *Service) WithSessionRevoker(r SessionRevoker) *Service {
+	s.sessionRevoker = r
+	return s
 }
 
 // ---------------------------------------------------------------------------
@@ -77,7 +90,8 @@ func (s *Service) ListUsers(ctx context.Context, orgID string) ([]UserWithRole, 
 }
 
 // UpdateUserRole changes a user's role within the organisation. It prevents
-// demoting the last remaining admin.
+// demoting the last remaining admin. On role downgrade the user's active
+// sessions are revoked so the new (lesser) role takes effect immediately.
 func (s *Service) UpdateUserRole(ctx context.Context, orgID, userID, role string) error {
 	// Prevent removing the last admin.
 	if role != "admin" {
@@ -100,11 +114,20 @@ func (s *Service) UpdateUserRole(ctx context.Context, orgID, userID, role string
 	if result.RowsAffected() == 0 {
 		return fmt.Errorf("user not found in organisation")
 	}
+	// Revoke sessions so the new role takes effect at next login.
+	if s.sessionRevoker != nil {
+		if rErr := s.sessionRevoker.RevokeAllSessions(ctx, userID); rErr != nil {
+			// Non-fatal: user simply carries old role until next token expiry.
+			_ = rErr
+		}
+	}
 	return nil
 }
 
 // RemoveUser removes a user from the organisation. It prevents removing the
 // last admin or the calling user (self-removal guard is at the handler layer).
+// Active sessions are revoked immediately so removed users cannot continue
+// using existing tokens (AUTH-007).
 func (s *Service) RemoveUser(ctx context.Context, orgID, userID string) error {
 	if err := s.ensureNotLastAdmin(ctx, orgID, userID); err != nil {
 		return err
@@ -120,6 +143,11 @@ func (s *Service) RemoveUser(ctx context.Context, orgID, userID string) error {
 	}
 	if result.RowsAffected() == 0 {
 		return fmt.Errorf("user not found in organisation")
+	}
+	if s.sessionRevoker != nil {
+		if rErr := s.sessionRevoker.RevokeAllSessions(ctx, userID); rErr != nil {
+			_ = rErr // best-effort; user is already removed from org_members
+		}
 	}
 	return nil
 }

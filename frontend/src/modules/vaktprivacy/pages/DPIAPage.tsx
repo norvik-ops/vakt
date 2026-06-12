@@ -10,9 +10,10 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { ProGate } from '../../../shared/components/ProGate'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { InfoBanner } from '../../../shared/components/InfoBanner'
-import { ProGate } from '../../../shared/components/ProGate'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 import { FieldError } from '../../../shared/components/FieldError'
 import { useFormValidation } from '../../../shared/hooks/useFormValidation'
 import { toast } from '../../../shared/hooks/useToast'
@@ -244,7 +245,7 @@ export default function DPIAPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [exportError, setExportError] = useState<unknown>(null)
 
-  const { data: dpias, isLoading, isError } = useDPIAs()
+  const { data: dpias, isLoading, isError, error } = useDPIAs()
   const { data: vvtEntries } = useVVT()
   const createDPIA = useCreateDPIA()
   const updateDPIA = useUpdateDPIA()
@@ -327,6 +328,7 @@ export default function DPIAPage() {
   const isPending = createDPIA.isPending || updateDPIA.isPending
 
   return (
+    <ProGate error={isError ? error : null}>
     <div className="flex flex-col h-full">
       <PageHeader
         title="Datenschutz-Folgenabschätzung (DSFA)"
@@ -347,7 +349,7 @@ export default function DPIAPage() {
       <ProGate error={exportError}>{null}</ProGate>
 
       <InfoBanner icon={ClipboardCheck} title="Datenschutz-Folgenabschätzung (Art. 35 DSGVO)">
-        <p>Eine DSFA ist <strong>verpflichtend</strong> bei Verarbeitungen mit voraussichtlich hohem Risiko — z.B. Profiling, Biometrie, Videoüberwachung oder großangelegte Verarbeitung besonderer Datenkategorien (Art. 9 DSGVO).</p>
+        <p>Eine <TermTooltip term="DSFA" explanation="Datenschutz-Folgenabschätzung (DPIA) — Art. 35 DSGVO: Pflichtprüfung vor Verarbeitungen mit hohem Risiko für betroffene Personen. Bewertet Notwendigkeit, Verhältnismäßigkeit und Restrisiken.">DSFA</TermTooltip> ist <strong>verpflichtend</strong> bei Verarbeitungen mit voraussichtlich hohem Risiko — z.B. Profiling, Biometrie, Videoüberwachung oder großangelegte Verarbeitung besonderer Datenkategorien (Art. 9 DSGVO).</p>
         <p className="mt-1">Die DSFA sollte vor dem Start der Verarbeitung durchgeführt und bei wesentlichen Änderungen wiederholt werden. Der Datenschutzbeauftragte ist einzubeziehen.</p>
       </InfoBanner>
 
@@ -434,5 +436,6 @@ export default function DPIAPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </ProGate>
   )
 }

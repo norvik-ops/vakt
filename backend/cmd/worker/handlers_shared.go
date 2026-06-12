@@ -421,27 +421,28 @@ func generateAndSendAIDigest(
 		LIMIT 1
 	`, orgID).Scan(&nextDeadline)
 
-	// Build prompt.
+	// Build prompt — user-controlled strings (org name, control titles, insight
+	// titles, task titles) are wrapped to satisfy ADR-0032 (prompt injection guard).
 	var sb strings.Builder
 	sb.WriteString("Erstelle einen kurzen KI-Compliance-Wochenüberblick auf Deutsch für ")
-	sb.WriteString(orgName)
+	sb.WriteString(ai.WrapUserContent(orgName))
 	sb.WriteString(".\n\n")
 	if len(topControls) > 0 {
 		sb.WriteString("Offene / in Bearbeitung befindliche Controls:\n")
 		for _, c := range topControls {
-			fmt.Fprintf(&sb, "- %s (%s)\n", c.title, c.status)
+			fmt.Fprintf(&sb, "- %s (%s)\n", ai.WrapUserContent(c.title), c.status)
 		}
 		sb.WriteString("\n")
 	}
 	if len(staleInsights) > 0 {
 		sb.WriteString("Veraltete Evidences:\n")
 		for _, ins := range staleInsights {
-			fmt.Fprintf(&sb, "- %s\n", ins.Title)
+			fmt.Fprintf(&sb, "- %s\n", ai.WrapUserContent(ins.Title))
 		}
 		sb.WriteString("\n")
 	}
 	if nextDeadline != "" {
-		fmt.Fprintf(&sb, "Nächste Frist: %s\n\n", nextDeadline)
+		fmt.Fprintf(&sb, "Nächste Frist: %s\n\n", ai.WrapUserContent(nextDeadline))
 	}
 	sb.WriteString("Fasse den Status in 3–4 Sätzen zusammen und gib 2 konkrete Empfehlungen für diese Woche. Antworte ausschließlich auf Deutsch.")
 
@@ -458,7 +459,7 @@ func generateAndSendAIDigest(
 
 	// Send email if SMTP is configured.
 	if smtpCfg.Host != "" {
-		if err := emaildigest.SendAIDigestEmail(ctx, smtpCfg, orgID, orgName, narrative); err != nil {
+		if err := emaildigest.SendAIDigestEmail(ctx, pool, smtpCfg, orgID, orgName, narrative); err != nil {
 			log.Warn().Err(err).Str("org_id", orgID).Msg("ai_weekly_digest: email send failed")
 		}
 	}

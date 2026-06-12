@@ -220,6 +220,9 @@ var mfaExemptPaths = []string{
 	"/api/v1/auth/2fa/setup",
 	"/api/v1/auth/2fa/confirm",
 	"/api/v1/auth/logout",
+	// /auth/me must be reachable so the frontend can display user state and
+	// the MFA-setup prompt even before TOTP is configured (S78-6b).
+	"/api/v1/auth/me",
 	"/api/v1/health",
 	"/health",
 }
@@ -453,6 +456,8 @@ func handleAPIKey(c echo.Context, next echo.HandlerFunc, db *pgxpool.Pool, rawKe
 // roles appears in the allowedRoles list.
 //
 // Role hierarchy (highest to lowest): Admin > SecurityAnalyst > Viewer > AuditorReadOnly
+// SoD role (parallel, not hierarchical): InternalAuditor — can approve audit-program closures
+// and management reviews; must be assigned separately from rw roles (Vier-Augen-Prinzip).
 func RequireRole(allowedRoles ...string) echo.MiddlewareFunc {
 	allowed := make(map[string]struct{}, len(allowedRoles))
 	for _, r := range allowedRoles {

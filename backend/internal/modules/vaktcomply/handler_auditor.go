@@ -9,6 +9,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/audit"
 )
 
 // CreateAuditorLink handles POST /api/v1/vaktcomply/frameworks/:id/auditor-link.
@@ -164,6 +166,17 @@ func (h *Handler) AuditorExportZIP(c echo.Context) error {
 		}
 		allControls = append(allControls, controls...)
 	}
+
+	// Audit trail: record that an auditor downloaded the compliance evidence bundle (S78-7).
+	auditorEmail, _ := c.Get("auditor_email").(string)
+	go audit.Write(ctx, h.db, audit.WriteEntry{
+		OrgID:        oid,
+		UserEmail:    auditorEmail,
+		Action:       "export",
+		ResourceType: "auditor_zip",
+		ResourceName: "vakt-audit-export.zip",
+		Details:      map[string]string{"ip": c.RealIP()},
+	})
 
 	c.Response().Header().Set("Content-Type", "application/zip")
 	c.Response().Header().Set("Content-Disposition", `attachment; filename="vakt-audit-export.zip"`)

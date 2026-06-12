@@ -32,6 +32,7 @@ type Service struct {
 	notifSvc   notifyService
 	aiClient   *ai.AIClient
 	webhookSvc webhookTrigger
+	scorer     ComplianceScorer
 }
 
 // notifyService abstracts the notify.Service dependency for testability.
@@ -47,9 +48,10 @@ type webhookTrigger interface {
 // NewService creates a new ComplyKit service.
 func NewService(dbPool *pgxpool.Pool) *Service {
 	return &Service{
-		db:   dbPool,
-		q:    db.New(dbPool),
-		repo: NewRepository(dbPool),
+		db:     dbPool,
+		q:      db.New(dbPool),
+		repo:   NewRepository(dbPool),
+		scorer: KompendiumScorer{},
 	}
 }
 

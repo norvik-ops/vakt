@@ -45,6 +45,10 @@ func RegisterPolicyAcceptPublic(g *echo.Group, h *Handler) {
 // registerRoutes is the internal wiring function — testable without public API churn.
 func registerRoutes(g *echo.Group, h *Handler) {
 	rw := auth.RequireRole("Admin", "SecurityAnalyst")
+	// S78-8 SoD: InternalAuditor is a separate role for Vier-Augen approvals.
+	// Audit-program completion and management-review approval are gated here so
+	// the implementer cannot also be the approver.
+	internalAuditor := auth.RequireRole("InternalAuditor")
 
 	// My Tasks — controls and risks assigned to the authenticated user.
 	g.GET("/my-tasks", h.GetMyTasks)
@@ -58,9 +62,17 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/frameworks/tisax/iso-mapping", h.GetTISAXISOMapping, features.Require(features.FeatureTISAX))
 	g.GET("/frameworks/tisax/coverage-after-iso", h.GetTISAXCoverageAfterISO, features.Require(features.FeatureTISAX))
 	g.GET("/frameworks/:id", h.GetFrameworkByID)
-	// CRITICAL: CRA-specific enable route must be registered BEFORE the generic /:name/enable
-	// to gate CRA behind a Pro license — FeatureCRA must be active to enable the CRA framework.
+	// CRITICAL: feature-gated enable routes must be registered BEFORE the generic /:name/enable
+	// so the respective feature must be active to enable these frameworks.
+	// Tiering mirrors the public pricing page: BSI/EUAIACT/CRA = Pro, TISAX/DORA/ISO42001 = Enterprise.
 	g.POST("/frameworks/CRA/enable", h.EnableFramework, rw, features.Require(features.FeatureCRA))
+	g.POST("/frameworks/EUAIACT/enable", h.EnableFramework, rw, features.Require(features.FeatureEUAIAct))
+	g.POST("/frameworks/BSI/enable", h.EnableFramework, rw, features.Require(features.FeatureBSIGrundschutz))
+	g.POST("/frameworks/TISAX/enable", h.EnableFramework, rw, features.Require(features.FeatureTISAX))
+	g.POST("/frameworks/DORA/enable", h.EnableFramework, rw, features.Require(features.FeatureDORA))
+	g.POST("/frameworks/ISO42001/enable", h.EnableFramework, rw, features.Require(features.FeatureISO42001))
+	g.POST("/frameworks/ISO27017/enable", h.EnableFramework, rw, features.Require(features.FeatureMultiFramework))
+	g.POST("/frameworks/ISO27018/enable", h.EnableFramework, rw, features.Require(features.FeatureMultiFramework))
 	g.POST("/frameworks/:name/enable", h.EnableFramework, rw)
 	// CRITICAL: dora/variant must be registered BEFORE /:id to avoid route collision.
 	g.PUT("/frameworks/dora/variant", h.SwitchDORAVariant, rw)
@@ -99,6 +111,7 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/soa/versions", h.GetDedicatedSoAVersions)
 	g.GET("/soa/summary", h.GetDedicatedSoASummary)
 	g.GET("/soa/export", h.ExportDedicatedSoA)
+	g.GET("/soa/export.xlsx", h.ExportDedicatedSoAXLSX, features.Require(features.FeatureAuditPDF))
 	g.GET("/soa/entries", h.GetDedicatedSoAEntries)
 	g.GET("/soa/entries/:control_ref", h.GetDedicatedSoAEntry)
 	g.PUT("/soa/entries/:control_ref", h.UpdateDedicatedSoAEntry, rw)
@@ -122,7 +135,7 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.POST("/audit-program", h.CreateAuditProgramAudit, rw)
 	g.GET("/audit-program/:id", h.GetAuditProgramAudit)
 	g.PUT("/audit-program/:id", h.UpdateAuditProgramAudit, rw)
-	g.PATCH("/audit-program/:id/complete", h.CompleteAuditProgramAudit, rw)
+	g.PATCH("/audit-program/:id/complete", h.CompleteAuditProgramAudit, internalAuditor)
 	g.GET("/audit-program/:id/findings", h.ListAuditFindings)
 	g.POST("/audit-program/:id/findings", h.CreateAuditFinding, rw)
 	g.GET("/audit-program/:id/export", h.ExportAuditProgramReport)
@@ -447,14 +460,18 @@ func registerRoutes(g *echo.Group, h *Handler) {
 
 	// BSI Modeling (S61-5)
 	// CRITICAL: static paths before /:id to avoid route conflict.
-	g.GET("/bsi-modeling", h.GetBSIModelingMatrix)
-	g.POST("/bsi-modeling", h.CreateBSIModeling, rw)
-	g.GET("/bsi-modeling/stats", h.GetBSIModelingStats)
-	g.GET("/bsi-modeling/suggestions", h.GetBSIBausteinSuggestions)
-	g.GET("/bsi-modeling/export-pdf", h.ExportBSIModelingPDF)
-	g.GET("/bsi-modeling/export-xlsx", h.ExportBSIModelingXLSX)
-	g.PATCH("/bsi-modeling/:id", h.UpdateBSIModeling, rw)
-	g.DELETE("/bsi-modeling/:id", h.DeleteBSIModeling, rw)
+	// The whole BSI IT-Grundschutz workflow (modelling, Strukturanalyse, GS-Check,
+	// 200-3 risks, cockpit, reports) is Pro — gated by FeatureBSIGrundschutz,
+	// mirroring the public pricing page.
+	bsiPro := features.Require(features.FeatureBSIGrundschutz)
+	g.GET("/bsi-modeling", h.GetBSIModelingMatrix, bsiPro)
+	g.POST("/bsi-modeling", h.CreateBSIModeling, rw, bsiPro)
+	g.GET("/bsi-modeling/stats", h.GetBSIModelingStats, bsiPro)
+	g.GET("/bsi-modeling/suggestions", h.GetBSIBausteinSuggestions, bsiPro)
+	g.GET("/bsi-modeling/export-pdf", h.ExportBSIModelingPDF, bsiPro)
+	g.GET("/bsi-modeling/export-xlsx", h.ExportBSIModelingXLSX, bsiPro)
+	g.PATCH("/bsi-modeling/:id", h.UpdateBSIModeling, rw, bsiPro)
+	g.DELETE("/bsi-modeling/:id", h.DeleteBSIModeling, rw, bsiPro)
 
 	// Management Reviews (S61-2)
 	// CRITICAL: sub-resource routes before /:id to avoid route conflicts
@@ -463,7 +480,7 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/management-reviews/:id", h.GetManagementReview)
 	g.PATCH("/management-reviews/:id/inputs", h.UpdateManagementReviewInputs, rw)
 	g.PATCH("/management-reviews/:id/outputs", h.UpdateManagementReviewOutputs, rw)
-	g.POST("/management-reviews/:id/approve", h.ApproveManagementReview, rw)
+	g.POST("/management-reviews/:id/approve", h.ApproveManagementReview, internalAuditor)
 	g.GET("/management-reviews/:id/export-pdf", h.ExportManagementReviewPDF)
 
 	// ISMS KPI Dashboard (S61-7)
@@ -484,35 +501,40 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	// S74-1: IT-Grundschutz-Check — Zielobjekte (Strukturanalyse)
 	// CRITICAL: static sub-paths (/check/summary, /check/bulk, /risks/summary, /modeling) must be
 	// registered BEFORE param routes (/check/:anforderungId, /risks/:riskId) to avoid Echo conflicts.
-	g.GET("/bsi/target-objects", h.ListBSITargetObjects)
-	g.POST("/bsi/target-objects", h.CreateBSITargetObject, rw)
-	g.GET("/bsi/target-objects/:id/check/summary", h.GetBSICheckSummary)
-	g.POST("/bsi/target-objects/:id/check/bulk", h.BulkSetBSICheckResults, rw)
-	g.GET("/bsi/target-objects/:id/check", h.GetBSICheckSheet)
-	g.PUT("/bsi/target-objects/:id/check/:anforderungId", h.SetBSICheckResult, rw)
-	g.GET("/bsi/target-objects/:id/risks/summary", h.GetBSIRiskSummary)
-	g.GET("/bsi/target-objects/:id/risks", h.ListBSIRisks)
-	g.POST("/bsi/target-objects/:id/risks", h.CreateBSIRisk, rw)
-	g.PUT("/bsi/target-objects/:id/risks/:riskId", h.UpdateBSIRisk, rw)
-	g.DELETE("/bsi/target-objects/:id/risks/:riskId", h.DeleteBSIRisk, rw)
-	g.POST("/bsi/target-objects/:id/modeling", h.AssignBausteinToTargetObject, rw)
-	g.DELETE("/bsi/target-objects/:id/modeling/:bausteinId", h.RemoveBausteinFromTargetObject, rw)
-	g.GET("/bsi/target-objects/:id", h.GetBSITargetObject)
-	g.PUT("/bsi/target-objects/:id", h.UpdateBSITargetObject, rw)
-	g.DELETE("/bsi/target-objects/:id", h.DeleteBSITargetObject, rw)
+	g.GET("/bsi/target-objects", h.ListBSITargetObjects, bsiPro)
+	g.POST("/bsi/target-objects", h.CreateBSITargetObject, rw, bsiPro)
+	g.GET("/bsi/target-objects/:id/check/summary", h.GetBSICheckSummary, bsiPro)
+	g.POST("/bsi/target-objects/:id/check/bulk", h.BulkSetBSICheckResults, rw, bsiPro)
+	g.GET("/bsi/target-objects/:id/check", h.GetBSICheckSheet, bsiPro)
+	g.PUT("/bsi/target-objects/:id/check/:anforderungId", h.SetBSICheckResult, rw, bsiPro)
+	g.GET("/bsi/target-objects/:id/risks/summary", h.GetBSIRiskSummary, bsiPro)
+	g.GET("/bsi/target-objects/:id/risks", h.ListBSIRisks, bsiPro)
+	g.POST("/bsi/target-objects/:id/risks", h.CreateBSIRisk, rw, bsiPro)
+	g.PUT("/bsi/target-objects/:id/risks/:riskId", h.UpdateBSIRisk, rw, bsiPro)
+	g.DELETE("/bsi/target-objects/:id/risks/:riskId", h.DeleteBSIRisk, rw, bsiPro)
+	g.POST("/bsi/target-objects/:id/modeling", h.AssignBausteinToTargetObject, rw, bsiPro)
+	g.DELETE("/bsi/target-objects/:id/modeling/:bausteinId", h.RemoveBausteinFromTargetObject, rw, bsiPro)
+	// S76-2: CIA-Schutzbedarfsvererbung
+	g.GET("/bsi/target-objects/:id/dependencies", h.ListBSIObjectDependencies, bsiPro)
+	g.POST("/bsi/target-objects/:id/dependencies", h.CreateBSIObjectDependency, rw, bsiPro)
+	g.DELETE("/bsi/target-objects/:id/dependencies/:depId", h.DeleteBSIObjectDependency, rw, bsiPro)
+	g.PUT("/bsi/target-objects/:id/protection-override", h.UpdateBSIObjectProtectionOverride, rw, bsiPro)
+	g.GET("/bsi/target-objects/:id", h.GetBSITargetObject, bsiPro)
+	g.PUT("/bsi/target-objects/:id", h.UpdateBSITargetObject, rw, bsiPro)
+	g.DELETE("/bsi/target-objects/:id", h.DeleteBSITargetObject, rw, bsiPro)
 
 	// S74-2: Grundschutz-Cockpit & GAP-Report
-	g.GET("/bsi/cockpit", h.GetBSICockpit)
-	g.GET("/bsi/gap-report", h.GetBSIGapReport)
+	g.GET("/bsi/cockpit", h.GetBSICockpit, bsiPro)
+	g.GET("/bsi/gap-report", h.GetBSIGapReport, bsiPro)
 
 	// S74-3: Risikobewertung BSI 200-3 — Gefährdungskatalog
-	g.GET("/bsi/threats", h.ListBSIThreats)
+	g.GET("/bsi/threats", h.ListBSIThreats, bsiPro)
 
 	// S74-4: Referenzberichte A1–A6
 	// CRITICAL: /bsi/reports/:type/preview must be before /bsi/reports/:type to avoid route conflict.
-	g.GET("/bsi/reports", h.ListBSIReportExports)
-	g.GET("/bsi/reports/:type/preview", h.GetBSIReportPreview)
-	g.GET("/bsi/reports/:type", h.GenerateBSIReport, features.Require(features.FeatureAuditPDF))
+	g.GET("/bsi/reports", h.ListBSIReportExports, bsiPro)
+	g.GET("/bsi/reports/:type/preview", h.GetBSIReportPreview, bsiPro)
+	g.GET("/bsi/reports/:type", h.GenerateBSIReport, bsiPro, features.Require(features.FeatureAuditPDF))
 
 	registerAccessReviewRoutes(g, h)
 	registerExceptionRoutes(g, h)

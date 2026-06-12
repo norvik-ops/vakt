@@ -40,6 +40,29 @@ func (r *Repository) BulkInsertControls(ctx context.Context, controls []Control)
 	return tx.Commit(ctx)
 }
 
+// UpdateBSIRequirementLevels batch-sets the requirement_level column for BSI controls after seeding.
+// Uses raw SQL because BulkInsertCKControl (sqlc-generated) does not include requirement_level.
+func (r *Repository) UpdateBSIRequirementLevels(ctx context.Context, frameworkID, orgID string, levels map[string]string) error {
+	if len(levels) == 0 {
+		return nil
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	for controlID, stufe := range levels {
+		if _, err := tx.Exec(ctx,
+			`UPDATE ck_controls SET requirement_level=$1 WHERE framework_id=$2 AND org_id=$3 AND control_id=$4`,
+			stufe, frameworkID, orgID, controlID,
+		); err != nil {
+			return fmt.Errorf("update requirement_level %s: %w", controlID, err)
+		}
+	}
+	return tx.Commit(ctx)
+}
+
 // UpdateControl sets not_applicable, reason, manual_status, optionally maturity_score, and due_date on a control.
 func (r *Repository) UpdateControl(ctx context.Context, orgID, controlID string, notApplicable bool, reason, manualStatus, owner string, maturityScore *int, dueDate *string) error {
 	n, err := r.q.UpdateCKControl(ctx, db.UpdateCKControlParams{
@@ -579,6 +602,9 @@ func (r *Repository) GetMappingsBySourceControlIDs(ctx context.Context, orgID st
 // aber das resultierende Query-File würde ~50 Zeilen Aliase + Casts brauchen und
 // der generierte Go-Code würde keine Lesbarkeit gewinnen. Diese Query ist
 // stabil seit Sprint 3 und wird höchstens als „read-once" pro Page-Render aufgerufen.
+//
+// orgid-lint: join-ok — each JOIN ON clause explicitly includes AND cN.org_id = $1::uuid;
+// the lint regex stops at the subquery-inner WHERE and misses these multi-line ON conditions.
 func (r *Repository) GetMappingsForControl(ctx context.Context, orgID, controlID string) ([]ControlMapping, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT m.id::text, m.source_framework, m.source_control_code,
@@ -843,6 +869,7 @@ func (r *Repository) UpsertControlPrerequisite(ctx context.Context, e Prerequisi
 // ListPrerequisitesByFramework returns all prerequisite rows where the control
 // OR the prerequisite belongs to the given framework (for cross-framework display).
 func (r *Repository) ListPrerequisitesByFramework(ctx context.Context, frameworkName string) ([]ControlPrerequisiteRow, error) {
+	// orgid-lint: global — ck_control_prerequisites is a system-level prerequisite catalogue shared across all orgs
 	rows, err := r.db.Query(ctx, `
 		SELECT control_framework, control_code, prerequisite_framework, prerequisite_code,
 		       dependency_type, COALESCE(rationale, '')

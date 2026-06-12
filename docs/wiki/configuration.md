@@ -254,6 +254,8 @@ VAKT_LICENSE_TOKEN=550e8400-e29b-41d4-a716-446655440000
 
 **Datenschutz-Hinweis zu `VAKT_LICENSE_TOKEN`:** Die Instanz stellt einmal täglich eine ausgehende HTTPS-Verbindung zu `api.norvikops.de` her. Dabei wird ausschließlich der Token übertragen — keine Geschäftsdaten, keine Nutzungsdaten. Wer ausgehende Verbindungen in der Firewall kontrolliert (typisch für ISO 27001 / NIS2 Umgebungen), muss `api.norvikops.de:443` in der Egress-Whitelist eintragen oder `VAKT_LICENSE_TOKEN` weglassen und die manuelle Aktivierung nutzen.
 
+**Datenschutz-Hinweis zu `VAKT_BSI_FEED_ENABLED`:** Wenn aktiviert (Standard), ruft Vakt einmal täglich den BSI CERT-Bund RSS-Feed (`www.bsi.bund.de`) ab, um aktuelle Sicherheitswarnungen in das Dashboard einzuspeisen. Dabei werden **keine Inhaltsdaten übertragen** — es ist ein reiner HTTP GET-Abruf des öffentlichen Feeds. Wer diese ausgehende Verbindung unterbinden möchte (Air-Gap-Umgebungen, strikte Egress-Policies), setzt `VAKT_BSI_FEED_ENABLED=false`. Das Sicherheitshinweis-Widget im Dashboard bleibt dann leer.
+
 > **Hinweis:** Die Variablen `VAKT_POLAR_WEBHOOK_SECRET` und `VAKT_LICENSE_PRIVATE_KEY` sind ausschließlich für den Norvik-eigenen Billing-Server — sie gehören **nicht** in die Kunden-Konfiguration.
 
 ---
@@ -348,4 +350,54 @@ Jedes Modul kann unabhängig deaktiviert werden. Die Modul-Namen sind case-insen
 # Nur Vakt Comply und Vakt Vault aktiv
 VAKT_MODULES_ENABLED=vaktcomply,vaktvault
 ```
+
+---
+
+## Verschlüsselung im Betrieb (Encryption at Rest)
+
+Diese Übersicht beantwortet die Frage, die ISO-27001-Auditoren der eigenen Kunden stellen:
+„Was ist in der Datenbank verschlüsselt, was nicht — und was muss der Betreiber selbst sichern?"
+
+### Was AES-256-GCM-verschlüsselt ist
+
+Vakt verschlüsselt sensible Zugangsdaten auf Anwendungsebene mit dem `VAKT_SECRET_KEY`:
+
+| Datenkategorie | Speicherort | Verschlüsselung |
+|---|---|---|
+| Vakt-Vault-Einträge (Secrets, API-Keys, Passwörter) | `so_vault_entries.encrypted_value` | AES-256-GCM |
+| SMTP-Passwörter und Integration-Credentials | `integration_credentials.*` | AES-256-GCM |
+| Webhook-Signing-Secrets | `webhooks.secret` | AES-256-GCM |
+| OIDC-/SAML-Client-Secrets | `sso_configs.*` | AES-256-GCM |
+
+### Was bewusst im Klartext gespeichert ist
+
+ISMS-Inhaltsdaten liegen unverschlüsselt in der Datenbank:
+
+| Datenkategorie | Begründung |
+|---|---|
+| Controls, Risiken, Incidents, Maßnahmen (CAPAs) | Kein Zugangsdaten-Charakter; Klartext ermöglicht Volltextsuche und Reporting |
+| Policies und Evidence-Metadaten | ISO-Auditoren müssen Inhalte einsehen; kein Vorteil durch Feldverschlüsselung |
+| Personenbezogene Daten (DSGVO-Modul: VVT, DSRs) | Werden durch organisatorische Maßnahmen + Zugriffsschutz geschützt (s.u.) |
+
+**Vertretbare Entscheidung:** Vakt ist ein Self-Hosted-Produkt. Die Verantwortung für
+Disk-Encryption liegt beim Betreiber — nicht bei der Anwendung. ISO 27001 A.8.24 fordert
+kryptographische Maßnahmen nur dort, wo das Risiko es rechtfertigt.
+
+### Was der Betreiber sicherstellen muss
+
+Um den ISMS-Daten dasselbe Schutzniveau wie den verschlüsselten Secrets zu geben,
+muss der Betreiber auf Infrastrukturebene absichern:
+
+| Maßnahme | Umsetzung |
+|---|---|
+| **Disk-Encryption** für den PostgreSQL-Volume-Pfad | LUKS (Linux), BitLocker (Windows), verschlüsselte EBS-Volumes (AWS), Persistent-Disk-Encryption (GCP/Azure) |
+| **Backup-Verschlüsselung** | `backup.sh` erzeugt SQL-Dump — GPG-Verschlüsselung vor Ablage in externem Speicher empfohlen |
+| **Netzwerk-Isolation** | PostgreSQL-Port nur im internen Docker-Netzwerk; nie nach außen exponieren |
+| **Zugriffsprotokoll PostgreSQL** | `log_connections = on`, `log_disconnections = on` in PostgreSQL-Config |
+
+### Opt-in: Lizenzerneuerung
+
+Einzige ausgehende Verbindung von Vakt: wenn `VAKT_LICENSE_TOKEN` gesetzt ist, kontaktiert
+die Instanz täglich `api.norvikops.de` zur Lizenzerneuerung — es werden ausschließlich der
+Lizenz-Token übertragen, keine Geschäfts- oder Personendaten.
 

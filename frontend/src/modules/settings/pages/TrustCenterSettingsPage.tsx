@@ -9,7 +9,7 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Card } from '../../../components/ui/card'
 import { apiFetch } from '../../../api/client'
-import type { Policy } from '../../../modules/vaktcomply/types'
+import type { Policy } from '../../../shared/types/policy'
 import type { PaginatedResponse } from '../../../shared/types/pagination'
 
 // ─── Types ────────────────────────────────────────────────────────────────────

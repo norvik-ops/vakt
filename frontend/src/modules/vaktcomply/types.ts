@@ -5,6 +5,7 @@ export interface Framework {
   created_at: string
   control_count?: number
   framework_variant?: 'full' | 'simplified'
+  catalog_edition?: string // S82-4: edition from the embedded catalog (e.g. "2023" for BSI Kompendium)
 }
 
 export interface ReadinessReport {
@@ -1440,6 +1441,9 @@ export type BSIRisikokategorie = 'gering' | 'mittel' | 'hoch' | 'sehr_hoch'
 export type BSIBehandlungsoption = 'reduzieren' | 'akzeptieren' | 'vermeiden' | 'transferieren'
 export type BSIReportType = 'A1' | 'A2' | 'A3' | 'A4' | 'A5' | 'A6' | 'full'
 
+export type BSIDependencyType = 'runs_on' | 'located_in' | 'connected_to' | 'processes_for'
+export type BSIOverrideEffect = 'kumulation' | 'verteilung'
+
 export interface BSITargetObject {
   id: string
   org_id: string
@@ -1450,8 +1454,45 @@ export interface BSITargetObject {
   protection_c?: BSISchutzbedarf
   protection_i?: BSISchutzbedarf
   protection_a?: BSISchutzbedarf
+  // Override fields (S76-2)
+  override_c?: BSISchutzbedarf
+  override_i?: BSISchutzbedarf
+  override_a?: BSISchutzbedarf
+  override_reason?: string
+  override_effect?: BSIOverrideEffect
+  // Effective values computed on-read via Maximumprinzip + override
+  effective_c?: BSISchutzbedarf
+  effective_i?: BSISchutzbedarf
+  effective_a?: BSISchutzbedarf
+  inherited_from_c?: string
+  inherited_from_i?: string
+  inherited_from_a?: string
   created_at: string
   updated_at: string
+}
+
+export interface BSIObjectDependency {
+  id: string
+  org_id: string
+  source_id: string
+  source_name: string
+  target_id: string
+  target_name: string
+  dependency_type: BSIDependencyType
+  created_at: string
+}
+
+export interface CreateBSIObjectDependencyInput {
+  target_id: string
+  dependency_type: BSIDependencyType
+}
+
+export interface UpdateBSIObjectProtectionOverrideInput {
+  override_c?: BSISchutzbedarf | null
+  override_i?: BSISchutzbedarf | null
+  override_a?: BSISchutzbedarf | null
+  override_reason: string
+  override_effect?: BSIOverrideEffect | null
 }
 
 export interface CreateBSITargetObjectInput {
@@ -1471,6 +1512,7 @@ export interface BSICheckResult {
   anforderung_id: string
   anforderung_title: string
   baustein_id: string
+  requirement_level?: 'basis' | 'standard' | 'erhoeht'
   umsetzungsstatus: BSIUmsetzungsstatus
   begruendung?: string
   verantwortlicher?: string

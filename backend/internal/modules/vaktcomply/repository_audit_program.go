@@ -322,6 +322,7 @@ func (r *Repository) CreateCAPAFromAuditFinding(ctx context.Context, orgID, find
 
 // SetAuditFindingCAPAID links a finding to its auto-created CAPA.
 func (r *Repository) SetAuditFindingCAPAID(ctx context.Context, findingID, capaID string) error {
+	// orgid-lint: global — UPDATE by PK; ck_audit_program_findings has org_id, caller verifies org ownership before this call
 	_, err := r.db.Exec(ctx, `UPDATE ck_audit_program_findings SET capa_id = $1 WHERE id = $2`, capaID, findingID)
 	return err
 }

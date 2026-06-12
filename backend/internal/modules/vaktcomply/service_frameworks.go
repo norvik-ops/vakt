@@ -36,7 +36,9 @@ func (s *Service) DeleteFramework(ctx context.Context, orgID, frameworkID string
 // EnableFramework creates a new framework (and seeds its controls) for the organisation.
 // If the framework is already enabled, it returns the existing record.
 // variant is "full" or "simplified" (only meaningful for DORA); empty string defaults to "full".
+// name is normalised to upper-case before any look-up so "bsi" and "BSI" behave identically.
 func (s *Service) EnableFramework(ctx context.Context, orgID, name, variant string) (*Framework, error) {
+	name = strings.ToUpper(name)
 	if variant == "" {
 		variant = "full"
 	}
@@ -77,122 +79,25 @@ func (s *Service) EnableFramework(ctx context.Context, orgID, name, variant stri
 		}
 	}
 
-	// Auto-seed TISAX ↔ ISO 27001 mappings when either framework is enabled.
-	if name == "TISAX" || name == "ISO27001" {
-		if seedErr := s.SeedTISAXMappings(ctx, orgID); seedErr != nil {
-			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed TISAX↔ISO27001 mappings (non-critical)")
+	// S76-1: Populate requirement_level for BSI controls (Basis/Standard/Erhöht).
+	if name == "BSI" {
+		levels := bsiRequirementLevels()
+		if len(levels) > 0 {
+			if err := s.repo.UpdateBSIRequirementLevels(ctx, fw.ID, orgID, levels); err != nil {
+				log.Warn().Err(err).Str("framework", name).Msg("failed to update BSI requirement levels")
+			}
 		}
 	}
 
-	// Auto-seed DSGVO-TOM ↔ ISO 27001 mappings when either framework is enabled.
-	if name == "DSGVO-TOM" || name == "ISO27001" {
-		if seedErr := s.SeedDSGVOMappings(ctx, orgID); seedErr != nil {
-			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed DSGVO↔ISO27001 mappings (non-critical)")
-		}
-	}
-
-	// S75: ISO 27001 ↔ BSI (the most-requested DACH mapping).
-	switch name {
-	case "ISO27001", "BSI":
-		if seedErr := s.SeedISO27001BSIMappings(ctx, orgID); seedErr != nil {
-			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed ISO27001↔BSI mappings (non-critical)")
-		}
-	}
-
-	// S75: DSGVO-TOM ↔ NIS2 and DSGVO-TOM ↔ BSI.
-	switch name {
-	case "DSGVO-TOM", "NIS2":
-		if seedErr := s.SeedDSGVOTOMNIS2Mappings(ctx, orgID); seedErr != nil {
-			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed DSGVO-TOM↔NIS2 mappings (non-critical)")
-		}
-	}
-	switch name {
-	case "DSGVO-TOM", "BSI":
-		if seedErr := s.SeedDSGVOTOMBSIMappings(ctx, orgID); seedErr != nil {
-			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed DSGVO-TOM↔BSI mappings (non-critical)")
-		}
-	}
-
-	// S75: CIS ↔ ISO 27001 and CIS ↔ BSI.
-	switch name {
-	case "CIS", "ISO27001":
-		if seedErr := s.SeedCISISO27001Mappings(ctx, orgID); seedErr != nil {
-			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed CIS↔ISO27001 mappings (non-critical)")
-		}
-	}
-	switch name {
-	case "CIS", "BSI":
-		if seedErr := s.SeedCISBSIMappings(ctx, orgID); seedErr != nil {
-			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed CIS↔BSI mappings (non-critical)")
-		}
-	}
-
-	// S75: TISAX ↔ BSI and TISAX ↔ DSGVO-TOM.
-	switch name {
-	case "TISAX", "BSI":
-		if seedErr := s.SeedTISAXBSIMappings(ctx, orgID); seedErr != nil {
-			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed TISAX↔BSI mappings (non-critical)")
-		}
-	}
-	switch name {
-	case "TISAX", "DSGVO-TOM":
-		if seedErr := s.SeedTISAXDSGVOTOMMappings(ctx, orgID); seedErr != nil {
-			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed TISAX↔DSGVO-TOM mappings (non-critical)")
-		}
-	}
-
-	// Auto-seed DORA ↔ ISO 27001 mappings (S37-2).
-	if name == "DORA" || name == "ISO27001" {
-		if seedErr := s.SeedDORAMappings(ctx, orgID); seedErr != nil {
-			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed DORA↔ISO27001 mappings (non-critical)")
-		}
-		// S69-1: Hotfix — also seed corrected DORA↔ISO mappings.
-		if seedErr := s.SeedDORAMappingsFixed(ctx, orgID); seedErr != nil {
-			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed DORA↔ISO27001 fixed mappings (non-critical)")
-		}
-	}
-
-	// S69-1: Seed new cross-framework pairs when relevant frameworks are enabled.
-	switch name {
-	case "CRA", "ISO27001", "NIS2":
-		if seedErr := s.SeedCRAMappings(ctx, orgID); seedErr != nil {
-			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed CRA mappings (non-critical)")
-		}
-	}
-	switch name {
-	case "NIS2", "DORA":
-		if seedErr := s.SeedNIS2DORAMappings(ctx, orgID); seedErr != nil {
-			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed NIS2↔DORA mappings (non-critical)")
-		}
-	}
-	switch name {
-	case "NIS2", "BSI":
-		if seedErr := s.SeedNIS2BSIMappings(ctx, orgID); seedErr != nil {
-			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed NIS2↔BSI mappings (non-critical)")
-		}
-	}
-	switch name {
-	case "NIS2", "CIS":
-		if seedErr := s.SeedNIS2CISMappings(ctx, orgID); seedErr != nil {
-			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed NIS2↔CIS mappings (non-critical)")
-		}
-	}
-	switch name {
-	case "EUAIACT", "ISO42001":
-		if seedErr := s.SeedEUAIActISO42001Mappings(ctx, orgID); seedErr != nil {
-			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed EUAIACT↔ISO42001 mappings (non-critical)")
-		}
-	}
-	switch name {
-	case "EUAIACT", "ISO27001":
-		if seedErr := s.SeedEUAIActISO27001Mappings(ctx, orgID); seedErr != nil {
-			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed EUAIACT↔ISO27001 mappings (non-critical)")
-		}
-	}
-	switch name {
-	case "ISO42001", "ISO27001":
-		if seedErr := s.SeedISO42001ISO27001Mappings(ctx, orgID); seedErr != nil {
-			log.Warn().Err(seedErr).Str("framework", name).Msg("failed to seed ISO42001↔ISO27001 mappings (non-critical)")
+	// Seed cross-framework mappings via registry (S79-9).
+	// Each entry fires when the newly enabled framework matches either fwA or fwB.
+	for _, entry := range s.MappingRegistry() {
+		if name == entry.fwA || name == entry.fwB {
+			if seedErr := entry.fn(ctx, orgID); seedErr != nil {
+				log.Warn().Err(seedErr).
+					Str("fw_a", entry.fwA).Str("fw_b", entry.fwB).Str("framework", name).
+					Msg("failed to seed cross-framework mappings (non-critical)")
+			}
 		}
 	}
 
@@ -626,9 +531,16 @@ func (s *Service) SeedFrameworkMappings(ctx context.Context) error {
 	return nil
 }
 
-// GetFramework returns a single framework by ID.
+// GetFramework returns a single framework by ID, enriched with catalog metadata where available.
 func (s *Service) GetFramework(ctx context.Context, orgID, frameworkID string) (*Framework, error) {
-	return s.repo.GetFramework(ctx, orgID, frameworkID)
+	fw, err := s.repo.GetFramework(ctx, orgID, frameworkID)
+	if err != nil {
+		return nil, err
+	}
+	if p, ok := catalogRegistry[fw.Name]; ok {
+		fw.CatalogEdition = p.Metadata().Edition
+	}
+	return fw, nil
 }
 
 // GetReadinessReport computes a full readiness report for a framework.

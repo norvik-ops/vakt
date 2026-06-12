@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { InfoBanner } from '../../../shared/components/InfoBanner'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 import { Pagination } from '../../../shared/components/Pagination'
 import { FieldError } from '../../../shared/components/FieldError'
 import { Skeleton } from '../../../components/ui/skeleton'
@@ -380,6 +381,7 @@ export default function VVTPage() {
 
       <InfoBanner icon={FileText} title={t('vaktprivacy.vvtPage.infoBannerTitle')}>
         <p>{t('vaktprivacy.vvtPage.infoBannerDesc')}</p>
+        <p className="mt-1"><TermTooltip term="VVT" explanation="Verzeichnis von Verarbeitungstätigkeiten — Art. 30 DSGVO: Pflichtdokumentation für Verantwortliche mit ≥250 Mitarbeitern oder risikoreichen Verarbeitungen. Enthält Zweck, Rechtsgrundlage, Empfänger, Löschfristen.">VVT</TermTooltip> = Verzeichnis von Verarbeitungstätigkeiten (Art. 30 DSGVO).</p>
       </InfoBanner>
 
       <div className="flex-1 p-6">

@@ -97,6 +97,11 @@ type Config struct {
 	// external third-party service, which contradicts the self-hosted data-privacy
 	// promise. Set VAKT_EPSS_ENABLED=true to opt in.
 	EPSSEnabled bool
+	// BSIFeedEnabled controls whether Vakt fetches the daily BSI CERT-Bund RSS feed
+	// (https://www.bsi.bund.de/…/RSSNewsfeed_WarnMeldungen.xml). Enabled by default.
+	// Set VAKT_BSI_FEED_ENABLED=false to disable in air-gapped environments or
+	// when the outbound connection to bsi.bund.de is not permitted.
+	BSIFeedEnabled bool
 }
 
 // Validate checks that all required environment variables are present and
@@ -232,7 +237,7 @@ func Load() (*Config, error) {
 		AIProvider:          getEnv("VAKT_AI_PROVIDER", "disabled"),
 		AIBaseURL:           getEnv("VAKT_AI_BASE_URL", "http://ollama:11434/v1"),
 		AIAPIKey:            getEnv("VAKT_AI_API_KEY", ""),
-		AIModel:             getEnv("VAKT_AI_MODEL", "qwen2.5:7b"),
+		AIModel:             getEnv("VAKT_AI_MODEL", "qwen2.5:3b"),
 		AIRateLimitRPM:      getEnvInt("VAKT_AI_RATE_LIMIT_RPM", 30),
 		AIDailyTokenLimit:   getEnvInt("VAKT_AI_DAILY_TOKEN_LIMIT_PER_ORG", 0),
 		AICacheTTLSeconds:   getEnvInt("VAKT_AI_CACHE_TTL_SECONDS", 3600),
@@ -268,6 +273,7 @@ func Load() (*Config, error) {
 		// VAKT_METRICS_DISABLED=true wenn jemand das explizit nicht will.
 		MetricsEnabled: getEnv("VAKT_METRICS_DISABLED", "false") != "true",
 		EPSSEnabled:    getEnv("VAKT_EPSS_ENABLED", "false") == "true",
+		BSIFeedEnabled: getEnv("VAKT_BSI_FEED_ENABLED", "true") == "true",
 	}
 
 	// CORS origins — default to wildcard to preserve dev behaviour.

@@ -12,15 +12,21 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/platform/features"
+	"github.com/matharnica/vakt/internal/shared/xlsxexport"
 )
 
 // xlsxContentType is the IANA media type for Excel OOXML spreadsheets.
-// Most versions of Excel will open a CSV served with this type.
 const xlsxContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 // ExportRisksXLSX handles GET /api/v1/vaktcomply/risks/export/xlsx.
-// Returns all risks for the org as a spreadsheet-compatible CSV.
+// Returns all org risks as a proper XLSX workbook (two sheets: Risiken + Matrix).
+// Requires FeatureAuditPDF.
 func (h *Handler) ExportRisksXLSX(c echo.Context) error {
+	if !features.IsEnabled(c, features.FeatureAuditPDF) {
+		return errResp(c, http.StatusPaymentRequired, "XLSX export requires Pro", "CK_FEATURE_REQUIRED")
+	}
 	ctx := c.Request().Context()
 	org := orgID(c)
 
@@ -30,22 +36,32 @@ func (h *Handler) ExportRisksXLSX(c echo.Context) error {
 		return errResp(c, http.StatusInternalServerError, "export failed", "CK_EXPORT_ERROR")
 	}
 
-	var buf bytes.Buffer
-	w := csv.NewWriter(&buf)
-	_ = w.Write([]string{"Title", "Probability", "Impact", "Score", "Status"})
-	for _, r := range risks {
-		_ = w.Write([]string{
-			r.Title,
-			fmt.Sprintf("%d", r.Likelihood),
-			fmt.Sprintf("%d", r.Impact),
-			fmt.Sprintf("%d", r.RiskScore),
-			r.Status,
-		})
+	rows := make([]xlsxexport.RiskRow, len(risks))
+	for i, r := range risks {
+		rows[i] = xlsxexport.RiskRow{
+			ID:            r.ID,
+			Title:         r.Title,
+			Category:      r.Category,
+			Likelihood:    r.Likelihood,
+			Impact:        r.Impact,
+			RiskScore:     r.RiskScore,
+			Treatment:     r.Treatment,
+			Status:        r.Status,
+			Owner:         r.Owner,
+			DueDate:       r.TreatmentDueDate,
+			ResidualScore: r.ResidualScore,
+		}
 	}
-	w.Flush()
 
-	c.Response().Header().Set("Content-Disposition", `attachment; filename="risks.xlsx"`)
-	return c.Blob(http.StatusOK, xlsxContentType, buf.Bytes())
+	data, err := xlsxexport.RenderRisiken(rows)
+	if err != nil {
+		log.Error().Err(err).Msg("export risks xlsx: render")
+		return errResp(c, http.StatusInternalServerError, "export failed", "CK_EXPORT_ERROR")
+	}
+
+	filename := fmt.Sprintf("risikoregister-%s.xlsx", time.Now().UTC().Format("2006-01-02"))
+	c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, filename))
+	return c.Blob(http.StatusOK, xlsxContentType, data)
 }
 
 // ExportControlsXLSX handles GET /api/v1/vaktcomply/controls/export/xlsx.

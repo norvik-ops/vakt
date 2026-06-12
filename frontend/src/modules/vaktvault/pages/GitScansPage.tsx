@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { GitBranch, Plus, ChevronDown, ChevronUp, KeyRound } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { ProGate } from '../../../shared/components/ProGate'
 import { InfoBanner } from '../../../shared/components/InfoBanner'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
@@ -135,7 +136,7 @@ function ScanRow({ scan }: { scan: GitScan }) {
 
 export default function GitScansPage() {
   const { t } = useTranslation()
-  const { data: scans, isLoading } = useGitScans()
+  const { data: scans, isLoading, isError, error } = useGitScans()
   const triggerScan = useTriggerGitScan()
   const [open, setOpen] = useState(false)
   const [repoUrl, setRepoUrl] = useState('')
@@ -151,6 +152,7 @@ export default function GitScansPage() {
   }
 
   return (
+    <ProGate error={isError ? error : null}>
     <div className="flex flex-col h-full">
       <PageHeader
         title={t('vault.gitScans.title')}
@@ -213,5 +215,6 @@ export default function GitScansPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </ProGate>
   )
 }

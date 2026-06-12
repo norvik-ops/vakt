@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	sharedcrypto "github.com/matharnica/vakt/internal/shared/crypto"
+	"github.com/matharnica/vakt/internal/shared/httputil"
 )
 
 // Service handles cloud integration business logic (config persistence + evidence sync).
@@ -636,6 +637,9 @@ func (s *Service) GetWazuhConfig(ctx context.Context, orgID string) (*WazuhConfi
 
 // SaveWazuhConfig persists the Wazuh config, encrypting password.
 func (s *Service) SaveWazuhConfig(ctx context.Context, orgID string, in SaveWazuhConfigInput) error {
+	if err := httputil.ValidateOutboundURL(in.BaseURL, in.AllowPrivateTarget); err != nil {
+		return fmt.Errorf("wazuh base_url: %w", err)
+	}
 	existing, _ := s.getDecryptedWazuhConfig(ctx, orgID)
 
 	pw := in.Password
@@ -759,6 +763,14 @@ func (s *Service) GetPrometheusConfig(ctx context.Context, orgID string) (*Prome
 
 // SavePrometheusConfig persists the Prometheus config, encrypting the token.
 func (s *Service) SavePrometheusConfig(ctx context.Context, orgID string, in SavePrometheusConfigInput) error {
+	if err := httputil.ValidateOutboundURL(in.PrometheusURL, in.AllowPrivateTarget); err != nil {
+		return fmt.Errorf("prometheus_url: %w", err)
+	}
+	if in.AlertmanagerURL != "" {
+		if err := httputil.ValidateOutboundURL(in.AlertmanagerURL, in.AllowPrivateTarget); err != nil {
+			return fmt.Errorf("alertmanager_url: %w", err)
+		}
+	}
 	existing, _ := s.getDecryptedPrometheusConfig(ctx, orgID)
 
 	token := in.Token
@@ -992,6 +1004,9 @@ func (s *Service) GetKeycloakConfig(ctx context.Context, orgID string) (*Keycloa
 
 // SaveKeycloakConfig persists the Keycloak config, encrypting the client secret.
 func (s *Service) SaveKeycloakConfig(ctx context.Context, orgID string, in SaveKeycloakConfigInput) error {
+	if err := httputil.ValidateOutboundURL(in.KeycloakURL, in.AllowPrivateTarget); err != nil {
+		return fmt.Errorf("keycloak_url: %w", err)
+	}
 	existing, _ := s.getDecryptedKeycloakConfig(ctx, orgID)
 
 	secret := in.ClientSecret
@@ -1281,6 +1296,9 @@ func (s *Service) GetGitLabConfig(ctx context.Context, orgID string) (*GitLabCon
 
 // SaveGitLabConfig persists the GitLab config, encrypting the access token.
 func (s *Service) SaveGitLabConfig(ctx context.Context, orgID string, in SaveGitLabConfigInput) error {
+	if err := httputil.ValidateOutboundURL(in.GitLabURL, in.AllowPrivateTarget); err != nil {
+		return fmt.Errorf("gitlab_url: %w", err)
+	}
 	existing, _ := s.getDecryptedGitLabConfig(ctx, orgID)
 
 	token := in.AccessToken
@@ -1396,6 +1414,9 @@ func (s *Service) GetSonarQubeConfig(ctx context.Context, orgID string) (*SonarQ
 
 // SaveSonarQubeConfig persists the SonarQube config, encrypting the token.
 func (s *Service) SaveSonarQubeConfig(ctx context.Context, orgID string, in SaveSonarQubeConfigInput) error {
+	if err := httputil.ValidateOutboundURL(in.BaseURL, in.AllowPrivateTarget); err != nil {
+		return fmt.Errorf("sonarqube base_url: %w", err)
+	}
 	existing, _ := s.getDecryptedSonarQubeConfig(ctx, orgID)
 
 	token := in.Token

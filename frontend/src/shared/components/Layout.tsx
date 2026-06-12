@@ -9,9 +9,10 @@ import {
   Building2, Bot, PackageX, Mail, GraduationCap, Target, Flag, LayoutTemplate, UserCog, UserCheck,
   Plug, ClipboardCheck, CalendarClock, Inbox, Menu, X, ArrowUpCircle, ScrollText, CalendarDays,
   ChevronLeft, ChevronRight, Cpu, Landmark, ListChecks, Cloud, Banknote, ChevronDown,
-  LayoutGrid, FileBarChart,
+  LayoutGrid, FileBarChart, Globe,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { ProBadge } from './ProBadge'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import { cn } from '../../lib/utils'
@@ -24,7 +25,7 @@ import { LicenseExpiryBanner } from './LicenseExpiryBanner'
 import { WhatsNewModal } from './WhatsNewModal'
 import { useOverdueControls } from '../../modules/vaktcomply/hooks/useControlReviews'
 import { useAutoEvidence } from '../../modules/vaktcomply/hooks/useEvidenceAuto'
-import { usePendingApprovalCount } from '../../modules/vaktcomply/hooks/useApprovals'
+import { usePendingApprovalCount } from '../hooks/useApprovals'
 import { useUpdateCheck } from '../hooks/useUpdateCheck'
 import { Toaster } from './Toaster'
 import { PWAInstallPrompt } from './PWAInstallPrompt'
@@ -39,6 +40,7 @@ interface NavChild {
   path: string
   label: string
   icon: React.ElementType
+  pro?: boolean
 }
 
 interface NavGroup {
@@ -56,116 +58,118 @@ interface NavItem {
 }
 
 const MODULES_NAV: NavItem[] = [
-  { path: '/',            label: 'Dashboard',  icon: LayoutDashboard, exact: true },
+  { path: '/',            label: 'nav.dashboard',  icon: LayoutDashboard, exact: true },
   {
     path: '/vaktscan',
-    label: 'Vakt Scan',
+    label: 'nav.scan.root',
     icon: Bug,
     children: [
-      { path: '/vaktscan/assets',       label: 'Assets',        icon: Server },
-      { path: '/vaktscan/findings',     label: 'Findings',      icon: ScanSearch },
-      { path: '/vaktscan/sla',          label: 'SLA-Dashboard', icon: Clock },
-      { path: '/vaktscan/reports',      label: 'Berichte',      icon: BarChart2 },
-      { path: '/vaktscan/eol',          label: 'EOL-Dashboard', icon: PackageX },
-      { path: '/vaktscan/certificates', label: 'TLS-Zertifikate', icon: ShieldCheck },
+      { path: '/vaktscan/assets',       label: 'nav.scan.assets',       icon: Server },
+      { path: '/vaktscan/findings',     label: 'nav.scan.findings',     icon: ScanSearch },
+      { path: '/vaktscan/sla',          label: 'nav.scan.sla',          icon: Clock },
+      { path: '/vaktscan/reports',      label: 'nav.scan.reports',      icon: BarChart2 },
+      { path: '/vaktscan/eol',          label: 'nav.scan.eol',          icon: PackageX },
+      { path: '/vaktscan/certificates', label: 'nav.scan.certificates', icon: ShieldCheck },
     ],
   },
   {
     path: '/vaktcomply',
-    label: 'Vakt Comply',
+    label: 'nav.comply.root',
     icon: FileCheck,
     childGroups: [
       {
-        label: 'Frameworks',
+        label: 'nav.comply.group.frameworks',
         items: [
-          { path: '/vaktcomply/frameworks',         label: 'Übersicht',  icon: ShieldCheck },
-          { path: '/vaktcomply/nis2',               label: 'NIS2',       icon: Shield },
-          { path: '/vaktcomply/iso27001',           label: 'ISO 27001',  icon: FileCheck },
-          { path: '/vaktcomply/grundschutz',        label: 'BSI',        icon: Landmark },
-          { path: '/vaktcomply/bsi/target-objects', label: 'BSI-Check',  icon: ClipboardCheck },
-          { path: '/vaktcomply/bsi/cockpit',        label: 'BSI-Cockpit', icon: LayoutGrid },
-          { path: '/vaktcomply/bsi/reports',        label: 'BSI-Berichte', icon: FileBarChart },
-          { path: '/vaktcomply/cis-controls',       label: 'CIS v8',     icon: ListChecks },
-          { path: '/vaktcomply/ccm',                label: 'CCM',        icon: Cloud },
-          { path: '/vaktcomply/dora/dashboard',     label: 'DORA',       icon: Banknote },
-          { path: '/vaktcomply/eu-ai-act/dashboard', label: 'EU AI Act', icon: Bot },
+          { path: '/vaktcomply/frameworks',          label: 'nav.comply.overview',     icon: ShieldCheck },
+          { path: '/vaktcomply/nis2',                label: 'nav.comply.nis2',          icon: Shield },
+          { path: '/vaktcomply/iso27001',            label: 'nav.comply.iso27001',      icon: FileCheck },
+          { path: '/vaktcomply/grundschutz',         label: 'nav.comply.bsi',           icon: Landmark },
+          { path: '/vaktcomply/bsi/target-objects',  label: 'nav.comply.bsiCheck',      icon: ClipboardCheck, pro: true },
+          { path: '/vaktcomply/bsi/cockpit',         label: 'nav.comply.bsiCockpit',    icon: LayoutGrid, pro: true },
+          { path: '/vaktcomply/bsi/reports',         label: 'nav.comply.bsiReports',    icon: FileBarChart, pro: true },
+          { path: '/vaktcomply/cis-controls',        label: 'nav.comply.cisv8',         icon: ListChecks },
+          { path: '/vaktcomply/ccm',                 label: 'nav.comply.ccm',           icon: Cloud, pro: true },
+          { path: '/vaktcomply/dora/dashboard',      label: 'nav.comply.dora',          icon: Banknote, pro: true },
+          { path: '/vaktcomply/eu-ai-act/dashboard', label: 'nav.comply.euAiAct',       icon: Bot, pro: true },
         ],
       },
       {
-        label: 'Operations',
+        label: 'nav.comply.group.operations',
         items: [
-          { path: '/vaktcomply/risks',              label: 'Risiken',      icon: ShieldAlert },
-          { path: '/vaktcomply/incidents',          label: 'Vorfälle',     icon: Siren },
-          { path: '/vaktcomply/audits',             label: 'Audits',       icon: ClipboardList },
-          { path: '/vaktcomply/capas',              label: 'Maßnahmen',    icon: ClipboardCheck },
-          { path: '/vaktcomply/approvals',          label: 'Genehmigungen', icon: UserCheck },
-          { path: '/vaktcomply/overdue-reviews',    label: 'Überfällig',   icon: CalendarClock },
+          { path: '/vaktcomply/risks',           label: 'nav.comply.risks',       icon: ShieldAlert },
+          { path: '/vaktcomply/incidents',       label: 'nav.comply.incidents',   icon: Siren },
+          { path: '/vaktcomply/audits',          label: 'nav.comply.audits',      icon: ClipboardList },
+          { path: '/vaktcomply/capas',           label: 'nav.comply.capas',       icon: ClipboardCheck },
+          { path: '/vaktcomply/approvals',       label: 'nav.comply.approvals',   icon: UserCheck },
+          { path: '/vaktcomply/overdue-reviews', label: 'nav.comply.overdue',     icon: CalendarClock },
         ],
       },
       {
-        label: 'Dokumentation',
+        label: 'nav.comply.group.documentation',
         items: [
-          { path: '/vaktcomply/policies',           label: 'Richtlinien',   icon: BookOpen },
-          { path: '/vaktcomply/soa',                label: 'SoA',           icon: ScrollText },
-          { path: '/vaktcomply/evidence/auto',      label: 'Nachweise',     icon: Inbox },
-          { path: '/vaktcomply/crypto-keys',        label: 'Kryptographie', icon: Key },
-          { path: '/vaktcomply/certification-timeline', label: 'Zert.-Plan', icon: CalendarDays },
+          { path: '/vaktcomply/policies',               label: 'nav.comply.policies',     icon: BookOpen },
+          { path: '/vaktcomply/soa',                    label: 'nav.comply.soa',           icon: ScrollText },
+          { path: '/vaktcomply/evidence/auto',          label: 'nav.comply.evidence',      icon: Inbox },
+          { path: '/vaktcomply/crypto-keys',            label: 'nav.comply.cryptography',  icon: Key },
+          { path: '/vaktcomply/certification-timeline', label: 'nav.comply.certTimeline',  icon: CalendarDays },
         ],
       },
       {
-        label: 'Drittparteien',
+        label: 'nav.comply.group.thirdParty',
         items: [
-          { path: '/vaktcomply/suppliers',          label: 'Lieferanten',   icon: Building2 },
-          { path: '/vaktcomply/ai-systems',         label: 'KI-Systeme',    icon: Cpu },
-          { path: '/vaktcomply/resilience-tests',   label: 'Resilience',    icon: FlaskConical },
+          { path: '/vaktcomply/suppliers',        label: 'nav.comply.suppliers',  icon: Building2 },
+          { path: '/vaktcomply/ai-systems',       label: 'nav.comply.aiSystems',  icon: Cpu },
+          { path: '/vaktcomply/resilience-tests', label: 'nav.comply.resilience', icon: FlaskConical },
         ],
       },
     ],
   },
   {
     path: '/vaktvault',
-    label: 'Vakt Vault',
+    label: 'nav.vault.root',
     icon: Key,
     children: [
-      { path: '/vaktvault/projects',      label: 'Projekte',          icon: Key },
-      { path: '/vaktvault/tokens',        label: 'Tokens',            icon: Shield },
-      { path: '/vaktvault/git-scans',     label: 'Git-Scans',        icon: ScanSearch },
-      { path: '/vaktvault/access-reviews', label: 'Zugriffsreviews', icon: UserCheck },
+      { path: '/vaktvault/projects',       label: 'nav.vault.projects',      icon: Key },
+      { path: '/vaktvault/tokens',         label: 'nav.vault.tokens',        icon: Shield },
+      { path: '/vaktvault/git-scans',      label: 'nav.vault.gitScans',      icon: ScanSearch, pro: true },
+      { path: '/vaktvault/access-reviews', label: 'nav.vault.accessReviews', icon: UserCheck, pro: true },
     ],
   },
   {
     path: '/vaktaware',
-    label: 'Vakt Aware',
+    label: 'nav.aware.root',
     icon: Fish,
     children: [
-      { path: '/vaktaware/campaigns',     label: 'Kampagnen',      icon: Mail },
-      { path: '/vaktaware/templates',     label: 'Vorlagen',       icon: LayoutTemplate },
-      { path: '/vaktaware/target-groups', label: 'Zielgruppen',    icon: Target },
-      { path: '/vaktaware/training',      label: 'Training',       icon: GraduationCap },
-      { path: '/vaktaware/phish-reports', label: 'Phish-Berichte', icon: Flag },
+      { path: '/vaktaware/campaigns',     label: 'nav.aware.campaigns',    icon: Mail },
+      { path: '/vaktaware/templates',     label: 'nav.aware.templates',    icon: LayoutTemplate },
+      { path: '/vaktaware/target-groups', label: 'nav.aware.targetGroups', icon: Target },
+      { path: '/vaktaware/training',      label: 'nav.aware.training',     icon: GraduationCap },
+      { path: '/vaktaware/phish-reports', label: 'nav.aware.phishReports', icon: Flag },
     ],
   },
   {
     path: '/vaktprivacy',
-    label: 'Vakt Privacy',
+    label: 'nav.privacy.root',
     icon: Eye,
     children: [
-      { path: '/vaktprivacy/vvt',            label: 'VVT',             icon: FileText },
-      { path: '/vaktprivacy/dpia',           label: 'DPIA',            icon: FileSearch },
-      { path: '/vaktprivacy/avv',            label: 'AVV',             icon: Handshake },
-      { path: '/vaktprivacy/breach',         label: 'Datenpannen',     icon: AlertTriangle },
-      { path: '/vaktprivacy/dsr',            label: 'DSR',             icon: Users },
-      { path: '/vaktprivacy/privacy-design', label: 'Privacy by Design', icon: ClipboardCheck },
+      { path: '/vaktprivacy/vvt',               label: 'nav.privacy.vvt',            icon: FileText },
+      { path: '/vaktprivacy/dpia',              label: 'nav.privacy.dpia',           icon: FileSearch, pro: true },
+      { path: '/vaktprivacy/avv',               label: 'nav.privacy.avv',            icon: Handshake, pro: true },
+      { path: '/vaktprivacy/breach',            label: 'nav.privacy.breach',         icon: AlertTriangle },
+      { path: '/vaktprivacy/dsr',               label: 'nav.privacy.dsr',            icon: Users },
+      { path: '/vaktprivacy/transfers',         label: 'nav.privacy.tia',            icon: Globe, pro: true },
+      { path: '/vaktprivacy/deletion-reminders', label: 'nav.privacy.deletionReminders', icon: PackageX, pro: true },
+      { path: '/vaktprivacy/privacy-design',    label: 'nav.privacy.privacyDesign',  icon: ClipboardCheck, pro: true },
     ],
   },
   {
     path: '/vakthr',
-    label: 'Vakt HR',
+    label: 'nav.hr.root',
     icon: UserCog,
     children: [
-      { path: '/vakthr/employees',    label: 'Mitarbeiter',  icon: Users },
-      { path: '/vakthr/checklists',   label: 'Checklisten',  icon: ClipboardList },
-      { path: '/vakthr/contractors',  label: 'Freelancer',   icon: Building2 },
+      { path: '/vakthr/employees',   label: 'nav.hr.employees',   icon: Users },
+      { path: '/vakthr/checklists',  label: 'nav.hr.checklists',  icon: ClipboardList },
+      { path: '/vakthr/contractors', label: 'nav.hr.contractors', icon: Building2 },
     ],
   },
 ]
@@ -303,7 +307,7 @@ export default function Layout() {
         )}
       >
         <CIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-        <span className="flex-1 truncate">{c.label}</span>
+        <span className="flex-1 truncate">{t(c.label)}</span>
         {isOverduePath && overdueCount > 0 && (
           <span
             className="ml-auto text-[10px] font-semibold bg-destructive text-destructive-foreground rounded-full px-1.5 py-0.5 leading-none"
@@ -328,14 +332,15 @@ export default function Layout() {
             {pendingApprovalCount}
           </span>
         )}
+        {c.pro && !isOverduePath && !isAutoEvidencePath && !isApprovalsPath && <ProBadge />}
       </Link>
     )
   }
 
   const systemNav: { to: string; icon: React.ElementType; label: string; exact?: boolean }[] = [
-    { to: '/settings',     icon: Settings, label: t('nav.settings'), exact: true },
-    { to: '/integrations', icon: Plug,     label: 'Integrationen' },
-    ...(isAdminOrOwner ? [{ to: '/admin', icon: ShieldAlert, label: 'Administration' }] : []),
+    { to: '/settings',     icon: Settings,    label: t('nav.settings'),      exact: true },
+    { to: '/integrations', icon: Plug,        label: t('nav.integrations') },
+    ...(isAdminOrOwner ? [{ to: '/admin', icon: ShieldAlert, label: t('nav.administration') }] : []),
   ]
 
   return (
@@ -442,8 +447,8 @@ export default function Layout() {
           <div className="px-2 pb-2 hidden lg:block">
             <button
               type="button"
-              aria-label="Globale Suche öffnen (Cmd+K)"
-              title="Suche (⌘K)"
+              aria-label={t('layout.searchOpenDesktop')}
+              title={t('layout.searchTitle')}
               onClickCapture={openSearch}
               className="w-full flex items-center justify-center p-2 text-secondary border border-border rounded-md hover:border-brand/40 transition-colors"
             >
@@ -500,7 +505,7 @@ export default function Layout() {
                               {open
                                 ? <ChevronDown className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />
                                 : <ChevronRight className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />}
-                              <span>{group.label}</span>
+                              <span>{t(group.label)}</span>
                               {!open && (
                                 <span className="ml-auto opacity-50 normal-case tracking-normal font-medium text-[9px]">
                                   {group.items.length}
@@ -596,7 +601,7 @@ export default function Layout() {
           >
             {sidebarCollapsed
               ? <ChevronRight className="w-4 h-4 shrink-0" aria-hidden="true" />
-              : <><ChevronLeft className="w-4 h-4 shrink-0" aria-hidden="true" /><span>Einklappen</span></>
+              : <><ChevronLeft className="w-4 h-4 shrink-0" aria-hidden="true" /><span>{t('nav.collapse')}</span></>
             }
           </button>
           {!sidebarCollapsed && (
@@ -619,20 +624,20 @@ export default function Layout() {
         return (
           <div
             role="navigation"
-            aria-label={`${item.label} Unternavigation`}
+            aria-label={`${t(item.label)} Unternavigation`}
             className="fixed left-[56px] z-40 bg-surface border border-border rounded-r-lg shadow-xl py-2 min-w-[200px]"
             style={{ top: flyoutTop }}
             onMouseEnter={() => { clearTimeout(flyoutTimerRef.current) }}
             onMouseLeave={closeFlyout}
           >
             <p className="px-3 pb-1.5 text-[10px] font-semibold text-secondary uppercase tracking-wider opacity-60">
-              {item.label}
+              {t(item.label)}
             </p>
             {/* Group headers for childGroups modules */}
             {item.childGroups ? item.childGroups.map((group) => (
               <div key={group.label}>
                 <p className="px-3 pt-2 pb-0.5 text-[9px] font-semibold text-secondary uppercase tracking-wider opacity-50">
-                  {group.label}
+                  {t(group.label)}
                 </p>
                 {group.items.map((c) => {
                   const CIcon = c.icon
@@ -651,7 +656,8 @@ export default function Layout() {
                       )}
                     >
                       <CIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                      <span className="flex-1 truncate">{c.label}</span>
+                      <span className="flex-1 truncate">{t(c.label)}</span>
+                      {c.pro && <ProBadge />}
                     </Link>
                   )
                 })}
@@ -673,7 +679,8 @@ export default function Layout() {
                   )}
                 >
                   <CIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                  <span className="flex-1 truncate">{c.label}</span>
+                  <span className="flex-1 truncate">{t(c.label)}</span>
+                  {c.pro && <ProBadge />}
                 </Link>
               )
             })}
@@ -700,7 +707,7 @@ export default function Layout() {
           <button
             type="button"
             onClick={openSearch}
-            aria-label="Globale Suche öffnen"
+            aria-label={t('layout.searchOpenMobile')}
             className="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface2"
           >
             <Search className="w-4 h-4" aria-hidden="true" />
@@ -750,7 +757,7 @@ export default function Layout() {
       </div>
       {/* Mobile bottom navigation — 4 core modules + More-Drawer */}
       <nav
-        aria-label="Mobile Navigation"
+        aria-label={t('layout.mobileNav')}
         className="md:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-border z-30 flex"
       >
         {[
@@ -777,11 +784,11 @@ export default function Layout() {
         <button
           type="button"
           onClick={() => { setSidebarOpen(true); }}
-          aria-label="Weitere Module öffnen"
+          aria-label={t('layout.moreModules')}
           className="flex-1 flex flex-col items-center py-2 text-xs transition-colors text-secondary hover:text-brand"
         >
           <Menu className="h-5 w-5 mb-1" aria-hidden="true" />
-          Mehr
+          {t('layout.more')}
         </button>
       </nav>
       <GlobalSearch />

@@ -15,6 +15,7 @@ type Framework struct {
 	IsBuiltin        bool      `json:"is_builtin"`
 	ReadinessScore   float64   `json:"readiness_score,omitempty"`
 	FrameworkVariant string    `json:"framework_variant"` // "full" | "simplified" (DORA Art.16)
+	CatalogEdition   string    `json:"catalog_edition,omitempty"` // S82-4: edition from the embedded catalog
 	CreatedAt        time.Time `json:"created_at"`
 }
 
@@ -1869,17 +1870,58 @@ type KPIDashboard struct {
 
 // BSITargetObject represents a Zielobjekt in the IT-Grundschutz Strukturanalyse.
 type BSITargetObject struct {
-	ID                 string    `json:"id"`
-	OrgID              string    `json:"org_id"`
-	Name               string    `json:"name"`
-	Type               string    `json:"type"`
-	Description        string    `json:"description"`
-	ProtectionC        *string   `json:"protection_c,omitempty"`
-	ProtectionI        *string   `json:"protection_i,omitempty"`
-	ProtectionA        *string   `json:"protection_a,omitempty"`
-	Absicherungsniveau string    `json:"absicherungsniveau"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	ID                 string  `json:"id"`
+	OrgID              string  `json:"org_id"`
+	Name               string  `json:"name"`
+	Type               string  `json:"type"`
+	Description        string  `json:"description"`
+	ProtectionC        *string `json:"protection_c,omitempty"`
+	ProtectionI        *string `json:"protection_i,omitempty"`
+	ProtectionA        *string `json:"protection_a,omitempty"`
+	Absicherungsniveau string  `json:"absicherungsniveau"`
+	// Override fields (optional — set via PUT .../protection-override)
+	OverrideC      *string `json:"override_c,omitempty"`
+	OverrideI      *string `json:"override_i,omitempty"`
+	OverrideA      *string `json:"override_a,omitempty"`
+	OverrideReason *string `json:"override_reason,omitempty"`
+	OverrideEffect *string `json:"override_effect,omitempty"`
+	// Effective values computed on-read (Maximumprinzip + override, ADR-0054)
+	EffectiveC     *string   `json:"effective_c,omitempty"`
+	EffectiveI     *string   `json:"effective_i,omitempty"`
+	EffectiveA     *string   `json:"effective_a,omitempty"`
+	InheritedFromC *string   `json:"inherited_from_c,omitempty"`
+	InheritedFromI *string   `json:"inherited_from_i,omitempty"`
+	InheritedFromA *string   `json:"inherited_from_a,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+// BSIObjectDependency represents a Abhängigkeitskante zwischen zwei Zielobjekten.
+type BSIObjectDependency struct {
+	ID             string    `json:"id"`
+	OrgID          string    `json:"org_id"`
+	SourceID       string    `json:"source_id"`
+	SourceName     string    `json:"source_name"`
+	TargetID       string    `json:"target_id"`
+	TargetName     string    `json:"target_name"`
+	DependencyType string    `json:"dependency_type"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+// CreateBSIObjectDependencyInput holds validated input for adding a dependency edge.
+type CreateBSIObjectDependencyInput struct {
+	TargetID       string `json:"target_id"        validate:"required,uuid"`
+	DependencyType string `json:"dependency_type"  validate:"required,oneof=runs_on located_in connected_to processes_for"`
+}
+
+// UpdateBSIObjectProtectionOverrideInput holds validated input for CIA override.
+type UpdateBSIObjectProtectionOverrideInput struct {
+	OverrideC      *string `json:"override_c,omitempty"  validate:"omitempty,oneof=normal hoch sehr_hoch"`
+	OverrideI      *string `json:"override_i,omitempty"  validate:"omitempty,oneof=normal hoch sehr_hoch"`
+	OverrideA      *string `json:"override_a,omitempty"  validate:"omitempty,oneof=normal hoch sehr_hoch"`
+	OverrideReason string  `json:"override_reason"       validate:"max=500"`
+	// kumulation = Override increases value; verteilung = Override decreases value
+	OverrideEffect *string `json:"override_effect,omitempty" validate:"omitempty,oneof=kumulation verteilung"`
 }
 
 // CreateBSITargetObjectInput holds validated input for creating a Zielobjekt.
@@ -1906,12 +1948,14 @@ type UpdateBSITargetObjectInput struct {
 
 // BSICheckResult represents one Anforderung × Zielobjekt status in the IT-Grundschutz-Check.
 type BSICheckResult struct {
-	ID               string    `json:"id"`
-	OrgID            string    `json:"org_id"`
-	TargetObjectID   string    `json:"target_object_id"`
-	BausteinID       string    `json:"baustein_id"`
-	AnforderungID    string    `json:"anforderung_id"`
-	AnforderungTitle string    `json:"anforderung_title,omitempty"`
+	ID               string `json:"id"`
+	OrgID            string `json:"org_id"`
+	TargetObjectID   string `json:"target_object_id"`
+	BausteinID       string `json:"baustein_id"`
+	AnforderungID    string `json:"anforderung_id"`
+	AnforderungTitle string `json:"anforderung_title,omitempty"`
+	// RequirementLevel is "basis", "standard", or "erhoeht" (from ck_controls.requirement_level).
+	RequirementLevel string    `json:"requirement_level,omitempty"`
 	Umsetzungsstatus string    `json:"umsetzungsstatus"`
 	Begruendung      string    `json:"begruendung"`
 	Verantwortlicher string    `json:"verantwortlicher"`

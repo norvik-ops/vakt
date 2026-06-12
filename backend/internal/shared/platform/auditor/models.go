@@ -18,6 +18,15 @@ type CreateInviteInput struct {
 	ExpiresIn int    `json:"expires_in" validate:"required,min=1,max=90"` // days
 }
 
+// AuditorSession represents an active auditor session (for listing/revoking).
+type AuditorSession struct {
+	ID           string    `json:"id"`
+	OrgID        string    `json:"org_id"`
+	AuditorEmail string    `json:"auditor_email"`
+	ExpiresAt    time.Time `json:"expires_at"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
 // AuditorClaims holds identity data for an active auditor session.
 type AuditorClaims struct {
 	OrgID        string    `json:"org_id"`

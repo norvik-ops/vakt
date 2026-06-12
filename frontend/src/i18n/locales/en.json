@@ -15,7 +15,85 @@
     "mainNav": "Main navigation",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
-    "userProfile": "Open user profile"
+    "userProfile": "Open user profile",
+    "scan": {
+      "root": "Vakt Scan",
+      "assets": "Assets",
+      "findings": "Findings",
+      "sla": "SLA Dashboard",
+      "reports": "Reports",
+      "eol": "EOL Dashboard",
+      "certificates": "TLS Certificates"
+    },
+    "comply": {
+      "root": "Vakt Comply",
+      "group": {
+        "frameworks": "Frameworks",
+        "operations": "Operations",
+        "documentation": "Documentation",
+        "thirdParty": "Third Parties"
+      },
+      "overview": "Overview",
+      "nis2": "NIS2",
+      "iso27001": "ISO 27001",
+      "bsi": "BSI",
+      "bsiCheck": "BSI Check",
+      "bsiCockpit": "BSI Cockpit",
+      "bsiReports": "BSI Reports",
+      "cisv8": "CIS v8",
+      "ccm": "CCM",
+      "dora": "DORA",
+      "euAiAct": "EU AI Act",
+      "risks": "Risks",
+      "incidents": "Incidents",
+      "audits": "Audits",
+      "capas": "Measures",
+      "approvals": "Approvals",
+      "overdue": "Overdue",
+      "policies": "Policies",
+      "soa": "SoA",
+      "evidence": "Evidence",
+      "cryptography": "Cryptography",
+      "certTimeline": "Cert. Plan",
+      "suppliers": "Suppliers",
+      "aiSystems": "AI Systems",
+      "resilience": "Resilience"
+    },
+    "vault": {
+      "root": "Vakt Vault",
+      "projects": "Projects",
+      "tokens": "Tokens",
+      "gitScans": "Git Scans",
+      "accessReviews": "Access Reviews"
+    },
+    "aware": {
+      "root": "Vakt Aware",
+      "campaigns": "Campaigns",
+      "templates": "Templates",
+      "targetGroups": "Target Groups",
+      "training": "Training",
+      "phishReports": "Phish Reports"
+    },
+    "privacy": {
+      "root": "Vakt Privacy",
+      "vvt": "VVT",
+      "dpia": "DPIA",
+      "avv": "DPA",
+      "breach": "Data Breaches",
+      "dsr": "DSR",
+      "tia": "TIA",
+      "deletionReminders": "Deletion Deadlines",
+      "privacyDesign": "Privacy by Design"
+    },
+    "hr": {
+      "root": "Vakt HR",
+      "employees": "Employees",
+      "checklists": "Checklists",
+      "contractors": "Freelancers"
+    },
+    "integrations": "Integrations",
+    "administration": "Administration",
+    "collapse": "Collapse"
   },
   "modules": {
     "vaktscan": "SecPulse",
@@ -1409,10 +1487,10 @@
       "home": "Back to home"
     },
     "pro": {
-      "title": "Pro & Enterprise — coming soon",
-      "description": "This feature is not included in the Community Edition. Pro and Enterprise with all modules, specialized frameworks and extended support are coming soon.",
-      "comingSoon": "Coming soon",
-      "demoHint": "Pro feature"
+      "title": "Vakt Pro",
+      "description": "This feature is not included in the Community Edition. Vakt Pro includes TISAX, DORA, EU AI Act, NIS2 notification assistant, audit PDF export, SSO, API keys, granular module permissions, and more.",
+      "cta": "Upgrade now →",
+      "featureList": "TISAX · DORA · EU AI Act · NIS2 assistant · Audit PDF · SSO · API keys"
     }
   },
   "validation": {
@@ -1524,7 +1602,9 @@
   "language": {
     "switchTo": "Switch language",
     "de": "Deutsch",
-    "en": "English"
+    "en": "English",
+    "nl": "Nederlands",
+    "fr": "Français"
   },
   "update": {
     "available": "is available",
@@ -1548,7 +1628,8 @@
       "generating": "Generating…",
       "rateLimited": "Too many AI requests — wait a moment and retry.",
       "quotaExceeded": "Daily token quota reached — available again tomorrow."
-    }
+    },
+    "disclaimer": "AI-generated — please verify with an expert"
   },
   "bcp": {
     "title": "Business Continuity Plans",
@@ -2134,5 +2215,245 @@
     "noControls": "No controls found.",
     "openPortal": "Open in Auditor Portal",
     "poweredBy": "Powered by Vakt"
+  },
+  "bsi": {
+    "type": {
+      "it_system": "IT System",
+      "application": "Application",
+      "network": "Network",
+      "room": "Room",
+      "process": "Process"
+    },
+    "niveau": {
+      "basis": "Basic",
+      "standard": "Standard",
+      "kern": "Core Protection"
+    },
+    "schutzbedarf": {
+      "normal": "normal",
+      "hoch": "high",
+      "sehr_hoch": "very high"
+    },
+    "depType": {
+      "runs_on": "runs on",
+      "located_in": "located in",
+      "connected_to": "connected to",
+      "processes_for": "processes for"
+    },
+    "cia": {
+      "c": "Confidentiality",
+      "i": "Integrity",
+      "a": "Availability",
+      "cShort": "C",
+      "iShort": "I",
+      "aShort": "A",
+      "inherited": "Inherited from: {{name}}"
+    },
+    "targetObjects": {
+      "title": "Structural Analysis — Target Objects",
+      "description": "Record IT systems, applications and rooms for the IT-Grundschutz check",
+      "addButton": "Add target object",
+      "loading": "Loading target objects…",
+      "emptyTitle": "No target objects yet",
+      "emptyDescription": "Add your IT systems, applications and rooms to start the IT-Grundschutz check.",
+      "emptyAddButton": "Add first target object",
+      "inherited": "inherited",
+      "override": "Override",
+      "depsButton": "Manage dependencies",
+      "overrideButton": "Protection need override",
+      "checkButton": "Check",
+      "deleteConfirm": "Really delete target object \"{{name}}\"? All check results will be lost."
+    },
+    "createDialog": {
+      "title": "Add target object",
+      "nameLabel": "Name",
+      "namePlaceholder": "e.g. Web Server Production",
+      "typeLabel": "Type",
+      "niveauLabel": "Protection level",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Optional",
+      "hint": "Protection need (C/I/A) can be edited after creation.",
+      "cancel": "Cancel",
+      "create": "Create"
+    },
+    "depsDialog": {
+      "title": "Dependencies — {{name}}",
+      "hint": "Dependencies control CIA inheritance (maximum principle, BSI 200-2 §8.2).",
+      "sourceHint": "The source object passes its protection need to the target.",
+      "loading": "Loading…",
+      "empty": "No dependencies recorded.",
+      "addNew": "Add new dependency",
+      "targetPlaceholder": "Choose target object…",
+      "errorAdd": "Error adding dependency",
+      "close": "Close"
+    },
+    "eintrittshaeufigkeit": {
+      "selten": "Rare",
+      "mittel": "Occasional",
+      "haeufig": "Frequent",
+      "sehr_haeufig": "Very frequent"
+    },
+    "schadensauswirkung": {
+      "vernachlaessigbar": "Negligible",
+      "begrenzt": "Limited",
+      "betraechtlich": "Considerable",
+      "existenzbedrohend": "Existential"
+    },
+    "risikokategorie": {
+      "gering": "Low",
+      "mittel": "Medium",
+      "hoch": "High",
+      "sehr_hoch": "Very high"
+    },
+    "behandlungsoption": {
+      "reduzieren": "Reduce",
+      "akzeptieren": "Accept",
+      "vermeiden": "Avoid",
+      "transferieren": "Transfer"
+    },
+    "riskDialog": {
+      "title": "Risk Assessment — {{name}}",
+      "loading": "Loading risk assessments…",
+      "empty": "No risk assessments recorded yet.",
+      "addTitle": "Add threat",
+      "threatLabel": "Threat (BSI 200-3)",
+      "threatPlaceholder": "Select threat…",
+      "haeufigkeitLabel": "Likelihood",
+      "auswirkungLabel": "Impact",
+      "add": "Add",
+      "editTitle": "Edit treatment",
+      "behandlungLabel": "Treatment option",
+      "massnahmeLabel": "Measure / Justification",
+      "massnahmePlaceholder": "e.g. Implement measure M 2.1",
+      "verantwortlicherLabel": "Responsible",
+      "zieldatumLabel": "Target date",
+      "restrisikoLabel": "Residual risk after treatment",
+      "save": "Save",
+      "cancel": "Cancel",
+      "close": "Close",
+      "risikoButton": "Risk assessment"
+    },
+    "overrideDialog": {
+      "title": "Protection Need Override — {{name}}",
+      "hint": "Manual override replaces the calculated inheritance value. Accumulation = increase value (many normal apps); Distribution = decrease value (redundancy).",
+      "noOverride": "(no override)",
+      "effectLabel": "Effect",
+      "effectPlaceholder": "Choose effect…",
+      "kumulation": "Accumulation effect (↑)",
+      "verteilung": "Distribution effect (↓)",
+      "reasonLabel": "Reason",
+      "reasonPlaceholder": "e.g. 5 normal applications → accumulation effect",
+      "reasonHint": "Required when an override value is set (audit evidence)",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "stufe": {
+      "all": "All levels",
+      "basis": "Basic",
+      "standard": "Standard",
+      "erhoeht": "Enhanced"
+    },
+    "status": {
+      "ja": "Yes",
+      "teilweise": "Partial",
+      "nein": "No",
+      "entbehrlich": "N/A"
+    },
+    "checkSheet": {
+      "title": "IT-Grundschutz Check",
+      "titleWithName": "IT-Grundschutz Check: {{name}}",
+      "description": "Record implementation status per requirement",
+      "loading": "Loading check sheet…",
+      "emptyTitle": "No modules assigned",
+      "emptyDescription": "Assign modules to the target object first via the modeling page.",
+      "toModeling": "Go to modeling",
+      "back": "Back",
+      "umsetzungsgrad": "Implementation level",
+      "anforderungen": "Requirements",
+      "jaCount": "{{count}}× yes",
+      "teilweiseCount": "{{count}}× partial",
+      "neinCount": "{{count}}× no",
+      "entbehrlichCount": "{{count}}× n/a",
+      "total": "{{count}} total",
+      "manyRowsHint": "{{count}} requirements — groups are collapsed for better performance. Click a group to expand it."
+    },
+    "kernHint": {
+      "title": "Consider Core Protection:",
+      "body": "The calculated effective protection need includes at least one dimension rated \"very high\". The chosen protection level ({{niveau}}) may not be sufficient — BSI 200-2 §8.3 recommends core protection (ISO mapping: A.8.1 Asset classification)."
+    },
+    "cockpit": {
+      "title": "Grundschutz Cockpit",
+      "description": "Overview of IT-Grundschutz check progress",
+      "gapReportCSV": "GAP Report (CSV)",
+      "loading": "Loading cockpit data…",
+      "gesamtumsetzungsgrad": "Overall implementation level",
+      "topGaps": "Top Gaps (most frequent open requirements)",
+      "noGaps": "No open gaps.",
+      "heatmapTitle": "Heatmap — Implementation level per module × target object",
+      "noHeatmapData": "No heatmap data available.",
+      "baustein": "Module",
+      "affected": "{{count}}× affected",
+      "allGaps": "All Gaps ({{count}})",
+      "showMore": "Show all {{count}} gaps",
+      "showLess": "Show less"
+    },
+    "reports": {
+      "title": "BSI Reference Reports",
+      "description": "Export annexes A1–A6 per BSI 200-2 / 200-3 as PDF",
+      "infoText": "Reports are generated live from current data. The SHA-256 hash of each export is stored for audit traceability.",
+      "exportHistory": "Export history",
+      "pdf": "PDF",
+      "A1_title": "Structural Analysis",
+      "A1_desc": "Target objects, types and protection levels",
+      "A2_title": "Protection Need Assessment",
+      "A2_desc": "CIA rating per target object (maximum principle)",
+      "A3_title": "Modeling",
+      "A3_desc": "Module assignment per target object",
+      "A4_title": "IT-Grundschutz Check",
+      "A4_desc": "Implementation status per requirement with justifications",
+      "A5_title": "Risk Analysis",
+      "A5_desc": "Risk assessments and treatment measures",
+      "A6_title": "Implementation Plan",
+      "A6_desc": "Open measures and prioritization",
+      "full_title": "Full Report",
+      "full_desc": "All annexes A1–A6 in one document"
+    }
+  },
+  "layout": {
+    "searchOpenDesktop": "Open global search (Cmd+K)",
+    "searchTitle": "Search (⌘K)",
+    "searchOpenMobile": "Open global search",
+    "mobileNav": "Mobile navigation",
+    "moreModules": "Open more modules",
+    "more": "More"
+  },
+  "tour": {
+    "skip": "Skip tour",
+    "skipAria": "Skip tour",
+    "step": "Step {{current}} of {{total}}",
+    "done": "Done",
+    "next": "Next",
+    "steps": {
+      "dashboard": {
+        "title": "Dashboard",
+        "text": "Get a quick overview of your current compliance status."
+      },
+      "frameworks": {
+        "title": "Frameworks (Vakt Comply)",
+        "text": "Choose your framework and document controls — NIS2, ISO 27001, BSI, and more."
+      },
+      "findings": {
+        "title": "Findings (Vakt Scan)",
+        "text": "Scanner results land here for prioritisation and tracking."
+      },
+      "policies": {
+        "title": "Policies",
+        "text": "Create and version security policies — with AI assistance and templates."
+      },
+      "checklist": {
+        "title": "Getting Started checklist",
+        "text": "This checklist guides you through the initial setup of your security platform."
+      }
+    }
   }
 }

@@ -15,7 +15,11 @@ import (
 // makeRequest builds an Echo context with the given license set under "license",
 // runs it through the Require(feature) middleware, and returns the response recorder.
 func makeRequest(e *echo.Echo, lic *License, feature string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	return makeRequestMethod(e, lic, feature, http.MethodGet)
+}
+
+func makeRequestMethod(e *echo.Echo, lic *License, feature, method string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(method, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	if lic != nil {
@@ -90,22 +94,34 @@ func TestRequireMiddleware_ProLicenseGrantsNamedFeatures(t *testing.T) {
 		Features: grantedFeatures,
 	}
 
-	// Granted features must pass.
+	// Explicitly-listed features must pass.
 	for _, f := range grantedFeatures {
 		rec := makeRequest(e, lic, f)
 		assert.Equal(t, http.StatusOK, rec.Code, "pro license should pass feature %q", f)
 	}
 
-	// Features NOT in the list must be rejected.
-	for _, f := range allFeatures {
-		granted := false
+	// Legacy Pro features are implicitly granted even when not listed (S79-1).
+	for _, f := range legacyProFeatures {
+		rec := makeRequest(e, lic, f)
+		assert.Equal(t, http.StatusOK, rec.Code, "legacy pro feature %q should be implicitly granted", f)
+	}
+
+	// Features neither explicitly listed NOR in legacyProFeatures must be rejected.
+	isGranted := func(f string) bool {
 		for _, g := range grantedFeatures {
 			if g == f {
-				granted = true
-				break
+				return true
 			}
 		}
-		if !granted {
+		for _, g := range legacyProFeatures {
+			if g == f {
+				return true
+			}
+		}
+		return false
+	}
+	for _, f := range allFeatures {
+		if !isGranted(f) {
 			rec := makeRequest(e, lic, f)
 			assert.Equal(t, http.StatusPaymentRequired, rec.Code, "feature %q not in license should be rejected", f)
 		}
@@ -120,6 +136,49 @@ func TestRequireMiddleware_ResponseBodyContainsFeatureName(t *testing.T) {
 	body := rec.Body.String()
 	assert.Contains(t, body, FeatureSecPulse, "response body must name the missing feature")
 	assert.Contains(t, body, "feature_not_available", "response body must contain error code")
+}
+
+// TestRequireMiddleware_ExpiredProReadOnly verifies S79-3:
+// expired Pro licenses allow GET/HEAD but block POST/PUT/DELETE.
+func TestRequireMiddleware_ExpiredProReadOnly(t *testing.T) {
+	e := echo.New()
+
+	lic := &License{
+		Tier:     "pro",
+		Features: []string{FeatureAuditPDF, FeatureBSIGrundschutz},
+		Expired:  true,
+	}
+
+	readMethods := []string{http.MethodGet, http.MethodHead}
+	for _, method := range readMethods {
+		rec := makeRequestMethod(e, lic, FeatureAuditPDF, method)
+		assert.Equal(t, http.StatusOK, rec.Code, "expired Pro license should allow %s on listed feature", method)
+	}
+
+	writeMethods := []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
+	for _, method := range writeMethods {
+		rec := makeRequestMethod(e, lic, FeatureAuditPDF, method)
+		assert.Equal(t, http.StatusPaymentRequired, rec.Code, "expired Pro license must block %s", method)
+		body := rec.Body.String()
+		assert.Contains(t, body, "license_expired", "%s must include license_expired error code", method)
+	}
+}
+
+// TestRequireMiddleware_ExpiredProLegacyFeatureReadOnly verifies that legacy Pro
+// features (implicitly granted) are also readable on an expired key (S79-1 + S79-3).
+func TestRequireMiddleware_ExpiredProLegacyFeatureReadOnly(t *testing.T) {
+	e := echo.New()
+
+	// Key has NO explicit features, but tier=pro + Expired=true.
+	lic := &License{Tier: "pro", Features: []string{}, Expired: true}
+
+	for _, f := range legacyProFeatures {
+		rec := makeRequestMethod(e, lic, f, http.MethodGet)
+		assert.Equal(t, http.StatusOK, rec.Code, "expired Pro key should allow GET on legacy feature %q", f)
+
+		rec = makeRequestMethod(e, lic, f, http.MethodPost)
+		assert.Equal(t, http.StatusPaymentRequired, rec.Code, "expired Pro key must block POST on feature %q", f)
+	}
 }
 
 func TestRequireMiddleware_WrongTypeOnContext(t *testing.T) {

@@ -153,3 +153,89 @@ func TestBuiltinAvailable_KRITISandC5Present(t *testing.T) {
 	assert.True(t, names["KRITIS"], "KRITIS must be in builtinAvailable (S75-1)")
 	assert.True(t, names["C5"], "C5 must be in builtinAvailable (S75-1)")
 }
+
+// ── S75-4: Specific pair assertions (AC4) + semantic regression guards ────────
+
+// TestDSGVOTOMBSI_AC4_TOM2_EquivalentORP4 verifies story S75-4 AC4:
+// TOM-2 (Zugangskontrolle) must have an equivalent mapping to BSI-ORP.4.A1 (IAM).
+func TestDSGVOTOMBSI_AC4_TOM2_EquivalentORP4(t *testing.T) {
+	found := false
+	for _, p := range dsgvoTOMBSIMappings {
+		if p.srcCode == "TOM-2" && p.tgtCode == "BSI-ORP.4.A1" && p.mtype == "equivalent" {
+			found = true
+		}
+	}
+	assert.True(t, found, "S75-4 AC4: dsgvoTOMBSIMappings must contain TOM-2→BSI-ORP.4.A1 equivalent")
+}
+
+// TestDSGVOTOMNIS2_SemanticRegression_TOM4_ToTLS guards against re-introducing the
+// bug where TOM-4 (Weitergabekontrolle) was incorrectly mapped to NIS2-G.1
+// (Cyberhygiene/Schulungen) instead of NIS2-H.4 (Verschlüsselung übertragener Daten / TLS).
+func TestDSGVOTOMNIS2_SemanticRegression_TOM4_ToTLS(t *testing.T) {
+	hasTLSmapping := false
+	hasWrongCyberhygiene := false
+	for _, p := range dsgvoTOMNIS2Mappings {
+		if p.srcCode == "TOM-4" {
+			if p.tgtCode == "NIS2-H.4" {
+				hasTLSmapping = true
+			}
+			if p.tgtCode == "NIS2-G.1" {
+				hasWrongCyberhygiene = true
+			}
+		}
+	}
+	assert.True(t, hasTLSmapping, "TOM-4 (Weitergabekontrolle) must map to NIS2-H.4 (TLS)")
+	assert.False(t, hasWrongCyberhygiene, "TOM-4 must NOT map to NIS2-G.1 (Cyberhygiene — wrong thematic area)")
+}
+
+// TestDSGVOTOMNIS2_SemanticRegression_TOM1_ToPhysical guards against TOM-1 (Zutrittskontrolle)
+// being mapped to NIS2-H.1 (Kryptographierichtlinie) — a thematic area mismatch.
+func TestDSGVOTOMNIS2_SemanticRegression_TOM1_ToPhysical(t *testing.T) {
+	hasPhysical := false
+	hasWrongCrypto := false
+	for _, p := range dsgvoTOMNIS2Mappings {
+		if p.srcCode == "TOM-1" {
+			if p.tgtCode == "NIS2-I.10" {
+				hasPhysical = true
+			}
+			if p.tgtCode == "NIS2-H.1" || p.tgtCode == "NIS2-H.2" {
+				hasWrongCrypto = true
+			}
+		}
+	}
+	assert.True(t, hasPhysical, "TOM-1 (Zutrittskontrolle) must map to NIS2-I.10 (Physische Sicherheitsmaßnahmen)")
+	assert.False(t, hasWrongCrypto, "TOM-1 must NOT map to NIS2-H.x (Kryptographie — wrong thematic area)")
+}
+
+// TestNIS2BSIExtended_SemanticRegression_H_to_Crypto guards against NIS2-H.x (Kryptographie)
+// being mapped to BSI-INF.x (Gebäude/Rechenzentrum) — a critical thematic area confusion.
+func TestNIS2BSIExtended_SemanticRegression_H_to_Crypto(t *testing.T) {
+	for _, p := range nis2BSIExtendedMappings {
+		if strings.HasPrefix(p.srcCode, "NIS2-H.") {
+			assert.True(t, strings.HasPrefix(p.tgtCode, "BSI-CON."),
+				"NIS2-H.x (Kryptographie) must map to BSI-CON.x, got %s→%s", p.srcCode, p.tgtCode)
+		}
+	}
+}
+
+// TestNIS2BSIExtended_SemanticRegression_D_to_SupplyChain guards against NIS2-D.x (Supply-Chain)
+// being mapped to BSI-DER.4.A1 (Notfallmanagement) — a category mismatch.
+func TestNIS2BSIExtended_SemanticRegression_D_to_SupplyChain(t *testing.T) {
+	for _, p := range nis2BSIExtendedMappings {
+		if strings.HasPrefix(p.srcCode, "NIS2-D.") {
+			assert.True(t, strings.HasPrefix(p.tgtCode, "BSI-OPS.2."),
+				"NIS2-D.x (Supply-Chain) must map to BSI-OPS.2.x, got %s→%s", p.srcCode, p.tgtCode)
+		}
+	}
+}
+
+// TestNIS2BSIExtended_SemanticRegression_G_to_Training guards against NIS2-G.x (Cyberhygiene/Schulungen)
+// being mapped to BSI-CON.1.A1 (Kryptokonzept) — a content mismatch.
+func TestNIS2BSIExtended_SemanticRegression_G_to_Training(t *testing.T) {
+	for _, p := range nis2BSIExtendedMappings {
+		if strings.HasPrefix(p.srcCode, "NIS2-G.") {
+			assert.True(t, strings.HasPrefix(p.tgtCode, "BSI-ORP.3."),
+				"NIS2-G.x (Cyberhygiene/Schulungen) must map to BSI-ORP.3.x (Schulung), got %s→%s", p.srcCode, p.tgtCode)
+		}
+	}
+}

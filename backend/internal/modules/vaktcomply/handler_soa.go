@@ -12,6 +12,9 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/platform/features"
+	"github.com/matharnica/vakt/internal/shared/xlsxexport"
 )
 
 // SoAEntry is one row in the Statement of Applicability.
@@ -171,6 +174,76 @@ func (h *Handler) GetDedicatedSoASummary(c echo.Context) error {
 		return errResp(c, http.StatusInternalServerError, "failed to get SoA summary", "CK_SOA_FAILED")
 	}
 	return c.JSON(http.StatusOK, summary)
+}
+
+// ExportDedicatedSoAXLSX handles GET /api/v1/vaktcomply/soa/export.xlsx
+// Requires FeatureAuditPDF (same gate as PDF export).
+func (h *Handler) ExportDedicatedSoAXLSX(c echo.Context) error {
+	if !features.IsEnabled(c, features.FeatureAuditPDF) {
+		return errResp(c, http.StatusPaymentRequired, "XLSX export requires Pro", "CK_FEATURE_REQUIRED")
+	}
+	ctx := c.Request().Context()
+	org := orgID(c)
+
+	entries, err := h.service.ListDedicatedSoAEntries(ctx, org)
+	if err != nil {
+		if errors.Is(err, ErrSoANotInitialized) {
+			return errResp(c, http.StatusNotFound, err.Error(), "CK_SOA_NOT_INITIALIZED")
+		}
+		log.Error().Err(err).Msg("export soa xlsx: list entries")
+		return errResp(c, http.StatusInternalServerError, "export failed", "CK_SOA_EXPORT_FAILED")
+	}
+
+	summary, err := h.service.GetDedicatedSoASummary(ctx, org)
+	if err != nil {
+		log.Error().Err(err).Msg("export soa xlsx: get summary")
+		return errResp(c, http.StatusInternalServerError, "export failed", "CK_SOA_EXPORT_FAILED")
+	}
+
+	rows := make([]xlsxexport.SoARow, len(entries))
+	for i, e := range entries {
+		justification := e.Justification
+		if !e.Applicable && e.ExclusionReason != "" {
+			justification = e.ExclusionReason
+		}
+		owner := ""
+		if e.ApprovedBy != nil {
+			owner = *e.ApprovedBy
+		}
+		rows[i] = xlsxexport.SoARow{
+			ControlRef:           e.ControlRef,
+			ControlName:          e.ControlName,
+			ControlGroup:         e.ControlGroup,
+			Applicable:           e.Applicable,
+			Justification:        justification,
+			ImplementationStatus: e.ImplementationStatus,
+			Owner:                owner,
+			UpdatedAt:            e.UpdatedAt,
+		}
+	}
+
+	var xlsSummary xlsxexport.SoASummary
+	if summary != nil {
+		xlsSummary = xlsxexport.SoASummary{
+			ApplicableCount:   summary.ApplicableCount,
+			ExcludedCount:     summary.ExcludedCount,
+			ImplementedCount:  summary.ImplementedCount,
+			PartialCount:      summary.PartialCount,
+			PlannedCount:      summary.PlannedCount,
+			NotStartedCount:   summary.NotStartedCount,
+			ImplementationPct: summary.ImplementationPct,
+		}
+	}
+
+	data, err := xlsxexport.RenderSoA(rows, xlsSummary)
+	if err != nil {
+		log.Error().Err(err).Msg("export soa xlsx: render")
+		return errResp(c, http.StatusInternalServerError, "export failed", "CK_SOA_EXPORT_FAILED")
+	}
+
+	filename := fmt.Sprintf("soa-%s.xlsx", time.Now().UTC().Format("2006-01-02"))
+	c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, filename))
+	return c.Blob(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", data)
 }
 
 // ExportDedicatedSoA handles GET /api/v1/vaktcomply/soa/export

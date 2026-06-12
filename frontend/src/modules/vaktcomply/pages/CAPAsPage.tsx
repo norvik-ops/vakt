@@ -4,6 +4,7 @@ import {
 } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Pagination } from '../../../shared/components/Pagination'
 import { BulkActionBar } from '../../../shared/components/BulkActionBar'
@@ -268,7 +269,7 @@ function CAPADetail({ capa, onClose }: { capa: CAPA; onClose: () => void }) {
 
       {/* S61-3: NC root-cause + effectiveness section */}
       <div className="border-t border-border pt-3 space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">NC-Klassifizierung &amp; Wirksamkeit</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide"><TermTooltip term="NC" explanation="Nonconformity — Abweichung vom geforderten Soll-Zustand (ISO 19011). Major NC: Anforderung nicht erfüllt. Minor NC: Einzelabweichung, die das ISMS nicht grundlegend gefährdet.">NC</TermTooltip>-Klassifizierung &amp; Wirksamkeit</p>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs">NC-Klassifizierung</Label>

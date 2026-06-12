@@ -64,6 +64,14 @@ func (h *StartHandler) Start(c echo.Context) error {
 		ORDER BY u.created_at LIMIT 1`, sess.OrgID, sess.AdminID).
 		Scan(&analystEmail)
 
+	if adminEmail == "" {
+		log.Error().Msg("demo: admin email lookup returned empty — seed may have failed silently")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "demo user lookup failed",
+			"code":  "DEMO_USER_LOOKUP_FAILED",
+		})
+	}
+
 	return c.JSON(http.StatusOK, map[string]any{
 		"admin_email":      adminEmail,
 		"admin_password":   sess.AdminPassword,

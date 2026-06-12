@@ -1431,7 +1431,7 @@ var euAIActNIS2Mappings = []frameworkPair{
 
 // SeedEUAIActNIS2Mappings seeds EU AI Act ↔ NIS2 bidirectional mappings.
 func (s *Service) SeedEUAIActNIS2Mappings(ctx context.Context, orgID string) error {
-	return s.seedBidirectionalMappings(ctx, orgID, "AIACT", "NIS2", euAIActNIS2Mappings)
+	return s.seedBidirectionalMappings(ctx, orgID, "EUAIACT", "NIS2", euAIActNIS2Mappings)
 }
 
 // ── Helper: generic bidirectional seeder ─────────────────────────────────────
@@ -1626,58 +1626,58 @@ var nis2BSIExtendedMappings = []frameworkPair{
 	{src: "NIS2", srcCode: "NIS2-C.3", tgt: "BSI", tgtCode: "BSI-BCM.2.A1", mtype: "equivalent"},
 	{src: "NIS2", srcCode: "NIS2-C.5", tgt: "BSI", tgtCode: "BSI-DER.4.A1", mtype: "partial"},
 
-	// ── D — Krisenmanagement ──────────────────────────────────────────────────
-	{src: "NIS2", srcCode: "NIS2-D.1", tgt: "BSI", tgtCode: "BSI-DER.4.A1", mtype: "equivalent"},
-	{src: "NIS2", srcCode: "NIS2-D.2", tgt: "BSI", tgtCode: "BSI-DER.2.1.A1", mtype: "partial"},
+	// ── D — Supply-Chain-Sicherheit (Art. 7) ─────────────────────────────────
+	{src: "NIS2", srcCode: "NIS2-D.1", tgt: "BSI", tgtCode: "BSI-OPS.2.2.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-D.2", tgt: "BSI", tgtCode: "BSI-OPS.2.4.A1", mtype: "partial"},
 
-	// ── E — Netz- und Systemsicherheit ───────────────────────────────────────
-	{src: "NIS2", srcCode: "NIS2-E.1", tgt: "BSI", tgtCode: "BSI-NET.1.1.A1", mtype: "equivalent"},
-	{src: "NIS2", srcCode: "NIS2-E.2", tgt: "BSI", tgtCode: "BSI-NET.3.2.A1", mtype: "equivalent"},
-	{src: "NIS2", srcCode: "NIS2-E.5", tgt: "BSI", tgtCode: "BSI-OPS.1.1.3.A1", mtype: "equivalent"},
-	{src: "NIS2", srcCode: "NIS2-E.6", tgt: "BSI", tgtCode: "BSI-OPS.1.1.4.A1", mtype: "equivalent"},
+	// ── E — Netz- & Informationssicherheit (Art. 5) ──────────────────────────
+	{src: "NIS2", srcCode: "NIS2-E.1", tgt: "BSI", tgtCode: "BSI-CON.8.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-E.2", tgt: "BSI", tgtCode: "BSI-NET.1.1.A1", mtype: "partial"},
+	{src: "NIS2", srcCode: "NIS2-E.5", tgt: "BSI", tgtCode: "BSI-DER.3.2.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-E.6", tgt: "BSI", tgtCode: "BSI-OPS.1.1.3.A1", mtype: "equivalent"},
 	{src: "NIS2", srcCode: "NIS2-E.7", tgt: "BSI", tgtCode: "BSI-SYS.1.1.A1", mtype: "equivalent"},
 	{src: "NIS2", srcCode: "NIS2-E.9", tgt: "BSI", tgtCode: "BSI-NET.1.2.A1", mtype: "equivalent"},
 
-	// ── F — Zugriffskontrolle ─────────────────────────────────────────────────
-	{src: "NIS2", srcCode: "NIS2-F.1", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "equivalent"},
-	{src: "NIS2", srcCode: "NIS2-F.2", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "partial"},
-	{src: "NIS2", srcCode: "NIS2-F.3", tgt: "BSI", tgtCode: "BSI-APP.4.4.A1", mtype: "partial"},
+	// ── F — Wirksamkeitsbewertung (Art. 6) ───────────────────────────────────
+	{src: "NIS2", srcCode: "NIS2-F.1", tgt: "BSI", tgtCode: "BSI-ISMS.1.A9", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-F.2", tgt: "BSI", tgtCode: "BSI-ISMS.1.A10", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-F.3", tgt: "BSI", tgtCode: "BSI-ISMS.1.A9", mtype: "partial"},
 
-	// ── G — Kryptographie ────────────────────────────────────────────────────
-	{src: "NIS2", srcCode: "NIS2-G.1", tgt: "BSI", tgtCode: "BSI-CON.1.A1", mtype: "equivalent"},
-	{src: "NIS2", srcCode: "NIS2-G.2", tgt: "BSI", tgtCode: "BSI-CON.1.A1", mtype: "partial"},
+	// ── G — Cyberhygiene & Schulungen (Art. 11) ──────────────────────────────
+	{src: "NIS2", srcCode: "NIS2-G.1", tgt: "BSI", tgtCode: "BSI-ORP.3.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-G.2", tgt: "BSI", tgtCode: "BSI-ORP.3.A1", mtype: "partial"},
 
-	// ── H — Physische Sicherheit ──────────────────────────────────────────────
-	{src: "NIS2", srcCode: "NIS2-H.1", tgt: "BSI", tgtCode: "BSI-INF.2.A1", mtype: "equivalent"},
-	{src: "NIS2", srcCode: "NIS2-H.2", tgt: "BSI", tgtCode: "BSI-INF.1.A1", mtype: "equivalent"},
-	{src: "NIS2", srcCode: "NIS2-H.3", tgt: "BSI", tgtCode: "BSI-INF.5.A1", mtype: "partial"},
+	// ── H — Kryptographie (Art. 10) ──────────────────────────────────────────
+	{src: "NIS2", srcCode: "NIS2-H.1", tgt: "BSI", tgtCode: "BSI-CON.1.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-H.2", tgt: "BSI", tgtCode: "BSI-CON.1.A1", mtype: "partial"},
+	{src: "NIS2", srcCode: "NIS2-H.3", tgt: "BSI", tgtCode: "BSI-CON.1.A1", mtype: "partial"},
 
-	// ── I — Lieferkettensicherheit ────────────────────────────────────────────
-	{src: "NIS2", srcCode: "NIS2-I.1", tgt: "BSI", tgtCode: "BSI-OPS.2.2.A1", mtype: "equivalent"},
-	{src: "NIS2", srcCode: "NIS2-I.2", tgt: "BSI", tgtCode: "BSI-OPS.2.4.A1", mtype: "partial"},
+	// ── I — HR-Sicherheit & Zugriffskontrolle (Art. 12) ─────────────────────
+	{src: "NIS2", srcCode: "NIS2-I.1", tgt: "BSI", tgtCode: "BSI-ORP.2.A1", mtype: "equivalent"},
+	{src: "NIS2", srcCode: "NIS2-I.6", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "equivalent"},
 
-	// ── J — Meldepflichten / Offenlegung ──────────────────────────────────────
-	{src: "NIS2", srcCode: "NIS2-J.1", tgt: "BSI", tgtCode: "BSI-DER.2.1.A1", mtype: "partial"},
-	{src: "NIS2", srcCode: "NIS2-J.2", tgt: "BSI", tgtCode: "BSI-DER.1.A1", mtype: "partial"},
+	// ── J — Authentifizierung & sichere Kommunikation (Art. 13) ─────────────
+	{src: "NIS2", srcCode: "NIS2-J.1", tgt: "BSI", tgtCode: "BSI-ORP.4.A1", mtype: "partial"},
+	{src: "NIS2", srcCode: "NIS2-J.4", tgt: "BSI", tgtCode: "BSI-NET.4.1.A1", mtype: "partial"},
 }
 
 // ── DSGVO-TOM ↔ NIS2 ─────────────────────────────────────────────────────────
 
 var dsgvoTOMNIS2Mappings = []frameworkPair{
-	{src: "DSGVO-TOM", srcCode: "TOM-1", tgt: "NIS2", tgtCode: "NIS2-H.1", mtype: "equivalent"},
-	{src: "DSGVO-TOM", srcCode: "TOM-1", tgt: "NIS2", tgtCode: "NIS2-H.2", mtype: "partial"},
-	{src: "DSGVO-TOM", srcCode: "TOM-2", tgt: "NIS2", tgtCode: "NIS2-F.1", mtype: "equivalent"},
-	{src: "DSGVO-TOM", srcCode: "TOM-3", tgt: "NIS2", tgtCode: "NIS2-F.1", mtype: "equivalent"},
-	{src: "DSGVO-TOM", srcCode: "TOM-3", tgt: "NIS2", tgtCode: "NIS2-F.2", mtype: "partial"},
-	{src: "DSGVO-TOM", srcCode: "TOM-4", tgt: "NIS2", tgtCode: "NIS2-G.1", mtype: "equivalent"},
-	{src: "DSGVO-TOM", srcCode: "TOM-5", tgt: "NIS2", tgtCode: "NIS2-E.3", mtype: "equivalent"},
-	{src: "DSGVO-TOM", srcCode: "TOM-5", tgt: "NIS2", tgtCode: "NIS2-B.3", mtype: "partial"},
-	{src: "DSGVO-TOM", srcCode: "TOM-6", tgt: "NIS2", tgtCode: "NIS2-I.1", mtype: "equivalent"},
-	{src: "DSGVO-TOM", srcCode: "TOM-7", tgt: "NIS2", tgtCode: "NIS2-C.4", mtype: "equivalent"},
-	{src: "DSGVO-TOM", srcCode: "TOM-7", tgt: "NIS2", tgtCode: "NIS2-C.1", mtype: "partial"},
-	{src: "DSGVO-TOM", srcCode: "TOM-10", tgt: "NIS2", tgtCode: "NIS2-G.1", mtype: "equivalent"},
-	{src: "DSGVO-TOM", srcCode: "TOM-12", tgt: "NIS2", tgtCode: "NIS2-C.3", mtype: "equivalent"},
-	{src: "DSGVO-TOM", srcCode: "TOM-13", tgt: "NIS2", tgtCode: "NIS2-A.5", mtype: "equivalent"},
+	{src: "DSGVO-TOM", srcCode: "TOM-1", tgt: "NIS2", tgtCode: "NIS2-I.10", mtype: "equivalent"}, // Zutrittskontrolle → Physische Sicherheitsmaßnahmen
+	{src: "DSGVO-TOM", srcCode: "TOM-1", tgt: "NIS2", tgtCode: "NIS2-I.5", mtype: "partial"},     // Zutrittskontrollrichtlinie
+	{src: "DSGVO-TOM", srcCode: "TOM-2", tgt: "NIS2", tgtCode: "NIS2-J.1", mtype: "equivalent"},  // Zugangskontrolle → MFA
+	{src: "DSGVO-TOM", srcCode: "TOM-3", tgt: "NIS2", tgtCode: "NIS2-I.6", mtype: "equivalent"},  // Zugriffskontrolle → IAM
+	{src: "DSGVO-TOM", srcCode: "TOM-3", tgt: "NIS2", tgtCode: "NIS2-I.8", mtype: "partial"},     // Berechtigungskonzept → RBAC
+	{src: "DSGVO-TOM", srcCode: "TOM-4", tgt: "NIS2", tgtCode: "NIS2-H.4", mtype: "equivalent"},  // Weitergabekontrolle → Verschlüsselung übertragener Daten (TLS)
+	{src: "DSGVO-TOM", srcCode: "TOM-5", tgt: "NIS2", tgtCode: "NIS2-I.13", mtype: "equivalent"}, // Eingabekontrolle → Logging, Monitoring und SIEM
+	{src: "DSGVO-TOM", srcCode: "TOM-5", tgt: "NIS2", tgtCode: "NIS2-E.10", mtype: "partial"},    // IDS/IPS-Überwachung
+	{src: "DSGVO-TOM", srcCode: "TOM-6", tgt: "NIS2", tgtCode: "NIS2-D.3", mtype: "equivalent"},  // Auftragskontrolle → Sicherheitsanforderungen in Verträgen
+	{src: "DSGVO-TOM", srcCode: "TOM-7", tgt: "NIS2", tgtCode: "NIS2-C.4", mtype: "equivalent"},  // Verfügbarkeitskontrolle → Backup-Richtlinie
+	{src: "DSGVO-TOM", srcCode: "TOM-7", tgt: "NIS2", tgtCode: "NIS2-C.1", mtype: "partial"},     // BCM-Richtlinie
+	{src: "DSGVO-TOM", srcCode: "TOM-10", tgt: "NIS2", tgtCode: "NIS2-H.3", mtype: "equivalent"}, // Verschlüsselung → Verschlüsselung ruhender Daten
+	{src: "DSGVO-TOM", srcCode: "TOM-12", tgt: "NIS2", tgtCode: "NIS2-C.3", mtype: "equivalent"}, // Wiederherstellung → BCM-Tests/-Übungen
+	{src: "DSGVO-TOM", srcCode: "TOM-13", tgt: "NIS2", tgtCode: "NIS2-A.5", mtype: "equivalent"}, // Überprüfungsverfahren → Management-Review
 }
 
 // SeedDSGVOTOMNIS2Mappings seeds DSGVO-TOM ↔ NIS2 bidirectional mappings.
@@ -2269,6 +2269,64 @@ func (s *Service) GetImplementationPath(ctx context.Context, orgID, frameworkID 
 		})
 	}
 	return steps, nil
+}
+
+// ── Mapping Registry (S79-9) ─────────────────────────────────────────────────
+
+// mappingRegistryEntry describes one bidirectional seeder that should run when
+// either of the two named frameworks is enabled for an org.
+type mappingRegistryEntry struct {
+	fwA string // normalised (upper-case) framework name A
+	fwB string // normalised (upper-case) framework name B
+	fn  func(context.Context, string) error
+}
+
+// MappingRegistry returns the complete list of (fwA, fwB, seeder) triples.
+// EnableFramework iterates this registry instead of maintaining ad-hoc switch blocks.
+// Every Seed*Mappings function must appear here exactly once.
+func (s *Service) MappingRegistry() []mappingRegistryEntry {
+	return []mappingRegistryEntry{
+		// Core DACH pairs (always present)
+		{"TISAX", "ISO27001", s.SeedTISAXISO27001Mappings},
+		{"DSGVO-TOM", "ISO27001", s.SeedDsgvoTOMISO27001Mappings},
+		{"ISO27001", "BSI", s.SeedISO27001BSIMappings},
+		{"DSGVO-TOM", "NIS2", s.SeedDSGVOTOMNIS2Mappings},
+		{"DSGVO-TOM", "BSI", s.SeedDSGVOTOMBSIMappings},
+		{"CIS", "ISO27001", s.SeedCISISO27001Mappings},
+		{"CIS", "BSI", s.SeedCISBSIMappings},
+		{"TISAX", "BSI", s.SeedTISAXBSIMappings},
+		{"TISAX", "DSGVO-TOM", s.SeedTISAXDSGVOTOMMappings},
+		{"DORA", "ISO27001", s.SeedDORAMappingsFixed},
+		{"NIS2", "DORA", s.SeedNIS2DORAMappings},
+		{"NIS2", "BSI", s.SeedNIS2BSIMappings},
+		{"NIS2", "CIS", s.SeedNIS2CISMappings},
+		{"EUAIACT", "ISO42001", s.SeedEUAIActISO42001Mappings},
+		{"EUAIACT", "ISO27001", s.SeedEUAIActISO27001Mappings},
+		{"ISO42001", "ISO27001", s.SeedISO42001ISO27001Mappings},
+		{"ISO27017", "ISO27001", s.SeedISO27017ISO27001Mappings},
+		{"ISO27017", "C5", s.SeedISO27017C5Mappings},
+		{"ISO27017", "BSI", s.SeedISO27017BSIMappings},
+		{"ISO27018", "ISO27001", s.SeedISO27018ISO27001Mappings},
+		{"ISO27018", "DSGVO-TOM", s.SeedISO27018DsgvoTOMMappings},
+		{"ISO27018", "C5", s.SeedISO27018C5Mappings},
+		// CRA — bundles ISO27001 + NIS2 pairs in one call
+		{"CRA", "ISO27001", s.SeedCRAMappings},
+		// Previously unwired pairs — these are the 19 dead seeders fixed by S79-9
+		{"PREN18286", "EUAIACT", s.SeedPREN18286EUAIActMappings},
+		{"KRITIS", "DORA", s.SeedKRITISDORAMappings},
+		{"BSI", "KRITIS", s.SeedBSIKRITISMappings},
+		{"C5", "BSI", s.SeedC5BSIMappings},
+		{"TISAX", "NIS2", s.SeedTISAXNIS2Mappings},
+		{"ISO27017", "NIS2", s.SeedISO27017NIS2Mappings},
+		{"ISO42001", "NIS2", s.SeedISO42001NIS2Mappings},
+		{"CRA", "C5", s.SeedCRAC5Mappings},
+		{"CRA", "BSI", s.SeedCRABSIMappings},
+		{"TISAX", "C5", s.SeedTISAXC5Mappings},
+		{"EUAIACT", "NIS2", s.SeedEUAIActNIS2Mappings},
+		{"ISO27017", "DORA", s.SeedISO27017DORAMappings},
+		{"ISO27017", "KRITIS", s.SeedISO27017KRITISMappings},
+		{"BSI", "DORA", s.SeedBSIDORAMappings},
+	}
 }
 
 // ── Evidence Propagation ──────────────────────────────────────────────────────

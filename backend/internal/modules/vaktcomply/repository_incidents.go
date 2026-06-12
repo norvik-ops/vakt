@@ -433,6 +433,7 @@ func (r *Repository) UpdateIncidentDORADeadlineStatus(ctx context.Context, incid
 	if err != nil {
 		return fmt.Errorf("marshal dora deadline status: %w", err)
 	}
+	// orgid-lint: global — UPDATE by PK; incidentID comes from a prior org-scoped query in the background job
 	_, err = r.db.Exec(ctx,
 		`UPDATE ck_incidents SET dora_deadline_status = $2, updated_at = NOW() WHERE id = $1::uuid`,
 		incidentID, b,

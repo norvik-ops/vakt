@@ -38,8 +38,9 @@ describe('GitScansPage — loading state', () => {
   it('shows page header but not empty state while loading', () => {
     vi.mocked(useGitScans).mockReturnValue({ data: [], isLoading: true } as any)
     renderWithProviders(<GitScansPage />)
-    expect(screen.getByText('Git Scans')).toBeInTheDocument()
-    expect(screen.queryByText('Keine Git-Scans')).not.toBeInTheDocument()
+    // i18n is not initialised in tests — t() returns the raw key.
+    expect(screen.getByText('vault.gitScans.title')).toBeInTheDocument()
+    expect(screen.queryByText('vault.gitScans.noScans')).not.toBeInTheDocument()
   })
 })
 
@@ -48,8 +49,8 @@ describe('GitScansPage — loading state', () => {
 describe('GitScansPage — empty state', () => {
   it('shows empty state when no scans exist', () => {
     renderWithProviders(<GitScansPage />)
-    expect(screen.getByText('Keine Git-Scans')).toBeInTheDocument()
-    expect(screen.getByText('Verbinde dein erstes Repository.')).toBeInTheDocument()
+    expect(screen.getByText('vault.gitScans.noScans')).toBeInTheDocument()
+    expect(screen.getByText('vault.gitScans.noScansHint')).toBeInTheDocument()
   })
 })
 
@@ -71,7 +72,7 @@ describe('GitScansPage — create mutation', () => {
   it('opens dialog, fills URL, and calls mutate on form submit', () => {
     renderWithProviders(<GitScansPage />)
 
-    fireEvent.click(screen.getByText('New Scan'))
+    fireEvent.click(screen.getByText('vault.gitScans.newScan'))
     expect(screen.getByText('Scan Repository')).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Repository URL'), {
@@ -91,7 +92,7 @@ describe('GitScansPage — create mutation', () => {
   it('shows "Starting…" on the submit button while mutation is pending', () => {
     vi.mocked(useTriggerGitScan).mockReturnValue({ mutate: vi.fn(), isPending: true } as any)
     renderWithProviders(<GitScansPage />)
-    fireEvent.click(screen.getByText('New Scan'))
+    fireEvent.click(screen.getByText('vault.gitScans.newScan'))
     expect(screen.getByText('Starting…')).toBeInTheDocument()
   })
 })

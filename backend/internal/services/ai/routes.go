@@ -4,9 +4,13 @@
 package ai
 
 import (
+	"context"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/matharnica/vakt/internal/license"
 )
 
 // RegisterOptions buendelt die optionalen Service-Dependencies, die in
@@ -23,6 +27,9 @@ type RegisterOptions struct {
 	// allow traffic when the backend (Redis or Postgres) is unreachable.
 	// Default false — fail-closed, consistent with ADR-0044 (auth lockout).
 	FailOpenOnOutage bool
+	// OrgSettings resolves per-org model/URL overrides (S79-7).
+	// When nil the system-wide model/URL is used for all orgs.
+	OrgSettings OrgSettingsFunc
 }
 
 // Register mounts AI report endpoints.
@@ -58,6 +65,14 @@ func RegisterWithOptions(g *echo.Group, db *pgxpool.Pool, provider, baseURL, api
 		}).WithFailOpenOnOutage(opts.FailOpenOnOutage)
 		svc.WithUsageTracker(tracker)
 	}
+	// Apply per-org model/URL overrides (S79-7). Caller may supply opts.OrgSettings;
+	// otherwise, if db is available, fall back to a built-in resolver using raw SQL
+	// so this wiring requires no change to cmd/api/main.go.
+	if opts.OrgSettings != nil {
+		svc.WithOrgSettings(opts.OrgSettings)
+	} else if db != nil {
+		svc.WithOrgSettings(defaultOrgSettingsFn(db))
+	}
 	h := NewHandler(svc)
 
 	// Every LLM-producing endpoint goes through the same CE-quota gate.
@@ -85,9 +100,11 @@ func RegisterWithOptions(g *echo.Group, db *pgxpool.Pool, provider, baseURL, api
 	// Agent run is itself a (chain of) LLM call(s) — same CE gate applies.
 	// Approve/Reject are not LLM-generating, so they only run after the
 	// initial AgentRun was already accounted for.
-	g.POST("/ai/agent/run", agentH.AgentRun, aiLimit)
-	g.POST("/ai/agent/runs/:run_id/approve", agentH.ApproveRun)
-	g.POST("/ai/agent/runs/:run_id/reject", agentH.RejectRun)
+	// Agent run requires the agent_write_tools feature (Pro+).
+	// The endpoint is experimental — callers receive X-Vakt-Status: experimental.
+	g.POST("/ai/agent/run", agentH.AgentRun, aiLimit, license.Require(license.FeatureAgentWriteTools))
+	g.POST("/ai/agent/runs/:run_id/approve", agentH.ApproveRun, license.Require(license.FeatureAgentWriteTools))
+	g.POST("/ai/agent/runs/:run_id/reject", agentH.RejectRun, license.Require(license.FeatureAgentWriteTools))
 	// Sprint 52 (S52-2): Gap-Explain SSE streaming per control.
 	g.POST("/ai/controls/:id/explain", h.GapExplain, aiLimit)
 	// Sprint 52 (S52-3): Risk narrative generation + persistence.
@@ -95,4 +112,27 @@ func RegisterWithOptions(g *echo.Group, db *pgxpool.Pool, provider, baseURL, api
 	// Sprint 52 (S52-6): AI Insights list + dismiss.
 	g.GET("/ai/insights", h.ListInsights)
 	g.DELETE("/ai/insights/:id", h.DismissInsight)
+}
+
+// defaultOrgSettingsFn builds an OrgSettingsFunc backed by raw SQL so
+// RegisterWithOptions can apply per-org overrides without importing admin.
+func defaultOrgSettingsFn(db *pgxpool.Pool) OrgSettingsFunc {
+	return func(ctx context.Context, orgID string) (OrgSettings, error) {
+		var modelOverride, baseURLOverride *string
+		err := db.QueryRow(ctx,
+			`SELECT ai_model_override, ai_base_url_override FROM organizations WHERE id = $1::uuid`,
+			orgID,
+		).Scan(&modelOverride, &baseURLOverride)
+		if err != nil {
+			return OrgSettings{}, err
+		}
+		s := OrgSettings{}
+		if modelOverride != nil {
+			s.ModelOverride = *modelOverride
+		}
+		if baseURLOverride != nil {
+			s.BaseURLOverride = *baseURLOverride
+		}
+		return s, nil
+	}
 }

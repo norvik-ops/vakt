@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"html"
 	"net/smtp"
 	"time"
 
@@ -358,20 +359,54 @@ func (s *DigestService) buildEmail(orgID string, severityCounts []findingSeverit
 }
 
 // SendAIDigestEmail delivers the AI-generated compliance digest to all admin users of the org.
-// It reuses the existing admin-lookup and SMTP send logic. S52-4.
-func SendAIDigestEmail(ctx context.Context, smtpCfg SMTPConfig, orgID, orgName, narrative string) error {
+// It reuses the existing admin-lookup and SMTP send logic.
+func SendAIDigestEmail(ctx context.Context, db *pgxpool.Pool, smtpCfg SMTPConfig, orgID, orgName, narrative string) error {
 	if smtpCfg.Host == "" {
+		log.Debug().Str("org_id", orgID).Msg("emaildigest: SMTP not configured, skipping AI digest email")
 		return nil
 	}
-	// We need a DB to look up admins; the caller ensures smtpCfg.Host is non-empty only
-	// when there are real addresses to deliver to. Since we cannot query DB here without
-	// injecting the pool, we fall back to a no-op — the in-app notification is always sent.
-	// This is a deliberate limitation: full email support would require pool injection.
-	_ = ctx
-	_ = orgID
-	_ = orgName
-	_ = narrative
+
+	svc := NewDigestService(db, smtpCfg)
+	admins, err := svc.fetchAdminEmails(ctx, orgID)
+	if err != nil {
+		return fmt.Errorf("emaildigest: ai digest: fetch admins: %w", err)
+	}
+	if len(admins) == 0 {
+		log.Info().Str("org_id", orgID).Msg("emaildigest: ai digest: no admins found, skipping")
+		return nil
+	}
+
+	subject := fmt.Sprintf("[Vakt] KI-Compliance-Digest — %s — %s", orgName, time.Now().UTC().Format("2006-01-02"))
+	body := buildAIDigestBody(narrative, orgName)
+
+	for _, a := range admins {
+		if !svc.weeklyDigestEnabled(ctx, a.UserID) {
+			log.Debug().Str("org_id", orgID).Str("user_id", a.UserID).Msg("emaildigest: ai digest skipped (preference disabled)")
+			continue
+		}
+		if err := svc.send(a.Email, subject, body); err != nil {
+			log.Error().Err(err).Str("org_id", orgID).Msg("emaildigest: ai digest: send failed")
+		} else {
+			log.Info().Str("org_id", orgID).Msg("emaildigest: ai digest: sent")
+		}
+	}
 	return nil
+}
+
+// buildAIDigestBody renders a simple HTML email body from an AI-generated narrative.
+// Both orgName and narrative are escaped to prevent XSS in the mail client.
+func buildAIDigestBody(narrative, orgName string) string {
+	var buf bytes.Buffer
+	buf.WriteString(`<!DOCTYPE html><html><body style="font-family:sans-serif;color:#1a202c;">`)
+	fmt.Fprintf(&buf, `<h2 style="color:#2b6cb0;">Vakt — KI-Compliance-Digest</h2>`)
+	fmt.Fprintf(&buf, `<p style="color:#718096;font-size:0.85em;">%s &middot; %s UTC</p>`,
+		html.EscapeString(orgName), time.Now().UTC().Format("2006-01-02 15:04"))
+	buf.WriteString(`<hr style="margin:16px 0;"/>`)
+	fmt.Fprintf(&buf, `<div style="white-space:pre-wrap;">%s</div>`, html.EscapeString(narrative))
+	buf.WriteString(`<hr style="margin-top:24px;"/><p style="font-size:0.75em;color:#a0aec0;">`)
+	buf.WriteString("Diese E-Mail wurde automatisch von Vakt generiert.")
+	buf.WriteString(`</p></body></html>`)
+	return buf.String()
 }
 
 // send delivers the e-mail using stdlib net/smtp.

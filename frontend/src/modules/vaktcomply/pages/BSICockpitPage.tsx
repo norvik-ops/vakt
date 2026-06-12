@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Elastic-2.0
 
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Download, AlertTriangle } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { ProGate } from '../../../shared/components/ProGate'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { useBSICockpit, useBSIGapReport } from '../hooks/useBSICheck'
@@ -11,21 +13,31 @@ import { useBSICockpit, useBSIGapReport } from '../hooks/useBSICheck'
 // ── Gauge ──────────────────────────────────────────────────────────────────────
 
 function GaugeCard({ pct }: { pct: number }) {
+  const { t } = useTranslation()
   const color =
-    pct >= 80 ? '#22c55e' : pct >= 50 ? '#eab308' : '#ef4444'
+    pct >= 80 ? 'hsl(var(--color-green-500, 142 71% 45%))' :
+    pct >= 50 ? 'hsl(var(--color-yellow-500, 48 96% 53%))' :
+    'hsl(var(--color-red-500, 0 84% 60%))'
   const radius = 52
   const circumference = 2 * Math.PI * radius
+  const label = `${pct.toFixed(0)}% — ${t('bsi.cockpit.gesamtumsetzungsgrad')}`
 
   return (
     <div className="rounded-lg border border-border bg-surface p-5 flex flex-col items-center gap-2">
-      <p className="text-xs font-semibold text-secondary uppercase tracking-wide">
-        Gesamtumsetzungsgrad
+      <p className="text-xs font-semibold text-secondary uppercase tracking-wide" aria-hidden="true">
+        {t('bsi.cockpit.gesamtumsetzungsgrad')}
       </p>
-      <svg width="128" height="72" viewBox="0 0 128 72">
+      <svg
+        width="128"
+        height="72"
+        viewBox="0 0 128 72"
+        role="img"
+        aria-label={label}
+      >
         <path
           d="M 10 66 A 54 54 0 0 1 118 66"
           fill="none"
-          stroke="#1e293b"
+          stroke="hsl(var(--muted-foreground) / 0.25)"
           strokeWidth="12"
           strokeLinecap="round"
         />
@@ -37,7 +49,7 @@ function GaugeCard({ pct }: { pct: number }) {
           strokeLinecap="round"
           strokeDasharray={`${(circumference / 2) * (pct / 100)} ${circumference / 2}`}
         />
-        <text x="64" y="62" textAnchor="middle" fill="white" fontSize="18" fontWeight="bold">
+        <text x="64" y="62" textAnchor="middle" fill="currentColor" fontSize="18" fontWeight="bold">
           {pct.toFixed(0)}%
         </text>
       </svg>
@@ -55,7 +67,8 @@ function heatColor(pct: number): string {
 }
 
 function HeatmapTable({ rows }: { rows: { baustein_id: string; baustein_title: string; cells: { target_object_id: string; target_object_name: string; pct: number }[] }[] }) {
-  if (rows.length === 0) return <p className="text-sm text-secondary">Keine Heatmap-Daten verfügbar.</p>
+  const { t } = useTranslation()
+  if (rows.length === 0) return <p className="text-sm text-secondary">{t('bsi.cockpit.noHeatmapData')}</p>
 
   const objects = rows[0]?.cells.map((c) => c.target_object_name) ?? []
 
@@ -64,7 +77,7 @@ function HeatmapTable({ rows }: { rows: { baustein_id: string; baustein_title: s
       <table className="w-full text-xs">
         <thead>
           <tr>
-            <th className="text-left font-medium text-secondary pb-2 pr-3 w-40">Baustein</th>
+            <th className="text-left font-medium text-secondary pb-2 pr-3 w-40">{t('bsi.cockpit.baustein')}</th>
             {objects.map((n) => (
               <th key={n} className="font-medium text-secondary pb-2 px-1 text-center max-w-[80px] truncate" title={n}>
                 {n.length > 12 ? n.slice(0, 11) + '…' : n}
@@ -99,7 +112,8 @@ function HeatmapTable({ rows }: { rows: { baustein_id: string; baustein_title: s
 // ── Gap List ───────────────────────────────────────────────────────────────────
 
 function GapList({ gaps }: { gaps: { anforderung_id: string; anforderung_title: string; baustein_id: string; affected_objects: number }[] }) {
-  if (gaps.length === 0) return <p className="text-sm text-secondary">Keine offenen Gaps.</p>
+  const { t } = useTranslation()
+  if (gaps.length === 0) return <p className="text-sm text-secondary">{t('bsi.cockpit.noGaps')}</p>
   return (
     <div className="divide-y divide-border">
       {gaps.map((g) => (
@@ -109,7 +123,7 @@ function GapList({ gaps }: { gaps: { anforderung_id: string; anforderung_title: 
             <p className="text-xs font-medium text-primary truncate">{g.anforderung_title}</p>
             <p className="text-[11px] text-secondary">
               <span className="font-mono">{g.anforderung_id}</span>
-              {' '}· {g.affected_objects}× betroffen
+              {' '}· {t('bsi.cockpit.affected', { count: g.affected_objects })}
             </p>
           </div>
           <Badge className="shrink-0 text-[10px] bg-surface2 text-secondary border-transparent ml-auto">
@@ -147,7 +161,8 @@ function useGapCSVDownload() {
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function BSICockpitPage() {
-  const { data: cockpit, isLoading } = useBSICockpit()
+  const { t } = useTranslation()
+  const { data: cockpit, isLoading, isError, error } = useBSICockpit()
   const { data: gapReport } = useBSIGapReport()
   const downloadGapCSV = useGapCSVDownload()
   const [showAllGaps, setShowAllGaps] = useState(false)
@@ -157,10 +172,11 @@ export default function BSICockpitPage() {
     : (gapReport?.gaps.slice(0, 10) ?? [])
 
   return (
+    <ProGate error={isError ? error : null}>
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Grundschutz-Cockpit"
-        description="Überblick über den IT-Grundschutz-Check-Fortschritt"
+        title={t('bsi.cockpit.title')}
+        description={t('bsi.cockpit.description')}
         actions={
           <Button
             size="sm"
@@ -169,33 +185,31 @@ export default function BSICockpitPage() {
             disabled={!gapReport || gapReport.gaps.length === 0}
           >
             <Download className="w-4 h-4 mr-1" />
-            GAP-Report (CSV)
+            {t('bsi.cockpit.gapReportCSV')}
           </Button>
         }
       />
 
       <div className="p-6 space-y-6">
-        {isLoading && <p className="text-sm text-secondary">Lade Cockpit-Daten…</p>}
+        {isLoading && <p className="text-sm text-secondary">{t('bsi.cockpit.loading')}</p>}
 
         {cockpit && (
           <>
-            {/* Top row: gauge + top gaps */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <GaugeCard pct={cockpit.overall_pct} />
 
               <div className="lg:col-span-2 rounded-lg border border-border bg-surface p-4 space-y-2">
                 <p className="text-xs font-semibold text-secondary uppercase tracking-wide">
-                  Top-Gaps (häufigste offene Anforderungen)
+                  {t('bsi.cockpit.topGaps')}
                 </p>
                 <GapList gaps={cockpit.top_gaps} />
               </div>
             </div>
 
-            {/* Heatmap */}
             {cockpit.heatmap.length > 0 && (
               <div className="rounded-lg border border-border bg-surface p-4 space-y-3">
                 <p className="text-xs font-semibold text-secondary uppercase tracking-wide">
-                  Heatmap — Umsetzungsgrad je Baustein × Zielobjekt
+                  {t('bsi.cockpit.heatmapTitle')}
                 </p>
                 <div className="flex items-center gap-3 text-[11px] text-secondary flex-wrap">
                   <span className="flex items-center gap-1.5">
@@ -217,12 +231,11 @@ export default function BSICockpitPage() {
           </>
         )}
 
-        {/* Full gap list */}
         {gapReport && gapReport.gaps.length > 0 && (
           <div className="rounded-lg border border-border bg-surface p-4 space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold text-secondary uppercase tracking-wide">
-                Alle Gaps ({gapReport.gaps.length})
+                {t('bsi.cockpit.allGaps', { count: gapReport.gaps.length })}
               </p>
               <Button
                 size="sm"
@@ -256,12 +269,15 @@ export default function BSICockpitPage() {
                 onClick={() => { setShowAllGaps((v) => !v) }}
                 className="w-full text-xs"
               >
-                {showAllGaps ? 'Weniger anzeigen' : `Alle ${gapReport.gaps.length} Gaps anzeigen`}
+                {showAllGaps
+                  ? t('bsi.cockpit.showLess')
+                  : t('bsi.cockpit.showMore', { count: gapReport.gaps.length })}
               </Button>
             )}
           </div>
         )}
       </div>
     </div>
+    </ProGate>
   )
 }

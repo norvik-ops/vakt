@@ -232,8 +232,22 @@ func TestLoad_ExpiredKey(t *testing.T) {
 	key := makeTestKey(t, priv, p)
 
 	lic := Load(key, false)
-	if lic.Tier != "community" {
-		t.Fatalf("expired key must fall back to community, got %s", lic.Tier)
+	// S79-3: expired keys are preserved as Expired=true (not downgraded to community)
+	// so that read-only access to Pro data is maintained after lapse.
+	if lic.Tier != "pro" {
+		t.Fatalf("expired key must keep tier=pro (read-only), got %s", lic.Tier)
+	}
+	if !lic.Expired {
+		t.Fatal("expired key must set Expired=true")
+	}
+	if lic.IsPro() {
+		t.Fatal("expired key must not report IsPro()=true")
+	}
+	if lic.Has(FeatureAuditPDF) {
+		t.Fatal("expired key must not grant features via Has()")
+	}
+	if !lic.HasReadOnly(FeatureAuditPDF) {
+		t.Fatal("expired Pro key must grant read-only access via HasReadOnly()")
 	}
 }
 
@@ -384,4 +398,52 @@ func TestInvalidateLicenseCache_NilRDB(t *testing.T) {
 func TestInvalidateLicenseCache_EmptyOrgID(t *testing.T) {
 	// empty orgID → early return even with nil rdb
 	InvalidateLicenseCache(context.Background(), nil, "")
+}
+
+// TestLegacyProKeyFallback verifies that a Pro key without the new feature strings
+// (e.g. issued before bsi_grundschutz was added to proFeatures) still grants access
+// to those features via the legacyProFeatures implicit grant.
+func TestLegacyProKeyFallback(t *testing.T) {
+	priv, restore := setupTestKeys(t)
+	defer restore()
+
+	exp := int64(1830211200) // 2028
+	// Old-style Pro key: only has the original Pro features, none of the new strings.
+	p := payload{
+		Tier:     "pro",
+		Features: []string{"eu_ai_act", "cra", "audit_pdf", "sso", "api_access"},
+		Org:      "Legacy Corp",
+		IssuedAt: 1700000000,
+		Exp:      &exp,
+	}
+	key := makeTestKey(t, priv, p)
+	lic := Load(key, false)
+
+	if !lic.IsPro() {
+		t.Fatal("want IsPro()=true")
+	}
+	// These were added after the key was issued — must still be granted.
+	for _, f := range legacyProFeatures {
+		if !lic.Has(f) {
+			t.Errorf("legacy Pro key must implicitly grant %q", f)
+		}
+	}
+	// Enterprise-only features must NOT be granted via the legacy fallback.
+	if lic.Has(FeatureTISAX) {
+		t.Error("legacy Pro key must not grant enterprise-only feature tisax")
+	}
+	if lic.Has(FeatureSCIMProvisioning) {
+		t.Error("legacy Pro key must not grant enterprise-only feature scim_provisioning")
+	}
+}
+
+// TestCommunityKeyNoLegacyFallback verifies that a Community license does NOT
+// receive the legacyProFeatures grant.
+func TestCommunityKeyNoLegacyFallback(t *testing.T) {
+	lic := Load("", false)
+	for _, f := range legacyProFeatures {
+		if lic.Has(f) {
+			t.Errorf("community license must not gain %q via legacy fallback", f)
+		}
+	}
 }

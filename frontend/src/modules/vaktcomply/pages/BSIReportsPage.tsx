@@ -1,8 +1,10 @@
 // Copyright (c) 2026 NorvikOps. All rights reserved.
 // SPDX-License-Identifier: Elastic-2.0
 
+import { useTranslation } from 'react-i18next'
 import { FileDown, Clock, Hash } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { ProGate } from '../../../shared/components/ProGate'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { useBSIReportExports } from '../hooks/useBSICheck'
@@ -17,51 +19,6 @@ interface ReportDef {
   description: string
   article: string
 }
-
-const REPORTS: ReportDef[] = [
-  {
-    type: 'A1',
-    title: 'Strukturanalyse',
-    description: 'Zielobjekte, Typen und Absicherungsniveaus',
-    article: 'BSI 200-2 Anhang A.1',
-  },
-  {
-    type: 'A2',
-    title: 'Schutzbedarfsfeststellung',
-    description: 'CIA-Bewertung je Zielobjekt (Maximalprinzip)',
-    article: 'BSI 200-2 Anhang A.2',
-  },
-  {
-    type: 'A3',
-    title: 'Modellierung',
-    description: 'Baustein-Zuweisung je Zielobjekt',
-    article: 'BSI 200-2 Anhang A.3',
-  },
-  {
-    type: 'A4',
-    title: 'IT-Grundschutz-Check',
-    description: 'Umsetzungsstatus je Anforderung und Begründungen',
-    article: 'BSI 200-2 Anhang A.4',
-  },
-  {
-    type: 'A5',
-    title: 'Risikoanalyse',
-    description: 'Risikobewertungen und Behandlungsmaßnahmen',
-    article: 'BSI 200-3 Anhang A.5',
-  },
-  {
-    type: 'A6',
-    title: 'Realisierungsplan',
-    description: 'Offene Maßnahmen und Priorisierung',
-    article: 'BSI 200-2 Anhang A.6',
-  },
-  {
-    type: 'full',
-    title: 'Vollständiger Bericht',
-    description: 'Alle Anhänge A1–A6 in einem Dokument',
-    article: 'BSI 200-2/200-3',
-  },
-]
 
 // ── Download helper ────────────────────────────────────────────────────────────
 
@@ -80,6 +37,7 @@ async function downloadReport(type: BSIReportType) {
 // ── Report Card ────────────────────────────────────────────────────────────────
 
 function ReportCard({ def, lastExport }: { def: ReportDef; lastExport?: { sha256: string; created_at: string } }) {
+  const { t } = useTranslation()
   return (
     <div className="rounded-lg border border-border bg-surface p-4 flex items-start gap-4">
       <div className="flex-1 min-w-0 space-y-1">
@@ -97,7 +55,7 @@ function ReportCard({ def, lastExport }: { def: ReportDef; lastExport?: { sha256
           <div className="flex items-center gap-3 text-[11px] text-secondary mt-1">
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
-              {new Date(lastExport.created_at).toLocaleString('de-DE', {
+              {new Date(lastExport.created_at).toLocaleString(undefined, {
                 day: '2-digit', month: '2-digit', year: 'numeric',
                 hour: '2-digit', minute: '2-digit',
               })}
@@ -116,7 +74,7 @@ function ReportCard({ def, lastExport }: { def: ReportDef; lastExport?: { sha256
         className="shrink-0"
       >
         <FileDown className="w-4 h-4 mr-1" />
-        PDF
+        {t('bsi.reports.pdf')}
       </Button>
     </div>
   )
@@ -125,7 +83,53 @@ function ReportCard({ def, lastExport }: { def: ReportDef; lastExport?: { sha256
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function BSIReportsPage() {
-  const { data: exports = [] } = useBSIReportExports()
+  const { t } = useTranslation()
+  const { data: exports = [], isError, error } = useBSIReportExports()
+
+  const REPORTS: ReportDef[] = [
+    {
+      type: 'A1',
+      title: t('bsi.reports.A1_title'),
+      description: t('bsi.reports.A1_desc'),
+      article: 'BSI 200-2 Anhang A.1',
+    },
+    {
+      type: 'A2',
+      title: t('bsi.reports.A2_title'),
+      description: t('bsi.reports.A2_desc'),
+      article: 'BSI 200-2 Anhang A.2',
+    },
+    {
+      type: 'A3',
+      title: t('bsi.reports.A3_title'),
+      description: t('bsi.reports.A3_desc'),
+      article: 'BSI 200-2 Anhang A.3',
+    },
+    {
+      type: 'A4',
+      title: t('bsi.reports.A4_title'),
+      description: t('bsi.reports.A4_desc'),
+      article: 'BSI 200-2 Anhang A.4',
+    },
+    {
+      type: 'A5',
+      title: t('bsi.reports.A5_title'),
+      description: t('bsi.reports.A5_desc'),
+      article: 'BSI 200-3 Anhang A.5',
+    },
+    {
+      type: 'A6',
+      title: t('bsi.reports.A6_title'),
+      description: t('bsi.reports.A6_desc'),
+      article: 'BSI 200-2 Anhang A.6',
+    },
+    {
+      type: 'full',
+      title: t('bsi.reports.full_title'),
+      description: t('bsi.reports.full_desc'),
+      article: 'BSI 200-2/200-3',
+    },
+  ]
 
   function lastExportFor(type: BSIReportType) {
     return exports
@@ -134,16 +138,16 @@ export default function BSIReportsPage() {
   }
 
   return (
+    <ProGate error={isError ? error : null}>
     <div className="flex flex-col h-full">
       <PageHeader
-        title="BSI-Referenzberichte"
-        description="Anhänge A1–A6 gemäß BSI 200-2 / 200-3 als PDF exportieren"
+        title={t('bsi.reports.title')}
+        description={t('bsi.reports.description')}
       />
 
       <div className="p-6 space-y-3">
         <div className="rounded-lg border border-blue-800/40 bg-blue-900/10 p-3 text-xs text-blue-300">
-          Die Berichte werden live aus den aktuellen Daten generiert. Der SHA-256-Hash jedes
-          Exports wird für die Audit-Nachverfolgbarkeit gespeichert.
+          {t('bsi.reports.infoText')}
         </div>
 
         {REPORTS.map((def) => (
@@ -153,7 +157,7 @@ export default function BSIReportsPage() {
         {exports.length > 0 && (
           <div className="mt-4">
             <p className="text-xs font-semibold text-secondary uppercase tracking-wide mb-2">
-              Exportverlauf
+              {t('bsi.reports.exportHistory')}
             </p>
             <div className="rounded-lg border border-border bg-surface divide-y divide-border">
               {exports.slice(0, 10).map((e) => (
@@ -165,7 +169,7 @@ export default function BSIReportsPage() {
                     {e.sha256.slice(0, 20)}…
                   </span>
                   <span className="text-secondary shrink-0">
-                    {new Date(e.created_at).toLocaleString('de-DE', {
+                    {new Date(e.created_at).toLocaleString(undefined, {
                       day: '2-digit', month: '2-digit', year: 'numeric',
                       hour: '2-digit', minute: '2-digit',
                     })}
@@ -177,5 +181,6 @@ export default function BSIReportsPage() {
         )}
       </div>
     </div>
+    </ProGate>
   )
 }

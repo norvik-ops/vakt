@@ -14,6 +14,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -38,11 +39,34 @@ type contractCase struct {
 
 var contractCases = []contractCase{
 	{name: "health", method: http.MethodGet, realPath: "/health", specPath: "/api/v1/health"},
+	// S78-7: Auditor session management routes. Hit without auth → 401, which
+	// the spec documents. Validates that both paths are present in the spec and
+	// that the 401 response schema matches what Echo's auth middleware emits.
+	{name: "auditor_sessions_list", method: http.MethodGet,
+		realPath: "/api/v1/auditor/sessions", specPath: "/api/v1/auditor/sessions"},
+	{name: "auditor_sessions_revoke", method: http.MethodDelete,
+		realPath: "/api/v1/auditor/sessions/00000000-0000-0000-0000-000000000001",
+		specPath: "/api/v1/auditor/sessions/{id}"},
 	// /demo/start is intentionally NOT in this list yet: openapi.yaml does
 	// not document the endpoint, which is itself a finding (ADR-0017 §1
 	// says every frontend-consumed endpoint must be in the spec). Adding
 	// the case here would only produce a confusing "operation not found"
 	// failure instead of the real issue. Track it as a follow-up.
+
+	// S80-6: One core list endpoint per module — hit without auth → 401.
+	// Each spec entry now documents '401: Unauthorized' so the validator
+	// can match the response. Expanding these to authenticated cases requires
+	// a seeded test DB (track in ADR-0017 follow-up).
+	{name: "vaktscan_findings", method: http.MethodGet,
+		realPath: "/api/v1/vaktscan/findings", specPath: "/api/v1/vaktscan/findings"},
+	{name: "vaktcomply_frameworks", method: http.MethodGet,
+		realPath: "/api/v1/vaktcomply/frameworks", specPath: "/api/v1/vaktcomply/frameworks"},
+	{name: "vaktvault_projects", method: http.MethodGet,
+		realPath: "/api/v1/vaktvault/projects", specPath: "/api/v1/vaktvault/projects"},
+	{name: "vaktprivacy_vvt", method: http.MethodGet,
+		realPath: "/api/v1/vaktprivacy/vvt", specPath: "/api/v1/vaktprivacy/vvt"},
+	{name: "vakthr_contractors", method: http.MethodGet,
+		realPath: "/api/v1/vakthr/contractors", specPath: "/api/v1/vakthr/contractors"},
 }
 
 // TestOpenAPIContract spins up the same Echo instance the production binary
@@ -117,6 +141,99 @@ func TestOpenAPIContract(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestOpenAPIReverseContract verifies that every path+method documented in the
+// embedded OpenAPI spec has a corresponding Echo route. This catches the inverse
+// of the drift that TestOpenAPIContract covers: a spec entry with no handler
+// (dead documentation or forgotten route registration).
+//
+// Requires VAKT_DB_URL to be set — routes under module groups are only
+// registered when a live DB connection is available. In CI this is always set.
+// Skip locally when running without a database.
+//
+// Allowlist entries are spec paths that are intentionally served at a different
+// real path — document the reason so future readers know it's intentional.
+func TestOpenAPIReverseContract(t *testing.T) {
+	if os.Getenv("VAKT_DB_URL") == "" {
+		t.Skip("VAKT_DB_URL not set — reverse contract test requires a running database (runs in CI)")
+	}
+
+	specBytes, err := apidocs.SpecBytes()
+	if err != nil {
+		t.Fatalf("read embedded spec: %v", err)
+	}
+
+	loader := openapi3.NewLoader()
+	doc, err := loader.LoadFromData(specBytes)
+	if err != nil {
+		t.Fatalf("parse spec: %v", err)
+	}
+
+	// Build the set of all registered Echo routes: "METHOD /path".
+	e := setupEcho(context.Background(), testConfig())
+	echoRoutes := make(map[string]bool)
+	for _, r := range e.Routes() {
+		echoRoutes[r.Method+" "+r.Path] = true
+	}
+
+	// Paths in the spec that are served at a different real URL in Echo.
+	// Key format: "METHOD /api/v1<specPath>".
+	reverseAllowlist := map[string]string{
+		// /health is mounted at the root, not under /api/v1, because it must
+		// be reachable before auth middleware resolves.  Covered by TestOpenAPIContract.
+		"GET /api/v1/health":       "mounted at /health (root level)",
+		"GET /api/v1/health/ready": "mounted at /health/ready (root level)",
+	}
+
+	serverURL := "/api/v1" // must match openapi.yaml servers[0].url
+
+	failures := 0
+	for specPath, pathItem := range doc.Paths.Map() {
+		fullPath := serverURL + specPath
+		echoPath := openAPIPathToEcho(fullPath)
+
+		for method := range pathItem.Operations() {
+			httpMethod := strings.ToUpper(method)
+			key := httpMethod + " " + echoPath
+			specKey := httpMethod + " " + fullPath
+
+			if reason, ok := reverseAllowlist[specKey]; ok {
+				t.Logf("SKIP %s — %s", specKey, reason)
+				continue
+			}
+
+			if !echoRoutes[key] {
+				t.Errorf("spec operation %s %s has no Echo route (tried %s)",
+					httpMethod, specPath, echoPath)
+				failures++
+			}
+		}
+	}
+	if failures == 0 {
+		t.Logf("reverse contract: all %d spec operations have Echo routes", len(doc.Paths.Map()))
+	}
+}
+
+// openAPIPathToEcho converts an OpenAPI path (e.g. /api/v1/foo/{id}/bar) to
+// the Echo route format (e.g. /api/v1/foo/:id/bar).
+func openAPIPathToEcho(path string) string {
+	var result strings.Builder
+	for i := 0; i < len(path); i++ {
+		if path[i] == '{' {
+			j := strings.Index(path[i:], "}")
+			if j < 0 {
+				result.WriteByte(path[i])
+				continue
+			}
+			result.WriteString(":")
+			result.WriteString(path[i+1 : i+j])
+			i += j
+		} else {
+			result.WriteByte(path[i])
+		}
+	}
+	return result.String()
 }
 
 // noCloseBuffer wraps a bytes.Reader so it satisfies io.ReadCloser without

@@ -1,7 +1,7 @@
 # Enterprise SSO, SCIM & SIEM — Setup-Guide
 
 **Gilt ab:** v0.16.0  
-**Tier:** SAML CE (alle Editionen) · SCIM/SIEM Pro
+**Tier:** SAML Pro · SCIM/SIEM Enterprise
 
 ---
 
@@ -9,9 +9,9 @@
 
 | Feature | Tier | Endpunkt |
 |---------|------|----------|
-| SAML 2.0 SP (direkter IdP) | CE | `/api/v1/auth/saml/*` |
-| SCIM 2.0 Provisioning | Pro | `/api/v1/scim/v2/*` |
-| SIEM Audit-Forwarder | Pro | konfigurierbar über Admin-Settings |
+| SAML 2.0 SP (direkter IdP) | Pro | `/api/v1/auth/saml/*` |
+| SCIM 2.0 Provisioning | Enterprise | `/api/v1/scim/v2/*` |
+| SIEM Audit-Forwarder | Enterprise | konfigurierbar über Admin-Settings |
 
 ---
 

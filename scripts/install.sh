@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-HEALTH_URL="http://localhost:8080/health/ready"
+HEALTH_URL="http://localhost/health/ready"
 MAX_WAIT=180
 POLL_INTERVAL=2
 
@@ -34,7 +34,7 @@ if [ ! -f .env ]; then
 fi
 
 # Generate secret key if placeholder or empty
-if grep -qE '^VAKT_SECRET_KEY=($|changeme)' .env; then
+if grep -qE '^VAKT_SECRET_KEY=($|changeme|ERSETZEN_SIE_DIESEN_WERT)' .env; then
   SECRET=$(openssl rand -hex 32)
   # Replace the line in-place (works on both Linux and macOS)
   sed -i.bak "s|^VAKT_SECRET_KEY=.*|VAKT_SECRET_KEY=${SECRET}|" .env
@@ -71,8 +71,7 @@ while true; do
     echo ""
     echo "Vakt is running!"
     echo ""
-    echo "  API:      http://localhost:8080"
-    echo "  Frontend: http://localhost"
+    echo "  Dashboard: http://localhost"
     echo ""
     echo "First-run wizard: http://localhost/setup"
     exit 0

@@ -53,19 +53,24 @@ func Register(g *echo.Group, h *Handler) {
 	g.POST("/projects/:project_id/import", h.ImportSecrets, admin)
 	g.GET("/projects/:project_id/envs/:env_id/export", h.ExportSecrets, rw)
 
+	// Advanced vault workflows (rotation, git leak scans, access reviews) are
+	// Pro — gated by FeatureSecVault, mirroring the public pricing page.
+	// Basic secret storage (projects, envs, CRUD, sharing, import/export) is Community.
+	vaultPro := features.Require(features.FeatureSecVault)
+
 	// Secret rotation — admin only
-	g.POST("/projects/:project_id/envs/:env_id/secrets/:key/rotate", h.RotateSecret, admin)
+	g.POST("/projects/:project_id/envs/:env_id/secrets/:key/rotate", h.RotateSecret, admin, vaultPro)
 
 	// Git scanner — analyst+ to trigger/view
-	g.POST("/git-scans", h.TriggerGitScan, rw)
-	g.GET("/git-scans", h.ListGitScans, rw)
-	g.GET("/git-scans/:id", h.GetGitScan, rw)
-	g.GET("/git-scans/:id/results", h.GetGitScanResults, rw)
-	g.POST("/git-scans/results/:result_id/dismiss", h.DismissScanResult, rw)
+	g.POST("/git-scans", h.TriggerGitScan, rw, vaultPro)
+	g.GET("/git-scans", h.ListGitScans, rw, vaultPro)
+	g.GET("/git-scans/:id", h.GetGitScan, rw, vaultPro)
+	g.GET("/git-scans/:id/results", h.GetGitScanResults, rw, vaultPro)
+	g.POST("/git-scans/results/:result_id/dismiss", h.DismissScanResult, rw, vaultPro)
 
 	// S70-5: Vault Access Reviews (quarterly)
-	g.GET("/access-reviews", h.ListAccessReviews, rw)
-	g.POST("/access-reviews", h.CreateAccessReview, admin)
-	g.GET("/access-reviews/:id", h.GetAccessReview, rw)
-	g.POST("/access-reviews/:id/complete", h.CompleteAccessReview, admin)
+	g.GET("/access-reviews", h.ListAccessReviews, rw, vaultPro)
+	g.POST("/access-reviews", h.CreateAccessReview, admin, vaultPro)
+	g.GET("/access-reviews/:id", h.GetAccessReview, rw, vaultPro)
+	g.POST("/access-reviews/:id/complete", h.CompleteAccessReview, admin, vaultPro)
 }

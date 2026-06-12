@@ -12,6 +12,7 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { useTranslation } from 'react-i18next'
 import { useRisk, useUpdateRisk, useUpdateRiskResidual, useAcceptRisk } from '../hooks/useRisks'
 import { useRiskNarrative } from '../hooks/useAIInsights'
 import RiskTreatmentPanel from '../components/RiskTreatmentPanel'
@@ -33,12 +34,18 @@ const TREATMENT_LABELS: Record<Risk['treatment'], string> = {
 }
 function AIRiskNarrativePanel({ riskId, existingNarrative }: { riskId: string; existingNarrative: string | null }) {
   const generate = useRiskNarrative(riskId)
+  const { t } = useTranslation()
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-sm flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-brand" />KI-Risikonarrative
+          {existingNarrative && (
+            <span className="ml-auto text-xs font-normal text-secondary/70 bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">
+              {t('ai.disclaimer')}
+            </span>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">

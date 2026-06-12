@@ -11,10 +11,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/modules/vakthr"
+	sharedevents "github.com/matharnica/vakt/internal/shared/events"
 )
 
-// HRAccessReviewTrigger implements vakthr.AccessReviewTrigger.
+// HRAccessReviewTrigger implements sharedevents.AccessReviewTrigger.
 // It creates an access-review campaign in vaktcomply whenever an offboarding
 // checklist run completes, ensuring that access revocation is verified by a
 // reviewer within 7 days.
@@ -23,12 +23,12 @@ type HRAccessReviewTrigger struct {
 }
 
 // NewHRAccessReviewTrigger returns an HRAccessReviewTrigger backed by the given pool.
-func NewHRAccessReviewTrigger(pool *pgxpool.Pool) vakthr.AccessReviewTrigger {
+func NewHRAccessReviewTrigger(pool *pgxpool.Pool) sharedevents.AccessReviewTrigger {
 	return &HRAccessReviewTrigger{pool: pool}
 }
 
 // TriggerOffboardingReview creates an access-review campaign for a completed offboarding run.
-func (t *HRAccessReviewTrigger) TriggerOffboardingReview(ctx context.Context, in vakthr.OffboardingReviewInput) error {
+func (t *HRAccessReviewTrigger) TriggerOffboardingReview(ctx context.Context, in sharedevents.OffboardingReviewInput) error {
 	repo := NewRepository(t.pool)
 	due := in.CompletedAt.Add(7 * 24 * time.Hour)
 	dueStr := due.UTC().Format(time.RFC3339)

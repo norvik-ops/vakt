@@ -158,6 +158,7 @@ func (r *Repository) CompleteDeletionReminder(ctx context.Context, orgID, id, co
 
 // ListRetentionTemplates returns all system retention templates.
 func (r *Repository) ListRetentionTemplates(ctx context.Context) ([]RetentionTemplate, error) {
+	// orgid-lint: global — po_retention_templates with is_system_template=true is a shared catalogue, not per-org
 	rows, err := r.db.Query(ctx, `
 		SELECT id, data_category, retention_period_months, COALESCE(retention_type,''),
 		       COALESCE(legal_basis,''), COALESCE(notes,'')

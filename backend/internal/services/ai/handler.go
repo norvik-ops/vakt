@@ -132,7 +132,7 @@ func (h *Handler) ComplianceAdvice(c echo.Context) error {
 		return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "KI temporär nicht verfügbar"})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{"advice": advice})
+	return c.JSON(http.StatusOK, map[string]any{"advice": advice, "ai_generated": true})
 }
 
 // DraftPolicy handles POST /vaktcomply/ai/draft-policy.
@@ -154,7 +154,7 @@ func (h *Handler) DraftPolicy(c echo.Context) error {
 		log.Error().Err(err).Msg("DraftPolicy failed")
 		return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "KI temporär nicht verfügbar"})
 	}
-	return c.JSON(http.StatusOK, map[string]string{"draft": draft})
+	return c.JSON(http.StatusOK, map[string]any{"draft": draft, "ai_generated": true})
 }
 
 // IncidentResponseGuide handles POST /vaktcomply/ai/incident-guide.
@@ -176,7 +176,7 @@ func (h *Handler) IncidentResponseGuide(c echo.Context) error {
 		log.Error().Err(err).Msg("IncidentResponseGuide failed")
 		return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "KI temporär nicht verfügbar"})
 	}
-	return c.JSON(http.StatusOK, map[string]string{"guide": guide})
+	return c.JSON(http.StatusOK, map[string]any{"guide": guide, "ai_generated": true})
 }
 
 // GenerateReport creates an AI-generated report for the org.
@@ -206,9 +206,10 @@ func (h *Handler) GenerateReport(c echo.Context) error {
 		return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "AI report generation failed"})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{
-		"type":   input.Type,
-		"report": text,
+	return c.JSON(http.StatusOK, map[string]any{
+		"type":         input.Type,
+		"report":       text,
+		"ai_generated": true,
 	})
 }
 
@@ -504,20 +505,24 @@ func (h *Handler) RiskNarrative(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{"narrative": narrative})
+	return c.JSON(http.StatusOK, map[string]any{
+		"narrative":    narrative,
+		"ai_generated": true,
+	})
 }
 
 // aiInsightResponse is the JSON shape returned by ListInsights.
 type aiInsightResponse struct {
-	ID        string  `json:"id"`
-	Type      string  `json:"type"`
-	Title     string  `json:"title"`
-	Message   string  `json:"message"`
-	ControlID *string `json:"control_id,omitempty"`
-	RiskID    *string `json:"risk_id,omitempty"`
-	FindingID *string `json:"finding_id,omitempty"`
-	Urgency   int     `json:"urgency"`
-	CreatedAt string  `json:"created_at"`
+	ID          string  `json:"id"`
+	Type        string  `json:"type"`
+	Title       string  `json:"title"`
+	Message     string  `json:"message"`
+	ControlID   *string `json:"control_id,omitempty"`
+	RiskID      *string `json:"risk_id,omitempty"`
+	FindingID   *string `json:"finding_id,omitempty"`
+	Urgency     int     `json:"urgency"`
+	CreatedAt   string  `json:"created_at"`
+	AIGenerated bool    `json:"ai_generated"`
 }
 
 // ListInsights handles GET /api/v1/vaktcomply/ai/insights.
@@ -561,6 +566,7 @@ func (h *Handler) ListInsights(c echo.Context) error {
 		ins.RiskID = riskID
 		ins.FindingID = findingID
 		ins.CreatedAt = createdAt.UTC().Format(time.RFC3339)
+		ins.AIGenerated = true
 		results = append(results, ins)
 	}
 	if results == nil {
@@ -615,7 +621,8 @@ func (h *Handler) ListOllamaModels(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusOK, map[string]any{"models": []string{}})
 	}
-	resp, err := http.DefaultClient.Do(req)
+	httpClient := &http.Client{Timeout: 5 * time.Second}
+	resp, err := httpClient.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		return c.JSON(http.StatusOK, map[string]any{"models": []string{}})
 	}

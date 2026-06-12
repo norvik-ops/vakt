@@ -427,7 +427,9 @@ func (s *Service) UpdateFinding(ctx context.Context, orgID, findingID string, in
 		payloadBytes, marshalErr := json.Marshal(payload)
 		if marshalErr == nil {
 			task := asynq.NewTask(TaskAutoEvidence, payloadBytes)
-			_, _ = s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(crossevidence.Queue))
+			if _, enqErr := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(crossevidence.Queue)); enqErr != nil {
+				log.Warn().Err(enqErr).Str("finding_id", findingID).Msg("vaktscan: auto-evidence enqueue failed (evidence may be missed on Redis outage)")
+			}
 		}
 	}
 
@@ -446,7 +448,9 @@ func (s *Service) UpdateFinding(ctx context.Context, orgID, findingID string, in
 		}
 		if suggBytes, marshalErr := json.Marshal(suggPayload); marshalErr == nil {
 			suggTask := asynq.NewTask("vaktcomply:ai_evidence_suggestion", suggBytes, asynq.MaxRetry(1))
-			_, _ = s.asynqClient.EnqueueContext(ctx, suggTask, asynq.Queue(crossevidence.Queue))
+			if _, enqErr := s.asynqClient.EnqueueContext(ctx, suggTask, asynq.Queue(crossevidence.Queue)); enqErr != nil {
+				log.Warn().Err(enqErr).Str("finding_id", findingID).Msg("vaktscan: ai-suggestion enqueue failed (evidence may be missed on Redis outage)")
+			}
 		}
 	}
 

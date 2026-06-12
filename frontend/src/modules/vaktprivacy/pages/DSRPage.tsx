@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { InfoBanner } from '../../../shared/components/InfoBanner'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 import { useDSRs, useCreateDSR, useUpdateDSR, useDeleteDSR, useDSRSummary, useResolveDSR } from '../hooks/useDSRs'
 import { ComplianceTooltip } from '../../../shared/components/ComplianceTooltip'
 import type { DSR, DSRType, DSRStatus, CreateDSRInput, UpdateDSRInput, ResolveDSRInput } from '../types'
@@ -322,7 +323,7 @@ export default function DSRPage() {
       />
 
       <InfoBanner icon={Users} title="Betroffenenrechte nach DSGVO (Art. 12)">
-        <p>Anfragen müssen innerhalb von <strong>30 Tagen</strong> beantwortet werden — bei komplexen Anfragen maximal 60 Tage mit Begründung (Art. 12 Abs. 3 DSGVO).</p>
+        <p><TermTooltip term="DSR" explanation="Data Subject Request — Betroffenenanfrage nach Art. 15–22 DSGVO: Auskunft, Berichtigung, Löschung, Einschränkung, Widerspruch, Datenübertragbarkeit.">Datenschutzanfragen</TermTooltip> müssen innerhalb von <strong>30 Tagen</strong> beantwortet werden — bei komplexen Anfragen maximal 60 Tage mit Begründung (Art. 12 Abs. 3 DSGVO).</p>
       </InfoBanner>
 
       {/* Summary stats */}

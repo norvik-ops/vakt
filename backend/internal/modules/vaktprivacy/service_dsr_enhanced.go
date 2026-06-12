@@ -21,6 +21,7 @@ import (
 // and sends notifications for requests due within 3 days.
 // This runs daily via the privacy:dsr_deadline_check Asynq task.
 func (s *Service) CheckOverdueRequests(ctx context.Context) error {
+	// orgid-lint: global — daily background job: intentionally marks overdue DSRs across all orgs
 	// Mark all non-closed requests past their deadline as overdue
 	_, err := s.db.Exec(ctx, `
 		UPDATE po_dsr SET status = 'overdue', updated_at = NOW()

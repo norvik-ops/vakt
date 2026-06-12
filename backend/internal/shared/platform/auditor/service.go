@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/matharnica/vakt/internal/shared/audit"
 )
 
 // Service handles auditor invite and session business logic.
@@ -73,24 +75,89 @@ func (s *Service) AcceptInvite(ctx context.Context, token string) (string, error
 		return "", fmt.Errorf("mark invite accepted: %w", err)
 	}
 
-	// Create session token — same TTL as the original invite expiry (use 30 days default).
+	// Create session token — 7 days TTL (S78-7: reduced from 30d).
 	sessionRaw, sessionHash, err := generateToken()
 	if err != nil {
 		return "", fmt.Errorf("generate session token: %w", err)
 	}
 
-	sessionExpiry := time.Now().UTC().Add(30 * 24 * time.Hour)
+	sessionExpiry := time.Now().UTC().Add(7 * 24 * time.Hour)
 
-	_, err = s.db.Exec(ctx, `
+	var sessionID string
+	err = s.db.QueryRow(ctx, `
 		INSERT INTO auditor_sessions (org_id, invite_id, token_hash, auditor_email, expires_at)
-		VALUES ($1::uuid, $2::uuid, $3, $4, $5)`,
+		VALUES ($1::uuid, $2::uuid, $3, $4, $5)
+		RETURNING id::text`,
 		orgID, inviteID, sessionHash, email, sessionExpiry,
-	)
+	).Scan(&sessionID)
 	if err != nil {
 		return "", fmt.Errorf("create auditor session: %w", err)
 	}
 
+	go audit.Write(ctx, s.db, audit.WriteEntry{
+		OrgID:        orgID,
+		Action:       "create",
+		ResourceType: "auditor_session",
+		ResourceID:   sessionID,
+		ResourceName: email,
+		Details:      map[string]string{"expires_at": sessionExpiry.Format(time.RFC3339)},
+	})
+
 	return sessionRaw, nil
+}
+
+// ListSessions returns all active (non-expired) auditor sessions for the given org.
+func (s *Service) ListSessions(ctx context.Context, orgID string) ([]AuditorSession, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT id::text, org_id::text, auditor_email, expires_at, created_at
+		FROM auditor_sessions
+		WHERE org_id = $1::uuid AND expires_at > NOW()
+		ORDER BY created_at DESC`,
+		orgID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list auditor sessions: %w", err)
+	}
+	defer rows.Close()
+
+	var sessions []AuditorSession
+	for rows.Next() {
+		var s AuditorSession
+		if err := rows.Scan(&s.ID, &s.OrgID, &s.AuditorEmail, &s.ExpiresAt, &s.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan auditor session: %w", err)
+		}
+		sessions = append(sessions, s)
+	}
+	if sessions == nil {
+		sessions = []AuditorSession{}
+	}
+	return sessions, rows.Err()
+}
+
+// RevokeSession deletes a specific auditor session for the given org.
+func (s *Service) RevokeSession(ctx context.Context, orgID, sessionID, revokedByUserID string) error {
+	result, err := s.db.Exec(ctx, `
+		DELETE FROM auditor_sessions
+		WHERE id = $1::uuid AND org_id = $2::uuid`,
+		sessionID, orgID,
+	)
+	if err != nil {
+		return fmt.Errorf("delete auditor session: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("session not found")
+	}
+
+	go audit.Write(ctx, s.db, audit.WriteEntry{
+		OrgID:        orgID,
+		UserID:       revokedByUserID,
+		Action:       "delete",
+		ResourceType: "auditor_session",
+		ResourceID:   sessionID,
+		Details:      map[string]string{"reason": "manual_revocation"},
+	})
+
+	return nil
 }
 
 // ValidateSession looks up a session by token hash and returns the auditor claims.

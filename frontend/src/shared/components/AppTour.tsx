@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { X, ChevronRight } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { useWhatsNew } from '../hooks/useWhatsNew'
 
 const TOUR_COMPLETED_KEY = 'vakt_tour_completed'
@@ -12,38 +14,40 @@ interface TourStep {
   text: string
 }
 
-const TOUR_STEPS: TourStep[] = [
-  {
-    id: 'dashboard',
-    selector: 'a[href="/"][aria-current="page"], a[href="/"]',
-    title: 'Dashboard',
-    text: 'Hier siehst du deinen aktuellen Compliance-Status auf einen Blick.',
-  },
-  {
-    id: 'frameworks',
-    selector: 'a[href="/vaktcomply/frameworks"]',
-    title: 'Frameworks (Vakt Comply)',
-    text: 'Wähle dein Framework und dokumentiere Controls — NIS2, ISO 27001, BSI und mehr.',
-  },
-  {
-    id: 'findings',
-    selector: 'a[href="/vaktscan/findings"]',
-    title: 'Findings (Vakt Scan)',
-    text: 'Scanner-Ergebnisse landen hier zur Priorisierung und Nachverfolgung.',
-  },
-  {
-    id: 'policies',
-    selector: 'a[href="/vaktcomply/policies"]',
-    title: 'Richtlinien',
-    text: 'Erstelle und versioniere Sicherheitsrichtlinien — mit KI-Unterstützung und Vorlagen.',
-  },
-  {
-    id: 'checklist',
-    selector: '[data-tour="getting-started"]',
-    title: 'Getting Started Checkliste',
-    text: 'Diese Checkliste führt dich durch die Ersteinrichtung deiner Sicherheitsplattform.',
-  },
-]
+function getTourSteps(t: TFunction): TourStep[] {
+  return [
+    {
+      id: 'dashboard',
+      selector: 'a[href="/"][aria-current="page"], a[href="/"]',
+      title: t('tour.steps.dashboard.title'),
+      text: t('tour.steps.dashboard.text'),
+    },
+    {
+      id: 'frameworks',
+      selector: 'a[href="/vaktcomply/frameworks"]',
+      title: t('tour.steps.frameworks.title'),
+      text: t('tour.steps.frameworks.text'),
+    },
+    {
+      id: 'findings',
+      selector: 'a[href="/vaktscan/findings"]',
+      title: t('tour.steps.findings.title'),
+      text: t('tour.steps.findings.text'),
+    },
+    {
+      id: 'policies',
+      selector: 'a[href="/vaktcomply/policies"]',
+      title: t('tour.steps.policies.title'),
+      text: t('tour.steps.policies.text'),
+    },
+    {
+      id: 'checklist',
+      selector: '[data-tour="getting-started"]',
+      title: t('tour.steps.checklist.title'),
+      text: t('tour.steps.checklist.text'),
+    },
+  ]
+}
 
 interface HighlightRect {
   top: number
@@ -110,6 +114,7 @@ function computeTooltipPosition(
 const SIDEBAR_COLLAPSED_KEY = 'vakt_sidebar_collapsed'
 
 export function AppTour() {
+  const { t } = useTranslation()
   const [active, setActive] = useState(false)
   const [step, setStep] = useState(0)
   const [rect, setRect] = useState<HighlightRect | null>(null)
@@ -148,10 +153,12 @@ export function AppTour() {
     }
   }, [active])
 
+  const steps = useMemo(() => getTourSteps(t), [t])
+
   const updatePosition = useCallback(() => {
     if (!active) return
-    const currentStep = TOUR_STEPS[step]
-    if (step >= TOUR_STEPS.length) return
+    const currentStep = steps[step]
+    if (step >= steps.length) return
     const r = getElementRect(currentStep.selector)
     setRect(r)
     if (r && tooltipRef.current) {
@@ -185,7 +192,7 @@ export function AppTour() {
   }
 
   function next() {
-    if (step < TOUR_STEPS.length - 1) {
+    if (step < steps.length - 1) {
       setStep((s) => s + 1)
     } else {
       complete()
@@ -217,8 +224,8 @@ export function AppTour() {
 
   if (!active) return null
 
-  const currentStep = TOUR_STEPS[step]
-  const isLast = step === TOUR_STEPS.length - 1
+  const currentStep = steps[step]
+  const isLast = step === steps.length - 1
 
   return (
     <>
@@ -261,7 +268,7 @@ export function AppTour() {
         {/* Skip button */}
         <button
           onClick={complete}
-          aria-label="Tour überspringen"
+          aria-label={t('tour.skipAria')}
           className="absolute top-3 right-3 text-secondary hover:text-primary transition-colors"
         >
           <X className="w-4 h-4" aria-hidden="true" />
@@ -269,7 +276,7 @@ export function AppTour() {
 
         {/* Step indicator */}
         <div className="flex gap-1 mb-3">
-          {TOUR_STEPS.map((_, i) => (
+          {steps.map((_, i) => (
             <span
               key={i}
               className={`h-1 rounded-full flex-1 transition-colors ${i === step ? 'bg-brand' : 'bg-border'}`}
@@ -279,7 +286,7 @@ export function AppTour() {
         </div>
 
         <p className="text-xs font-semibold text-brand mb-1">
-          Schritt {step + 1} von {TOUR_STEPS.length}
+          {t('tour.step', { current: step + 1, total: steps.length })}
         </p>
         <h3 className="text-sm font-semibold text-primary mb-1.5">{currentStep.title}</h3>
         <p className="text-xs text-secondary leading-relaxed mb-4">{currentStep.text}</p>
@@ -289,13 +296,13 @@ export function AppTour() {
             onClick={complete}
             className="text-xs text-secondary hover:text-primary transition-colors underline"
           >
-            Tour überspringen
+            {t('tour.skip')}
           </button>
           <button
             onClick={next}
             className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors"
           >
-            {isLast ? 'Fertig' : 'Weiter'}
+            {isLast ? t('tour.done') : t('tour.next')}
             {!isLast && <ChevronRight className="w-3 h-3" aria-hidden="true" />}
           </button>
         </div>

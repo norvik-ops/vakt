@@ -12,6 +12,7 @@ import { apiFetch } from '../../../api/client'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { ProGate } from '../../../shared/components/ProGate'
 import type { DataTransfer, TransferComplianceStatus } from '../types'
 
 const MECHANISM_LABELS: Record<string, string> = {
@@ -84,7 +85,7 @@ export default function TransfersPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [tiaTarget, setTIATarget] = useState<DataTransfer | null>(null)
 
-  const { data: transfers, isLoading } = useQuery<DataTransfer[]>({
+  const { data: transfers, isLoading, isError, error } = useQuery<DataTransfer[]>({
     queryKey: ['privacy', 'transfers'],
     queryFn: () => apiFetch<DataTransfer[]>('/vaktprivacy/transfers'),
     staleTime: 2 * 60 * 1000,
@@ -148,6 +149,7 @@ export default function TransfersPage() {
   }
 
   return (
+    <ProGate error={isError ? error : null}>
     <div className="flex flex-col h-full">
       <PageHeader
         title="Drittlandübermittlungen (Art. 46 DSGVO)"
@@ -281,5 +283,6 @@ export default function TransfersPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </ProGate>
   )
 }

@@ -400,6 +400,7 @@ func queryByOrgAndEmail(ctx context.Context, db *pgxpool.Pool, orgID, email, que
 }
 
 func queryCommentsByUser(ctx context.Context, db *pgxpool.Pool, userID, userEmail string) ([]byte, error) {
+	// orgid-lint: global — GDPR Art. 20 data export: fetches a user's own comments across all orgs they belong to
 	rows, err := db.Query(ctx, `
 		SELECT id::text, resource_type, resource_id, author_email, body, created_at
 		FROM ck_comments

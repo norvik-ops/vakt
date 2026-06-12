@@ -76,7 +76,7 @@ export function GettingStartedChecklist() {
       id: 'control',
       labelKey: 'control',
       done: hasEvidence ?? false,
-      to: '/vaktcomply/controls',
+      to: '/vaktcomply/frameworks',
     },
     {
       id: 'vvt',
@@ -112,6 +112,7 @@ export function GettingStartedChecklist() {
 
   return (
     <section
+      data-tour="getting-started"
       aria-label={t('onboarding.title')}
       className="rounded-lg border border-border bg-surface p-4 space-y-3"
     >

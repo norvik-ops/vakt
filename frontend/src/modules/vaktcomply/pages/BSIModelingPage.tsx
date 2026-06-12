@@ -1,14 +1,25 @@
 // Copyright (c) 2026 NorvikOps. All rights reserved.
 // SPDX-License-Identifier: Elastic-2.0
 
-import { useState } from 'react'
-import { Network, Plus, Trash2 } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Network, Plus, Layers, Trash2 } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { ProGate } from '../../../shared/components/ProGate'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../../../components/ui/alert-dialog'
 import {
   Dialog,
   DialogContent,
@@ -35,11 +46,13 @@ import {
 } from '../../../components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
 import { Progress } from '../../../components/ui/progress'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   useBSIModelingMatrix,
   useBSIModelingStats,
   useCreateBSIModeling,
   useDeleteBSIModeling,
+  useBSIBausteinSuggestions,
 } from '../hooks/useBSIModeling'
 import type { BSIModelingEntry, CreateBSIModelingInput } from '../types'
 
@@ -99,20 +112,30 @@ function MatrixTab({
   entries,
   onDelete,
   onAdd,
+  onBulkAdd,
 }: {
   entries: BSIModelingEntry[]
   onDelete: (id: string) => void
   onAdd: () => void
+  onBulkAdd: () => void
 }) {
+  const actionButtons = (
+    <div className="flex gap-2 justify-end">
+      <Button size="sm" variant="outline" onClick={onBulkAdd}>
+        <Layers className="w-4 h-4 mr-1" />
+        Mehrere Bausteine
+      </Button>
+      <Button size="sm" onClick={onAdd}>
+        <Plus className="w-4 h-4 mr-1" />
+        Baustein zuweisen
+      </Button>
+    </div>
+  )
+
   if (entries.length === 0) {
     return (
       <div className="space-y-4">
-        <div className="flex justify-end">
-          <Button size="sm" onClick={onAdd}>
-            <Plus className="w-4 h-4 mr-1" />
-            Baustein zuweisen
-          </Button>
-        </div>
+        {actionButtons}
         <EmptyState
           icon={Network}
           title="Keine Modellierungseinträge"
@@ -124,12 +147,7 @@ function MatrixTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button size="sm" onClick={onAdd}>
-          <Plus className="w-4 h-4 mr-1" />
-          Baustein zuweisen
-        </Button>
-      </div>
+      {actionButtons}
       <div className="rounded-lg border border-border overflow-hidden">
         <Table>
           <TableHeader>
@@ -366,6 +384,165 @@ function StatsTab() {
   )
 }
 
+// ─── Bulk Assign Dialog ───────────────────────────────────────────────────────
+
+const ASSET_TYPES = ['server', 'workstation', 'network', 'application', 'database'] as const
+const ASSET_TYPE_LABELS: Record<string, string> = {
+  server: 'Server', workstation: 'Workstation', network: 'Netzwerk',
+  application: 'Anwendung', database: 'Datenbank',
+}
+
+function BulkAssignDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [assetId, setAssetId] = useState('')
+  const [assetType, setAssetType] = useState('server')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [customInput, setCustomInput] = useState('')
+  const [priority, setPriority] = useState<'R1' | 'R2' | 'R3'>('R1')
+  const [progress, setProgress] = useState({ done: 0, total: 0 })
+  const [errors, setErrors] = useState<string[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const create = useCreateBSIModeling()
+  const { data: suggestionsData } = useBSIBausteinSuggestions(assetType)
+  const suggestions = useMemo(() => suggestionsData?.suggestions ?? [], [suggestionsData])
+
+  function toggle(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  function addCustom() {
+    const id = customInput.trim()
+    if (!id) return
+    setSelectedIds((prev) => new Set([...prev, id]))
+    setCustomInput('')
+  }
+
+  async function handleSubmit() {
+    const ids = [...selectedIds]
+    if (!assetId.trim() || ids.length === 0) return
+    setIsSubmitting(true)
+    setProgress({ done: 0, total: ids.length })
+    setErrors([])
+    const errs: string[] = []
+    for (const control_id of ids) {
+      try {
+        await create.mutateAsync({ asset_id: assetId.trim(), control_id, priority })
+        setProgress((p) => ({ ...p, done: p.done + 1 }))
+      } catch (e) {
+        errs.push(`${control_id}: ${e instanceof Error ? e.message : 'Fehler'}`)
+      }
+    }
+    setIsSubmitting(false)
+    setErrors(errs)
+    if (errs.length === 0) {
+      void qc.invalidateQueries({ queryKey: ['vaktcomply', 'bsi-modeling'] })
+      setAssetId(''); setSelectedIds(new Set()); setProgress({ done: 0, total: 0 })
+      onClose()
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Mehrere Bausteine zuweisen</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 mt-2">
+          <div className="space-y-1.5">
+            <Label>Asset-ID <span className="text-destructive">*</span></Label>
+            <Input
+              value={assetId}
+              onChange={(e) => { setAssetId(e.target.value) }}
+              placeholder="UUID des Assets"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Asset-Typ (für Vorschläge)</Label>
+            <Select value={assetType} onValueChange={setAssetType}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ASSET_TYPES.map((t) => (
+                  <SelectItem key={t} value={t}>{ASSET_TYPE_LABELS[t]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {suggestions.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>Empfohlene Bausteine</Label>
+              <div className="space-y-2 p-3 rounded-lg border border-border bg-surface2">
+                {suggestions.map((id) => (
+                  <label key={id} className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(id)}
+                      onChange={() => { toggle(id) }}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm font-mono">{id}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <Label>Weitere Baustein-ID</Label>
+            <div className="flex gap-2">
+              <Input
+                value={customInput}
+                onChange={(e) => { setCustomInput(e.target.value) }}
+                placeholder="z.B. OPS.1.1.3"
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustom() } }}
+              />
+              <Button type="button" variant="outline" size="sm" onClick={addCustom} disabled={!customInput.trim()}>
+                Hinzufügen
+              </Button>
+            </div>
+            {selectedIds.size > 0 && (
+              <p className="text-xs text-secondary">{selectedIds.size} Baustein{selectedIds.size !== 1 ? 'e' : ''} ausgewählt</p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Priorität (für alle)</Label>
+            <Select value={priority} onValueChange={(v) => { setPriority(v as 'R1' | 'R2' | 'R3') }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="R1">R1 — Muss</SelectItem>
+                <SelectItem value="R2">R2 — Soll</SelectItem>
+                <SelectItem value="R3">R3 — Kann</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {isSubmitting && progress.total > 0 && (
+            <p className="text-sm text-secondary">{progress.done} / {progress.total} zugewiesen …</p>
+          )}
+          {errors.length > 0 && (
+            <div className="text-xs text-destructive space-y-0.5 p-2 rounded border border-destructive/30 bg-destructive/5">
+              {errors.map((e, i) => <p key={i}>{e}</p>)}
+            </div>
+          )}
+        </div>
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={onClose}>Abbrechen</Button>
+          <Button
+            onClick={() => { void handleSubmit() }}
+            disabled={!assetId.trim() || selectedIds.size === 0 || isSubmitting}
+          >
+            {isSubmitting
+              ? `${progress.done + 1}/${progress.total} …`
+              : `${selectedIds.size > 0 ? selectedIds.size + ' ' : ''}Zuweisen`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── Create Dialog ────────────────────────────────────────────────────────────
 
 function CreateDialog({
@@ -466,16 +643,22 @@ function CreateDialog({
 
 export default function BSIModelingPage() {
   const [showCreate, setShowCreate] = useState(false)
-  const { data: entries = [], isLoading } = useBSIModelingMatrix()
+  const [showBulk, setShowBulk] = useState(false)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const { data: entries = [], isLoading, isError, error } = useBSIModelingMatrix()
   const deleteEntry = useDeleteBSIModeling()
 
   function handleDelete(id: string) {
-    if (window.confirm('Eintrag wirklich löschen?')) {
-      deleteEntry.mutate(id)
-    }
+    setDeleteId(id)
+  }
+
+  function confirmDelete() {
+    if (deleteId) deleteEntry.mutate(deleteId)
+    setDeleteId(null)
   }
 
   return (
+    <ProGate error={isError ? error : null}>
     <div className="flex flex-col h-full">
       <PageHeader
         title="BSI-Grundschutz-Modellierung"
@@ -498,6 +681,7 @@ export default function BSIModelingPage() {
                 entries={entries}
                 onDelete={handleDelete}
                 onAdd={() => { setShowCreate(true) }}
+                onBulkAdd={() => { setShowBulk(true) }}
               />
             </TabsContent>
 
@@ -513,6 +697,23 @@ export default function BSIModelingPage() {
       </div>
 
       <CreateDialog open={showCreate} onClose={() => { setShowCreate(false) }} />
+      <BulkAssignDialog open={showBulk} onClose={() => { setShowBulk(false) }} />
+
+      <AlertDialog open={deleteId !== null} onOpenChange={open => { if (!open) setDeleteId(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eintrag löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Diese Aktion kann nicht rückgängig gemacht werden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Löschen</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+    </ProGate>
   )
 }

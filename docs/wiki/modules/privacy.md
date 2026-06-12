@@ -32,6 +32,11 @@ VVT-Einträge haben einen Status (active / archived). Der CSV-Export liefert das
 
 ## DPIA — Datenschutz-Folgeabschätzung (Art. 35 DSGVO)
 
+> **Pro-Feature** — erfordert einen aktiven Pro-Lizenzschlüssel. Ebenfalls Pro sind die
+> erweiterten Privacy-Workflows: **Drittlandübermittlungen/TIA** (Art. 46, Schrems II),
+> **Löscherinnerungen** (Art. 5 Abs. 1 lit. e) und **Privacy by Design** (Art. 25).
+> VVT, AVV, Datenpannen-Register und DSR sind in der Community Edition enthalten.
+
 Eine DPIA ist bei Verarbeitungen mit hohem Risiko für Betroffene Pflicht (z. B. Profiling, Videoüberwachung, Gesundheitsdaten).
 
 Vakt unterstützt den gesamten DPIA-Prozess:

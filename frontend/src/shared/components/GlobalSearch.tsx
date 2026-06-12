@@ -17,7 +17,7 @@ interface QuickNavItem {
 
 const QUICK_NAV: QuickNavItem[] = [
   { label: 'Dashboard',     path: '/',                       icon: <LayoutDashboard className="w-3.5 h-3.5 text-secondary shrink-0" /> },
-  { label: 'Controls',      path: '/vaktcomply/controls',     icon: <Shield className="w-3.5 h-3.5 text-brand shrink-0" /> },
+  { label: 'Frameworks',     path: '/vaktcomply/frameworks',   icon: <Shield className="w-3.5 h-3.5 text-brand shrink-0" /> },
   { label: 'Risiken',       path: '/vaktcomply/risks',        icon: <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" /> },
   { label: 'Vorfälle',      path: '/vaktcomply/incidents',    icon: <Siren className="w-3.5 h-3.5 text-red-500 shrink-0" /> },
   { label: 'Richtlinien',   path: '/vaktcomply/policies',     icon: <BookOpen className="w-3.5 h-3.5 text-blue-500 shrink-0" /> },

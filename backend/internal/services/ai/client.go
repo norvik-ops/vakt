@@ -68,16 +68,36 @@ type chatResponse struct {
 	Choices []struct {
 		Message chatMessage `json:"message"`
 	} `json:"choices"`
+	Usage *chatUsage `json:"usage,omitempty"`
+}
+
+type chatUsage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+}
+
+// ChatResult bundles the generated text with the provider's token usage.
+type ChatResult struct {
+	Text      string
+	TokensIn  *int
+	TokensOut *int
 }
 
 // Generate sends a prompt and returns the response text.
 func (c *AIClient) Generate(ctx context.Context, prompt string) (string, error) {
-	return c.send(ctx, []chatMessage{{Role: "user", Content: prompt}}, 1500)
+	result, err := c.send(ctx, []chatMessage{{Role: "user", Content: prompt}}, 1500)
+	return result.Text, err
 }
 
 // GenerateWithSystem sends a system message plus a user prompt and returns the response text.
 // Keeping max_tokens at 600 keeps responses compact and fast on CPU-only models.
 func (c *AIClient) GenerateWithSystem(ctx context.Context, system, userPrompt string) (string, error) {
+	result, err := c.GenerateWithSystemFull(ctx, system, userPrompt)
+	return result.Text, err
+}
+
+// GenerateWithSystemFull is like GenerateWithSystem but returns token counts from the provider.
+func (c *AIClient) GenerateWithSystemFull(ctx context.Context, system, userPrompt string) (ChatResult, error) {
 	msgs := []chatMessage{
 		{Role: "system", Content: system},
 		{Role: "user", Content: userPrompt},
@@ -85,7 +105,7 @@ func (c *AIClient) GenerateWithSystem(ctx context.Context, system, userPrompt st
 	return c.send(ctx, msgs, 600)
 }
 
-func (c *AIClient) send(ctx context.Context, messages []chatMessage, maxTokens int) (string, error) {
+func (c *AIClient) send(ctx context.Context, messages []chatMessage, maxTokens int) (ChatResult, error) {
 	body, _ := json.Marshal(chatRequest{
 		Model:     c.model,
 		Messages:  messages,
@@ -94,7 +114,7 @@ func (c *AIClient) send(ctx context.Context, messages []chatMessage, maxTokens i
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
-		return "", fmt.Errorf("build request: %w", err)
+		return ChatResult{}, fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	if c.apiKey != "" {
@@ -103,22 +123,29 @@ func (c *AIClient) send(ctx context.Context, messages []chatMessage, maxTokens i
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("ai request: %w", err)
+		return ChatResult{}, fmt.Errorf("ai request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("ai provider returned %d", resp.StatusCode)
+		return ChatResult{}, fmt.Errorf("ai provider returned %d", resp.StatusCode)
 	}
 
 	var result chatResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("decode response: %w", err)
+		return ChatResult{}, fmt.Errorf("decode response: %w", err)
 	}
 	if len(result.Choices) == 0 {
-		return "", fmt.Errorf("no choices in response")
+		return ChatResult{}, fmt.Errorf("no choices in response")
 	}
-	return result.Choices[0].Message.Content, nil
+	out := ChatResult{Text: result.Choices[0].Message.Content}
+	if result.Usage != nil {
+		in := result.Usage.PromptTokens
+		comp := result.Usage.CompletionTokens
+		out.TokensIn = &in
+		out.TokensOut = &comp
+	}
+	return out, nil
 }
 
 // StreamChunk ist ein einzelnes Delta vom Streaming-Endpoint. Bei einer

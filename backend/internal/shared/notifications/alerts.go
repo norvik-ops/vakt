@@ -250,6 +250,7 @@ Diese E-Mail wurde automatisch von Vakt generiert.`,
 // warning email once per failure cycle (deduplication via notification_log).
 // Note: this function is a no-op if the ck_ccm_checks table does not exist yet.
 func CheckCCMFailures(ctx context.Context, db *pgxpool.Pool, m *Mailer) error {
+	// orgid-lint: global — queries information_schema only; table name 'ck_ccm_checks' is a string literal, not a table scan
 	// Check whether the table exists before querying — it may not be deployed yet.
 	var tableExists bool
 	err := db.QueryRow(ctx, `
@@ -324,6 +325,7 @@ Diese E-Mail wurde automatisch von Vakt generiert.`,
 // within the next 30 days and sends in-app notifications to the relevant orgs.
 // If the ck_audit_milestones table does not exist the function is a no-op.
 func CheckCertificationDeadlines(ctx context.Context, db *pgxpool.Pool, _ *Mailer) error {
+	// orgid-lint: global — queries information_schema only; 'ck_audit_milestones' is a string literal, not a table scan
 	// Guard: skip gracefully if the table does not exist yet.
 	var tableExists bool
 	if err := db.QueryRow(ctx, `

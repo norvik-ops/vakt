@@ -109,6 +109,7 @@ func NewTIAService(db *pgxpool.Pool) *TIAService {
 
 // ListAdequacyDecisions returns all adequacy decisions from the global table.
 func (s *TIAService) ListAdequacyDecisions(ctx context.Context) ([]AdequacyDecision, error) {
+	// orgid-lint: global — po_adequacy_decisions is a global GDPR Art. 45 reference table, not per-org
 	rows, err := s.db.Query(ctx, `
 		SELECT country_code, country_name, has_adequacy,
 		       decision_date::text, decision_reference, notes, last_updated::text
@@ -134,6 +135,7 @@ func (s *TIAService) ListAdequacyDecisions(ctx context.Context) ([]AdequacyDecis
 // GetAdequacyDecision returns the adequacy status for a country code.
 func (s *TIAService) GetAdequacyDecision(ctx context.Context, countryCode string) (*AdequacyDecision, error) {
 	var d AdequacyDecision
+	// orgid-lint: global — po_adequacy_decisions is a global GDPR Art. 45 reference table, not per-org
 	err := s.db.QueryRow(ctx, `
 		SELECT country_code, country_name, has_adequacy,
 		       decision_date::text, decision_reference, notes, last_updated::text

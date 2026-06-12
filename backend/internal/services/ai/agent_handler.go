@@ -74,6 +74,7 @@ func (h *AgentHandler) AgentRun(c echo.Context) error {
 	resp.Header().Set("Cache-Control", "no-cache")
 	resp.Header().Set("Connection", "keep-alive")
 	resp.Header().Set("X-Accel-Buffering", "no")
+	resp.Header().Set("X-Vakt-Status", "experimental")
 	resp.WriteHeader(http.StatusOK)
 
 	h.runner.Run(c.Request().Context(), AgentRunRequest{

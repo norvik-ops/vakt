@@ -508,6 +508,7 @@ _Verantwortlicher: _______________ | Auftragsverarbeiter: _______________`,
 // every startup.
 func SeedPolicyTemplates(ctx context.Context, db *pgxpool.Pool) error {
 	var count int
+	// orgid-lint: global — ck_policy_templates is a shared system catalogue, not per-org
 	if err := db.QueryRow(ctx, `SELECT COUNT(*) FROM ck_policy_templates`).Scan(&count); err != nil {
 		return fmt.Errorf("seed policy templates: count check: %w", err)
 	}
