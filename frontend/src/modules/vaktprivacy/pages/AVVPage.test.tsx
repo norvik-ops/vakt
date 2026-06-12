@@ -46,7 +46,7 @@ beforeEach(() => {
   vi.mocked(useCreateAVV).mockReturnValue({ mutate: mockCreate, isPending: false } as unknown as R<typeof useCreateAVV>)
   vi.mocked(useUpdateAVV).mockReturnValue({ mutate: vi.fn(), isPending: false } as unknown as R<typeof useUpdateAVV>)
   vi.mocked(useDeleteAVV).mockReturnValue({ mutate: vi.fn(), isPending: false } as unknown as R<typeof useDeleteAVV>)
-  vi.mocked(useDownloadAVVPDF).mockReturnValue(vi.fn() as unknown as R<typeof useDownloadAVVPDF>)
+  vi.mocked(useDownloadAVVPDF).mockReturnValue(vi.fn())
   mockCreate.mockClear()
 })
 

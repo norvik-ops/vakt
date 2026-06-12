@@ -93,12 +93,12 @@ describe('ContractorsPage — create mutation', () => {
 
     const dialog = screen.getByRole('dialog')
     const inputs = dialog.querySelectorAll('input[type="text"], input:not([type])')
-    fireEvent.change(inputs[0] as HTMLInputElement, { target: { value: 'Max' } })
-    fireEvent.change(inputs[1] as HTMLInputElement, { target: { value: 'Mustermann' } })
+    fireEvent.change(inputs[0], { target: { value: 'Max' } })
+    fireEvent.change(inputs[1], { target: { value: 'Mustermann' } })
 
     const dateInputs = dialog.querySelectorAll('input[type="date"]')
-    fireEvent.change(dateInputs[0] as HTMLInputElement, { target: { value: '2026-01-01' } })
-    fireEvent.change(dateInputs[1] as HTMLInputElement, { target: { value: '2026-12-31' } })
+    fireEvent.change(dateInputs[0], { target: { value: '2026-01-01' } })
+    fireEvent.change(dateInputs[1], { target: { value: '2026-12-31' } })
 
     const form = dialog.querySelector('form')!
     fireEvent.submit(form)
@@ -130,8 +130,8 @@ describe('ContractorsPage — mutation error', () => {
 
     const dialog = screen.getByRole('dialog')
     const inputs = dialog.querySelectorAll('input[type="text"], input:not([type])')
-    fireEvent.change(inputs[0] as HTMLInputElement, { target: { value: 'Fail' } })
-    fireEvent.change(inputs[1] as HTMLInputElement, { target: { value: 'User' } })
+    fireEvent.change(inputs[0], { target: { value: 'Fail' } })
+    fireEvent.change(inputs[1], { target: { value: 'User' } })
 
     const form = dialog.querySelector('form')!
     fireEvent.submit(form)

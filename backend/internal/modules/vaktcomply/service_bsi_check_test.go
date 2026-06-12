@@ -16,7 +16,7 @@ import (
 // on the ck_controls JOIN. This catches regressions without needing a live DB.
 func TestBSICheckQueries_OrgScopedJoin(t *testing.T) {
 	queries := map[string]string{
-		"GetCheckSheet": checkSheetSQL,
+		"GetCheckSheet":   checkSheetSQL,
 		"GetBSIGapReport": gapReportSQL,
 	}
 	for name, sql := range queries {

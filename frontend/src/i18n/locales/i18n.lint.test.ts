@@ -5,11 +5,13 @@
  * Red when: invalid JSON, missing key in any locale, extra key not in de.
  * Added in S81-4 — catches the nl/fr key drift that appeared in S77-3.
  */
+/// <reference types="node" />
 import { describe, it, expect } from 'vitest'
-import { readFileSync, readdirSync } from 'fs'
-import { join } from 'path'
+import { readFileSync, readdirSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname } from 'node:path'
 
-const LOCALES_DIR = join(import.meta.dirname ?? __dirname)
+const LOCALES_DIR = dirname(fileURLToPath(import.meta.url))
 const REFERENCE = 'de'
 
 function loadJSON(locale: string): Record<string, unknown> {

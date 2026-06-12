@@ -535,7 +535,7 @@ function BulkAssignDialog({ open, onClose }: { open: boolean; onClose: () => voi
           >
             {isSubmitting
               ? `${progress.done + 1}/${progress.total} …`
-              : `${selectedIds.size > 0 ? selectedIds.size + ' ' : ''}Zuweisen`}
+              : `${selectedIds.size > 0 ? String(selectedIds.size) + ' ' : ''}Zuweisen`}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -22,7 +22,10 @@ export default tseslint.config(
       ecmaVersion: 2020,
       globals: globals.browser,
       parserOptions: {
-        projectService: true,
+        projectService: {
+          defaultProject: 'tsconfig.app.json',
+          allowDefaultProject: ['src/modules/vaktprivacy/pages/DSRPage.test.tsx'],
+        },
         tsconfigRootDir: import.meta.dirname,
       },
     },

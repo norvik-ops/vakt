@@ -37,9 +37,9 @@ type mockTx struct {
 	execCalled int
 }
 
-func (m *mockTx) Begin(ctx context.Context) (pgx.Tx, error)  { return m, nil }
-func (m *mockTx) Commit(ctx context.Context) error           { return m.commitErr }
-func (m *mockTx) Rollback(ctx context.Context) error         { return nil }
+func (m *mockTx) Begin(ctx context.Context) (pgx.Tx, error) { return m, nil }
+func (m *mockTx) Commit(ctx context.Context) error          { return m.commitErr }
+func (m *mockTx) Rollback(ctx context.Context) error        { return nil }
 func (m *mockTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
 	m.execCalled++
 	return pgconn.CommandTag{}, m.execErr

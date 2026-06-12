@@ -106,7 +106,7 @@ function CheckRow({ row, targetObjectId }: { row: BSICheckResult; targetObjectId
       <div className="w-[140px] shrink-0">
         <Select
           value={row.umsetzungsstatus}
-          onValueChange={(v) => void handleStatusChange(v)}
+          onValueChange={handleStatusChange}
           disabled={setResult.isPending}
         >
           <SelectTrigger className="h-7 text-xs">

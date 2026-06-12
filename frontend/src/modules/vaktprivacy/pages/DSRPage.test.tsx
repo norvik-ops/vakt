@@ -45,7 +45,6 @@ const SUMMARY: DSRSummary = {
   fulfilled_last_12m: 5,
   rejected_last_12m: 0,
   on_time_rate_pct: 100,
-  avg_days_to_complete: 10,
 }
 
 type R<T> = T extends (...args: unknown[]) => infer U ? U : never

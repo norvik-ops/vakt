@@ -12,11 +12,11 @@ import (
 // dummyScorer proves the interface is exchangeable: always returns fixed values.
 type dummyScorer struct{ fixed float64 }
 
-func (d dummyScorer) Score(_, _, _, _ int) float64                              { return d.fixed }
-func (d dummyScorer) ScoreFiltered(_ []BSICheckResult, _ string) float64        { return d.fixed }
+func (d dummyScorer) Score(_, _, _, _ int) float64                       { return d.fixed }
+func (d dummyScorer) ScoreFiltered(_ []BSICheckResult, _ string) float64 { return d.fixed }
 
-var _ ComplianceScorer = KompendiumScorer{}  // compile-time interface check
-var _ ComplianceScorer = dummyScorer{}       // compile-time interface check
+var _ ComplianceScorer = KompendiumScorer{} // compile-time interface check
+var _ ComplianceScorer = dummyScorer{}      // compile-time interface check
 
 func TestKompendiumScorer_Score(t *testing.T) {
 	s := KompendiumScorer{}
