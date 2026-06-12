@@ -57,7 +57,9 @@ func RenderSoA(rows []SoARow, summary SoASummary) ([]byte, error) {
 
 	// ── Sheet 1: SoA ──────────────────────────────────────────────────────────
 	sheet := "SoA"
-	f.SetSheetName("Sheet1", sheet)
+	if err := f.SetSheetName("Sheet1", sheet); err != nil {
+		return nil, err
+	}
 
 	headers := []string{
 		"Control ID", "Titel", "Klausel", "Anwendbar",
@@ -151,7 +153,9 @@ func RenderRisiken(rows []RiskRow) ([]byte, error) {
 
 	// ── Sheet 1: Risiken ──────────────────────────────────────────────────────
 	sheet := "Risiken"
-	f.SetSheetName("Sheet1", sheet)
+	if err := f.SetSheetName("Sheet1", sheet); err != nil {
+		return nil, err
+	}
 
 	headers := []string{
 		"Risk ID", "Titel", "Kategorie", "Wahrscheinlichkeit",

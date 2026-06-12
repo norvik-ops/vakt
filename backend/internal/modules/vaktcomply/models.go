@@ -14,7 +14,7 @@ type Framework struct {
 	Version          string    `json:"version"`
 	IsBuiltin        bool      `json:"is_builtin"`
 	ReadinessScore   float64   `json:"readiness_score,omitempty"`
-	FrameworkVariant string    `json:"framework_variant"` // "full" | "simplified" (DORA Art.16)
+	FrameworkVariant string    `json:"framework_variant"`         // "full" | "simplified" (DORA Art.16)
 	CatalogEdition   string    `json:"catalog_edition,omitempty"` // S82-4: edition from the embedded catalog
 	CreatedAt        time.Time `json:"created_at"`
 }

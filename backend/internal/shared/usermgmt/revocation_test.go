@@ -14,8 +14,7 @@ import (
 // ─── stub SessionRevoker ──────────────────────────────────────────────────────
 
 type stubRevoker struct {
-	called  []string
-	failFor string
+	called []string
 }
 
 func (r *stubRevoker) RevokeAllSessions(_ context.Context, userID string) error {

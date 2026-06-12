@@ -15,7 +15,7 @@ import (
 // Extend this list whenever a route is renamed.
 func TestBlockedRoutes_noDeadPrefixes(t *testing.T) {
 	deadPrefixes := []string{
-		"/api/v1/auth/totp",       // real routes are under /auth/2fa/
+		"/api/v1/auth/totp",         // real routes are under /auth/2fa/
 		"/api/v1/alerting/webhooks", // real routes are under /alerting/channels
 		"/api/v1/vaktvault/secrets", // real routes are nested under /vaktvault/projects/
 	}

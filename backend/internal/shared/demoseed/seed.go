@@ -1114,7 +1114,7 @@ func runSeed(ctx context.Context, db *pgxpool.Pool, masterKeyHex, orgName, orgSl
 	}
 	hrEmployees := []struct {
 		firstName, lastName, email, department, role, status string
-		startDate                                             string
+		startDate                                            string
 	}{
 		{"Laura", "Schneider", "l.schneider@demo.local", "Engineering", "Backend Developer", "active",
 			now.AddDate(0, -3, 0).Format("2006-01-02")},
