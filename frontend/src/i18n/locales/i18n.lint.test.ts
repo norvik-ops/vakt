@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { dirname } from 'node:path'
+import { dirname, join } from 'node:path'
 
 const LOCALES_DIR = dirname(fileURLToPath(import.meta.url))
 const REFERENCE = 'de'

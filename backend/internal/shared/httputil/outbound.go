@@ -21,7 +21,7 @@ var privateRanges = func() []*net.IPNet {
 		"127.0.0.0/8",
 		"::1/128",
 		"169.254.0.0/16", // IMDS (AWS, Azure, GCP metadata)
-		"fc00::/7",        // IPv6 ULA
+		"fc00::/7",       // IPv6 ULA
 		"0.0.0.0/8",
 	}
 	nets := make([]*net.IPNet, 0, len(cidrs))
