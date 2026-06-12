@@ -1329,6 +1329,13 @@ export interface paths {
                         };
                     };
                 };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
         put?: never;
@@ -1616,6 +1623,13 @@ export interface paths {
                     content: {
                         "application/json": components["schemas"]["Framework"][];
                     };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };
@@ -2044,7 +2058,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Export risks as XLSX */
+        /**
+         * Export risk register as XLSX (Pro)
+         * @description Returns a two-sheet XLSX workbook (Risiken + Matrix heatmap). Requires FeatureAuditPDF.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -2056,6 +2073,15 @@ export interface paths {
             responses: {
                 /** @description XLSX file */
                 200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Feature not available (Pro required) */
+                402: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2223,6 +2249,13 @@ export interface paths {
                     content: {
                         "application/json": components["schemas"]["VVTEntry"][];
                     };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };
@@ -2452,6 +2485,13 @@ export interface paths {
             responses: {
                 /** @description Project list */
                 200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -6725,6 +6765,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vaktcomply/soa/export.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export SoA as XLSX (Pro)
+         * @description Returns a two-sheet XLSX workbook (SoA + Zusammenfassung). Requires FeatureAuditPDF.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description XLSX file */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Feature not available (Pro required) */
+                402: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description SoA not initialized */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/vaktcomply/soa/entries": {
         parameters: {
             query?: never;
@@ -10031,6 +10124,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vaktcomply/bsi/target-objects/{id}/dependencies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List dependency edges for a Zielobjekt (source and target sides) */
+        get: operations["listBSIObjectDependencies"];
+        put?: never;
+        /** Add a dependency edge from this object to another */
+        post: operations["createBSIObjectDependency"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi/target-objects/{id}/dependencies/{depId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a dependency edge */
+        delete: operations["deleteBSIObjectDependency"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bsi/target-objects/{id}/protection-override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set or clear the manual CIA override for a Zielobjekt */
+        put: operations["updateBSIObjectProtectionOverride"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/vaktcomply/bsi/threats": {
         parameters: {
             query?: never;
@@ -11498,6 +11643,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auditor/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List active auditor sessions for the organisation */
+        get: operations["listAuditorSessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auditor/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke a specific auditor session (S78-7) */
+        delete: operations["revokeAuditorSession"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auditor/vaktcomply/frameworks": {
         parameters: {
             query?: never;
@@ -11812,6 +11991,677 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vaktcomply/ai/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** AI provider status */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Provider availability and CE usage summary */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            available?: boolean;
+                            provider?: string;
+                            model?: string;
+                            monthly_usage?: number;
+                            monthly_limit?: number;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/ai/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** CE monthly AI usage counter */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Usage counter for the current calendar month */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            used?: number;
+                            limit?: number;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/ai/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List locally available Ollama models */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Model names pulled into the local Ollama instance */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            models?: string[];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/ai/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate an AI compliance report */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        type: "gap_analysis" | "risk_summary" | "executive_summary";
+                    };
+                };
+            };
+            responses: {
+                /** @description AI-generated report text */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            type: string;
+                            report: string;
+                            /** @enum {boolean} */
+                            ai_generated: true;
+                        };
+                    };
+                };
+                /** @description CE monthly quota exceeded */
+                402: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description AI provider unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/ai/advice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get prioritised compliance advice */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        context?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description AI-generated action recommendations */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            advice: string;
+                            /** @enum {boolean} */
+                            ai_generated: true;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/ai/draft-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate an information-security policy draft */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        topic: string;
+                        framework?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description AI-generated policy draft */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            draft: string;
+                            /** @enum {boolean} */
+                            ai_generated: true;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/ai/incident-guide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate an incident response guide */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        summary: string;
+                        type?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description AI-generated incident response checklist */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            guide: string;
+                            /** @enum {boolean} */
+                            ai_generated: true;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/ai/chat/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Streaming AI compliance chat (SSE) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        system?: string;
+                        prompt: string;
+                        /** @default 600 */
+                        max_tokens?: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description SSE stream of AI response deltas */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/event-stream": string;
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/ai/controls/{id}/explain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stream an AI explanation for a compliance control gap (SSE) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description SSE stream of gap explanation */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/event-stream": string;
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/ai/risks/{id}/narrative": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate and persist an AI narrative for a risk */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description AI-generated risk narrative (also persisted to ck_risks.ai_narrative) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            narrative: string;
+                            /** @enum {boolean} */
+                            ai_generated: true;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/ai/insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List AI-generated compliance insights */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description List of AI insights for the org */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uuid */
+                            id?: string;
+                            type?: string;
+                            title?: string;
+                            message?: string;
+                            urgency?: number;
+                            ai_generated?: boolean;
+                        }[];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/ai/insights/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Dismiss an AI insight */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Insight dismissed */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Insight not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/ai/agent/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start an AI agent run (Plan/Execute/Reflect loop) — experimental, Pro+ */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        goal: string;
+                        context_hints?: string[];
+                        /** @default 5 */
+                        max_iterations?: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description SSE stream of agent events (X-Vakt-Status: experimental) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/event-stream": string;
+                    };
+                };
+                /** @description agent_write_tools feature not available on this license */
+                402: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/ai/agent/runs/{run_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a pending agent write-tool action */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    run_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Action approved */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description agent_write_tools feature not available */
+                402: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/ai/agent/runs/{run_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a pending agent write-tool action */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    run_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Action rejected */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description agent_write_tools feature not available */
+                402: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -12018,6 +12868,8 @@ export interface components {
              * @enum {string}
              */
             framework_variant?: "full" | "simplified";
+            /** @description Edition of the embedded control catalog (e.g. '2023' for BSI IT-Grundschutz Kompendium). Omitted for frameworks without a versioned catalog. */
+            catalog_edition?: string;
         };
         Control: {
             /** Format: uuid */
@@ -13157,15 +14009,79 @@ export interface components {
             /** @enum {string} */
             absicherungsniveau?: "basis" | "standard" | "kern";
             /** @enum {string|null} */
-            schutzbedarf_v?: "normal" | "hoch" | "sehr_hoch" | null;
+            protection_c?: "normal" | "hoch" | "sehr_hoch" | null;
             /** @enum {string|null} */
-            schutzbedarf_i?: "normal" | "hoch" | "sehr_hoch" | null;
+            protection_i?: "normal" | "hoch" | "sehr_hoch" | null;
             /** @enum {string|null} */
-            schutzbedarf_a?: "normal" | "hoch" | "sehr_hoch" | null;
+            protection_a?: "normal" | "hoch" | "sehr_hoch" | null;
+            /** @enum {string|null} */
+            override_c?: "normal" | "hoch" | "sehr_hoch" | null;
+            /** @enum {string|null} */
+            override_i?: "normal" | "hoch" | "sehr_hoch" | null;
+            /** @enum {string|null} */
+            override_a?: "normal" | "hoch" | "sehr_hoch" | null;
+            override_reason?: string | null;
+            /** @enum {string|null} */
+            override_effect?: "kumulation" | "verteilung" | null;
+            /** @enum {string|null} */
+            effective_c?: "normal" | "hoch" | "sehr_hoch" | null;
+            /** @enum {string|null} */
+            effective_i?: "normal" | "hoch" | "sehr_hoch" | null;
+            /** @enum {string|null} */
+            effective_a?: "normal" | "hoch" | "sehr_hoch" | null;
+            /**
+             * Format: uuid
+             * @description Source object ID contributing effective_c
+             */
+            inherited_from_c?: string | null;
+            /**
+             * Format: uuid
+             * @description Source object ID contributing effective_i
+             */
+            inherited_from_i?: string | null;
+            /**
+             * Format: uuid
+             * @description Source object ID contributing effective_a
+             */
+            inherited_from_a?: string | null;
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
             updated_at?: string;
+        };
+        BSIObjectDependency: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            org_id?: string;
+            /** Format: uuid */
+            source_id?: string;
+            source_name?: string;
+            /** Format: uuid */
+            target_id?: string;
+            target_name?: string;
+            /** @enum {string} */
+            dependency_type?: "runs_on" | "located_in" | "connected_to" | "processes_for";
+            /** Format: date-time */
+            created_at?: string;
+        };
+        CreateBSIObjectDependencyInput: {
+            /** Format: uuid */
+            target_id: string;
+            /** @enum {string} */
+            dependency_type: "runs_on" | "located_in" | "connected_to" | "processes_for";
+        };
+        UpdateBSIObjectProtectionOverrideInput: {
+            /** @enum {string|null} */
+            override_c?: "normal" | "hoch" | "sehr_hoch" | null;
+            /** @enum {string|null} */
+            override_i?: "normal" | "hoch" | "sehr_hoch" | null;
+            /** @enum {string|null} */
+            override_a?: "normal" | "hoch" | "sehr_hoch" | null;
+            /** @description Required when any override dimension is set */
+            override_reason?: string;
+            /** @enum {string|null} */
+            override_effect?: "kumulation" | "verteilung" | null;
         };
         CreateBSITargetObjectInput: {
             name: string;
@@ -13175,11 +14091,11 @@ export interface components {
             /** @enum {string} */
             absicherungsniveau?: "basis" | "standard" | "kern";
             /** @enum {string} */
-            schutzbedarf_v?: "normal" | "hoch" | "sehr_hoch";
+            protection_c?: "normal" | "hoch" | "sehr_hoch";
             /** @enum {string} */
-            schutzbedarf_i?: "normal" | "hoch" | "sehr_hoch";
+            protection_i?: "normal" | "hoch" | "sehr_hoch";
             /** @enum {string} */
-            schutzbedarf_a?: "normal" | "hoch" | "sehr_hoch";
+            protection_a?: "normal" | "hoch" | "sehr_hoch";
         };
         BSICheckResult: {
             /** Format: uuid */
@@ -13191,6 +14107,8 @@ export interface components {
             anforderung_id?: string;
             anforderung_title?: string;
             baustein_id?: string;
+            /** @enum {string|null} */
+            requirement_level?: "basis" | "standard" | "erhoeht" | null;
             /** @enum {string} */
             umsetzungsstatus?: "ja" | "teilweise" | "nein" | "entbehrlich";
             begruendung?: string | null;
@@ -13273,16 +14191,21 @@ export interface components {
             /** Format: uuid */
             target_object_id?: string;
             threat_id?: string;
-            threat_title?: string;
+            threat_title?: string | null;
             /** @enum {string} */
             eintrittshaeufigkeit?: "selten" | "mittel" | "haeufig" | "sehr_haeufig";
             /** @enum {string} */
             schadensauswirkung?: "vernachlaessigbar" | "begrenzt" | "betraechtlich" | "existenzbedrohend";
             /** @enum {string} */
             risikokategorie?: "gering" | "mittel" | "hoch" | "sehr_hoch";
-            massnahmen?: string | null;
-            /** @enum {string} */
-            status?: "offen" | "in_bearbeitung" | "akzeptiert" | "behandelt";
+            /** @enum {string|null} */
+            behandlungsoption?: "reduzieren" | "akzeptieren" | "vermeiden" | "transferieren" | null;
+            massnahme?: string;
+            verantwortlicher?: string;
+            /** Format: date */
+            zieldatum?: string | null;
+            /** @enum {string|null} */
+            restrisiko?: "gering" | "mittel" | "hoch" | "sehr_hoch" | null;
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -13294,22 +14217,22 @@ export interface components {
             eintrittshaeufigkeit: "selten" | "mittel" | "haeufig" | "sehr_haeufig";
             /** @enum {string} */
             schadensauswirkung: "vernachlaessigbar" | "begrenzt" | "betraechtlich" | "existenzbedrohend";
-            massnahmen?: string;
-            /** @enum {string} */
-            status?: "offen" | "in_bearbeitung" | "akzeptiert" | "behandelt";
         };
         UpdateBSIRiskInput: {
             /** @enum {string} */
             eintrittshaeufigkeit?: "selten" | "mittel" | "haeufig" | "sehr_haeufig";
             /** @enum {string} */
             schadensauswirkung?: "vernachlaessigbar" | "begrenzt" | "betraechtlich" | "existenzbedrohend";
-            massnahmen?: string;
             /** @enum {string} */
-            status?: "offen" | "in_bearbeitung" | "akzeptiert" | "behandelt";
+            behandlungsoption?: "reduzieren" | "akzeptieren" | "vermeiden" | "transferieren";
+            massnahme?: string;
+            verantwortlicher?: string;
+            /** Format: date */
+            zieldatum?: string;
+            /** @enum {string} */
+            restrisiko?: "gering" | "mittel" | "hoch" | "sehr_hoch";
         };
         BSIRiskSummary: {
-            /** Format: uuid */
-            target_object_id?: string;
             gering?: number;
             mittel?: number;
             hoch?: number;
@@ -16110,6 +17033,129 @@ export interface operations {
             };
         };
     };
+    listBSIObjectDependencies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of dependency edges */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSIObjectDependency"][];
+                };
+            };
+        };
+    };
+    createBSIObjectDependency: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBSIObjectDependencyInput"];
+            };
+        };
+        responses: {
+            /** @description Dependency created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSIObjectDependency"];
+                };
+            };
+            /** @description Dependency already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Would create a cycle */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteBSIObjectDependency: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                depId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateBSIObjectProtectionOverride: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBSIObjectProtectionOverrideInput"];
+            };
+        };
+        responses: {
+            /** @description Updated object with effective values */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BSITargetObject"];
+                };
+            };
+            /** @description override_reason required when override dimension is set */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listBSIThreats: {
         parameters: {
             query?: never;
@@ -18522,6 +19568,13 @@ export interface operations {
                     "application/json": components["schemas"]["Contractor"][];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     createContractor: {
@@ -18725,6 +19778,77 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AccessReview"];
                 };
+            };
+        };
+    };
+    listAuditorSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active auditor sessions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        /** Format: uuid */
+                        org_id?: string;
+                        auditor_email?: string;
+                        /** Format: date-time */
+                        expires_at?: string;
+                        /** Format: date-time */
+                        created_at?: string;
+                    }[];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    revokeAuditorSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
