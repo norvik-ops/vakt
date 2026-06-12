@@ -137,7 +137,7 @@ services:
     environment:
       POSTGRES_DB: vakt
       POSTGRES_USER: vakt
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set — run install.sh or set the variable}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?err: POSTGRES_PASSWORD not set — run install.sh}
     command: >
       postgres
       -c shared_buffers=128MB
@@ -164,7 +164,7 @@ services:
     image: edoburu/pgbouncer:1.22.1
     environment:
       DB_USER: vakt
-      DB_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}"
+      DB_PASSWORD: "${POSTGRES_PASSWORD:?err: POSTGRES_PASSWORD not set}"
       DB_HOST: postgres
       DB_PORT: "5432"
       DB_NAME: vakt
@@ -197,7 +197,7 @@ services:
     restart: unless-stopped
     # Redis-Auth: requirepass schützt vor unauthentifiziertem Zugriff aus dem Docker-Netzwerk.
     # REDIS_PASSWORD muss in .env gesetzt sein (siehe .env.example).
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}"]
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?err: REDIS_PASSWORD not set}"]
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 5s
