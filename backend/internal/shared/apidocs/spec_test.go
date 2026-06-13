@@ -66,10 +66,10 @@ func TestSpec_DocumentsCoreEndpoints(t *testing.T) {
 		"/auth/login",
 		"/auth/register",
 		"/auth/sessions",
-		// HR (Sprint 1)
-		"/hr/employees",
-		"/hr/checklists",
-		"/hr/checklist-runs",
+		// HR
+		"/vakthr/employees",
+		"/vakthr/checklists",
+		"/vakthr/checklist-runs",
 		// SecVitals (core compliance)
 		"/vaktcomply/frameworks",
 		"/vaktcomply/controls/{id}",
