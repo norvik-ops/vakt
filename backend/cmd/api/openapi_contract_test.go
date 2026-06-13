@@ -184,6 +184,66 @@ func TestOpenAPIReverseContract(t *testing.T) {
 		// be reachable before auth middleware resolves.  Covered by TestOpenAPIContract.
 		"GET /api/v1/health":       "mounted at /health (root level)",
 		"GET /api/v1/health/ready": "mounted at /health/ready (root level)",
+
+		// Demo routes — only registered when cfg.DemoSeed=true (VAKT_DEMO=true).
+		// Not set in CI test env by design; routes exist in production demo instances.
+		"POST /api/v1/demo/start": "demo-only route, requires VAKT_DEMO=true",
+		"POST /api/v1/demo/login": "demo-only route, requires VAKT_DEMO=true",
+
+		// Supplier portal — spec-ahead, implementation pending (TODO: S80+).
+		"GET /api/v1/supplier/{token}":         "supplier portal not yet implemented",
+		"POST /api/v1/supplier/{token}/save":   "supplier portal not yet implemented",
+		"POST /api/v1/supplier/{token}/submit": "supplier portal not yet implemented",
+		"POST /api/v1/supplier/{token}/upload": "supplier portal not yet implemented",
+
+		// AI routes — registered conditionally via ai.RegisterWithOptions only when
+		// cfg.AIProvider != "disabled". CI does not set VAKT_AI_PROVIDER.
+		"GET /api/v1/vaktcomply/ai/status":                             "AI routes require VAKT_AI_PROVIDER set",
+		"GET /api/v1/vaktcomply/ai/models":                             "AI routes require VAKT_AI_PROVIDER set",
+		"GET /api/v1/vaktcomply/ai/usage":                              "AI routes require VAKT_AI_PROVIDER set",
+		"GET /api/v1/vaktcomply/ai/insights":                           "AI routes require VAKT_AI_PROVIDER set",
+		"DELETE /api/v1/vaktcomply/ai/insights/{id}":                   "AI routes require VAKT_AI_PROVIDER set",
+		"POST /api/v1/vaktcomply/ai/report":                            "AI routes require VAKT_AI_PROVIDER set",
+		"POST /api/v1/vaktcomply/ai/advice":                            "AI routes require VAKT_AI_PROVIDER set",
+		"POST /api/v1/vaktcomply/ai/chat/stream":                       "AI routes require VAKT_AI_PROVIDER set",
+		"POST /api/v1/vaktcomply/ai/incident-guide":                    "AI routes require VAKT_AI_PROVIDER set",
+		"POST /api/v1/vaktcomply/ai/draft-policy":                      "AI routes require VAKT_AI_PROVIDER set",
+		"POST /api/v1/vaktcomply/ai/controls/{id}/explain":             "AI routes require VAKT_AI_PROVIDER set",
+		"POST /api/v1/vaktcomply/ai/risks/{id}/narrative":              "AI routes require VAKT_AI_PROVIDER set",
+		"POST /api/v1/vaktcomply/ai/agent/run":                         "AI routes require VAKT_AI_PROVIDER set",
+		"POST /api/v1/vaktcomply/ai/agent/runs/{run_id}/approve":       "AI routes require VAKT_AI_PROVIDER set",
+		"POST /api/v1/vaktcomply/ai/agent/runs/{run_id}/reject":        "AI routes require VAKT_AI_PROVIDER set",
+
+		// Controls sub-resources — routes.go registers with :id param, spec uses {controlId}.
+		// Param-name mismatch prevents Echo route lookup. TODO: align routes.go to use :controlId.
+		"GET /api/v1/vaktcomply/controls/{controlId}/evidence":         "param :id vs :controlId mismatch, TODO align",
+		"POST /api/v1/vaktcomply/controls/{controlId}/evidence":        "param :id vs :controlId mismatch, TODO align",
+		"POST /api/v1/vaktcomply/controls/{controlId}/evidence/upload": "param :id vs :controlId mismatch, TODO align",
+		"GET /api/v1/vaktcomply/controls/{controlId}/measures":         "param :id vs :controlId mismatch, TODO align",
+		"POST /api/v1/vaktcomply/controls/{controlId}/measures":        "param :id vs :controlId mismatch, TODO align",
+		"PATCH /api/v1/vaktcomply/controls/{controlId}/measures/{mid}": "param :id vs :controlId mismatch, TODO align",
+		"DELETE /api/v1/vaktcomply/controls/{controlId}/measures/{mid}": "param :id vs :controlId mismatch, TODO align",
+
+		// Protection needs — code registers /protection-needs/assessments/{id} path.
+		// Spec uses shorter /protection-needs/{id}. TODO: align paths in one direction.
+		"GET /api/v1/vaktcomply/protection-needs":               "path mismatch: code uses /assessments/ prefix, TODO align",
+		"POST /api/v1/vaktcomply/protection-needs":              "path mismatch: code uses /assessments/ prefix, TODO align",
+		"GET /api/v1/vaktcomply/protection-needs/{id}":          "path mismatch: code uses /assessments/ prefix, TODO align",
+		"PUT /api/v1/vaktcomply/protection-needs/{id}":          "path mismatch: code uses /assessments/ prefix, TODO align",
+		"DELETE /api/v1/vaktcomply/protection-needs/{id}":       "path mismatch: code uses /assessments/ prefix, TODO align",
+		"POST /api/v1/vaktcomply/protection-needs/{id}/finalize": "path mismatch: code uses /assessments/ prefix, TODO align",
+
+		// CCM checks — spec has PUT /{id} but code only has PATCH /{id}/toggle.
+		"PUT /api/v1/vaktcomply/ccm/checks/{id}": "spec has PUT, code has PATCH /toggle; TODO align",
+
+		// BCP plan link-evidence — not yet implemented.
+		"POST /api/v1/vaktcomply/bcp/plans/{id}/link-evidence": "not yet implemented, TODO",
+
+		// Board report — not yet implemented.
+		"GET /api/v1/vaktcomply/board-report": "not yet implemented, TODO",
+
+		// DSR single GET — only PUT /{id} registered, no GET /{id} handler yet.
+		"GET /api/v1/vaktprivacy/dsr/{id}": "GET single DSR not yet registered, TODO",
 	}
 
 	serverURL := "/api/v1" // must match openapi.yaml servers[0].url
