@@ -43,10 +43,10 @@ func GenerateCSRFToken() string {
 // echoed and every state-changing request would 403 with "CSRF header missing".
 func SetCSRFCookie(c echo.Context, token string) {
 	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
-	c.SetCookie(&http.Cookie{
+	c.SetCookie(&http.Cookie{ // nosemgrep: cookie-missing-httponly -- CSRF token MUST be JS-readable (double-submit pattern)
 		Name:     CSRFCookieName,
 		Value:    token,
-		HttpOnly: false, // nosemgrep: cookie-missing-httponly -- CSRF token MUST be JS-readable (double-submit pattern)
+		HttpOnly: false,
 		Secure:   secure,
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
@@ -57,10 +57,10 @@ func SetCSRFCookie(c echo.Context, token string) {
 // ClearCSRFCookie expires the CSRF cookie (called on logout).
 func ClearCSRFCookie(c echo.Context) {
 	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
-	c.SetCookie(&http.Cookie{
+	c.SetCookie(&http.Cookie{ // nosemgrep: cookie-missing-httponly -- CSRF token MUST be JS-readable (double-submit pattern)
 		Name:     CSRFCookieName,
 		Value:    "",
-		HttpOnly: false, // nosemgrep: cookie-missing-httponly -- CSRF token MUST be JS-readable (double-submit pattern)
+		HttpOnly: false,
 		Secure:   secure,
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
