@@ -60,8 +60,8 @@ func ScanTLSCertificate(domain string) (*CertInfo, error) {
 		host = net.JoinHostPort(host, "443")
 	}
 	dialer := &tls.Dialer{
-		Config: &tls.Config{
-			InsecureSkipVerify: true,             // #nosec G402 -- scanner must connect without chain validation to inspect cert metadata // nosemgrep: bypass-tls-verification
+		Config: &tls.Config{ // nosemgrep: bypass-tls-verification -- InsecureSkipVerify intentional: scanner inspects cert metadata without chain validation
+			InsecureSkipVerify: true,             // #nosec G402 -- scanner must connect without chain validation to inspect cert metadata
 			MinVersion:         tls.VersionTLS12, // nosemgrep: missing-ssl-minversion
 			ServerName:         strings.Split(domain, ":")[0],
 		},

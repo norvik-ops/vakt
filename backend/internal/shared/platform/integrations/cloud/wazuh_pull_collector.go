@@ -157,8 +157,8 @@ func (c *WazuhPullCollector) newHTTPClient(cfg WazuhConfig) *http.Client {
 	if !cfg.VerifyTLS {
 		log.Warn().Str("collector", "wazuh").Msg("TLS certificate verification disabled — only use for self-signed on-prem Wazuh instances")
 		transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,             // #nosec G402 -- opt-in for self-signed on-prem Wazuh instances // nosemgrep: bypass-tls-verification
+			TLSClientConfig: &tls.Config{ // nosemgrep: bypass-tls-verification -- InsecureSkipVerify opt-in for self-signed on-prem Wazuh instances
+				InsecureSkipVerify: true,             // #nosec G402 -- opt-in for self-signed on-prem Wazuh instances
 				MinVersion:         tls.VersionTLS12, // nosemgrep: missing-ssl-minversion
 			},
 		}

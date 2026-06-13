@@ -1,3 +1,4 @@
+// Package search registers HTTP routes for the global full-text search API.
 package search
 
 import (

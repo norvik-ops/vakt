@@ -1,3 +1,4 @@
+// Package retention registers HTTP routes for the data-retention configuration API.
 package retention
 
 import (

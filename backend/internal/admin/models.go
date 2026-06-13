@@ -1,3 +1,4 @@
+// Package admin provides shared admin-layer models used by the API and worker.
 package admin
 
 // CurrentOrg is a lightweight view of the caller's own organisation.
