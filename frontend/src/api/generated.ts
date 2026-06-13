@@ -1376,8 +1376,13 @@ export interface paths {
                 };
             };
         };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
         /** Update a finding (status, severity, assignee) */
-        put: {
+        patch: {
             parameters: {
                 query?: never;
                 header?: never;
@@ -1405,11 +1410,6 @@ export interface paths {
                 };
             };
         };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/vaktscan/certificates": {
@@ -2189,8 +2189,13 @@ export interface paths {
                 };
             };
         };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
         /** Update an incident */
-        put: {
+        patch: {
             parameters: {
                 query?: never;
                 header?: never;
@@ -2214,11 +2219,6 @@ export interface paths {
                 };
             };
         };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/vaktprivacy/vvt": {
@@ -4507,8 +4507,33 @@ export interface paths {
                 };
             };
         };
+        put?: never;
+        post?: never;
+        /** Delete policy */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
         /** Update policy */
-        put: {
+        patch: {
             parameters: {
                 query?: never;
                 header?: never;
@@ -4538,31 +4563,6 @@ export interface paths {
                 };
             };
         };
-        post?: never;
-        /** Delete policy */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Deleted */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/vaktcomply/audits": {
@@ -4669,8 +4669,13 @@ export interface paths {
                 };
             };
         };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
         /** Update audit */
-        put: {
+        patch: {
             parameters: {
                 query?: never;
                 header?: never;
@@ -4698,11 +4703,6 @@ export interface paths {
                 };
             };
         };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/vaktcomply/capas": {
@@ -4817,8 +4817,33 @@ export interface paths {
                 };
             };
         };
+        put?: never;
+        post?: never;
+        /** Delete CAPA */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
         /** Update CAPA */
-        put: {
+        patch: {
             parameters: {
                 query?: never;
                 header?: never;
@@ -4848,31 +4873,6 @@ export interface paths {
                 };
             };
         };
-        post?: never;
-        /** Delete CAPA */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Deleted */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/vaktcomply/approvals": {
@@ -5607,8 +5607,33 @@ export interface paths {
                 };
             };
         };
+        put?: never;
+        post?: never;
+        /** Delete supplier */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
         /** Update supplier */
-        put: {
+        patch: {
             parameters: {
                 query?: never;
                 header?: never;
@@ -5638,31 +5663,6 @@ export interface paths {
                 };
             };
         };
-        post?: never;
-        /** Delete supplier */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Deleted */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/vaktprivacy/dpias": {
@@ -7332,8 +7332,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
         /** Complete an audit */
-        post: {
+        patch: {
             parameters: {
                 query?: never;
                 header?: never;
@@ -7363,10 +7367,6 @@ export interface paths {
                 };
             };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/vaktcomply/audit-program/{id}/findings": {
@@ -9343,14 +9343,14 @@ export interface paths {
         };
         /** Get BCP plan */
         get: operations["getBCPPlan"];
-        /** Update BCP plan */
-        put: operations["updateBCPPlan"];
+        put?: never;
         post?: never;
         /** Delete BCP plan */
         delete: operations["deleteBCPPlan"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Update BCP plan */
+        patch: operations["updateBCPPlan"];
         trace?: never;
     };
     "/vaktcomply/bcp/plans/{id}/tests": {
@@ -9479,14 +9479,14 @@ export interface paths {
         };
         /** Get access concept */
         get: operations["getAccessConcept"];
-        /** Update access concept */
-        put: operations["updateAccessConcept"];
+        put?: never;
         post?: never;
         /** Delete access concept */
         delete: operations["deleteAccessConcept"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Update access concept */
+        patch: operations["updateAccessConcept"];
         trace?: never;
     };
     "/vakthr/access-concepts/{id}/roles": {
@@ -9509,25 +9509,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vakthr/access-concepts/{id}/roles/{roleId}": {
+    "/vakthr/access-concepts/{id}/roles/{rid}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 id: string;
-                roleId: string;
+                rid: string;
             };
             cookie?: never;
         };
         get?: never;
-        /** Update access role */
-        put: operations["updateAccessRole"];
+        put?: never;
         post?: never;
         /** Delete access role */
         delete: operations["deleteAccessRole"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Update access role */
+        patch: operations["updateAccessRole"];
         trace?: never;
     };
     "/vakthr/access-concepts/{id}/versions": {
@@ -9541,24 +9541,6 @@ export interface paths {
         };
         /** List versions of an access concept */
         get: operations["listAccessConceptVersions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/vakthr/access-concepts/{id}/snapshot": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
         put?: never;
         /** Snapshot current access concept roles as a new version */
         post: operations["snapshotAccessConcept"];
@@ -15435,6 +15417,26 @@ export interface operations {
             };
         };
     };
+    deleteBCPPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     updateBCPPlan: {
         parameters: {
             query?: never;
@@ -15465,26 +15467,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BCPPlan"];
                 };
-            };
-        };
-    };
-    deleteBCPPlan: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -15797,6 +15779,26 @@ export interface operations {
             };
         };
     };
+    deleteAccessConcept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     updateAccessConcept: {
         parameters: {
             query?: never;
@@ -15824,26 +15826,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AccessConcept"];
                 };
-            };
-        };
-    };
-    deleteAccessConcept: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -15902,13 +15884,34 @@ export interface operations {
             };
         };
     };
+    deleteAccessRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     updateAccessRole: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 id: string;
-                roleId: string;
+                rid: string;
             };
             cookie?: never;
         };
@@ -15933,27 +15936,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AccessRole"];
                 };
-            };
-        };
-    };
-    deleteAccessRole: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-                roleId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
