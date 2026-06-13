@@ -12,7 +12,7 @@ module.exports = async ({github, context, core}) => {
     "- labels_add: bug, feature, question, severity: critical, severity: high, severity: medium, severity: low, status: needs-info, status: confirmed",
     "- labels_remove: 'status: needs-triage' entfernen wenn Typ klar",
     "- severity: critical NUR bei Datenverlust oder Auth-Bypass",
-    "- comment: Spezifisch auf Deutsch. Kein generisches Danke. Bei lueckenhaften Reports gezielt nachfragen. Bei Features ehrliche Einschaetzung. Bei Bugs die gut beschrieben sind: kurz bestaetigen und sagen wir schauen uns das an.",
+    "- comment: Spezifisch auf Deutsch, 3-5 Saetze. Kein generisches Danke. Bei Bugs: bestaetigen was du verstanden hast, kurz erklaeren was als naechstes passiert (z.B. wir pruefen das in der naechsten Version, wir reproduzieren das intern), und falls relevant eine Einschaetzung zur Prioritaet geben. Bei lueckenhaften Reports: gezielt nachfragen was fehlt. Bei Features: ehrliche Einschaetzung ob/wann realistisch und warum.",
     "- jira_create: true bei reproduzierbaren Bugs und sinnvollen Features",
     "- jira_summary: max 80 Zeichen Deutsch"
   ].join("\n");
