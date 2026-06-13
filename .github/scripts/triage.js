@@ -71,7 +71,7 @@ module.exports = async ({github, context, core}) => {
     await github.rest.issues.createComment({
       owner: context.repo.owner, repo: context.repo.repo,
       issue_number: issue.number,
-      body: result.comment + "\n\n_\u2014 Vakt Triage Agent_"
+      body: result.comment + "\n\n_\u2014 Vakt Team_"
     });
   }
 
