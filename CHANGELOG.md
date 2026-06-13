@@ -27,6 +27,7 @@ Drei neue Evidence-Collector für Identity-Provider und Verzeichnisdienste — a
 
 - **Lizenz-Keys haben jetzt ein Ablaufdatum** — Monatsabo 35 Tage, Jahresabo 395 Tage. Bei Kündigung läuft der Key am nächsten Renewal-Datum automatisch aus; die Instanz fällt dann auf Community zurück.
 - **License Auto-Renewal** — Mit `VAKT_LICENSE_TOKEN` (aus der Kauf-E-Mail) holt sich die Instanz den aktuellen Key täglich selbst — kein manueller Eingriff bei Verlängerungen nötig. Opt-in; ohne Token läuft alles wie bisher. Einzige ausgehende Verbindung: `api.norvikops.de` (nur Lizenzdaten, keine Geschäftsdaten). Sichtbar in Einstellungen → Lizenz als „Auto-Renewal aktiv"-Badge.
+- **AI-Default-Modell `qwen2.5:3b` → `qwen2.5:7b`** — bessere DE-Compliance-Qualität. Durchgezogen über `config.go`, `docker-compose.yml` (ollama-init Pull + Ollama-RAM-Limit 6→8 GB), `.env.example` und alle Docs. **Mindest-RAM für den lokalen KI-Berater steigt dadurch von ~4 GB auf 8 GB** (Modell ~4.5 GB). Auf VMs mit < 8 GB RAM weiter `qwen2.5:3b` nutzen: `VAKT_AI_MODEL=qwen2.5:3b`. ADR-0024 aktualisiert.
 
 ---
 

@@ -211,7 +211,7 @@ Der Fragebogen-Builder unterstützt: Ja/Nein, Multiple Choice, Freitext, Datei-U
 
 Der integrierte KI-Berater analysiert die aktuellen Compliance-Lücken der Organisation und beantwortet Fragen wie "Was sollten wir diese Woche priorisieren?" — bezogen auf die eigenen Daten, lokal auf dem eigenen Server.
 
-Standard: Ollama mit `qwen2.5:3b` (CPU-only, kein GPU nötig). Alternativ: jeder OpenAI-kompatible Endpunkt (Mistral, OpenAI, Groq, LM Studio).
+Standard: Ollama mit `qwen2.5:7b` (CPU-only, kein GPU nötig, braucht 8 GB RAM; auf kleinen VMs `qwen2.5:3b`). Alternativ: jeder OpenAI-kompatible Endpunkt (Mistral, OpenAI, Groq, LM Studio).
 
 KI komplett deaktivieren: `VAKT_AI_PROVIDER=disabled`
 

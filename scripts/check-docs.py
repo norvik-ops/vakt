@@ -69,6 +69,26 @@ def check_go_version() -> None:
 
 
 # ── 2. AI-Default-Modell ─────────────────────────────────────────────────────
+# Kanonische Docs, die Nutzern den Default nennen (sollen "what you get out of
+# the box" korrekt beschreiben). Andere Modelle dürfen als Alternative genannt
+# werden — nur die als *Default* deklarierte Zeile wird geprüft.
+MODEL_DOCS = [
+    "README.md",
+    "CLAUDE.md",
+    "docs/wiki/README.md",
+    "docs/wiki/ai-features.md",
+    "docs/wiki/configuration.md",
+    "docs/wiki/installation.md",
+    "docs/wiki/monitoring.md",
+    "docs/wiki/modules/comply.md",
+    "docs/setup.md",
+    "docs/guides/getting-started.md",
+    "docs/operations/runbook.md",
+    "docs/landingpage-ai-briefing.md",
+]
+_DEFAULT_WORD = re.compile(r"default|standard", re.IGNORECASE)
+
+
 def check_ai_default() -> None:
     cfg = open("backend/internal/config/config.go").read()
     m = re.search(r'getEnv\("VAKT_AI_MODEL",\s*"([^"]+)"\)', cfg)
@@ -76,12 +96,32 @@ def check_ai_default() -> None:
         err("config.go: VAKT_AI_MODEL-Default nicht gefunden")
         return
     canon = m.group(1)
+
+    # 2a. .env.example: exakter Default-Abgleich gegen config.go.
     env = open(".env.example").read()
     em = re.search(r"^VAKT_AI_MODEL=(\S+)", env, re.M)
     if not em:
         err(".env.example: VAKT_AI_MODEL nicht gesetzt")
     elif em.group(1) != canon:
         err(f".env.example: VAKT_AI_MODEL={em.group(1)} ≠ config.go-Default ({canon})")
+
+    # 2b. Kanonische Docs: jede Zeile, die ein Modell derselben Familie *als
+    #     Default* nennt, MUSS den config.go-Default enthalten. Aus dem Code
+    #     abgeleitet (Familie = Teil vor ':'), daher null Fehlalarm bei
+    #     Alternativ-Modellen wie qwen2.5:7b in Upgrade-Hinweisen.
+    family = re.escape(canon.split(":")[0])  # z.B. "qwen2\\.5"
+    tag_re = re.compile(family + r":[\w.]+", re.IGNORECASE)
+    for f in MODEL_DOCS:
+        if not os.path.exists(f):
+            continue
+        for lineno, line in enumerate(open(f, encoding="utf-8", errors="ignore"), 1):
+            if not _DEFAULT_WORD.search(line):
+                continue
+            if tag_re.search(line) and canon not in line:
+                err(
+                    f"{f}:{lineno}: nennt ein Modell als Default, aber nicht den "
+                    f"config.go-Default ({canon}): {line.strip()[:90]}"
+                )
 
 
 # ── 3. Interne .md-Links ─────────────────────────────────────────────────────

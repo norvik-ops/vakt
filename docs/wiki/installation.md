@@ -81,7 +81,7 @@ Die vollständige Referenz aller Variablen findest du in der [Konfigurationsrefe
 | `VAKT_FRONTEND_URL` | `http://localhost:5173` | Öffentliche URL des Frontends (für E-Mail-Links) |
 | `VAKT_AI_PROVIDER` | `openai` | KI-Provider (`openai` oder `disabled`) |
 | `VAKT_AI_BASE_URL` | `http://ollama:11434/v1` | API-Endpunkt des KI-Providers |
-| `VAKT_AI_MODEL` | `qwen2.5:3b` | Modellname (Default; Apache 2.0; ~1.9 GB RAM) |
+| `VAKT_AI_MODEL` | `qwen2.5:7b` | Modellname (Default; Apache 2.0; ~4.5 GB RAM, braucht 8 GB; auf kleinen VMs `qwen2.5:3b`) |
 
 ### SMTP (für Vakt Aware und Benachrichtigungen)
 
@@ -270,7 +270,7 @@ helm install vakt ./helm/vakt \
 3. **Benutzer einladen** — Über Einstellungen → Benutzerverwaltung weitere Teammitglieder einladen.
 4. **2FA aktivieren** — Für Admin-Accounts TOTP einrichten (Einstellungen → Sicherheit).
 5. **SMTP konfigurieren** — Für Benachrichtigungen und Vakt-Aware-Kampagnen einen SMTP-Server eintragen.
-6. **KI-Modell laden** — Falls Ollama genutzt wird: `docker compose exec ollama ollama pull qwen2.5:3b`.
+6. **KI-Modell laden** — Falls Ollama genutzt wird: `docker compose exec ollama ollama pull qwen2.5:7b`.
 7. **Ersten Scan starten** — In Vakt Scan ein Asset anlegen und einen Trivy-Scan auslösen.
 
 ---

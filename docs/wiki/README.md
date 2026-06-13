@@ -36,7 +36,7 @@ Vakt ist eine selbst gehostete Security- & Compliance-Plattform für KMU im DACH
 docker compose up -d
 ```
 
-Das ist alles. Vakt ist in **unter 5 Minuten startbereit** unter `http://localhost`. Die mitgelieferte lokale KI braucht beim **ersten** Start zusätzlich Zeit, um das Default-Modell (`qwen2.5:3b`, ~1.9 GB) zu laden — je nach Internet-Verbindung **3–30 Minuten extra**, bis die KI-Funktionen nutzbar sind. Die Plattform selbst funktioniert sofort, du musst nicht auf das Modell warten.
+Das ist alles. Vakt ist in **unter 5 Minuten startbereit** unter `http://localhost`. Die mitgelieferte lokale KI braucht beim **ersten** Start zusätzlich Zeit, um das Default-Modell (`qwen2.5:7b`, ~4.5 GB, braucht 8 GB RAM; auf kleinen VMs `qwen2.5:3b`) zu laden — je nach Internet-Verbindung **3–30 Minuten extra**, bis die KI-Funktionen nutzbar sind. Die Plattform selbst funktioniert sofort, du musst nicht auf das Modell warten.
 
 Datenbankmigrationen laufen automatisch beim Start. Kein manueller Setup-Schritt erforderlich.
 

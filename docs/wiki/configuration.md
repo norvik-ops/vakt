@@ -109,7 +109,7 @@ VAKT_SMTP_FROM=vakt@meine-firma.de
 
 ## KI-Berater (optional)
 
-Vakt kann Compliance-Berichte und Empfehlungen über einen OpenAI-kompatiblen KI-Provider generieren. Standardmäßig ist Ollama mit `qwen2.5:3b` lokal konfiguriert — kein GPU, kein Cloud-API-Key nötig.
+Vakt kann Compliance-Berichte und Empfehlungen über einen OpenAI-kompatiblen KI-Provider generieren. Standardmäßig ist Ollama mit `qwen2.5:7b` lokal konfiguriert (~4.5 GB RAM, braucht 8 GB; auf kleinen VMs `qwen2.5:3b`) — kein GPU, kein Cloud-API-Key nötig.
 
 Unterstützte Provider: Ollama, Mistral AI, OpenAI, Groq, LM Studio, vLLM und jeder weitere OpenAI-kompatible Endpunkt.
 
@@ -118,19 +118,19 @@ Unterstützte Provider: Ollama, Mistral AI, OpenAI, Groq, LM Studio, vLLM und je
 | `VAKT_AI_PROVIDER` | — | `openai` | KI-Provider. `openai` aktiviert alle OpenAI-kompatiblen Endpunkte. `disabled` schaltet den Berater komplett ab. |
 | `VAKT_AI_BASE_URL` | — | `http://ollama:11434/v1` | API-Basisendpunkt des Providers. |
 | `VAKT_AI_API_KEY` | — | — | API-Key des Providers. Für lokale Provider (Ollama, LM Studio) leer lassen. |
-| `VAKT_AI_MODEL` | — | `qwen2.5:3b` | Modellname. |
+| `VAKT_AI_MODEL` | — | `qwen2.5:7b` | Modellname (Default; auf VMs mit < 8 GB RAM `qwen2.5:3b`). |
 
 **Beispiel Ollama (lokal, Standard):**
 
 ```env
 VAKT_AI_PROVIDER=openai
 VAKT_AI_BASE_URL=http://ollama:11434/v1
-VAKT_AI_MODEL=qwen2.5:3b
+VAKT_AI_MODEL=qwen2.5:7b
 ```
 
 Modell einmalig laden:
 ```bash
-docker compose exec ollama ollama pull qwen2.5:3b
+docker compose exec ollama ollama pull qwen2.5:7b
 ```
 
 **Beispiel Mistral AI (EU-Server, DSGVO-freundlich):**
@@ -292,7 +292,7 @@ VAKT_SMTP_FROM=vakt@meine-firma.de
 VAKT_AI_PROVIDER=openai
 VAKT_AI_BASE_URL=http://ollama:11434/v1
 VAKT_AI_API_KEY=
-VAKT_AI_MODEL=qwen2.5:3b
+VAKT_AI_MODEL=qwen2.5:7b
 
 # ── OIDC / SSO (optional) ──────────────────────────────────────────────────────
 CASDOOR_URL=

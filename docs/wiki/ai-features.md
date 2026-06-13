@@ -2,7 +2,7 @@
 
 Vakt enthält einen **lokalen KI-Berater**, der auf deiner eigenen Infrastruktur läuft — **kein Cloud-API-Key, kein GPU, keine Daten verlassen die Instanz** (siehe [ADR-0001](../adr/0001-self-hosted-no-phone-home.md)).
 
-> **Community-Feature:** Seit v0.6.x sind alle KI-Funktionen in jeder Vakt-Instanz enthalten — keine Pro-Lizenz nötig. Mit dem Default-Modell `qwen2.5:3b` (Apache 2.0, ~1.9 GB RAM, CPU-tauglich) ist die KI lokal auf jeder VM lauffähig; ein Pro-Gate würde nur Marketing-Limit ohne echten Schutz bedeuten. **Premium-Compliance-Features** (TISAX-Maturitätsanalyse, DORA, NIS2-Meldungsassistent, EU AI Act, AuditPDF, SSO, API-Access, Vakt Aware Advanced, Vakt Scan Advanced, Granular-Permissions, Supplier-Portal) bleiben dem Pro-Plan vorbehalten.
+> **Community-Feature:** Seit v0.6.x sind alle KI-Funktionen in jeder Vakt-Instanz enthalten — keine Pro-Lizenz nötig. Mit dem Default-Modell `qwen2.5:7b` (Apache 2.0, ~4.5 GB RAM, CPU-tauglich, 8 GB RAM) läuft die KI lokal — auf VMs mit < 8 GB RAM alternativ `qwen2.5:3b` (~1.9 GB); ein Pro-Gate würde nur Marketing-Limit ohne echten Schutz bedeuten. **Premium-Compliance-Features** (TISAX-Maturitätsanalyse, DORA, NIS2-Meldungsassistent, EU AI Act, AuditPDF, SSO, API-Access, Vakt Aware Advanced, Vakt Scan Advanced, Granular-Permissions, Supplier-Portal) bleiben dem Pro-Plan vorbehalten.
 
 ---
 
@@ -86,7 +86,7 @@ docker compose restart api worker
 ```
 
 Beim ersten `docker compose up` zieht ein einmaliger `ollama-init`-Container
-das in `.env`-Datei konfigurierte Modell (Default `qwen2.5:3b`). Wenn das
+das in `.env`-Datei konfigurierte Modell (Default `qwen2.5:7b`). Wenn das
 Modell schon im Volume ist, ist der Pull ein No-Op.
 
 ---

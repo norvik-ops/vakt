@@ -123,7 +123,7 @@ Vakt kann automatisch Compliance-Berichte über einen OpenAI-kompatiblen Provide
 | `VAKT_AI_PROVIDER` | – | `disabled` | AI-Provider aktivieren. Aktuell unterstützte Werte: `disabled`, `openai` (für alle OpenAI-kompatiblen Endpunkte). |
 | `VAKT_AI_BASE_URL` | – | – | API-Basisendpunkt des Providers. Beispiele: `https://api.mistral.ai/v1`, `https://api.openai.com/v1`, `http://ollama:11434`. |
 | `VAKT_AI_API_KEY` | – | – | API-Key des Providers. Für lokale Provider wie Ollama oder LM Studio leer lassen. |
-| `VAKT_AI_MODEL` | – | `mistral-small-latest` | Modellname, der für Berichtsgenerierung verwendet wird. |
+| `VAKT_AI_MODEL` | – | `qwen2.5:7b` | Modellname (Code-Default; ~4.5 GB RAM, braucht 8 GB; auf kleinen VMs `qwen2.5:3b`). Für Cloud-Provider z. B. `mistral-small-latest`. |
 
 **Beispiel Mistral AI (empfohlen — EU-Server, DSGVO-freundlich, ca. €0,001 pro Bericht):**
 
@@ -134,12 +134,12 @@ VAKT_AI_API_KEY=sk-...
 VAKT_AI_MODEL=mistral-small-latest
 ```
 
-**Beispiel Ollama (lokal, kein API-Key erforderlich):**
+**Beispiel Ollama (lokal, kein API-Key erforderlich — Standard-Setup):**
 
 ```env
 VAKT_AI_PROVIDER=openai
-VAKT_AI_BASE_URL=http://ollama:11434
-VAKT_AI_MODEL=llama3.2
+VAKT_AI_BASE_URL=http://ollama:11434/v1
+VAKT_AI_MODEL=qwen2.5:7b
 ```
 
 ---

@@ -234,7 +234,7 @@ the API and Worker are stateless and can be restarted freely.
 | vakt-frontend | 32–64 MB | Static nginx; scales freely |
 | PostgreSQL | 512 MB–2 GB | Primary bottleneck; monitor with `pg_stat_activity` |
 | Redis | 64–256 MB | Queue + session store; persistence optional |
-| Ollama (AI, opt-in) | 2–4 GB | `qwen2.5:3b` default (~1.9 GB live RAM); disable with `VAKT_AI_PROVIDER=disabled` |
+| Ollama (AI, opt-in) | 5–8 GB | `qwen2.5:7b` default (~4.5 GB live RAM, needs 8 GB; `qwen2.5:3b` ~1.9 GB on small VMs); disable with `VAKT_AI_PROVIDER=disabled` |
 | **Total (without Ollama)** | **~1 GB** | Fits on a 2 GB VPS |
 | **Total (with Ollama)** | **~4 GB** | Hetzner CX22 minimum; CX32 (8 GB) recommended |
 

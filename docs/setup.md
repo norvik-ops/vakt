@@ -35,7 +35,7 @@ Vakt benötigt **Docker Engine 24+** und **Docker Compose v2**.
 | Disk | 20 GB SSD | 50 GB SSD | 50 GB SSD (+3 GB für Modell) |
 | Betriebssystem | Linux 64-bit | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
 
-> **Hinweis:** Der KI-Berater ist standardmäßig aktiviert und läuft lokal via Ollama auf der CPU — kein GPU, kein Cloud-API-Key nötig. Einmalig nach dem ersten Start das Modell laden: `docker compose exec ollama ollama pull llama3.2:3b`
+> **Hinweis:** Der KI-Berater ist standardmäßig aktiviert und läuft lokal via Ollama auf der CPU — kein GPU, kein Cloud-API-Key nötig. Das Default-Modell wird beim ersten Start automatisch geladen (`qwen2.5:7b`, ~4.5 GB) — manuell: `docker compose exec ollama ollama pull qwen2.5:7b`
 
 ---
 
@@ -332,19 +332,20 @@ Vakt enthält einen KI-Berater, der auf Basis der echten Compliance-Lücken prio
 
 ### Standard: Ollama lokal (kein GPU, kein API-Key)
 
-Ollama startet automatisch mit `docker compose up`. Einmalig nach dem ersten Start das Modell laden (~2 GB):
+Ollama startet automatisch mit `docker compose up`. Das Default-Modell wird einmalig vom `ollama-init`-Container gezogen (~4.5 GB) — manuell ginge es so:
 
 ```bash
-docker compose exec ollama ollama pull llama3.2:3b
+docker compose exec ollama ollama pull qwen2.5:7b
 ```
 
-Empfohlene CPU-taugliche Modelle (alle ~2 GB RAM, kein VRAM):
+Empfohlene CPU-taugliche Modelle (kein VRAM nötig):
 
 | Modell | Stärke |
 |---|---|
-| `llama3.2:3b` | Standard — gutes Deutsch, schnell |
-| `phi3.5:mini` | Sehr schnell, gutes Reasoning |
-| `qwen2.5:3b` | Starkes Mehrsprachigkeit / Deutsch |
+| `qwen2.5:7b` | Standard — beste DE-Compliance-Qualität (~4.5 GB, braucht 8 GB RAM) |
+| `qwen2.5:3b` | Leichter — für VMs mit < 8 GB RAM, starkes Deutsch (~1.9 GB) |
+| `phi3.5:mini` | Sehr schnell, gutes Reasoning (~2.3 GB) |
+| `llama3.2:3b` | Gutes Deutsch, schnell (~2.0 GB) |
 
 Das Modell wird einmalig in das Volume `ollama_models` geladen und bleibt über Updates hinweg erhalten.
 
