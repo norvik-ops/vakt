@@ -9,6 +9,7 @@ Alle Konfigurationswerte werden über Umgebungsvariablen gesetzt. In Docker-Depl
 | Variable | Pflicht | Standard | Beschreibung |
 |----------|---------|----------|--------------|
 | `VAKT_DB_URL` | Ja | — | PostgreSQL-Verbindungsstring. Format: `postgres://user:pass@host:5432/db?sslmode=disable` |
+| `VAKT_DB_MAX_CONNS` | — | `25` | Maximale Größe des PostgreSQL-Connection-Pools. Bei mehreren API-/Worker-Replikas ggf. anheben (PgBouncer-Limits beachten). |
 | `POSTGRES_PASSWORD` | — | `vakt` | Passwort für den PostgreSQL-Container (wird von `docker-compose.yml` ausgelesen). Muss mit dem Passwort in `VAKT_DB_URL` übereinstimmen. |
 
 **Beispiel:**

@@ -4,7 +4,7 @@
 
 ![Status: Early Access](https://img.shields.io/badge/status-Early_Access-6366f1)
 ![License: ELv2](https://img.shields.io/badge/license-Elastic_License_2.0-blue)
-![Go](https://img.shields.io/badge/go-1.22%2B-blue)
+![Go](https://img.shields.io/badge/go-1.26%2B-blue)
 ![Docker](https://img.shields.io/badge/docker-compose%20v2-blue)
 
 > **Early Access** — Vakt is under active development. Expect rough edges and breaking changes between releases. Feedback welcome: [hello@norvikops.de](mailto:hello@norvikops.de)
@@ -15,7 +15,7 @@
 
 ## What is Vakt?
 
-Vakt is a self-hosted, source-available security and compliance platform built for SMEs in the DACH region. It helps IT teams implement and document NIS2, ISO 27001, BSI-Grundschutz, DORA, TISAX, and EU AI Act requirements — without sending any data outside your own infrastructure.
+Vakt is a self-hosted, source-available security and compliance platform built for SMEs in the DACH region. It helps IT teams implement and document NIS2, ISO 27001, BSI IT-Grundschutz, GDPR Art. 32 (TOM), CIS Controls v8, KRITIS, BSI C5, EU AI Act, EU CRA, DORA, TISAX, ISO 42001, and ISO 27017/27018 requirements — without sending any data outside your own infrastructure.
 
 It is a free-to-self-host alternative to commercial tools like Vanta or Drata (~€10,000/year), licensed under the Elastic License 2.0. Deploy it with a single `docker compose up` command — the platform is **ready in under 5 minutes**. The bundled local AI advisor takes a bit longer on first start because it downloads the ~1.9 GB `qwen2.5:3b` model — depending on your bandwidth, expect an extra **3–30 minutes** until AI features are available. The platform itself works without waiting for the model.
 
@@ -97,12 +97,18 @@ The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key requi
 |---|:---:|:---:|:---:|
 | NIS2 | ✅ | ✅ | ✅ |
 | ISO 27001 | ✅ | ✅ | ✅ |
+| GDPR Art. 32 (TOM) | ✅ | ✅ | ✅ |
+| CIS Controls v8 | ✅ | ✅ | ✅ |
+| KRITIS-DachG | ✅ | ✅ | ✅ |
+| BSI C5 | ✅ | ✅ | ✅ |
 | BSI IT-Grundschutz | — | ✅ | ✅ |
 | EU AI Act | — | ✅ | ✅ |
 | EU CRA | — | ✅ | ✅ |
 | DORA | — | — | ✅ |
 | TISAX | — | — | ✅ |
 | ISO 42001 | — | — | ✅ |
+| ISO 27017 | — | — | ✅ |
+| ISO 27018 | — | — | ✅ |
 | Custom frameworks | — | — | ✅ |
 
 ### Modules
@@ -111,10 +117,16 @@ The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key requi
 |---|:---:|:---:|:---:|
 | Vakt Comply (controls, risks, incidents, policies) | ✅ | ✅ | ✅ |
 | Vakt HR (onboarding/offboarding checklists) | ✅ | ✅ | ✅ |
-| Vakt Scan (Trivy, Nuclei, OpenVAS) | — | ✅ | ✅ |
-| Vakt Vault (secrets storage, Git scanning) | — | ✅ | ✅ |
-| Vakt Aware (phishing simulations, trainings) | — | ✅ | ✅ |
-| Vakt Privacy (VVT, DPIA, AVV, breach records) | — | ✅ | ✅ |
+| Vakt Scan (asset registry, scans, findings, SLA) | ✅ Basis | ✅ | ✅ |
+| Vakt Vault (secrets storage & sharing) | ✅ Basis | ✅ | ✅ |
+| Vakt Aware (training assignment & tracking) | ✅ Basis | ✅ | ✅ |
+| Vakt Privacy (VVT, AVV, DSR, breach records) | ✅ Basis | ✅ | ✅ |
+
+> **Basis** — these modules are usable in Community with their core functionality. **Pro** unlocks the advanced features per module:
+> - **Vakt Scan** — SBOM scanning, EOL tracking, report generation & export, Wazuh import
+> - **Vakt Vault** — Git repo secret scanning, automatic rotation, access reviews
+> - **Vakt Aware** — phishing campaigns, template library, target groups
+> - **Vakt Privacy** — DPIA workflows, deletion-reminder automation, PDF exports
 
 ### Features
 
@@ -172,7 +184,7 @@ See `docs/configuration.md` for the full reference.
 
 Vakt includes a built-in AI advisor that analyses your organisation's real compliance gaps and answers "What should I do this week?" — specific to your data, running entirely on your server.
 
-**Enabled by default** via a local Ollama container (CPU-only, no GPU, no API key, no Pro license). Default model is `qwen2.5:3b` (Apache 2.0, ~1.9 GB RAM, good German performance). The model is pulled automatically by the `ollama-init` container on first `docker compose up` — no manual step.
+**Enabled by default** via a local Ollama container (CPU-only, no GPU, no API key, no Pro license). The Community edition includes **25 AI requests per month**; Pro and Enterprise are unlimited. Default model is `qwen2.5:3b` (Apache 2.0, ~1.9 GB RAM, good German performance). The model is pulled automatically by the `ollama-init` container on first `docker compose up` — no manual step.
 
 To switch to a different model:
 

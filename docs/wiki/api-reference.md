@@ -183,7 +183,9 @@ Payloads are HMAC-SHA256 signed with the `X-Vakt-Signature` header when a secret
 | `GET` | `/vakthr/checklist-runs/:id` | Get checklist run |
 | `PUT` | `/vakthr/checklist-runs/:id` | Update run progress / mark completed |
 
-### Vakt Aware (`vaktaware`) — Pro
+### Vakt Aware (`vaktaware`)
+
+Training assignment and completion tracking are available in Community. The phishing-campaign, template and target-group endpoints below require **Pro** (`FeatureSecReflex`).
 
 | Method | Path | Description |
 |--------|------|-------------|

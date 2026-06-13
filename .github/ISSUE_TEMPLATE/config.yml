@@ -1,8 +1,0 @@
-blank_issues_enabled: false
-contact_links:
-  - name: "🔒 Sicherheitslücke melden"
-    url: mailto:security@norvikops.de
-    about: Bitte melde Sicherheitslücken per E-Mail, NICHT als GitHub Issue.
-  - name: "💬 Fragen & Diskussion"
-    url: https://github.com/norvik-ops/vatk/discussions
-    about: Allgemeine Fragen, Feedback und Community-Diskussionen.
