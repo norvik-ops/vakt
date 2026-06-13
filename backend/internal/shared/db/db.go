@@ -21,8 +21,8 @@ func Connect(ctx context.Context, connStr string) (*pgxpool.Pool, error) {
 
 	maxConns := int32(25)
 	if v := os.Getenv("VAKT_DB_MAX_CONNS"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			maxConns = int32(n)
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 32767 {
+			maxConns = int32(n) // nosemgrep: integer-overflow -- bounds checked above
 		}
 	}
 	cfg.MaxConns = maxConns

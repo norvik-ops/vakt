@@ -106,7 +106,7 @@ func sendAcceptanceEmail(cfg policyAcceptanceSMTPConfig, to, subject, body strin
 			return fmt.Errorf("smtp dial: %w", err)
 		}
 		defer conn.Close()
-		if err := conn.StartTLS(&tls.Config{ServerName: cfg.Host}); err != nil {
+		if err := conn.StartTLS(&tls.Config{ServerName: cfg.Host, MinVersion: tls.VersionTLS12}); err != nil {
 			return fmt.Errorf("starttls: %w", err)
 		}
 		if cfg.User != "" {
@@ -131,7 +131,7 @@ func sendAcceptanceEmail(cfg policyAcceptanceSMTPConfig, to, subject, body strin
 	}
 
 	if cfg.Port == "465" {
-		tlsConn, err := tls.Dial("tcp", addr, &tls.Config{ServerName: cfg.Host})
+		tlsConn, err := tls.Dial("tcp", addr, &tls.Config{ServerName: cfg.Host, MinVersion: tls.VersionTLS12})
 		if err != nil {
 			return fmt.Errorf("smtp tls dial: %w", err)
 		}

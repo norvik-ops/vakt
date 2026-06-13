@@ -13,6 +13,7 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 
 # Load env if .env exists
 if [ -f .env ]; then
+  # shellcheck source=/dev/null
   set -a; source .env; set +a
 fi
 

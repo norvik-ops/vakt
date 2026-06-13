@@ -14,6 +14,7 @@ if [ ! -f "$SIG_FILE" ]; then
 fi
 
 if [ -f .env ]; then
+  # shellcheck source=/dev/null
   set -a; source .env; set +a
 fi
 

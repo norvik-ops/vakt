@@ -135,7 +135,7 @@ func (h *Handler) Logout(c echo.Context) error {
 
 	// Clear the httpOnly access token cookie.
 	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
-	c.SetCookie(&http.Cookie{
+	c.SetCookie(&http.Cookie{ // nosemgrep: cookie-missing-secure -- Secure is set via variable; static analysis can't resolve it
 		Name:     "access_token",
 		Value:    "",
 		HttpOnly: true,
@@ -280,7 +280,7 @@ func (h *Handler) Login(c echo.Context) error {
 	// Set access token as httpOnly cookie (XSS protection).
 	// SameSite=Strict + double-submit CSRF token cookie prevent CSRF.
 	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
-	c.SetCookie(&http.Cookie{
+	c.SetCookie(&http.Cookie{ // nosemgrep: cookie-missing-secure -- Secure is set via variable; static analysis can't resolve it
 		Name:     "access_token",
 		Value:    resp.AccessToken,
 		HttpOnly: true,
@@ -323,7 +323,7 @@ func (h *Handler) Refresh(c echo.Context) error {
 
 	// Rotate the httpOnly access token cookie and CSRF token on every refresh.
 	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
-	c.SetCookie(&http.Cookie{
+	c.SetCookie(&http.Cookie{ // nosemgrep: cookie-missing-secure -- Secure is set via variable; static analysis can't resolve it
 		Name:     "access_token",
 		Value:    resp.AccessToken,
 		HttpOnly: true,
@@ -477,7 +477,7 @@ func (h *Handler) OIDCCallback(c echo.Context) error {
 
 	// Set access token as httpOnly cookie — same policy as password login.
 	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
-	c.SetCookie(&http.Cookie{
+	c.SetCookie(&http.Cookie{ // nosemgrep: cookie-missing-secure -- Secure is set via variable; static analysis can't resolve it
 		Name:     "access_token",
 		Value:    resp.AccessToken,
 		HttpOnly: true,
@@ -528,7 +528,7 @@ func (h *Handler) SAMLCallback(c echo.Context) error {
 
 	// Set access token as httpOnly cookie — same policy as password login.
 	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
-	c.SetCookie(&http.Cookie{
+	c.SetCookie(&http.Cookie{ // nosemgrep: cookie-missing-secure -- Secure is set via variable; static analysis can't resolve it
 		Name:     "access_token",
 		Value:    resp.AccessToken,
 		HttpOnly: true,

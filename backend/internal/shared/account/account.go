@@ -509,8 +509,8 @@ func (h *Handler) DeleteAccount(c echo.Context) error {
 	switch err {
 	case nil:
 		// On success, clear cookies so the now-anonymised account cannot be re-used.
-		c.SetCookie(&http.Cookie{Name: "access_token", Value: "", Path: "/api/v1", MaxAge: -1})
-		c.SetCookie(&http.Cookie{Name: "csrf_token", Value: "", Path: "/api/v1", MaxAge: -1})
+		c.SetCookie(&http.Cookie{Name: "access_token", Value: "", Path: "/api/v1", MaxAge: -1}) // nosemgrep: cookie-missing-secure -- deletion cookie, MaxAge:-1 clears it immediately
+		c.SetCookie(&http.Cookie{Name: "csrf_token", Value: "", Path: "/api/v1", MaxAge: -1})   // nosemgrep: cookie-missing-secure -- deletion cookie, MaxAge:-1 clears it immediately
 		return c.JSON(http.StatusOK, map[string]string{"status": "deleted"})
 	case ErrInvalidPassword:
 		return c.JSON(http.StatusUnauthorized, map[string]string{

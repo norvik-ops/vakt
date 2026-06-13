@@ -146,7 +146,7 @@ func (h *StartHandler) Login(c echo.Context) error {
 	}
 
 	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
-	c.SetCookie(&http.Cookie{
+	c.SetCookie(&http.Cookie{ // nosemgrep: cookie-missing-secure -- Secure is set via variable; static analysis can't resolve it
 		Name:     "access_token",
 		Value:    resp.AccessToken,
 		HttpOnly: true,

@@ -732,7 +732,7 @@ func (s *Service) openSMTPClient(from string) (*smtp.Client, func(), error) {
 		if err != nil {
 			return nil, nil, fmt.Errorf("smtp dial: %w", err)
 		}
-		if err := conn.StartTLS(&tls.Config{ServerName: s.smtpCfg.Host}); err != nil {
+		if err := conn.StartTLS(&tls.Config{ServerName: s.smtpCfg.Host, MinVersion: tls.VersionTLS12}); err != nil {
 			_ = conn.Close()
 			return nil, nil, fmt.Errorf("starttls: %w", err)
 		}
@@ -746,7 +746,7 @@ func (s *Service) openSMTPClient(from string) (*smtp.Client, func(), error) {
 		client = conn
 
 	case "465": // implicit TLS
-		tlsConn, err := tls.Dial("tcp", addr, &tls.Config{ServerName: s.smtpCfg.Host})
+		tlsConn, err := tls.Dial("tcp", addr, &tls.Config{ServerName: s.smtpCfg.Host, MinVersion: tls.VersionTLS12})
 		if err != nil {
 			return nil, nil, fmt.Errorf("smtp tls dial: %w", err)
 		}

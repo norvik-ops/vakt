@@ -46,7 +46,7 @@ func SetCSRFCookie(c echo.Context, token string) {
 	c.SetCookie(&http.Cookie{
 		Name:     CSRFCookieName,
 		Value:    token,
-		HttpOnly: false,
+		HttpOnly: false, // nosemgrep: cookie-missing-httponly -- CSRF token MUST be JS-readable (double-submit pattern)
 		Secure:   secure,
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
@@ -60,7 +60,7 @@ func ClearCSRFCookie(c echo.Context) {
 	c.SetCookie(&http.Cookie{
 		Name:     CSRFCookieName,
 		Value:    "",
-		HttpOnly: false,
+		HttpOnly: false, // nosemgrep: cookie-missing-httponly -- CSRF token MUST be JS-readable (double-submit pattern)
 		Secure:   secure,
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
