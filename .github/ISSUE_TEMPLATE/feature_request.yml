@@ -1,0 +1,42 @@
+name: "💡 Feature-Wunsch"
+description: Eine neue Funktion oder Verbesserung vorschlagen
+title: "[Feature]: "
+labels: ["feature", "status: needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: Danke für deinen Vorschlag! Bitte beschreibe deine Idee so konkret wie möglich.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Motivation
+      description: Welches Problem löst dieses Feature? Was fehlt dir aktuell?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Gewünschte Lösung
+      description: Wie sollte das Feature funktionieren?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativen
+      description: Gibt es Workarounds oder alternative Ansätze?
+  - type: dropdown
+    id: area
+    attributes:
+      label: Bereich
+      options:
+        - Risikobewertung
+        - Maßnahmenverfolgung
+        - Audit-Vorbereitung
+        - Reporting / Export
+        - Benutzerverwaltung
+        - API / Integration
+        - Onboarding / UX
+        - Sonstiges
+    validations:
+      required: true
