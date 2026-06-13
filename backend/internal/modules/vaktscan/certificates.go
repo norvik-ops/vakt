@@ -61,8 +61,8 @@ func ScanTLSCertificate(domain string) (*CertInfo, error) {
 	}
 	dialer := &tls.Dialer{
 		Config: &tls.Config{
-			InsecureSkipVerify: true,             // #nosec G402 -- scanner must connect without chain validation to inspect cert metadata
-			MinVersion:         tls.VersionTLS12, // nosemgrep: missing-ssl-minversion -- explicit; InsecureSkipVerify intentional for cert scanning
+			InsecureSkipVerify: true,             // #nosec G402 -- scanner must connect without chain validation to inspect cert metadata // nosemgrep: bypass-tls-verification
+			MinVersion:         tls.VersionTLS12, // nosemgrep: missing-ssl-minversion
 			ServerName:         strings.Split(domain, ":")[0],
 		},
 	}
