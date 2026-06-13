@@ -18,7 +18,7 @@ CI-Strategie: laufen nur auf `main` und vor Releases, nicht auf jedem PR.
 ## Voraussetzungen
 
 - Docker oder Podman muss verfügbar sein (testcontainers-go nutzt das daemon).
-- Go 1.22+
+- Go 1.26+
 
 ## Pattern
 
