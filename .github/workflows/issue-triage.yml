@@ -1,0 +1,168 @@
+name: Issue Triage Agent
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - name: Claude Triage Agent
+        uses: actions/github-script@v7
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const labels = issue.labels.map(l => l.name);
+
+            // Claude aufrufen
+            const res = await fetch('https://api.anthropic.com/v1/messages', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.ANTHROPIC_API_KEY,
+                'anthropic-version': '2023-06-01'
+              },
+              body: JSON.stringify({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 1024,
+                system: `Du bist der Triage-Agent für Vakt — eine selbst gehostete ISMS-Plattform für den DACH-Mittelstand (Go/Next.js, Docker Compose, selbst gehostet).
+
+Analysiere eingehende GitHub Issues und antworte AUSSCHLIESSLICH mit einem JSON-Objekt. Kein Markdown, keine Erklärung davor oder danach.
+
+{
+  "type": "bug|feature|question|spam",
+  "labels_add": [],
+  "labels_remove": [],
+  "severity": "critical|high|medium|low|none",
+  "comment": "Dein Kommentar auf Deutsch",
+  "jira_create": true,
+  "jira_summary": "Kurze Jira-Zusammenfassung"
+}
+
+Regeln:
+- type: Erkenne selbst ob es ein Bug, Feature-Wunsch, Frage oder Spam ist
+- labels_add: Setze passende Labels aus: bug, feature, question, severity: critical, severity: high, severity: medium, severity: low, status: needs-info, status: confirmed
+- labels_remove: Entferne status: needs-triage wenn du den Typ erkannt hast
+- severity: Bewerte selbst anhand des Inhalts — nicht blind dem User vertrauen. Critical nur bei Datenverlust, Auth-Bypass oder Security-Lücken
+- comment: Spezifisch und hilfreich auf Deutsch. Kein generisches "Danke für dein Issue". Bei unvollständigen Bug-Reports: frage gezielt nach was fehlt (Version? Logs? Deployment-Typ?). Bei Feature-Requests: kurze ehrliche Einschätzung ob/wann realistisch. Bei Fragen: direkt antworten wenn möglich
+- jira_create: true bei reproduzierbaren Bugs und sinnvollen Feature-Requests. false bei Fragen, Spam, unvollständigen Reports
+- jira_summary: Prägnante deutsche Zusammenfassung für Jira (max 80 Zeichen)`,
+                messages: [{
+                  role: 'user',
+                  content: `Neues Issue #${issue.number} in norvik-ops/vatk:
+
+Titel: ${issue.title}
+Aktuelle Labels: ${labels.join(', ') || 'keine'}
+
+Body:
+${issue.body || '(leer)'}`
+                }]
+              })
+            });
+
+            const data = await res.json();
+            let result;
+            try {
+              result = JSON.parse(data.content[0].text);
+            } catch(e) {
+              console.error('Claude Parse Error:', data.content[0].text);
+              return;
+            }
+
+            console.log('Triage result:', JSON.stringify(result, null, 2));
+
+            // Labels setzen
+            if (result.labels_add?.length) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: result.labels_add
+              });
+            }
+
+            // Labels entfernen
+            for (const label of (result.labels_remove || [])) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  name: label
+                });
+              } catch(e) {}
+            }
+
+            // Kommentar posten
+            if (result.comment) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: result.comment + '
+
+_— Vakt Triage Agent_'
+              });
+            }
+
+            // Jira Issue anlegen
+            if (result.jira_create && process.env.JIRA_API_TOKEN && process.env.JIRA_EMAIL) {
+              const jiraRes = await fetch('https://norvikops.atlassian.net/rest/api/3/issue', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': 'Basic ' + Buffer.from(`${process.env.JIRA_EMAIL}:${process.env.JIRA_API_TOKEN}`).toString('base64')
+                },
+                body: JSON.stringify({
+                  fields: {
+                    project: { key: 'VAKT' },
+                    summary: result.jira_summary || issue.title,
+                    description: {
+                      type: 'doc',
+                      version: 1,
+                      content: [{
+                        type: 'paragraph',
+                        content: [{
+                          type: 'text',
+                          text: `GitHub Issue #${issue.number}: ${issue.html_url}
+
+${issue.body || ''}`
+                        }]
+                      }]
+                    },
+                    issuetype: { name: result.type === 'bug' ? 'Bug' : 'Story' },
+                    parent: { key: 'VAKT-866' }
+                  }
+                })
+              });
+              const jiraData = await jiraRes.json();
+              console.log('Jira Issue erstellt:', jiraData.key);
+
+              // Jira-Key als Kommentar auf GitHub
+              if (jiraData.key) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: `📋 Jira: [${jiraData.key}](https://norvikops.atlassian.net/browse/${jiraData.key})`
+                });
+              }
+            }
+
+            // Bei Critical: E-Mail via GitHub Issue assignen + Label
+            if (result.severity === 'critical') {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: ['severity: critical']
+              });
+            }
