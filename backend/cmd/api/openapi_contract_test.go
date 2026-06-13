@@ -233,8 +233,15 @@ func TestOpenAPIReverseContract(t *testing.T) {
 		"DELETE /api/v1/vaktcomply/protection-needs/{id}":       "path mismatch: code uses /assessments/ prefix, TODO align",
 		"POST /api/v1/vaktcomply/protection-needs/{id}/finalize": "path mismatch: code uses /assessments/ prefix, TODO align",
 
-		// CCM checks — spec has PUT /{id} but code only has PATCH /{id}/toggle.
+		// CCM checks — spec has PUT /{id} + GET /{id} but code only has PATCH /{id}/toggle.
 		"PUT /api/v1/vaktcomply/ccm/checks/{id}": "spec has PUT, code has PATCH /toggle; TODO align",
+		"GET /api/v1/vaktcomply/ccm/checks/{id}": "spec-ahead, no single-check GET handler yet; TODO",
+
+		// Policies — spec has DELETE /{id} but code only has PATCH /{id}.
+		"DELETE /api/v1/vaktcomply/policies/{id}": "spec-ahead, no DELETE policy handler yet; TODO",
+
+		// Controls measures — spec has PUT with {controlId}, code has PATCH with :id.
+		"PUT /api/v1/vaktcomply/controls/{controlId}/measures/{mid}": "spec has PUT, code has PATCH/:id (method + param mismatch); TODO align",
 
 		// BCP plan link-evidence — not yet implemented.
 		"POST /api/v1/vaktcomply/bcp/plans/{id}/link-evidence": "not yet implemented, TODO",
