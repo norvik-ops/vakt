@@ -128,6 +128,11 @@ Unterstützte Provider: Ollama, Mistral AI, OpenAI, Groq, LM Studio, vLLM und je
 | `VAKT_AI_BASE_URL` | — | `http://ollama:11434/v1` | API-Basisendpunkt des Providers. |
 | `VAKT_AI_API_KEY` | — | — | API-Key des Providers. Für lokale Provider (Ollama, LM Studio) leer lassen. |
 | `VAKT_AI_MODEL` | — | `qwen2.5:7b` | Modellname (Default; auf VMs mit < 8 GB RAM `qwen2.5:3b`). |
+| `VAKT_AI_RATE_LIMIT_RPM` | — | `30` | Max. KI-Anfragen pro Minute und Organisation. |
+| `VAKT_AI_DAILY_TOKEN_LIMIT_PER_ORG` | — | `0` | Tägliches Token-Budget pro Organisation. `0` = unbegrenzt. |
+| `VAKT_AI_CACHE_TTL_SECONDS` | — | `3600` | Cache-Dauer identischer KI-Antworten (Key = `sha256(Modell+Prompt)`). `0` = Cache aus. |
+| `VAKT_AI_COST_PER_MTOKEN_IN_MICRO_EUR` | — | `0` | Kosten pro 1 Mio. Input-Tokens in Mikro-EUR (Kosten-Tracking bei Cloud-Providern). Lokales Ollama = `0`. |
+| `VAKT_AI_COST_PER_MTOKEN_OUT_MICRO_EUR` | — | `0` | Kosten pro 1 Mio. Output-Tokens in Mikro-EUR. Lokales Ollama = `0`. |
 
 **Beispiel Ollama (lokal, Standard):**
 
@@ -170,6 +175,15 @@ VAKT_AI_PROVIDER=disabled
 ```env
 VAKT_UPDATE_CHECK=true
 ```
+
+---
+
+## Observability (optional)
+
+| Variable | Pflicht | Standard | Beschreibung |
+|----------|---------|----------|--------------|
+| `VAKT_METRICS_DISABLED` | — | `false` | Wenn `true`, wird der Prometheus-`/metrics`-Endpunkt deaktiviert. |
+| `VAKT_SENTRY_DSN` | — | — | Sentry-DSN für Fehler-Tracking. Leer = aus (kein Datenabfluss). Bei gesetztem DSN gehen Fehlerberichte an den konfigurierten Sentry-Endpunkt — Kunde trägt die DSGVO-Verantwortung. |
 
 ---
 
@@ -250,6 +264,7 @@ Self-Hosted-Instanzen laufen standardmäßig als **Community Edition** (kostenlo
 |----------|---------|----------|--------------|
 | `VAKT_LICENSE_KEY` | — | — | Pro License Key. Nach dem Kauf per E-Mail erhalten. Kann auch direkt unter **Einstellungen → Lizenz** eingetragen werden — dann ist kein Neustart nötig. |
 | `VAKT_LICENSE_TOKEN` | — | — | Renewal-Token für automatische Key-Erneuerung (ebenfalls in der Kauf-E-Mail). Wenn gesetzt, holt die Instanz täglich den aktuellen Key von `api.norvikops.de` — kein manueller Eingriff bei Verlängerungen nötig. Opt-in, siehe unten. |
+| `VAKT_LICENSE_REFRESH_URL` | — | `https://api.norvikops.de` | Überschreibt den Renewal-Endpunkt (nur für Air-Gap-/Eigenbetrieb des Lizenzservers nötig — normalerweise leer lassen). |
 
 **Beispiel:**
 
@@ -265,6 +280,8 @@ VAKT_LICENSE_TOKEN=550e8400-e29b-41d4-a716-446655440000
 **Datenschutz-Hinweis zu `VAKT_LICENSE_TOKEN`:** Die Instanz stellt einmal täglich eine ausgehende HTTPS-Verbindung zu `api.norvikops.de` her. Dabei wird ausschließlich der Token übertragen — keine Geschäftsdaten, keine Nutzungsdaten. Wer ausgehende Verbindungen in der Firewall kontrolliert (typisch für ISO 27001 / NIS2 Umgebungen), muss `api.norvikops.de:443` in der Egress-Whitelist eintragen oder `VAKT_LICENSE_TOKEN` weglassen und die manuelle Aktivierung nutzen.
 
 **Datenschutz-Hinweis zu `VAKT_BSI_FEED_ENABLED`:** Wenn aktiviert (Standard), ruft Vakt einmal täglich den BSI CERT-Bund RSS-Feed (`www.bsi.bund.de`) ab, um aktuelle Sicherheitswarnungen in das Dashboard einzuspeisen. Dabei werden **keine Inhaltsdaten übertragen** — es ist ein reiner HTTP GET-Abruf des öffentlichen Feeds. Wer diese ausgehende Verbindung unterbinden möchte (Air-Gap-Umgebungen, strikte Egress-Policies), setzt `VAKT_BSI_FEED_ENABLED=false`. Das Sicherheitshinweis-Widget im Dashboard bleibt dann leer.
+
+**Datenschutz-Hinweis zu `VAKT_EPSS_ENABLED`:** **Standardmäßig aus.** Wenn auf `true` gesetzt, reichert Vakt Findings mit EPSS-Scores (Exploit Prediction Scoring System) aus einer externen API an — eine ausgehende Verbindung. Bewusst opt-in, um das No-Phone-Home-Versprechen nicht zu unterlaufen. In Air-Gap-/strikten Egress-Umgebungen auf `false` (Default) belassen.
 
 > **Hinweis:** Die Variablen `VAKT_POLAR_WEBHOOK_SECRET` und `VAKT_LICENSE_PRIVATE_KEY` sind ausschließlich für den Norvik-eigenen Billing-Server — sie gehören **nicht** in die Kunden-Konfiguration.
 

@@ -147,12 +147,19 @@ def check_links() -> None:
 
 
 # ── 4. Env-Var-Coverage ──────────────────────────────────────────────────────
-# Jede in .env.example definierte Variable MUSS in der kanonischen Config-
-# Referenz dokumentiert sein — verhindert, dass eine Variable beim Konsolidieren
-# oder Stubben einer Doku-Datei still verschwindet (Auslöser: VAKT_DEMO ging
-# 2026-06-14 bei der Config-Doc-Konsolidierung fast verloren).
+# Jede konfigurierbare Variable MUSS in der kanonischen Config-Referenz
+# dokumentiert sein. Quelle ist BEIDES:
+#   - .env.example (kuratierte User-Vorlage)
+#   - config.go (zentrale Config-Struct, getEnv*-Aufrufe — Code als Wahrheit)
+# Verhindert (a) dass eine dokumentierte Variable beim Konsolidieren/Stubben
+# verschwindet (Auslöser: VAKT_DEMO 2026-06-14) und (b) dass eine neue
+# Code-Config-Var undokumentiert bleibt (Auslöser: VAKT_EPSS_ENABLED u.a.).
+# Bewusst NICHT erfasst: verstreute os.Getenv-Toggles in cmd/* (TRUSTED_PROXIES,
+# fail-open, WORKER_CONCURRENCY …) — Advanced-Ops, kein zentrales Config-Surface.
 CONFIG_REF = "docs/wiki/configuration.md"
+CONFIG_GO = "backend/internal/config/config.go"
 _ENV_ASSIGN = re.compile(r"^\s*#?\s*([A-Z][A-Z0-9_]{2,})=")
+_GETENV = re.compile(r'getEnv\w*\(\s*"([A-Z_][A-Z0-9_]+)"')
 # Ops-/CI-/Install-managed/interne Vars, die bewusst NICHT in der User-Config-
 # Referenz stehen. Neue Variable in .env.example: entweder in CONFIG_REF
 # dokumentieren ODER hier mit Begründung eintragen.
@@ -175,18 +182,25 @@ def check_env_vars() -> None:
         err(f"{CONFIG_REF} fehlt — kanonische Config-Referenz nicht gefunden")
         return
     ref = open(CONFIG_REF, encoding="utf-8", errors="ignore").read()
-    seen: set[str] = set()
-    for line in open(".env.example", encoding="utf-8", errors="ignore"):
-        m = _ENV_ASSIGN.match(line)
-        if not m:
+
+    # Variablen aus .env.example (Assignment-Zeilen, auch auskommentierte).
+    from_env = {
+        m.group(1)
+        for line in open(".env.example", encoding="utf-8", errors="ignore")
+        if (m := _ENV_ASSIGN.match(line))
+    }
+    # Variablen aus config.go (getEnv/getEnvInt/getEnvBool).
+    from_code = set()
+    if os.path.exists(CONFIG_GO):
+        from_code = set(_GETENV.findall(open(CONFIG_GO, encoding="utf-8", errors="ignore").read()))
+
+    for var in sorted(from_env | from_code):
+        if var in ENV_DOC_EXEMPT:
             continue
-        var = m.group(1)
-        if var in seen or var in ENV_DOC_EXEMPT:
-            continue
-        seen.add(var)
         if var not in ref:
+            src = "config.go" if var in from_code else ".env.example"
             err(
-                f".env.example: {var} ist nicht in {CONFIG_REF} dokumentiert "
+                f"{var} (aus {src}) ist nicht in {CONFIG_REF} dokumentiert "
                 f"(dort ergänzen oder in ENV_DOC_EXEMPT eintragen)"
             )
 
