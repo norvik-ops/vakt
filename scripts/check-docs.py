@@ -162,6 +162,8 @@ def check_links() -> None:
 #   (C) Frontend: jede import.meta.env.VITE_*-Lesestelle in frontend/src MUSS
 #       ebenfalls dokumentiert sein (Vite-Built-ins DEV/PROD/MODE sind nicht
 #       VITE_-präfixiert und damit ausgenommen).
+#   (D) Deployment: jede ${VAR}-Referenz in docker-compose*.yml MUSS dokumentiert
+#       sein (Self-Host-Surface). Helm-Templates bleiben bewusst außen vor.
 CONFIG_REF = "docs/wiki/configuration.md"
 _ENV_ASSIGN = re.compile(r"^\s*#?\s*([A-Z][A-Z0-9_]{2,})=")
 _ENV_READ = re.compile(r'(?:os\.Getenv|getEnv\w*)\(\s*"([A-Z][A-Z0-9_]+)"')
@@ -176,7 +178,7 @@ _DOC_EXCL = (
 # (A) In .env.example, aber bewusst NICHT in der zentralen User-Referenz
 #     (anderswo dokumentiert oder reine Ops-/CI-/Install-Vars).
 ENV_DOC_EXEMPT = {
-    "VAKT_TAG", "VAKT_STAGING",                  # Docker-/Staging-Ops
+    "VAKT_TAG", "OLLAMA_TAG", "VAKT_STAGING",    # Docker-Image-Pins / Staging-Ops
     "VAKT_PROMOTE_URL", "VAKT_PROMOTE_SECRET",   # internes Promote-Deploy
     "VAKT_LS_WEBHOOK_SECRET",                    # LemonSqueezy-Payment (intern)
     "VAKT_OPENVAS_URL", "VAKT_OPENVAS_USER", "VAKT_OPENVAS_PASS",  # → scanner-setup.md
@@ -263,6 +265,27 @@ def check_env_vars() -> None:
                     f"{var} (gelesen in {f}) ist in keiner Referenz-Doku dokumentiert "
                     f"(in docs/** dokumentieren oder in CODE_VAR_EXEMPT eintragen)"
                 )
+
+    # (D) docker-compose ${VAR}-Referenzen ⊆ echte Referenz-Doku (Deployment-
+    #     Surface, das Self-Hoster anfassen). Helm-Templates bleiben außen vor
+    #     (K8s-Minderheit, eigenes Templating; OLLAMA_HOST dort = Standard-Wiring).
+    compose = "".join(
+        open(f, encoding="utf-8", errors="ignore").read()
+        for f in subprocess.run(
+            ["git", "ls-files", "docker-compose*.yml"], capture_output=True, text=True
+        ).stdout.split()
+        if os.path.exists(f)
+    )
+    seen_d: set[str] = set()
+    for var in re.findall(r"\$\{([A-Z][A-Z0-9_]+)", compose):
+        if var in seen_d or var in ENV_DOC_EXEMPT or var in CODE_VAR_EXEMPT:
+            continue
+        seen_d.add(var)
+        if var not in blob:
+            err(
+                f"{var} (referenziert in docker-compose) ist in keiner Referenz-Doku "
+                f"dokumentiert (in docs/** / .env.example dokumentieren oder exempten)"
+            )
 
 
 def main() -> int:
