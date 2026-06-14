@@ -26,11 +26,13 @@ POSTGRES_PASSWORD=sicherespasswort
 | Variable | Pflicht | Standard | Beschreibung |
 |----------|---------|----------|--------------|
 | `VAKT_REDIS_URL` | Ja | — | Redis-Verbindungsstring. Format: `redis://host:6379` oder `redis://:passwort@host:6379` |
+| `REDIS_PASSWORD` | Ja | — | Passwort für den Redis-Container (`--requirepass`; wird von `docker-compose.yml` ausgelesen). Muss mit dem Passwort in `VAKT_REDIS_URL` übereinstimmen. Von `install.sh` generiert. |
 
 **Beispiel:**
 
 ```env
-VAKT_REDIS_URL=redis://redis:6379
+VAKT_REDIS_URL=redis://:sicherespasswort@redis:6379
+REDIS_PASSWORD=sicherespasswort
 ```
 
 ---

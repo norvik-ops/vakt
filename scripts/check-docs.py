@@ -146,17 +146,63 @@ def check_links() -> None:
                     err(f"{f}:{lineno}: kaputter interner Link → {target}")
 
 
+# ── 4. Env-Var-Coverage ──────────────────────────────────────────────────────
+# Jede in .env.example definierte Variable MUSS in der kanonischen Config-
+# Referenz dokumentiert sein — verhindert, dass eine Variable beim Konsolidieren
+# oder Stubben einer Doku-Datei still verschwindet (Auslöser: VAKT_DEMO ging
+# 2026-06-14 bei der Config-Doc-Konsolidierung fast verloren).
+CONFIG_REF = "docs/wiki/configuration.md"
+_ENV_ASSIGN = re.compile(r"^\s*#?\s*([A-Z][A-Z0-9_]{2,})=")
+# Ops-/CI-/Install-managed/interne Vars, die bewusst NICHT in der User-Config-
+# Referenz stehen. Neue Variable in .env.example: entweder in CONFIG_REF
+# dokumentieren ODER hier mit Begründung eintragen.
+ENV_DOC_EXEMPT = {
+    "VAKT_TAG",                # Docker-Image-Tag-Pin (Ops)
+    "VAKT_STAGING",            # internes Staging-Flag
+    "VAKT_PROMOTE_URL",        # internes Promote-Deploy (Ops)
+    "VAKT_PROMOTE_SECRET",
+    "VAKT_LS_WEBHOOK_SECRET",  # LemonSqueezy-Payment-Webhook (intern)
+    "VAKT_OPENVAS_URL",        # optionaler externer Scanner (in Vakt-Scan-Modul-Doku)
+    "VAKT_OPENVAS_USER",
+    "VAKT_OPENVAS_PASS",
+    "VAKT_DB_URL_FILE",        # Docker-secrets-Variante (Advanced)
+    "VAKT_SECRET_KEY_FILE",
+}
+
+
+def check_env_vars() -> None:
+    if not os.path.exists(CONFIG_REF):
+        err(f"{CONFIG_REF} fehlt — kanonische Config-Referenz nicht gefunden")
+        return
+    ref = open(CONFIG_REF, encoding="utf-8", errors="ignore").read()
+    seen: set[str] = set()
+    for line in open(".env.example", encoding="utf-8", errors="ignore"):
+        m = _ENV_ASSIGN.match(line)
+        if not m:
+            continue
+        var = m.group(1)
+        if var in seen or var in ENV_DOC_EXEMPT:
+            continue
+        seen.add(var)
+        if var not in ref:
+            err(
+                f".env.example: {var} ist nicht in {CONFIG_REF} dokumentiert "
+                f"(dort ergänzen oder in ENV_DOC_EXEMPT eintragen)"
+            )
+
+
 def main() -> int:
     check_go_version()
     check_ai_default()
     check_links()
+    check_env_vars()
     if errors:
         print("Doku-Drift gefunden:\n")
         for e in errors:
             print("  ❌", e)
         print(f"\n{len(errors)} Problem(e). Quelle der Wahrheit ist der Code (go.mod/config.go).")
         return 1
-    print("✓ Doku-Konsistenz OK (Go-Version, AI-Default, interne Links)")
+    print("✓ Doku-Konsistenz OK (Go-Version, AI-Default, interne Links, Env-Var-Coverage)")
     return 0
 
 
