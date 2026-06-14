@@ -74,3 +74,6 @@ restore: ## Restore from a backup archive: make restore BACKUP=<file.tar.gz>
 
 backup-verify: ## Verify backup integrity without restoring: make backup-verify BACKUP=<file.tar.gz>
 	@bash scripts/backup-verify.sh $(BACKUP)
+
+support-bundle: ## Collect logs + health into a support archive: make support-bundle [TAIL=2000] [SINCE=30m]
+	@bash scripts/support-bundle.sh .
