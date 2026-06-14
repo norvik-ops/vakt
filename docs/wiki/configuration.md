@@ -64,6 +64,7 @@ VAKT_SECRET_KEY=$(openssl rand -hex 32)   # Beispiel — echten Wert generieren!
 | `VAKT_DEMO` | — | `false` | Wenn `true`: Beispieldaten + öffentlich erreichbarer `/api/v1/demo/start`-Endpoint. **Nur für Test-/Demo-Umgebungen — niemals mit echten Compliance-Daten.** |
 | `VAKT_FRONTEND_URL` | — | `http://localhost:5173` | Öffentlich erreichbare URL des Frontends. Wird für E-Mail-Links in Benachrichtigungen, Vakt-Aware-Kampagnen und Policy-Akzeptanz-E-Mails verwendet. In Produktion auf die echte Domain setzen. |
 | `VAKT_UPLOAD_DIR` | — | `./data/uploads` | Verzeichnis für hochgeladene Dateien (Evidence-Anhänge). In Docker-Deployments als Volume mounten. |
+| `VAKT_WORKER_CONCURRENCY` | — | `8` | Anzahl paralleler Asynq-Hintergrund-Jobs im Worker-Container. Bei vielen gleichzeitigen Scans/Reports ggf. erhöhen, auf kleinen VMs senken. |
 
 **Beispiel:**
 
