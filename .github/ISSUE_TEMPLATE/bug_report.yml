@@ -1,0 +1,74 @@
+name: "🐛 Bug Report"
+description: Einen Fehler in Vakt melden
+title: "[Bug]: "
+labels: ["bug", "status: needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Danke für deinen Bug-Report! Bitte fülle das Formular vollständig aus.
+        **Sicherheitslücken bitte NICHT hier melden** — schreibe an security@norvikops.de
+  - type: textarea
+    id: description
+    attributes:
+      label: Beschreibung
+      description: Was ist passiert? Was hast du erwartet?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Schritte zur Reproduktion
+      placeholder: |
+        1. Gehe zu ...
+        2. Klicke auf ...
+        3. Fehler tritt auf
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Erwartetes Verhalten
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Vakt Version
+      placeholder: "z.B. v0.40.5"
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment-Typ
+      options:
+        - Docker Compose
+        - Manuell / Bare Metal
+        - Andere
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Schweregrad
+      options:
+        - "Kritisch – Datenverlust oder Auth-Bypass"
+        - "Hoch – Funktion kaputt, kein Workaround"
+        - "Mittel – Funktion eingeschränkt, Workaround vorhanden"
+        - "Niedrig – Kosmetisch / Minor"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Screenshots
+      description: Docker logs, Browser-Konsole, etc. (optional)
+  - type: textarea
+    id: environment
+    attributes:
+      label: Umgebung
+      placeholder: |
+        - OS: Ubuntu 22.04
+        - Browser: Firefox 126
+        - Docker: 24.x

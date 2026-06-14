@@ -1,0 +1,66 @@
+name: Bug report
+description: Etwas funktioniert nicht wie erwartet
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Danke fürs Melden. Bitte **keine Sicherheitslücken** hier melden — siehe `CONTRIBUTING.md` für die Security-Adresse.
+  - type: input
+    id: version
+    attributes:
+      label: Vakt-Version
+      description: z.B. v0.7.0 — `docker compose exec api vakt --version` oder `/health` Endpoint
+      placeholder: v0.7.0
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment
+      options:
+        - docker-compose
+        - helm/k8s
+        - bare-metal
+        - andere
+    validations:
+      required: true
+  - type: textarea
+    id: what-happens
+    attributes:
+      label: Was passiert?
+      description: Beschreibe das tatsächliche Verhalten möglichst konkret.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Was hattest du erwartet?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduktionsschritte
+      description: Schritt-für-Schritt, beginnend bei `docker compose up`.
+      placeholder: |
+        1. `docker compose up -d`
+        2. UI öffnen, einloggen
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevante Logs
+      description: |
+        `docker compose logs api` / `docker compose logs worker`. Bitte sensible Werte (Tokens, Mail-Adressen) maskieren.
+      render: shell
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Datenschutz
+      options:
+        - label: Ich habe geprüft, dass die geposteten Logs keine produktiven Geheimnisse, Tokens, oder Klartext-PII enthalten.
+          required: true

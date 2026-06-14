@@ -1,0 +1,46 @@
+name: Security report (öffentlicher Tracker)
+description: Nicht-kritische Sicherheits-Beobachtung (z.B. Härtungs-Vorschlag, Best-Practice-Lücke)
+title: "[security] "
+labels: ["security"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ⚠️ Wichtig
+
+        **Echte Sicherheitslücken bitte NICHT hier melden.** Schicke stattdessen eine E-Mail an `security@norvikops.de` — Details siehe `CONTRIBUTING.md`. Wir antworten innerhalb von 5 Werktagen.
+
+        Dieses Template ist nur für nicht-ausnutzbare Härtungs-Beobachtungen geeignet (z.B. "CSP-Header könnte strenger sein", "Dependency XYZ hat ein altes Advisory ohne Fix"). Im Zweifel: Mail statt Issue.
+  - type: input
+    id: version
+    attributes:
+      label: Vakt-Version
+      placeholder: v0.7.0
+    validations:
+      required: true
+  - type: textarea
+    id: observation
+    attributes:
+      label: Beobachtung
+      description: Was hast du gesehen?
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Erwarteter Impact
+      description: Welches Risiko entsteht — wer ist betroffen, was kann passieren?
+    validations:
+      required: true
+  - type: textarea
+    id: mitigation
+    attributes:
+      label: Vorschlag zur Behebung
+      description: Optional — wenn du eine konkrete Idee hast.
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Bestätigung
+      options:
+        - label: Mir ist klar, dass dieser Tracker öffentlich ist. Wenn die Beobachtung tatsächlich ausnutzbar ist, melde ich sie stattdessen per E-Mail.
+          required: true

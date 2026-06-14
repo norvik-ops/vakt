@@ -24,30 +24,42 @@ OLD_KEY="${VAKT_SECRET_KEY:-}"
 NEW_KEY=""
 
 while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --db-url)  DB_URL="$2";  shift 2 ;;
-    --old-key) OLD_KEY="$2"; shift 2 ;;
-    --new-key) NEW_KEY="$2"; shift 2 ;;
-    *) echo "Unknown argument: $1"; exit 1 ;;
-  esac
+	case "$1" in
+	--db-url)
+		DB_URL="$2"
+		shift 2
+		;;
+	--old-key)
+		OLD_KEY="$2"
+		shift 2
+		;;
+	--new-key)
+		NEW_KEY="$2"
+		shift 2
+		;;
+	*)
+		echo "Unknown argument: $1"
+		exit 1
+		;;
+	esac
 done
 
 if [[ -z "$DB_URL" ]]; then
-  echo "ERROR: --db-url or VAKT_DB_URL is required" >&2
-  exit 1
+	echo "ERROR: --db-url or VAKT_DB_URL is required" >&2
+	exit 1
 fi
 if [[ -z "$OLD_KEY" ]]; then
-  echo "ERROR: --old-key or VAKT_SECRET_KEY is required" >&2
-  exit 1
+	echo "ERROR: --old-key or VAKT_SECRET_KEY is required" >&2
+	exit 1
 fi
 if [[ -z "$NEW_KEY" ]]; then
-  NEW_KEY=$(openssl rand -hex 32)
-  echo "Generated new key: $NEW_KEY"
+	NEW_KEY=$(openssl rand -hex 32)
+	echo "Generated new key: $NEW_KEY"
 fi
 
 if [[ ${#OLD_KEY} -ne 64 ]] || [[ ${#NEW_KEY} -ne 64 ]]; then
-  echo "ERROR: keys must be 64 hex characters (32 bytes)" >&2
-  exit 1
+	echo "ERROR: keys must be 64 hex characters (32 bytes)" >&2
+	exit 1
 fi
 
 echo "=== Vakt Key Rotation ==="
@@ -61,9 +73,9 @@ echo ""
 cd "$(dirname "$0")/../backend"
 
 VAKT_DB_URL="$DB_URL" \
-VAKT_OLD_SECRET_KEY="$OLD_KEY" \
-VAKT_NEW_SECRET_KEY="$NEW_KEY" \
-  go run ./cmd/rotate-key
+	VAKT_OLD_SECRET_KEY="$OLD_KEY" \
+	VAKT_NEW_SECRET_KEY="$NEW_KEY" \
+	go run ./cmd/rotate-key
 
 echo ""
 echo "=== Rotation complete ==="

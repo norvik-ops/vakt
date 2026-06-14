@@ -59,6 +59,7 @@ VAKT_SECRET_KEY=$(openssl rand -hex 32)   # Beispiel — echten Wert generieren!
 | `APP_VERSION` | — | `0.1.0` | Versionsnummer. Wird im `/health`-Endpunkt zurückgegeben. |
 | `VAKT_MODULES_ENABLED` | — | alle | Kommagetrennte Liste aktiver Module. Mögliche Werte: `vaktscan`, `vaktcomply`, `vaktvault`, `vaktaware`, `vaktprivacy`, `vakthr`. |
 | `AUTO_MIGRATE` | — | `false` | Wenn `true`, führt der API-Container beim Start automatisch ausstehende Datenbankmigrationen aus. |
+| `VAKT_DEMO` | — | `false` | Wenn `true`: Beispieldaten + öffentlich erreichbarer `/api/v1/demo/start`-Endpoint. **Nur für Test-/Demo-Umgebungen — niemals mit echten Compliance-Daten.** |
 | `VAKT_FRONTEND_URL` | — | `http://localhost:5173` | Öffentlich erreichbare URL des Frontends. Wird für E-Mail-Links in Benachrichtigungen, Vakt-Aware-Kampagnen und Policy-Akzeptanz-E-Mails verwendet. In Produktion auf die echte Domain setzen. |
 | `VAKT_UPLOAD_DIR` | — | `./data/uploads` | Verzeichnis für hochgeladene Dateien (Evidence-Anhänge). In Docker-Deployments als Volume mounten. |
 
@@ -72,6 +73,12 @@ AUTO_MIGRATE=false
 VAKT_FRONTEND_URL=https://vakt.meine-firma.de
 VAKT_UPLOAD_DIR=/data/uploads
 ```
+
+> **`VAKT_DEMO=true` nur für Test-/Demo-Umgebungen:** Aktiviert Beispieldaten und
+> einen öffentlich erreichbaren `/api/v1/demo/start`-Endpoint — **niemals** in
+> Produktion mit echten Compliance-Daten. Nach einer Demo-Installation für den
+> produktiven Einsatz: `VAKT_DEMO=false` setzen und ephemerale Demo-Orgs
+> (Slug-Muster `demo-*`) löschen.
 
 ---
 

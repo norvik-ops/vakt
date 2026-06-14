@@ -20,42 +20,42 @@ NETWORK=sechealth-server_default
 log() { echo "[$(date -u +%H:%M:%S)] $*"; }
 
 case "${SSH_ORIGINAL_COMMAND:-}" in
-  migrate)
-    log 'Pulling api image for migration...'
-    docker pull "${REGISTRY}/vakt-api:${APP_VERSION}"
-    log 'Running migrations...'
-    docker run --rm \
-      --network "${NETWORK}" \
-      --env-file "${COMPOSE_DIR}/.env" \
-      --entrypoint /migrate \
-      "${REGISTRY}/vakt-api:${APP_VERSION}"
-    log 'Migrations done.'
-    ;;
-  deploy)
-    log 'Pulling new demo images...'
-    docker pull "${REGISTRY}/vakt-api:${APP_VERSION}"
-    docker pull "${REGISTRY}/vakt-frontend:${APP_VERSION}"
-    docker pull "${REGISTRY}/vakt-scanners:${APP_VERSION}" 2>/dev/null || true
-    log 'Restarting containers...'
-    ${COMPOSE} up -d --no-deps --pull never vakt-worker
-    ${COMPOSE} up -d --no-deps --pull never vakt-api
-    ${COMPOSE} up -d --no-deps --pull never vakt-frontend
-    log 'Deploy done.'
-    ;;
-  rollback)
-    log 'Rolling back to :demo-stable...'
-    docker pull "${REGISTRY}/vakt-api:demo-stable" 2>/dev/null && \
-      APP_VERSION=demo-stable ${COMPOSE} up -d --no-deps --pull never vakt-worker vakt-api || \
-      log 'WARNING: demo-stable not found, rollback skipped'
-    docker pull "${REGISTRY}/vakt-frontend:demo-stable" 2>/dev/null && \
-      APP_VERSION=demo-stable ${COMPOSE} up -d --no-deps --pull never vakt-frontend || true
-    log 'Rollback done.'
-    ;;
-  logs)
-    ${COMPOSE} logs --tail=80 vakt-api vakt-worker vakt-frontend 2>&1 | tail -80
-    ;;
-  *)
-    echo "Unknown command: ${SSH_ORIGINAL_COMMAND:-<empty>}" >&2
-    exit 1
-    ;;
+migrate)
+	log 'Pulling api image for migration...'
+	docker pull "${REGISTRY}/vakt-api:${APP_VERSION}"
+	log 'Running migrations...'
+	docker run --rm \
+		--network "${NETWORK}" \
+		--env-file "${COMPOSE_DIR}/.env" \
+		--entrypoint /migrate \
+		"${REGISTRY}/vakt-api:${APP_VERSION}"
+	log 'Migrations done.'
+	;;
+deploy)
+	log 'Pulling new demo images...'
+	docker pull "${REGISTRY}/vakt-api:${APP_VERSION}"
+	docker pull "${REGISTRY}/vakt-frontend:${APP_VERSION}"
+	docker pull "${REGISTRY}/vakt-scanners:${APP_VERSION}" 2>/dev/null || true
+	log 'Restarting containers...'
+	${COMPOSE} up -d --no-deps --pull never vakt-worker
+	${COMPOSE} up -d --no-deps --pull never vakt-api
+	${COMPOSE} up -d --no-deps --pull never vakt-frontend
+	log 'Deploy done.'
+	;;
+rollback)
+	log 'Rolling back to :demo-stable...'
+	docker pull "${REGISTRY}/vakt-api:demo-stable" 2>/dev/null &&
+		APP_VERSION=demo-stable ${COMPOSE} up -d --no-deps --pull never vakt-worker vakt-api ||
+		log 'WARNING: demo-stable not found, rollback skipped'
+	docker pull "${REGISTRY}/vakt-frontend:demo-stable" 2>/dev/null &&
+		APP_VERSION=demo-stable ${COMPOSE} up -d --no-deps --pull never vakt-frontend || true
+	log 'Rollback done.'
+	;;
+logs)
+	${COMPOSE} logs --tail=80 vakt-api vakt-worker vakt-frontend 2>&1 | tail -80
+	;;
+*)
+	echo "Unknown command: ${SSH_ORIGINAL_COMMAND:-<empty>}" >&2
+	exit 1
+	;;
 esac

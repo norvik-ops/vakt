@@ -1,0 +1,55 @@
+name: Feature request
+description: Vorschlag für eine neue Funktion oder Verbesserung
+title: "[feat] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Vor dem Schreiben: passt das in Vakts Selbstverständnis (self-hosted, no phone-home, kein zentraler MSP-Portal)?
+
+        - [ADR-0001 — Self-Hosted, kein Phone-Home](../../docs/adr/0001-self-hosted-no-phone-home.md)
+        - [ADR-0008 — Kein MSP-Portal](../../docs/adr/0008-kein-msp-portal.md)
+
+        Wenn dein Vorschlag DSGVO- oder Datenschutz-relevant ist (z.B. Datenfluss an Dritte), bitte explizit erwähnen.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Welches Problem löst das?
+      description: Wer hat heute welches Problem, und wie äußert es sich?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Vorschlag
+      description: Wie würde die ideale Lösung aussehen?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativen erwogen?
+      description: Welche anderen Wege gäbe es — und warum sind sie schlechter?
+  - type: dropdown
+    id: module
+    attributes:
+      label: Welches Modul?
+      options:
+        - Vakt Comply (vaktcomply)
+        - Vakt Scan (vaktscan)
+        - Vakt Vault (vaktvault)
+        - Vakt Aware (vaktaware)
+        - Vakt Privacy (vaktprivacy)
+        - Vakt HR (hr)
+        - Platform / Cross-Module
+        - Unsure
+    validations:
+      required: true
+  - type: checkboxes
+    id: datenschutz
+    attributes:
+      label: Datenschutz-Check
+      options:
+        - label: Diese Funktion lässt KEINE Vakt-Daten die Kundeninfrastruktur verlassen (oder ich erkläre unten, warum das Opt-in mit Warnung trotzdem akzeptabel ist).
+          required: true

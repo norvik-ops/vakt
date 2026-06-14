@@ -137,7 +137,7 @@ services:
     environment:
       POSTGRES_DB: vakt
       POSTGRES_USER: vakt
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?err: POSTGRES_PASSWORD not set — run install.sh}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?err: POSTGRES_PASSWORD not set — run install.sh}"
     command: >
       postgres
       -c shared_buffers=128MB

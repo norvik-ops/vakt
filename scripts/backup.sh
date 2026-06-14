@@ -13,21 +13,23 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 
 # Load env if .env exists
 if [ -f .env ]; then
-  # shellcheck source=/dev/null
-  set -a; source .env; set +a
+	# shellcheck source=/dev/null
+	set -a
+	source .env
+	set +a
 fi
 
 DB_URL="${VAKT_DB_URL:-}"
 SECRET_KEY="${VAKT_SECRET_KEY:-}"
 
 if [ -z "$DB_URL" ]; then
-  echo "ERROR: VAKT_DB_URL not set" >&2
-  exit 1
+	echo "ERROR: VAKT_DB_URL not set" >&2
+	exit 1
 fi
 
 if [ -z "$SECRET_KEY" ]; then
-  echo "ERROR: VAKT_SECRET_KEY not set" >&2
-  exit 1
+	echo "ERROR: VAKT_SECRET_KEY not set" >&2
+	exit 1
 fi
 
 echo "→ Dumping PostgreSQL..."
@@ -37,31 +39,35 @@ echo "→ Encrypting encryption key..."
 # Non-interactive mode: use env var or passphrase file (for cron/automation).
 # Falls back to interactive prompt when running with a TTY.
 if [ -n "${VAKT_BACKUP_PASSPHRASE:-}" ]; then
-  PASSPHRASE="$VAKT_BACKUP_PASSPHRASE"
+	PASSPHRASE="$VAKT_BACKUP_PASSPHRASE"
 elif [ -n "${VAKT_BACKUP_PASSPHRASE_FILE:-}" ] && [ -f "$VAKT_BACKUP_PASSPHRASE_FILE" ]; then
-  PASSPHRASE=$(cat "$VAKT_BACKUP_PASSPHRASE_FILE")
+	PASSPHRASE=$(cat "$VAKT_BACKUP_PASSPHRASE_FILE")
 elif [ -t 0 ]; then
-  while true; do
-    read -r -s -p "   Enter passphrase (min. 12 characters): " PASSPHRASE; echo
-    if [ "${#PASSPHRASE}" -lt 12 ]; then
-      echo "   ERROR: Passphrase must be at least 12 characters." >&2; continue
-    fi
-    read -r -s -p "   Confirm passphrase: " PASSPHRASE2; echo
-    if [ "$PASSPHRASE" != "$PASSPHRASE2" ]; then
-      echo "   ERROR: Passphrases do not match." >&2; continue
-    fi
-    break
-  done
-  unset PASSPHRASE2
+	while true; do
+		read -r -s -p "   Enter passphrase (min. 12 characters): " PASSPHRASE
+		echo
+		if [ "${#PASSPHRASE}" -lt 12 ]; then
+			echo "   ERROR: Passphrase must be at least 12 characters." >&2
+			continue
+		fi
+		read -r -s -p "   Confirm passphrase: " PASSPHRASE2
+		echo
+		if [ "$PASSPHRASE" != "$PASSPHRASE2" ]; then
+			echo "   ERROR: Passphrases do not match." >&2
+			continue
+		fi
+		break
+	done
+	unset PASSPHRASE2
 else
-  echo "ERROR: No passphrase provided. Set VAKT_BACKUP_PASSPHRASE, VAKT_BACKUP_PASSPHRASE_FILE, or run interactively." >&2
-  exit 1
+	echo "ERROR: No passphrase provided. Set VAKT_BACKUP_PASSPHRASE, VAKT_BACKUP_PASSPHRASE_FILE, or run interactively." >&2
+	exit 1
 fi
 echo "$SECRET_KEY" | PASSPHRASE="$PASSPHRASE" openssl enc -aes-256-cbc -pbkdf2 -pass env:PASSPHRASE -out "$WORK_DIR/secret.key.enc"
 unset PASSPHRASE
 
 # Write manifest
-cat > "$WORK_DIR/manifest.json" <<EOF
+cat >"$WORK_DIR/manifest.json" <<EOF
 {
   "backup_date": "${DATE}",
   "schema_version": "$(date +%Y%m%d)",
@@ -74,8 +80,8 @@ tar -czf "${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz" -C "$WORK_DIR" .
 
 echo "→ Signing archive..."
 HMAC_KEY=$(printf 'vakt-backup-hmac:%s' "$SECRET_KEY" | sha256sum | cut -d' ' -f1)
-openssl dgst -sha256 -hmac "$HMAC_KEY" "${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz" \
-  | awk '{print $NF}' > "${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz.sig"
+openssl dgst -sha256 -hmac "$HMAC_KEY" "${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz" |
+	awk '{print $NF}' >"${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz.sig"
 unset HMAC_KEY
 
 echo "✓ Backup saved:    ${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz"
