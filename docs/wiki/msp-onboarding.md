@@ -294,10 +294,12 @@ und Backup anlegen.
 - GitHub Issues: [github.com/norvik-ops/vatk/issues](https://github.com/norvik-ops/vatk/issues)
 - Für Sicherheitslücken: `security@vakt.io` (nicht öffentlich melden)
 
-Bei einem Support-Ticket bitte immer folgende Informationen beifügen:
+Bei einem Support-Ticket bitte immer folgende Informationen beifügen — am
+einfachsten als **Diagnose-Bundle** (`make support-bundle` erzeugt ein Archiv
+mit Version, Health und Logs aller Services; siehe [Support & Diagnose](support.md)):
 - Vakt-Version (`curl /health | jq .version`)
 - Deployment-Art (Docker Compose / Helm / Kubernetes-Version)
-- Relevante Logs (`docker compose logs api --tail=100`)
+- Relevante Logs (`docker compose logs api --tail=100` oder `make support-bundle`)
 - Fehlermeldung im Browser-Konsole (falls Frontend-Problem)
 
 ---

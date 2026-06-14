@@ -15,8 +15,11 @@ Drei neue Evidence-Collector für Identity-Provider und Verzeichnisdienste — a
 - **Microsoft Entra ID / Graph API-Integration** — MFA-Enrollment-Quote, Conditional-Access-Policies, Risky Users (Identitätsrisiko), Admin-Rollenmitglieder und inaktive Accounts täglich als Compliance-Evidence. OAuth2 Client Credentials (client_id/client_secret), AES-256-GCM verschlüsselt. `@odata.nextLink`-Pagination für große Tenants.
 - **Keycloak REST-Integration** — MFA-Status pro User (OTP/TOTP), Passwort-Policy-Stärke (length()-Extraktion), inaktive Accounts, Admin-Rollenmitglieder und Session-Timeout-Compliance täglich als Evidence. Service Account Client Credentials. Warnung bei Passwortlänge <8 oder SSO-Session >12 Stunden.
 - **LDAP / Active Directory-Integration** — Inaktive Accounts (>90 Tage nicht eingeloggt), Accounts mit „Passwort läuft nie ab", Mitglieder privilegierter Gruppen (Domain Admins, Administrators), deaktivierte Accounts und aktive Account-Gesamtzahl als Evidence. Unterstützt AD (userAccountControl-Flags, Windows FILETIME) und OpenLDAP (shadowLastChange, shadowMax). LDAPS (TLS) unterstützt.
+- **Support-Diagnose-Bundle** — `make support-bundle` (bzw. `scripts/support-bundle.sh`) sammelt Versionsinfos, Container-Status, Health und die Logs aller Services in ein `vakt-support-<datum>.tar.gz` für Support-Tickets. Optionen `TAIL=` (Zeilen/Service) und `SINCE=` (Zeitfenster); erkennt `docker compose` v2 und v1. Kein Datenabfluss — schreibt nur lokal, Logs sind PII-redigiert. Neue Wiki-Seite [Support & Diagnose](docs/wiki/support.md) mit Hinweis zu `VAKT_LOG_LEVEL=debug`.
 
 ### Infrastructure
+
+- **Log-Rotation als Default** — `docker-compose.yml` setzt für alle langlebigen Services (`api`, `worker`, `nginx`, `postgres`, `pgbouncer`, `redis`, `ollama`) den `json-file`-Logdriver mit `max-size: 10m` / `max-file: 5` (max. ~50 MB pro Service). Verhindert volllaufende Disks und stellt sicher, dass aktuelle Logs für ein Support-Bundle vorhanden sind. Kein manueller Eingriff nötig.
 
 - **Migration 169** — `cloud_integrations.provider` CHECK-Constraint erweitert um `ldap`.
 - **OpenAPI-Spec** — 15 neue Endpunkte für die drei neuen Identity-Provider (config GET/PUT, sync POST, status GET, evidence GET) sowie zugehörige Component-Schemas.
