@@ -75,6 +75,6 @@ Alle Pfade erfordern einen gültigen Paseto-Token (`Authorization: Bearer <token
 ## Weiterführende Dokumentation
 
 - [Setup & Deployment](../setup.md)
-- [Konfigurationsreferenz](../configuration.md)
+- [Konfigurationsreferenz](../wiki/configuration.md)
 - [Architektur](../architecture.md)
 - [Produkt-Anforderungen](../prd.md)

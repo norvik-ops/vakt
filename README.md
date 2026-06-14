@@ -176,7 +176,7 @@ The most important environment variables:
 | `VAKT_SMTP_PASS` | — | SMTP password (required for port 587/465) |
 | `VAKT_SMTP_FROM` | — | From address for campaign emails |
 
-See `docs/configuration.md` for the full reference.
+See [`docs/wiki/configuration.md`](docs/wiki/configuration.md) for the full reference.
 
 ---
 
