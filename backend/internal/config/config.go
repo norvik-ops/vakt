@@ -36,11 +36,11 @@ type Config struct {
 	// AIDailyTokenLimit  — pro Org pro Kalendertag (UTC). 0 = aus.
 	// AICacheTTLSeconds  — Response-Cache-TTL (sha256(model+prompt) → cached body). 0 = aus.
 	// AICostPerMTokenIn/Out (in Mikro-EUR pro 1M Tokens) — für Kosten-Tracking. Lokales Ollama = 0.
-	AIRateLimitRPM     int
-	AIDailyTokenLimit  int
-	AICacheTTLSeconds  int
-	AICostPerMTokenIn  int64 // micro-EUR per 1M input tokens
-	AICostPerMTokenOut int64 // micro-EUR per 1M output tokens
+	AIRateLimitRPM      int
+	AIDailyTokenLimit   int
+	AICacheTTLSeconds   int
+	AICostPerMTokenIn   int64 // micro-EUR per 1M input tokens
+	AICostPerMTokenOut  int64 // micro-EUR per 1M output tokens
 	CasdoorURL          string
 	CasdoorClientID     string
 	CasdoorClientSecret string
