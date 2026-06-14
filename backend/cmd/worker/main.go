@@ -34,6 +34,7 @@ import (
 	"github.com/matharnica/vakt/internal/shared/bsi"
 	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/emaildigest"
+	"github.com/matharnica/vakt/internal/shared/logging"
 	"github.com/matharnica/vakt/internal/shared/metrics"
 	"github.com/matharnica/vakt/internal/shared/nis2wizard"
 	"github.com/matharnica/vakt/internal/shared/notifications"
@@ -301,6 +302,7 @@ func EnqueueScanTask(client *asynq.Client, taskType string, payload []byte) erro
 }
 
 func main() {
+	logging.ApplyLevelFromEnv()
 	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
 	cfg, err := config.Load()

@@ -166,10 +166,18 @@ def check_links() -> None:
 #       sein (Self-Host-Surface). Helm-Templates bleiben bewusst außen vor.
 CONFIG_REF = "docs/wiki/configuration.md"
 _ENV_ASSIGN = re.compile(r"^\s*#?\s*([A-Z][A-Z0-9_]{2,})=")
-_ENV_READ = re.compile(r'(?:os\.Getenv|getEnv\w*)\(\s*"([A-Z][A-Z0-9_]+)"')
+# Alle Env-Read-Helper im Backend (os.Getenv + die config-Helper getEnv*,
+# mustEnv, readEnvOrFile). os.Setenv/Unsetenv sind Writes und matchen nicht.
+_ENV_READ = re.compile(
+    r'(?:os\.(?:Getenv|LookupEnv)|getEnv\w*|mustEnv|readEnvOrFile)\(\s*"([A-Z][A-Z0-9_]+)"'
+)
 # Frontend: echte import.meta.env.VITE_*-Lesestellen (Vite-Built-ins wie
 # DEV/PROD/MODE sind nicht VITE_-präfixiert und matchen daher nicht).
 _VITE_READ = re.compile(r"import\.meta\.env\.(VITE_[A-Z0-9_]+)")
+# Helm-Env-Deklarationen: `- name: VAKT_X` (Container-env) und `VAKT_X:` als
+# ConfigMap-/values-Key. Kommentar-Erwähnungen (`# VAKT_X …`) matchen NICHT.
+_HELM_ENV = re.compile(r'name:\s*"?(VAKT_[A-Z0-9_]+|CASDOOR_[A-Z0-9_]+)')
+_HELM_KEY = re.compile(r"^\s*(VAKT_[A-Z0-9_]+|CASDOOR_[A-Z0-9_]+):", re.MULTILINE)
 # Verzeichnisse, die KEINE Referenz-Doku sind (Historie/Planung/Analyse).
 _DOC_EXCL = (
     "docs/history/", "docs/reviews/", "docs/planning/", "docs/sprints/",
@@ -286,6 +294,29 @@ def check_env_vars() -> None:
                 f"{var} (referenziert in docker-compose) ist in keiner Referenz-Doku "
                 f"dokumentiert (in docs/** / .env.example dokumentieren oder exempten)"
             )
+
+    # (E) Helm-deklarierte VAKT_*/CASDOOR_*-Env-Vars MÜSSEN im Backend-Code
+    #     gelesen werden — fängt tote Config (Helm setzt eine Var, die die App
+    #     ignoriert; Auslöser: VAKT_LOG_LEVEL 2026-06-14).
+    backend_read: set[str] = set()
+    for f in gofiles:
+        backend_read.update(_ENV_READ.findall(open(f, encoding="utf-8", errors="ignore").read()))
+    helm_decl: set[str] = set()
+    for f in subprocess.run(
+        ["git", "ls-files", "helm"], capture_output=True, text=True
+    ).stdout.split():
+        if not f.endswith((".yaml", ".yml", ".tpl")):
+            continue
+        content = open(f, encoding="utf-8", errors="ignore").read()
+        helm_decl.update(_HELM_ENV.findall(content))
+        helm_decl.update(_HELM_KEY.findall(content))
+    for var in sorted(helm_decl):
+        if var in CODE_VAR_EXEMPT or var in backend_read:
+            continue
+        err(
+            f"{var} (in helm/ deklariert) wird nirgends im Backend-Code gelesen — "
+            f"tote Config (im Code lesen oder aus helm/ entfernen)"
+        )
 
 
 def main() -> int:

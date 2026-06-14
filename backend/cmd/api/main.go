@@ -51,6 +51,7 @@ import (
 	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/demoseed"
 	"github.com/matharnica/vakt/internal/shared/feedback"
+	"github.com/matharnica/vakt/internal/shared/logging"
 	"github.com/matharnica/vakt/internal/shared/metrics"
 	sharedmw "github.com/matharnica/vakt/internal/shared/middleware"
 	"github.com/matharnica/vakt/internal/shared/nis2wizard"
@@ -1060,6 +1061,7 @@ func migrationsDir() string {
 }
 
 func main() {
+	logging.ApplyLevelFromEnv()
 	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
 	// OpenTelemetry — opt-in. With no OTEL_EXPORTER_OTLP_ENDPOINT set, the
