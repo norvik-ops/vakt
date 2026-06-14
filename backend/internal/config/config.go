@@ -41,9 +41,6 @@ type Config struct {
 	AICacheTTLSeconds  int
 	AICostPerMTokenIn  int64 // micro-EUR per 1M input tokens
 	AICostPerMTokenOut int64 // micro-EUR per 1M output tokens
-	// Sprint 15 S15-14: optionales Sentry-DSN. Wenn leer, kein Sentry-Init.
-	// safego.Run nutzt das automatisch — siehe internal/shared/safego.
-	SentryDSN           string
 	CasdoorURL          string
 	CasdoorClientID     string
 	CasdoorClientSecret string
@@ -243,7 +240,6 @@ func Load() (*Config, error) {
 		AICacheTTLSeconds:   getEnvInt("VAKT_AI_CACHE_TTL_SECONDS", 3600),
 		AICostPerMTokenIn:   getEnvInt64("VAKT_AI_COST_PER_MTOKEN_IN_MICRO_EUR", 0),
 		AICostPerMTokenOut:  getEnvInt64("VAKT_AI_COST_PER_MTOKEN_OUT_MICRO_EUR", 0),
-		SentryDSN:           getEnv("VAKT_SENTRY_DSN", ""),
 		CasdoorURL:          getEnv("CASDOOR_URL", ""),
 		CasdoorClientID:     getEnv("CASDOOR_CLIENT_ID", ""),
 		CasdoorClientSecret: getEnv("CASDOOR_CLIENT_SECRET", ""),

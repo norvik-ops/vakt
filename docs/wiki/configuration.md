@@ -187,9 +187,16 @@ VAKT_UPDATE_CHECK=true
 |----------|---------|----------|--------------|
 | `VAKT_METRICS_DISABLED` | — | `false` | Wenn `true`, wird der Prometheus-`/metrics`-Endpunkt deaktiviert. |
 | `VAKT_LOG_LEVEL` | — | `info` | Globales Log-Level (`trace`, `debug`, `info`, `warn`, `error`). Ungültige Werte fallen auf `info` zurück. |
-| `VAKT_SENTRY_DSN` | — | — | Sentry-DSN für Fehler-Tracking. Leer = aus (kein Datenabfluss). Bei gesetztem DSN gehen Fehlerberichte an den konfigurierten Sentry-Endpunkt — Kunde trägt die DSGVO-Verantwortung. |
 | `VAKT_SLO_UPTIME` | — | `99.9` | Ziel-Verfügbarkeit (%) für die Fehlerbudget-Berechnung. |
 | `VAKT_SLO_P99_LATENCY_MS` | — | `500` | Ziel-p99-Latenz (ms) für die Fehlerbudget-Berechnung. |
+
+---
+
+## Vakt Scan (optional)
+
+| Variable | Pflicht | Standard | Beschreibung |
+|----------|---------|----------|--------------|
+| `VAKT_SCAN_ALLOW_PRIVATE` | — | `false` | Wenn `true`, darf Vakt Scan auch interne IP-Adressen (RFC-1918, Loopback, Link-Local) als Scan-Ziele akzeptieren. **Standardmäßig blockiert (SSRF-Schutz).** Nur in vollständig isolierten internen Netzwerken setzen, in denen Scanner-Zugriff auf interne Hosts erwünscht ist. |
 
 ---
 
