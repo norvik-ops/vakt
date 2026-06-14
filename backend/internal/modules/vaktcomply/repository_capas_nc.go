@@ -13,7 +13,6 @@ import (
 type OverdueEffectivenessCheck struct {
 	OrgID  string
 	CAPAID string
-	UserID string
 }
 
 // UpdateCAPANCFields updates the NC root-cause and effectiveness fields on a CAPA record.
@@ -92,7 +91,7 @@ func (r *Repository) CompleteEffectivenessCheck(ctx context.Context, orgID, id, 
 // Used by the daily alert worker job.
 func (r *Repository) ListOverdueEffectivenessChecks(ctx context.Context) ([]OverdueEffectivenessCheck, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT org_id, id, created_by
+		SELECT org_id, id
 		FROM   ck_capas
 		WHERE  effectiveness_check_date < CURRENT_DATE
 		  AND  effectiveness_confirmed IS NULL
@@ -106,7 +105,7 @@ func (r *Repository) ListOverdueEffectivenessChecks(ctx context.Context) ([]Over
 	var out []OverdueEffectivenessCheck
 	for rows.Next() {
 		var item OverdueEffectivenessCheck
-		if err := rows.Scan(&item.OrgID, &item.CAPAID, &item.UserID); err != nil {
+		if err := rows.Scan(&item.OrgID, &item.CAPAID); err != nil {
 			return nil, fmt.Errorf("scan overdue effectiveness check: %w", err)
 		}
 		out = append(out, item)
