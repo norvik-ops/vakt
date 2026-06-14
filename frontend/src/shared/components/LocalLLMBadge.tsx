@@ -10,13 +10,13 @@ import { useTranslation } from 'react-i18next'
  * Kunde unsicher ist ob "Daten das Haus verlassen", zeigt das Badge es
  * direkt am AI-Output.
  *
- * Erkennung über VITE_AI_PROVIDER_HOST: wenn der Backend-Host einer der
+ * Erkennung über den `providerHost`-Prop: wenn der Backend-Host einer der
  * bekannten Container-Service-Discovery-Namen ist (ollama, ai-llm,
  * llm-proxy, lm-studio), gilt der Output als lokal. Sonst Cloud.
  *
- * Die Eingabe `providerHost` kommt aus /health.sso_enabled-style-Felder
- * oder direkt vom AI-Status-Endpoint. Wenn nichts übergeben wurde, fällt
- * das Badge auf "lokal" zurück (Vakt-Default).
+ * Die Eingabe `providerHost` kommt aus dem AI-Status-Endpoint (bzw.
+ * /health-artigen Feldern). Wenn nichts übergeben wurde, fällt das Badge
+ * konservativ auf "lokal" zurück (Vakt-Default).
  */
 interface Props {
   providerHost?: string

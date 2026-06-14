@@ -159,9 +159,15 @@ def check_links() -> None:
 #       dokumentiert sein — so bleibt keine Code-Config-Var unauffindbar
 #       (Auslöser: VAKT_EPSS_ENABLED, VAKT_SLO_* …). Interne/Dev/PoC-Vars via
 #       CODE_VAR_EXEMPT.
+#   (C) Frontend: jede import.meta.env.VITE_*-Lesestelle in frontend/src MUSS
+#       ebenfalls dokumentiert sein (Vite-Built-ins DEV/PROD/MODE sind nicht
+#       VITE_-präfixiert und damit ausgenommen).
 CONFIG_REF = "docs/wiki/configuration.md"
 _ENV_ASSIGN = re.compile(r"^\s*#?\s*([A-Z][A-Z0-9_]{2,})=")
 _ENV_READ = re.compile(r'(?:os\.Getenv|getEnv\w*)\(\s*"([A-Z][A-Z0-9_]+)"')
+# Frontend: echte import.meta.env.VITE_*-Lesestellen (Vite-Built-ins wie
+# DEV/PROD/MODE sind nicht VITE_-präfixiert und matchen daher nicht).
+_VITE_READ = re.compile(r"import\.meta\.env\.(VITE_[A-Z0-9_]+)")
 # Verzeichnisse, die KEINE Referenz-Doku sind (Historie/Planung/Analyse).
 _DOC_EXCL = (
     "docs/history/", "docs/reviews/", "docs/planning/", "docs/sprints/",
@@ -236,6 +242,26 @@ def check_env_vars() -> None:
                     f"{var} (gelesen in {f.split('backend/')[-1]}) ist in keiner "
                     f"Referenz-Doku dokumentiert (in docs/** dokumentieren oder in "
                     f"CODE_VAR_EXEMPT eintragen)"
+                )
+
+    # (C) frontend/src import.meta.env.VITE_*-Reads ⊆ echte Referenz-Doku
+    fefiles = [
+        f
+        for f in subprocess.run(
+            ["git", "ls-files", "frontend/src"], capture_output=True, text=True
+        ).stdout.split()
+        if f.endswith((".ts", ".tsx", ".js", ".jsx", ".vue"))
+    ]
+    seen_c: set[str] = set()
+    for f in fefiles:
+        for var in _VITE_READ.findall(open(f, encoding="utf-8", errors="ignore").read()):
+            if var in seen_c or var in CODE_VAR_EXEMPT:
+                continue
+            seen_c.add(var)
+            if var not in blob:
+                err(
+                    f"{var} (gelesen in {f}) ist in keiner Referenz-Doku dokumentiert "
+                    f"(in docs/** dokumentieren oder in CODE_VAR_EXEMPT eintragen)"
                 )
 
 
