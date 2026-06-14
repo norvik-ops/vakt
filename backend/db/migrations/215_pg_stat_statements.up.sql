@@ -1,0 +1,11 @@
+-- pg_stat_statements is preloaded via shared_preload_libraries in
+-- infra/server/docker-compose.yml, but the extension itself was never created
+-- in any migration. The monitoring query (SELECT ... FROM pg_stat_statements)
+-- therefore errored on every scrape with
+--   ERROR: relation "pg_stat_statements" does not exist
+-- which fed the "DB-Schemafehler / >3 SQLSTATE in 5 min" alert on vakt-api.
+--
+-- CREATE EXTENSION succeeds even without the library preloaded (verified on
+-- postgres:16-alpine); the view only becomes queryable once the library is in
+-- shared_preload_libraries, which prod already sets.
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
