@@ -147,62 +147,96 @@ def check_links() -> None:
 
 
 # ── 4. Env-Var-Coverage ──────────────────────────────────────────────────────
-# Jede konfigurierbare Variable MUSS in der kanonischen Config-Referenz
-# dokumentiert sein. Quelle ist BEIDES:
-#   - .env.example (kuratierte User-Vorlage)
-#   - config.go (zentrale Config-Struct, getEnv*-Aufrufe — Code als Wahrheit)
-# Verhindert (a) dass eine dokumentierte Variable beim Konsolidieren/Stubben
-# verschwindet (Auslöser: VAKT_DEMO 2026-06-14) und (b) dass eine neue
-# Code-Config-Var undokumentiert bleibt (Auslöser: VAKT_EPSS_ENABLED u.a.).
-# Bewusst NICHT erfasst: verstreute os.Getenv-Toggles in cmd/* (TRUSTED_PROXIES,
-# fail-open, WORKER_CONCURRENCY …) — Advanced-Ops, kein zentrales Config-Surface.
+# Zwei Invarianten, beide mit dem Code als Quelle der Wahrheit:
+#   (A) Referenz-Vollständigkeit: jede Variable in .env.example MUSS in der
+#       kanonischen User-Referenz docs/wiki/configuration.md stehen — so
+#       verschwindet keine dokumentierte Variable beim Konsolidieren/Stubben
+#       (Auslöser: VAKT_DEMO 2026-06-14). Anderswo-dokumentierte/Ops-Vars via
+#       ENV_DOC_EXEMPT.
+#   (B) Code-Coverage: jede Env-Var, die irgendwo in backend/** gelesen wird
+#       (os.Getenv/getEnv*, ohne Tests), MUSS in irgendeiner echten Referenz-
+#       Doku (docs/** außer internen Verzeichnissen) ODER .env.example
+#       dokumentiert sein — so bleibt keine Code-Config-Var unauffindbar
+#       (Auslöser: VAKT_EPSS_ENABLED, VAKT_SLO_* …). Interne/Dev/PoC-Vars via
+#       CODE_VAR_EXEMPT.
 CONFIG_REF = "docs/wiki/configuration.md"
-CONFIG_GO = "backend/internal/config/config.go"
 _ENV_ASSIGN = re.compile(r"^\s*#?\s*([A-Z][A-Z0-9_]{2,})=")
-_GETENV = re.compile(r'getEnv\w*\(\s*"([A-Z_][A-Z0-9_]+)"')
-# Ops-/CI-/Install-managed/interne Vars, die bewusst NICHT in der User-Config-
-# Referenz stehen. Neue Variable in .env.example: entweder in CONFIG_REF
-# dokumentieren ODER hier mit Begründung eintragen.
+_ENV_READ = re.compile(r'(?:os\.Getenv|getEnv\w*)\(\s*"([A-Z][A-Z0-9_]+)"')
+# Verzeichnisse, die KEINE Referenz-Doku sind (Historie/Planung/Analyse).
+_DOC_EXCL = (
+    "docs/history/", "docs/reviews/", "docs/planning/", "docs/sprints/",
+    "docs/stories/", "docs/marketing/", "docs/audit-responses/",
+)
+# (A) In .env.example, aber bewusst NICHT in der zentralen User-Referenz
+#     (anderswo dokumentiert oder reine Ops-/CI-/Install-Vars).
 ENV_DOC_EXEMPT = {
-    "VAKT_TAG",                # Docker-Image-Tag-Pin (Ops)
-    "VAKT_STAGING",            # internes Staging-Flag
-    "VAKT_PROMOTE_URL",        # internes Promote-Deploy (Ops)
-    "VAKT_PROMOTE_SECRET",
-    "VAKT_LS_WEBHOOK_SECRET",  # LemonSqueezy-Payment-Webhook (intern)
-    "VAKT_OPENVAS_URL",        # optionaler externer Scanner (in Vakt-Scan-Modul-Doku)
-    "VAKT_OPENVAS_USER",
-    "VAKT_OPENVAS_PASS",
-    "VAKT_DB_URL_FILE",        # Docker-secrets-Variante (Advanced)
-    "VAKT_SECRET_KEY_FILE",
+    "VAKT_TAG", "VAKT_STAGING",                  # Docker-/Staging-Ops
+    "VAKT_PROMOTE_URL", "VAKT_PROMOTE_SECRET",   # internes Promote-Deploy
+    "VAKT_LS_WEBHOOK_SECRET",                    # LemonSqueezy-Payment (intern)
+    "VAKT_OPENVAS_URL", "VAKT_OPENVAS_USER", "VAKT_OPENVAS_PASS",  # → scanner-setup.md
+    "VAKT_DB_URL_FILE", "VAKT_SECRET_KEY_FILE",  # → ADR-0049 / architecture.md
 }
+# (B) Im Backend gelesen, aber bewusst nirgends dokumentiert (intern/Dev/PoC).
+CODE_VAR_EXEMPT = {
+    "SEED_ENV",           # nur cmd/seed (Dev-Seeder)
+    "VAKT_GITHUB_TOKEN",  # PoC/Fallback — primäre GitHub-Integration wird in-app (verschlüsselt) konfiguriert
+}
+
+
+def _ref_doc_blob() -> str:
+    md = [
+        f
+        for f in subprocess.run(
+            ["git", "ls-files", "docs"], capture_output=True, text=True
+        ).stdout.split()
+        if f.endswith(".md") and not any(f.startswith(x) for x in _DOC_EXCL)
+    ]
+    md.append(".env.example")
+    return "".join(
+        open(f, encoding="utf-8", errors="ignore").read() for f in md if os.path.exists(f)
+    )
 
 
 def check_env_vars() -> None:
     if not os.path.exists(CONFIG_REF):
         err(f"{CONFIG_REF} fehlt — kanonische Config-Referenz nicht gefunden")
         return
+
+    # (A) .env.example ⊆ docs/wiki/configuration.md
     ref = open(CONFIG_REF, encoding="utf-8", errors="ignore").read()
-
-    # Variablen aus .env.example (Assignment-Zeilen, auch auskommentierte).
-    from_env = {
-        m.group(1)
-        for line in open(".env.example", encoding="utf-8", errors="ignore")
-        if (m := _ENV_ASSIGN.match(line))
-    }
-    # Variablen aus config.go (getEnv/getEnvInt/getEnvBool).
-    from_code = set()
-    if os.path.exists(CONFIG_GO):
-        from_code = set(_GETENV.findall(open(CONFIG_GO, encoding="utf-8", errors="ignore").read()))
-
-    for var in sorted(from_env | from_code):
-        if var in ENV_DOC_EXEMPT:
+    seen_a: set[str] = set()
+    for line in open(".env.example", encoding="utf-8", errors="ignore"):
+        m = _ENV_ASSIGN.match(line)
+        if not m or m.group(1) in seen_a or m.group(1) in ENV_DOC_EXEMPT:
             continue
-        if var not in ref:
-            src = "config.go" if var in from_code else ".env.example"
+        seen_a.add(m.group(1))
+        if m.group(1) not in ref:
             err(
-                f"{var} (aus {src}) ist nicht in {CONFIG_REF} dokumentiert "
+                f"{m.group(1)} (.env.example) ist nicht in {CONFIG_REF} dokumentiert "
                 f"(dort ergänzen oder in ENV_DOC_EXEMPT eintragen)"
             )
+
+    # (B) backend/** Env-Reads ⊆ irgendeine echte Referenz-Doku
+    blob = _ref_doc_blob()
+    gofiles = [
+        f
+        for f in subprocess.run(
+            ["git", "ls-files", "backend"], capture_output=True, text=True
+        ).stdout.split()
+        if f.endswith(".go") and not f.endswith("_test.go")
+    ]
+    seen_b: set[str] = set()
+    for f in gofiles:
+        for var in _ENV_READ.findall(open(f, encoding="utf-8", errors="ignore").read()):
+            if var in seen_b or var in CODE_VAR_EXEMPT:
+                continue
+            seen_b.add(var)
+            if var not in blob:
+                err(
+                    f"{var} (gelesen in {f.split('backend/')[-1]}) ist in keiner "
+                    f"Referenz-Doku dokumentiert (in docs/** dokumentieren oder in "
+                    f"CODE_VAR_EXEMPT eintragen)"
+                )
 
 
 def main() -> int:

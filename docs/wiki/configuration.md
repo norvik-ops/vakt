@@ -42,6 +42,7 @@ REDIS_PASSWORD=sicherespasswort
 | Variable | Pflicht | Standard | Beschreibung |
 |----------|---------|----------|--------------|
 | `VAKT_SECRET_KEY` | Ja | — | 32-Byte Hex-Master-Key für AES-256-GCM-Verschlüsselung aller Secrets in der Datenbank. Generieren: `openssl rand -hex 32`. **Nie nach dem ersten Start ändern.** |
+| `VAKT_ADMIN_ALLOWED_IPS` | — | — (offen) | Komma-separierte CIDRs/IPs, die auf Admin-Endpunkte zugreifen dürfen, z. B. `10.0.0.0/8,192.168.1.0/24`. Leer = alle IPs erlaubt. |
 
 **Beispiel:**
 
@@ -134,6 +135,7 @@ Unterstützte Provider: Ollama, Mistral AI, OpenAI, Groq, LM Studio, vLLM und je
 | `VAKT_AI_CACHE_TTL_SECONDS` | — | `3600` | Cache-Dauer identischer KI-Antworten (Key = `sha256(Modell+Prompt)`). `0` = Cache aus. |
 | `VAKT_AI_COST_PER_MTOKEN_IN_MICRO_EUR` | — | `0` | Kosten pro 1 Mio. Input-Tokens in Mikro-EUR (Kosten-Tracking bei Cloud-Providern). Lokales Ollama = `0`. |
 | `VAKT_AI_COST_PER_MTOKEN_OUT_MICRO_EUR` | — | `0` | Kosten pro 1 Mio. Output-Tokens in Mikro-EUR. Lokales Ollama = `0`. |
+| `VAKT_AI_FAIL_OPEN_ON_OUTAGE` | — | `false` | Wenn `true`, lassen die KI-Rate-Limit-/Quota-Checks bei Redis-/Postgres-Ausfall „fail open" (KI bleibt erreichbar statt zu blocken). Audit-relevante Abwägung — Default sicher (`false`). |
 
 **Beispiel Ollama (lokal, Standard):**
 
@@ -185,6 +187,8 @@ VAKT_UPDATE_CHECK=true
 |----------|---------|----------|--------------|
 | `VAKT_METRICS_DISABLED` | — | `false` | Wenn `true`, wird der Prometheus-`/metrics`-Endpunkt deaktiviert. |
 | `VAKT_SENTRY_DSN` | — | — | Sentry-DSN für Fehler-Tracking. Leer = aus (kein Datenabfluss). Bei gesetztem DSN gehen Fehlerberichte an den konfigurierten Sentry-Endpunkt — Kunde trägt die DSGVO-Verantwortung. |
+| `VAKT_SLO_UPTIME` | — | `99.9` | Ziel-Verfügbarkeit (%) für die Fehlerbudget-Berechnung. |
+| `VAKT_SLO_P99_LATENCY_MS` | — | `500` | Ziel-p99-Latenz (ms) für die Fehlerbudget-Berechnung. |
 
 ---
 
