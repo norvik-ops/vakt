@@ -20,6 +20,7 @@ const (
 	ProviderGitLab     = "gitlab"
 	ProviderSonarQube  = "sonarqube"
 	ProviderPersonio   = "personio"
+	ProviderIntune     = "intune"
 )
 
 // AWSConfig holds AWS credentials and region for evidence collection.
@@ -251,6 +252,36 @@ type EntraIDStatus struct {
 	MFAEnrollmentPct  float64 `json:"mfa_enrollment_pct"`
 	RiskyUserCount    int     `json:"risky_user_count"`
 	InactiveUserCount int     `json:"inactive_user_count"`
+}
+
+// --- Intune (S88-7) ---
+
+// IntuneConfig holds Graph API client-credentials for the customer's tenant.
+type IntuneConfig struct {
+	TenantID     string `json:"tenant_id"`
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"` // stored encrypted
+}
+
+// SaveIntuneConfigInput is the validated HTTP input for saving Intune config.
+type SaveIntuneConfigInput struct {
+	TenantID     string `json:"tenant_id"     validate:"required"`
+	ClientID     string `json:"client_id"     validate:"required"`
+	ClientSecret string `json:"client_secret" validate:"required"`
+}
+
+// IntuneConfigResponse is returned from GET /intune/config (secret masked).
+type IntuneConfigResponse struct {
+	TenantID     string `json:"tenant_id"`
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"` // "****" if set
+	IsConfigured bool   `json:"is_configured"`
+}
+
+// IntuneStatus extends SyncStatus with device-posture metrics.
+type IntuneStatus struct {
+	SyncStatus
+	DeviceCompliancePct float64 `json:"device_compliance_pct"`
 }
 
 // --- Keycloak ---

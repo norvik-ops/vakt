@@ -6,6 +6,9 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -24,8 +27,22 @@ const vaktVersion = "dev"
 // safeNameRe strips characters that are unsafe in filenames.
 var safeNameRe = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
 
+// moduleEnabled reports whether the named module appears in the comma-separated
+// VAKT_MODULES_ENABLED value (case-insensitive). Mirrors config.IsModuleEnabled
+// without importing config, so the export respects per-module activation.
+func moduleEnabled(csv, name string) bool {
+	for _, m := range strings.Split(csv, ",") {
+		if strings.EqualFold(strings.TrimSpace(m), name) {
+			return true
+		}
+	}
+	return false
+}
+
 // ExportHandler returns an Echo handler that streams a full-data ZIP to the client.
-func ExportHandler(db *pgxpool.Pool) echo.HandlerFunc {
+// modulesEnabled is the VAKT_MODULES_ENABLED CSV; HR/Aware files are only included
+// when the respective module is active (S89-2).
+func ExportHandler(db *pgxpool.Pool, modulesEnabled string) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		orgID, ok := c.Get("org_id").(string)
 		if !ok || orgID == "" {
@@ -43,7 +60,7 @@ func ExportHandler(db *pgxpool.Pool) echo.HandlerFunc {
 			orgName = orgID
 		}
 
-		zipBytes, err := buildZip(ctx, db, orgID, orgName)
+		zipBytes, err := buildZip(ctx, db, orgID, orgName, modulesEnabled)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "export failed"})
 		}
@@ -58,7 +75,7 @@ func ExportHandler(db *pgxpool.Pool) echo.HandlerFunc {
 }
 
 // buildZip assembles all entity JSON files into a single ZIP archive.
-func buildZip(ctx context.Context, db *pgxpool.Pool, orgID, orgName string) ([]byte, error) {
+func buildZip(ctx context.Context, db *pgxpool.Pool, orgID, orgName, modulesEnabled string) ([]byte, error) {
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 
@@ -121,6 +138,88 @@ func buildZip(ctx context.Context, db *pgxpool.Pool, orgID, orgName string) ([]b
 		}
 	}
 
+	// Vakt HR tables (hr_ prefix) — employee directory + lifecycle records.
+	// Only exported when the vakthr module is enabled (S89-2, PRIV-001).
+	// These carry identifying PII (names, e-mails) and belong in an Art. 20 export.
+	if moduleEnabled(modulesEnabled, "vakthr") {
+		hrEntries := []struct {
+			file  string
+			query string
+		}{
+			{"hr_employees.json", `SELECT * FROM hr_employees WHERE org_id = $1::uuid ORDER BY created_at`},
+			{"hr_checklist_runs.json", `SELECT * FROM hr_checklist_runs WHERE org_id = $1::uuid ORDER BY created_at`},
+			{"hr_contractors.json", `SELECT * FROM hr_contractors WHERE org_id = $1::uuid ORDER BY created_at`},
+			{"hr_mover_events.json", `SELECT * FROM hr_mover_events WHERE org_id = $1::uuid ORDER BY created_at`},
+		}
+		for _, e := range hrEntries {
+			data, err := queryToJSON(ctx, db, orgID, e.query)
+			if err != nil {
+				data = []byte("[]")
+			}
+			if err := writeRaw(zw, e.file, data); err != nil {
+				return nil, fmt.Errorf("%s: %w", e.file, err)
+			}
+		}
+	}
+
+	// Vakt Aware tables (sr_ prefix). Only exported when vaktaware is enabled.
+	//
+	// §87 BetrVG / Betriebsrat: the awareness module promises that the org admin
+	// can never see WHICH person clicked a phishing simulation. This org-takeout
+	// must not break that promise:
+	//   - sr_targets (the directory: name/e-mail) is exported RAW — same class as
+	//     hr_employees; the admin already knows their staff.
+	//   - sr_events / sr_assignments (phishing RESULTS) are PSEUDONYMISED: the
+	//     target_id is replaced by a salted SHA-256 digest. A fresh random salt is
+	//     generated per export and never written to the archive, so the admin
+	//     cannot re-hash sr_targets.id to re-identify who had which result. The
+	//     digest is deterministic within one export, preserving internal
+	//     consistency across the result tables.
+	//   - sr_completions has no direct person column (it links via assignment_id
+	//     to the already-pseudonymised sr_assignments), so it is exported raw.
+	// A true per-person DSAR (out of scope here) would export these fully.
+	if moduleEnabled(modulesEnabled, "vaktaware") {
+		salt := make([]byte, 16)
+		_, _ = rand.Read(salt)
+
+		// Directory PII — raw.
+		if data, err := queryToJSON(ctx, db, orgID,
+			`SELECT * FROM sr_targets WHERE org_id = $1::uuid ORDER BY created_at`); err == nil {
+			if err := writeRaw(zw, "sr_targets.json", data); err != nil {
+				return nil, fmt.Errorf("sr_targets: %w", err)
+			}
+		} else {
+			_ = writeRaw(zw, "sr_targets.json", []byte("[]"))
+		}
+
+		// Phishing results — pseudonymise the person link (target_id).
+		pseudoEntries := []struct {
+			file  string
+			query string
+		}{
+			{"sr_events.json", `SELECT * FROM sr_events WHERE org_id = $1::uuid ORDER BY occurred_at`},
+			{"sr_assignments.json", `SELECT * FROM sr_assignments WHERE org_id = $1::uuid ORDER BY created_at`},
+		}
+		for _, e := range pseudoEntries {
+			data, err := queryToJSONPseudonymised(ctx, db, orgID, e.query, salt, map[string]bool{"target_id": true})
+			if err != nil {
+				data = []byte("[]")
+			}
+			if err := writeRaw(zw, e.file, data); err != nil {
+				return nil, fmt.Errorf("%s: %w", e.file, err)
+			}
+		}
+		// Completions — no direct person column; exported raw.
+		if data, err := queryToJSON(ctx, db, orgID,
+			`SELECT * FROM sr_completions WHERE org_id = $1::uuid ORDER BY completed_at`); err == nil {
+			if err := writeRaw(zw, "sr_completions.json", data); err != nil {
+				return nil, fmt.Errorf("sr_completions: %w", err)
+			}
+		} else {
+			_ = writeRaw(zw, "sr_completions.json", []byte("[]"))
+		}
+	}
+
 	// Audit log — scoped to org.
 	auditData, err := queryToJSON(ctx, db, orgID,
 		`SELECT * FROM audit_log WHERE org_id = $1::uuid AND deleted_at IS NULL ORDER BY created_at`)
@@ -167,6 +266,54 @@ func queryToJSON(ctx context.Context, db *pgxpool.Pool, orgID, query string) ([]
 		results = []map[string]any{}
 	}
 	return json.Marshal(results)
+}
+
+// queryToJSONPseudonymised behaves like queryToJSON but replaces the value of
+// each column named in pseudoCols with a salted, non-reversible digest. Used to
+// pseudonymise the person link (target_id) in Vakt Aware result tables so an
+// org-takeout cannot re-identify who had which phishing result (§87 BetrVG).
+func queryToJSONPseudonymised(ctx context.Context, db *pgxpool.Pool, orgID, query string, salt []byte, pseudoCols map[string]bool) ([]byte, error) {
+	rows, err := db.Query(ctx, query, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	fields := rows.FieldDescriptions()
+	var results []map[string]any
+	for rows.Next() {
+		vals, err := rows.Values()
+		if err != nil {
+			return nil, err
+		}
+		row := make(map[string]any, len(fields))
+		for i, f := range fields {
+			name := string(f.Name)
+			if pseudoCols[name] && vals[i] != nil {
+				row[name] = pseudonymise(salt, fmt.Sprintf("%v", vals[i]))
+			} else {
+				row[name] = vals[i]
+			}
+		}
+		results = append(results, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if results == nil {
+		results = []map[string]any{}
+	}
+	return json.Marshal(results)
+}
+
+// pseudonymise returns a salted, non-reversible 16-char hex digest of value.
+// The salt is generated per export and never leaves the process, so the digest
+// cannot be re-computed from any exported plaintext id.
+func pseudonymise(salt []byte, value string) string {
+	h := sha256.New()
+	h.Write(salt)
+	h.Write([]byte(value))
+	return "anon_" + hex.EncodeToString(h.Sum(nil)[:8])
 }
 
 // writeJSON marshals v to JSON and writes it as a zip entry.

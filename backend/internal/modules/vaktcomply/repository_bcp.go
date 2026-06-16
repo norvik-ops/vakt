@@ -132,16 +132,25 @@ func (r *Repository) GetLatestBCPTest(ctx context.Context, orgID, planID string)
 
 // bcpPlanFromRow maps a db.CkBcpPlans row to the BCPPlan domain model.
 func bcpPlanFromRow(row db.CkBcpPlans) BCPPlan {
+	var lastTested *string
+	if row.LastTestedAt.Valid {
+		s := row.LastTestedAt.Time.Format("2006-01-02")
+		lastTested = &s
+	}
 	return BCPPlan{
-		ID:        row.ID,
-		OrgID:     row.OrgID,
-		Title:     row.Title,
-		Scope:     row.Scope,
-		Version:   row.Version,
-		Status:    row.Status,
-		Owner:     row.Owner,
-		CreatedAt: ckTsToTime(row.CreatedAt),
-		UpdatedAt: ckTsToTime(row.UpdatedAt),
+		ID:                  row.ID,
+		OrgID:               row.OrgID,
+		Title:               row.Title,
+		Scope:               row.Scope,
+		Version:             row.Version,
+		Status:              row.Status,
+		Owner:               row.Owner,
+		RTOHours:            int(row.RtoHours),
+		RPOHours:            int(row.RpoHours),
+		Schutzbedarfsklasse: int(row.Schutzbedarfsklasse),
+		LastTestedAt:        lastTested,
+		CreatedAt:           ckTsToTime(row.CreatedAt),
+		UpdatedAt:           ckTsToTime(row.UpdatedAt),
 	}
 }
 

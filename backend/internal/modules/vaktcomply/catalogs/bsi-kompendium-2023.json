@@ -12,14 +12,54 @@
           "title": "Sicherheitsmanagement",
           "kurzbeschreibung": "Aufbau und Betrieb eines ISMS nach BSI-Standard 200-1/2",
           "anforderungen": [
-            {"id":"BSI-ISMS.1.A1","title":"Übernahme von Verantwortung der Leitung","stufe":"basis","kurzbeschreibung":"Die Leitung verabschiedet eine schriftliche Informationssicherheitsleitlinie mit Zielen, Geltungsbereich und Verantwortlichkeiten. Mindestens jährlich überprüfen. Nachweis: unterzeichnete Leitlinie, Aktualisierungshistorie."},
-            {"id":"BSI-ISMS.1.A2","title":"Beauftragung eines ISB","stufe":"basis","kurzbeschreibung":"Einen Informationssicherheitsbeauftragten (ISB) schriftlich beauftragen, mit ausreichenden Ressourcen und angemessener hierarchischer Positionierung. Nachweis: Beauftragungsschreiben, Organigramm, Stellenbeschreibung."},
-            {"id":"BSI-ISMS.1.A4","title":"Ressourcen für Informationssicherheit","stufe":"basis","kurzbeschreibung":"Ausreichende personelle, finanzielle und infrastrukturelle Ressourcen für den Betrieb des ISMS sicherstellen. Nachweis: Ressourcenplanung, Budgetnachweis, ISB-Stunden."},
-            {"id":"BSI-ISMS.1.A5","title":"IS-Leitlinie und Ziele kommunizieren","stufe":"basis","kurzbeschreibung":"Die IS-Leitlinie und konkrete Sicherheitsziele aktiv an alle Mitarbeitenden kommunizieren (Intranet, Onboarding, Schulungen). Nachweis: Kommunikationsnachweise, Onboarding-Unterlagen."},
-            {"id":"BSI-ISMS.1.A6","title":"Sicherheitskonzept","stufe":"standard","kurzbeschreibung":"Dokumentiertes Sicherheitskonzept nach BSI-Standard 200-2 erstellen (Geltungsbereich, Schutzbedarfsfeststellung, Modellierung). Nachweis: Sicherheitskonzept-Dokument inkl. IT-Grundschutz-Check."},
-            {"id":"BSI-ISMS.1.A9","title":"Management-Review","stufe":"standard","kurzbeschreibung":"Mindestens jährliches dokumentiertes Management-Review der Informationssicherheit (Risiken, Vorfälle, Kennzahlen, Verbesserungen). Nachweis: Protokoll, Maßnahmenliste."},
-            {"id":"BSI-ISMS.1.A10","title":"Überprüfung und Steuerung des ISMS","stufe":"standard","kurzbeschreibung":"Regelmäßige interne IS-Audits durchführen und das ISMS durch KPIs und Kennzahlen steuern. Berichte an die Leitung. Nachweis: Auditplan, Auditberichte, KPI-Dashboard."},
-            {"id":"BSI-ISMS.1.A11","title":"Erklärung zur Anwendbarkeit","stufe":"erhoeht","kurzbeschreibung":"Erklärung zur Anwendbarkeit (Statement of Applicability) gemäß ISO 27001 A.6.1.3 erstellen und pflegen. Nachweis: SoA-Dokument mit Begründungen."}
+            {
+              "id": "BSI-ISMS.1.A1",
+              "title": "Übernahme von Verantwortung der Leitung",
+              "stufe": "basis",
+              "kurzbeschreibung": "Die Leitung verabschiedet eine schriftliche Informationssicherheitsleitlinie mit Zielen, Geltungsbereich und Verantwortlichkeiten. Mindestens jährlich überprüfen. Nachweis: unterzeichnete Leitlinie, Aktualisierungshistorie."
+            },
+            {
+              "id": "BSI-ISMS.1.A2",
+              "title": "Beauftragung eines ISB",
+              "stufe": "basis",
+              "kurzbeschreibung": "Einen Informationssicherheitsbeauftragten (ISB) schriftlich beauftragen, mit ausreichenden Ressourcen und angemessener hierarchischer Positionierung. Nachweis: Beauftragungsschreiben, Organigramm, Stellenbeschreibung."
+            },
+            {
+              "id": "BSI-ISMS.1.A4",
+              "title": "Ressourcen für Informationssicherheit",
+              "stufe": "basis",
+              "kurzbeschreibung": "Ausreichende personelle, finanzielle und infrastrukturelle Ressourcen für den Betrieb des ISMS sicherstellen. Nachweis: Ressourcenplanung, Budgetnachweis, ISB-Stunden."
+            },
+            {
+              "id": "BSI-ISMS.1.A5",
+              "title": "IS-Leitlinie und Ziele kommunizieren",
+              "stufe": "basis",
+              "kurzbeschreibung": "Die IS-Leitlinie und konkrete Sicherheitsziele aktiv an alle Mitarbeitenden kommunizieren (Intranet, Onboarding, Schulungen). Nachweis: Kommunikationsnachweise, Onboarding-Unterlagen."
+            },
+            {
+              "id": "BSI-ISMS.1.A6",
+              "title": "Sicherheitskonzept",
+              "stufe": "standard",
+              "kurzbeschreibung": "Dokumentiertes Sicherheitskonzept nach BSI-Standard 200-2 erstellen (Geltungsbereich, Schutzbedarfsfeststellung, Modellierung). Nachweis: Sicherheitskonzept-Dokument inkl. IT-Grundschutz-Check."
+            },
+            {
+              "id": "BSI-ISMS.1.A9",
+              "title": "Management-Review",
+              "stufe": "standard",
+              "kurzbeschreibung": "Mindestens jährliches dokumentiertes Management-Review der Informationssicherheit (Risiken, Vorfälle, Kennzahlen, Verbesserungen). Nachweis: Protokoll, Maßnahmenliste."
+            },
+            {
+              "id": "BSI-ISMS.1.A10",
+              "title": "Überprüfung und Steuerung des ISMS",
+              "stufe": "standard",
+              "kurzbeschreibung": "Regelmäßige interne IS-Audits durchführen und das ISMS durch KPIs und Kennzahlen steuern. Berichte an die Leitung. Nachweis: Auditplan, Auditberichte, KPI-Dashboard."
+            },
+            {
+              "id": "BSI-ISMS.1.A11",
+              "title": "Erklärung zur Anwendbarkeit",
+              "stufe": "erhoeht",
+              "kurzbeschreibung": "Erklärung zur Anwendbarkeit (Statement of Applicability) gemäß ISO 27001 A.6.1.3 erstellen und pflegen. Nachweis: SoA-Dokument mit Begründungen."
+            }
           ]
         }
       ]
@@ -33,9 +73,24 @@
           "title": "Organisation",
           "kurzbeschreibung": "Aufbauorganisation und Prozesse für Informationssicherheit",
           "anforderungen": [
-            {"id":"BSI-ORP.1.A1","title":"Festlegung von Sicherheitsrollen","stufe":"basis","kurzbeschreibung":"Sicherheitsrollen (ISB, IT-Verantwortliche, Auditoren) schriftlich mit klaren Aufgaben und Befugnissen definieren. Nachweis: Stellenbeschreibungen, Organigramm, Rollenmatrix."},
-            {"id":"BSI-ORP.1.A2","title":"Zuweisung von Verantwortlichkeiten","stufe":"standard","kurzbeschreibung":"Für alle sicherheitsrelevanten Prozesse und Systeme Verantwortliche schriftlich benennen. Nachweis: Verantwortlichkeitsmatrix, Dokumentationsnachweise."},
-            {"id":"BSI-ORP.1.A3","title":"Beaufsichtigung oder Begleitung von Fremdpersonen","stufe":"basis","kurzbeschreibung":"Externe Personen in Sicherheitsbereichen beaufsichtigen oder begleiten. Nachweis: Besucherprotokoll, Zugangsrichtlinie."}
+            {
+              "id": "BSI-ORP.1.A1",
+              "title": "Festlegung von Sicherheitsrollen",
+              "stufe": "basis",
+              "kurzbeschreibung": "Sicherheitsrollen (ISB, IT-Verantwortliche, Auditoren) schriftlich mit klaren Aufgaben und Befugnissen definieren. Nachweis: Stellenbeschreibungen, Organigramm, Rollenmatrix."
+            },
+            {
+              "id": "BSI-ORP.1.A2",
+              "title": "Zuweisung von Verantwortlichkeiten",
+              "stufe": "standard",
+              "kurzbeschreibung": "Für alle sicherheitsrelevanten Prozesse und Systeme Verantwortliche schriftlich benennen. Nachweis: Verantwortlichkeitsmatrix, Dokumentationsnachweise."
+            },
+            {
+              "id": "BSI-ORP.1.A3",
+              "title": "Beaufsichtigung oder Begleitung von Fremdpersonen",
+              "stufe": "basis",
+              "kurzbeschreibung": "Externe Personen in Sicherheitsbereichen beaufsichtigen oder begleiten. Nachweis: Besucherprotokoll, Zugangsrichtlinie."
+            }
           ]
         },
         {
@@ -43,11 +98,36 @@
           "title": "Personal",
           "kurzbeschreibung": "Personelle Maßnahmen für Informationssicherheit",
           "anforderungen": [
-            {"id":"BSI-ORP.2.A1","title":"Auswahl von Personal","stufe":"basis","kurzbeschreibung":"Bei Einstellung von Personen mit Zugang zu schützenswerten Informationen Eignungsprüfungen berücksichtigen. Nachweis: Personalprozess, Stichproben."},
-            {"id":"BSI-ORP.2.A2","title":"Verpflichtung von Personal","stufe":"basis","kurzbeschreibung":"Mitarbeitende vor Aufnahme der Tätigkeit schriftlich auf Vertraulichkeit, Datenschutz und Compliance-Vorgaben verpflichten. Nachweis: unterzeichnete Vertraulichkeitsverpflichtungen."},
-            {"id":"BSI-ORP.2.A3","title":"Einweisung neuer Mitarbeitender","stufe":"basis","kurzbeschreibung":"Neue Mitarbeitende beim Onboarding auf IS-Regeln, Ansprechpartner und ihre Pflichten hinweisen. Nachweis: Onboarding-Checkliste, Teilnahmebestätigung."},
-            {"id":"BSI-ORP.2.A4","title":"Regelung für Telearbeit und mobiles Arbeiten","stufe":"standard","kurzbeschreibung":"Verbindliche Regeln für Heimarbeit und mobiles Arbeiten festlegen (VPN-Pflicht, Sichtschutz, freigegebene Systeme). Nachweis: Telearbeitsrichtlinie, MDM-Konfiguration."},
-            {"id":"BSI-ORP.2.A5","title":"Reaktion auf Änderungen personeller Art","stufe":"standard","kurzbeschreibung":"Beim Ausscheiden oder Rollenwechsel von Mitarbeitenden Zugriffsrechte sofort entziehen. Nachweis: Offboarding-Checkliste, Zugriffsprotokoll."}
+            {
+              "id": "BSI-ORP.2.A1",
+              "title": "Auswahl von Personal",
+              "stufe": "basis",
+              "kurzbeschreibung": "Bei Einstellung von Personen mit Zugang zu schützenswerten Informationen Eignungsprüfungen berücksichtigen. Nachweis: Personalprozess, Stichproben."
+            },
+            {
+              "id": "BSI-ORP.2.A2",
+              "title": "Verpflichtung von Personal",
+              "stufe": "basis",
+              "kurzbeschreibung": "Mitarbeitende vor Aufnahme der Tätigkeit schriftlich auf Vertraulichkeit, Datenschutz und Compliance-Vorgaben verpflichten. Nachweis: unterzeichnete Vertraulichkeitsverpflichtungen."
+            },
+            {
+              "id": "BSI-ORP.2.A3",
+              "title": "Einweisung neuer Mitarbeitender",
+              "stufe": "basis",
+              "kurzbeschreibung": "Neue Mitarbeitende beim Onboarding auf IS-Regeln, Ansprechpartner und ihre Pflichten hinweisen. Nachweis: Onboarding-Checkliste, Teilnahmebestätigung."
+            },
+            {
+              "id": "BSI-ORP.2.A4",
+              "title": "Regelung für Telearbeit und mobiles Arbeiten",
+              "stufe": "standard",
+              "kurzbeschreibung": "Verbindliche Regeln für Heimarbeit und mobiles Arbeiten festlegen (VPN-Pflicht, Sichtschutz, freigegebene Systeme). Nachweis: Telearbeitsrichtlinie, MDM-Konfiguration."
+            },
+            {
+              "id": "BSI-ORP.2.A5",
+              "title": "Reaktion auf Änderungen personeller Art",
+              "stufe": "standard",
+              "kurzbeschreibung": "Beim Ausscheiden oder Rollenwechsel von Mitarbeitenden Zugriffsrechte sofort entziehen. Nachweis: Offboarding-Checkliste, Zugriffsprotokoll."
+            }
           ]
         },
         {
@@ -55,9 +135,24 @@
           "title": "Sensibilisierung und Schulung zur Informationssicherheit",
           "kurzbeschreibung": "Awareness-Programme und Schulungsmaßnahmen",
           "anforderungen": [
-            {"id":"BSI-ORP.3.A1","title":"Sensibilisierung und Schulung","stufe":"basis","kurzbeschreibung":"Mindestens jährlich alle Mitarbeitenden in Informationssicherheit schulen (Phishing, Passwörter, Social Engineering). Nachweis: Teilnehmerlisten, Trainingsunterlagen."},
-            {"id":"BSI-ORP.3.A2","title":"Schulungsprogramm und Zielgruppen","stufe":"standard","kurzbeschreibung":"Strukturiertes Schulungsprogramm mit zielgruppenspezifischen Inhalten (IT, Management, Endnutzer). Nachweis: Schulungsplan, Curriculum."},
-            {"id":"BSI-ORP.3.A3","title":"Messung der Schulungswirksamkeit","stufe":"standard","kurzbeschreibung":"Wirksamkeit der Sensibilisierungsmaßnahmen messen (Tests, Simulationen). Nachweis: Testergebnisse, Phishing-Simulationsberichte."}
+            {
+              "id": "BSI-ORP.3.A1",
+              "title": "Sensibilisierung und Schulung",
+              "stufe": "basis",
+              "kurzbeschreibung": "Mindestens jährlich alle Mitarbeitenden in Informationssicherheit schulen (Phishing, Passwörter, Social Engineering). Nachweis: Teilnehmerlisten, Trainingsunterlagen."
+            },
+            {
+              "id": "BSI-ORP.3.A2",
+              "title": "Schulungsprogramm und Zielgruppen",
+              "stufe": "standard",
+              "kurzbeschreibung": "Strukturiertes Schulungsprogramm mit zielgruppenspezifischen Inhalten (IT, Management, Endnutzer). Nachweis: Schulungsplan, Curriculum."
+            },
+            {
+              "id": "BSI-ORP.3.A3",
+              "title": "Messung der Schulungswirksamkeit",
+              "stufe": "standard",
+              "kurzbeschreibung": "Wirksamkeit der Sensibilisierungsmaßnahmen messen (Tests, Simulationen). Nachweis: Testergebnisse, Phishing-Simulationsberichte."
+            }
           ]
         },
         {
@@ -65,9 +160,24 @@
           "title": "Identitäts- und Berechtigungsmanagement",
           "kurzbeschreibung": "IAM-Prozesse nach Need-to-Know-Prinzip",
           "anforderungen": [
-            {"id":"BSI-ORP.4.A1","title":"Regelung für Benutzerkonten und Zugriffsrechte","stufe":"basis","kurzbeschreibung":"Identitätslebenszyklen (Beantragen, Genehmigen, Wieder-Entziehen) für alle Systeme schriftlich festlegen. Berechtigungen folgen Need-to-Know. Nachweis: IAM-Richtlinie, Berechtigungsmatrix, Rezertifizierung."},
-            {"id":"BSI-ORP.4.A2","title":"Einrichtung, Änderung und Entzug von Berechtigungen","stufe":"standard","kurzbeschreibung":"Prozess für Berechtigungsänderungen mit Vier-Augen-Prinzip und Dokumentation. Nachweis: Change-Tickets, Genehmigungsprotokolle."},
-            {"id":"BSI-ORP.4.A3","title":"Regelmäßige Überprüfung von Berechtigungen","stufe":"standard","kurzbeschreibung":"Mindestens jährliche Rezertifizierung aller Berechtigungen. Nachweis: Rezertifizierungsberichte, Bereinigungsprotokolle."}
+            {
+              "id": "BSI-ORP.4.A1",
+              "title": "Regelung für Benutzerkonten und Zugriffsrechte",
+              "stufe": "basis",
+              "kurzbeschreibung": "Identitätslebenszyklen (Beantragen, Genehmigen, Wieder-Entziehen) für alle Systeme schriftlich festlegen. Berechtigungen folgen Need-to-Know. Nachweis: IAM-Richtlinie, Berechtigungsmatrix, Rezertifizierung."
+            },
+            {
+              "id": "BSI-ORP.4.A2",
+              "title": "Einrichtung, Änderung und Entzug von Berechtigungen",
+              "stufe": "standard",
+              "kurzbeschreibung": "Prozess für Berechtigungsänderungen mit Vier-Augen-Prinzip und Dokumentation. Nachweis: Change-Tickets, Genehmigungsprotokolle."
+            },
+            {
+              "id": "BSI-ORP.4.A3",
+              "title": "Regelmäßige Überprüfung von Berechtigungen",
+              "stufe": "standard",
+              "kurzbeschreibung": "Mindestens jährliche Rezertifizierung aller Berechtigungen. Nachweis: Rezertifizierungsberichte, Bereinigungsprotokolle."
+            }
           ]
         },
         {
@@ -75,8 +185,18 @@
           "title": "Compliance Management",
           "kurzbeschreibung": "Einhaltung rechtlicher und regulatorischer Anforderungen",
           "anforderungen": [
-            {"id":"BSI-ORP.5.A1","title":"Compliance Management","stufe":"basis","kurzbeschreibung":"Einhaltung aller relevanten rechtlichen, regulatorischen und vertraglichen Anforderungen sicherstellen. Compliance-Register und regelmäßige Reviews. Nachweis: Compliance-Register, Review-Protokolle, Maßnahmenplan."},
-            {"id":"BSI-ORP.5.A2","title":"Compliance-Berichterstattung","stufe":"standard","kurzbeschreibung":"Regelmäßige Compliance-Berichte an die Leitung erstellen. Nachweis: Berichte, Genehmigungsprotokolle."}
+            {
+              "id": "BSI-ORP.5.A1",
+              "title": "Compliance Management",
+              "stufe": "basis",
+              "kurzbeschreibung": "Einhaltung aller relevanten rechtlichen, regulatorischen und vertraglichen Anforderungen sicherstellen. Compliance-Register und regelmäßige Reviews. Nachweis: Compliance-Register, Review-Protokolle, Maßnahmenplan."
+            },
+            {
+              "id": "BSI-ORP.5.A2",
+              "title": "Compliance-Berichterstattung",
+              "stufe": "standard",
+              "kurzbeschreibung": "Regelmäßige Compliance-Berichte an die Leitung erstellen. Nachweis: Berichte, Genehmigungsprotokolle."
+            }
           ]
         }
       ]
@@ -90,8 +210,18 @@
           "title": "Kryptokonzept",
           "kurzbeschreibung": "Kryptographische Verfahren und Schlüsselverwaltung",
           "anforderungen": [
-            {"id":"BSI-CON.1.A1","title":"Kryptokonzept","stufe":"basis","kurzbeschreibung":"Kryptokonzept erstellen: eingesetzte Verfahren, Schlüssellängen und Algorithmen nach BSI-TR-02102. Nachweis: Kryptokonzept-Dokument, Cipher-Suite-Konfiguration."},
-            {"id":"BSI-CON.1.A2","title":"Datenverschlüsselung","stufe":"standard","kurzbeschreibung":"Schützenswerte Daten verschlüsseln (at rest und in transit). Nachweis: Verschlüsselungskonfiguration, Prüfprotokoll."}
+            {
+              "id": "BSI-CON.1.A1",
+              "title": "Kryptokonzept",
+              "stufe": "basis",
+              "kurzbeschreibung": "Kryptokonzept erstellen: eingesetzte Verfahren, Schlüssellängen und Algorithmen nach BSI-TR-02102. Nachweis: Kryptokonzept-Dokument, Cipher-Suite-Konfiguration."
+            },
+            {
+              "id": "BSI-CON.1.A2",
+              "title": "Datenverschlüsselung",
+              "stufe": "standard",
+              "kurzbeschreibung": "Schützenswerte Daten verschlüsseln (at rest und in transit). Nachweis: Verschlüsselungskonfiguration, Prüfprotokoll."
+            }
           ]
         },
         {
@@ -99,8 +229,18 @@
           "title": "Datenschutz",
           "kurzbeschreibung": "DSGVO-konforme Datenverarbeitung",
           "anforderungen": [
-            {"id":"BSI-CON.2.A1","title":"Datenschutz","stufe":"basis","kurzbeschreibung":"DSGVO-konforme Verarbeitung sicherstellen (Art. 5, 25, 32). VVT pflegen, TOMs jährlich prüfen. Nachweis: VVT, TOM-Dokumentation, DSFA (sofern erforderlich)."},
-            {"id":"BSI-CON.2.A2","title":"Datenschutzbeauftragter","stufe":"basis","kurzbeschreibung":"DSB benennen (sofern erforderlich) und datenschutzrechtliche Pflichten dokumentieren. Nachweis: DSB-Bestellung, Meldenachweis."}
+            {
+              "id": "BSI-CON.2.A1",
+              "title": "Datenschutz",
+              "stufe": "basis",
+              "kurzbeschreibung": "DSGVO-konforme Verarbeitung sicherstellen (Art. 5, 25, 32). VVT pflegen, TOMs jährlich prüfen. Nachweis: VVT, TOM-Dokumentation, DSFA (sofern erforderlich)."
+            },
+            {
+              "id": "BSI-CON.2.A2",
+              "title": "Datenschutzbeauftragter",
+              "stufe": "basis",
+              "kurzbeschreibung": "DSB benennen (sofern erforderlich) und datenschutzrechtliche Pflichten dokumentieren. Nachweis: DSB-Bestellung, Meldenachweis."
+            }
           ]
         },
         {
@@ -108,8 +248,18 @@
           "title": "Datensicherungskonzept",
           "kurzbeschreibung": "Backup-Strategie und Restore-Tests",
           "anforderungen": [
-            {"id":"BSI-CON.3.A1","title":"Datensicherungskonzept","stufe":"basis","kurzbeschreibung":"Datensicherungskonzept definieren (Häufigkeit, Aufbewahrung, Offsite, Tests). 3-2-1-Regel. Restore mindestens halbjährlich testen. Nachweis: Konzeptdokument, Backup-Logs, Restore-Test-Protokolle."},
-            {"id":"BSI-CON.3.A2","title":"Festlegung von Verantwortlichkeiten","stufe":"standard","kurzbeschreibung":"Verantwortliche für Backup und Restore benennen. Nachweis: Rollenmatrix, Eskalationspfad."}
+            {
+              "id": "BSI-CON.3.A1",
+              "title": "Datensicherungskonzept",
+              "stufe": "basis",
+              "kurzbeschreibung": "Datensicherungskonzept definieren (Häufigkeit, Aufbewahrung, Offsite, Tests). 3-2-1-Regel. Restore mindestens halbjährlich testen. Nachweis: Konzeptdokument, Backup-Logs, Restore-Test-Protokolle."
+            },
+            {
+              "id": "BSI-CON.3.A2",
+              "title": "Festlegung von Verantwortlichkeiten",
+              "stufe": "standard",
+              "kurzbeschreibung": "Verantwortliche für Backup und Restore benennen. Nachweis: Rollenmatrix, Eskalationspfad."
+            }
           ]
         },
         {
@@ -117,8 +267,18 @@
           "title": "Auswahl und Einsatz von Standardsoftware",
           "kurzbeschreibung": "Sicherheitskriterien für Standardsoftware-Beschaffung",
           "anforderungen": [
-            {"id":"BSI-CON.4.A1","title":"Auswahl von Standardsoftware","stufe":"basis","kurzbeschreibung":"Kriterien für Auswahl von Standardsoftware definieren: Sicherheitszertifizierung, Support-Zeitraum, Lizenzmodell, DSGVO-Konformität. Nachweis: Auswahlkriterien-Dokumentation, Beschaffungsprotokoll."},
-            {"id":"BSI-CON.4.A2","title":"Regelung für Softwareinstallationen","stufe":"standard","kurzbeschreibung":"Softwareinstallationen nur nach Freigabe durch IT-Abteilung. Nachweis: Freigabeprozess, Whitelist."}
+            {
+              "id": "BSI-CON.4.A1",
+              "title": "Auswahl von Standardsoftware",
+              "stufe": "basis",
+              "kurzbeschreibung": "Kriterien für Auswahl von Standardsoftware definieren: Sicherheitszertifizierung, Support-Zeitraum, Lizenzmodell, DSGVO-Konformität. Nachweis: Auswahlkriterien-Dokumentation, Beschaffungsprotokoll."
+            },
+            {
+              "id": "BSI-CON.4.A2",
+              "title": "Regelung für Softwareinstallationen",
+              "stufe": "standard",
+              "kurzbeschreibung": "Softwareinstallationen nur nach Freigabe durch IT-Abteilung. Nachweis: Freigabeprozess, Whitelist."
+            }
           ]
         },
         {
@@ -126,8 +286,18 @@
           "title": "Entwicklung und Beschaffung",
           "kurzbeschreibung": "Sicherheitsanforderungen in Entwicklung und Beschaffung",
           "anforderungen": [
-            {"id":"BSI-CON.5.A1","title":"Anforderungen an Entwicklung und Beschaffung","stufe":"basis","kurzbeschreibung":"IS-Anforderungen bei Entwicklung und Beschaffung neuer IT-Systeme frühzeitig berücksichtigen (Security by Design). Nachweis: Anforderungskatalog, Sicherheitskonzept."},
-            {"id":"BSI-CON.5.A2","title":"Sicherheitsprüfung vor Produktivnahme","stufe":"standard","kurzbeschreibung":"Neue Systeme vor Produktivnahme auf Sicherheitsanforderungen prüfen. Nachweis: Abnahmeprotokoll, Penetrationstest."}
+            {
+              "id": "BSI-CON.5.A1",
+              "title": "Anforderungen an Entwicklung und Beschaffung",
+              "stufe": "basis",
+              "kurzbeschreibung": "IS-Anforderungen bei Entwicklung und Beschaffung neuer IT-Systeme frühzeitig berücksichtigen (Security by Design). Nachweis: Anforderungskatalog, Sicherheitskonzept."
+            },
+            {
+              "id": "BSI-CON.5.A2",
+              "title": "Sicherheitsprüfung vor Produktivnahme",
+              "stufe": "standard",
+              "kurzbeschreibung": "Neue Systeme vor Produktivnahme auf Sicherheitsanforderungen prüfen. Nachweis: Abnahmeprotokoll, Penetrationstest."
+            }
           ]
         },
         {
@@ -135,8 +305,18 @@
           "title": "Löschen und Vernichten",
           "kurzbeschreibung": "Sicheres Löschen von Datenträgern und Dokumenten",
           "anforderungen": [
-            {"id":"BSI-CON.6.A1","title":"Löschen und Vernichten","stufe":"basis","kurzbeschreibung":"Verfahren für sicheres Löschen und Vernichten von Datenträgern und Dokumenten: zertifizierte Vernichtung (DIN 66399), sichere Löschverfahren. Nachweis: Vernichtungsnachweis, Richtlinie, Zertifikate."},
-            {"id":"BSI-CON.6.A2","title":"Vernichtung von Datenträgern","stufe":"standard","kurzbeschreibung":"Physische Vernichtung vertraulicher Datenträger durch zertifizierte Dienstleister. Nachweis: Vernichtungszertifikate, Lieferantenverträge."}
+            {
+              "id": "BSI-CON.6.A1",
+              "title": "Löschen und Vernichten",
+              "stufe": "basis",
+              "kurzbeschreibung": "Verfahren für sicheres Löschen und Vernichten von Datenträgern und Dokumenten: zertifizierte Vernichtung (DIN 66399), sichere Löschverfahren. Nachweis: Vernichtungsnachweis, Richtlinie, Zertifikate."
+            },
+            {
+              "id": "BSI-CON.6.A2",
+              "title": "Vernichtung von Datenträgern",
+              "stufe": "standard",
+              "kurzbeschreibung": "Physische Vernichtung vertraulicher Datenträger durch zertifizierte Dienstleister. Nachweis: Vernichtungszertifikate, Lieferantenverträge."
+            }
           ]
         },
         {
@@ -144,8 +324,18 @@
           "title": "Informationssicherheit auf Reisen",
           "kurzbeschreibung": "Schutzmaßnahmen beim Arbeiten unterwegs",
           "anforderungen": [
-            {"id":"BSI-CON.7.A1","title":"Regelung zur Nutzung mobiler Datenträger","stufe":"basis","kurzbeschreibung":"Regeln für mobile Datenträger (USB-Sticks, externe Festplatten) definieren und kommunizieren. Nachweis: Richtlinie, technische Durchsetzung (Device-Control), Stichproben."},
-            {"id":"BSI-CON.7.A2","title":"Sensibilisierung der Mitarbeitenden","stufe":"standard","kurzbeschreibung":"Mitarbeitende über Risiken beim mobilen Arbeiten sensibilisieren. Nachweis: Schulungsnachweis."}
+            {
+              "id": "BSI-CON.7.A1",
+              "title": "Regelung zur Nutzung mobiler Datenträger",
+              "stufe": "basis",
+              "kurzbeschreibung": "Regeln für mobile Datenträger (USB-Sticks, externe Festplatten) definieren und kommunizieren. Nachweis: Richtlinie, technische Durchsetzung (Device-Control), Stichproben."
+            },
+            {
+              "id": "BSI-CON.7.A2",
+              "title": "Sensibilisierung der Mitarbeitenden",
+              "stufe": "standard",
+              "kurzbeschreibung": "Mitarbeitende über Risiken beim mobilen Arbeiten sensibilisieren. Nachweis: Schulungsnachweis."
+            }
           ]
         },
         {
@@ -153,8 +343,18 @@
           "title": "Software-Entwicklung",
           "kurzbeschreibung": "Sicherer Software-Entwicklungsprozess (SDLC)",
           "anforderungen": [
-            {"id":"BSI-CON.8.A1","title":"Sichere Software-Entwicklung","stufe":"basis","kurzbeschreibung":"Sicheren SDLC mit Threat-Modeling, Code-Reviews, SAST/DAST und Dependency-Scanning etablieren. Nachweis: Entwicklungsrichtlinie, CI-Pipeline mit Security-Scanning, Pentest-Berichte."},
-            {"id":"BSI-CON.8.A2","title":"Sicherheitstests","stufe":"standard","kurzbeschreibung":"Regelmäßige Sicherheitstests (SAST, DAST, Penetrationstests) im SDLC. Nachweis: Testberichte, Maßnahmen-Tracking."}
+            {
+              "id": "BSI-CON.8.A1",
+              "title": "Sichere Software-Entwicklung",
+              "stufe": "basis",
+              "kurzbeschreibung": "Sicheren SDLC mit Threat-Modeling, Code-Reviews, SAST/DAST und Dependency-Scanning etablieren. Nachweis: Entwicklungsrichtlinie, CI-Pipeline mit Security-Scanning, Pentest-Berichte."
+            },
+            {
+              "id": "BSI-CON.8.A2",
+              "title": "Sicherheitstests",
+              "stufe": "standard",
+              "kurzbeschreibung": "Regelmäßige Sicherheitstests (SAST, DAST, Penetrationstests) im SDLC. Nachweis: Testberichte, Maßnahmen-Tracking."
+            }
           ]
         },
         {
@@ -162,8 +362,18 @@
           "title": "Informationsaustausch",
           "kurzbeschreibung": "Sichere Weitergabe und Veröffentlichung von Informationen",
           "anforderungen": [
-            {"id":"BSI-CON.9.A1","title":"Regelungen zu Weitergabe und Veröffentlichung von Informationen","stufe":"basis","kurzbeschreibung":"Festlegen, welche Informationen an wen über welche Kanäle weitergegeben werden dürfen. Klassifizierungsregeln einhalten. Nachweis: Informationsklassifizierungsrichtlinie, Schulungsnachweise."},
-            {"id":"BSI-CON.9.A2","title":"Umgang mit vertraulichen Informationen","stufe":"standard","kurzbeschreibung":"Vertrauliche Informationen nur verschlüsselt übertragen. Nachweis: Richtlinie, technische Kontrollen."}
+            {
+              "id": "BSI-CON.9.A1",
+              "title": "Regelungen zu Weitergabe und Veröffentlichung von Informationen",
+              "stufe": "basis",
+              "kurzbeschreibung": "Festlegen, welche Informationen an wen über welche Kanäle weitergegeben werden dürfen. Klassifizierungsregeln einhalten. Nachweis: Informationsklassifizierungsrichtlinie, Schulungsnachweise."
+            },
+            {
+              "id": "BSI-CON.9.A2",
+              "title": "Umgang mit vertraulichen Informationen",
+              "stufe": "standard",
+              "kurzbeschreibung": "Vertrauliche Informationen nur verschlüsselt übertragen. Nachweis: Richtlinie, technische Kontrollen."
+            }
           ]
         },
         {
@@ -171,8 +381,18 @@
           "title": "Entwicklung von Webanwendungen",
           "kurzbeschreibung": "Sicherheitsanforderungen für Webanwendungen",
           "anforderungen": [
-            {"id":"BSI-CON.10.A1","title":"Entwicklung und Beschaffung — Sicherheitsanforderungen","stufe":"basis","kurzbeschreibung":"IS-Anforderungen vor Entwicklung oder Beschaffung neuer IT-Systeme und Software definieren (Security-by-Design, Threat Modeling). Nachweis: Anforderungsdokument, Beschaffungs-Checkliste."},
-            {"id":"BSI-CON.10.A2","title":"Kontrolle der Eingabedaten","stufe":"standard","kurzbeschreibung":"Alle Benutzereingaben validieren und sanieren (OWASP Top 10). Nachweis: Code-Review, SAST-Berichte."}
+            {
+              "id": "BSI-CON.10.A1",
+              "title": "Entwicklung und Beschaffung — Sicherheitsanforderungen",
+              "stufe": "basis",
+              "kurzbeschreibung": "IS-Anforderungen vor Entwicklung oder Beschaffung neuer IT-Systeme und Software definieren (Security-by-Design, Threat Modeling). Nachweis: Anforderungsdokument, Beschaffungs-Checkliste."
+            },
+            {
+              "id": "BSI-CON.10.A2",
+              "title": "Kontrolle der Eingabedaten",
+              "stufe": "standard",
+              "kurzbeschreibung": "Alle Benutzereingaben validieren und sanieren (OWASP Top 10). Nachweis: Code-Review, SAST-Berichte."
+            }
           ]
         }
       ]
@@ -186,8 +406,18 @@
           "title": "Ordnungsgemäße IT-Administration",
           "kurzbeschreibung": "Sichere Verwaltung von IT-Systemen",
           "anforderungen": [
-            {"id":"BSI-OPS.1.1.2.A1","title":"Ordnungsgemäße IT-Administration","stufe":"basis","kurzbeschreibung":"Administrative Tätigkeiten von der täglichen Arbeit trennen (separate Admin-Accounts, MFA-Pflicht). Admin-Tätigkeiten vollständig protokollieren. Nachweis: Admin-Account-Liste, MFA-Konfiguration, Audit-Log."},
-            {"id":"BSI-OPS.1.1.2.A2","title":"Dokumentation der Systemkonfiguration","stufe":"standard","kurzbeschreibung":"Systemkonfigurationen versioniert dokumentieren. Nachweis: CMDB, Konfigurations-Baseline."}
+            {
+              "id": "BSI-OPS.1.1.2.A1",
+              "title": "Ordnungsgemäße IT-Administration",
+              "stufe": "basis",
+              "kurzbeschreibung": "Administrative Tätigkeiten von der täglichen Arbeit trennen (separate Admin-Accounts, MFA-Pflicht). Admin-Tätigkeiten vollständig protokollieren. Nachweis: Admin-Account-Liste, MFA-Konfiguration, Audit-Log."
+            },
+            {
+              "id": "BSI-OPS.1.1.2.A2",
+              "title": "Dokumentation der Systemkonfiguration",
+              "stufe": "standard",
+              "kurzbeschreibung": "Systemkonfigurationen versioniert dokumentieren. Nachweis: CMDB, Konfigurations-Baseline."
+            }
           ]
         },
         {
@@ -195,8 +425,18 @@
           "title": "Patch- und Änderungsmanagement",
           "kurzbeschreibung": "Systematisches Patch- und Change-Management",
           "anforderungen": [
-            {"id":"BSI-OPS.1.1.3.A1","title":"Patch- und Änderungsmanagement","stufe":"basis","kurzbeschreibung":"Dokumentiertes Patch- und Change-Management implementieren. Kritische Sicherheitsupdates innerhalb 7 Tagen, sonstige innerhalb 30 Tagen. Nachweis: Patch-Richtlinie, Change-Tickets, Vulnerability-Scans."},
-            {"id":"BSI-OPS.1.1.3.A2","title":"Regelmäßige Aktualisierungen","stufe":"standard","kurzbeschreibung":"Automatische Updates für Betriebssysteme und Anwendungen aktivieren. Nachweis: Patch-Management-Konfiguration."}
+            {
+              "id": "BSI-OPS.1.1.3.A1",
+              "title": "Patch- und Änderungsmanagement",
+              "stufe": "basis",
+              "kurzbeschreibung": "Dokumentiertes Patch- und Change-Management implementieren. Kritische Sicherheitsupdates innerhalb 7 Tagen, sonstige innerhalb 30 Tagen. Nachweis: Patch-Richtlinie, Change-Tickets, Vulnerability-Scans."
+            },
+            {
+              "id": "BSI-OPS.1.1.3.A2",
+              "title": "Regelmäßige Aktualisierungen",
+              "stufe": "standard",
+              "kurzbeschreibung": "Automatische Updates für Betriebssysteme und Anwendungen aktivieren. Nachweis: Patch-Management-Konfiguration."
+            }
           ]
         },
         {
@@ -204,8 +444,18 @@
           "title": "Schutz vor Schadprogrammen",
           "kurzbeschreibung": "Malware-Schutz auf allen Systemen",
           "anforderungen": [
-            {"id":"BSI-OPS.1.1.4.A1","title":"Schutz vor Schadprogrammen","stufe":"basis","kurzbeschreibung":"Auf allen Endpunkten und Servern zentral verwaltete Antimalware-Lösungen einsetzen. Signaturen täglich aktualisieren. Nachweis: AV-Konfiguration, Verteil-Logs, Inzident-Statistik."},
-            {"id":"BSI-OPS.1.1.4.A2","title":"Zentrale Anti-Malware-Verwaltung","stufe":"standard","kurzbeschreibung":"Anti-Malware-Lösungen auf allen Systemen betreiben: regelmäßige Updates, verhaltensbasierte Erkennung, zentrale Verwaltungskonsole. Nachweis: AV-Management-Dashboard, Update-Protokolle, Scan-Berichte."}
+            {
+              "id": "BSI-OPS.1.1.4.A1",
+              "title": "Schutz vor Schadprogrammen",
+              "stufe": "basis",
+              "kurzbeschreibung": "Auf allen Endpunkten und Servern zentral verwaltete Antimalware-Lösungen einsetzen. Signaturen täglich aktualisieren. Nachweis: AV-Konfiguration, Verteil-Logs, Inzident-Statistik."
+            },
+            {
+              "id": "BSI-OPS.1.1.4.A2",
+              "title": "Zentrale Anti-Malware-Verwaltung",
+              "stufe": "standard",
+              "kurzbeschreibung": "Anti-Malware-Lösungen auf allen Systemen betreiben: regelmäßige Updates, verhaltensbasierte Erkennung, zentrale Verwaltungskonsole. Nachweis: AV-Management-Dashboard, Update-Protokolle, Scan-Berichte."
+            }
           ]
         },
         {
@@ -213,8 +463,18 @@
           "title": "Protokollierung",
           "kurzbeschreibung": "Zentrale Protokollierung sicherheitsrelevanter Ereignisse",
           "anforderungen": [
-            {"id":"BSI-OPS.1.1.5.A1","title":"Protokollierung","stufe":"basis","kurzbeschreibung":"Sicherheitsrelevante Ereignisse zentral protokollieren (Logins, Admin-Aktionen, Konfigurationsänderungen). Logs manipulationssicher speichern. Aufbewahrung mind. 1 Jahr. Nachweis: SIEM-Konfiguration, Logging-Konzept, Log-Stichproben."},
-            {"id":"BSI-OPS.1.1.5.A2","title":"Schutz von Protokolldaten","stufe":"standard","kurzbeschreibung":"Protokolldaten vor Manipulation und unberechtigtem Zugriff schützen. Nachweis: WORM-Konfiguration, Zugriffsprotokoll."}
+            {
+              "id": "BSI-OPS.1.1.5.A1",
+              "title": "Protokollierung",
+              "stufe": "basis",
+              "kurzbeschreibung": "Sicherheitsrelevante Ereignisse zentral protokollieren (Logins, Admin-Aktionen, Konfigurationsänderungen). Logs manipulationssicher speichern. Aufbewahrung mind. 1 Jahr. Nachweis: SIEM-Konfiguration, Logging-Konzept, Log-Stichproben."
+            },
+            {
+              "id": "BSI-OPS.1.1.5.A2",
+              "title": "Schutz von Protokolldaten",
+              "stufe": "standard",
+              "kurzbeschreibung": "Protokolldaten vor Manipulation und unberechtigtem Zugriff schützen. Nachweis: WORM-Konfiguration, Zugriffsprotokoll."
+            }
           ]
         },
         {
@@ -222,8 +482,18 @@
           "title": "Software-Freigabeprozess",
           "kurzbeschreibung": "Freigabe und Integritätsprüfung von Software",
           "anforderungen": [
-            {"id":"BSI-OPS.1.1.6.A1","title":"Software-Freigabe und Integrität","stufe":"basis","kurzbeschreibung":"Software nur aus vertrauenswürdigen Quellen beziehen und Integrität vor Installation prüfen. Whitelist erlaubter Anwendungen verwalten. Nachweis: Software-Register, Installationsrichtlinie, Signatürprüfung."},
-            {"id":"BSI-OPS.1.1.6.A2","title":"Softwarekatalog","stufe":"standard","kurzbeschreibung":"Zentralen Softwarekatalog mit freigegebenen Versionen pflegen. Nachweis: CMDB-Softwaremodule, Freigabeprotokoll."}
+            {
+              "id": "BSI-OPS.1.1.6.A1",
+              "title": "Software-Freigabe und Integrität",
+              "stufe": "basis",
+              "kurzbeschreibung": "Software nur aus vertrauenswürdigen Quellen beziehen und Integrität vor Installation prüfen. Whitelist erlaubter Anwendungen verwalten. Nachweis: Software-Register, Installationsrichtlinie, Signatürprüfung."
+            },
+            {
+              "id": "BSI-OPS.1.1.6.A2",
+              "title": "Softwarekatalog",
+              "stufe": "standard",
+              "kurzbeschreibung": "Zentralen Softwarekatalog mit freigegebenen Versionen pflegen. Nachweis: CMDB-Softwaremodule, Freigabeprotokoll."
+            }
           ]
         },
         {
@@ -231,8 +501,18 @@
           "title": "Systemverwaltung",
           "kurzbeschreibung": "Zentrale Systemverwaltung mit CMDB",
           "anforderungen": [
-            {"id":"BSI-OPS.1.1.7.A1","title":"Systemverwaltung","stufe":"basis","kurzbeschreibung":"Alle IT-Systeme zentral verwalten: CMDB, automatisiertes Konfigurationsmanagement (Ansible/Puppet/Chef), Change-Management-Prozess. Nachweis: CMDB-Export, Konfigurations-Baseline, Change-Log."},
-            {"id":"BSI-OPS.1.1.7.A2","title":"Konfigurationsverwaltung","stufe":"standard","kurzbeschreibung":"Konfigurationsänderungen versioniert verwalten. Nachweis: Git-Repository für IaC, Change-History."}
+            {
+              "id": "BSI-OPS.1.1.7.A1",
+              "title": "Systemverwaltung",
+              "stufe": "basis",
+              "kurzbeschreibung": "Alle IT-Systeme zentral verwalten: CMDB, automatisiertes Konfigurationsmanagement (Ansible/Puppet/Chef), Change-Management-Prozess. Nachweis: CMDB-Export, Konfigurations-Baseline, Change-Log."
+            },
+            {
+              "id": "BSI-OPS.1.1.7.A2",
+              "title": "Konfigurationsverwaltung",
+              "stufe": "standard",
+              "kurzbeschreibung": "Konfigurationsänderungen versioniert verwalten. Nachweis: Git-Repository für IaC, Change-History."
+            }
           ]
         },
         {
@@ -240,8 +520,18 @@
           "title": "Archivierung",
           "kurzbeschreibung": "Langzeitarchivierung von Geschäftsdaten und Protokollen",
           "anforderungen": [
-            {"id":"BSI-OPS.1.2.2.A1","title":"Entwicklung eines Archivierungskonzepts","stufe":"basis","kurzbeschreibung":"Archivierungskonzept erstellen: Aufbewahrungsfristen, Datenformate, Medieneignung, Lesbarkeit. Nachweis: Archivierungskonzept-Dokument, Aufbewahrungsrichtlinie."},
-            {"id":"BSI-OPS.1.2.2.A2","title":"Regelmäßige Überprüfung der Archivierung","stufe":"standard","kurzbeschreibung":"Archivierte Daten regelmäßig auf Lesbarkeit und Vollständigkeit prüfen. Nachweis: Prüfprotokolle, Wartungsnachweise."}
+            {
+              "id": "BSI-OPS.1.2.2.A1",
+              "title": "Entwicklung eines Archivierungskonzepts",
+              "stufe": "basis",
+              "kurzbeschreibung": "Archivierungskonzept erstellen: Aufbewahrungsfristen, Datenformate, Medieneignung, Lesbarkeit. Nachweis: Archivierungskonzept-Dokument, Aufbewahrungsrichtlinie."
+            },
+            {
+              "id": "BSI-OPS.1.2.2.A2",
+              "title": "Regelmäßige Überprüfung der Archivierung",
+              "stufe": "standard",
+              "kurzbeschreibung": "Archivierte Daten regelmäßig auf Lesbarkeit und Vollständigkeit prüfen. Nachweis: Prüfprotokolle, Wartungsnachweise."
+            }
           ]
         },
         {
@@ -249,8 +539,18 @@
           "title": "Telearbeit",
           "kurzbeschreibung": "Sichere Telearbeit und mobiles Arbeiten",
           "anforderungen": [
-            {"id":"BSI-OPS.1.2.4.A1","title":"Regelungen für Telearbeit","stufe":"basis","kurzbeschreibung":"Verbindliche Regelungen für Heimarbeit: VPN-Pflicht, verschlüsselte Datenträger, Sichtschutz, freigegebene Systeme. Nachweis: Telearbeitsrichtlinie, MDM-Konfiguration."},
-            {"id":"BSI-OPS.1.2.4.A2","title":"Technische Absicherung der Telearbeitsgeräte","stufe":"standard","kurzbeschreibung":"Telearbeitsgeräte mit vollständiger Festplattenverschlüsselung und EDR absichern. Nachweis: MDM-Compliance-Bericht."}
+            {
+              "id": "BSI-OPS.1.2.4.A1",
+              "title": "Regelungen für Telearbeit",
+              "stufe": "basis",
+              "kurzbeschreibung": "Verbindliche Regelungen für Heimarbeit: VPN-Pflicht, verschlüsselte Datenträger, Sichtschutz, freigegebene Systeme. Nachweis: Telearbeitsrichtlinie, MDM-Konfiguration."
+            },
+            {
+              "id": "BSI-OPS.1.2.4.A2",
+              "title": "Technische Absicherung der Telearbeitsgeräte",
+              "stufe": "standard",
+              "kurzbeschreibung": "Telearbeitsgeräte mit vollständiger Festplattenverschlüsselung und EDR absichern. Nachweis: MDM-Compliance-Bericht."
+            }
           ]
         },
         {
@@ -258,8 +558,18 @@
           "title": "Fernwartung",
           "kurzbeschreibung": "Sichere Remote-Wartung von IT-Systemen",
           "anforderungen": [
-            {"id":"BSI-OPS.1.2.5.A1","title":"Planung und Konzeption der Fernwartung","stufe":"basis","kurzbeschreibung":"Festlegen, welche Systeme wie und von wem remote gewartet werden dürfen. MFA erzwingen, verschlüsselte Verbindungen und vollständiges Logging aller Fernwartungssitzungen. Nachweis: Fernwartungskonzept, VPN/PAM-Konfiguration, Sitzungsprotokolle."},
-            {"id":"BSI-OPS.1.2.5.A2","title":"Sicherheitsanforderungen an Fernwartungssitzungen","stufe":"standard","kurzbeschreibung":"Fernwartungssitzungen aufzeichnen und für Audit-Zwecke aufbewahren. Nachweis: Sitzungsaufzeichnungen, Zugriffsprotokolle."}
+            {
+              "id": "BSI-OPS.1.2.5.A1",
+              "title": "Planung und Konzeption der Fernwartung",
+              "stufe": "basis",
+              "kurzbeschreibung": "Festlegen, welche Systeme wie und von wem remote gewartet werden dürfen. MFA erzwingen, verschlüsselte Verbindungen und vollständiges Logging aller Fernwartungssitzungen. Nachweis: Fernwartungskonzept, VPN/PAM-Konfiguration, Sitzungsprotokolle."
+            },
+            {
+              "id": "BSI-OPS.1.2.5.A2",
+              "title": "Sicherheitsanforderungen an Fernwartungssitzungen",
+              "stufe": "standard",
+              "kurzbeschreibung": "Fernwartungssitzungen aufzeichnen und für Audit-Zwecke aufbewahren. Nachweis: Sitzungsaufzeichnungen, Zugriffsprotokolle."
+            }
           ]
         },
         {
@@ -267,8 +577,18 @@
           "title": "Cloud-Nutzung",
           "kurzbeschreibung": "Sichere Nutzung von Cloud-Diensten",
           "anforderungen": [
-            {"id":"BSI-OPS.2.2.A1","title":"Sorgfaltspflichten bei Cloud-Nutzung","stufe":"basis","kurzbeschreibung":"Cloud-Anbieter auf IS-Konformität prüfen (ISO 27001, BSI C5, SOC 2) vor Vertragsabschluss. Datenstandort, AVV, Auditrechte und Portabilität regeln. Nachweis: Anbieter-Prüfbericht, AVV, Cloud-Nutzungskonzept."},
-            {"id":"BSI-OPS.2.2.A2","title":"Vertragliche Regelungen","stufe":"standard","kurzbeschreibung":"AVV und SLAs mit Cloud-Anbietern abschließen. Nachweis: Verträge, Auditrechte-Nachweis."}
+            {
+              "id": "BSI-OPS.2.2.A1",
+              "title": "Sorgfaltspflichten bei Cloud-Nutzung",
+              "stufe": "basis",
+              "kurzbeschreibung": "Cloud-Anbieter auf IS-Konformität prüfen (ISO 27001, BSI C5, SOC 2) vor Vertragsabschluss. Datenstandort, AVV, Auditrechte und Portabilität regeln. Nachweis: Anbieter-Prüfbericht, AVV, Cloud-Nutzungskonzept."
+            },
+            {
+              "id": "BSI-OPS.2.2.A2",
+              "title": "Vertragliche Regelungen",
+              "stufe": "standard",
+              "kurzbeschreibung": "AVV und SLAs mit Cloud-Anbietern abschließen. Nachweis: Verträge, Auditrechte-Nachweis."
+            }
           ]
         },
         {
@@ -276,8 +596,18 @@
           "title": "Nutzung von Cloud-Diensten aus der Endanwender-Perspektive",
           "kurzbeschreibung": "Richtlinien für Endanwender bei Cloud-Dienst-Nutzung",
           "anforderungen": [
-            {"id":"BSI-OPS.2.3.A1","title":"Erstellung einer Cloud-Nutzungsrichtlinie","stufe":"basis","kurzbeschreibung":"Cloud-Nutzungsrichtlinie für Endanwender erstellen: erlaubte Dienste, Datenkategorien, Authentifizierungsanforderungen. Nachweis: Richtlinie, Kommunikationsnachweise."},
-            {"id":"BSI-OPS.2.3.A2","title":"Freigabeprozess für Cloud-Dienste","stufe":"standard","kurzbeschreibung":"Freigabeprozess für neue Cloud-Dienste einrichten. Nachweis: Freigabeformulare, Dienstekatalog."}
+            {
+              "id": "BSI-OPS.2.3.A1",
+              "title": "Erstellung einer Cloud-Nutzungsrichtlinie",
+              "stufe": "basis",
+              "kurzbeschreibung": "Cloud-Nutzungsrichtlinie für Endanwender erstellen: erlaubte Dienste, Datenkategorien, Authentifizierungsanforderungen. Nachweis: Richtlinie, Kommunikationsnachweise."
+            },
+            {
+              "id": "BSI-OPS.2.3.A2",
+              "title": "Freigabeprozess für Cloud-Dienste",
+              "stufe": "standard",
+              "kurzbeschreibung": "Freigabeprozess für neue Cloud-Dienste einrichten. Nachweis: Freigabeformulare, Dienstekatalog."
+            }
           ]
         },
         {
@@ -285,8 +615,18 @@
           "title": "Regelungen zur Cloud-Nutzung",
           "kurzbeschreibung": "Organisationsweite Cloud-Governance",
           "anforderungen": [
-            {"id":"BSI-OPS.2.4.A1","title":"Regelungen zur Cloud-Nutzung","stufe":"basis","kurzbeschreibung":"Verbindliche Richtlinien für Cloud-Nutzung definieren: DSGVO-konforme Anbieterauswahl, Datenverschlüsselung, Zugriffskontrolle, Exit-Strategie. Nachweis: Cloud-Richtlinie, Anbieter-Verträge (AVV), Datenschutz-Dokumentation."},
-            {"id":"BSI-OPS.2.4.A2","title":"Überwachung und Kontrolle","stufe":"standard","kurzbeschreibung":"Cloud-Nutzung regelmäßig überwachen und auditieren. Nachweis: CASB-Konfiguration, Audit-Berichte."}
+            {
+              "id": "BSI-OPS.2.4.A1",
+              "title": "Regelungen zur Cloud-Nutzung",
+              "stufe": "basis",
+              "kurzbeschreibung": "Verbindliche Richtlinien für Cloud-Nutzung definieren: DSGVO-konforme Anbieterauswahl, Datenverschlüsselung, Zugriffskontrolle, Exit-Strategie. Nachweis: Cloud-Richtlinie, Anbieter-Verträge (AVV), Datenschutz-Dokumentation."
+            },
+            {
+              "id": "BSI-OPS.2.4.A2",
+              "title": "Überwachung und Kontrolle",
+              "stufe": "standard",
+              "kurzbeschreibung": "Cloud-Nutzung regelmäßig überwachen und auditieren. Nachweis: CASB-Konfiguration, Audit-Berichte."
+            }
           ]
         },
         {
@@ -294,8 +634,18 @@
           "title": "Outsourcing für Kunden",
           "kurzbeschreibung": "Informationssicherheit bei ausgelagerten Diensten",
           "anforderungen": [
-            {"id":"BSI-OPS.3.2.A1","title":"Auswahl von Auslagerungsdienstleistern","stufe":"basis","kurzbeschreibung":"Auslagerungsdienstleister nach IS-Kriterien auswählen: Zertifizierungen, Referenzen, Sicherheitskonzept. Nachweis: Auswahlprotokoll, Due-Diligence-Bericht."},
-            {"id":"BSI-OPS.3.2.A2","title":"Vertragsgestaltung bei Auslagerungen","stufe":"standard","kurzbeschreibung":"IS-Anforderungen vertraglich festhalten (SLA, AVV, Auditrechte, Incident-Reporting). Nachweis: Verträge, SLA-Anhänge."}
+            {
+              "id": "BSI-OPS.3.2.A1",
+              "title": "Auswahl von Auslagerungsdienstleistern",
+              "stufe": "basis",
+              "kurzbeschreibung": "Auslagerungsdienstleister nach IS-Kriterien auswählen: Zertifizierungen, Referenzen, Sicherheitskonzept. Nachweis: Auswahlprotokoll, Due-Diligence-Bericht."
+            },
+            {
+              "id": "BSI-OPS.3.2.A2",
+              "title": "Vertragsgestaltung bei Auslagerungen",
+              "stufe": "standard",
+              "kurzbeschreibung": "IS-Anforderungen vertraglich festhalten (SLA, AVV, Auditrechte, Incident-Reporting). Nachweis: Verträge, SLA-Anhänge."
+            }
           ]
         }
       ]
@@ -309,8 +659,18 @@
           "title": "Detektion von sicherheitsrelevanten Ereignissen",
           "kurzbeschreibung": "Erkennung von Sicherheitsvorfällen",
           "anforderungen": [
-            {"id":"BSI-DER.1.A1","title":"Detektion sicherheitsrelevanter Ereignisse","stufe":"basis","kurzbeschreibung":"Verfahren zur Erkennung von Sicherheitsvorfällen implementieren (SIEM-Korrelationen, IDS/IPS, Anomalie-Erkennung). Schwellwerte und Alarme dokumentieren. Nachweis: SIEM-Use-Cases, IDS-Rulebase."},
-            {"id":"BSI-DER.1.A2","title":"SIEM und zentrale Log-Aggregation","stufe":"standard","kurzbeschreibung":"IDS/SIEM betreiben: zentrale Log-Aggregation, regelbasierte Alarmierung, Korrelation sicherheitsrelevanter Ereignisse. Nachweis: SIEM-Konfiguration, Alert-Regeln, Incident-Eskalationsprozess."}
+            {
+              "id": "BSI-DER.1.A1",
+              "title": "Detektion sicherheitsrelevanter Ereignisse",
+              "stufe": "basis",
+              "kurzbeschreibung": "Verfahren zur Erkennung von Sicherheitsvorfällen implementieren (SIEM-Korrelationen, IDS/IPS, Anomalie-Erkennung). Schwellwerte und Alarme dokumentieren. Nachweis: SIEM-Use-Cases, IDS-Rulebase."
+            },
+            {
+              "id": "BSI-DER.1.A2",
+              "title": "SIEM und zentrale Log-Aggregation",
+              "stufe": "standard",
+              "kurzbeschreibung": "IDS/SIEM betreiben: zentrale Log-Aggregation, regelbasierte Alarmierung, Korrelation sicherheitsrelevanter Ereignisse. Nachweis: SIEM-Konfiguration, Alert-Regeln, Incident-Eskalationsprozess."
+            }
           ]
         },
         {
@@ -318,8 +678,18 @@
           "title": "Behandlung von Sicherheitsvorfällen",
           "kurzbeschreibung": "Incident-Response-Prozess",
           "anforderungen": [
-            {"id":"BSI-DER.2.1.A1","title":"Behandlung von Sicherheitsvorfällen","stufe":"basis","kurzbeschreibung":"Incident-Response-Prozess mit Eskalationsmatrix, Kommunikationsplan und Meldungspflichten (BSI/Datenschutzaufsicht binnen 72h) etablieren. Jährlich trainieren. Nachweis: IR-Playbook, Tabletop-Exercise-Protokolle, Meldungs-Templates."},
-            {"id":"BSI-DER.2.1.A2","title":"Einrichtung eines IR-Teams","stufe":"standard","kurzbeschreibung":"Dediziertes Incident-Response-Team benennen und regelmäßig schulen. Nachweis: Team-Besetzung, Schulungsnachweise."}
+            {
+              "id": "BSI-DER.2.1.A1",
+              "title": "Behandlung von Sicherheitsvorfällen",
+              "stufe": "basis",
+              "kurzbeschreibung": "Incident-Response-Prozess mit Eskalationsmatrix, Kommunikationsplan und Meldungspflichten (BSI/Datenschutzaufsicht binnen 72h) etablieren. Jährlich trainieren. Nachweis: IR-Playbook, Tabletop-Exercise-Protokolle, Meldungs-Templates."
+            },
+            {
+              "id": "BSI-DER.2.1.A2",
+              "title": "Einrichtung eines IR-Teams",
+              "stufe": "standard",
+              "kurzbeschreibung": "Dediziertes Incident-Response-Team benennen und regelmäßig schulen. Nachweis: Team-Besetzung, Schulungsnachweise."
+            }
           ]
         },
         {
@@ -327,8 +697,18 @@
           "title": "Vorsorge für IT-Forensik",
           "kurzbeschreibung": "Beweissicherung und forensische Vorbereitung",
           "anforderungen": [
-            {"id":"BSI-DER.2.2.A1","title":"Vorsorge für IT-Forensik","stufe":"basis","kurzbeschreibung":"Beweissicherung im Vorfeld vorbereiten (Forensik-Toolkits, Snapshot-Verfahren, Chain-of-Custody). Mindestens eine Person in Beweissicherung schulen. Nachweis: Forensik-Prozessdokumentation, Toolkit-Inventar."},
-            {"id":"BSI-DER.2.2.A2","title":"Sicherung forensischer Daten","stufe":"standard","kurzbeschreibung":"Forensische Daten manipulationssicher aufbewahren. Nachweis: Aufbewahrungskonzept, Integritätsprüfung."}
+            {
+              "id": "BSI-DER.2.2.A1",
+              "title": "Vorsorge für IT-Forensik",
+              "stufe": "basis",
+              "kurzbeschreibung": "Beweissicherung im Vorfeld vorbereiten (Forensik-Toolkits, Snapshot-Verfahren, Chain-of-Custody). Mindestens eine Person in Beweissicherung schulen. Nachweis: Forensik-Prozessdokumentation, Toolkit-Inventar."
+            },
+            {
+              "id": "BSI-DER.2.2.A2",
+              "title": "Sicherung forensischer Daten",
+              "stufe": "standard",
+              "kurzbeschreibung": "Forensische Daten manipulationssicher aufbewahren. Nachweis: Aufbewahrungskonzept, Integritätsprüfung."
+            }
           ]
         },
         {
@@ -336,8 +716,18 @@
           "title": "Bereinigung weitreichender Sicherheitsvorfälle",
           "kurzbeschreibung": "Vollständige Bereinigung nach Advanced Persistent Threats",
           "anforderungen": [
-            {"id":"BSI-DER.2.3.A1","title":"Einleitung der Bereinigung","stufe":"basis","kurzbeschreibung":"Nach APT-Vorfall strukturierte Bereinigung einleiten: Scope festlegen, Beweise sichern, Isolationsmaßnahmen treffen. Nachweis: Vorfall-Bereinigungsplan, IR-Protokoll."},
-            {"id":"BSI-DER.2.3.A2","title":"Stufenweise Wiederherstellung","stufe":"standard","kurzbeschreibung":"Systeme nach APT-Bereinigung schrittweise wiederherstellen und vor Wiederinbetriebnahme validieren. Nachweis: Wiederherstellungsprotokoll, Sicherheitsfreigabe."}
+            {
+              "id": "BSI-DER.2.3.A1",
+              "title": "Einleitung der Bereinigung",
+              "stufe": "basis",
+              "kurzbeschreibung": "Nach APT-Vorfall strukturierte Bereinigung einleiten: Scope festlegen, Beweise sichern, Isolationsmaßnahmen treffen. Nachweis: Vorfall-Bereinigungsplan, IR-Protokoll."
+            },
+            {
+              "id": "BSI-DER.2.3.A2",
+              "title": "Stufenweise Wiederherstellung",
+              "stufe": "standard",
+              "kurzbeschreibung": "Systeme nach APT-Bereinigung schrittweise wiederherstellen und vor Wiederinbetriebnahme validieren. Nachweis: Wiederherstellungsprotokoll, Sicherheitsfreigabe."
+            }
           ]
         },
         {
@@ -345,8 +735,18 @@
           "title": "Audits und Revisionen",
           "kurzbeschreibung": "Regelmäßige interne Audits zur Überprüfung der IS",
           "anforderungen": [
-            {"id":"BSI-DER.3.1.A1","title":"Durchführung von IS-Audits","stufe":"basis","kurzbeschreibung":"Regelmäßige interne IS-Audits durchführen. Ergebnisse dokumentieren und Maßnahmen ableiten. Nachweis: Auditplan, Auditberichte, Maßnahmenliste."},
-            {"id":"BSI-DER.3.1.A2","title":"Auditprogramm","stufe":"standard","kurzbeschreibung":"Jährliches Auditprogramm erstellen und durchführen. Nachweis: Auditprogramm, Freigabeprotokoll."}
+            {
+              "id": "BSI-DER.3.1.A1",
+              "title": "Durchführung von IS-Audits",
+              "stufe": "basis",
+              "kurzbeschreibung": "Regelmäßige interne IS-Audits durchführen. Ergebnisse dokumentieren und Maßnahmen ableiten. Nachweis: Auditplan, Auditberichte, Maßnahmenliste."
+            },
+            {
+              "id": "BSI-DER.3.1.A2",
+              "title": "Auditprogramm",
+              "stufe": "standard",
+              "kurzbeschreibung": "Jährliches Auditprogramm erstellen und durchführen. Nachweis: Auditprogramm, Freigabeprotokoll."
+            }
           ]
         },
         {
@@ -354,8 +754,18 @@
           "title": "Durchführung von Penetrationstests",
           "kurzbeschreibung": "Externe Penetrationstests",
           "anforderungen": [
-            {"id":"BSI-DER.3.2.A1","title":"Durchführung von Penetrationstests","stufe":"basis","kurzbeschreibung":"Jährlich oder nach wesentlichen Systemänderungen Penetrationstests durchführen (bevorzugt extern akkreditiert). Findings fristgerecht beheben. Nachweis: Pentest-Bericht, Maßnahmenplan, Nachtest-Ergebnis."},
-            {"id":"BSI-DER.3.2.A2","title":"Red-Team-Übungen","stufe":"erhoeht","kurzbeschreibung":"Red-Team-Übungen zur Simulation gezielter Angriffe durchführen. Nachweis: Red-Team-Bericht, Lernprotokoll."}
+            {
+              "id": "BSI-DER.3.2.A1",
+              "title": "Durchführung von Penetrationstests",
+              "stufe": "basis",
+              "kurzbeschreibung": "Jährlich oder nach wesentlichen Systemänderungen Penetrationstests durchführen (bevorzugt extern akkreditiert). Findings fristgerecht beheben. Nachweis: Pentest-Bericht, Maßnahmenplan, Nachtest-Ergebnis."
+            },
+            {
+              "id": "BSI-DER.3.2.A2",
+              "title": "Red-Team-Übungen",
+              "stufe": "erhoeht",
+              "kurzbeschreibung": "Red-Team-Übungen zur Simulation gezielter Angriffe durchführen. Nachweis: Red-Team-Bericht, Lernprotokoll."
+            }
           ]
         },
         {
@@ -363,8 +773,72 @@
           "title": "Notfallmanagement",
           "kurzbeschreibung": "Business Continuity Management (BCM)",
           "anforderungen": [
-            {"id":"BSI-DER.4.A1","title":"Notfallmanagementplan","stufe":"basis","kurzbeschreibung":"Notfallmanagementplan (BCM-Plan) erstellen mit klar definierten Rollen, Reaktionszeiten (RTO, RPO) und Eskalationswegen. Mindestens jährlich testen. Nachweis: BCM-Plan-Dokument, Übungsprotokolle."},
-            {"id":"BSI-DER.4.A2","title":"Business-Impact-Analyse","stufe":"standard","kurzbeschreibung":"BIA durchführen: kritische Prozesse identifizieren, RTO/RPO-Anforderungen bestimmen, finanzielle Auswirkungen bewerten. Nachweis: BIA-Bericht, RTO/RPO-Matrix."}
+            {
+              "id": "BSI-DER.4.A1",
+              "title": "Erstellung eines Notfallhandbuchs",
+              "stufe": "basis",
+              "kurzbeschreibung": "Die Institution erstellt ein Notfallhandbuch, das alle wesentlichen Informationen und Maßnahmen für den Notfallfall enthält. Das Handbuch wird regelmäßig aktualisiert und ist für alle relevanten Mitarbeiter zugänglich."
+            },
+            {
+              "id": "BSI-DER.4.A2",
+              "title": "Integration von Notfallmanagement in die Institution",
+              "stufe": "basis",
+              "kurzbeschreibung": "Das Notfallmanagement wird als eigenständiger Prozess in die Institution integriert. Verantwortlichkeiten und Ressourcen werden klar definiert. Die Geschäftsführung trägt die Verantwortung."
+            },
+            {
+              "id": "BSI-DER.4.A3",
+              "title": "Festlegung des Geltungsbereichs für BCM",
+              "stufe": "standard",
+              "kurzbeschreibung": "Der Geltungsbereich des BCM-Systems wird schriftlich festgelegt. Dabei werden kritische Geschäftsprozesse, Ressourcen und externe Abhängigkeiten berücksichtigt."
+            },
+            {
+              "id": "BSI-DER.4.A4",
+              "title": "Erstellung einer Geschäftseinflussanalyse (BIA)",
+              "stufe": "standard",
+              "kurzbeschreibung": "Eine Business Impact Analysis (BIA) wird durchgeführt, um die Auswirkungen von Unterbrechungen auf kritische Geschäftsprozesse zu bewerten. RTO, RPO und MBCO werden für jeden kritischen Prozess definiert."
+            },
+            {
+              "id": "BSI-DER.4.A5",
+              "title": "Erstellung eines Notfallkonzepts",
+              "stufe": "standard",
+              "kurzbeschreibung": "Basierend auf der BIA wird ein Notfallkonzept erstellt, das Wiederanlaufpläne (WAP) für alle kritischen Geschäftsprozesse enthält. Die WAP beschreiben Schritt für Schritt die Wiederherstellung des Betriebs."
+            },
+            {
+              "id": "BSI-DER.4.A6",
+              "title": "Durchführung von Notfallübungen",
+              "stufe": "standard",
+              "kurzbeschreibung": "Notfallübungen werden regelmäßig durchgeführt, um die Wirksamkeit der Notfallpläne zu testen. Die Ergebnisse werden dokumentiert und zur Verbesserung der Pläne genutzt."
+            },
+            {
+              "id": "BSI-DER.4.A7",
+              "title": "Überprüfung und Auswertung des BCM-Systems",
+              "stufe": "standard",
+              "kurzbeschreibung": "Das BCM-System wird regelmäßig auf Aktualität und Wirksamkeit überprüft. Änderungen in der Geschäftsumgebung werden berücksichtigt und das System entsprechend angepasst."
+            },
+            {
+              "id": "BSI-DER.4.A8",
+              "title": "Erstellung eines Kommunikations- und Kontaktverzeichnisses",
+              "stufe": "standard",
+              "kurzbeschreibung": "Ein Kommunikations- und Kontaktverzeichnis (Alarmierungsplan) wird erstellt und gepflegt. Es enthält alle relevanten internen und externen Ansprechpartner mit Eskalationsstufen."
+            },
+            {
+              "id": "BSI-DER.4.A9",
+              "title": "Integration von Lieferanten und Dienstleistern",
+              "stufe": "erhoeht",
+              "kurzbeschreibung": "Lieferanten und Dienstleister, die für kritische Geschäftsprozesse relevant sind, werden in das BCM-System integriert. Anforderungen an deren Notfallmanagement werden vertraglich vereinbart."
+            },
+            {
+              "id": "BSI-DER.4.A10",
+              "title": "Durchführung eines BCM-Audits",
+              "stufe": "erhoeht",
+              "kurzbeschreibung": "Das BCM-System wird regelmäßig durch interne oder externe Auditoren geprüft. Die Ergebnisse werden dokumentiert und Maßnahmen zur Verbesserung abgeleitet."
+            },
+            {
+              "id": "BSI-DER.4.A11",
+              "title": "Aufbau eines BCM-MS gemäß ISO 22301",
+              "stufe": "erhoeht",
+              "kurzbeschreibung": "Ein vollständiges Business Continuity Management System (BCM-MS) gemäß ISO 22301 wird aufgebaut. Alle Elemente des Standards werden implementiert und dokumentiert."
+            }
           ]
         },
         {
@@ -372,8 +846,18 @@
           "title": "BCM-Richtlinie",
           "kurzbeschreibung": "BCM-Governance und Richtlinien",
           "anforderungen": [
-            {"id":"BSI-BCM.1.A1","title":"BCM-Richtlinie und Geltungsbereich","stufe":"basis","kurzbeschreibung":"BCM-Richtlinie erstellen: Ziele, Umfang, Verantwortlichkeiten und Anforderungen für das Business Continuity Management. Nachweis: BCM-Richtlinie, Genehmigungsprotokoll, Versionierung."},
-            {"id":"BSI-BCM.1.A2","title":"Business-Impact-Analyse (BIA)","stufe":"basis","kurzbeschreibung":"BIA durchführen: kritische Prozesse identifizieren, RTO/RPO-Anforderungen bestimmen, finanzielle und operationelle Auswirkungen von Ausfällen bewerten. Nachweis: BIA-Bericht, RTO/RPO-Matrix."}
+            {
+              "id": "BSI-BCM.1.A1",
+              "title": "BCM-Richtlinie und Geltungsbereich",
+              "stufe": "basis",
+              "kurzbeschreibung": "BCM-Richtlinie erstellen: Ziele, Umfang, Verantwortlichkeiten und Anforderungen für das Business Continuity Management. Nachweis: BCM-Richtlinie, Genehmigungsprotokoll, Versionierung."
+            },
+            {
+              "id": "BSI-BCM.1.A2",
+              "title": "Business-Impact-Analyse (BIA)",
+              "stufe": "basis",
+              "kurzbeschreibung": "BIA durchführen: kritische Prozesse identifizieren, RTO/RPO-Anforderungen bestimmen, finanzielle und operationelle Auswirkungen von Ausfällen bewerten. Nachweis: BIA-Bericht, RTO/RPO-Matrix."
+            }
           ]
         },
         {
@@ -381,8 +865,18 @@
           "title": "BCM-Übungen und Tests",
           "kurzbeschreibung": "Regelmäßige BCM-Tests und Übungen",
           "anforderungen": [
-            {"id":"BSI-BCM.2.A1","title":"BCM-Übungen und Tests","stufe":"basis","kurzbeschreibung":"Notfallpläne regelmäßig durch Tischübungen (Tabletop), Teilübungen und vollständige Failover-Tests testen. Ergebnisse dokumentieren und Verbesserungen implementieren. Nachweis: Übungsprotokoll, Testbericht, Verbesserungsmaßnahmen."},
-            {"id":"BSI-BCM.2.A2","title":"Vollständige Failover-Tests","stufe":"standard","kurzbeschreibung":"Mindestens jährlichen vollständigen Failover-Test durchführen. Nachweis: Testbericht, RTO-Nachweis."}
+            {
+              "id": "BSI-BCM.2.A1",
+              "title": "BCM-Übungen und Tests",
+              "stufe": "basis",
+              "kurzbeschreibung": "Notfallpläne regelmäßig durch Tischübungen (Tabletop), Teilübungen und vollständige Failover-Tests testen. Ergebnisse dokumentieren und Verbesserungen implementieren. Nachweis: Übungsprotokoll, Testbericht, Verbesserungsmaßnahmen."
+            },
+            {
+              "id": "BSI-BCM.2.A2",
+              "title": "Vollständige Failover-Tests",
+              "stufe": "standard",
+              "kurzbeschreibung": "Mindestens jährlichen vollständigen Failover-Test durchführen. Nachweis: Testbericht, RTO-Nachweis."
+            }
           ]
         }
       ]
@@ -396,8 +890,18 @@
           "title": "Office-Produkte",
           "kurzbeschreibung": "Sicherheit von Office-Anwendungen",
           "anforderungen": [
-            {"id":"BSI-APP.1.1.A1","title":"Sichere Office-Konfiguration","stufe":"basis","kurzbeschreibung":"Office-Anwendungen härten (Makros deaktiviert, Block bei externen Quellen, geschützte Ansicht). Nachweis: GPO-Konfiguration, MDM-Profil, Audit-Stichprobe."},
-            {"id":"BSI-APP.1.1.A2","title":"Einschränkungen für Makros","stufe":"standard","kurzbeschreibung":"Makros nur von signierten Quellen erlauben. Nachweis: GPO, Signaturrichtlinie."}
+            {
+              "id": "BSI-APP.1.1.A1",
+              "title": "Sichere Office-Konfiguration",
+              "stufe": "basis",
+              "kurzbeschreibung": "Office-Anwendungen härten (Makros deaktiviert, Block bei externen Quellen, geschützte Ansicht). Nachweis: GPO-Konfiguration, MDM-Profil, Audit-Stichprobe."
+            },
+            {
+              "id": "BSI-APP.1.1.A2",
+              "title": "Einschränkungen für Makros",
+              "stufe": "standard",
+              "kurzbeschreibung": "Makros nur von signierten Quellen erlauben. Nachweis: GPO, Signaturrichtlinie."
+            }
           ]
         },
         {
@@ -405,8 +909,18 @@
           "title": "Webbrowser",
           "kurzbeschreibung": "Sichere Browser-Konfiguration",
           "anforderungen": [
-            {"id":"BSI-APP.1.2.A1","title":"Browser-Härtung","stufe":"basis","kurzbeschreibung":"Webbrowser sicher konfigurieren: unnötige Plugins deaktivieren, Safe Browsing aktivieren, HTTPS erzwingen. Nachweis: Browser-Konfiguration, Gruppenrichtlinien-Dokumentation."},
-            {"id":"BSI-APP.1.2.A2","title":"Zentrales Browser-Management","stufe":"standard","kurzbeschreibung":"Browser zentral über Gruppenrichtlinien oder MDM verwalten. Nachweis: MDM-Konfiguration."}
+            {
+              "id": "BSI-APP.1.2.A1",
+              "title": "Browser-Härtung",
+              "stufe": "basis",
+              "kurzbeschreibung": "Webbrowser sicher konfigurieren: unnötige Plugins deaktivieren, Safe Browsing aktivieren, HTTPS erzwingen. Nachweis: Browser-Konfiguration, Gruppenrichtlinien-Dokumentation."
+            },
+            {
+              "id": "BSI-APP.1.2.A2",
+              "title": "Zentrales Browser-Management",
+              "stufe": "standard",
+              "kurzbeschreibung": "Browser zentral über Gruppenrichtlinien oder MDM verwalten. Nachweis: MDM-Konfiguration."
+            }
           ]
         },
         {
@@ -414,8 +928,18 @@
           "title": "Mobile Anwendungen",
           "kurzbeschreibung": "Sicherheitsanforderungen für mobile Apps",
           "anforderungen": [
-            {"id":"BSI-APP.1.4.A1","title":"Anforderungen an mobile Anwendungen","stufe":"basis","kurzbeschreibung":"Sicherheitsanforderungen für mobile Apps definieren: sichere Datenspeicherung, verschlüsselte Kommunikation, minimale Berechtigungen. Nachweis: Anforderungskatalog, App-Sicherheitstest-Bericht."},
-            {"id":"BSI-APP.1.4.A2","title":"Sicherheitstests für mobile Apps","stufe":"standard","kurzbeschreibung":"Mobile Apps vor Release auf Sicherheitslücken testen (OWASP Mobile). Nachweis: Testberichte."}
+            {
+              "id": "BSI-APP.1.4.A1",
+              "title": "Anforderungen an mobile Anwendungen",
+              "stufe": "basis",
+              "kurzbeschreibung": "Sicherheitsanforderungen für mobile Apps definieren: sichere Datenspeicherung, verschlüsselte Kommunikation, minimale Berechtigungen. Nachweis: Anforderungskatalog, App-Sicherheitstest-Bericht."
+            },
+            {
+              "id": "BSI-APP.1.4.A2",
+              "title": "Sicherheitstests für mobile Apps",
+              "stufe": "standard",
+              "kurzbeschreibung": "Mobile Apps vor Release auf Sicherheitslücken testen (OWASP Mobile). Nachweis: Testberichte."
+            }
           ]
         },
         {
@@ -423,8 +947,18 @@
           "title": "Allgemeiner Verzeichnisdienst",
           "kurzbeschreibung": "Sicherer Betrieb von Verzeichnisdiensten",
           "anforderungen": [
-            {"id":"BSI-APP.2.1.A1","title":"Planung des Verzeichnisdienstes","stufe":"basis","kurzbeschreibung":"Verzeichnisdienste (Active Directory, LDAP, Entra ID) sicher planen und betreiben: Tier-Modell, minimale Admin-Rechte, regelmäßige Bereinigung verwaister Konten. Nachweis: AD-Konzept, Tier-Modell-Dokumentation, Auditberichte."},
-            {"id":"BSI-APP.2.1.A2","title":"Härtung des Verzeichnisdienstes","stufe":"standard","kurzbeschreibung":"Verzeichnisdienst gegen bekannte Angriffsvektoren härten. Nachweis: Härtungsleitfaden, Audit-Berichte."}
+            {
+              "id": "BSI-APP.2.1.A1",
+              "title": "Planung des Verzeichnisdienstes",
+              "stufe": "basis",
+              "kurzbeschreibung": "Verzeichnisdienste (Active Directory, LDAP, Entra ID) sicher planen und betreiben: Tier-Modell, minimale Admin-Rechte, regelmäßige Bereinigung verwaister Konten. Nachweis: AD-Konzept, Tier-Modell-Dokumentation, Auditberichte."
+            },
+            {
+              "id": "BSI-APP.2.1.A2",
+              "title": "Härtung des Verzeichnisdienstes",
+              "stufe": "standard",
+              "kurzbeschreibung": "Verzeichnisdienst gegen bekannte Angriffsvektoren härten. Nachweis: Härtungsleitfaden, Audit-Berichte."
+            }
           ]
         },
         {
@@ -432,9 +966,24 @@
           "title": "Active Directory Domain Services",
           "kurzbeschreibung": "Sicherheit für Microsoft Active Directory",
           "anforderungen": [
-            {"id":"BSI-APP.2.2.A1","title":"Planung von Active Directory","stufe":"basis","kurzbeschreibung":"AD-Infrastruktur nach Tier-Modell planen: Tier 0 (Domain Controller), Tier 1 (Server), Tier 2 (Workstations). Nachweis: AD-Architektur-Dokument."},
-            {"id":"BSI-APP.2.2.A2","title":"Active Directory Härtung","stufe":"standard","kurzbeschreibung":"AD härten: Protected Users Group, LAPS, Privileged Access Workstations, Kerberos-Delegation einschränken. Nachweis: Härtungsbericht, BloodHound-Analyse."},
-            {"id":"BSI-APP.2.2.A3","title":"Überwachung von Active Directory","stufe":"standard","kurzbeschreibung":"AD-Ereignisse zentral überwachen (Lateral Movement, Privilege Escalation). Nachweis: SIEM-Rules, Alert-Konfiguration."}
+            {
+              "id": "BSI-APP.2.2.A1",
+              "title": "Planung von Active Directory",
+              "stufe": "basis",
+              "kurzbeschreibung": "AD-Infrastruktur nach Tier-Modell planen: Tier 0 (Domain Controller), Tier 1 (Server), Tier 2 (Workstations). Nachweis: AD-Architektur-Dokument."
+            },
+            {
+              "id": "BSI-APP.2.2.A2",
+              "title": "Active Directory Härtung",
+              "stufe": "standard",
+              "kurzbeschreibung": "AD härten: Protected Users Group, LAPS, Privileged Access Workstations, Kerberos-Delegation einschränken. Nachweis: Härtungsbericht, BloodHound-Analyse."
+            },
+            {
+              "id": "BSI-APP.2.2.A3",
+              "title": "Überwachung von Active Directory",
+              "stufe": "standard",
+              "kurzbeschreibung": "AD-Ereignisse zentral überwachen (Lateral Movement, Privilege Escalation). Nachweis: SIEM-Rules, Alert-Konfiguration."
+            }
           ]
         },
         {
@@ -442,8 +991,18 @@
           "title": "OpenLDAP",
           "kurzbeschreibung": "Sicherer Betrieb von OpenLDAP",
           "anforderungen": [
-            {"id":"BSI-APP.2.3.A1","title":"Sicherer Betrieb von Verzeichnisdiensten","stufe":"basis","kurzbeschreibung":"Active Directory / LDAP nach BSI-Vorgaben betreiben: privilegierte Konten einschränken, Tiered-Administration-Modell, regelmäßige Audits der Gruppenrichtlinien. Nachweis: AD-Auditbericht, Konfigurationsdokumentation."},
-            {"id":"BSI-APP.2.3.A2","title":"Verschlüsselung von LDAP","stufe":"standard","kurzbeschreibung":"LDAP-Kommunikation verschlüsseln (LDAPS oder STARTTLS). Nachweis: Zertifikatskonfiguration."}
+            {
+              "id": "BSI-APP.2.3.A1",
+              "title": "Sicherer Betrieb von Verzeichnisdiensten",
+              "stufe": "basis",
+              "kurzbeschreibung": "Active Directory / LDAP nach BSI-Vorgaben betreiben: privilegierte Konten einschränken, Tiered-Administration-Modell, regelmäßige Audits der Gruppenrichtlinien. Nachweis: AD-Auditbericht, Konfigurationsdokumentation."
+            },
+            {
+              "id": "BSI-APP.2.3.A2",
+              "title": "Verschlüsselung von LDAP",
+              "stufe": "standard",
+              "kurzbeschreibung": "LDAP-Kommunikation verschlüsseln (LDAPS oder STARTTLS). Nachweis: Zertifikatskonfiguration."
+            }
           ]
         },
         {
@@ -451,8 +1010,18 @@
           "title": "Webanwendungen und Webservices",
           "kurzbeschreibung": "Sicherheit von Webanwendungen (OWASP)",
           "anforderungen": [
-            {"id":"BSI-APP.3.1.A1","title":"Authentifizierung bei Web-Anwendungen","stufe":"basis","kurzbeschreibung":"Sichere Authentifizierung in Web-Anwendungen: starke Passwörter, MFA, Session-Management (kurze Timeouts, Secure/HttpOnly-Cookies, CSRF-Schutz). Nachweis: OWASP-Konformitätsprüfung, Pentest-Bericht."},
-            {"id":"BSI-APP.3.1.A2","title":"Schutz von Web-Anwendungen","stufe":"standard","kurzbeschreibung":"Web-Anwendungen gegen OWASP Top 10 absichern. Nachweis: SAST/DAST-Berichte, WAF-Konfiguration."}
+            {
+              "id": "BSI-APP.3.1.A1",
+              "title": "Authentifizierung bei Web-Anwendungen",
+              "stufe": "basis",
+              "kurzbeschreibung": "Sichere Authentifizierung in Web-Anwendungen: starke Passwörter, MFA, Session-Management (kurze Timeouts, Secure/HttpOnly-Cookies, CSRF-Schutz). Nachweis: OWASP-Konformitätsprüfung, Pentest-Bericht."
+            },
+            {
+              "id": "BSI-APP.3.1.A2",
+              "title": "Schutz von Web-Anwendungen",
+              "stufe": "standard",
+              "kurzbeschreibung": "Web-Anwendungen gegen OWASP Top 10 absichern. Nachweis: SAST/DAST-Berichte, WAF-Konfiguration."
+            }
           ]
         },
         {
@@ -460,8 +1029,18 @@
           "title": "Webserver",
           "kurzbeschreibung": "Sichere Konfiguration von Webservern",
           "anforderungen": [
-            {"id":"BSI-APP.3.2.A1","title":"Absicherung von Webservern","stufe":"basis","kurzbeschreibung":"Webserver härten: TLS 1.2+, keine veralteten Cipher-Suites, Security-Header (HSTS, CSP, X-Frame-Options), automatische Zertifikatserneuerung. Nachweis: SSL-Labs-Scan, Security-Header-Test, Konfigurationsdokumentation."},
-            {"id":"BSI-APP.3.2.A2","title":"Absicherung der HTTP-Kommunikation","stufe":"standard","kurzbeschreibung":"HTTP-Kommunikation auf HTTPS erzwingen; HSTS aktivieren. Nachweis: Server-Konfiguration, SSL-Scan."}
+            {
+              "id": "BSI-APP.3.2.A1",
+              "title": "Absicherung von Webservern",
+              "stufe": "basis",
+              "kurzbeschreibung": "Webserver härten: TLS 1.2+, keine veralteten Cipher-Suites, Security-Header (HSTS, CSP, X-Frame-Options), automatische Zertifikatserneuerung. Nachweis: SSL-Labs-Scan, Security-Header-Test, Konfigurationsdokumentation."
+            },
+            {
+              "id": "BSI-APP.3.2.A2",
+              "title": "Absicherung der HTTP-Kommunikation",
+              "stufe": "standard",
+              "kurzbeschreibung": "HTTP-Kommunikation auf HTTPS erzwingen; HSTS aktivieren. Nachweis: Server-Konfiguration, SSL-Scan."
+            }
           ]
         },
         {
@@ -469,8 +1048,18 @@
           "title": "Fileserver",
           "kurzbeschreibung": "Sicherheit von Dateiservern",
           "anforderungen": [
-            {"id":"BSI-APP.3.3.A1","title":"Einsatz von Fileservern","stufe":"basis","kurzbeschreibung":"Fileserver mit rollenbasierter Zugriffskontrolle betreiben. Daten verschlüsseln. Nachweis: Zugriffsmatrix, Verschlüsselungskonfiguration."},
-            {"id":"BSI-APP.3.3.A2","title":"Ransomware-Schutz für Fileserver","stufe":"standard","kurzbeschreibung":"Fileserver gegen Ransomware schützen (Air-Gapped-Backups, Schreibschutz, Monitoring). Nachweis: Backup-Konzept, IDS-Konfiguration."}
+            {
+              "id": "BSI-APP.3.3.A1",
+              "title": "Einsatz von Fileservern",
+              "stufe": "basis",
+              "kurzbeschreibung": "Fileserver mit rollenbasierter Zugriffskontrolle betreiben. Daten verschlüsseln. Nachweis: Zugriffsmatrix, Verschlüsselungskonfiguration."
+            },
+            {
+              "id": "BSI-APP.3.3.A2",
+              "title": "Ransomware-Schutz für Fileserver",
+              "stufe": "standard",
+              "kurzbeschreibung": "Fileserver gegen Ransomware schützen (Air-Gapped-Backups, Schreibschutz, Monitoring). Nachweis: Backup-Konzept, IDS-Konfiguration."
+            }
           ]
         },
         {
@@ -478,8 +1067,18 @@
           "title": "Samba",
           "kurzbeschreibung": "Sicherheit von Samba-Dateifreigaben",
           "anforderungen": [
-            {"id":"BSI-APP.3.4.A1","title":"Basis-Absicherung von Samba","stufe":"basis","kurzbeschreibung":"Samba-Server sicher konfigurieren: SMBv1 deaktivieren, Kerberos-Authentifizierung, minimale Freigaben. Nachweis: Samba-Konfiguration, Scan-Ergebnis."},
-            {"id":"BSI-APP.3.4.A2","title":"Erweiterte Samba-Härtung","stufe":"standard","kurzbeschreibung":"Samba mit Signing und Verschlüsselung konfigurieren. Nachweis: Konfigurationsdokumentation."}
+            {
+              "id": "BSI-APP.3.4.A1",
+              "title": "Basis-Absicherung von Samba",
+              "stufe": "basis",
+              "kurzbeschreibung": "Samba-Server sicher konfigurieren: SMBv1 deaktivieren, Kerberos-Authentifizierung, minimale Freigaben. Nachweis: Samba-Konfiguration, Scan-Ergebnis."
+            },
+            {
+              "id": "BSI-APP.3.4.A2",
+              "title": "Erweiterte Samba-Härtung",
+              "stufe": "standard",
+              "kurzbeschreibung": "Samba mit Signing und Verschlüsselung konfigurieren. Nachweis: Konfigurationsdokumentation."
+            }
           ]
         },
         {
@@ -487,8 +1086,18 @@
           "title": "DNS-Server",
           "kurzbeschreibung": "Sicherheit von DNS-Infrastruktur",
           "anforderungen": [
-            {"id":"BSI-APP.3.6.A1","title":"Planung und Konzeption des DNS","stufe":"basis","kurzbeschreibung":"DNS-Infrastruktur sicher planen: DNSSEC aktivieren, Zonenübertragungen einschränken, Split-DNS. Nachweis: DNS-Architektur-Dokument, DNSSEC-Konfiguration."},
-            {"id":"BSI-APP.3.6.A2","title":"Absicherung von DNS-Kommunikation","stufe":"standard","kurzbeschreibung":"DNS-Kommunikation verschlüsseln (DNS-over-TLS oder DNS-over-HTTPS). Nachweis: DoT/DoH-Konfiguration."}
+            {
+              "id": "BSI-APP.3.6.A1",
+              "title": "Planung und Konzeption des DNS",
+              "stufe": "basis",
+              "kurzbeschreibung": "DNS-Infrastruktur sicher planen: DNSSEC aktivieren, Zonenübertragungen einschränken, Split-DNS. Nachweis: DNS-Architektur-Dokument, DNSSEC-Konfiguration."
+            },
+            {
+              "id": "BSI-APP.3.6.A2",
+              "title": "Absicherung von DNS-Kommunikation",
+              "stufe": "standard",
+              "kurzbeschreibung": "DNS-Kommunikation verschlüsseln (DNS-over-TLS oder DNS-over-HTTPS). Nachweis: DoT/DoH-Konfiguration."
+            }
           ]
         },
         {
@@ -496,8 +1105,18 @@
           "title": "SAP-ERP-System",
           "kurzbeschreibung": "Sicherheit von SAP-ERP-Systemen",
           "anforderungen": [
-            {"id":"BSI-APP.4.2.A1","title":"Sicherstellung der Integrität des SAP-ERP-Systems","stufe":"basis","kurzbeschreibung":"SAP-Systeme gemäß BSI/SAP-Härtungsleitfaden absichern. RSUSR-Reports für Berechtigungsanalyse nutzen. Nachweis: SAP-Härtungsbericht, Berechtigungsaudit."},
-            {"id":"BSI-APP.4.2.A2","title":"SAP-Berechtigungskonzept","stufe":"standard","kurzbeschreibung":"SAP-Berechtigungskonzept nach Least-Privilege-Prinzip erstellen und pflegen. Nachweis: Berechtigungskonzept, Rezertifizierungsprotokoll."}
+            {
+              "id": "BSI-APP.4.2.A1",
+              "title": "Sicherstellung der Integrität des SAP-ERP-Systems",
+              "stufe": "basis",
+              "kurzbeschreibung": "SAP-Systeme gemäß BSI/SAP-Härtungsleitfaden absichern. RSUSR-Reports für Berechtigungsanalyse nutzen. Nachweis: SAP-Härtungsbericht, Berechtigungsaudit."
+            },
+            {
+              "id": "BSI-APP.4.2.A2",
+              "title": "SAP-Berechtigungskonzept",
+              "stufe": "standard",
+              "kurzbeschreibung": "SAP-Berechtigungskonzept nach Least-Privilege-Prinzip erstellen und pflegen. Nachweis: Berechtigungskonzept, Rezertifizierungsprotokoll."
+            }
           ]
         },
         {
@@ -505,8 +1124,18 @@
           "title": "Relationale Datenbanksysteme",
           "kurzbeschreibung": "Sicherheit von Datenbankservern",
           "anforderungen": [
-            {"id":"BSI-APP.4.3.A1","title":"Absicherung von Datenbanksystemen","stufe":"basis","kurzbeschreibung":"Datenbanksysteme gemäß CIS-Benchmarks härten: minimale Berechtigungen, Verschlüsselung, Audit-Logging. Nachweis: Härtungsbericht, Konfigurationsdokumentation."},
-            {"id":"BSI-APP.4.3.A2","title":"Datenbankzugriffskontrolle","stufe":"standard","kurzbeschreibung":"Datenbankzugriffe auf Anwendungsebene protokollieren und überwachen. Nachweis: Audit-Log-Konfiguration."}
+            {
+              "id": "BSI-APP.4.3.A1",
+              "title": "Absicherung von Datenbanksystemen",
+              "stufe": "basis",
+              "kurzbeschreibung": "Datenbanksysteme gemäß CIS-Benchmarks härten: minimale Berechtigungen, Verschlüsselung, Audit-Logging. Nachweis: Härtungsbericht, Konfigurationsdokumentation."
+            },
+            {
+              "id": "BSI-APP.4.3.A2",
+              "title": "Datenbankzugriffskontrolle",
+              "stufe": "standard",
+              "kurzbeschreibung": "Datenbankzugriffe auf Anwendungsebene protokollieren und überwachen. Nachweis: Audit-Log-Konfiguration."
+            }
           ]
         },
         {
@@ -514,9 +1143,24 @@
           "title": "Kubernetes",
           "kurzbeschreibung": "Sicherheit von Kubernetes-Clustern",
           "anforderungen": [
-            {"id":"BSI-APP.4.4.A1","title":"Härtung von Active Directory / Identity Provider","stufe":"basis","kurzbeschreibung":"Zentralen IdP (Active Directory, Casdoor, Keycloak) härten: privilegierte Konten mit MFA, Tier-Modell, Anti-Kerberos-Roasting-Audits. Nachweis: Tier-Konzept, Audit-Berichte, BloodHound-Reports."},
-            {"id":"BSI-APP.4.4.A2","title":"Kubernetes-Absicherung","stufe":"standard","kurzbeschreibung":"Kubernetes-Cluster absichern: RBAC, Network Policies, Pod Security Admission, Secrets-Verschlüsselung, Image-Signaturen. Nachweis: Konfiguration, Penetrationstest-Bericht, CIS-Benchmark-Scan."},
-            {"id":"BSI-APP.4.4.A3","title":"Supply-Chain-Absicherung","stufe":"erhoeht","kurzbeschreibung":"Container-Images signieren und Provenance-Attestierungen erstellen (SLSA Level 2+). Nachweis: Signaturkonfiguration, SBOM."}
+            {
+              "id": "BSI-APP.4.4.A1",
+              "title": "Härtung von Active Directory / Identity Provider",
+              "stufe": "basis",
+              "kurzbeschreibung": "Zentralen IdP (Active Directory, Casdoor, Keycloak) härten: privilegierte Konten mit MFA, Tier-Modell, Anti-Kerberos-Roasting-Audits. Nachweis: Tier-Konzept, Audit-Berichte, BloodHound-Reports."
+            },
+            {
+              "id": "BSI-APP.4.4.A2",
+              "title": "Kubernetes-Absicherung",
+              "stufe": "standard",
+              "kurzbeschreibung": "Kubernetes-Cluster absichern: RBAC, Network Policies, Pod Security Admission, Secrets-Verschlüsselung, Image-Signaturen. Nachweis: Konfiguration, Penetrationstest-Bericht, CIS-Benchmark-Scan."
+            },
+            {
+              "id": "BSI-APP.4.4.A3",
+              "title": "Supply-Chain-Absicherung",
+              "stufe": "erhoeht",
+              "kurzbeschreibung": "Container-Images signieren und Provenance-Attestierungen erstellen (SLSA Level 2+). Nachweis: Signaturkonfiguration, SBOM."
+            }
           ]
         },
         {
@@ -524,8 +1168,18 @@
           "title": "SAP ABAP-Programmierung",
           "kurzbeschreibung": "Sichere SAP ABAP-Entwicklung",
           "anforderungen": [
-            {"id":"BSI-APP.4.6.A1","title":"Entwicklungsrichtlinien für ABAP","stufe":"basis","kurzbeschreibung":"Sichere ABAP-Entwicklungsrichtlinien erstellen und durchsetzen (Code-Scanner, SAP Code Vulnerability Analyzer). Nachweis: Richtlinien, CVA-Scan-Berichte."},
-            {"id":"BSI-APP.4.6.A2","title":"Code-Reviews für ABAP","stufe":"standard","kurzbeschreibung":"Regelmäßige ABAP-Code-Reviews durchführen. Nachweis: Review-Protokolle."}
+            {
+              "id": "BSI-APP.4.6.A1",
+              "title": "Entwicklungsrichtlinien für ABAP",
+              "stufe": "basis",
+              "kurzbeschreibung": "Sichere ABAP-Entwicklungsrichtlinien erstellen und durchsetzen (Code-Scanner, SAP Code Vulnerability Analyzer). Nachweis: Richtlinien, CVA-Scan-Berichte."
+            },
+            {
+              "id": "BSI-APP.4.6.A2",
+              "title": "Code-Reviews für ABAP",
+              "stufe": "standard",
+              "kurzbeschreibung": "Regelmäßige ABAP-Code-Reviews durchführen. Nachweis: Review-Protokolle."
+            }
           ]
         },
         {
@@ -533,8 +1187,18 @@
           "title": "Allgemeiner E-Mail-Client und -Server",
           "kurzbeschreibung": "Sicherheit von E-Mail-Infrastruktur",
           "anforderungen": [
-            {"id":"BSI-APP.5.1.A1","title":"Sichere Konfiguration von Groupware","stufe":"basis","kurzbeschreibung":"E-Mail- und Collaboration-Systeme (Exchange, Teams, Google Workspace) sicher konfigurieren: SPF/DKIM/DMARC, verschlüsselte Kommunikation. Nachweis: Konfigurationsnachweis, E-Mail-Header-Analyse."},
-            {"id":"BSI-APP.5.1.A2","title":"Sichere E-Mail-Verschlüsselung","stufe":"standard","kurzbeschreibung":"End-to-End-Verschlüsselung für sensible E-Mails (S/MIME oder PGP). Nachweis: Zertifikatsinfrastruktur, Konfigurationsdokumentation."}
+            {
+              "id": "BSI-APP.5.1.A1",
+              "title": "Sichere Konfiguration von Groupware",
+              "stufe": "basis",
+              "kurzbeschreibung": "E-Mail- und Collaboration-Systeme (Exchange, Teams, Google Workspace) sicher konfigurieren: SPF/DKIM/DMARC, verschlüsselte Kommunikation. Nachweis: Konfigurationsnachweis, E-Mail-Header-Analyse."
+            },
+            {
+              "id": "BSI-APP.5.1.A2",
+              "title": "Sichere E-Mail-Verschlüsselung",
+              "stufe": "standard",
+              "kurzbeschreibung": "End-to-End-Verschlüsselung für sensible E-Mails (S/MIME oder PGP). Nachweis: Zertifikatsinfrastruktur, Konfigurationsdokumentation."
+            }
           ]
         },
         {
@@ -542,8 +1206,18 @@
           "title": "Microsoft Exchange und Outlook",
           "kurzbeschreibung": "Sicherheit von Exchange-Umgebungen",
           "anforderungen": [
-            {"id":"BSI-APP.5.2.A1","title":"Planung des Exchange-Einsatzes","stufe":"basis","kurzbeschreibung":"Exchange-Infrastruktur sicher planen: minimale Exposition, dedizierte Admin-Konten, Compliance-Archivierung. Nachweis: Exchange-Architektur-Dokument."},
-            {"id":"BSI-APP.5.2.A2","title":"Härtung von Exchange-Servern","stufe":"standard","kurzbeschreibung":"Exchange-Server nach Microsoft-Härtungsleitfaden konfigurieren. Nachweis: Härtungsbericht."}
+            {
+              "id": "BSI-APP.5.2.A1",
+              "title": "Planung des Exchange-Einsatzes",
+              "stufe": "basis",
+              "kurzbeschreibung": "Exchange-Infrastruktur sicher planen: minimale Exposition, dedizierte Admin-Konten, Compliance-Archivierung. Nachweis: Exchange-Architektur-Dokument."
+            },
+            {
+              "id": "BSI-APP.5.2.A2",
+              "title": "Härtung von Exchange-Servern",
+              "stufe": "standard",
+              "kurzbeschreibung": "Exchange-Server nach Microsoft-Härtungsleitfaden konfigurieren. Nachweis: Härtungsbericht."
+            }
           ]
         },
         {
@@ -551,8 +1225,18 @@
           "title": "Allgemeiner E-Mail-Client",
           "kurzbeschreibung": "Schutz von E-Mail-Kommunikation",
           "anforderungen": [
-            {"id":"BSI-APP.5.3.A1","title":"Schutz von E-Mail-Kommunikation","stufe":"basis","kurzbeschreibung":"SPF, DKIM, DMARC für eigene Domains implementieren. Mitarbeitende in Erkennung von Phishing schulen (Vakt-Aware). Nachweis: DNS-Konfiguration, Phishing-Übungs-Reports."},
-            {"id":"BSI-APP.5.3.A2","title":"Schutz vor E-Mail-Schadsoftware","stufe":"standard","kurzbeschreibung":"E-Mail-Anhänge automatisch auf Schadsoftware prüfen. Nachweis: AV-Konfiguration, Quarantäne-Logs."}
+            {
+              "id": "BSI-APP.5.3.A1",
+              "title": "Schutz von E-Mail-Kommunikation",
+              "stufe": "basis",
+              "kurzbeschreibung": "SPF, DKIM, DMARC für eigene Domains implementieren. Mitarbeitende in Erkennung von Phishing schulen (Vakt-Aware). Nachweis: DNS-Konfiguration, Phishing-Übungs-Reports."
+            },
+            {
+              "id": "BSI-APP.5.3.A2",
+              "title": "Schutz vor E-Mail-Schadsoftware",
+              "stufe": "standard",
+              "kurzbeschreibung": "E-Mail-Anhänge automatisch auf Schadsoftware prüfen. Nachweis: AV-Konfiguration, Quarantäne-Logs."
+            }
           ]
         },
         {
@@ -560,8 +1244,18 @@
           "title": "Allgemeine Software",
           "kurzbeschreibung": "Sicherheitsanforderungen für Anwendungssoftware",
           "anforderungen": [
-            {"id":"BSI-APP.6.A1","title":"Planung und Konzeption des Software-Einsatzes","stufe":"basis","kurzbeschreibung":"Software-Einsatz systematisch planen: Anforderungen, Zulassung, Lebenszyklus. Nachweis: Software-Portfolio, Lifecycle-Plan."},
-            {"id":"BSI-APP.6.A2","title":"Sichere Installation von Software","stufe":"standard","kurzbeschreibung":"Software nur aus vertrauenswürdigen Quellen installieren und Integrität prüfen. Nachweis: Installationsrichtlinie, Hashprüfung."}
+            {
+              "id": "BSI-APP.6.A1",
+              "title": "Planung und Konzeption des Software-Einsatzes",
+              "stufe": "basis",
+              "kurzbeschreibung": "Software-Einsatz systematisch planen: Anforderungen, Zulassung, Lebenszyklus. Nachweis: Software-Portfolio, Lifecycle-Plan."
+            },
+            {
+              "id": "BSI-APP.6.A2",
+              "title": "Sichere Installation von Software",
+              "stufe": "standard",
+              "kurzbeschreibung": "Software nur aus vertrauenswürdigen Quellen installieren und Integrität prüfen. Nachweis: Installationsrichtlinie, Hashprüfung."
+            }
           ]
         },
         {
@@ -569,8 +1263,18 @@
           "title": "Entwicklung von Individualsoftware",
           "kurzbeschreibung": "Sicherheit bei individuell entwickelter Software",
           "anforderungen": [
-            {"id":"BSI-APP.7.A1","title":"Erstellung eines Anforderungskatalogs für Software","stufe":"basis","kurzbeschreibung":"Sicherheitsanforderungen für Individualsoftware in einem Anforderungskatalog festlegen. Nachweis: Anforderungskatalog, Sign-off durch ISB."},
-            {"id":"BSI-APP.7.A2","title":"Sicherheitstests für Individualsoftware","stufe":"standard","kurzbeschreibung":"Sicherheitstests (SAST, DAST, Penetrationstests) vor jeder Produktivnahme durchführen. Nachweis: Testberichte, Freigabeprotokoll."}
+            {
+              "id": "BSI-APP.7.A1",
+              "title": "Erstellung eines Anforderungskatalogs für Software",
+              "stufe": "basis",
+              "kurzbeschreibung": "Sicherheitsanforderungen für Individualsoftware in einem Anforderungskatalog festlegen. Nachweis: Anforderungskatalog, Sign-off durch ISB."
+            },
+            {
+              "id": "BSI-APP.7.A2",
+              "title": "Sicherheitstests für Individualsoftware",
+              "stufe": "standard",
+              "kurzbeschreibung": "Sicherheitstests (SAST, DAST, Penetrationstests) vor jeder Produktivnahme durchführen. Nachweis: Testberichte, Freigabeprotokoll."
+            }
           ]
         }
       ]
@@ -584,8 +1288,18 @@
           "title": "Allgemeiner Server",
           "kurzbeschreibung": "Allgemeine Server-Härtung",
           "anforderungen": [
-            {"id":"BSI-SYS.1.1.A1","title":"Allgemeine Server-Härtung","stufe":"basis","kurzbeschreibung":"Server gemäß CIS-Benchmarks oder BSI-Empfehlungen härten (Standarddienste deaktivieren, Patches prüfen, Login-Wege einschränken). Nachweis: Hardening-Guide, Compliance-Scans (CIS/Lynis)."},
-            {"id":"BSI-SYS.1.1.A2","title":"Authentifizierung an Servern","stufe":"standard","kurzbeschreibung":"Starke Authentifizierung für Serveradministration (MFA, SSH-Keys). Nachweis: Konfigurationsdokumentation."}
+            {
+              "id": "BSI-SYS.1.1.A1",
+              "title": "Allgemeine Server-Härtung",
+              "stufe": "basis",
+              "kurzbeschreibung": "Server gemäß CIS-Benchmarks oder BSI-Empfehlungen härten (Standarddienste deaktivieren, Patches prüfen, Login-Wege einschränken). Nachweis: Hardening-Guide, Compliance-Scans (CIS/Lynis)."
+            },
+            {
+              "id": "BSI-SYS.1.1.A2",
+              "title": "Authentifizierung an Servern",
+              "stufe": "standard",
+              "kurzbeschreibung": "Starke Authentifizierung für Serveradministration (MFA, SSH-Keys). Nachweis: Konfigurationsdokumentation."
+            }
           ]
         },
         {
@@ -593,8 +1307,18 @@
           "title": "Windows Server",
           "kurzbeschreibung": "Sicherheit von Windows-Servern",
           "anforderungen": [
-            {"id":"BSI-SYS.1.2.A1","title":"Windows Server","stufe":"basis","kurzbeschreibung":"Unterstützte Windows-Server-Versionen einsetzen, SMBv1 deaktivieren, Credential Guard und LSA Protection aktivieren. Nachweis: Versions-Inventar, GPO-Konfiguration, BSI-Härtungsbericht."},
-            {"id":"BSI-SYS.1.2.A2","title":"Windows-Server-Härtung","stufe":"standard","kurzbeschreibung":"Windows-Server nach CIS-Benchmark härten. Nachweis: CIS-Benchmark-Scan-Ergebnis."}
+            {
+              "id": "BSI-SYS.1.2.A1",
+              "title": "Windows Server",
+              "stufe": "basis",
+              "kurzbeschreibung": "Unterstützte Windows-Server-Versionen einsetzen, SMBv1 deaktivieren, Credential Guard und LSA Protection aktivieren. Nachweis: Versions-Inventar, GPO-Konfiguration, BSI-Härtungsbericht."
+            },
+            {
+              "id": "BSI-SYS.1.2.A2",
+              "title": "Windows-Server-Härtung",
+              "stufe": "standard",
+              "kurzbeschreibung": "Windows-Server nach CIS-Benchmark härten. Nachweis: CIS-Benchmark-Scan-Ergebnis."
+            }
           ]
         },
         {
@@ -602,8 +1326,18 @@
           "title": "Server unter Linux und Unix",
           "kurzbeschreibung": "Sicherheit von Linux/Unix-Servern",
           "anforderungen": [
-            {"id":"BSI-SYS.1.3.A1","title":"Linux-Server","stufe":"basis","kurzbeschreibung":"Linux-Server härten (SELinux/AppArmor enforced, SSH key-only, fail2ban, Login-Banner). Kritische Kernel-CVEs innerhalb 7 Tagen patchen. Nachweis: Konfigurationsdateien, Patch-Reports."},
-            {"id":"BSI-SYS.1.3.A2","title":"Sorgfältiger Umgang mit Zugangsdaten","stufe":"standard","kurzbeschreibung":"Root-Zugang deaktivieren, sudo-Regeln minimieren. Nachweis: sudoers-Konfiguration, Audit-Log."}
+            {
+              "id": "BSI-SYS.1.3.A1",
+              "title": "Linux-Server",
+              "stufe": "basis",
+              "kurzbeschreibung": "Linux-Server härten (SELinux/AppArmor enforced, SSH key-only, fail2ban, Login-Banner). Kritische Kernel-CVEs innerhalb 7 Tagen patchen. Nachweis: Konfigurationsdateien, Patch-Reports."
+            },
+            {
+              "id": "BSI-SYS.1.3.A2",
+              "title": "Sorgfältiger Umgang mit Zugangsdaten",
+              "stufe": "standard",
+              "kurzbeschreibung": "Root-Zugang deaktivieren, sudo-Regeln minimieren. Nachweis: sudoers-Konfiguration, Audit-Log."
+            }
           ]
         },
         {
@@ -611,8 +1345,18 @@
           "title": "Virtualisierung",
           "kurzbeschreibung": "Sicherheit von Virtualisierungsinfrastruktur",
           "anforderungen": [
-            {"id":"BSI-SYS.1.5.A1","title":"Planung von Virtualisierung","stufe":"basis","kurzbeschreibung":"Virtualisierungsinfrastruktur sicher planen und betreiben: Hypervisor-Härtung, VM-Isolation, separate Verwaltungsnetze. Patchzyklus für Hypervisoren einhalten. Nachweis: Virtualisierungskonzept, Hypervisor-Konfiguration, Patch-Protokoll."},
-            {"id":"BSI-SYS.1.5.A2","title":"Härtung des Hypervisors","stufe":"standard","kurzbeschreibung":"Hypervisor nach Herstellerempfehlungen und CIS-Benchmarks härten. Nachweis: Härtungsbericht."}
+            {
+              "id": "BSI-SYS.1.5.A1",
+              "title": "Planung von Virtualisierung",
+              "stufe": "basis",
+              "kurzbeschreibung": "Virtualisierungsinfrastruktur sicher planen und betreiben: Hypervisor-Härtung, VM-Isolation, separate Verwaltungsnetze. Patchzyklus für Hypervisoren einhalten. Nachweis: Virtualisierungskonzept, Hypervisor-Konfiguration, Patch-Protokoll."
+            },
+            {
+              "id": "BSI-SYS.1.5.A2",
+              "title": "Härtung des Hypervisors",
+              "stufe": "standard",
+              "kurzbeschreibung": "Hypervisor nach Herstellerempfehlungen und CIS-Benchmarks härten. Nachweis: Härtungsbericht."
+            }
           ]
         },
         {
@@ -620,8 +1364,18 @@
           "title": "Containerisierung",
           "kurzbeschreibung": "Sicherheit von Container-Deployments",
           "anforderungen": [
-            {"id":"BSI-SYS.1.6.A1","title":"Container-Absicherung","stufe":"basis","kurzbeschreibung":"Container-Deployments absichern: minimale Base-Images, rootless Betrieb, Read-only Filesystems, regelmäßige Image-Scans. Nachweis: Container-Sicherheitsrichtlinie, Scan-Berichte (Trivy/Grype), CI/CD-Integration."},
-            {"id":"BSI-SYS.1.6.A2","title":"Container-Isolierung","stufe":"standard","kurzbeschreibung":"Container-Netzwerksegmentierung mit Network Policies erzwingen. Nachweis: Kubernetes-Network-Policy-Konfiguration."}
+            {
+              "id": "BSI-SYS.1.6.A1",
+              "title": "Container-Absicherung",
+              "stufe": "basis",
+              "kurzbeschreibung": "Container-Deployments absichern: minimale Base-Images, rootless Betrieb, Read-only Filesystems, regelmäßige Image-Scans. Nachweis: Container-Sicherheitsrichtlinie, Scan-Berichte (Trivy/Grype), CI/CD-Integration."
+            },
+            {
+              "id": "BSI-SYS.1.6.A2",
+              "title": "Container-Isolierung",
+              "stufe": "standard",
+              "kurzbeschreibung": "Container-Netzwerksegmentierung mit Network Policies erzwingen. Nachweis: Kubernetes-Network-Policy-Konfiguration."
+            }
           ]
         },
         {
@@ -629,8 +1383,18 @@
           "title": "IBM Z",
           "kurzbeschreibung": "Sicherheit von IBM Z/Mainframe-Systemen",
           "anforderungen": [
-            {"id":"BSI-SYS.1.7.A1","title":"Planung von IBM Z","stufe":"basis","kurzbeschreibung":"IBM Z/Mainframe-Infrastruktur sicher planen: RACF/ACF2/TopSecret konfigurieren, minimale Berechtigungen. Nachweis: Sicherheitskonzept-Dokument."},
-            {"id":"BSI-SYS.1.7.A2","title":"IBM Z Härtung","stufe":"standard","kurzbeschreibung":"IBM Z nach IBM-Härtungsleitfaden konfigurieren. Nachweis: Härtungsbericht."}
+            {
+              "id": "BSI-SYS.1.7.A1",
+              "title": "Planung von IBM Z",
+              "stufe": "basis",
+              "kurzbeschreibung": "IBM Z/Mainframe-Infrastruktur sicher planen: RACF/ACF2/TopSecret konfigurieren, minimale Berechtigungen. Nachweis: Sicherheitskonzept-Dokument."
+            },
+            {
+              "id": "BSI-SYS.1.7.A2",
+              "title": "IBM Z Härtung",
+              "stufe": "standard",
+              "kurzbeschreibung": "IBM Z nach IBM-Härtungsleitfaden konfigurieren. Nachweis: Härtungsbericht."
+            }
           ]
         },
         {
@@ -638,8 +1402,18 @@
           "title": "Speicherlösungen",
           "kurzbeschreibung": "Sicherheit von Storage-Systemen",
           "anforderungen": [
-            {"id":"BSI-SYS.1.8.A1","title":"Planung von Speicherlösungen","stufe":"basis","kurzbeschreibung":"Storage-Systeme sicher planen: Zugriffskontrolle, Verschlüsselung at rest, Redundanz. Nachweis: Storage-Konzept."},
-            {"id":"BSI-SYS.1.8.A2","title":"Verschlüsselung von Speicherlösungen","stufe":"standard","kurzbeschreibung":"Daten im Storage verschlüsseln (SED, Software-Verschlüsselung). Nachweis: Verschlüsselungskonfiguration."}
+            {
+              "id": "BSI-SYS.1.8.A1",
+              "title": "Planung von Speicherlösungen",
+              "stufe": "basis",
+              "kurzbeschreibung": "Storage-Systeme sicher planen: Zugriffskontrolle, Verschlüsselung at rest, Redundanz. Nachweis: Storage-Konzept."
+            },
+            {
+              "id": "BSI-SYS.1.8.A2",
+              "title": "Verschlüsselung von Speicherlösungen",
+              "stufe": "standard",
+              "kurzbeschreibung": "Daten im Storage verschlüsseln (SED, Software-Verschlüsselung). Nachweis: Verschlüsselungskonfiguration."
+            }
           ]
         },
         {
@@ -647,8 +1421,18 @@
           "title": "Allgemeiner Client",
           "kurzbeschreibung": "Sicherheit von Desktop-Systemen",
           "anforderungen": [
-            {"id":"BSI-SYS.2.1.A1","title":"Schutz von Desktop-Systemen","stufe":"basis","kurzbeschreibung":"Client-Systeme absichern: Full-Disk-Encryption, EDR-Lösung, automatische Sicherheitsupdates, lokale Firewall. Nachweis: Endpoint-Management-Konfiguration, Compliance-Report."},
-            {"id":"BSI-SYS.2.1.A2","title":"Einschränkung und Kontrolle des Netzzugriffs","stufe":"standard","kurzbeschreibung":"Netzwerkzugriff von Clients einschränken (Host-Firewall, 802.1X). Nachweis: Konfigurationsdokumentation."}
+            {
+              "id": "BSI-SYS.2.1.A1",
+              "title": "Schutz von Desktop-Systemen",
+              "stufe": "basis",
+              "kurzbeschreibung": "Client-Systeme absichern: Full-Disk-Encryption, EDR-Lösung, automatische Sicherheitsupdates, lokale Firewall. Nachweis: Endpoint-Management-Konfiguration, Compliance-Report."
+            },
+            {
+              "id": "BSI-SYS.2.1.A2",
+              "title": "Einschränkung und Kontrolle des Netzzugriffs",
+              "stufe": "standard",
+              "kurzbeschreibung": "Netzwerkzugriff von Clients einschränken (Host-Firewall, 802.1X). Nachweis: Konfigurationsdokumentation."
+            }
           ]
         },
         {
@@ -656,8 +1440,18 @@
           "title": "Clients unter Windows",
           "kurzbeschreibung": "Sicherheit von Windows-Client-Systemen",
           "anforderungen": [
-            {"id":"BSI-SYS.2.2.A1","title":"Planung des Einsatzes von Windows-Clients","stufe":"basis","kurzbeschreibung":"Windows-Clients nach Sicherheitsanforderungen planen: Versionsmanagement, Patch-Strategie, Basisimage. Nachweis: Client-Management-Konzept."},
-            {"id":"BSI-SYS.2.2.A2","title":"Härtung von Windows-Clients","stufe":"standard","kurzbeschreibung":"Windows-Clients nach CIS-Benchmark härten. Nachweis: CIS-Benchmark-Scan."}
+            {
+              "id": "BSI-SYS.2.2.A1",
+              "title": "Planung des Einsatzes von Windows-Clients",
+              "stufe": "basis",
+              "kurzbeschreibung": "Windows-Clients nach Sicherheitsanforderungen planen: Versionsmanagement, Patch-Strategie, Basisimage. Nachweis: Client-Management-Konzept."
+            },
+            {
+              "id": "BSI-SYS.2.2.A2",
+              "title": "Härtung von Windows-Clients",
+              "stufe": "standard",
+              "kurzbeschreibung": "Windows-Clients nach CIS-Benchmark härten. Nachweis: CIS-Benchmark-Scan."
+            }
           ]
         },
         {
@@ -665,8 +1459,18 @@
           "title": "Clients unter Windows 10 und 11",
           "kurzbeschreibung": "Windows 10/11 spezifische Härtungsmaßnahmen",
           "anforderungen": [
-            {"id":"BSI-SYS.2.2.3.A1","title":"Windows-Clients","stufe":"basis","kurzbeschreibung":"Windows-Defender aktivieren, BitLocker für mobile Geräte, Application-Allowlisting. Standard-User ohne lokale Admin-Rechte einsetzen. Nachweis: GPO-Konfiguration, Compliance-Scan."},
-            {"id":"BSI-SYS.2.2.3.A2","title":"Erweiterte Sicherheitsmaßnahmen für Windows 10/11","stufe":"standard","kurzbeschreibung":"Windows Defender Credential Guard und HVCI aktivieren. Nachweis: GPO-Konfiguration."}
+            {
+              "id": "BSI-SYS.2.2.3.A1",
+              "title": "Windows-Clients",
+              "stufe": "basis",
+              "kurzbeschreibung": "Windows-Defender aktivieren, BitLocker für mobile Geräte, Application-Allowlisting. Standard-User ohne lokale Admin-Rechte einsetzen. Nachweis: GPO-Konfiguration, Compliance-Scan."
+            },
+            {
+              "id": "BSI-SYS.2.2.3.A2",
+              "title": "Erweiterte Sicherheitsmaßnahmen für Windows 10/11",
+              "stufe": "standard",
+              "kurzbeschreibung": "Windows Defender Credential Guard und HVCI aktivieren. Nachweis: GPO-Konfiguration."
+            }
           ]
         },
         {
@@ -674,8 +1478,18 @@
           "title": "Clients unter Linux und Unix",
           "kurzbeschreibung": "Sicherheit von Linux-Clients",
           "anforderungen": [
-            {"id":"BSI-SYS.2.3.A1","title":"Planung und Betrieb von Linux-Clients","stufe":"basis","kurzbeschreibung":"Linux-Clients sicher planen und betreiben: Festplattenverschlüsselung, automatische Updates, minimale Dienste. Nachweis: Konfigurationsdokumentation."},
-            {"id":"BSI-SYS.2.3.A2","title":"Härtung von Linux-Clients","stufe":"standard","kurzbeschreibung":"Linux-Clients nach CIS-Benchmark härten. Nachweis: Härtungsbericht."}
+            {
+              "id": "BSI-SYS.2.3.A1",
+              "title": "Planung und Betrieb von Linux-Clients",
+              "stufe": "basis",
+              "kurzbeschreibung": "Linux-Clients sicher planen und betreiben: Festplattenverschlüsselung, automatische Updates, minimale Dienste. Nachweis: Konfigurationsdokumentation."
+            },
+            {
+              "id": "BSI-SYS.2.3.A2",
+              "title": "Härtung von Linux-Clients",
+              "stufe": "standard",
+              "kurzbeschreibung": "Linux-Clients nach CIS-Benchmark härten. Nachweis: Härtungsbericht."
+            }
           ]
         },
         {
@@ -683,8 +1497,18 @@
           "title": "Clients unter macOS",
           "kurzbeschreibung": "Sicherheit von macOS-Clients",
           "anforderungen": [
-            {"id":"BSI-SYS.2.4.A1","title":"Planung und Betrieb von macOS-Clients","stufe":"basis","kurzbeschreibung":"macOS-Clients über MDM (Jamf/Mosyle) verwalten: FileVault aktivieren, Gatekeeper enforced, automatische Updates. Nachweis: MDM-Konfiguration."},
-            {"id":"BSI-SYS.2.4.A2","title":"Härtung von macOS","stufe":"standard","kurzbeschreibung":"macOS nach CIS-Benchmark härten. Nachweis: CIS-Scan-Ergebnis."}
+            {
+              "id": "BSI-SYS.2.4.A1",
+              "title": "Planung und Betrieb von macOS-Clients",
+              "stufe": "basis",
+              "kurzbeschreibung": "macOS-Clients über MDM (Jamf/Mosyle) verwalten: FileVault aktivieren, Gatekeeper enforced, automatische Updates. Nachweis: MDM-Konfiguration."
+            },
+            {
+              "id": "BSI-SYS.2.4.A2",
+              "title": "Härtung von macOS",
+              "stufe": "standard",
+              "kurzbeschreibung": "macOS nach CIS-Benchmark härten. Nachweis: CIS-Scan-Ergebnis."
+            }
           ]
         },
         {
@@ -692,8 +1516,18 @@
           "title": "Clients unter ChromeOS",
           "kurzbeschreibung": "Sicherheit von ChromeOS-Clients",
           "anforderungen": [
-            {"id":"BSI-SYS.2.5.A1","title":"Planung und Betrieb von ChromeOS-Clients","stufe":"basis","kurzbeschreibung":"ChromeOS-Geräte über Google Workspace Admin Console verwalten: Updates erzwingen, sichere Browse-Einstellungen. Nachweis: Admin-Console-Konfiguration."},
-            {"id":"BSI-SYS.2.5.A2","title":"ChromeOS-Härtung","stufe":"standard","kurzbeschreibung":"Chrome Enterprise-Richtlinien für zusätzliche Sicherheit konfigurieren. Nachweis: Richtliniendokumentation."}
+            {
+              "id": "BSI-SYS.2.5.A1",
+              "title": "Planung und Betrieb von ChromeOS-Clients",
+              "stufe": "basis",
+              "kurzbeschreibung": "ChromeOS-Geräte über Google Workspace Admin Console verwalten: Updates erzwingen, sichere Browse-Einstellungen. Nachweis: Admin-Console-Konfiguration."
+            },
+            {
+              "id": "BSI-SYS.2.5.A2",
+              "title": "ChromeOS-Härtung",
+              "stufe": "standard",
+              "kurzbeschreibung": "Chrome Enterprise-Richtlinien für zusätzliche Sicherheit konfigurieren. Nachweis: Richtliniendokumentation."
+            }
           ]
         },
         {
@@ -701,8 +1535,18 @@
           "title": "Virtual Desktop Infrastructure",
           "kurzbeschreibung": "Sicherheit von VDI-Umgebungen",
           "anforderungen": [
-            {"id":"BSI-SYS.2.6.A1","title":"Planung einer VDI","stufe":"basis","kurzbeschreibung":"VDI-Infrastruktur sicher planen: Trennung von Admin- und Nutzer-Sessions, persistente vs. nicht-persistente Desktops. Nachweis: VDI-Architektur-Dokument."},
-            {"id":"BSI-SYS.2.6.A2","title":"Härtung von VDI-Images","stufe":"standard","kurzbeschreibung":"VDI-Basis-Images regelmäßig patchen und neu erstellen. Nachweis: Patch-Zyklus, Image-Management."}
+            {
+              "id": "BSI-SYS.2.6.A1",
+              "title": "Planung einer VDI",
+              "stufe": "basis",
+              "kurzbeschreibung": "VDI-Infrastruktur sicher planen: Trennung von Admin- und Nutzer-Sessions, persistente vs. nicht-persistente Desktops. Nachweis: VDI-Architektur-Dokument."
+            },
+            {
+              "id": "BSI-SYS.2.6.A2",
+              "title": "Härtung von VDI-Images",
+              "stufe": "standard",
+              "kurzbeschreibung": "VDI-Basis-Images regelmäßig patchen und neu erstellen. Nachweis: Patch-Zyklus, Image-Management."
+            }
           ]
         },
         {
@@ -710,8 +1554,18 @@
           "title": "Laptops",
           "kurzbeschreibung": "Sicherheit mobiler Geräte (Laptops)",
           "anforderungen": [
-            {"id":"BSI-SYS.3.1.A1","title":"Regelungen für mobile Endgeräte","stufe":"basis","kurzbeschreibung":"MDM-Richtlinien für alle mobilen Geräte definieren und erzwingen: Bildschirmsperre, Fernlöschung, VPN-Pflicht in öffentlichen Netzen, App-Whitelist. Nachweis: MDM-Konfiguration, Compliance-Dashboard."},
-            {"id":"BSI-SYS.3.1.A2","title":"Sicherheitsrichtlinien für Laptops","stufe":"standard","kurzbeschreibung":"Diebstahlschutz und Verschlüsselung für Laptops sicherstellen. Nachweis: Richtlinie, MDM-Konfiguration."}
+            {
+              "id": "BSI-SYS.3.1.A1",
+              "title": "Regelungen für mobile Endgeräte",
+              "stufe": "basis",
+              "kurzbeschreibung": "MDM-Richtlinien für alle mobilen Geräte definieren und erzwingen: Bildschirmsperre, Fernlöschung, VPN-Pflicht in öffentlichen Netzen, App-Whitelist. Nachweis: MDM-Konfiguration, Compliance-Dashboard."
+            },
+            {
+              "id": "BSI-SYS.3.1.A2",
+              "title": "Sicherheitsrichtlinien für Laptops",
+              "stufe": "standard",
+              "kurzbeschreibung": "Diebstahlschutz und Verschlüsselung für Laptops sicherstellen. Nachweis: Richtlinie, MDM-Konfiguration."
+            }
           ]
         },
         {
@@ -719,8 +1573,18 @@
           "title": "Tablet und Smartphone",
           "kurzbeschreibung": "MDM für Tablets und Smartphones",
           "anforderungen": [
-            {"id":"BSI-SYS.3.2.A1","title":"Anforderungen an Mobile Device Management","stufe":"basis","kurzbeschreibung":"Alle mobilen Endgeräte (Smartphones, Tablets) über eine zentrale MDM-Lösung verwalten: Geräteverschlüsselung, Remote-Wipe, PIN-Pflicht, App-Whitelist. Nachweis: MDM-Konfiguration, Geräte-Compliance-Bericht."},
-            {"id":"BSI-SYS.3.2.A2","title":"MDM-Richtlinien","stufe":"standard","kurzbeschreibung":"Erweiterte MDM-Richtlinien für BYOD und Corporate-Owned-Geräte. Nachweis: MDM-Richtliniendokumentation."}
+            {
+              "id": "BSI-SYS.3.2.A1",
+              "title": "Anforderungen an Mobile Device Management",
+              "stufe": "basis",
+              "kurzbeschreibung": "Alle mobilen Endgeräte (Smartphones, Tablets) über eine zentrale MDM-Lösung verwalten: Geräteverschlüsselung, Remote-Wipe, PIN-Pflicht, App-Whitelist. Nachweis: MDM-Konfiguration, Geräte-Compliance-Bericht."
+            },
+            {
+              "id": "BSI-SYS.3.2.A2",
+              "title": "MDM-Richtlinien",
+              "stufe": "standard",
+              "kurzbeschreibung": "Erweiterte MDM-Richtlinien für BYOD und Corporate-Owned-Geräte. Nachweis: MDM-Richtliniendokumentation."
+            }
           ]
         },
         {
@@ -728,8 +1592,18 @@
           "title": "Mobiltelefone",
           "kurzbeschreibung": "Sicherheit für einfache Mobiltelefone",
           "anforderungen": [
-            {"id":"BSI-SYS.3.3.A1","title":"Sicherheitsrichtlinien für Mobiltelefone","stufe":"basis","kurzbeschreibung":"Richtlinie für den Einsatz von Mobiltelefonen im Geschäftsbetrieb erstellen. Nachweis: Richtlinie, Schulungsnachweis."},
-            {"id":"BSI-SYS.3.3.A2","title":"Verschlüsselung von Mobiltelefonen","stufe":"standard","kurzbeschreibung":"Mobiltelefone mit Geräteverschlüsselung konfigurieren. Nachweis: MDM-Compliance-Bericht."}
+            {
+              "id": "BSI-SYS.3.3.A1",
+              "title": "Sicherheitsrichtlinien für Mobiltelefone",
+              "stufe": "basis",
+              "kurzbeschreibung": "Richtlinie für den Einsatz von Mobiltelefonen im Geschäftsbetrieb erstellen. Nachweis: Richtlinie, Schulungsnachweis."
+            },
+            {
+              "id": "BSI-SYS.3.3.A2",
+              "title": "Verschlüsselung von Mobiltelefonen",
+              "stufe": "standard",
+              "kurzbeschreibung": "Mobiltelefone mit Geräteverschlüsselung konfigurieren. Nachweis: MDM-Compliance-Bericht."
+            }
           ]
         },
         {
@@ -737,8 +1611,18 @@
           "title": "Drucker, Kopierer und Multifunktionsgeräte",
           "kurzbeschreibung": "Sicherheit von Druck- und MFP-Geräten",
           "anforderungen": [
-            {"id":"BSI-SYS.4.1.A1","title":"Drucker und Multifunktionsgeräte","stufe":"basis","kurzbeschreibung":"Drucker und MFPs absichern: Standardpasswörter ändern, Netzwerksegmentierung, Festplattenverschlüsselung, Audit-Logging aktivieren. Nachweis: Gerätekonfiguration, Netzwerksegmentierungsnachweis."},
-            {"id":"BSI-SYS.4.1.A2","title":"Sichere Konfiguration von Druckern","stufe":"standard","kurzbeschreibung":"Netzwerk-Protokolle auf Drucker einschränken (nur IPPS/HTTPS). Nachweis: Netzwerk-Scan, Konfigurationsdokumentation."}
+            {
+              "id": "BSI-SYS.4.1.A1",
+              "title": "Drucker und Multifunktionsgeräte",
+              "stufe": "basis",
+              "kurzbeschreibung": "Drucker und MFPs absichern: Standardpasswörter ändern, Netzwerksegmentierung, Festplattenverschlüsselung, Audit-Logging aktivieren. Nachweis: Gerätekonfiguration, Netzwerksegmentierungsnachweis."
+            },
+            {
+              "id": "BSI-SYS.4.1.A2",
+              "title": "Sichere Konfiguration von Druckern",
+              "stufe": "standard",
+              "kurzbeschreibung": "Netzwerk-Protokolle auf Drucker einschränken (nur IPPS/HTTPS). Nachweis: Netzwerk-Scan, Konfigurationsdokumentation."
+            }
           ]
         },
         {
@@ -746,8 +1630,18 @@
           "title": "Eingebettete Systeme",
           "kurzbeschreibung": "Sicherheit von eingebetteten IT-Systemen und IoT",
           "anforderungen": [
-            {"id":"BSI-SYS.4.3.A1","title":"Planung des Einsatzes eingebetteter Systeme","stufe":"basis","kurzbeschreibung":"Eingebettete Systeme und IoT-Geräte inventarisieren und Sicherheitsanforderungen definieren. Nachweis: IoT-Asset-Inventar, Sicherheitskonzept."},
-            {"id":"BSI-SYS.4.3.A2","title":"Härtung eingebetteter Systeme","stufe":"standard","kurzbeschreibung":"Eingebettete Systeme nach Herstellerempfehlungen härten und in separates Netzwerksegment einbinden. Nachweis: Härtungsbericht, Netzwerkdiagramm."}
+            {
+              "id": "BSI-SYS.4.3.A1",
+              "title": "Planung des Einsatzes eingebetteter Systeme",
+              "stufe": "basis",
+              "kurzbeschreibung": "Eingebettete Systeme und IoT-Geräte inventarisieren und Sicherheitsanforderungen definieren. Nachweis: IoT-Asset-Inventar, Sicherheitskonzept."
+            },
+            {
+              "id": "BSI-SYS.4.3.A2",
+              "title": "Härtung eingebetteter Systeme",
+              "stufe": "standard",
+              "kurzbeschreibung": "Eingebettete Systeme nach Herstellerempfehlungen härten und in separates Netzwerksegment einbinden. Nachweis: Härtungsbericht, Netzwerkdiagramm."
+            }
           ]
         },
         {
@@ -755,8 +1649,18 @@
           "title": "Allgemeines IoT-Gerät",
           "kurzbeschreibung": "Sicherheit von IoT-Geräten",
           "anforderungen": [
-            {"id":"BSI-SYS.4.4.A1","title":"Planung des Einsatzes von IoT-Geräten","stufe":"basis","kurzbeschreibung":"IoT-Geräte inventarisieren, in dedizierten VLAN segmentieren, Standard-Credentials ändern. Nachweis: IoT-Inventar, VLAN-Konfiguration."},
-            {"id":"BSI-SYS.4.4.A2","title":"Sicherheitsanforderungen für IoT-Geräte","stufe":"standard","kurzbeschreibung":"Sicherheitsanforderungen für Beschaffung neuer IoT-Geräte festlegen. Nachweis: Beschaffungsrichtlinie."}
+            {
+              "id": "BSI-SYS.4.4.A1",
+              "title": "Planung des Einsatzes von IoT-Geräten",
+              "stufe": "basis",
+              "kurzbeschreibung": "IoT-Geräte inventarisieren, in dedizierten VLAN segmentieren, Standard-Credentials ändern. Nachweis: IoT-Inventar, VLAN-Konfiguration."
+            },
+            {
+              "id": "BSI-SYS.4.4.A2",
+              "title": "Sicherheitsanforderungen für IoT-Geräte",
+              "stufe": "standard",
+              "kurzbeschreibung": "Sicherheitsanforderungen für Beschaffung neuer IoT-Geräte festlegen. Nachweis: Beschaffungsrichtlinie."
+            }
           ]
         },
         {
@@ -764,8 +1668,18 @@
           "title": "Wechseldatenträger",
           "kurzbeschreibung": "Sichere Nutzung von Wechseldatenträgern",
           "anforderungen": [
-            {"id":"BSI-SYS.4.5.A1","title":"Sicherheit von Wechseldatenträgern","stufe":"basis","kurzbeschreibung":"Wechseldatenträger sicher managen: USB-Richtlinie, verschlüsselte Träger, Malware-Scan vor Verwendung, Protokollierung des Einsatzes. Nachweis: USB-Richtlinie, DLP-Konfiguration, Scan-Protokolle."},
-            {"id":"BSI-SYS.4.5.A2","title":"Verschlüsselung von Wechseldatenträgern","stufe":"standard","kurzbeschreibung":"Alle Wechseldatenträger mit vertraulichen Daten verschlüsseln. Nachweis: Verschlüsselungsrichtlinie, Tool-Konfiguration."}
+            {
+              "id": "BSI-SYS.4.5.A1",
+              "title": "Sicherheit von Wechseldatenträgern",
+              "stufe": "basis",
+              "kurzbeschreibung": "Wechseldatenträger sicher managen: USB-Richtlinie, verschlüsselte Träger, Malware-Scan vor Verwendung, Protokollierung des Einsatzes. Nachweis: USB-Richtlinie, DLP-Konfiguration, Scan-Protokolle."
+            },
+            {
+              "id": "BSI-SYS.4.5.A2",
+              "title": "Verschlüsselung von Wechseldatenträgern",
+              "stufe": "standard",
+              "kurzbeschreibung": "Alle Wechseldatenträger mit vertraulichen Daten verschlüsseln. Nachweis: Verschlüsselungsrichtlinie, Tool-Konfiguration."
+            }
           ]
         }
       ]
@@ -779,8 +1693,18 @@
           "title": "Prozessleit- und Automatisierungstechnik",
           "kurzbeschreibung": "Schutz von OT-Systemen und Prozessleittechnik",
           "anforderungen": [
-            {"id":"BSI-IND.1.A1","title":"Schutz von Prozessleittechnik","stufe":"basis","kurzbeschreibung":"OT-Netze strikt von IT-Netzen trennen (DMZ, unidirektionale Gateways). Alle OT-Komponenten inventarisieren. Nachweis: Netz-Diagramm, OT-Asset-Inventar, Penetrationstests."},
-            {"id":"BSI-IND.1.A2","title":"OT-Sicherheitskonzept","stufe":"standard","kurzbeschreibung":"OT-Sicherheitskonzept nach IEC 62443 erstellen. Nachweis: Sicherheitskonzept-Dokument."}
+            {
+              "id": "BSI-IND.1.A1",
+              "title": "Schutz von Prozessleittechnik",
+              "stufe": "basis",
+              "kurzbeschreibung": "OT-Netze strikt von IT-Netzen trennen (DMZ, unidirektionale Gateways). Alle OT-Komponenten inventarisieren. Nachweis: Netz-Diagramm, OT-Asset-Inventar, Penetrationstests."
+            },
+            {
+              "id": "BSI-IND.1.A2",
+              "title": "OT-Sicherheitskonzept",
+              "stufe": "standard",
+              "kurzbeschreibung": "OT-Sicherheitskonzept nach IEC 62443 erstellen. Nachweis: Sicherheitskonzept-Dokument."
+            }
           ]
         },
         {
@@ -788,8 +1712,18 @@
           "title": "Allgemeine ICS-Komponente",
           "kurzbeschreibung": "Sicherheit von allgemeinen ICS-Komponenten",
           "anforderungen": [
-            {"id":"BSI-IND.2.1.A1","title":"Inventarisierung von ICS-Komponenten","stufe":"basis","kurzbeschreibung":"Alle ICS-Komponenten (SPS, HMI, Sensoren) vollständig inventarisieren und dokumentieren. Nachweis: Asset-Inventar, Netzplan."},
-            {"id":"BSI-IND.2.1.A2","title":"Härtung von ICS-Komponenten","stufe":"standard","kurzbeschreibung":"ICS-Komponenten nach Herstellerempfehlung härten: nicht benötigte Dienste deaktivieren, Patches einspielen. Nachweis: Härtungsbericht."}
+            {
+              "id": "BSI-IND.2.1.A1",
+              "title": "Inventarisierung von ICS-Komponenten",
+              "stufe": "basis",
+              "kurzbeschreibung": "Alle ICS-Komponenten (SPS, HMI, Sensoren) vollständig inventarisieren und dokumentieren. Nachweis: Asset-Inventar, Netzplan."
+            },
+            {
+              "id": "BSI-IND.2.1.A2",
+              "title": "Härtung von ICS-Komponenten",
+              "stufe": "standard",
+              "kurzbeschreibung": "ICS-Komponenten nach Herstellerempfehlung härten: nicht benötigte Dienste deaktivieren, Patches einspielen. Nachweis: Härtungsbericht."
+            }
           ]
         },
         {
@@ -797,8 +1731,18 @@
           "title": "Speicherprogrammierbare Steuerungen (SPS)",
           "kurzbeschreibung": "Sicherheit von SPS-Systemen",
           "anforderungen": [
-            {"id":"BSI-IND.2.2.A1","title":"Planung des SPS-Einsatzes","stufe":"basis","kurzbeschreibung":"SPS-Systeme in sicherem Netzwerksegment betreiben; physischen Zugang einschränken; Änderungen versioniert dokumentieren. Nachweis: SPS-Konfigurationsmanagement."},
-            {"id":"BSI-IND.2.2.A2","title":"Kontrolle von SPS-Änderungen","stufe":"standard","kurzbeschreibung":"Alle Änderungen an SPS-Programmen durch Change-Management absichern. Nachweis: Change-Tickets."}
+            {
+              "id": "BSI-IND.2.2.A1",
+              "title": "Planung des SPS-Einsatzes",
+              "stufe": "basis",
+              "kurzbeschreibung": "SPS-Systeme in sicherem Netzwerksegment betreiben; physischen Zugang einschränken; Änderungen versioniert dokumentieren. Nachweis: SPS-Konfigurationsmanagement."
+            },
+            {
+              "id": "BSI-IND.2.2.A2",
+              "title": "Kontrolle von SPS-Änderungen",
+              "stufe": "standard",
+              "kurzbeschreibung": "Alle Änderungen an SPS-Programmen durch Change-Management absichern. Nachweis: Change-Tickets."
+            }
           ]
         },
         {
@@ -806,8 +1750,18 @@
           "title": "Sensoren und Aktoren",
           "kurzbeschreibung": "Sicherheit von Feldgeräten",
           "anforderungen": [
-            {"id":"BSI-IND.2.3.A1","title":"Inventarisierung von Sensoren und Aktoren","stufe":"basis","kurzbeschreibung":"Alle Feldgeräte (Sensoren, Aktoren) inventarisieren und auf bekannte Schwachstellen prüfen. Nachweis: Asset-Inventar, CVE-Scanning."},
-            {"id":"BSI-IND.2.3.A2","title":"Sichere Kommunikation von Feldgeräten","stufe":"standard","kurzbeschreibung":"Kommunikation von Feldgeräten authentifizieren und wo möglich verschlüsseln. Nachweis: Protokolldokumentation."}
+            {
+              "id": "BSI-IND.2.3.A1",
+              "title": "Inventarisierung von Sensoren und Aktoren",
+              "stufe": "basis",
+              "kurzbeschreibung": "Alle Feldgeräte (Sensoren, Aktoren) inventarisieren und auf bekannte Schwachstellen prüfen. Nachweis: Asset-Inventar, CVE-Scanning."
+            },
+            {
+              "id": "BSI-IND.2.3.A2",
+              "title": "Sichere Kommunikation von Feldgeräten",
+              "stufe": "standard",
+              "kurzbeschreibung": "Kommunikation von Feldgeräten authentifizieren und wo möglich verschlüsseln. Nachweis: Protokolldokumentation."
+            }
           ]
         },
         {
@@ -815,8 +1769,18 @@
           "title": "Maschinen",
           "kurzbeschreibung": "Sicherheit von Produktionsmaschinen",
           "anforderungen": [
-            {"id":"BSI-IND.2.4.A1","title":"Sichere Vernetzung von Maschinen","stufe":"basis","kurzbeschreibung":"Maschinen in OT-Netzwerksegment betreiben; Fernzugriff über sichere, authentifizierte Tunnel. Nachweis: Netzdiagramm, Fernwartungskonzept."},
-            {"id":"BSI-IND.2.4.A2","title":"Zugangsschutz für Maschinen","stufe":"standard","kurzbeschreibung":"Physischen und logischen Zugang zu Maschinen einschränken. Nachweis: Zugangsprotokoll."}
+            {
+              "id": "BSI-IND.2.4.A1",
+              "title": "Sichere Vernetzung von Maschinen",
+              "stufe": "basis",
+              "kurzbeschreibung": "Maschinen in OT-Netzwerksegment betreiben; Fernzugriff über sichere, authentifizierte Tunnel. Nachweis: Netzdiagramm, Fernwartungskonzept."
+            },
+            {
+              "id": "BSI-IND.2.4.A2",
+              "title": "Zugangsschutz für Maschinen",
+              "stufe": "standard",
+              "kurzbeschreibung": "Physischen und logischen Zugang zu Maschinen einschränken. Nachweis: Zugangsprotokoll."
+            }
           ]
         },
         {
@@ -824,8 +1788,18 @@
           "title": "Safety Instrumented Systems",
           "kurzbeschreibung": "Sicherheit von sicherheitsgerichteten Steuerungen (SIS)",
           "anforderungen": [
-            {"id":"BSI-IND.2.7.A1","title":"Einsatz von Safety Instrumented Systems","stufe":"basis","kurzbeschreibung":"SIS von anderen OT-Systemen isolieren; Änderungen nur durch autorisierte Personen mit Vier-Augen-Prinzip. Nachweis: SIS-Isolationsnachweis, Change-Management-Protokoll."},
-            {"id":"BSI-IND.2.7.A2","title":"Überprüfung von SIS","stufe":"standard","kurzbeschreibung":"SIS regelmäßig auf Integrität und korrekte Funktion prüfen. Nachweis: Prüfprotokoll, Kalibrierungsnachweis."}
+            {
+              "id": "BSI-IND.2.7.A1",
+              "title": "Einsatz von Safety Instrumented Systems",
+              "stufe": "basis",
+              "kurzbeschreibung": "SIS von anderen OT-Systemen isolieren; Änderungen nur durch autorisierte Personen mit Vier-Augen-Prinzip. Nachweis: SIS-Isolationsnachweis, Change-Management-Protokoll."
+            },
+            {
+              "id": "BSI-IND.2.7.A2",
+              "title": "Überprüfung von SIS",
+              "stufe": "standard",
+              "kurzbeschreibung": "SIS regelmäßig auf Integrität und korrekte Funktion prüfen. Nachweis: Prüfprotokoll, Kalibrierungsnachweis."
+            }
           ]
         },
         {
@@ -833,8 +1807,18 @@
           "title": "Fernwartung im industriellen Umfeld",
           "kurzbeschreibung": "Sichere Fernwartung von OT-Systemen",
           "anforderungen": [
-            {"id":"BSI-IND.3.2.A1","title":"Planung der Fernwartung im OT-Umfeld","stufe":"basis","kurzbeschreibung":"OT-Fernwartungszugriffe planen: dedizierte Jumpserver, MFA, zeitlich begrenzte Sessions, vollständige Protokollierung. Nachweis: Fernwartungskonzept, Sitzungsprotokolle."},
-            {"id":"BSI-IND.3.2.A2","title":"Technische Absicherung der OT-Fernwartung","stufe":"standard","kurzbeschreibung":"OT-Fernwartungs-Verbindungen über verschlüsselte Tunnel und Zwei-Faktor-Authentifizierung absichern. Nachweis: VPN-/PAM-Konfiguration."}
+            {
+              "id": "BSI-IND.3.2.A1",
+              "title": "Planung der Fernwartung im OT-Umfeld",
+              "stufe": "basis",
+              "kurzbeschreibung": "OT-Fernwartungszugriffe planen: dedizierte Jumpserver, MFA, zeitlich begrenzte Sessions, vollständige Protokollierung. Nachweis: Fernwartungskonzept, Sitzungsprotokolle."
+            },
+            {
+              "id": "BSI-IND.3.2.A2",
+              "title": "Technische Absicherung der OT-Fernwartung",
+              "stufe": "standard",
+              "kurzbeschreibung": "OT-Fernwartungs-Verbindungen über verschlüsselte Tunnel und Zwei-Faktor-Authentifizierung absichern. Nachweis: VPN-/PAM-Konfiguration."
+            }
           ]
         }
       ]
@@ -848,8 +1832,18 @@
           "title": "Netzarchitektur und -design",
           "kurzbeschreibung": "Strukturiertes Netzzonenmodell",
           "anforderungen": [
-            {"id":"BSI-NET.1.1.A1","title":"Netzarchitektur und -design","stufe":"basis","kurzbeschreibung":"Dokumentierte Netzarchitektur mit Zonenmodell erstellen (DMZ, Internes Netz, Management-Netz). Prinzip der minimalen Sichtbarkeit beachten. Nachweis: Architektur-Diagramm, Firewall-Regelwerk."},
-            {"id":"BSI-NET.1.1.A2","title":"Dokumentation des Netzes","stufe":"standard","kurzbeschreibung":"Netzwerkinfrastruktur vollständig und aktuell dokumentieren. Nachweis: Netzplan, Geräteinventar."}
+            {
+              "id": "BSI-NET.1.1.A1",
+              "title": "Netzarchitektur und -design",
+              "stufe": "basis",
+              "kurzbeschreibung": "Dokumentierte Netzarchitektur mit Zonenmodell erstellen (DMZ, Internes Netz, Management-Netz). Prinzip der minimalen Sichtbarkeit beachten. Nachweis: Architektur-Diagramm, Firewall-Regelwerk."
+            },
+            {
+              "id": "BSI-NET.1.1.A2",
+              "title": "Dokumentation des Netzes",
+              "stufe": "standard",
+              "kurzbeschreibung": "Netzwerkinfrastruktur vollständig und aktuell dokumentieren. Nachweis: Netzplan, Geräteinventar."
+            }
           ]
         },
         {
@@ -857,8 +1851,18 @@
           "title": "Netzmanagement",
           "kurzbeschreibung": "Zentrale Netzwerkkomponenten-Verwaltung",
           "anforderungen": [
-            {"id":"BSI-NET.1.2.A1","title":"Netzmanagement","stufe":"basis","kurzbeschreibung":"Alle Netzkomponenten zentral aus einem dedizierten Management-Netz verwalten. SNMPv3, kein Telnet, keine Defaultpasswörter. Nachweis: Konfigurations-Backup, Management-Netz-Diagramm."},
-            {"id":"BSI-NET.1.2.A2","title":"Automatische Erkennung von Sicherheitsproblemen","stufe":"standard","kurzbeschreibung":"Netzwerkmonitoring automatisieren: Anomalie-Erkennung, Bandbreiten-Monitoring. Nachweis: NMS-Konfiguration."}
+            {
+              "id": "BSI-NET.1.2.A1",
+              "title": "Netzmanagement",
+              "stufe": "basis",
+              "kurzbeschreibung": "Alle Netzkomponenten zentral aus einem dedizierten Management-Netz verwalten. SNMPv3, kein Telnet, keine Defaultpasswörter. Nachweis: Konfigurations-Backup, Management-Netz-Diagramm."
+            },
+            {
+              "id": "BSI-NET.1.2.A2",
+              "title": "Automatische Erkennung von Sicherheitsproblemen",
+              "stufe": "standard",
+              "kurzbeschreibung": "Netzwerkmonitoring automatisieren: Anomalie-Erkennung, Bandbreiten-Monitoring. Nachweis: NMS-Konfiguration."
+            }
           ]
         },
         {
@@ -866,8 +1870,18 @@
           "title": "WLAN-Betrieb",
           "kurzbeschreibung": "Sicherheit von WLAN-Infrastruktur",
           "anforderungen": [
-            {"id":"BSI-NET.2.1.A1","title":"Sichere WLAN-Konfiguration","stufe":"basis","kurzbeschreibung":"WLAN mit WPA3/WPA2-Enterprise (802.1X) absichern; Gastnetz in separatem VLAN. Nachweis: WLAN-Konfiguration, VLAN-Diagramm."},
-            {"id":"BSI-NET.2.1.A2","title":"WLAN-Überwachung","stufe":"standard","kurzbeschreibung":"WLAN auf unautorisierte Access Points überwachen (WIPS). Nachweis: WIPS-Konfiguration, Scan-Berichte."}
+            {
+              "id": "BSI-NET.2.1.A1",
+              "title": "Sichere WLAN-Konfiguration",
+              "stufe": "basis",
+              "kurzbeschreibung": "WLAN mit WPA3/WPA2-Enterprise (802.1X) absichern; Gastnetz in separatem VLAN. Nachweis: WLAN-Konfiguration, VLAN-Diagramm."
+            },
+            {
+              "id": "BSI-NET.2.1.A2",
+              "title": "WLAN-Überwachung",
+              "stufe": "standard",
+              "kurzbeschreibung": "WLAN auf unautorisierte Access Points überwachen (WIPS). Nachweis: WIPS-Konfiguration, Scan-Berichte."
+            }
           ]
         },
         {
@@ -875,8 +1889,18 @@
           "title": "WLAN-Nutzung",
           "kurzbeschreibung": "Sichere WLAN-Nutzung für Endgeräte",
           "anforderungen": [
-            {"id":"BSI-NET.2.2.A1","title":"Sicherheitsrichtlinie für WLAN-Nutzung","stufe":"basis","kurzbeschreibung":"Richtlinie für sichere WLAN-Nutzung erstellen: VPN-Pflicht in öffentlichen WLANs, Verbot unsicherer Verbindungen. Nachweis: Richtlinie, MDM-Konfiguration."},
-            {"id":"BSI-NET.2.2.A2","title":"Schutz der WLAN-Verbindungen","stufe":"standard","kurzbeschreibung":"WLAN-Verbindungen über VPN zusätzlich absichern. Nachweis: VPN-Konfiguration."}
+            {
+              "id": "BSI-NET.2.2.A1",
+              "title": "Sicherheitsrichtlinie für WLAN-Nutzung",
+              "stufe": "basis",
+              "kurzbeschreibung": "Richtlinie für sichere WLAN-Nutzung erstellen: VPN-Pflicht in öffentlichen WLANs, Verbot unsicherer Verbindungen. Nachweis: Richtlinie, MDM-Konfiguration."
+            },
+            {
+              "id": "BSI-NET.2.2.A2",
+              "title": "Schutz der WLAN-Verbindungen",
+              "stufe": "standard",
+              "kurzbeschreibung": "WLAN-Verbindungen über VPN zusätzlich absichern. Nachweis: VPN-Konfiguration."
+            }
           ]
         },
         {
@@ -884,8 +1908,18 @@
           "title": "Router und Switches",
           "kurzbeschreibung": "Härtung von Netzwerkgeräten",
           "anforderungen": [
-            {"id":"BSI-NET.3.1.A1","title":"Router und Switches","stufe":"basis","kurzbeschreibung":"Router und Switches härten: Default-Passwörter ändern, SSH/HTTPS-only, ACLs gegen Spoofing, BPDU-Guard, Port-Security. Nachweis: Konfigurations-Auditberichte."},
-            {"id":"BSI-NET.3.1.A2","title":"Konfigurationsmanagement für Netzkomponenten","stufe":"standard","kurzbeschreibung":"Konfigurationen versioniert sichern und Änderungen protokollieren. Nachweis: Git-Repository, Change-Log."}
+            {
+              "id": "BSI-NET.3.1.A1",
+              "title": "Router und Switches",
+              "stufe": "basis",
+              "kurzbeschreibung": "Router und Switches härten: Default-Passwörter ändern, SSH/HTTPS-only, ACLs gegen Spoofing, BPDU-Guard, Port-Security. Nachweis: Konfigurations-Auditberichte."
+            },
+            {
+              "id": "BSI-NET.3.1.A2",
+              "title": "Konfigurationsmanagement für Netzkomponenten",
+              "stufe": "standard",
+              "kurzbeschreibung": "Konfigurationen versioniert sichern und Änderungen protokollieren. Nachweis: Git-Repository, Change-Log."
+            }
           ]
         },
         {
@@ -893,8 +1927,18 @@
           "title": "Firewall",
           "kurzbeschreibung": "Zentrale Firewall mit Default-Deny",
           "anforderungen": [
-            {"id":"BSI-NET.3.2.A1","title":"Firewall","stufe":"basis","kurzbeschreibung":"Zentrale Firewall mit Default-Deny betreiben. Regelwerk halbjährlich überprüfen, Änderungen via Change-Management. Nachweis: Regelwerk-Export, Change-Log, Review-Protokoll."},
-            {"id":"BSI-NET.3.2.A2","title":"Redundante Firewall-Konfiguration","stufe":"standard","kurzbeschreibung":"Firewall redundant auslegen (HA-Cluster). Nachweis: HA-Konfiguration, Failover-Test."}
+            {
+              "id": "BSI-NET.3.2.A1",
+              "title": "Firewall",
+              "stufe": "basis",
+              "kurzbeschreibung": "Zentrale Firewall mit Default-Deny betreiben. Regelwerk halbjährlich überprüfen, Änderungen via Change-Management. Nachweis: Regelwerk-Export, Change-Log, Review-Protokoll."
+            },
+            {
+              "id": "BSI-NET.3.2.A2",
+              "title": "Redundante Firewall-Konfiguration",
+              "stufe": "standard",
+              "kurzbeschreibung": "Firewall redundant auslegen (HA-Cluster). Nachweis: HA-Konfiguration, Failover-Test."
+            }
           ]
         },
         {
@@ -902,8 +1946,18 @@
           "title": "VPN",
           "kurzbeschreibung": "Sicherheit von VPN-Verbindungen",
           "anforderungen": [
-            {"id":"BSI-NET.3.3.A1","title":"Planung von VPN","stufe":"basis","kurzbeschreibung":"VPN-Infrastruktur sicher planen: IKEv2/OpenVPN mit starker Kryptographie, MFA für Remote-Zugriff. Nachweis: VPN-Konzept, Konfigurationsdokumentation."},
-            {"id":"BSI-NET.3.3.A2","title":"Sicherer Betrieb von VPN","stufe":"standard","kurzbeschreibung":"VPN-Verbindungen auf bekannte Clients einschränken (Certificate-Pinning, Split-Tunneling). Nachweis: VPN-Konfiguration."}
+            {
+              "id": "BSI-NET.3.3.A1",
+              "title": "Planung von VPN",
+              "stufe": "basis",
+              "kurzbeschreibung": "VPN-Infrastruktur sicher planen: IKEv2/OpenVPN mit starker Kryptographie, MFA für Remote-Zugriff. Nachweis: VPN-Konzept, Konfigurationsdokumentation."
+            },
+            {
+              "id": "BSI-NET.3.3.A2",
+              "title": "Sicherer Betrieb von VPN",
+              "stufe": "standard",
+              "kurzbeschreibung": "VPN-Verbindungen auf bekannte Clients einschränken (Certificate-Pinning, Split-Tunneling). Nachweis: VPN-Konfiguration."
+            }
           ]
         },
         {
@@ -911,8 +1965,18 @@
           "title": "TK-Anlagen",
           "kurzbeschreibung": "Sicherheit von Telefonie-Infrastruktur",
           "anforderungen": [
-            {"id":"BSI-NET.4.1.A1","title":"Absicherung von Sprach- und Datenkommunikation","stufe":"basis","kurzbeschreibung":"Telefon- und Videokonferenzsysteme vor Abhören und Manipulation schützen: verschlüsselte Übertragung (SRTP, ZRTP), Authentifizierung, Patch-Management. Nachweis: Systemkonfiguration, Protokoll-Analyse."},
-            {"id":"BSI-NET.4.1.A2","title":"Sichere Konfiguration von TK-Anlagen","stufe":"standard","kurzbeschreibung":"TK-Anlagen nach Herstellerempfehlung härten; Fernzugriff einschränken. Nachweis: Härtungsbericht."}
+            {
+              "id": "BSI-NET.4.1.A1",
+              "title": "Absicherung von Sprach- und Datenkommunikation",
+              "stufe": "basis",
+              "kurzbeschreibung": "Telefon- und Videokonferenzsysteme vor Abhören und Manipulation schützen: verschlüsselte Übertragung (SRTP, ZRTP), Authentifizierung, Patch-Management. Nachweis: Systemkonfiguration, Protokoll-Analyse."
+            },
+            {
+              "id": "BSI-NET.4.1.A2",
+              "title": "Sichere Konfiguration von TK-Anlagen",
+              "stufe": "standard",
+              "kurzbeschreibung": "TK-Anlagen nach Herstellerempfehlung härten; Fernzugriff einschränken. Nachweis: Härtungsbericht."
+            }
           ]
         },
         {
@@ -920,8 +1984,18 @@
           "title": "VoIP",
           "kurzbeschreibung": "Sicherheit von VoIP-Infrastruktur",
           "anforderungen": [
-            {"id":"BSI-NET.4.2.A1","title":"Geeignete Auswahl von VoIP-Software","stufe":"basis","kurzbeschreibung":"VoIP-Software mit SRTP-Unterstützung und regelmäßigen Sicherheitsupdates auswählen. Nachweis: Auswahlkriteriendokumentation."},
-            {"id":"BSI-NET.4.2.A2","title":"Absicherung von VoIP-Endgeräten","stufe":"standard","kurzbeschreibung":"VoIP-Endgeräte in separatem VLAN betreiben und regelmäßig patchen. Nachweis: VLAN-Konfiguration, Patch-Log."}
+            {
+              "id": "BSI-NET.4.2.A1",
+              "title": "Geeignete Auswahl von VoIP-Software",
+              "stufe": "basis",
+              "kurzbeschreibung": "VoIP-Software mit SRTP-Unterstützung und regelmäßigen Sicherheitsupdates auswählen. Nachweis: Auswahlkriteriendokumentation."
+            },
+            {
+              "id": "BSI-NET.4.2.A2",
+              "title": "Absicherung von VoIP-Endgeräten",
+              "stufe": "standard",
+              "kurzbeschreibung": "VoIP-Endgeräte in separatem VLAN betreiben und regelmäßig patchen. Nachweis: VLAN-Konfiguration, Patch-Log."
+            }
           ]
         },
         {
@@ -929,8 +2003,18 @@
           "title": "Faxgeräte und Faxserver",
           "kurzbeschreibung": "Sicherheit von Fax-Infrastruktur",
           "anforderungen": [
-            {"id":"BSI-NET.4.3.A1","title":"Geeignete Auswahl von Faxgeräten","stufe":"basis","kurzbeschreibung":"Faxgeräte mit Authentifizierungsmöglichkeit und Audit-Logging auswählen. Nachweis: Gerätedokumentation."},
-            {"id":"BSI-NET.4.3.A2","title":"Sicherheitsrichtlinie für Fax","stufe":"standard","kurzbeschreibung":"Richtlinie für sichere Faxnutzung erstellen: Vertraulichkeitsklassen, Übertragungsregeln. Nachweis: Richtlinie."}
+            {
+              "id": "BSI-NET.4.3.A1",
+              "title": "Geeignete Auswahl von Faxgeräten",
+              "stufe": "basis",
+              "kurzbeschreibung": "Faxgeräte mit Authentifizierungsmöglichkeit und Audit-Logging auswählen. Nachweis: Gerätedokumentation."
+            },
+            {
+              "id": "BSI-NET.4.3.A2",
+              "title": "Sicherheitsrichtlinie für Fax",
+              "stufe": "standard",
+              "kurzbeschreibung": "Richtlinie für sichere Faxnutzung erstellen: Vertraulichkeitsklassen, Übertragungsregeln. Nachweis: Richtlinie."
+            }
           ]
         },
         {
@@ -938,8 +2022,18 @@
           "title": "Videokonferenzsysteme und Online-Meeting-Lösungen",
           "kurzbeschreibung": "Sicherheit von Videokonferenz-Tools",
           "anforderungen": [
-            {"id":"BSI-NET.4.5.A1","title":"Sicherer Einsatz von Videokonferenzsystemen","stufe":"basis","kurzbeschreibung":"Videokonferenz-Tools absichern: Ende-zu-Ende-Verschlüsselung, Passwortschutz für Meetings, Lobby-Funktion, Aufzeichnungsberechtigungen. Nachweis: Konfigurationsrichtlinie, Schulungsnachweis."},
-            {"id":"BSI-NET.4.5.A2","title":"Auswahl datenschutzkonformer Videokonferenzsysteme","stufe":"standard","kurzbeschreibung":"Videokonferenzsysteme nur von DSGVO-konformen Anbietern einsetzen. Nachweis: Datenschutzprüfung, AVV."}
+            {
+              "id": "BSI-NET.4.5.A1",
+              "title": "Sicherer Einsatz von Videokonferenzsystemen",
+              "stufe": "basis",
+              "kurzbeschreibung": "Videokonferenz-Tools absichern: Ende-zu-Ende-Verschlüsselung, Passwortschutz für Meetings, Lobby-Funktion, Aufzeichnungsberechtigungen. Nachweis: Konfigurationsrichtlinie, Schulungsnachweis."
+            },
+            {
+              "id": "BSI-NET.4.5.A2",
+              "title": "Auswahl datenschutzkonformer Videokonferenzsysteme",
+              "stufe": "standard",
+              "kurzbeschreibung": "Videokonferenzsysteme nur von DSGVO-konformen Anbietern einsetzen. Nachweis: Datenschutzprüfung, AVV."
+            }
           ]
         }
       ]
@@ -953,8 +2047,18 @@
           "title": "Allgemeines Gebäude",
           "kurzbeschreibung": "Physische Gebäudesicherheit",
           "anforderungen": [
-            {"id":"BSI-INF.1.A1","title":"Allgemeines Gebäude","stufe":"basis","kurzbeschreibung":"Zutritt zu Gebäuden mit Sensitivität durch Zutrittskontrolle sichern (Schlüsselsystem, Karten, Logs). Zutrittsregister pflegen. Nachweis: Zutrittskonzept, Logs, Schlüsselverwaltung."},
-            {"id":"BSI-INF.1.A2","title":"Regelungen für Zutritt zu Schutzzonnen","stufe":"standard","kurzbeschreibung":"Schutzzonnen mit erhöhten Zutrittsbeschränkungen ausweisen. Nachweis: Zoneneinteilung, Zugriffsprotokoll."}
+            {
+              "id": "BSI-INF.1.A1",
+              "title": "Allgemeines Gebäude",
+              "stufe": "basis",
+              "kurzbeschreibung": "Zutritt zu Gebäuden mit Sensitivität durch Zutrittskontrolle sichern (Schlüsselsystem, Karten, Logs). Zutrittsregister pflegen. Nachweis: Zutrittskonzept, Logs, Schlüsselverwaltung."
+            },
+            {
+              "id": "BSI-INF.1.A2",
+              "title": "Regelungen für Zutritt zu Schutzzonnen",
+              "stufe": "standard",
+              "kurzbeschreibung": "Schutzzonnen mit erhöhten Zutrittsbeschränkungen ausweisen. Nachweis: Zoneneinteilung, Zugriffsprotokoll."
+            }
           ]
         },
         {
@@ -962,8 +2066,18 @@
           "title": "Rechenzentrum und Serverraum",
           "kurzbeschreibung": "Physische Sicherheit von Rechenzentren",
           "anforderungen": [
-            {"id":"BSI-INF.2.A1","title":"Rechenzentrum","stufe":"basis","kurzbeschreibung":"Physische Sicherheit des RZ sicherstellen (Zutrittskontrolle, Klima, Brandschutz, USV, EMA). Bei Cloud: Provider-Zertifikate prüfen (ISO 27001, BSI C5). Nachweis: RZ-Sicherheitskonzept oder Cloud-Provider-Audit-Report."},
-            {"id":"BSI-INF.2.A2","title":"Redundante Energieversorgung","stufe":"standard","kurzbeschreibung":"Redundante Energieversorgung für kritische Systeme sicherstellen. Nachweis: USV-Konfiguration, Notstromaggregat-Test."}
+            {
+              "id": "BSI-INF.2.A1",
+              "title": "Rechenzentrum",
+              "stufe": "basis",
+              "kurzbeschreibung": "Physische Sicherheit des RZ sicherstellen (Zutrittskontrolle, Klima, Brandschutz, USV, EMA). Bei Cloud: Provider-Zertifikate prüfen (ISO 27001, BSI C5). Nachweis: RZ-Sicherheitskonzept oder Cloud-Provider-Audit-Report."
+            },
+            {
+              "id": "BSI-INF.2.A2",
+              "title": "Redundante Energieversorgung",
+              "stufe": "standard",
+              "kurzbeschreibung": "Redundante Energieversorgung für kritische Systeme sicherstellen. Nachweis: USV-Konfiguration, Notstromaggregat-Test."
+            }
           ]
         },
         {
@@ -971,8 +2085,18 @@
           "title": "Elektrotechnische Verkabelung",
           "kurzbeschreibung": "Sichere elektrische Infrastruktur",
           "anforderungen": [
-            {"id":"BSI-INF.3.A1","title":"Elektrische Verkabelung","stufe":"basis","kurzbeschreibung":"Elektrische Infrastruktur vor Ausfällen schützen: redundante Versorgung (USV, Notstromaggregat), Überspannungsschutz, regelmäßige Wartung. Nachweis: Wartungsprotokoll, USV-Konfiguration, Prüfbericht."},
-            {"id":"BSI-INF.3.A2","title":"Dokumentation der Verkabelung","stufe":"standard","kurzbeschreibung":"Elektrotechnische Verkabelung vollständig dokumentieren. Nachweis: Kabelplan, Leitungsverzeichnis."}
+            {
+              "id": "BSI-INF.3.A1",
+              "title": "Elektrische Verkabelung",
+              "stufe": "basis",
+              "kurzbeschreibung": "Elektrische Infrastruktur vor Ausfällen schützen: redundante Versorgung (USV, Notstromaggregat), Überspannungsschutz, regelmäßige Wartung. Nachweis: Wartungsprotokoll, USV-Konfiguration, Prüfbericht."
+            },
+            {
+              "id": "BSI-INF.3.A2",
+              "title": "Dokumentation der Verkabelung",
+              "stufe": "standard",
+              "kurzbeschreibung": "Elektrotechnische Verkabelung vollständig dokumentieren. Nachweis: Kabelplan, Leitungsverzeichnis."
+            }
           ]
         },
         {
@@ -980,8 +2104,18 @@
           "title": "IT-Verkabelung",
           "kurzbeschreibung": "Sichere Netzwerkverkabelung",
           "anforderungen": [
-            {"id":"BSI-INF.4.A1","title":"Planung der Verkabelung","stufe":"basis","kurzbeschreibung":"IT-Verkabelung nach Strukturierungsplan dokumentieren: Kabelkennzeichnung, Patchpanel-Belegung, Reserven einplanen. Nachweis: Verkabelungsplan, Netzwerkdokumentation."},
-            {"id":"BSI-INF.4.A2","title":"Schutz der Verkabelung","stufe":"standard","kurzbeschreibung":"Kabel in Kabelkanälen verlegen und gegen Beschädigung schützen. Nachweis: Kabelweg-Dokumentation."}
+            {
+              "id": "BSI-INF.4.A1",
+              "title": "Planung der Verkabelung",
+              "stufe": "basis",
+              "kurzbeschreibung": "IT-Verkabelung nach Strukturierungsplan dokumentieren: Kabelkennzeichnung, Patchpanel-Belegung, Reserven einplanen. Nachweis: Verkabelungsplan, Netzwerkdokumentation."
+            },
+            {
+              "id": "BSI-INF.4.A2",
+              "title": "Schutz der Verkabelung",
+              "stufe": "standard",
+              "kurzbeschreibung": "Kabel in Kabelkanälen verlegen und gegen Beschädigung schützen. Nachweis: Kabelweg-Dokumentation."
+            }
           ]
         },
         {
@@ -989,8 +2123,18 @@
           "title": "Schutzschrank",
           "kurzbeschreibung": "Sicherheit von IT-Schutzschränken",
           "anforderungen": [
-            {"id":"BSI-INF.5.A1","title":"Schutz von Serverräumen","stufe":"basis","kurzbeschreibung":"Serverräume mit physischen Zutrittssicherungen schützen: Zutrittskontrollsystem, Videoüberwachung, Brandmeldeanlage, Klimatisierung mit Überwachung. Nachweis: Zutrittskontrollprotokoll, Wartungsnachweis, Alarmierungstest."},
-            {"id":"BSI-INF.5.A2","title":"Überwachung von Schutzschränken","stufe":"standard","kurzbeschreibung":"Physischen Zugriff auf Schutzschränke protokollieren und überwachen. Nachweis: Zugriffsprotokoll."}
+            {
+              "id": "BSI-INF.5.A1",
+              "title": "Schutz von Serverräumen",
+              "stufe": "basis",
+              "kurzbeschreibung": "Serverräume mit physischen Zutrittssicherungen schützen: Zutrittskontrollsystem, Videoüberwachung, Brandmeldeanlage, Klimatisierung mit Überwachung. Nachweis: Zutrittskontrollprotokoll, Wartungsnachweis, Alarmierungstest."
+            },
+            {
+              "id": "BSI-INF.5.A2",
+              "title": "Überwachung von Schutzschränken",
+              "stufe": "standard",
+              "kurzbeschreibung": "Physischen Zugriff auf Schutzschränke protokollieren und überwachen. Nachweis: Zugriffsprotokoll."
+            }
           ]
         },
         {
@@ -998,8 +2142,18 @@
           "title": "Datenträgerarchiv",
           "kurzbeschreibung": "Sicherheit von Archivdatenträgern",
           "anforderungen": [
-            {"id":"BSI-INF.6.A1","title":"Schutz des Datenträgerarchivs","stufe":"basis","kurzbeschreibung":"Archivdatenträger vor unbefugtem Zugriff, Diebstahl und Umwelteinflüssen schützen: gesicherter Raum, Klimatisierung, Zugriffsprotokoll. Nachweis: Archivraumkonzept, Zugriffsprotokoll."},
-            {"id":"BSI-INF.6.A2","title":"Kennzeichnung von Archivdatenträgern","stufe":"standard","kurzbeschreibung":"Alle Archivdatenträger einheitlich kennzeichnen und inventarisieren. Nachweis: Inventarliste."}
+            {
+              "id": "BSI-INF.6.A1",
+              "title": "Schutz des Datenträgerarchivs",
+              "stufe": "basis",
+              "kurzbeschreibung": "Archivdatenträger vor unbefugtem Zugriff, Diebstahl und Umwelteinflüssen schützen: gesicherter Raum, Klimatisierung, Zugriffsprotokoll. Nachweis: Archivraumkonzept, Zugriffsprotokoll."
+            },
+            {
+              "id": "BSI-INF.6.A2",
+              "title": "Kennzeichnung von Archivdatenträgern",
+              "stufe": "standard",
+              "kurzbeschreibung": "Alle Archivdatenträger einheitlich kennzeichnen und inventarisieren. Nachweis: Inventarliste."
+            }
           ]
         },
         {
@@ -1007,8 +2161,18 @@
           "title": "Büroarbeitsplatz",
           "kurzbeschreibung": "Sicherheit am Büroarbeitsplatz",
           "anforderungen": [
-            {"id":"BSI-INF.7.A1","title":"Regelungen für Büroräume","stufe":"basis","kurzbeschreibung":"Büroraumsicherheit implementieren: Clean-Desk-Policy, Sicherung unbeaufsichtigter Rechner, Sichtschutzfolien. Nachweis: Clean-Desk-Richtlinie, Begehungsprotokoll."},
-            {"id":"BSI-INF.7.A2","title":"Schutz sensitiver Informationen","stufe":"standard","kurzbeschreibung":"Sensitive Dokumente sicher aufbewahren und schreddern. Nachweis: Richtlinie, Schredder-Protokoll."}
+            {
+              "id": "BSI-INF.7.A1",
+              "title": "Regelungen für Büroräume",
+              "stufe": "basis",
+              "kurzbeschreibung": "Büroraumsicherheit implementieren: Clean-Desk-Policy, Sicherung unbeaufsichtigter Rechner, Sichtschutzfolien. Nachweis: Clean-Desk-Richtlinie, Begehungsprotokoll."
+            },
+            {
+              "id": "BSI-INF.7.A2",
+              "title": "Schutz sensitiver Informationen",
+              "stufe": "standard",
+              "kurzbeschreibung": "Sensitive Dokumente sicher aufbewahren und schreddern. Nachweis: Richtlinie, Schredder-Protokoll."
+            }
           ]
         },
         {
@@ -1016,8 +2180,18 @@
           "title": "Häuslicher Arbeitsplatz",
           "kurzbeschreibung": "Sicherheit am Heimarbeitsplatz",
           "anforderungen": [
-            {"id":"BSI-INF.8.A1","title":"Sichere Nutzung von häuslichen Arbeitsplätzen","stufe":"basis","kurzbeschreibung":"Sicherheitsanforderungen für Heimarbeitsplätze definieren: gesichertes WLAN, VPN-Pflicht, Bildschirmsperre, keine unverschlüsselten Datenträger. Nachweis: Richtlinie Heimarbeit, VPN-Nutzungsnachweis."},
-            {"id":"BSI-INF.8.A2","title":"Geeignete Einrichtung des häuslichen Arbeitsplatzes","stufe":"standard","kurzbeschreibung":"Heimarbeitsplatz so einrichten, dass Dritte keine vertraulichen Informationen einsehen können. Nachweis: Richtlinie, Begehungsnachweis."}
+            {
+              "id": "BSI-INF.8.A1",
+              "title": "Sichere Nutzung von häuslichen Arbeitsplätzen",
+              "stufe": "basis",
+              "kurzbeschreibung": "Sicherheitsanforderungen für Heimarbeitsplätze definieren: gesichertes WLAN, VPN-Pflicht, Bildschirmsperre, keine unverschlüsselten Datenträger. Nachweis: Richtlinie Heimarbeit, VPN-Nutzungsnachweis."
+            },
+            {
+              "id": "BSI-INF.8.A2",
+              "title": "Geeignete Einrichtung des häuslichen Arbeitsplatzes",
+              "stufe": "standard",
+              "kurzbeschreibung": "Heimarbeitsplatz so einrichten, dass Dritte keine vertraulichen Informationen einsehen können. Nachweis: Richtlinie, Begehungsnachweis."
+            }
           ]
         },
         {
@@ -1025,8 +2199,18 @@
           "title": "Mobiler Arbeitsplatz",
           "kurzbeschreibung": "Sicherheit an mobilen Arbeitsplätzen",
           "anforderungen": [
-            {"id":"BSI-INF.9.A1","title":"Geeignete Auswahl und Nutzung eines mobilen Arbeitsplatzes","stufe":"basis","kurzbeschreibung":"Sicherheitsanforderungen für das Arbeiten unterwegs definieren: Sichtschutz, verschlüsselte Verbindungen, sicheres WLAN. Nachweis: Mobilitätsrichtlinie, Schulungsnachweis."},
-            {"id":"BSI-INF.9.A2","title":"Schutz mobiler Endgeräte unterwegs","stufe":"standard","kurzbeschreibung":"Mobile Geräte unterwegs mit Diebstahlsicherung schützen. Nachweis: Sicherungskonzept, Versicherungsnachweis."}
+            {
+              "id": "BSI-INF.9.A1",
+              "title": "Geeignete Auswahl und Nutzung eines mobilen Arbeitsplatzes",
+              "stufe": "basis",
+              "kurzbeschreibung": "Sicherheitsanforderungen für das Arbeiten unterwegs definieren: Sichtschutz, verschlüsselte Verbindungen, sicheres WLAN. Nachweis: Mobilitätsrichtlinie, Schulungsnachweis."
+            },
+            {
+              "id": "BSI-INF.9.A2",
+              "title": "Schutz mobiler Endgeräte unterwegs",
+              "stufe": "standard",
+              "kurzbeschreibung": "Mobile Geräte unterwegs mit Diebstahlsicherung schützen. Nachweis: Sicherungskonzept, Versicherungsnachweis."
+            }
           ]
         },
         {
@@ -1034,8 +2218,18 @@
           "title": "Besprechungs-, Veranstaltungs- und Schulungsräume",
           "kurzbeschreibung": "Sicherheit von Besprechungsräumen",
           "anforderungen": [
-            {"id":"BSI-INF.10.A1","title":"Besprechungs-, Veranstaltungs- und Schulungsräume","stufe":"basis","kurzbeschreibung":"Schutzanforderungen für Besprechungsräume definieren (kein WLAN-Stick, verdeckte Whiteboard-Inhalte, Sperrbildschirm bei Verlassen). Nachweis: Hausordnung, Stichproben-Audit."},
-            {"id":"BSI-INF.10.A2","title":"Vorbereitung und Nachbereitung von Besprechungen","stufe":"standard","kurzbeschreibung":"Sensitive Unterlagen nach Besprechungen sichern oder vernichten. Nachweis: Checkliste, Vernichtungsnachweis."}
+            {
+              "id": "BSI-INF.10.A1",
+              "title": "Besprechungs-, Veranstaltungs- und Schulungsräume",
+              "stufe": "basis",
+              "kurzbeschreibung": "Schutzanforderungen für Besprechungsräume definieren (kein WLAN-Stick, verdeckte Whiteboard-Inhalte, Sperrbildschirm bei Verlassen). Nachweis: Hausordnung, Stichproben-Audit."
+            },
+            {
+              "id": "BSI-INF.10.A2",
+              "title": "Vorbereitung und Nachbereitung von Besprechungen",
+              "stufe": "standard",
+              "kurzbeschreibung": "Sensitive Unterlagen nach Besprechungen sichern oder vernichten. Nachweis: Checkliste, Vernichtungsnachweis."
+            }
           ]
         },
         {
@@ -1043,8 +2237,18 @@
           "title": "Allgemeines Fahrzeug",
           "kurzbeschreibung": "Sicherheit von Dienstfahrzeugen mit IT",
           "anforderungen": [
-            {"id":"BSI-INF.11.A1","title":"Sicherheitsanforderungen für Fahrzeuge","stufe":"basis","kurzbeschreibung":"IT-Systeme in Dienstfahrzeugen absichern: Zugangskontrolle, Datenverschlüsselung, sichere Konnektivität. Nachweis: Sicherheitskonzept."},
-            {"id":"BSI-INF.11.A2","title":"Schutz vor Abhören","stufe":"standard","kurzbeschreibung":"Vertrauliche Gespräche nicht in Fahrzeugen mit aktivierten Mikrofonen führen. Nachweis: Sensibilisierungsnachweis."}
+            {
+              "id": "BSI-INF.11.A1",
+              "title": "Sicherheitsanforderungen für Fahrzeuge",
+              "stufe": "basis",
+              "kurzbeschreibung": "IT-Systeme in Dienstfahrzeugen absichern: Zugangskontrolle, Datenverschlüsselung, sichere Konnektivität. Nachweis: Sicherheitskonzept."
+            },
+            {
+              "id": "BSI-INF.11.A2",
+              "title": "Schutz vor Abhören",
+              "stufe": "standard",
+              "kurzbeschreibung": "Vertrauliche Gespräche nicht in Fahrzeugen mit aktivierten Mikrofonen führen. Nachweis: Sensibilisierungsnachweis."
+            }
           ]
         },
         {
@@ -1052,8 +2256,18 @@
           "title": "Verkabelung",
           "kurzbeschreibung": "Übergreifende Verkabelungssicherheit",
           "anforderungen": [
-            {"id":"BSI-INF.12.A1","title":"Planung der Verkabelung","stufe":"basis","kurzbeschreibung":"Übergreifendes Verkabelungskonzept erstellen und dokumentieren. Nachweis: Verkabelungsplan, Leitungsverzeichnis."},
-            {"id":"BSI-INF.12.A2","title":"Schutz bestehender Verkabelung","stufe":"standard","kurzbeschreibung":"Bestehende Verkabelung regelmäßig inspizieren und vor Beschädigung schützen. Nachweis: Inspektionsprotokoll."}
+            {
+              "id": "BSI-INF.12.A1",
+              "title": "Planung der Verkabelung",
+              "stufe": "basis",
+              "kurzbeschreibung": "Übergreifendes Verkabelungskonzept erstellen und dokumentieren. Nachweis: Verkabelungsplan, Leitungsverzeichnis."
+            },
+            {
+              "id": "BSI-INF.12.A2",
+              "title": "Schutz bestehender Verkabelung",
+              "stufe": "standard",
+              "kurzbeschreibung": "Bestehende Verkabelung regelmäßig inspizieren und vor Beschädigung schützen. Nachweis: Inspektionsprotokoll."
+            }
           ]
         },
         {
@@ -1061,8 +2275,18 @@
           "title": "Technisches Gebäudemanagement",
           "kurzbeschreibung": "Sicherheit von Gebäudeleittechnik (GLT)",
           "anforderungen": [
-            {"id":"BSI-INF.13.A1","title":"Sicherheitsplanung für Gebäudemanagementsysteme","stufe":"basis","kurzbeschreibung":"GLT-Systeme inventarisieren und Sicherheitsanforderungen definieren. Nachweis: Asset-Inventar, Sicherheitskonzept."},
-            {"id":"BSI-INF.13.A2","title":"Schutz von GLT-Systemen","stufe":"standard","kurzbeschreibung":"GLT-Systeme in sicherem Netzwerksegment betreiben. Nachweis: Netzwerkdiagramm."}
+            {
+              "id": "BSI-INF.13.A1",
+              "title": "Sicherheitsplanung für Gebäudemanagementsysteme",
+              "stufe": "basis",
+              "kurzbeschreibung": "GLT-Systeme inventarisieren und Sicherheitsanforderungen definieren. Nachweis: Asset-Inventar, Sicherheitskonzept."
+            },
+            {
+              "id": "BSI-INF.13.A2",
+              "title": "Schutz von GLT-Systemen",
+              "stufe": "standard",
+              "kurzbeschreibung": "GLT-Systeme in sicherem Netzwerksegment betreiben. Nachweis: Netzwerkdiagramm."
+            }
           ]
         },
         {
@@ -1070,8 +2294,18 @@
           "title": "Gebäudeautomation",
           "kurzbeschreibung": "Sicherheit von Smart Building-Infrastruktur",
           "anforderungen": [
-            {"id":"BSI-INF.14.A1","title":"Absicherung von Gebäudeautomationssystemen","stufe":"basis","kurzbeschreibung":"Gebäudeautomationssysteme (BAS) inventarisieren und in separate Netzwerksegmente einbinden. Nachweis: Asset-Inventar, Netzplan."},
-            {"id":"BSI-INF.14.A2","title":"Überwachung von Gebäudeautomation","stufe":"standard","kurzbeschreibung":"BAS-Ereignisse zentral überwachen und auf Anomalien reagieren. Nachweis: Monitoring-Konfiguration."}
+            {
+              "id": "BSI-INF.14.A1",
+              "title": "Absicherung von Gebäudeautomationssystemen",
+              "stufe": "basis",
+              "kurzbeschreibung": "Gebäudeautomationssysteme (BAS) inventarisieren und in separate Netzwerksegmente einbinden. Nachweis: Asset-Inventar, Netzplan."
+            },
+            {
+              "id": "BSI-INF.14.A2",
+              "title": "Überwachung von Gebäudeautomation",
+              "stufe": "standard",
+              "kurzbeschreibung": "BAS-Ereignisse zentral überwachen und auf Anomalien reagieren. Nachweis: Monitoring-Konfiguration."
+            }
           ]
         }
       ]

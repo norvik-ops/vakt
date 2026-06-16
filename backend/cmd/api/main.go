@@ -43,6 +43,7 @@ import (
 	"github.com/matharnica/vakt/internal/shared/apidocs"
 	"github.com/matharnica/vakt/internal/shared/apikeys"
 	"github.com/matharnica/vakt/internal/shared/audit"
+	"github.com/matharnica/vakt/internal/shared/clienterrors"
 	"github.com/matharnica/vakt/internal/shared/comments"
 	sharedcrypto "github.com/matharnica/vakt/internal/shared/crypto"
 	"github.com/matharnica/vakt/internal/shared/dashboard"
@@ -268,8 +269,13 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		AllowCredentials: true,
 		MaxAge:           86400,
 	}))
-	if len(cfg.CORSOrigins) == 1 && cfg.CORSOrigins[0] == "*" {
-		log.Warn().Msg("CORS is configured to allow all origins (*) with credentials — set VAKT_CORS_ORIGINS for production")
+	// S87-2 (F-10): `*` + AllowCredentials:true is a real risk in production.
+	// Demo instances may use `*` (no session cookies that matter); a non-demo
+	// (production) instance must fail closed so a misconfiguration can't ship.
+	if insecureWildcardCORS(cfg.CORSOrigins, cfg.DemoSeed) {
+		log.Fatal().Msg("CORS is configured to allow all origins (*) with credentials in non-demo mode — refusing to start. Set VAKT_CORS_ORIGINS to an explicit origin list (e.g. https://vakt.example.com)")
+	} else if len(cfg.CORSOrigins) == 1 && cfg.CORSOrigins[0] == "*" {
+		log.Warn().Msg("CORS allows all origins (*) with credentials — acceptable only for the public demo; set VAKT_CORS_ORIGINS for production")
 	}
 	e.Use(middleware.BodyLimit("10MB"))
 	e.Use(middleware.ContextTimeoutWithConfig(middleware.ContextTimeoutConfig{
@@ -303,6 +309,14 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	// S46-3: response extended with `components` for operational visibility.
 	// CRITICAL: demo, sso_enabled, version must never be removed — they are
 	// used by the frontend and the release smoke-test (api-contract-checklist.md).
+	//
+	// S90-8 (#9): this is the *fallback* /health registration. It runs with nil
+	// db/rdb so that /health still answers when VAKT_DB_URL is unset and we take
+	// the early return below (line ~322). When a DB IS available, the same route
+	// is deliberately re-registered further down (search "re-register /health")
+	// with live pool+rdb so the response gains DB/Redis/AI component statuses —
+	// Echo keeps the last registration for a given method+path. The duplication
+	// is intentional: removing either breaks one of the two startup paths.
 	e.GET("/health", func(c echo.Context) error {
 		return healthHandler(c, cfg, nil, nil)
 	})
@@ -397,9 +411,15 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 
 	// Decode the raw master key once and derive purpose-specific sub-keys via HKDF.
 	// This ensures a compromise of one derived key cannot be extended to others.
-	// NOTE: Rotating to derived keys for vault/TOTP/alert/GitHub/cloud requires a
-	// re-encryption migration (planned for v0.30.0). Only PASETO is switched here
-	// because PASETO tokens are stateless — a key change merely invalidates sessions.
+	//
+	// HISTORY (ADR-0058, S90-1): every service key below is derived — vault, TOTP,
+	// alert, GitHub, cloud, webhook AND paseto. Before commit 2f06da9f (v0.25–0.29)
+	// these services used the RAW master key directly; that commit switched them to
+	// derived keys WITHOUT a re-encryption migration. This was a breaking change for
+	// any instance that had persisted raw-key-encrypted secrets, but it is safe in
+	// practice because the install base is demo-ephemeral + pentest-local only (no
+	// long-lived instance carried pre-2f06da9f ciphertext across the upgrade). See
+	// ADR-0058 for the verify result and the documented emergency lazy-upgrade path.
 	rawMasterKey, err := hex.DecodeString(cfg.SecretKey)
 	if err != nil {
 		log.Warn().Err(err).Msg("invalid secret key (hex decode) — auth/module routes disabled")
@@ -431,39 +451,16 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 
 	// Auth routes — rate-limited (5 req/min per IP, S45-5), no token middleware (they issue tokens).
 
-	// S46-3: Now that we have pool + rdb, re-register /health with full component checks.
-	// The initial registration (before DB/Redis were available) returns a minimal response.
+	// S46-3 / S90-8 (#9): re-register /health now that pool + rdb exist. This
+	// intentionally overrides the nil-db/rdb fallback registered earlier (search
+	// "fallback /health registration"); Echo uses the last handler for the route.
 	// Overriding here gives us DB + Redis + AI component statuses.
 	e.GET("/health", func(c echo.Context) error {
 		return healthHandler(c, cfg, pool, rdb)
 	})
 
 	// Extend readiness check to include Redis now that rdb is available.
-	e.GET("/health/ready", func(c echo.Context) error {
-		ctx := c.Request().Context()
-		dbStart := time.Now()
-		if err := pool.Ping(ctx); err != nil {
-			log.Error().Err(err).Msg("health/ready: database ping failed")
-			return c.JSON(http.StatusServiceUnavailable, map[string]string{
-				"status": "unavailable", "component": "database", "error": err.Error(),
-			})
-		}
-		dbLatencyMs := time.Since(dbStart).Milliseconds()
-		redisStart := time.Now()
-		if err := rdb.Ping(ctx).Err(); err != nil {
-			log.Error().Err(err).Msg("health/ready: redis ping failed")
-			return c.JSON(http.StatusServiceUnavailable, map[string]string{
-				"status": "unavailable", "component": "redis", "error": err.Error(),
-			})
-		}
-		redisLatencyMs := time.Since(redisStart).Milliseconds()
-		return c.JSON(http.StatusOK, map[string]any{
-			"status":           "ready",
-			"db_latency_ms":    dbLatencyMs,
-			"redis_latency_ms": redisLatencyMs,
-			"version":          version,
-		})
-	})
+	e.GET("/health/ready", readinessHandler(pool, rdb, version, log))
 
 	// Auth routes — Redis-backed IP rate limit (5 req/min) on the four
 	// credential-submission endpoints, plus a per-IP Redis limiter on the full
@@ -549,6 +546,8 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	adminSvc.WithNotifyService(notify.NewService(pool, cfg))
 	adminHealth := admin.NewHealthHandler(pool, rdb, cfg)
 	adminHandler := admin.NewHandler(adminSvc)
+	// S90-4: wire Redis so permission changes invalidate the module-permission cache.
+	adminHandler.Permissions.WithRedis(rdb)
 	admin.Register(protected, adminHandler, adminHealth, pool, rdb)
 	// Job queue stats — admin-only, same auth guard as other admin routes.
 	jobsHandler := admin.NewJobsHandler(redisOpt.Addr)
@@ -586,7 +585,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		vbSvc := vaktscan.NewService(pool, asynq.RedisClientOpt{Addr: redisOpt.Addr})
 		vbSvc.WithRedis(rdb)
 		vbSvc.WithWebhooks(webhookSvc)
-		vaktscan.Register(protected.Group("/vaktscan", auth.RequireModuleAccess(pool, "vaktscan")), vaktscan.NewHandler(vbSvc))
+		vaktscan.Register(protected.Group("/vaktscan", auth.RequireModuleAccess(pool, "vaktscan", rdb)), vaktscan.NewHandler(vbSvc))
 		log.Info().Msg("vaktscan routes registered")
 	}
 
@@ -644,19 +643,19 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		}
 		efSvc := vaktcomply.NewEvidenceFileService(ckSvc.Repo(), cfg.UploadDir)
 		ckHandler.WithEvidenceFileService(efSvc)
-		vaktcomply.Register(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply")), ckHandler)
+		vaktcomply.Register(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), ckHandler)
 		// Sprint 22 / S22-6: authentifizierter NIS2-Wizard-Migrate-Endpoint
 		// (POST /vaktcomply/nis2-assessment/migrate-from-anonymous).
-		nis2wizard.RegisterAuthenticated(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply")), nis2wizardHandler)
+		nis2wizard.RegisterAuthenticated(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), nis2wizardHandler)
 		// Auditor portal uses URL token — exempt from Bearer auth; rate-limited to 30 req/min per IP
 		portalRateLimiter := sharedmw.IPRateLimitRedis(rdb, "portal", 30, time.Minute)
 		vaktcomply.RegisterPublic(api.Group("/vaktcomply", portalRateLimiter), ckHandler)
 		// Policy acceptance — public token routes (no Bearer auth), rate-limited
 		vaktcomply.RegisterPolicyAcceptPublic(api.Group("", portalRateLimiter), ckHandler)
 		// Audit package export
-		audit.RegisterExport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply")), pool)
+		audit.RegisterExport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool)
 		// One-click audit report PDF
-		audit.RegisterReport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply")), pool)
+		audit.RegisterReport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool)
 		// AI-generated reports via OpenAI-compatible provider.
 		// Sprint 15 (S15-1/2/3/5): Rate-Limit + Daily-Quota + Response-Cache
 		// + Streaming-SSE-Endpoint laufen über RegisterWithOptions, sofern
@@ -665,7 +664,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		if aiFailOpen {
 			log.Warn().Msg("ai: VAKT_AI_FAIL_OPEN_ON_OUTAGE=true — rate-limit + quota checks will fail open during Redis/Postgres outages (audit-relevant choice)")
 		}
-		ai.RegisterWithOptions(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply")), pool, cfg.AIProvider, cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel, ai.RegisterOptions{
+		ai.RegisterWithOptions(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool, cfg.AIProvider, cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel, ai.RegisterOptions{
 			Redis:            rdb,
 			RateLimitRPM:     cfg.AIRateLimitRPM,
 			DailyTokenLimit:  cfg.AIDailyTokenLimit,
@@ -679,13 +678,13 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		// correctly for the auditor's org without a Paseto token in the request (S78-6c).
 		vaktcomply.RegisterAuditor(api.Group("/auditor/vaktcomply", auditorRateLimiter, auditor.AuditorAuth(pool), license.DBMiddleware(pool, lic, rdb)), ckHandler)
 		// Auto-evidence inbox — GitHub, SecReflex, SecPulse
-		evidence_auto.RegisterRoutes(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply")), pool)
+		evidence_auto.RegisterRoutes(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool)
 		log.Info().Msg("vaktcomply routes registered")
 	}
 
 	if cfg.IsModuleEnabled("vaktvault") && cfg.SecretKey != "" {
 		soSvc := vaktvault.NewService(pool, vaultKey, asynqClient)
-		vaktvault.Register(protected.Group("/vaktvault", auth.RequireModuleAccess(pool, "vaktvault")), vaktvault.NewHandler(soSvc))
+		vaktvault.Register(protected.Group("/vaktvault", auth.RequireModuleAccess(pool, "vaktvault", rdb)), vaktvault.NewHandler(soSvc))
 		log.Info().Msg("vaktvault routes registered")
 	}
 
@@ -694,7 +693,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 			Host: cfg.SMTPHost, Port: cfg.SMTPPort,
 			User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
 		}, asynq.RedisClientOpt{Addr: redisOpt.Addr})
-		vaktaware.Register(protected.Group("/vaktaware", auth.RequireModuleAccess(pool, "vaktaware")), vaktaware.NewHandler(pgSvc))
+		vaktaware.Register(protected.Group("/vaktaware", auth.RequireModuleAccess(pool, "vaktaware", rdb)), vaktaware.NewHandler(pgSvc))
 		log.Info().Msg("vaktaware routes registered")
 	}
 
@@ -722,7 +721,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		if alertSvc != nil {
 			poHandler.WithAlerting(alertSvc.Fire)
 		}
-		vaktprivacy.Register(protected.Group("/vaktprivacy", auth.RequireModuleAccess(pool, "vaktprivacy")), poHandler)
+		vaktprivacy.Register(protected.Group("/vaktprivacy", auth.RequireModuleAccess(pool, "vaktprivacy", rdb)), poHandler)
 		// DSR portal uses URL slug/token — exempt from Bearer auth; rate-limited to 30 req/min per IP
 		dsrPortalRateLimiter := sharedmw.IPRateLimitRedis(rdb, "dsr_portal", 30, time.Minute)
 		vaktprivacy.RegisterPublic(api.Group("/vaktprivacy", dsrPortalRateLimiter), poHandler)
@@ -736,7 +735,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 			WithEvidenceWriter(hrEvidence).
 			WithAccessReviewTrigger(hrAccessReview)
 		hrHandler = vakthr.NewHandler(hrSvc)
-		vakthr.Register(protected.Group("/vakthr", auth.RequireModuleAccess(pool, "vakthr")), hrHandler)
+		vakthr.Register(protected.Group("/vakthr", auth.RequireModuleAccess(pool, "vakthr", rdb)), hrHandler)
 		log.Info().Msg("vakthr routes registered")
 	}
 
@@ -803,7 +802,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	log.Info().Msg("audit log routes registered")
 
 	// Full data export — DSGVO Art. 20 portability + migration safety
-	dataexport.RegisterRoutes(protected.Group("/export"), pool)
+	dataexport.RegisterRoutes(protected.Group("/export"), pool, cfg.ModulesEnabled)
 	log.Info().Msg("data export routes registered")
 
 	// Auditor portal — invite management (admin) + public accept route
@@ -920,124 +919,15 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	// Client-side error reporting — unauthenticated, rate-limited, best-effort.
 	// Receives structured errors from the React ErrorBoundary for ops visibility.
 	// S78-6d: Redis-backed; 5 req/min per IP, fail-open on Redis outage.
+	// S90-2: persistence + admin view moved behind clienterrors.Repository/Handler
+	// so main.go no longer executes raw SQL.
 	clientErrRL := sharedmw.IPRateLimitRedis(rdb, "client_err", 5, time.Minute)
-	api.POST("/errors", func(c echo.Context) error {
-		var payload struct {
-			Message        string `json:"message"`
-			Stack          string `json:"stack"`
-			ComponentStack string `json:"component_stack"`
-			URL            string `json:"url"`
-			TraceID        string `json:"trace_id"`
-		}
-		if err := c.Bind(&payload); err != nil {
-			return c.NoContent(http.StatusBadRequest)
-		}
-		msg := sanitizeLogField(payload.Message, 500)
-		url := sanitizeLogField(payload.URL, 512)
-		trace := sanitizeLogField(payload.TraceID, 64)
-		stack := sanitizeLogField(payload.Stack, 4000)
-		compStack := sanitizeLogField(payload.ComponentStack, 4000)
-		ua := sanitizeLogField(c.Request().Header.Get("User-Agent"), 300)
-
-		log.Error().
-			Str("source", "client").
-			Str("url", url).
-			Str("trace_id", trace).
-			Str("message", msg).
-			Str("stack", stack).
-			Msg("client-side error boundary triggered")
-
-		// Persist for admin visibility. org_id/user_id are nullable — if the
-		// error occurred before login (or auth state was already lost), the
-		// entry is still recorded but unscoped.
-		var orgID, userID *string
-		if v, ok := c.Get("org_id").(string); ok && v != "" {
-			orgID = &v
-		}
-		if v, ok := c.Get("user_id").(string); ok && v != "" {
-			userID = &v
-		}
-		if _, err := pool.Exec(c.Request().Context(), `
-			INSERT INTO client_errors
-				(org_id, user_id, message, stack, component_stack, url, user_agent, trace_id)
-			VALUES
-				($1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8)
-		`, orgID, userID, msg, stack, compStack, url, ua, trace); err != nil {
-			log.Warn().Err(err).Msg("client error: persist failed (logged only)")
-		}
-		return c.NoContent(http.StatusNoContent)
-	}, clientErrRL)
+	ce := clienterrors.NewHandler(clienterrors.NewRepository(pool))
+	api.POST("/errors", ce.Record, clientErrRL)
+	protected.GET("/admin/client-errors", ce.List, auth.RequireRole("Admin"))
 	log.Info().Msg("client error endpoint registered")
 
-	// Admin view of recent client errors (last 200, scoped to org for non-admins).
-	protected.GET("/admin/client-errors", func(c echo.Context) error {
-		orgID, _ := c.Get("org_id").(string)
-		rows, err := pool.Query(c.Request().Context(), `
-			SELECT id::text, COALESCE(org_id::text,''), COALESCE(user_id::text,''),
-			       message, COALESCE(stack,''), COALESCE(component_stack,''),
-			       COALESCE(url,''), COALESCE(user_agent,''), COALESCE(trace_id,''),
-			       occurred_at
-			FROM client_errors
-			WHERE org_id = $1::uuid OR org_id IS NULL
-			ORDER BY occurred_at DESC
-			LIMIT 200
-		`, orgID)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "query failed"})
-		}
-		defer rows.Close()
-		type errorEntry struct {
-			ID             string    `json:"id"`
-			OrgID          string    `json:"org_id"`
-			UserID         string    `json:"user_id"`
-			Message        string    `json:"message"`
-			Stack          string    `json:"stack"`
-			ComponentStack string    `json:"component_stack"`
-			URL            string    `json:"url"`
-			UserAgent      string    `json:"user_agent"`
-			TraceID        string    `json:"trace_id"`
-			OccurredAt     time.Time `json:"occurred_at"`
-		}
-		out := make([]errorEntry, 0, 50)
-		for rows.Next() {
-			var e errorEntry
-			if err := rows.Scan(&e.ID, &e.OrgID, &e.UserID, &e.Message, &e.Stack,
-				&e.ComponentStack, &e.URL, &e.UserAgent, &e.TraceID, &e.OccurredAt); err != nil {
-				continue
-			}
-			out = append(out, e)
-		}
-		return c.JSON(http.StatusOK, out)
-	}, auth.RequireRole("Admin"))
-
 	return e
-}
-
-// sanitizeLogField strips ANSI escape codes and non-printable control characters
-// from untrusted strings before writing them to structured logs, preventing log injection.
-func sanitizeLogField(s string, maxLen int) string {
-	if len(s) > maxLen {
-		s = s[:maxLen]
-	}
-	out := make([]byte, 0, len(s))
-	i := 0
-	for i < len(s) {
-		b := s[i]
-		if b == 0x1b && i+1 < len(s) && s[i+1] == '[' {
-			// Skip ANSI CSI sequence: ESC [ ... <final byte 0x40–0x7E>
-			i += 2
-			for i < len(s) && (s[i] < 0x40 || s[i] > 0x7e) {
-				i++
-			}
-			i++ // consume final byte
-			continue
-		}
-		if b >= 0x20 || b == '\n' || b == '\r' || b == '\t' {
-			out = append(out, b)
-		}
-		i++
-	}
-	return string(out)
 }
 
 // enabledModuleList returns the list of active modules by parsing the
@@ -1050,6 +940,60 @@ func enabledModuleList(cfg *config.Config) []string {
 		}
 	}
 	return out
+}
+
+// insecureWildcardCORS reports whether the CORS configuration is a wildcard
+// origin (`*`) in non-demo (production) mode. The main CORS block sets
+// AllowCredentials:true, so `*` + credentials must never ship in production
+// (S87-2, F-10). Demo instances are exempt — they have no session cookies that
+// matter and the public demo intentionally accepts any origin.
+func insecureWildcardCORS(origins []string, demoMode bool) bool {
+	if demoMode {
+		return false
+	}
+	return len(origins) == 1 && origins[0] == "*"
+}
+
+// readinessDBPinger / readinessRedisPinger are the minimal surfaces the
+// readiness handler needs, so it can be unit-tested with fakes (S87-4).
+// *pgxpool.Pool and *redis.Client satisfy them in production.
+type readinessDBPinger interface {
+	Ping(ctx context.Context) error
+}
+type readinessRedisPinger interface {
+	Ping(ctx context.Context) *redis.StatusCmd
+}
+
+// readinessHandler returns the /health/ready handler. On a DB or Redis failure
+// it returns a generic component status (503) — never the raw err.Error(),
+// which could leak internal hostnames/ports/driver details to an
+// unauthenticated client (S87-4, F-08). The detail is logged for Ops.
+func readinessHandler(db readinessDBPinger, rdb readinessRedisPinger, ver string, logger zerolog.Logger) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		ctx := c.Request().Context()
+		dbStart := time.Now()
+		if err := db.Ping(ctx); err != nil {
+			logger.Error().Err(err).Msg("health/ready: database ping failed")
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{
+				"status": "unavailable", "component": "database", "error": "database unavailable",
+			})
+		}
+		dbLatencyMs := time.Since(dbStart).Milliseconds()
+		redisStart := time.Now()
+		if err := rdb.Ping(ctx).Err(); err != nil {
+			logger.Error().Err(err).Msg("health/ready: redis ping failed")
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{
+				"status": "unavailable", "component": "redis", "error": "redis unavailable",
+			})
+		}
+		redisLatencyMs := time.Since(redisStart).Milliseconds()
+		return c.JSON(http.StatusOK, map[string]any{
+			"status":           "ready",
+			"db_latency_ms":    dbLatencyMs,
+			"redis_latency_ms": redisLatencyMs,
+			"version":          ver,
+		})
+	}
 }
 
 func migrationsDir() string {
@@ -1083,6 +1027,20 @@ func main() {
 
 	if err := cfg.Validate(); err != nil {
 		log.Fatal().Err(err).Msg("configuration error — check .env file")
+	}
+
+	// S87-5 (F-07): wire the hard Secure-cookie override before any request is served.
+	auth.SetForceSecureCookies(cfg.ForceSecureCookies)
+	if cfg.ForceSecureCookies {
+		log.Info().Msg("VAKT_FORCE_SECURE_COOKIES=true — all session/CSRF cookies will be marked Secure")
+	}
+
+	// S88-6: opt-in audit-log Syslog/SIEM forwarder (default off). A bad target
+	// is a startup error so misconfiguration surfaces immediately.
+	if fwd, fErr := audit.NewSyslogForwarder(audit.SyslogConfigFromEnv()); fErr != nil {
+		log.Fatal().Err(fErr).Msg("audit syslog forwarder config invalid")
+	} else if fwd != nil {
+		audit.SetForwarder(fwd)
 	}
 
 	if cfg.AutoMigrate && cfg.DBUrl != "" {

@@ -1653,6 +1653,31 @@ components:
             risky_user_count: { type: integer }
             inactive_user_count: { type: integer }
 
+    # ── Intune (S88-7) ──────────────────────────────────────────────────────
+    IntuneConfigResponse:
+      type: object
+      required: [tenant_id, client_id, client_secret, is_configured]
+      properties:
+        tenant_id: { type: string }
+        client_id: { type: string }
+        client_secret: { type: string, description: '"****" if set' }
+        is_configured: { type: boolean }
+
+    SaveIntuneConfigInput:
+      type: object
+      required: [tenant_id, client_id, client_secret]
+      properties:
+        tenant_id: { type: string }
+        client_id: { type: string }
+        client_secret: { type: string }
+
+    IntuneStatus:
+      allOf:
+        - $ref: '#/components/schemas/CloudSyncStatus'
+        - type: object
+          properties:
+            device_compliance_pct: { type: number, format: float }
+
     # ── Keycloak ──────────────────────────────────────────────────────────────
 
     KeycloakConfigResponse:
@@ -2182,6 +2207,222 @@ components:
         generated_by: { type: string, format: uuid }
         sha256: { type: string }
         created_at: { type: string, format: date-time }
+
+    BIAProcess:
+      type: object
+      required: [id, org_id, name, process_owner, criticality, schutzbedarfsklasse, rto_hours, rpo_hours, mbco_percent, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        process_owner: { type: string }
+        criticality: { type: string, enum: [low, medium, high, critical] }
+        schutzbedarfsklasse: { type: integer, enum: [1, 2, 3] }
+        rto_hours: { type: number, format: float }
+        rpo_hours: { type: number, format: float }
+        mbco_percent: { type: integer, minimum: 0, maximum: 100 }
+        dependencies: { type: array, items: { type: string } }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    BIAProcessInput:
+      type: object
+      required: [name, process_owner, criticality, schutzbedarfsklasse, rto_hours, rpo_hours, mbco_percent]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        process_owner: { type: string }
+        criticality: { type: string, enum: [low, medium, high, critical] }
+        schutzbedarfsklasse: { type: integer, enum: [1, 2, 3] }
+        rto_hours: { type: number, format: float }
+        rpo_hours: { type: number, format: float }
+        mbco_percent: { type: integer, minimum: 0, maximum: 100 }
+        dependencies: { type: array, items: { type: string } }
+
+    RecoveryStep:
+      type: object
+      required: [order, action, responsible, duration_min]
+      properties:
+        order: { type: integer }
+        action: { type: string }
+        responsible: { type: string }
+        duration_min: { type: integer }
+
+    RecoveryPlan:
+      type: object
+      required: [id, org_id, title, activation_criteria, responsible, rto_hours, status, steps, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        bia_process_id: { type: string, format: uuid, nullable: true }
+        bia_process_name: { type: string }
+        title: { type: string }
+        activation_criteria: { type: string }
+        responsible: { type: string }
+        rto_hours: { type: number, format: float }
+        status: { type: string, enum: [draft, active, tested] }
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecoveryStep'
+        last_tested_at: { type: string, format: date, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    RecoveryPlanInput:
+      type: object
+      required: [title, activation_criteria, responsible, rto_hours, status, steps]
+      properties:
+        bia_process_id: { type: string, format: uuid, nullable: true }
+        title: { type: string }
+        activation_criteria: { type: string }
+        responsible: { type: string }
+        rto_hours: { type: number, format: float }
+        status: { type: string, enum: [draft, active, tested] }
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecoveryStep'
+        last_tested_at: { type: string, format: date, nullable: true }
+
+    EmergencyContact:
+      type: object
+      required: [id, org_id, name, role, phone, email, escalation_level, available_247, notes, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        name: { type: string }
+        role: { type: string }
+        phone: { type: string }
+        email: { type: string }
+        escalation_level: { type: integer, enum: [1, 2, 3] }
+        available_247: { type: boolean }
+        notes: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    EmergencyContactInput:
+      type: object
+      required: [name, escalation_level]
+      properties:
+        name: { type: string }
+        role: { type: string }
+        phone: { type: string }
+        email: { type: string }
+        escalation_level: { type: integer, enum: [1, 2, 3] }
+        available_247: { type: boolean }
+        notes: { type: string }
+
+    BackupJob:
+      type: object
+      required: [id, org_id, name, frequency, encrypted, last_status, restore_max_age_days, backup_status, restore_status, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        name: { type: string }
+        source: { type: string }
+        destination: { type: string }
+        frequency: { type: string, enum: [hourly, daily, weekly, monthly] }
+        encrypted: { type: boolean }
+        last_success_at: { type: string, format: date-time, nullable: true }
+        last_status: { type: string, enum: [unknown, success, failed] }
+        restore_max_age_days: { type: integer }
+        notes: { type: string }
+        last_restore_test_at: { type: string, format: date-time, nullable: true }
+        backup_status: { type: string, enum: [on_track, at_risk, overdue] }
+        restore_status: { type: string, enum: [on_track, at_risk, overdue] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    BackupJobInput:
+      type: object
+      required: [name, frequency]
+      properties:
+        name: { type: string, maxLength: 200 }
+        source: { type: string }
+        destination: { type: string }
+        frequency: { type: string, enum: [hourly, daily, weekly, monthly] }
+        encrypted: { type: boolean }
+        restore_max_age_days: { type: integer, minimum: 1, maximum: 3650 }
+        notes: { type: string }
+        last_status: { type: string, enum: [unknown, success, failed] }
+        last_success_at: { type: string, format: date-time }
+
+    BackupRestoreTest:
+      type: object
+      required: [id, org_id, job_id, tested_at, result, rto_target_hours, rto_actual_hours, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        job_id: { type: string, format: uuid }
+        tested_at: { type: string, format: date }
+        result: { type: string, enum: [success, partial, failed] }
+        rto_target_hours: { type: integer }
+        rto_actual_hours: { type: integer }
+        tester: { type: string }
+        notes: { type: string }
+        created_at: { type: string, format: date-time }
+
+    RestoreTestInput:
+      type: object
+      required: [tested_at, result]
+      properties:
+        tested_at: { type: string, format: date }
+        result: { type: string, enum: [success, partial, failed] }
+        rto_target_hours: { type: integer, minimum: 0 }
+        rto_actual_hours: { type: integer, minimum: 0 }
+        tester: { type: string }
+        notes: { type: string }
+
+    VVTControlLink:
+      type: object
+      required: [id, org_id, vvt_id, control_id, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        vvt_id: { type: string }
+        vvt_name: { type: string }
+        control_id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+
+    PhysicalControlTemplate:
+      type: object
+      required: [control_code, title, items]
+      properties:
+        control_code: { type: string }
+        title: { type: string }
+        items:
+          type: array
+          items: { type: string }
+
+    VeriniceImportPreview:
+      type: object
+      required: [total_objects, assets, controls, risks, unmapped]
+      properties:
+        total_objects: { type: integer }
+        assets: { type: integer }
+        controls: { type: integer }
+        risks: { type: integer }
+        unmapped: { type: integer }
+        unmapped_types: { type: array, items: { type: string } }
+        sample_titles: { type: object, additionalProperties: true }
+
+    ThreatCatalogItem:
+      type: object
+      required: [id, title, category, scenario, suggested_measure, default_likelihood, default_impact]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        category: { type: string }
+        asset_types: { type: array, items: { type: string } }
+        cia: { type: array, items: { type: string } }
+        frameworks: { type: array, items: { type: string } }
+        scenario: { type: string }
+        suggested_measure: { type: string }
+        control_links: { type: array, items: { type: string } }
+        default_likelihood: { type: integer }
+        default_impact: { type: integer }
 
 tags:
   - name: auth
@@ -3283,6 +3524,25 @@ paths:
           description: XLSX file
           content:
             application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '402':
+          description: Feature not available (Pro required)
+
+  /vaktcomply/risks/export/docx:
+    get:
+      summary: Export risk register as Word/DOCX (Pro)
+      description: Returns an editable .docx risk register. Requires FeatureAuditPDF. SHA-256 audit-logged. (S89-6)
+      operationId: exportRisksDocx
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: DOCX file
+          content:
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
               schema:
                 type: string
                 format: binary
@@ -5686,6 +5946,27 @@ paths:
           description: XLSX file
           content:
             application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '402':
+          description: Feature not available (Pro required)
+        '404':
+          description: SoA not initialized
+
+  /vaktcomply/soa/export.docx:
+    get:
+      summary: Export SoA as Word/DOCX (Pro)
+      description: Returns an editable .docx Statement of Applicability. Requires FeatureAuditPDF. SHA-256 audit-logged. (S89-6)
+      operationId: exportSoaDocx
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: DOCX file
+          content:
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
               schema:
                 type: string
                 format: binary
@@ -9002,6 +9283,655 @@ paths:
         '403':
           description: Feature not available on current plan
 
+  # ── Sprint 86: BCM Notfallmanagement (S86) ────────────────────────────────
+
+  /vaktcomply/bcm/readiness-score:
+    get:
+      summary: Get BCM readiness score (0–100) with criteria breakdown
+      operationId: getBCMReadinessScore
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: BCM readiness score
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [score, criteria, computed_at]
+                properties:
+                  score: { type: integer, minimum: 0, maximum: 100 }
+                  criteria:
+                    type: array
+                    items:
+                      type: object
+                      required: [key, points, met, description]
+                      properties:
+                        key: { type: string }
+                        points: { type: integer }
+                        met: { type: boolean }
+                        description: { type: string }
+                  computed_at: { type: string, format: date-time }
+
+  /vaktcomply/bcm/report.pdf:
+    get:
+      summary: Download Notfallhandbuch as PDF (Pro feature)
+      operationId: exportBCMHandbuchPDF
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Notfallhandbuch PDF
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        '403':
+          description: Feature not available on current plan
+
+  /vaktcomply/bia/processes:
+    get:
+      summary: List Business Impact Analysis processes
+      operationId: listBIAProcesses
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of BIA processes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BIAProcess'
+    post:
+      summary: Create a BIA process
+      operationId: createBIAProcess
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BIAProcessInput'
+      responses:
+        '201':
+          description: Created BIA process
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BIAProcess'
+
+  /vaktcomply/bia/summary:
+    get:
+      summary: Get aggregate BIA summary statistics
+      operationId: getBIASummary
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: BIA summary
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [total, high_critical, avg_rto_hours, avg_rpo_hours]
+                properties:
+                  total: { type: integer }
+                  high_critical: { type: integer }
+                  avg_rto_hours: { type: number, format: float }
+                  avg_rpo_hours: { type: number, format: float }
+
+  /vaktcomply/bia/processes/{id}:
+    put:
+      summary: Update a BIA process
+      operationId: updateBIAProcess
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BIAProcessInput'
+      responses:
+        '200':
+          description: Updated BIA process
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BIAProcess'
+    delete:
+      summary: Delete a BIA process
+      operationId: deleteBIAProcess
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204':
+          description: Deleted
+
+  /vaktcomply/bcm/recovery-plans:
+    get:
+      summary: List recovery plans (Wiederanlaufpläne)
+      operationId: listRecoveryPlans
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: bia_process_id, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: List of recovery plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RecoveryPlan'
+    post:
+      summary: Create a recovery plan
+      operationId: createRecoveryPlan
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecoveryPlanInput'
+      responses:
+        '201':
+          description: Created recovery plan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecoveryPlan'
+
+  /vaktcomply/bcm/recovery-plans/{id}:
+    put:
+      summary: Update a recovery plan
+      operationId: updateRecoveryPlan
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecoveryPlanInput'
+      responses:
+        '200':
+          description: Updated recovery plan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecoveryPlan'
+    delete:
+      summary: Delete a recovery plan
+      operationId: deleteRecoveryPlan
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204':
+          description: Deleted
+
+  /vaktcomply/bcm/emergency-contacts:
+    get:
+      summary: List emergency contacts (Alarmierungsplan)
+      operationId: listEmergencyContacts
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of emergency contacts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmergencyContact'
+    post:
+      summary: Create an emergency contact
+      operationId: createEmergencyContact
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmergencyContactInput'
+      responses:
+        '201':
+          description: Created emergency contact
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmergencyContact'
+
+  /vaktcomply/bcm/emergency-contacts/{id}:
+    put:
+      summary: Update an emergency contact
+      operationId: updateEmergencyContact
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmergencyContactInput'
+      responses:
+        '200':
+          description: Updated emergency contact
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmergencyContact'
+    delete:
+      summary: Delete an emergency contact
+      operationId: deleteEmergencyContact
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204':
+          description: Deleted
+
+  # ── Sprint 88: Backup-/Restore-Nachweis (S88-2, ISO A.8.13) ───────────────
+
+  /vaktcomply/backup/summary:
+    get:
+      summary: Backup-evidence health summary (overdue counts)
+      operationId: getBackupSummary
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Backup summary
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [total_jobs, overdue_backups, overdue_restores, tested_jobs]
+                properties:
+                  total_jobs: { type: integer }
+                  overdue_backups: { type: integer }
+                  overdue_restores: { type: integer }
+                  tested_jobs: { type: integer }
+
+  /vaktcomply/backup/jobs:
+    get:
+      summary: List backup jobs (documentation-only registry)
+      operationId: listBackupJobs
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of backup jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BackupJob'
+    post:
+      summary: Create a backup job record
+      operationId: createBackupJob
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BackupJobInput'
+      responses:
+        '201':
+          description: Created backup job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupJob'
+
+  /vaktcomply/backup/jobs/{id}:
+    put:
+      summary: Update a backup job record
+      operationId: updateBackupJob
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BackupJobInput'
+      responses:
+        '200':
+          description: Updated backup job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupJob'
+        '404':
+          description: Not found
+    delete:
+      summary: Delete a backup job record
+      operationId: deleteBackupJob
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+
+  /vaktcomply/backup/jobs/{id}/restore-tests:
+    get:
+      summary: List restore tests for a backup job
+      operationId: listRestoreTests
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: List of restore tests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BackupRestoreTest'
+    post:
+      summary: Document a restore test
+      operationId: createRestoreTest
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestoreTestInput'
+      responses:
+        '201':
+          description: Created restore test
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupRestoreTest'
+        '404':
+          description: Backup job not found
+
+  # ── Sprint 88: Physische-Maßnahmen-Templates (S88-5, ISO A.7.x) ───────────
+
+  /vaktcomply/physical-templates:
+    get:
+      summary: List physical-control (ISO A.7.x) checklist templates
+      operationId: listPhysicalControlTemplates
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PhysicalControlTemplate'
+
+  /vaktcomply/physical-templates/{code}/apply:
+    post:
+      summary: Apply an A.7.x checklist as structured evidence on the matching control
+      operationId: applyPhysicalControlTemplate
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string }, description: "ISO control code, e.g. A.7.7" }
+      responses:
+        '201':
+          description: Evidence created
+          content:
+            application/json:
+              schema: { type: object }
+        '400':
+          description: Unknown template or control not present
+
+  # ── Sprint 88: Gefährdungs-/Maßnahmen-Katalog (S88-3, Risk-Catalog) ───────
+
+  /vaktcomply/threat-catalog:
+    get:
+      summary: List generic threat-library items (optionally filtered)
+      operationId: listThreatCatalog
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: framework, in: query, required: false, schema: { type: string } }
+        - { name: asset_type, in: query, required: false, schema: { type: string } }
+        - { name: cia, in: query, required: false, schema: { type: string, enum: [confidentiality, integrity, availability] } }
+      responses:
+        '200':
+          description: List of threat catalog items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ThreatCatalogItem'
+
+  /vaktcomply/threat-catalog/create-risk:
+    post:
+      summary: Create a pre-filled risk from a threat-catalog item
+      operationId: createRiskFromCatalog
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [catalog_id]
+              properties:
+                catalog_id: { type: string }
+                likelihood: { type: integer, minimum: 1, maximum: 5 }
+                impact: { type: integer, minimum: 1, maximum: 5 }
+                owner: { type: string }
+      responses:
+        '201':
+          description: Created risk
+          content:
+            application/json:
+              schema: { type: object }
+        '400':
+          description: Unknown catalog item
+
+  # ── Sprint 88: verinice-(.vna)-Import (S88-4) ─────────────────────────────
+
+  /vaktcomply/verinice-import/preview:
+    post:
+      summary: Dry-run preview of a verinice .vna import (no writes)
+      operationId: previewVeriniceImport
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: Import preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VeriniceImportPreview'
+        '400':
+          description: Invalid .vna file
+
+  /vaktcomply/verinice-import/commit:
+    post:
+      summary: Commit a verinice .vna import (creates assets, controls, risks)
+      operationId: commitVeriniceImport
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: Import result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [assets_created, controls_created, risks_created, skipped]
+                properties:
+                  assets_created: { type: integer }
+                  controls_created: { type: integer }
+                  risks_created: { type: integer }
+                  skipped: { type: integer }
+                  framework_id: { type: string }
+        '400':
+          description: Invalid .vna file
+
+  # ── Sprint 88: VVT→Control-Verknüpfung (S88-9) ────────────────────────────
+
+  /vaktcomply/controls/{id}/vvt-links:
+    get:
+      summary: List VVT entries linked to a control (reverse view)
+      operationId: listControlVVTLinks
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Linked VVT entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VVTControlLink'
+
+  /vaktcomply/vvt-links:
+    get:
+      summary: List controls linked to a VVT entry
+      operationId: listVVTControlLinks
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: vvt_id, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Linked controls
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VVTControlLink'
+    post:
+      summary: Link a VVT entry to a control
+      operationId: createVVTControlLink
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vvt_id, control_id]
+              properties:
+                vvt_id: { type: string }
+                vvt_name: { type: string }
+                control_id: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Created link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VVTControlLink'
+        '404':
+          description: Control not found
+
+  /vaktcomply/vvt-links/{id}:
+    delete:
+      summary: Remove a VVT↔control link
+      operationId: deleteVVTControlLink
+      tags: [vaktcomply]
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Link not found
+
   # ── Sprint 61: Pentest Tracking (S61-6) ───────────────────────────────────
 
   /vaktcomply/pentests:
@@ -9603,6 +10533,89 @@ paths:
     get:
       summary: List recent Entra ID evidence items
       operationId: getEntraIDEvidence
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Evidence items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CloudEvidenceItem'
+
+  /integrations/cloud/intune/config:
+    get:
+      summary: Get Microsoft Intune (MDM) integration config (secrets masked)
+      operationId: getIntuneConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Intune config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntuneConfigResponse'
+    put:
+      summary: Save Microsoft Intune (MDM) integration config
+      operationId: saveIntuneConfig
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveIntuneConfigInput'
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+
+  /integrations/cloud/intune/sync:
+    post:
+      summary: Trigger Intune device-posture evidence sync
+      operationId: syncIntune
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudSyncResult'
+
+  /integrations/cloud/intune/status:
+    get:
+      summary: Get Intune sync status and device-compliance metrics
+      operationId: getIntuneStatus
+      tags: [integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Intune status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntuneStatus'
+
+  /integrations/cloud/intune/evidence:
+    get:
+      summary: List recent Intune evidence items
+      operationId: getIntuneEvidence
       tags: [integrations]
       security:
         - BearerAuth: []

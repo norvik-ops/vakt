@@ -208,11 +208,30 @@ func (s *Service) ResetPassword(ctx context.Context, rawToken, newPassword strin
 	// Invalidate all existing Paseto tokens for this user by incrementing the
 	// password version counter. Any token carrying a stale pw_version will be
 	// rejected by AuthMiddleware / PasetoMiddleware.
+	//
+	// S87-6: write the new version to PostgreSQL FIRST (durable source of truth),
+	// then mirror it into Redis (hot path). If Redis is down, checkPwVersion falls
+	// back to the PG value, so stale tokens stay rejected through the outage.
+	pgCtx, pgCancel := context.WithTimeout(ctx, 2*time.Second)
+	defer pgCancel()
+	var newPwVersion int64
+	if pgErr := s.db.QueryRow(pgCtx,
+		`UPDATE users SET pw_version = pw_version + 1 WHERE id = $1::uuid RETURNING pw_version`,
+		userID,
+	).Scan(&newPwVersion); pgErr != nil {
+		log.Error().Err(pgErr).Str("user_id", userID).Msg("password reset: failed to bump pw_version in PostgreSQL")
+	}
+
 	incrCtx, incrCancel := context.WithTimeout(ctx, 2*time.Second)
 	defer incrCancel()
-	if incrErr := s.redis.Incr(incrCtx, pwVersionKey(userID)).Err(); incrErr != nil {
-		// Non-fatal: log the failure but do not block the password reset response.
-		// The password has already been updated; tokens will still expire naturally.
+	if newPwVersion > 0 {
+		// Keep Redis in lockstep with PG so the hot path returns the same value.
+		if setErr := s.redis.Set(incrCtx, pwVersionKey(userID), newPwVersion, 0).Err(); setErr != nil {
+			log.Error().Err(setErr).Str("user_id", userID).Msg("password reset: failed to mirror pw_version into Redis")
+		}
+	} else if incrErr := s.redis.Incr(incrCtx, pwVersionKey(userID)).Err(); incrErr != nil {
+		// PG update failed — fall back to the legacy Redis-only increment so the
+		// reset still invalidates tokens on the hot path.
 		log.Error().Err(incrErr).Str("user_id", userID).Msg("password reset: failed to increment pw_version in Redis")
 	}
 

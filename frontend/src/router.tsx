@@ -41,6 +41,7 @@ const TrustCenterSettingsPage    = lazy(() => import('./modules/settings/pages/T
 const IntegrationsPage           = lazy(() => import('./pages/IntegrationsPage'))
 const AuditorSettingsPage        = lazy(() => import('./modules/settings/pages/AuditorSettingsPage'))
 const TeamSettingsPage           = lazy(() => import('./modules/settings/pages/TeamSettingsPage'))
+const VeriniceImportPage         = lazy(() => import('./modules/settings/pages/VeriniceImportPage'))
 const AuditLogPage               = lazy(() => import('./pages/AuditLogPage'))
 const ApiKeysPage                = lazy(() => import('./pages/ApiKeysPage'))
 const AdminHealthPage            = lazy(() => import('./pages/AdminHealthPage'))
@@ -208,6 +209,7 @@ export const router = createBrowserRouter([
           { path: '/settings/trust-center', element: <TrustCenterSettingsPage /> },
           { path: '/settings/auditors', element: <AuditorSettingsPage /> },
           { path: '/settings/team', element: <TeamSettingsPage /> },
+          { path: '/settings/verinice-import', element: <VeriniceImportPage /> },
           { path: '/settings/audit-log', element: <AuditLogPage /> },
           { path: '/settings/api-keys', element: <ApiKeysPage /> },
           { path: '/settings/webhooks', element: <WebhooksPage /> },

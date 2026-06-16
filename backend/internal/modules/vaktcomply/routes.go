@@ -112,6 +112,7 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/soa/summary", h.GetDedicatedSoASummary)
 	g.GET("/soa/export", h.ExportDedicatedSoA)
 	g.GET("/soa/export.xlsx", h.ExportDedicatedSoAXLSX, features.Require(features.FeatureAuditPDF))
+	g.GET("/soa/export.docx", h.ExportSoADOCX, features.Require(features.FeatureAuditPDF)) // S89-6
 	g.GET("/soa/entries", h.GetDedicatedSoAEntries)
 	g.GET("/soa/entries/:control_ref", h.GetDedicatedSoAEntry)
 	g.PUT("/soa/entries/:control_ref", h.UpdateDedicatedSoAEntry, rw)
@@ -189,8 +190,9 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.DELETE("/auditor-links/:id", h.RevokeAuditorLink, rw)
 
 	// Risk Assessment
-	// CRITICAL: /risks/export/xlsx must be registered BEFORE /risks/:id to avoid route conflict.
+	// CRITICAL: /risks/export/* must be registered BEFORE /risks/:id to avoid route conflict.
 	g.GET("/risks/export/xlsx", h.ExportRisksXLSX)
+	g.GET("/risks/export/docx", h.ExportRisksDOCX) // S89-6
 	g.GET("/risks", h.ListRisks)
 	g.POST("/risks", h.CreateRisk, rw)
 	g.GET("/risks/:id", h.GetRisk)
@@ -472,6 +474,57 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/bsi-modeling/export-xlsx", h.ExportBSIModelingXLSX, bsiPro)
 	g.PATCH("/bsi-modeling/:id", h.UpdateBSIModeling, rw, bsiPro)
 	g.DELETE("/bsi-modeling/:id", h.DeleteBSIModeling, rw, bsiPro)
+
+	// S86: BSI-200-4 Business Impact Analysis
+	// CRITICAL: /bia/summary before /bia/processes/:id to avoid route conflict
+	g.GET("/bia/summary", h.GetBIASummary, bsiPro)
+	g.GET("/bia/processes", h.ListBIAProcesses, bsiPro)
+	g.POST("/bia/processes", h.CreateBIAProcess, rw, bsiPro)
+	g.GET("/bia/processes/:id", h.GetBIAProcess, bsiPro)
+	g.PUT("/bia/processes/:id", h.UpdateBIAProcess, rw, bsiPro)
+	g.DELETE("/bia/processes/:id", h.DeleteBIAProcess, rw, bsiPro)
+
+	// S86: BSI-200-4 BCM — Wiederanlaufpläne, Alarmierungsplan, Readiness-Score
+	// CRITICAL: /bcm/readiness-score and /bcm/emergency-contacts before /bcm/recovery-plans/:id
+	g.GET("/bcm/readiness-score", h.GetBCMReadinessScore, bsiPro)
+	g.GET("/bcm/recovery-plans", h.ListRecoveryPlans, bsiPro)
+	g.POST("/bcm/recovery-plans", h.CreateRecoveryPlan, rw, bsiPro)
+	g.GET("/bcm/recovery-plans/:id", h.GetRecoveryPlan, bsiPro)
+	g.PUT("/bcm/recovery-plans/:id", h.UpdateRecoveryPlan, rw, bsiPro)
+	g.DELETE("/bcm/recovery-plans/:id", h.DeleteRecoveryPlan, rw, bsiPro)
+	g.GET("/bcm/emergency-contacts", h.ListEmergencyContacts, bsiPro)
+	g.POST("/bcm/emergency-contacts", h.CreateEmergencyContact, rw, bsiPro)
+	g.PUT("/bcm/emergency-contacts/:id", h.UpdateEmergencyContact, rw, bsiPro)
+	g.DELETE("/bcm/emergency-contacts/:id", h.DeleteEmergencyContact, rw, bsiPro)
+	g.GET("/bcm/report.pdf", h.ExportBCMHandbuchPDF, bsiPro, features.Require(features.FeatureAuditPDF))
+
+	// S88-2: Backup-/Restore-Nachweis (ISO A.8.13). Core ISO control — not Pro-gated.
+	// CRITICAL: /backup/summary before /backup/jobs/:id to avoid route conflict.
+	g.GET("/backup/summary", h.GetBackupSummary)
+	g.GET("/backup/jobs", h.ListBackupJobs)
+	g.POST("/backup/jobs", h.CreateBackupJob, rw)
+	g.PUT("/backup/jobs/:id", h.UpdateBackupJob, rw)
+	g.DELETE("/backup/jobs/:id", h.DeleteBackupJob, rw)
+	g.GET("/backup/jobs/:id/restore-tests", h.ListRestoreTests)
+	g.POST("/backup/jobs/:id/restore-tests", h.CreateRestoreTest, rw)
+
+	// S88-5: Physische-Maßnahmen-Templates (ISO 27001:2022 A.7.x) als geführte Checklisten.
+	g.GET("/physical-templates", h.ListPhysicalControlTemplates)
+	g.POST("/physical-templates/:code/apply", h.ApplyPhysicalControlTemplate, rw)
+
+	// S88-3: Gefährdungs-/Maßnahmen-Katalog (Risk-Catalog).
+	g.GET("/threat-catalog", h.ListThreatCatalog)
+	g.POST("/threat-catalog/create-risk", h.CreateRiskFromCatalog, rw)
+
+	// S88-4: verinice-(.vna)-Import (Dry-Run + Commit).
+	g.POST("/verinice-import/preview", h.PreviewVeriniceImport, rw)
+	g.POST("/verinice-import/commit", h.CommitVeriniceImport, rw)
+
+	// S88-9: VVT→ISO/TOM-Control-Verknüpfung (n:m, beidseitig lesbar).
+	g.GET("/controls/:id/vvt-links", h.ListControlVVTLinks)
+	g.GET("/vvt-links", h.ListVVTControlLinks)
+	g.POST("/vvt-links", h.CreateVVTControlLink, rw)
+	g.DELETE("/vvt-links/:id", h.DeleteVVTControlLink, rw)
 
 	// Management Reviews (S61-2)
 	// CRITICAL: sub-resource routes before /:id to avoid route conflicts

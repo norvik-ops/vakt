@@ -170,6 +170,26 @@ func (r *Repository) UpsertSecret(ctx context.Context, orgID, envID, userID, key
 	return &s, nil
 }
 
+// UpdateSecretCiphertext rewrites only the encrypted_value of an existing secret
+// row, scoped by org_id (IDOR guard). It deliberately does NOT bump version or
+// touch updated_at — it is the second phase of an AAD-binding write (S90-3),
+// where the secret_id needed for the AAD only becomes known after the upsert.
+func (r *Repository) UpdateSecretCiphertext(ctx context.Context, orgID, secretID string, encryptedValue []byte) error {
+	ct, err := r.db.Exec(ctx, `
+		UPDATE so_secrets
+		SET encrypted_value = $3
+		WHERE id = $1::uuid AND org_id = $2::uuid`,
+		secretID, orgID, encryptedValue,
+	)
+	if err != nil {
+		return fmt.Errorf("update secret ciphertext: %w", err)
+	}
+	if ct.RowsAffected() == 0 {
+		return fmt.Errorf("update secret ciphertext: secret not found in org")
+	}
+	return nil
+}
+
 func (r *Repository) GetSecretRaw(ctx context.Context, orgID, envID, key string) (*Secret, []byte, error) {
 	var s Secret
 	var encryptedValue []byte

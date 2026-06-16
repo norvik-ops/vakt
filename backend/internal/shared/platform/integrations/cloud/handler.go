@@ -89,6 +89,14 @@ func RegisterRoutes(g *echo.Group, db *pgxpool.Pool, masterKey []byte, evidence 
 	ei.GET("/status", h.GetEntraIDStatus)
 	ei.GET("/evidence", h.GetEntraIDEvidence)
 
+	// Intune (Microsoft Graph API — MDM device posture)
+	in := g.Group("/intune")
+	in.GET("/config", h.GetIntuneConfig)
+	in.PUT("/config", h.SaveIntuneConfig)
+	in.POST("/sync", h.SyncIntune)
+	in.GET("/status", h.GetIntuneStatus)
+	in.GET("/evidence", h.GetIntuneEvidence)
+
 	// Keycloak
 	kc := g.Group("/keycloak")
 	kc.GET("/config", h.GetKeycloakConfig)
@@ -559,6 +567,63 @@ func (h *Handler) GetEntraIDStatus(c echo.Context) error {
 func (h *Handler) GetEntraIDEvidence(c echo.Context) error {
 	orgID := mustString(c, "org_id")
 	items, err := h.svc.RecentEvidence(c.Request().Context(), orgID, ProviderEntraID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	if items == nil {
+		items = []EvidenceItem{}
+	}
+	return c.JSON(http.StatusOK, items)
+}
+
+// --- Intune handlers (S88-7) ---
+
+func (h *Handler) GetIntuneConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	cfg, err := h.svc.GetIntuneConfig(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, cfg)
+}
+
+func (h *Handler) SaveIntuneConfig(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	var in SaveIntuneConfigInput
+	if err := c.Bind(&in); err != nil {
+		return badRequest(c, "invalid request body")
+	}
+	if err := validate.Struct(in); err != nil {
+		return validationError(c, err)
+	}
+	if err := h.svc.SaveIntuneConfig(c.Request().Context(), orgID, in); err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) SyncIntune(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	count, err := h.svc.SyncIntune(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("SyncIntune failed")
+		return c.JSON(http.StatusOK, map[string]any{"ok": false, "error": "cloud sync failed", "evidence_created": 0})
+	}
+	return c.JSON(http.StatusOK, map[string]any{"ok": true, "evidence_created": count})
+}
+
+func (h *Handler) GetIntuneStatus(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	st, err := h.svc.GetIntuneStatus(c.Request().Context(), orgID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, st)
+}
+
+func (h *Handler) GetIntuneEvidence(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	items, err := h.svc.RecentEvidence(c.Request().Context(), orgID, ProviderIntune)
 	if err != nil {
 		return serverError(c, err)
 	}

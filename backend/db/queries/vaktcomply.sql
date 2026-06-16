@@ -2256,3 +2256,127 @@ RETURNING *;
 DELETE FROM ck_protection_need_assessments
 WHERE id = $1 AND org_id = $2;
 
+
+-- ── BIA Processes (S86-1) ─────────────────────────────────────────────────────
+
+-- name: CreateCKBIAProcess :one
+INSERT INTO ck_bia_processes (org_id, name, description, process_owner, criticality, schutzbedarfsklasse, rto_hours, rpo_hours, mbco_percent, dependencies)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING *;
+
+-- name: ListCKBIAProcesses :many
+SELECT * FROM ck_bia_processes
+WHERE org_id = $1
+ORDER BY criticality DESC, rto_hours ASC;
+
+-- name: GetCKBIAProcess :one
+SELECT * FROM ck_bia_processes
+WHERE id = $1 AND org_id = $2;
+
+-- name: UpdateCKBIAProcess :one
+UPDATE ck_bia_processes
+SET name = $3, description = $4, process_owner = $5, criticality = $6,
+    schutzbedarfsklasse = $7, rto_hours = $8, rpo_hours = $9, mbco_percent = $10,
+    dependencies = $11, updated_at = NOW()
+WHERE id = $1 AND org_id = $2
+RETURNING *;
+
+-- name: DeleteCKBIAProcess :execrows
+DELETE FROM ck_bia_processes
+WHERE id = $1 AND org_id = $2;
+
+-- name: GetCKBIASummary :one
+SELECT
+    COUNT(*)::int                                                              AS total_processes,
+    COUNT(*) FILTER (WHERE criticality = 'high')::int                        AS critical_count,
+    COALESCE(MIN(rto_hours) FILTER (WHERE criticality = 'high'), 0)::int     AS shortest_rto_hours,
+    COUNT(*) FILTER (WHERE schutzbedarfsklasse = 1)::int                     AS klasse1_count,
+    COUNT(*) FILTER (WHERE schutzbedarfsklasse = 2)::int                     AS klasse2_count,
+    COUNT(*) FILTER (WHERE schutzbedarfsklasse = 3)::int                     AS klasse3_count
+FROM ck_bia_processes
+WHERE org_id = $1;
+
+-- ── Recovery Plans (S86-1) ────────────────────────────────────────────────────
+
+-- name: CreateCKRecoveryPlan :one
+INSERT INTO ck_recovery_plans (org_id, bia_process_id, title, activation_criteria, responsible, rto_hours, status, steps)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING *;
+
+-- name: ListCKRecoveryPlans :many
+SELECT rp.*, bp.name AS bia_process_name
+FROM ck_recovery_plans rp
+LEFT JOIN ck_bia_processes bp ON bp.id = rp.bia_process_id
+WHERE rp.org_id = $1
+ORDER BY rp.created_at DESC;
+
+-- name: ListCKRecoveryPlansByBIAProcess :many
+SELECT rp.*, bp.name AS bia_process_name
+FROM ck_recovery_plans rp
+LEFT JOIN ck_bia_processes bp ON bp.id = rp.bia_process_id
+WHERE rp.org_id = $1 AND rp.bia_process_id = $2
+ORDER BY rp.created_at DESC;
+
+-- name: GetCKRecoveryPlan :one
+SELECT rp.*, bp.name AS bia_process_name
+FROM ck_recovery_plans rp
+LEFT JOIN ck_bia_processes bp ON bp.id = rp.bia_process_id
+WHERE rp.id = $1 AND rp.org_id = $2;
+
+-- name: UpdateCKRecoveryPlan :one
+UPDATE ck_recovery_plans
+SET bia_process_id = $3, title = $4, activation_criteria = $5, responsible = $6,
+    rto_hours = $7, status = $8, steps = $9, last_tested_at = $10, updated_at = NOW()
+WHERE id = $1 AND org_id = $2
+RETURNING *;
+
+-- name: DeleteCKRecoveryPlan :execrows
+DELETE FROM ck_recovery_plans
+WHERE id = $1 AND org_id = $2;
+
+-- name: CountCKRecoveryPlansTested :one
+SELECT COUNT(*)::int FROM ck_recovery_plans
+WHERE org_id = $1
+  AND status = 'tested'
+  AND last_tested_at >= (NOW() - INTERVAL '12 months')::date;
+
+-- name: CountCKRecoveryPlansActive :one
+SELECT COUNT(*)::int FROM ck_recovery_plans
+WHERE org_id = $1 AND status IN ('active','tested');
+
+-- name: CountCKRecoveryPlansForHighCriticality :one
+SELECT COUNT(DISTINCT rp.bia_process_id)::int
+FROM ck_recovery_plans rp
+JOIN ck_bia_processes bp ON bp.id = rp.bia_process_id
+WHERE rp.org_id = $1 AND bp.criticality = 'high' AND bp.org_id = $1;
+
+-- name: CountCKHighCriticalityBIAProcesses :one
+SELECT COUNT(*)::int FROM ck_bia_processes
+WHERE org_id = $1 AND criticality = 'high';
+
+-- ── Emergency Contacts (S86-1) ────────────────────────────────────────────────
+
+-- name: CreateCKEmergencyContact :one
+INSERT INTO ck_emergency_contacts (org_id, name, role, phone, email, escalation_level, available_24_7, notes)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING *;
+
+-- name: ListCKEmergencyContacts :many
+SELECT * FROM ck_emergency_contacts
+WHERE org_id = $1
+ORDER BY escalation_level ASC, name ASC;
+
+-- name: UpdateCKEmergencyContact :one
+UPDATE ck_emergency_contacts
+SET name = $3, role = $4, phone = $5, email = $6,
+    escalation_level = $7, available_24_7 = $8, notes = $9, updated_at = NOW()
+WHERE id = $1 AND org_id = $2
+RETURNING *;
+
+-- name: DeleteCKEmergencyContact :execrows
+DELETE FROM ck_emergency_contacts
+WHERE id = $1 AND org_id = $2;
+
+-- name: CountCKEmergencyContacts :one
+SELECT COUNT(*)::int FROM ck_emergency_contacts
+WHERE org_id = $1;

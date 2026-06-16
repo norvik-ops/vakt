@@ -21,6 +21,7 @@ import (
 	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/shared/controltests"
 	"github.com/matharnica/vakt/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/platform/events"
 )
 
 // handleAutoEvidence creates SecVitals evidence entries for patch-management
@@ -84,6 +85,20 @@ func handleRecordEvidence(pool *pgxpool.Pool) asynq.HandlerFunc {
 		var payload crossevidence.EvidencePayload
 		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
 			return fmt.Errorf("parse evidence payload: %w", err)
+		}
+
+		// S88-8: scanner finding-created events use the dedicated, idempotent
+		// Scan→Comply bridge (maps to A.8.8/A.8.9 via ck_scan_evidence_map) rather
+		// than the generic keyword path, so re-scans never duplicate evidence.
+		if payload.ResourceType == events.ResourceTypeFindingCreated {
+			svc := vaktcomply.NewService(pool)
+			n, err := svc.RecordScanFindingEvidence(ctx, payload.OrgID, payload.ResourceID, payload.Title)
+			if err != nil {
+				log.Warn().Err(err).Str("org_id", payload.OrgID).Msg("crossevidence: scan bridge failed")
+				return nil
+			}
+			log.Info().Str("org_id", payload.OrgID).Int("controls_updated", n).Msg("crossevidence: scan finding evidence recorded")
+			return nil
 		}
 
 		keywords := sourceKeywords[payload.Source]

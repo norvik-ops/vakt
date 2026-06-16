@@ -12,7 +12,7 @@ import {
 import { ScoreHistoryCard, ScoreForecastHint } from './ForecastChart'
 import { TodayWidget, MyTasksWidget, QuickWinsCard } from './DashboardWidgets'
 import { OnboardingBanner, OnboardingWizard } from '../components/OnboardingWizard'
-import { GettingStartedChecklist } from '../shared/components/GettingStartedChecklist'
+import { OnboardingChecklist } from '../shared/components/OnboardingChecklist'
 import type { WidgetKey } from './WidgetConfigPanel'
 import type { DashboardAggregate } from '../hooks/useDashboard'
 import type { ScoreHistoryEntry } from '../modules/vaktcomply/hooks/useScoreHistory'
@@ -92,7 +92,8 @@ export function WidgetGrid({
 
   return (
     <div className="flex-1 overflow-auto p-6 space-y-6">
-      {widgets.evidence_expiry && <GettingStartedChecklist />}
+      {/* S89-5: guided "first 30 days" path (self-hides when dismissed/complete). */}
+      <OnboardingChecklist />
 
       {widgets.recent_pages && recentPages.length > 0 && (
         <section>

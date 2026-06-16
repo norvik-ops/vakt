@@ -17,6 +17,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/matharnica/vakt/internal/shared/audit"
 )
 
 // Handler serves Prometheus-format metrics.
@@ -231,6 +233,18 @@ func (h *Handler) ServeMetrics(c echo.Context) error {
 	if h.redisAddr != "" {
 		h.writeAsynqJobMetrics(ctx, w)
 	}
+
+	// S88-6: audit-forward counters (in-process atomics; 0 when forwarder off).
+	auditSent, auditDropped, auditFailed := audit.ForwardStats()
+	fmt.Fprintln(w, "# HELP vakt_audit_forward_sent Audit events forwarded to the Syslog/SIEM sink")
+	fmt.Fprintln(w, "# TYPE vakt_audit_forward_sent counter")
+	fmt.Fprintf(w, "vakt_audit_forward_sent %d\n", auditSent)
+	fmt.Fprintln(w, "# HELP vakt_audit_forward_dropped Audit events dropped (forward buffer full)")
+	fmt.Fprintln(w, "# TYPE vakt_audit_forward_dropped counter")
+	fmt.Fprintf(w, "vakt_audit_forward_dropped %d\n", auditDropped)
+	fmt.Fprintln(w, "# HELP vakt_audit_forward_failed Audit events that failed to deliver to the sink")
+	fmt.Fprintln(w, "# TYPE vakt_audit_forward_failed counter")
+	fmt.Fprintf(w, "vakt_audit_forward_failed %d\n", auditFailed)
 
 	return nil
 }

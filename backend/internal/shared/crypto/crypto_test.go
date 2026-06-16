@@ -176,3 +176,72 @@ func TestDeriveAndEncryptRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, plaintext, recovered)
 }
+
+// --- S90-3: Associated Data (AAD) — ADR-0059 ---
+
+func TestEncryptWithAAD_RoundTrip(t *testing.T) {
+	key := randomKey(t)
+	plaintext := []byte("org-scoped secret material")
+	aad := []byte("org-123:secret-456")
+
+	ct, err := EncryptWithAAD(key, plaintext, aad)
+	require.NoError(t, err)
+	assert.True(t, bytes.HasPrefix(ct, []byte("enc:v2:")),
+		"AAD-sealed ciphertext must carry the enc:v2: marker")
+
+	recovered, err := DecryptWithAAD(key, ct, aad)
+	require.NoError(t, err)
+	assert.Equal(t, plaintext, recovered)
+}
+
+func TestDecryptWithAAD_WrongAADFails(t *testing.T) {
+	key := randomKey(t)
+	plaintext := []byte("bound to a specific row")
+
+	ct, err := EncryptWithAAD(key, plaintext, []byte("org-123:secret-456"))
+	require.NoError(t, err)
+
+	// Same key, but a different AAD (e.g. copied to another org/row) must fail
+	// the GCM tag verification — this is the confused-deputy / copy-paste guard.
+	_, err = DecryptWithAAD(key, ct, []byte("org-999:secret-456"))
+	assert.Error(t, err, "decrypting an AAD-bound ciphertext with the wrong AAD must fail")
+
+	// Decrypting with NO AAD must also fail.
+	_, err = DecryptWithAAD(key, ct, nil)
+	assert.Error(t, err, "decrypting an AAD-bound ciphertext without AAD must fail")
+}
+
+func TestDecryptWithAAD_LegacyBackwardCompatible(t *testing.T) {
+	key := randomKey(t)
+	plaintext := []byte("written before S90-3 — no marker, no AAD")
+
+	// Legacy/plain Encrypt produces a marker-less ciphertext.
+	legacy, err := Encrypt(key, plaintext)
+	require.NoError(t, err)
+	assert.False(t, bytes.HasPrefix(legacy, []byte("enc:v2:")),
+		"legacy ciphertext must NOT carry the v2 marker")
+
+	// DecryptWithAAD must transparently decrypt legacy values, ignoring the
+	// supplied AAD (pre-v2 values were never bound to any AAD).
+	recovered, err := DecryptWithAAD(key, legacy, []byte("any-aad-is-ignored"))
+	require.NoError(t, err)
+	assert.Equal(t, plaintext, recovered)
+
+	// And plain Decrypt of a v2 (empty-AAD) value works too.
+	v2empty, err := EncryptWithAAD(key, plaintext, nil)
+	require.NoError(t, err)
+	recovered2, err := Decrypt(key, v2empty)
+	require.NoError(t, err)
+	assert.Equal(t, plaintext, recovered2)
+}
+
+func TestEncryptWithAAD_TamperedCiphertextFails(t *testing.T) {
+	key := randomKey(t)
+	ct, err := EncryptWithAAD(key, []byte("tamper target"), []byte("aad"))
+	require.NoError(t, err)
+
+	// Flip a byte in the GCM tag region (last byte) — must fail to open.
+	ct[len(ct)-1] ^= 0xFF
+	_, err = DecryptWithAAD(key, ct, []byte("aad"))
+	assert.Error(t, err, "a tampered AAD-bound ciphertext must fail to decrypt")
+}

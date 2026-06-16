@@ -7,6 +7,112 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+**Code-Review-Hardening (Sprint 90).**
+Schließt die Härtungs-/Skalierungs-/Wartbarkeits-Findings des Architektur-Reviews — keine CRITICAL/HIGH, Codebasis als „ungewöhnlich reif" bewertet. Krypto-Kontextbindung, Read-Only-API-Keys, Permission-Cache, Repository-Refactor, Multi-Replica-Doku und ein End-to-End-Middleware-Test.
+
+### Added
+
+- **Read-Only-API-Keys (`:ro`-Scope)** — ein API-Key kann jetzt rein lesend ausgestellt werden (Scope-Suffix `:ro`, z. B. `vaktcomply:ro`). Solche Keys erhalten die Rolle `Viewer` und werden auf jeder schreibenden HTTP-Methode (POST/PUT/PATCH/DELETE) mit `403 AUTH_READONLY_KEY` abgewiesen — ideal für Dashboards, Monitoring oder Auditor-Export-Jobs. „Nur-Lesen"-Checkbox im API-Key-Dialog (i18n 4 Sprachen), Scope-Syntax in der [API-Referenz](docs/wiki/api-reference.md) dokumentiert (S90-5).
+
+### Security
+
+- **AES-256-GCM mit Associated Data (Kontextbindung)** — gespeicherte Vault-Secrets werden jetzt an ihren Kontext (`org_id` + `secret_id`) gebunden (`EncryptWithAAD`/`DecryptWithAAD`, `enc:v2:`-Format-Marker). Ein gültiger Ciphertext kann nicht mehr unbemerkt zwischen Zeilen oder Organisationen umkopiert werden (Confused-Deputy-/Ciphertext-Reuse-Schutz, CWE-345). Vollständig abwärtskompatibel: bestehende marker-lose Werte bleiben lesbar und werden beim nächsten Schreibzugriff lazy auf `enc:v2:` migriert ([ADR-0059](docs/adr/0059-aes-gcm-associated-data.md), S90-3).
+- **Modul-Permission-Check mit Fail-Closed-Redis-Cache** — die Per-Request-Berechtigungsprüfung wird 45 s in Redis gecacht (weniger DB-Last), invalidiert sofort bei Permission-Änderungen und bleibt fail-closed: ein DB-Fehler liefert `503` statt Zugriff, eine Redis-Störung degradiert nur auf den ungecachten DB-Pfad (S90-4).
+
+### Changed
+
+- **`client_errors` aus `main.go` in ein Repository ausgelagert** — das Frontend-Error-Logging nutzt jetzt das `clienterrors`-Paket (Repository + Handler) statt Inline-Raw-SQL im API-Entrypoint; Sanitisierung in `shared/logsafe` zentralisiert (S90-2).
+- **Schlüsselableitungs-Doku ↔ Code-Widerspruch aufgelöst** — der irreführende Kommentar in `main.go` (vermeintliche „geplante Re-Encryption-Migration") wurde durch die tatsächliche, verifizierte Realität ersetzt ([ADR-0058](docs/adr/0058-key-derivation-raw-vs-derived.md), S90-1).
+- **Mehrere kleine Polish-Punkte als bewusste Entscheidung kommentiert** — synchrone Login-Writes, doppelte `/health`-Registrierung (No-DB-Fallback + Upgrade) und der 401-Hard-Redirect im Frontend (vollständiger State-Reset) sind jetzt im Code begründet, kein Verhaltens-Change (S90-8).
+
+### Docs / CI
+
+- **DB-Pool-Sizing & Multi-Replica (PgBouncer)** — Doku in [Configuration](docs/wiki/configuration.md) + Helm-Werte: `VAKT_DB_MAX_CONNS × Replicas` muss unter Postgres `max_connections` bleiben; ab 2 Replicas PgBouncer (Transaction-Mode) (S90-6).
+- **MegaLinter `GO_REVIVE` deaktiviert** — lief im falschen Workspace (Falsch-Negative + reines Style-Rauschen); Go-Linting ist autoritativ am CI-`golangci-lint`-Job delegiert (S90-7).
+- **End-to-End-Middleware-Ketten-Test** — neuer Integrationstest (Testcontainer Postgres + Redis) durchläuft den vollständigen `protected`-Stack (Auth → CSRF → MFA → License → Rate-Limit → Module-Permission) mit 5 Szenarien inkl. Fail-Closed-`503`; Integration-Job-Timeout 300 s → 600 s (S90-9).
+
+---
+
+**Marktreife-Auflagen — Private-Beta-Readiness.**
+Schließt die Beta-Launch-Auflagen: vollständiger DSGVO-Export, gehärteter Restore-Pfad, transparenter Beta-Status, automatisierte Backups, geführtes ISB-Onboarding und Word/DOCX-Export.
+
+### Added
+
+- **DSGVO-Org-Export um HR- und Awareness-PII vervollständigt** — der Daten-Export (Art. 20) enthält jetzt das Mitarbeiterverzeichnis (`hr_employees`, Checklisten-Läufe, Contractors, Mover-Events) sowie das Awareness-Zielverzeichnis (`sr_targets`). Phishing-/Trainings-**Ergebnisse** werden pseudonymisiert exportiert (gesalzener SHA-256, Salt verlässt nie den Prozess), damit die §87-BetrVG-Zusage „der Admin sieht nicht, wer geklickt hat" auch im Org-Takeout gewahrt bleibt. HR-/Aware-Dateien nur bei aktivem Modul. Dokumentiert in [Daten-Export](docs/wiki/data-export.md) (S89-2).
+- **Geführtes ISB-Onboarding „Erste 30 Tage"** — ein 7-Schritte-Pfad auf dem Dashboard (Scope → Assets → Schutzbedarf → Framework → Risiken → Controls/Nachweise → Policy). Jeder Schritt verlinkt direkt auf die echte Funktion und zeigt „erledigt" anhand realer Org-Daten; Fortschritt + Ausblenden bleiben über Sessions erhalten. Community-Feature, baut auf der bestehenden Onboarding-Infrastruktur auf (keine Doppelung). i18n in 4 Sprachen (S89-5).
+- **Automatische Backups (Scheduler + Off-Site)** — neuer `scripts/backup-cron.sh`-Wrapper (erstellen → verifizieren → optional off-site pushen → nach Retention rotieren → bei Fehlschlag benachrichtigen) plus optionaler `docker-compose.backup.yml`-Scheduler-Service. Off-Site-Push ist opt-in und zielt auf ein **kundenkonfiguriertes** Ziel (S3/rsync/SFTP), niemals auf Norvik. Konfigurierbar via `VAKT_BACKUP_SCHEDULE/DIR/RETENTION_DAYS/OFFSITE_CMD/NOTIFY_*` (S89-4).
+- **Word/DOCX-Export für Auditoren** — Statement of Applicability und Risikoregister lassen sich jetzt zusätzlich zu PDF/XLSX als editierbares `.docx` exportieren. Reiner-Go-Generator (nur Standardbibliothek, kein externer Dienst, kein CGO), Pro-gated und SHA-256-Audit-Log-Eintrag beim Export (S89-6).
+
+### Security
+
+- **Restore-Pfad gehärtet** — `restore.sh` schreibt den entschlüsselten Master-Key nicht mehr ungeschützt nach `/tmp`: `umask 077`, `0600`-Tempdatei, `shred`-Löschung bei **jedem** Exit-Pfad, und der Schlüssel erscheint nie in stdout/Logs (auch nicht im Dry-Run). Neuer Shell-Test prüft Schlüssel-Leak + HMAC-Ablehnung manipulierter Archive; Disaster-Recovery-Runbook um Drill-Protokoll, Drill-Prozedur und das gehärtete Schlüssel-Handling ergänzt (S89-1).
+- **Beta-Status & Support-Erwartungen transparent** — diskreter „Private Beta"-Hinweis in der App (verlinkt auf den [Beta-Disclaimer](docs/wiki/beta-disclaimer.md): Best-Effort-Support ohne 24/7-SLA, Backup-Verantwortung des Betreibers, Bus-Faktor-Hinweis). README + Status-Badge entsprechend aktualisiert (S89-3).
+
+---
+
+**Feature-Gap-Closure — Backup-Nachweis, Risk-Catalog, verinice-Import & mehr.**
+Schließt die Wettbewerbs-Gaps der ISMS-Gap-Analyse rund um das Notfallmanagement (Sprint 86) und senkt die Time-to-Value für ISB und verinice-Wechsler.
+
+### Added
+
+- **Backup-/Restore-Nachweis (ISO 27001 A.8.13)** — leichtgewichtige Registry für Backup-Jobs und Restore-Tests (RTO-Soll/Ist), mit Staleness-Erkennung (überfälliges Backup/überfälliger Restore-Test → „at risk"/„überfällig"), täglichem Reminder-Job und automatischem Evidence-Nachweis an A.8.13/DER.4. Neue Seite „Backup-Nachweis" unter Vakt Comply (S88-2).
+- **Gefährdungs-/Maßnahmen-Katalog (Risk-Catalog)** — vorbefüllte Bibliothek mit 61 generischen Gefährdungen/Szenarien (ISO/BSI/NIS2/DSGVO), filterbar nach Framework/Asset-Typ/Schutzziel. „Risiko aus Katalog erstellen" befüllt ein Risiko inkl. Maßnahmenvorschlag und Control-Verknüpfung vor — senkt die Erfassung von Tagen auf Stunden (S88-3, ADR-0061).
+- **verinice-(.vna)-Import** — Migrationsbrücke für verinice-Wechsler: Upload → Dry-Run-Vorschau (Assets/Controls/Risiken/unmapped) → Bestätigen. Defensiver, XXE-sicherer, fuzz-getesteter SNCA-Parser; strukturierter Audit-Log-Eintrag pro Import. Import-Wizard unter Einstellungen (S88-4, ADR-0062).
+- **Physische-Maßnahmen-Checklisten (ISO 27001 A.7.1–A.7.14)** — 14 geführte Checklisten-Templates mit DACH-typischen Prüfpunkten; „Checkliste anwenden" auf A.7-Controls erzeugt strukturierte Evidence statt Freitext (S88-5).
+- **Microsoft Intune (MDM) Integration** — Pull-Collector für Geräte-Compliance (Verschlüsselung, Patch-Stand, Conformität) aus Microsoft Graph (`managedDevices`), als Endpoint-Evidence für ISO A.8.1/A.8.9 und NIS2-Cyberhygiene. Read-only, SSRF-geschützt, AES-256-GCM-verschlüsselte Credentials (S88-7).
+- **Scan→Comply-Evidence-Brücke** — kritische/hohe Scanner-Findings fließen automatisch als Evidence an die Schwachstellen-/Konfigurations-Controls (A.8.8/A.8.9). Idempotent: ein Re-Scan dupliziert keine Evidence. Modul-isoliert über das Shared-Event-Interface (S88-8, ADR-0063).
+- **DPIA-Trigger (Art. 35 DSGVO)** — eine Verarbeitungstätigkeit mit Hochrisiko-Indikator (besondere Kategorien Art. 9, Drittlandübermittlung, Profiling/großflächig) erzeugt automatisch einen DPIA-Entwurf mit Begründung (S88-8).
+- **VVT→Control-Verknüpfung** — Verarbeitungstätigkeiten (Art. 30) lassen sich mit ISO-27001-/DSGVO-TOM-Controls verknüpfen; beidseitig sichtbar („Nachweis aus VVT" am Control). Modul-isoliert (S88-9).
+- **Audit-Log Syslog/SIEM-Forwarding (opt-in)** — Audit-Ereignisse können an einen kunden-eigenen Syslog/SIEM-Server (RFC 5424 oder CEF, TCP/TLS) ausgeleitet werden. Default aus; SSRF-geschütztes Ziel; asynchron mit Drop-Zähler (Audit-Schreibpfad wird nie blockiert); Prometheus-Counter `vakt_audit_forward_{sent,dropped,failed}`. **Kunden-konfiguriert, kein Norvik-Relay, kein Phone-Home** (S88-6).
+
+### Infrastructure
+
+- **Migrationen 220–224** — `ck_backup_jobs`/`ck_backup_restore_tests` (S88-2), `ck_threat_library_links` (S88-3), `cloud_integrations`-Provider-Enum um `intune` (S88-7), `ck_scan_evidence_map` (S88-8), `ck_vvt_control_links` (S88-9).
+- **OpenAPI-Spec** — neue Endpunkte für Backup-Nachweis, Physische-Templates, Threat-Catalog, verinice-Import, Intune und VVT-Verknüpfung; Frontend-Typen + i18n (de/en/fr/nl) durchgehend nachgezogen.
+
+---
+
+**Security-Hardening — residuale Härtungen aus dem AppSec-Assessment.**
+Schließt die verbliebenen LOW/MEDIUM-Findings des AppSec-Assessments (2026-06-13) — keine kritischen Lücken, sondern Tiefenverteidigung für den Beta-Launch.
+
+### Security
+
+- **CORS Fail-Closed in Produktion** — eine Nicht-Demo-Instanz startet nicht mehr, wenn `VAKT_CORS_ORIGINS` auf `*` (alle Origins) steht, solange Session-Cookies erlaubt sind. Demo-Instanzen dürfen `*` weiterhin nutzen. Schützt vor versehentlich offener Cross-Origin-Konfiguration (S87-2).
+- **Login-Timing-Oracle geschlossen** — der Login führt jetzt auch bei unbekannter E-Mail die volle bcrypt-Prüfung (gegen einen vorab berechneten Dummy-Hash) aus. Damit lässt sich aus der Antwortzeit nicht mehr ableiten, ob ein Konto existiert (S87-3, CWE-208).
+- **`/health/ready` leakt keine Infrastruktur-Details mehr** — bei DB-/Redis-Ausfall liefert der unauthentifizierte Readiness-Endpunkt generische Statusmeldungen (`database unavailable` / `redis unavailable`); der Detailfehler steht nur noch im Server-Log (S87-4).
+- **`VAKT_FORCE_SECURE_COOKIES`** — neuer Schalter (default `false`), der das `Secure`-Attribut auf allen Session-/CSRF-Cookies erzwingt, unabhängig von TLS/`X-Forwarded-Proto`. Empfohlen in Produktion hinter einem TLS-terminierenden Proxy als Sicherheitsnetz gegen fehlkonfigurierte Reverse-Proxies (S87-5, CWE-614).
+- **`pw_version` fail-closed bei Redis-Ausfall** — die Token-Invalidierung nach Passwortwechsel/Offboarding greift jetzt auch während eines Redis-Ausfalls: Der Versionszähler wird zusätzlich durabel in PostgreSQL gehalten und bei Redis-Ausfall von dort gelesen, statt die Prüfung zu überspringen. Veraltete Tokens bleiben dadurch abgelehnt; legitime Nutzer werden nicht ausgesperrt (S87-6, CWE-636, ADR-0060).
+
+### Infrastructure
+
+- **Migration 219** — neue Spalte `users.pw_version BIGINT NOT NULL DEFAULT 0` als durable Source of Truth für die Passwort-Versionierung.
+- **CI-Vuln-Gates dokumentiert** — `govulncheck` und `npm audit --audit-level=high --omit=dev` failen den Build bei reachable High-Vulns. Der Runtime-Dependency-Tree ist frei von Vulnerabilities; die verbliebenen 3 High betreffen ausschließlich Build-/Dev-Tools (Vite/esbuild) und landen nie im Produktions-Image (S87-1, dokumentiert in `SECURITY_REVIEW.md`).
+
+---
+
+**BCM Notfallmanagement — BSI 200-4, ISO 22301, NIS2 Art. 21 c.**
+Business Continuity Management vollständig in Vakt Comply integriert: Business Impact Analysis, Wiederanlaufpläne, Alarmierungsplan und BCM-Bereitschaftsscore mit PDF-Notfallhandbuch-Export.
+
+### Added
+
+- **Business Impact Analysis (BIA)** — Prozesse mit Schutzbedarfsklasse 1–3, RTO/RPO/MBCO-Kennzahlen, Kritikalitätsstufen (low/medium/high/critical) und Abhängigkeiten. Vollständige CRUD-API + Frontend-Seite.
+- **Wiederanlaufpläne (WAP)** — Strukturierte Notfallpläne mit Aktivierungskriterien, verantwortlicher Stelle, RTO-Ziel, Status (Entwurf/Aktiv/Getestet) und Schritt-für-Schritt-Massnahmenblöcken (JSONB). Zuordnung zu BIA-Prozessen optional.
+- **Alarmierungsplan (Notfallkontakte)** — Kontaktverzeichnis mit drei Eskalationsstufen, 24/7-Verfügbarkeit und Rolle. In BCMDashboard nach Eskalationsstufen gegliedert.
+- **BCM-Bereitschaftsscore** — 0–100 Punkte (5 Kriterien à 20 Punkte): BIA vorhanden, Wiederanlaufpläne vorhanden, Kontakte gepflegt, kritische Prozesse als „high" klassifiziert, WAP getestet. Warnung-Banner bei Score < 60.
+- **Notfallhandbuch-PDF-Export** — Sieben Sektionen (Deckblatt, Schutzzieldefinition, BIA-Übersicht, Wiederanlaufpläne, Alarmierungsplan, Test-Nachweise, BSI-Mapping), SHA-256-Hash in `ck_bsi_report_exports` gespeichert. Pro-Feature-Gate (`audit_pdf`).
+- **DER.4-BSI-Baustein** — 11 Anforderungen A1–A11 vollständig abgedeckt; 12 Cross-Mappings zu ISO 27001:2022 (A.5.29, A.5.30, A.8.13, A.8.14), NIS2 Art. 21 (c) und DORA Art. 11.
+- **BCM-Asynq-Job** — `comply:bcm_evidence_sync` läuft täglich 07:00 UTC und schreibt BIA-Prozesse als Evidence in `ck_evidence`.
+- **Demo-Seed** — 3 BIA-Prozesse (IT-Infrastruktur/E-Mail-System/ERP), 1 Wiederanlaufplan mit 5 Schritten, 3 Notfallkontakte auf Eskalationsstufen 1–3.
+- **BCM-Dashboard** — Übersichtsseite mit Score-Gauge, KPI-Kacheln und Schnelllinks zu BIA, WAP und Alarmierungsplan.
+- **i18n** — ~75 neue Keys in DE/EN/FR/NL für alle BCM-Seiten und Navigationspunkte.
+
+### Infrastructure
+
+- **Migrationen 216–218** — `ck_bia_processes`, `ck_recovery_plans` (JSONB Steps), `ck_emergency_contacts`.
+- **OpenAPI-Spec** — 13 neue Endpunkte (`/vaktcomply/bia/processes`, `/vaktcomply/bcm/recovery-plans`, `/vaktcomply/bcm/emergency-contacts`, `/vaktcomply/bcm/readiness-score`, `/vaktcomply/bcm/report.pdf`) mit vollständigen Schemas und `required`-Listen.
+
+---
+
 **Identity & Access Automation — Entra ID, Keycloak, LDAP/Active Directory.**
 Drei neue Evidence-Collector für Identity-Provider und Verzeichnisdienste — automatisch, lokal, kein Datenabfluss.
 

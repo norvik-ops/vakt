@@ -528,6 +528,15 @@ func (s *Service) SeedFrameworkMappings(ctx context.Context) error {
 			log.Warn().Err(err).Msg("S75 mapping reverse seed failed")
 		}
 	}
+	// S86: DER.4 ↔ ISO 27001:2022 + NIS2 + DORA cross-mappings
+	for _, p := range der4CrossMappings {
+		if err := s.repo.SeedGlobalControlMapping(ctx, p.src, p.srcCode, p.tgt, p.tgtCode, p.mtype); err != nil {
+			log.Warn().Err(err).Str("src", p.srcCode).Str("tgt", p.tgtCode).Msg("S86 DER.4 mapping seed failed")
+		}
+		if err := s.repo.SeedGlobalControlMapping(ctx, p.tgt, p.tgtCode, p.src, p.srcCode, p.mtype); err != nil {
+			log.Warn().Err(err).Msg("S86 DER.4 reverse mapping seed failed")
+		}
+	}
 	return nil
 }
 

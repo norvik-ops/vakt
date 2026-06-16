@@ -31,7 +31,8 @@
         "frameworks": "Frameworks",
         "operations": "Operations",
         "documentation": "Documentation",
-        "thirdParty": "Third Parties"
+        "thirdParty": "Third Parties",
+        "bcm": "Emergency Management (BCM)"
       },
       "overview": "Overview",
       "nis2": "NIS2",
@@ -57,7 +58,12 @@
       "certTimeline": "Cert. Plan",
       "suppliers": "Suppliers",
       "aiSystems": "AI Systems",
-      "resilience": "Resilience"
+      "resilience": "Resilience",
+      "bcmDashboard": "BCM Dashboard",
+      "bcmBia": "Business Impact Analysis",
+      "bcmRecoveryPlans": "Recovery Plans",
+      "bcmEmergencyContacts": "Emergency Contacts",
+      "backup": "Backup Evidence"
     },
     "vault": {
       "root": "Vakt Vault",
@@ -461,7 +467,9 @@
       "statusImplemented": "Implemented",
       "statusNotApplicable": "Not Applicable",
       "activatedOn": "Enabled",
-      "controlsCount": "Controls"
+      "controlsCount": "Controls",
+      "applyPhysicalTemplate": "Apply checklist",
+      "physicalTemplateApplied": "Checklist added as evidence"
     },
     "policiesPage": {
       "title": "Policy Management",
@@ -1323,6 +1331,8 @@
       "labelExpiry": "Expiry Date",
       "labelExpiryOptional": "(optional)",
       "labelExpiryHint": "Leave empty for no expiry.",
+      "readOnlyLabel": "Read-only key",
+      "readOnlyHint": "Allows read access (GET) only. Write methods (POST/PUT/PATCH/DELETE) are rejected with 403 — ideal for dashboards or monitoring.",
       "creating": "Creating…",
       "createSubmit": "Create",
       "newKeyTitle": "API Key Created",
@@ -1597,7 +1607,60 @@
   },
   "backup": {
     "staleWarning": "No backup in the last 7 days",
-    "staleAction": "Open settings"
+    "staleAction": "Open settings",
+    "title": "Backup / Restore Evidence",
+    "description": "Documentation of backup jobs and restore tests (ISO 27001 A.8.13, BSI DER.4) — evidence only, no backup operation.",
+    "new": "Backup job",
+    "edit": "Edit backup job",
+    "name": "Name",
+    "source": "Source",
+    "destination": "Destination",
+    "frequencyLabel": "Frequency",
+    "restoreMaxAge": "Restore test max. age (days)",
+    "encrypted": "encrypted",
+    "encryptedLabel": "Backup is encrypted",
+    "notes": "Notes",
+    "deleteConfirm": "Really delete this backup job?",
+    "loadError": "Failed to load backup jobs.",
+    "emptyTitle": "No backup jobs yet",
+    "emptyDescription": "Document your backup jobs and restore tests as audit evidence.",
+    "never": "never",
+    "lastSuccess": "Last success",
+    "lastRestoreTest": "Last restore test",
+    "frequency": {
+      "hourly": "hourly",
+      "daily": "daily",
+      "weekly": "weekly",
+      "monthly": "monthly"
+    },
+    "status": {
+      "on_track": "on track",
+      "at_risk": "at risk",
+      "overdue": "overdue"
+    },
+    "label": {
+      "backup": "Backup",
+      "restore": "Restore"
+    },
+    "summary": {
+      "total": "Backup jobs",
+      "tested": "with restore test",
+      "overdueBackups": "overdue backups",
+      "overdueRestores": "overdue restore tests"
+    },
+    "restoreTest": {
+      "new": "Document restore test",
+      "document": "Document restore test",
+      "testedAt": "Test date",
+      "result": "Result",
+      "resultSuccess": "success",
+      "resultPartial": "partial",
+      "resultFailed": "failed",
+      "rtoTarget": "RTO target (h)",
+      "rtoActual": "RTO actual (h)",
+      "tester": "Tester",
+      "notes": "Notes"
+    }
   },
   "language": {
     "switchTo": "Switch language",
@@ -1792,7 +1855,14 @@
       "noReposConnected": "No repositories connected yet",
       "connectFirstRepo": "Connect a GitHub repository to automatically collect compliance evidence.",
       "noThirdPartyTitle": "No Third-Party Integrations",
-      "noThirdPartyDesc": "For privacy reasons (GDPR Art. 28), Vakt does not integrate with services that transmit security data to external SaaS providers. Use webhooks for custom automations."
+      "noThirdPartyDesc": "For privacy reasons (GDPR Art. 28), Vakt does not integrate with services that transmit security data to external SaaS providers. Use webhooks for custom automations.",
+      "syncNow": "Sync now"
+    },
+    "intune": {
+      "title": "Microsoft Intune (MDM) integration",
+      "description": "Daily endpoint evidence (encryption, patch level, compliance) from Intune (Microsoft Graph, managedDevices) for ISO A.8.1/A.8.9 and NIS2 cyber hygiene. Read-only, no management.",
+      "compliance": "Compliance",
+      "permissionsHint": "Requires an App Registration with DeviceManagementManagedDevices.Read.All. The secret is stored AES-256-GCM encrypted."
     }
   },
   "auditLog": {
@@ -2454,6 +2524,175 @@
         "title": "Getting Started checklist",
         "text": "This checklist guides you through the initial setup of your security platform."
       }
+    }
+  },
+  "bcm": {
+    "dashboard": {
+      "title": "BCM Dashboard",
+      "description": "Business Continuity Management per BSI 200-4 — readiness score and emergency documentation.",
+      "exportPdf": "Emergency Handbook (PDF)",
+      "readinessScore": "BCM Readiness Score",
+      "points": "points",
+      "biaProcesses": "BIA Processes",
+      "highCritical": "high/critical",
+      "avgRto": "Avg. RTO",
+      "recoveryPlans": "Recovery Plans",
+      "tested": "tested",
+      "emergencyContacts": "Emergency Contacts",
+      "primaryContacts": "primary (level 1)",
+      "biaHint": "Capture critical processes with RTO/RPO/MBCO",
+      "wapHint": "Step-by-step recovery plans",
+      "contactsHint": "Alert plan with escalation levels",
+      "warningTitle": "BCM readiness incomplete",
+      "warningDescription": "Add BIA processes, recovery plans, and emergency contacts to meet BSI 200-4 requirements."
+    },
+    "bia": {
+      "title": "Business Impact Analysis (BIA)",
+      "description": "Capture critical business processes with protection class, RTO, RPO, and MBCO.",
+      "new": "New Process",
+      "edit": "Edit Process",
+      "name": "Process Name",
+      "namePlaceholder": "e.g. IT Infrastructure Operations",
+      "descriptionLabel": "Description",
+      "criticalityLabel": "Criticality",
+      "schutzbedarfsklasse": "Protection Class",
+      "klasse": "Class",
+      "klasse1": "Normal",
+      "klasse2": "High",
+      "klasse3": "Very High",
+      "owner": "Process Owner",
+      "ownerPlaceholder": "e.g. IT Manager",
+      "criticality": {
+        "critical": "Critical",
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low"
+      },
+      "deleteConfirm": "Delete process?",
+      "loadError": "Failed to load BIA processes.",
+      "emptyTitle": "No BIA processes yet",
+      "emptyDescription": "Capture critical business processes and their recovery requirements."
+    },
+    "recoveryPlans": {
+      "title": "Recovery Plans (WAP)",
+      "description": "Document step-by-step recovery plans for critical processes.",
+      "new": "New Recovery Plan",
+      "edit": "Edit Recovery Plan",
+      "planTitle": "Title",
+      "planTitlePlaceholder": "e.g. IT Infrastructure Recovery Plan",
+      "biaProcess": "BIA Process",
+      "noBiaProcess": "No BIA Process",
+      "statusLabel": "Status",
+      "responsible": "Responsible",
+      "activationCriteria": "Activation Criteria",
+      "lastTested": "Last Tested",
+      "steps": "Recovery Steps",
+      "addStep": "Add Step",
+      "stepAction": "Describe action...",
+      "stepResponsible": "Responsible",
+      "status": {
+        "draft": "Draft",
+        "active": "Active",
+        "tested": "Tested"
+      },
+      "deleteConfirm": "Delete recovery plan?",
+      "loadError": "Failed to load recovery plans.",
+      "emptyTitle": "No recovery plans yet",
+      "emptyDescription": "Document step-by-step plans to restore critical processes."
+    },
+    "emergencyContacts": {
+      "title": "Emergency Contact Plan",
+      "description": "Maintain emergency contacts with escalation levels for the alert plan.",
+      "new": "Add Contact",
+      "edit": "Edit Contact",
+      "name": "Name",
+      "role": "Role / Function",
+      "phone": "Phone",
+      "email": "Email",
+      "escalationLevel": "Escalation Level",
+      "available247": "Available 24/7",
+      "notes": "Notes",
+      "level": "Level",
+      "levelDesc": {
+        "1": "First Response (internal)",
+        "2": "Management / Decision",
+        "3": "External Experts"
+      },
+      "deleteConfirm": "Delete contact?",
+      "loadError": "Failed to load emergency contacts.",
+      "emptyTitle": "No emergency contacts yet",
+      "emptyDescription": "Add emergency contacts for the BSI 200-4 alert plan."
+    }
+  },
+  "threatCatalog": {
+    "title": "Threat / Measure Catalog",
+    "framework": "Framework",
+    "assetType": "Asset type",
+    "cia": "Protection goal",
+    "fromCatalog": "From catalog",
+    "createRisk": "Create risk",
+    "defaultScore": "Default",
+    "empty": "No matches for this filter.",
+    "asset": {
+      "server": "Server",
+      "endpoint": "Endpoint",
+      "data": "Data",
+      "identity": "Identity",
+      "network": "Network",
+      "application": "Application",
+      "cloud": "Cloud",
+      "facility": "Facility",
+      "supplier": "Supplier",
+      "process": "Process",
+      "service": "Service"
+    },
+    "ciaShort": {
+      "confidentiality": "Confidentiality",
+      "integrity": "Integrity",
+      "availability": "Availability"
+    }
+  },
+  "verinice": {
+    "title": "verinice Import",
+    "description": "Import ISMS data from verinice (.vna) — assets, controls and risks.",
+    "uploadTitle": "Upload file",
+    "uploadHint": "Choose a verinice export file (.vna). A preview is generated before anything is imported.",
+    "analyze": "Analyze (preview)",
+    "previewTitle": "Preview (nothing imported yet)",
+    "assets": "Assets",
+    "controls": "Controls",
+    "risks": "Risks",
+    "unmapped": "Unmapped",
+    "unmappedTypes": "Unmapped types",
+    "confirmImport": "Confirm import",
+    "doneTitle": "Import complete",
+    "skipped": "Skipped",
+    "importAnother": "Import another file"
+  },
+  "vvtLinks": {
+    "title": "Linked processing activities (VVT)",
+    "empty": "No processing activities linked yet.",
+    "add": "Link",
+    "remove": "Remove",
+    "selectPlaceholder": "Select a processing activity …"
+  },
+  "beta": {
+    "badge": "Private Beta",
+    "tooltip": "Vakt is in private beta — best-effort support, no 24/7 SLA. Backups are your responsibility. Click for details."
+  },
+  "onboarding30": {
+    "title": "First 30 days — guided setup",
+    "progress": "{{done}} of {{total}} steps done",
+    "dismiss": "Dismiss",
+    "allDone": "All steps complete — well done!",
+    "steps": {
+      "scope": "Define the ISMS scope",
+      "assets": "Capture your assets",
+      "protection_need": "Set protection needs for top assets",
+      "framework": "Choose & enable a framework",
+      "risks": "Add top risks to the register",
+      "evidence": "Work the first controls & upload evidence",
+      "policy": "Adopt a first policy from a template"
     }
   }
 }

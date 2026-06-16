@@ -31,7 +31,8 @@
         "frameworks": "Frameworks",
         "operations": "Operations",
         "documentation": "Dokumentation",
-        "thirdParty": "Drittparteien"
+        "thirdParty": "Drittparteien",
+        "bcm": "Notfallmanagement (BCM)"
       },
       "overview": "Übersicht",
       "nis2": "NIS2",
@@ -57,7 +58,12 @@
       "certTimeline": "Zert.-Plan",
       "suppliers": "Lieferanten",
       "aiSystems": "KI-Systeme",
-      "resilience": "Resilience"
+      "resilience": "Resilience",
+      "bcmDashboard": "BCM-Dashboard",
+      "bcmBia": "Geschäftseinflussanalyse",
+      "bcmRecoveryPlans": "Wiederanlaufpläne",
+      "bcmEmergencyContacts": "Alarmierungsplan",
+      "backup": "Backup-Nachweis"
     },
     "vault": {
       "root": "Vakt Vault",
@@ -461,7 +467,9 @@
       "statusImplemented": "Umgesetzt",
       "statusNotApplicable": "Nicht anwendbar",
       "activatedOn": "Aktiviert",
-      "controlsCount": "Controls"
+      "controlsCount": "Controls",
+      "applyPhysicalTemplate": "Checkliste anwenden",
+      "physicalTemplateApplied": "Checkliste als Nachweis angelegt"
     },
     "policiesPage": {
       "title": "Richtlinienmanagement",
@@ -1323,6 +1331,8 @@
       "labelExpiry": "Ablaufdatum",
       "labelExpiryOptional": "(optional)",
       "labelExpiryHint": "Leer lassen für kein Ablaufdatum.",
+      "readOnlyLabel": "Nur-Lesen-Schlüssel",
+      "readOnlyHint": "Erlaubt ausschließlich lesende Zugriffe (GET). Schreibende Methoden (POST/PUT/PATCH/DELETE) werden mit 403 abgelehnt — ideal für Dashboards oder Monitoring.",
       "creating": "Wird erstellt…",
       "createSubmit": "Erstellen",
       "newKeyTitle": "API-Schlüssel erstellt",
@@ -1597,7 +1607,60 @@
   },
   "backup": {
     "staleWarning": "Kein Backup in den letzten 7 Tagen",
-    "staleAction": "Einstellungen öffnen"
+    "staleAction": "Einstellungen öffnen",
+    "title": "Backup-/Restore-Nachweis",
+    "description": "Dokumentation von Backup-Jobs und Restore-Tests (ISO 27001 A.8.13, BSI DER.4) — kein Backup-Betrieb, nur Nachweis.",
+    "new": "Backup-Job",
+    "edit": "Backup-Job bearbeiten",
+    "name": "Name",
+    "source": "Quelle",
+    "destination": "Ziel",
+    "frequencyLabel": "Frequenz",
+    "restoreMaxAge": "Restore-Test max. Alter (Tage)",
+    "encrypted": "verschlüsselt",
+    "encryptedLabel": "Backup ist verschlüsselt",
+    "notes": "Notizen",
+    "deleteConfirm": "Diesen Backup-Job wirklich löschen?",
+    "loadError": "Backup-Jobs konnten nicht geladen werden.",
+    "emptyTitle": "Noch keine Backup-Jobs",
+    "emptyDescription": "Dokumentieren Sie Ihre Backup-Jobs und Restore-Tests als Audit-Nachweis.",
+    "never": "nie",
+    "lastSuccess": "Letzter Erfolg",
+    "lastRestoreTest": "Letzter Restore-Test",
+    "frequency": {
+      "hourly": "stündlich",
+      "daily": "täglich",
+      "weekly": "wöchentlich",
+      "monthly": "monatlich"
+    },
+    "status": {
+      "on_track": "aktuell",
+      "at_risk": "gefährdet",
+      "overdue": "überfällig"
+    },
+    "label": {
+      "backup": "Backup",
+      "restore": "Restore"
+    },
+    "summary": {
+      "total": "Backup-Jobs",
+      "tested": "mit Restore-Test",
+      "overdueBackups": "überfällige Backups",
+      "overdueRestores": "überfällige Restore-Tests"
+    },
+    "restoreTest": {
+      "new": "Restore-Test dokumentieren",
+      "document": "Restore-Test dokumentieren",
+      "testedAt": "Testdatum",
+      "result": "Ergebnis",
+      "resultSuccess": "erfolgreich",
+      "resultPartial": "teilweise",
+      "resultFailed": "fehlgeschlagen",
+      "rtoTarget": "RTO-Soll (h)",
+      "rtoActual": "RTO-Ist (h)",
+      "tester": "Tester",
+      "notes": "Notizen"
+    }
   },
   "language": {
     "switchTo": "Sprache wechseln",
@@ -1792,7 +1855,14 @@
       "noReposConnected": "Noch keine Repositories verbunden",
       "connectFirstRepo": "Verbinde ein GitHub-Repository, um automatisch Compliance-Evidence zu sammeln.",
       "noThirdPartyTitle": "Keine Drittanbieter-Integrationen",
-      "noThirdPartyDesc": "Aus Datenschutzgründen (DSGVO Art. 28) verzichtet Vakt auf Integrationen, die Sicherheitsdaten an externe SaaS-Dienste übertragen. Nutze Webhooks für eigene Automatisierungen."
+      "noThirdPartyDesc": "Aus Datenschutzgründen (DSGVO Art. 28) verzichtet Vakt auf Integrationen, die Sicherheitsdaten an externe SaaS-Dienste übertragen. Nutze Webhooks für eigene Automatisierungen.",
+      "syncNow": "Jetzt synchronisieren"
+    },
+    "intune": {
+      "title": "Microsoft Intune (MDM) Integration",
+      "description": "Geräte-Compliance (Verschlüsselung, Patch-Stand, Conformität) aus Intune (Microsoft Graph, managedDevices) täglich als Endpoint-Evidence für ISO A.8.1/A.8.9 und NIS2-Cyberhygiene. Nur lesend, kein Management.",
+      "compliance": "Compliance",
+      "permissionsHint": "Benötigt App-Registration mit DeviceManagementManagedDevices.Read.All. Secret wird AES-256-GCM verschlüsselt gespeichert."
     }
   },
   "auditLog": {
@@ -2454,6 +2524,175 @@
         "title": "Getting-Started-Checkliste",
         "text": "Diese Checkliste führt dich durch die Ersteinrichtung deiner Sicherheitsplattform."
       }
+    }
+  },
+  "bcm": {
+    "dashboard": {
+      "title": "BCM-Dashboard",
+      "description": "Business Continuity Management nach BSI 200-4 — Bereitschaftsgrad und Notfalldokumentation.",
+      "exportPdf": "Notfallhandbuch (PDF)",
+      "readinessScore": "BCM-Bereitschaftsgrad",
+      "points": "Punkte",
+      "biaProcesses": "BIA-Prozesse",
+      "highCritical": "hoch/kritisch",
+      "avgRto": "Ø RTO",
+      "recoveryPlans": "Wiederanlaufpläne",
+      "tested": "getestet",
+      "emergencyContacts": "Notfallkontakte",
+      "primaryContacts": "primär (Stufe 1)",
+      "biaHint": "Kritische Prozesse mit RTO/RPO/MBCO erfassen",
+      "wapHint": "Wiederanlaufpläne mit Schritt-für-Schritt-Anweisungen",
+      "contactsHint": "Alarmierungsplan mit Eskalationsstufen",
+      "warningTitle": "BCM-Bereitschaft unvollständig",
+      "warningDescription": "Ergänzen Sie BIA-Prozesse, Wiederanlaufpläne und Notfallkontakte, um die BSI-200-4-Anforderungen zu erfüllen."
+    },
+    "bia": {
+      "title": "Geschäftseinflussanalyse (BIA)",
+      "description": "Kritische Geschäftsprozesse mit Schutzbedarfsklasse, RTO, RPO und MBCO erfassen.",
+      "new": "Neuer Prozess",
+      "edit": "Prozess bearbeiten",
+      "name": "Prozessname",
+      "namePlaceholder": "z.B. IT-Infrastruktur-Betrieb",
+      "descriptionLabel": "Beschreibung",
+      "criticalityLabel": "Kritikalität",
+      "schutzbedarfsklasse": "Schutzbedarfsklasse",
+      "klasse": "Klasse",
+      "klasse1": "Normal",
+      "klasse2": "Hoch",
+      "klasse3": "Sehr hoch",
+      "owner": "Prozessverantwortlicher",
+      "ownerPlaceholder": "z.B. IT-Leiter",
+      "criticality": {
+        "critical": "Kritisch",
+        "high": "Hoch",
+        "medium": "Mittel",
+        "low": "Niedrig"
+      },
+      "deleteConfirm": "Prozess wirklich löschen?",
+      "loadError": "Fehler beim Laden der BIA-Prozesse.",
+      "emptyTitle": "Keine BIA-Prozesse vorhanden",
+      "emptyDescription": "Erfassen Sie kritische Geschäftsprozesse und deren Wiederherstellungsanforderungen."
+    },
+    "recoveryPlans": {
+      "title": "Wiederanlaufpläne (WAP)",
+      "description": "Schritt-für-Schritt-Wiederanlaufpläne für kritische Prozesse dokumentieren.",
+      "new": "Neuer WAP",
+      "edit": "WAP bearbeiten",
+      "planTitle": "Titel",
+      "planTitlePlaceholder": "z.B. WAP IT-Infrastruktur",
+      "biaProcess": "BIA-Prozess",
+      "noBiaProcess": "Kein BIA-Prozess",
+      "statusLabel": "Status",
+      "responsible": "Verantwortlicher",
+      "activationCriteria": "Aktivierungskriterien",
+      "lastTested": "Zuletzt getestet",
+      "steps": "Wiederanlaufschritte",
+      "addStep": "Schritt hinzufügen",
+      "stepAction": "Maßnahme beschreiben...",
+      "stepResponsible": "Verantwortlich",
+      "status": {
+        "draft": "Entwurf",
+        "active": "Aktiv",
+        "tested": "Getestet"
+      },
+      "deleteConfirm": "Wiederanlaufplan wirklich löschen?",
+      "loadError": "Fehler beim Laden der Wiederanlaufpläne.",
+      "emptyTitle": "Keine Wiederanlaufpläne vorhanden",
+      "emptyDescription": "Dokumentieren Sie Schritt-für-Schritt-Pläne zur Wiederherstellung kritischer Prozesse."
+    },
+    "emergencyContacts": {
+      "title": "Alarmierungsplan",
+      "description": "Notfallkontakte mit Eskalationsstufen für den Alarmierungsplan hinterlegen.",
+      "new": "Kontakt hinzufügen",
+      "edit": "Kontakt bearbeiten",
+      "name": "Name",
+      "role": "Rolle / Funktion",
+      "phone": "Telefon",
+      "email": "E-Mail",
+      "escalationLevel": "Eskalationsstufe",
+      "available247": "24/7 erreichbar",
+      "notes": "Notizen",
+      "level": "Stufe",
+      "levelDesc": {
+        "1": "Erstreaktion (intern)",
+        "2": "Management / Entscheidung",
+        "3": "Externe Experten"
+      },
+      "deleteConfirm": "Kontakt wirklich löschen?",
+      "loadError": "Fehler beim Laden der Notfallkontakte.",
+      "emptyTitle": "Keine Notfallkontakte hinterlegt",
+      "emptyDescription": "Hinterlegen Sie Notfallkontakte für den BSI-200-4-Alarmierungsplan."
+    }
+  },
+  "threatCatalog": {
+    "title": "Gefährdungs-/Maßnahmen-Katalog",
+    "framework": "Framework",
+    "assetType": "Asset-Typ",
+    "cia": "Schutzziel",
+    "fromCatalog": "Aus Katalog",
+    "createRisk": "Risiko erstellen",
+    "defaultScore": "Standard",
+    "empty": "Keine Treffer für diesen Filter.",
+    "asset": {
+      "server": "Server",
+      "endpoint": "Endgerät",
+      "data": "Daten",
+      "identity": "Identität",
+      "network": "Netzwerk",
+      "application": "Anwendung",
+      "cloud": "Cloud",
+      "facility": "Gebäude",
+      "supplier": "Lieferant",
+      "process": "Prozess",
+      "service": "Dienst"
+    },
+    "ciaShort": {
+      "confidentiality": "Vertraulichkeit",
+      "integrity": "Integrität",
+      "availability": "Verfügbarkeit"
+    }
+  },
+  "verinice": {
+    "title": "verinice-Import",
+    "description": "ISMS-Daten aus verinice (.vna) importieren — Assets, Controls und Risiken.",
+    "uploadTitle": "Datei hochladen",
+    "uploadHint": "Wählen Sie eine verinice-Export-Datei (.vna). Es wird zuerst eine Vorschau erstellt, bevor etwas importiert wird.",
+    "analyze": "Analysieren (Vorschau)",
+    "previewTitle": "Vorschau (es wird noch nichts importiert)",
+    "assets": "Assets",
+    "controls": "Controls",
+    "risks": "Risiken",
+    "unmapped": "Nicht zugeordnet",
+    "unmappedTypes": "Nicht zugeordnete Typen",
+    "confirmImport": "Import bestätigen",
+    "doneTitle": "Import abgeschlossen",
+    "skipped": "Übersprungen",
+    "importAnother": "Weitere Datei importieren"
+  },
+  "vvtLinks": {
+    "title": "Verknüpfte Verarbeitungstätigkeiten (VVT)",
+    "empty": "Noch keine VVT verknüpft.",
+    "add": "Verknüpfen",
+    "remove": "Entfernen",
+    "selectPlaceholder": "Verarbeitungstätigkeit wählen …"
+  },
+  "beta": {
+    "badge": "Private Beta",
+    "tooltip": "Vakt befindet sich in der Private Beta — Best-Effort-Support, kein 24/7-SLA. Backups liegen in deiner Verantwortung. Klicken für Details."
+  },
+  "onboarding30": {
+    "title": "Erste 30 Tage — geführter Einstieg",
+    "progress": "{{done}} von {{total}} Schritten erledigt",
+    "dismiss": "Ausblenden",
+    "allDone": "Alle Schritte erledigt — gut gemacht!",
+    "steps": {
+      "scope": "ISMS-Geltungsbereich definieren",
+      "assets": "Assets erfassen",
+      "protection_need": "Schutzbedarf der Top-Assets festlegen",
+      "framework": "Framework wählen & aktivieren",
+      "risks": "Top-Risiken ins Risikoregister",
+      "evidence": "Erste Controls bearbeiten & Nachweise hochladen",
+      "policy": "Erste Richtlinie aus Vorlage übernehmen"
     }
   }
 }

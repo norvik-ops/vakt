@@ -1,0 +1,1481 @@
+{
+  "version": "2026.1",
+  "edition": "Vakt Threat Library — generische Gefährdungen & Maßnahmen (ISO 27001 / BSI / NIS2 / DSGVO)",
+  "threats": [
+    {
+      "id": "T-RANSOMWARE",
+      "title": "Ransomware-Befall",
+      "category": "Malware",
+      "asset_types": [
+        "server",
+        "endpoint",
+        "data"
+      ],
+      "cia": [
+        "availability",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI",
+        "NIS2"
+      ],
+      "scenario": "Verschlüsselung produktiver Systeme durch Ransomware, Lösegeldforderung, Betriebsstillstand.",
+      "suggested_measure": "Offline-Backups + getestete Wiederanlaufpläne, EDR, Netzsegmentierung, Awareness.",
+      "control_links": [
+        "ISO27001:A.8.13",
+        "BSI:DER.4.A1",
+        "NIS2:NIS2-C.4"
+      ],
+      "default_likelihood": 4,
+      "default_impact": 5
+    },
+    {
+      "id": "T-PHISHING",
+      "title": "Phishing / Spear-Phishing",
+      "category": "Mensch",
+      "asset_types": [
+        "endpoint",
+        "identity"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI",
+        "NIS2"
+      ],
+      "scenario": "Mitarbeitende geben durch gefälschte E-Mails Zugangsdaten preis.",
+      "suggested_measure": "Phishing-Simulationen, MFA, E-Mail-Filter, Awareness-Trainings.",
+      "control_links": [
+        "ISO27001:A.6.3",
+        "BSI:ORP.3.A4"
+      ],
+      "default_likelihood": 4,
+      "default_impact": 4
+    },
+    {
+      "id": "T-CEO-FRAUD",
+      "title": "CEO-Fraud / BEC",
+      "category": "Mensch",
+      "asset_types": [
+        "identity",
+        "process"
+      ],
+      "cia": [
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "NIS2"
+      ],
+      "scenario": "Gefälschte Geschäftsführer-Anweisung zur Überweisung an Betrüger.",
+      "suggested_measure": "Vier-Augen-Prinzip bei Zahlungen, Rückrufverfahren, Sensibilisierung Finanzabteilung.",
+      "control_links": [
+        "ISO27001:A.5.4"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 4
+    },
+    {
+      "id": "T-INSIDER",
+      "title": "Böswilliger Innentäter",
+      "category": "Mensch",
+      "asset_types": [
+        "data",
+        "identity"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Mitarbeitende exfiltrieren oder sabotieren Daten mit legitimem Zugriff.",
+      "suggested_measure": "Least-Privilege, Protokollierung, Funktionstrennung, Offboarding-Prozess.",
+      "control_links": [
+        "ISO27001:A.5.18",
+        "BSI:ORP.4.A8"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 4
+    },
+    {
+      "id": "T-NEGLIGENCE",
+      "title": "Fahrlässiger Datenverlust",
+      "category": "Mensch",
+      "asset_types": [
+        "data",
+        "endpoint"
+      ],
+      "cia": [
+        "confidentiality"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "DSGVO-TOM"
+      ],
+      "scenario": "Versehentlicher Versand vertraulicher Daten an falschen Empfänger.",
+      "suggested_measure": "DLP, Klassifizierung, Verschlüsselung, Schulung.",
+      "control_links": [
+        "ISO27001:A.5.12"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 3
+    },
+    {
+      "id": "T-WEAK-PW",
+      "title": "Schwache / wiederverwendete Passwörter",
+      "category": "Technisch",
+      "asset_types": [
+        "identity"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI",
+        "NIS2"
+      ],
+      "scenario": "Kompromittierung durch Credential-Stuffing aufgrund schwacher Passwörter.",
+      "suggested_measure": "Passwort-Policy, MFA, Passwortmanager, Sperrung nach Fehlversuchen.",
+      "control_links": [
+        "ISO27001:A.8.5",
+        "BSI:ORP.4.A22"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 4
+    },
+    {
+      "id": "T-NO-MFA",
+      "title": "Fehlende Multi-Faktor-Authentifizierung",
+      "category": "Technisch",
+      "asset_types": [
+        "identity"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "NIS2"
+      ],
+      "scenario": "Kontoübernahme trotz Passwortdiebstahl mangels zweitem Faktor.",
+      "suggested_measure": "MFA für alle privilegierten und externen Zugänge erzwingen.",
+      "control_links": [
+        "ISO27001:A.8.5",
+        "NIS2:NIS2-A.5"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 4
+    },
+    {
+      "id": "T-PRIV-ESC",
+      "title": "Privilegien-Eskalation",
+      "category": "Technisch",
+      "asset_types": [
+        "server",
+        "identity"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Angreifer erlangt Admin-Rechte durch Schwachstelle oder Fehlkonfiguration.",
+      "suggested_measure": "Least-Privilege, PAM, Patch-Management, Härtung.",
+      "control_links": [
+        "ISO27001:A.8.2",
+        "BSI:ORP.4.A1"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 4
+    },
+    {
+      "id": "T-UNPATCHED",
+      "title": "Nicht gepatchte Schwachstellen",
+      "category": "Technisch",
+      "asset_types": [
+        "server",
+        "endpoint",
+        "application"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI",
+        "NIS2"
+      ],
+      "scenario": "Ausnutzung bekannter CVEs in nicht aktualisierten Systemen.",
+      "suggested_measure": "Vulnerability-Management, Patch-SLA, Scan-Integration.",
+      "control_links": [
+        "ISO27001:A.8.8",
+        "BSI:OPS.1.1.3.A1",
+        "NIS2:NIS2-G.1"
+      ],
+      "default_likelihood": 4,
+      "default_impact": 4
+    },
+    {
+      "id": "T-MISCONFIG",
+      "title": "Fehlkonfiguration von Systemen",
+      "category": "Technisch",
+      "asset_types": [
+        "server",
+        "cloud",
+        "application"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Offene Ports, Default-Credentials oder zu weite Rechte führen zu Kompromittierung.",
+      "suggested_measure": "Hardening-Baselines, Config-Reviews, automatisierte Compliance-Scans.",
+      "control_links": [
+        "ISO27001:A.8.9",
+        "BSI:SYS.1.1.A3"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 4
+    },
+    {
+      "id": "T-DDOS",
+      "title": "DDoS-Angriff",
+      "category": "Netzwerk",
+      "asset_types": [
+        "network",
+        "application"
+      ],
+      "cia": [
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "NIS2"
+      ],
+      "scenario": "Überlastung öffentlicher Dienste durch verteilte Angriffe.",
+      "suggested_measure": "DDoS-Schutz, Rate-Limiting, CDN, Notfallplan.",
+      "control_links": [
+        "ISO27001:A.8.6",
+        "NIS2:NIS2-C.1"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 3
+    },
+    {
+      "id": "T-MITM",
+      "title": "Man-in-the-Middle",
+      "category": "Netzwerk",
+      "asset_types": [
+        "network",
+        "data"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Abhören oder Manipulation unverschlüsselter Kommunikation.",
+      "suggested_measure": "TLS überall, Zertifikatsmanagement, VPN für Remote-Zugriff.",
+      "control_links": [
+        "ISO27001:A.8.24",
+        "BSI:NET.1.1.A1"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 4
+    },
+    {
+      "id": "T-INSECURE-API",
+      "title": "Unsichere Schnittstellen / APIs",
+      "category": "Technisch",
+      "asset_types": [
+        "application",
+        "cloud"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001"
+      ],
+      "scenario": "Datenabfluss über unzureichend geschützte APIs.",
+      "suggested_measure": "Authentifizierung, Input-Validierung, API-Gateway, Pentests.",
+      "control_links": [
+        "ISO27001:A.8.26"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 4
+    },
+    {
+      "id": "T-SUPPLY-CHAIN",
+      "title": "Supply-Chain-Kompromittierung",
+      "category": "Lieferant",
+      "asset_types": [
+        "application",
+        "supplier"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "NIS2"
+      ],
+      "scenario": "Kompromittierte Software-Abhängigkeit oder Dienstleister schleust Schadcode ein.",
+      "suggested_measure": "SBOM, Lieferantenbewertung, Dependency-Scanning, Code-Signing.",
+      "control_links": [
+        "ISO27001:A.5.19",
+        "NIS2:NIS2-D.1"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 5
+    },
+    {
+      "id": "T-VENDOR-OUTAGE",
+      "title": "Ausfall kritischer Dienstleister",
+      "category": "Lieferant",
+      "asset_types": [
+        "supplier",
+        "service"
+      ],
+      "cia": [
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "NIS2",
+        "DORA"
+      ],
+      "scenario": "Ausfall eines Cloud-/IT-Dienstleisters legt Geschäftsprozesse lahm.",
+      "suggested_measure": "Exit-Strategie, SLA, Multi-Provider, Notfallpläne.",
+      "control_links": [
+        "ISO27001:A.5.30",
+        "DORA:DORA-S.5"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 4
+    },
+    {
+      "id": "T-DATA-LEAK",
+      "title": "Datenleck / Exfiltration",
+      "category": "Daten",
+      "asset_types": [
+        "data"
+      ],
+      "cia": [
+        "confidentiality"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "DSGVO-TOM",
+        "NIS2"
+      ],
+      "scenario": "Unbefugter Abfluss personenbezogener oder vertraulicher Daten.",
+      "suggested_measure": "Verschlüsselung, DLP, Zugriffskontrolle, Monitoring.",
+      "control_links": [
+        "ISO27001:A.8.12",
+        "DSGVO-TOM:TOM-2"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 5
+    },
+    {
+      "id": "T-LOST-DEVICE",
+      "title": "Verlust mobiler Geräte",
+      "category": "Physisch",
+      "asset_types": [
+        "endpoint",
+        "data"
+      ],
+      "cia": [
+        "confidentiality"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Diebstahl/Verlust von Laptop oder Smartphone mit Unternehmensdaten.",
+      "suggested_measure": "Full-Disk-Encryption, MDM, Remote-Wipe, Bildschirmsperre.",
+      "control_links": [
+        "ISO27001:A.7.9",
+        "BSI:SYS.3.1.A1"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 3
+    },
+    {
+      "id": "T-PHYS-ACCESS",
+      "title": "Unbefugter physischer Zutritt",
+      "category": "Physisch",
+      "asset_types": [
+        "server",
+        "facility"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Eindringen in Serverraum/Bürobereiche ermöglicht Daten- oder Hardwarediebstahl.",
+      "suggested_measure": "Zutrittskontrolle, Besucherregelung, Videoüberwachung.",
+      "control_links": [
+        "ISO27001:A.7.2",
+        "BSI:INF.1.A1"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 4
+    },
+    {
+      "id": "T-FIRE",
+      "title": "Brand im Rechenzentrum",
+      "category": "Physisch",
+      "asset_types": [
+        "facility",
+        "server"
+      ],
+      "cia": [
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Brand zerstört IT-Infrastruktur und Daten.",
+      "suggested_measure": "Brandfrüherkennung, Löschanlage, Brandabschnitte, georedundante Backups.",
+      "control_links": [
+        "ISO27001:A.7.5",
+        "BSI:INF.1.A8"
+      ],
+      "default_likelihood": 1,
+      "default_impact": 5
+    },
+    {
+      "id": "T-FLOOD",
+      "title": "Wasserschaden / Hochwasser",
+      "category": "Physisch",
+      "asset_types": [
+        "facility",
+        "server"
+      ],
+      "cia": [
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Wasser zerstört IT-Komponenten.",
+      "suggested_measure": "Standortwahl, Leckagesensorik, erhöhte Aufstellung, Off-Site-Backup.",
+      "control_links": [
+        "ISO27001:A.7.5",
+        "BSI:INF.1.A2"
+      ],
+      "default_likelihood": 1,
+      "default_impact": 4
+    },
+    {
+      "id": "T-POWER",
+      "title": "Stromausfall",
+      "category": "Physisch",
+      "asset_types": [
+        "facility",
+        "server"
+      ],
+      "cia": [
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Längerer Stromausfall unterbricht den Betrieb.",
+      "suggested_measure": "USV, Netzersatzanlage, getestete Wiederanlaufprozesse.",
+      "control_links": [
+        "ISO27001:A.7.11",
+        "BSI:INF.1.A7"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 3
+    },
+    {
+      "id": "T-BACKUP-FAIL",
+      "title": "Nicht funktionierendes Backup",
+      "category": "Organisatorisch",
+      "asset_types": [
+        "data",
+        "server"
+      ],
+      "cia": [
+        "availability",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Im Notfall stellt sich heraus, dass Backups unbrauchbar sind.",
+      "suggested_measure": "Regelmäßige Restore-Tests, 3-2-1-Regel, Monitoring der Backup-Jobs.",
+      "control_links": [
+        "ISO27001:A.8.13",
+        "BSI:CON.3.A1"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 5
+    },
+    {
+      "id": "T-NO-BCM",
+      "title": "Fehlendes Notfallmanagement",
+      "category": "Organisatorisch",
+      "asset_types": [
+        "process"
+      ],
+      "cia": [
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI",
+        "NIS2"
+      ],
+      "scenario": "Ohne BCM verzögert sich die Wiederherstellung nach Vorfällen erheblich.",
+      "suggested_measure": "BIA, Wiederanlaufpläne, Notfallübungen, Alarmierungsplan.",
+      "control_links": [
+        "ISO27001:A.5.29",
+        "BSI:DER.4.A1",
+        "NIS2:NIS2-C.4"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 4
+    },
+    {
+      "id": "T-SHADOW-IT",
+      "title": "Schatten-IT",
+      "category": "Organisatorisch",
+      "asset_types": [
+        "application",
+        "cloud",
+        "data"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001"
+      ],
+      "scenario": "Nicht freigegebene Cloud-Dienste umgehen Sicherheitskontrollen.",
+      "suggested_measure": "Asset-Inventar, CASB, Freigabeprozess, Awareness.",
+      "control_links": [
+        "ISO27001:A.5.9"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 3
+    },
+    {
+      "id": "T-NO-LOGGING",
+      "title": "Fehlende Protokollierung",
+      "category": "Technisch",
+      "asset_types": [
+        "server",
+        "application"
+      ],
+      "cia": [
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI",
+        "NIS2"
+      ],
+      "scenario": "Sicherheitsvorfälle bleiben unentdeckt oder sind nicht nachvollziehbar.",
+      "suggested_measure": "Zentrales Logging/SIEM, Aufbewahrungsfristen, Alarmierung.",
+      "control_links": [
+        "ISO27001:A.8.15",
+        "NIS2:NIS2-G.2"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 3
+    },
+    {
+      "id": "T-CLOUD-MISCONFIG",
+      "title": "Cloud-Fehlkonfiguration",
+      "category": "Cloud",
+      "asset_types": [
+        "cloud",
+        "data"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "C5"
+      ],
+      "scenario": "Öffentlich zugänglicher Storage-Bucket oder zu weite IAM-Rechte.",
+      "suggested_measure": "CSPM, IaC-Reviews, Least-Privilege, Verschlüsselung.",
+      "control_links": [
+        "ISO27001:A.8.9",
+        "C5:OIS-02"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 4
+    },
+    {
+      "id": "T-KEY-MGMT",
+      "title": "Mangelhaftes Schlüsselmanagement",
+      "category": "Technisch",
+      "asset_types": [
+        "data",
+        "application"
+      ],
+      "cia": [
+        "confidentiality"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Unsichere Speicherung oder fehlende Rotation kryptografischer Schlüssel.",
+      "suggested_measure": "KMS/HSM, Rotation, Trennung Schlüssel/Daten, Zugriffskontrolle.",
+      "control_links": [
+        "ISO27001:A.8.24",
+        "BSI:CON.1.A1"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 4
+    },
+    {
+      "id": "T-WEAK-CRYPTO",
+      "title": "Veraltete Kryptografie",
+      "category": "Technisch",
+      "asset_types": [
+        "application",
+        "network"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001"
+      ],
+      "scenario": "Einsatz schwacher Algorithmen (z. B. SHA-1, TLS 1.0) ermöglicht Entschlüsselung.",
+      "suggested_measure": "Krypto-Richtlinie, regelmäßige Algorithmen-Reviews, TLS-Hardening.",
+      "control_links": [
+        "ISO27001:A.8.24"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 3
+    },
+    {
+      "id": "T-SOCIAL-ENG",
+      "title": "Social Engineering",
+      "category": "Mensch",
+      "asset_types": [
+        "identity",
+        "process"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Manipulation von Mitarbeitenden zur Preisgabe von Informationen.",
+      "suggested_measure": "Awareness, Verifikationsprozesse, Meldewege.",
+      "control_links": [
+        "ISO27001:A.6.3",
+        "BSI:ORP.3.A4"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 3
+    },
+    {
+      "id": "T-TAILGATING",
+      "title": "Tailgating / unbefugtes Mitgehen",
+      "category": "Physisch",
+      "asset_types": [
+        "facility"
+      ],
+      "cia": [
+        "confidentiality",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001"
+      ],
+      "scenario": "Unbefugte gelangen durch Mitgehen hinter Berechtigten in Sicherheitsbereiche.",
+      "suggested_measure": "Vereinzelungsanlagen, Awareness, Besucherregeln.",
+      "control_links": [
+        "ISO27001:A.7.2"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 3
+    },
+    {
+      "id": "T-DSGVO-BREACH",
+      "title": "Meldepflichtige Datenpanne",
+      "category": "Daten",
+      "asset_types": [
+        "data"
+      ],
+      "cia": [
+        "confidentiality"
+      ],
+      "frameworks": [
+        "DSGVO-TOM",
+        "ISO27001"
+      ],
+      "scenario": "Verletzung des Schutzes personenbezogener Daten (Art. 33/34 DSGVO).",
+      "suggested_measure": "Breach-Prozess, 72h-Meldung, Betroffeneninformation, TOM.",
+      "control_links": [
+        "DSGVO-TOM:TOM-1",
+        "ISO27001:A.5.34"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 4
+    },
+    {
+      "id": "T-RETENTION",
+      "title": "Verletzung von Löschfristen",
+      "category": "Daten",
+      "asset_types": [
+        "data"
+      ],
+      "cia": [
+        "confidentiality"
+      ],
+      "frameworks": [
+        "DSGVO-TOM"
+      ],
+      "scenario": "Personenbezogene Daten werden länger als zulässig gespeichert.",
+      "suggested_measure": "Löschkonzept, automatisierte Löschfristen, Aufbewahrungsrichtlinie.",
+      "control_links": [
+        "DSGVO-TOM:TOM-6"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 2
+    },
+    {
+      "id": "T-THIRD-COUNTRY",
+      "title": "Unzulässige Drittlandübermittlung",
+      "category": "Daten",
+      "asset_types": [
+        "data",
+        "supplier"
+      ],
+      "cia": [
+        "confidentiality"
+      ],
+      "frameworks": [
+        "DSGVO-TOM"
+      ],
+      "scenario": "Übermittlung in unsichere Drittländer ohne Garantien (Schrems II).",
+      "suggested_measure": "TIA, SCC, Angemessenheitsbeschluss prüfen, EU-Hosting.",
+      "control_links": [
+        "DSGVO-TOM:TOM-7"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 3
+    },
+    {
+      "id": "T-NO-AVV",
+      "title": "Fehlende Auftragsverarbeitungsverträge",
+      "category": "Lieferant",
+      "asset_types": [
+        "supplier",
+        "data"
+      ],
+      "cia": [
+        "confidentiality"
+      ],
+      "frameworks": [
+        "DSGVO-TOM"
+      ],
+      "scenario": "Verarbeitung durch Dienstleister ohne AVV (Art. 28 DSGVO).",
+      "suggested_measure": "AVV-Management, Lieferantenprüfung, Vertragsinventar.",
+      "control_links": [
+        "DSGVO-TOM:TOM-5"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 2
+    },
+    {
+      "id": "T-OUTDATED-AV",
+      "title": "Veralteter Endpoint-Schutz",
+      "category": "Technisch",
+      "asset_types": [
+        "endpoint"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Malware bleibt unerkannt mangels aktuellem Schutz.",
+      "suggested_measure": "Zentral verwaltetes EDR/AV, automatische Updates, Monitoring.",
+      "control_links": [
+        "ISO27001:A.8.7",
+        "BSI:SYS.2.1.A4"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 3
+    },
+    {
+      "id": "T-USB",
+      "title": "Schadcode über Wechseldatenträger",
+      "category": "Technisch",
+      "asset_types": [
+        "endpoint"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Infektion durch manipulierte USB-Sticks.",
+      "suggested_measure": "Geräterichtlinie, USB-Kontrolle, Awareness, Endpoint-Schutz.",
+      "control_links": [
+        "ISO27001:A.7.10",
+        "BSI:SYS.2.1.A1"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 3
+    },
+    {
+      "id": "T-EOL-SYSTEM",
+      "title": "End-of-Life-Systeme",
+      "category": "Technisch",
+      "asset_types": [
+        "server",
+        "application"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Nicht mehr unterstützte Systeme erhalten keine Sicherheitsupdates.",
+      "suggested_measure": "Lifecycle-Management, Migration, Kompensationsmaßnahmen, Isolation.",
+      "control_links": [
+        "ISO27001:A.8.19",
+        "BSI:OPS.1.1.3.A1"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 3
+    },
+    {
+      "id": "T-NO-SEGMENT",
+      "title": "Fehlende Netzsegmentierung",
+      "category": "Netzwerk",
+      "asset_types": [
+        "network"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Lateral Movement nach Erstkompromittierung durch flaches Netz.",
+      "suggested_measure": "Segmentierung, Firewalling, Zero-Trust-Ansätze.",
+      "control_links": [
+        "ISO27001:A.8.22",
+        "BSI:NET.1.1.A3"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 4
+    },
+    {
+      "id": "T-EXPOSED-RDP",
+      "title": "Exponierte Fernzugänge (RDP/SSH)",
+      "category": "Netzwerk",
+      "asset_types": [
+        "server",
+        "network"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Brute-Force/Exploits gegen ins Internet exponierte Verwaltungsdienste.",
+      "suggested_measure": "VPN/Bastion, MFA, IP-Allowlist, keine direkte Exposition.",
+      "control_links": [
+        "ISO27001:A.8.20",
+        "BSI:NET.3.2.A1"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 4
+    },
+    {
+      "id": "T-SQLI",
+      "title": "SQL-Injection / Web-Schwachstellen",
+      "category": "Technisch",
+      "asset_types": [
+        "application",
+        "data"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001"
+      ],
+      "scenario": "Ausnutzung von Eingabeschwachstellen in Webanwendungen.",
+      "suggested_measure": "Secure Coding, Input-Validierung, WAF, Pentests.",
+      "control_links": [
+        "ISO27001:A.8.28"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 4
+    },
+    {
+      "id": "T-NO-SECURE-DEV",
+      "title": "Fehlende sichere Entwicklung",
+      "category": "Technisch",
+      "asset_types": [
+        "application"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001"
+      ],
+      "scenario": "Schwachstellen entstehen mangels Security im SDLC.",
+      "suggested_measure": "Secure-SDLC, Code-Reviews, SAST/DAST, Schulungen.",
+      "control_links": [
+        "ISO27001:A.8.25"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 3
+    },
+    {
+      "id": "T-NO-CHANGE-MGMT",
+      "title": "Fehlendes Change-Management",
+      "category": "Organisatorisch",
+      "asset_types": [
+        "server",
+        "application"
+      ],
+      "cia": [
+        "integrity",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Ungetestete Änderungen verursachen Ausfälle oder Sicherheitslücken.",
+      "suggested_measure": "Change-Prozess, Test-/Freigabeverfahren, Rollback-Pläne.",
+      "control_links": [
+        "ISO27001:A.8.32",
+        "BSI:OPS.1.1.3.A6"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 3
+    },
+    {
+      "id": "T-ACCESS-CREEP",
+      "title": "Rechteanhäufung (Access Creep)",
+      "category": "Organisatorisch",
+      "asset_types": [
+        "identity"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001"
+      ],
+      "scenario": "Mitarbeitende sammeln über Rollenwechsel zu viele Berechtigungen an.",
+      "suggested_measure": "Regelmäßige Rezertifizierung, Mover-Prozess, RBAC.",
+      "control_links": [
+        "ISO27001:A.5.18"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 3
+    },
+    {
+      "id": "T-ORPHAN-ACCOUNT",
+      "title": "Verwaiste Benutzerkonten",
+      "category": "Identität",
+      "asset_types": [
+        "identity"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Konten ausgeschiedener Personen bleiben aktiv.",
+      "suggested_measure": "Offboarding-Automatisierung, Account-Reviews, JML-Prozess.",
+      "control_links": [
+        "ISO27001:A.5.16",
+        "BSI:ORP.4.A9"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 3
+    },
+    {
+      "id": "T-NO-AWARENESS",
+      "title": "Mangelndes Sicherheitsbewusstsein",
+      "category": "Mensch",
+      "asset_types": [
+        "identity",
+        "process"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "NIS2"
+      ],
+      "scenario": "Unzureichend geschulte Belegschaft erhöht alle menschenbezogenen Risiken.",
+      "suggested_measure": "Awareness-Programm, Trainings, Phishing-Simulationen, Messung.",
+      "control_links": [
+        "ISO27001:A.6.3",
+        "NIS2:NIS2-B.2"
+      ],
+      "default_likelihood": 4,
+      "default_impact": 3
+    },
+    {
+      "id": "T-MOBILE-MALWARE",
+      "title": "Malware auf Mobilgeräten",
+      "category": "Technisch",
+      "asset_types": [
+        "endpoint"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001"
+      ],
+      "scenario": "Kompromittierung von Smartphones/Tablets mit Unternehmenszugriff.",
+      "suggested_measure": "MDM, App-Whitelisting, Trennung privat/dienstlich.",
+      "control_links": [
+        "ISO27001:A.8.1"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 3
+    },
+    {
+      "id": "T-WIFI",
+      "title": "Unsicheres WLAN",
+      "category": "Netzwerk",
+      "asset_types": [
+        "network"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Abhören oder Einbruch über schlecht gesichertes Funknetz.",
+      "suggested_measure": "WPA3/802.1X, Gäste-WLAN-Trennung, Monitoring.",
+      "control_links": [
+        "ISO27001:A.8.20",
+        "BSI:NET.2.1.A1"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 3
+    },
+    {
+      "id": "T-DATA-INTEGRITY",
+      "title": "Unbemerkte Datenmanipulation",
+      "category": "Daten",
+      "asset_types": [
+        "data",
+        "application"
+      ],
+      "cia": [
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001"
+      ],
+      "scenario": "Manipulation kritischer Daten bleibt unentdeckt.",
+      "suggested_measure": "Integritätsprüfungen, Protokollierung, Vier-Augen-Prinzip.",
+      "control_links": [
+        "ISO27001:A.8.15"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 4
+    },
+    {
+      "id": "T-NO-ASSET-INV",
+      "title": "Fehlendes Asset-Inventar",
+      "category": "Organisatorisch",
+      "asset_types": [
+        "server",
+        "endpoint",
+        "application"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Ungeschützte oder unbekannte Assets bleiben außerhalb des Schutzes.",
+      "suggested_measure": "Asset-Management, automatische Discovery, Eigentümerschaft.",
+      "control_links": [
+        "ISO27001:A.5.9",
+        "BSI:OPS.1.1.1.A1"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 3
+    },
+    {
+      "id": "T-CONTRACTOR",
+      "title": "Risiko durch externe Dienstleister vor Ort",
+      "category": "Lieferant",
+      "asset_types": [
+        "facility",
+        "data"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001"
+      ],
+      "scenario": "Externe mit physischem/logischem Zugriff verursachen Vorfälle.",
+      "suggested_measure": "NDA, begrenzter Zugriff, Begleitung, Protokollierung.",
+      "control_links": [
+        "ISO27001:A.6.6"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 3
+    },
+    {
+      "id": "T-EMAIL-SPOOF",
+      "title": "E-Mail-Spoofing",
+      "category": "Netzwerk",
+      "asset_types": [
+        "identity",
+        "network"
+      ],
+      "cia": [
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001"
+      ],
+      "scenario": "Gefälschte Absenderadressen für Betrug/Phishing.",
+      "suggested_measure": "SPF/DKIM/DMARC, E-Mail-Authentifizierung, Filter.",
+      "control_links": [
+        "ISO27001:A.8.23"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 3
+    },
+    {
+      "id": "T-WATERING-HOLE",
+      "title": "Watering-Hole-Angriff",
+      "category": "Malware",
+      "asset_types": [
+        "endpoint",
+        "application"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001"
+      ],
+      "scenario": "Kompromittierung häufig besuchter Websites zur Infektion der Zielgruppe.",
+      "suggested_measure": "Web-Filter, Endpoint-Schutz, Patch-Management.",
+      "control_links": [
+        "ISO27001:A.8.7"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 3
+    },
+    {
+      "id": "T-ZERO-DAY",
+      "title": "Zero-Day-Exploit",
+      "category": "Technisch",
+      "asset_types": [
+        "application",
+        "server"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "NIS2"
+      ],
+      "scenario": "Ausnutzung unbekannter Schwachstellen ohne verfügbaren Patch.",
+      "suggested_measure": "Defense-in-Depth, Threat-Intelligence, schnelle Reaktionsfähigkeit, Segmentierung.",
+      "control_links": [
+        "ISO27001:A.8.8",
+        "NIS2:NIS2-G.1"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 4
+    },
+    {
+      "id": "T-DATA-CLASS",
+      "title": "Fehlende Informationsklassifizierung",
+      "category": "Organisatorisch",
+      "asset_types": [
+        "data"
+      ],
+      "cia": [
+        "confidentiality"
+      ],
+      "frameworks": [
+        "ISO27001"
+      ],
+      "scenario": "Ohne Klassifizierung werden Schutzmaßnahmen nicht risikogerecht angewandt.",
+      "suggested_measure": "Klassifizierungsschema, Kennzeichnung, Handhabungsregeln.",
+      "control_links": [
+        "ISO27001:A.5.12"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 2
+    },
+    {
+      "id": "T-REMOTE-WORK",
+      "title": "Risiken im Homeoffice",
+      "category": "Organisatorisch",
+      "asset_types": [
+        "endpoint",
+        "network"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Unsichere Heimnetze/Geräte erweitern die Angriffsfläche.",
+      "suggested_measure": "VPN, gehärtete Endgeräte, Homeoffice-Richtlinie, MFA.",
+      "control_links": [
+        "ISO27001:A.6.7",
+        "BSI:INF.8.A1"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 3
+    },
+    {
+      "id": "T-PRINT",
+      "title": "Vertrauliche Ausdrucke",
+      "category": "Physisch",
+      "asset_types": [
+        "data",
+        "facility"
+      ],
+      "cia": [
+        "confidentiality"
+      ],
+      "frameworks": [
+        "ISO27001"
+      ],
+      "scenario": "Unbeaufsichtigte Ausdrucke offenbaren vertrauliche Informationen.",
+      "suggested_measure": "Follow-me-Printing, Clear-Desk, sichere Entsorgung.",
+      "control_links": [
+        "ISO27001:A.7.7"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 2
+    },
+    {
+      "id": "T-DISPOSAL",
+      "title": "Unsichere Entsorgung von Datenträgern",
+      "category": "Physisch",
+      "asset_types": [
+        "data"
+      ],
+      "cia": [
+        "confidentiality"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Datenwiederherstellung aus unsachgemäß entsorgten Medien.",
+      "suggested_measure": "Sichere Löschung/Vernichtung, Vernichtungsnachweis, zertifizierter Dienstleister.",
+      "control_links": [
+        "ISO27001:A.7.14",
+        "BSI:CON.6.A1"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 3
+    },
+    {
+      "id": "T-API-RATE",
+      "title": "Fehlende Ratenbegrenzung",
+      "category": "Technisch",
+      "asset_types": [
+        "application"
+      ],
+      "cia": [
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001"
+      ],
+      "scenario": "Missbrauch von Diensten durch fehlende Drosselung.",
+      "suggested_measure": "Rate-Limiting, Quotas, Monitoring, Abuse-Erkennung.",
+      "control_links": [
+        "ISO27001:A.8.6"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 2
+    },
+    {
+      "id": "T-CONFIG-DRIFT",
+      "title": "Konfigurationsabweichung",
+      "category": "Technisch",
+      "asset_types": [
+        "server",
+        "cloud"
+      ],
+      "cia": [
+        "integrity",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001"
+      ],
+      "scenario": "Unbemerkte Abweichungen von der Soll-Konfiguration schwächen die Sicherheit.",
+      "suggested_measure": "Config-Management, Drift-Detection, IaC, regelmäßige Audits.",
+      "control_links": [
+        "ISO27001:A.8.9"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 3
+    },
+    {
+      "id": "T-DEPENDENCY",
+      "title": "Verwundbare Open-Source-Abhängigkeiten",
+      "category": "Technisch",
+      "asset_types": [
+        "application"
+      ],
+      "cia": [
+        "confidentiality",
+        "integrity",
+        "availability"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "NIS2"
+      ],
+      "scenario": "Bekannte Schwachstellen in eingebundenen Bibliotheken.",
+      "suggested_measure": "SCA/Dependency-Scanning, SBOM, Update-Prozess.",
+      "control_links": [
+        "ISO27001:A.8.8",
+        "NIS2:NIS2-D.1"
+      ],
+      "default_likelihood": 3,
+      "default_impact": 3
+    },
+    {
+      "id": "T-LOG-TAMPER",
+      "title": "Manipulation von Audit-Logs",
+      "category": "Technisch",
+      "asset_types": [
+        "server",
+        "data"
+      ],
+      "cia": [
+        "integrity"
+      ],
+      "frameworks": [
+        "ISO27001",
+        "BSI"
+      ],
+      "scenario": "Angreifer verwischen Spuren durch Manipulation der Protokolle.",
+      "suggested_measure": "Append-only/WORM-Logging, zentrale Aggregation, Integritätsschutz.",
+      "control_links": [
+        "ISO27001:A.8.15",
+        "BSI:OPS.1.1.5.A1"
+      ],
+      "default_likelihood": 2,
+      "default_impact": 3
+    }
+  ]
+}

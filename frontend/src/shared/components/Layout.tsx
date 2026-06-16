@@ -9,10 +9,11 @@ import {
   Building2, Bot, PackageX, Mail, GraduationCap, Target, Flag, LayoutTemplate, UserCog, UserCheck,
   Plug, ClipboardCheck, CalendarClock, Inbox, Menu, X, ArrowUpCircle, ScrollText, CalendarDays,
   ChevronLeft, ChevronRight, Cpu, Landmark, ListChecks, Cloud, Banknote, ChevronDown,
-  LayoutGrid, FileBarChart, Globe,
+  LayoutGrid, FileBarChart, Globe, ActivitySquare, Phone, DatabaseBackup,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ProBadge } from './ProBadge'
+import { BetaBadge } from './BetaBadge'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import { cn } from '../../lib/utils'
@@ -120,6 +121,16 @@ const MODULES_NAV: NavItem[] = [
           { path: '/vaktcomply/suppliers',        label: 'nav.comply.suppliers',  icon: Building2 },
           { path: '/vaktcomply/ai-systems',       label: 'nav.comply.aiSystems',  icon: Cpu },
           { path: '/vaktcomply/resilience-tests', label: 'nav.comply.resilience', icon: FlaskConical },
+        ],
+      },
+      {
+        label: 'nav.comply.group.bcm',
+        items: [
+          { path: '/vaktcomply/bcm',                      label: 'nav.comply.bcmDashboard',       icon: ShieldCheck, pro: true },
+          { path: '/vaktcomply/bcm/bia',                  label: 'nav.comply.bcmBia',             icon: ActivitySquare, pro: true },
+          { path: '/vaktcomply/bcm/recovery-plans',       label: 'nav.comply.bcmRecoveryPlans',   icon: ListChecks, pro: true },
+          { path: '/vaktcomply/bcm/emergency-contacts',   label: 'nav.comply.bcmEmergencyContacts', icon: Phone, pro: true },
+          { path: '/vaktcomply/backup',                   label: 'nav.comply.backup',             icon: DatabaseBackup },
         ],
       },
     ],
@@ -439,7 +450,13 @@ export default function Layout() {
               </button>
             )}
           </div>
-          {!sidebarCollapsed && <p className="text-[11px] text-secondary px-2">Security Platform</p>}
+          {!sidebarCollapsed && (
+            <div className="flex items-center gap-2 px-2">
+              <p className="text-[11px] text-secondary">Security Platform</p>
+              <BetaBadge />
+            </div>
+          )}
+          {sidebarCollapsed && <BetaBadge collapsed />}
         </div>
 
         {/* Search trigger — only when sidebar is collapsed (TopBar covers expanded case) */}

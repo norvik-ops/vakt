@@ -31,7 +31,8 @@
         "frameworks": "Référentiels",
         "operations": "Opérations",
         "documentation": "Documentation",
-        "thirdParty": "Tiers"
+        "thirdParty": "Tiers",
+        "bcm": "Gestion des urgences (BCM)"
       },
       "overview": "Vue d'ensemble",
       "nis2": "NIS2",
@@ -57,7 +58,12 @@
       "certTimeline": "Plan de cert.",
       "suppliers": "Fournisseurs",
       "aiSystems": "Systèmes IA",
-      "resilience": "Résilience"
+      "resilience": "Résilience",
+      "bcmDashboard": "Tableau de bord BCM",
+      "bcmBia": "Analyse d'impact métier",
+      "bcmRecoveryPlans": "Plans de reprise",
+      "bcmEmergencyContacts": "Contacts d'urgence",
+      "backup": "Preuve de sauvegarde"
     },
     "vault": {
       "root": "Vakt Vault",
@@ -461,7 +467,9 @@
       "statusImplemented": "Implémenté",
       "statusNotApplicable": "Non applicable",
       "activatedOn": "Activé",
-      "controlsCount": "Contrôles"
+      "controlsCount": "Contrôles",
+      "applyPhysicalTemplate": "Appliquer la checklist",
+      "physicalTemplateApplied": "Checklist ajoutée comme preuve"
     },
     "policiesPage": {
       "title": "Gestion des politiques",
@@ -1323,6 +1331,8 @@
       "labelExpiry": "Date d'expiration",
       "labelExpiryOptional": "(optionnel)",
       "labelExpiryHint": "Laisser vide pour aucune expiration.",
+      "readOnlyLabel": "Clé en lecture seule",
+      "readOnlyHint": "Autorise uniquement l'accès en lecture (GET). Les méthodes d'écriture (POST/PUT/PATCH/DELETE) sont rejetées avec un 403 — idéal pour les tableaux de bord ou la supervision.",
       "creating": "Création…",
       "createSubmit": "Créer",
       "newKeyTitle": "Clé API créée",
@@ -1597,7 +1607,60 @@
   },
   "backup": {
     "staleWarning": "Aucune sauvegarde au cours des 7 derniers jours",
-    "staleAction": "Ouvrir les paramètres"
+    "staleAction": "Ouvrir les paramètres",
+    "title": "Preuve de sauvegarde / restauration",
+    "description": "Documentation des tâches de sauvegarde et tests de restauration (ISO 27001 A.8.13, BSI DER.4) — preuve uniquement, aucune opération.",
+    "new": "Tâche de sauvegarde",
+    "edit": "Modifier la tâche",
+    "name": "Nom",
+    "source": "Source",
+    "destination": "Destination",
+    "frequencyLabel": "Fréquence",
+    "restoreMaxAge": "Âge max. du test de restauration (jours)",
+    "encrypted": "chiffré",
+    "encryptedLabel": "La sauvegarde est chiffrée",
+    "notes": "Notes",
+    "deleteConfirm": "Supprimer vraiment cette tâche de sauvegarde ?",
+    "loadError": "Échec du chargement des tâches de sauvegarde.",
+    "emptyTitle": "Aucune tâche de sauvegarde",
+    "emptyDescription": "Documentez vos tâches de sauvegarde et tests de restauration comme preuve d’audit.",
+    "never": "jamais",
+    "lastSuccess": "Dernier succès",
+    "lastRestoreTest": "Dernier test de restauration",
+    "frequency": {
+      "hourly": "horaire",
+      "daily": "quotidien",
+      "weekly": "hebdomadaire",
+      "monthly": "mensuel"
+    },
+    "status": {
+      "on_track": "à jour",
+      "at_risk": "à risque",
+      "overdue": "en retard"
+    },
+    "label": {
+      "backup": "Sauvegarde",
+      "restore": "Restauration"
+    },
+    "summary": {
+      "total": "Tâches de sauvegarde",
+      "tested": "avec test de restauration",
+      "overdueBackups": "sauvegardes en retard",
+      "overdueRestores": "tests de restauration en retard"
+    },
+    "restoreTest": {
+      "new": "Documenter un test de restauration",
+      "document": "Documenter un test de restauration",
+      "testedAt": "Date du test",
+      "result": "Résultat",
+      "resultSuccess": "réussi",
+      "resultPartial": "partiel",
+      "resultFailed": "échoué",
+      "rtoTarget": "RTO cible (h)",
+      "rtoActual": "RTO réel (h)",
+      "tester": "Testeur",
+      "notes": "Notes"
+    }
   },
   "language": {
     "switchTo": "Changer de langue",
@@ -1792,7 +1855,14 @@
       "noReposConnected": "Aucun dépôt connecté",
       "connectFirstRepo": "Connectez un dépôt GitHub pour collecter automatiquement des preuves de conformité.",
       "noThirdPartyTitle": "Pas d'intégrations tierces",
-      "noThirdPartyDesc": "Pour des raisons de confidentialité (RGPD Art. 28), Vakt n'intègre pas de services qui transmettent des données de sécurité à des fournisseurs SaaS externes. Utilisez les webhooks pour vos automatisations."
+      "noThirdPartyDesc": "Pour des raisons de confidentialité (RGPD Art. 28), Vakt n'intègre pas de services qui transmettent des données de sécurité à des fournisseurs SaaS externes. Utilisez les webhooks pour vos automatisations.",
+      "syncNow": "Synchroniser maintenant"
+    },
+    "intune": {
+      "title": "Intégration Microsoft Intune (MDM)",
+      "description": "Conformité des appareils (chiffrement, niveau de correctifs, conformité) depuis Intune (Microsoft Graph, managedDevices) chaque jour comme preuve de terminal pour ISO A.8.1/A.8.9 et l’hygiène cyber NIS2. Lecture seule, sans gestion.",
+      "compliance": "Conformité",
+      "permissionsHint": "Nécessite une App Registration avec DeviceManagementManagedDevices.Read.All. Le secret est stocké chiffré en AES-256-GCM."
     }
   },
   "auditLog": {
@@ -2454,6 +2524,175 @@
         "title": "Liste de démarrage",
         "text": "Cette liste vous guide dans la configuration initiale de votre plateforme de sécurité."
       }
+    }
+  },
+  "bcm": {
+    "dashboard": {
+      "title": "Tableau de bord BCM",
+      "description": "Gestion de la continuité d'activité selon BSI 200-4 — score de préparation et documentation d'urgence.",
+      "exportPdf": "Manuel d'urgence (PDF)",
+      "readinessScore": "Score de préparation BCM",
+      "points": "points",
+      "biaProcesses": "Processus BIA",
+      "highCritical": "élevé/critique",
+      "avgRto": "RTO moy.",
+      "recoveryPlans": "Plans de reprise",
+      "tested": "testé",
+      "emergencyContacts": "Contacts d'urgence",
+      "primaryContacts": "primaires (niveau 1)",
+      "biaHint": "Capturer les processus critiques avec RTO/RPO/MBCO",
+      "wapHint": "Plans de reprise étape par étape",
+      "contactsHint": "Plan d'alerte avec niveaux d'escalade",
+      "warningTitle": "Préparation BCM incomplète",
+      "warningDescription": "Ajoutez des processus BIA, des plans de reprise et des contacts d'urgence pour satisfaire aux exigences BSI 200-4."
+    },
+    "bia": {
+      "title": "Analyse d'impact métier (BIA)",
+      "description": "Capturer les processus métier critiques avec classe de protection, RTO, RPO et MBCO.",
+      "new": "Nouveau processus",
+      "edit": "Modifier le processus",
+      "name": "Nom du processus",
+      "namePlaceholder": "ex. Opérations IT",
+      "descriptionLabel": "Description",
+      "criticalityLabel": "Criticité",
+      "schutzbedarfsklasse": "Classe de protection",
+      "klasse": "Classe",
+      "klasse1": "Normale",
+      "klasse2": "Élevée",
+      "klasse3": "Très élevée",
+      "owner": "Responsable du processus",
+      "ownerPlaceholder": "ex. Directeur IT",
+      "criticality": {
+        "critical": "Critique",
+        "high": "Élevé",
+        "medium": "Moyen",
+        "low": "Faible"
+      },
+      "deleteConfirm": "Supprimer ce processus ?",
+      "loadError": "Erreur lors du chargement des processus BIA.",
+      "emptyTitle": "Aucun processus BIA",
+      "emptyDescription": "Capturez les processus métier critiques et leurs exigences de récupération."
+    },
+    "recoveryPlans": {
+      "title": "Plans de reprise (WAP)",
+      "description": "Documenter des plans de reprise étape par étape pour les processus critiques.",
+      "new": "Nouveau plan",
+      "edit": "Modifier le plan",
+      "planTitle": "Titre",
+      "planTitlePlaceholder": "ex. Plan de reprise IT",
+      "biaProcess": "Processus BIA",
+      "noBiaProcess": "Aucun processus BIA",
+      "statusLabel": "Statut",
+      "responsible": "Responsable",
+      "activationCriteria": "Critères d'activation",
+      "lastTested": "Dernier test",
+      "steps": "Étapes de reprise",
+      "addStep": "Ajouter une étape",
+      "stepAction": "Décrire l'action...",
+      "stepResponsible": "Responsable",
+      "status": {
+        "draft": "Brouillon",
+        "active": "Actif",
+        "tested": "Testé"
+      },
+      "deleteConfirm": "Supprimer ce plan de reprise ?",
+      "loadError": "Erreur lors du chargement des plans de reprise.",
+      "emptyTitle": "Aucun plan de reprise",
+      "emptyDescription": "Documentez des plans étape par étape pour restaurer les processus critiques."
+    },
+    "emergencyContacts": {
+      "title": "Plan d'alerte",
+      "description": "Contacts d'urgence avec niveaux d'escalade pour le plan d'alerte.",
+      "new": "Ajouter un contact",
+      "edit": "Modifier le contact",
+      "name": "Nom",
+      "role": "Rôle / Fonction",
+      "phone": "Téléphone",
+      "email": "Email",
+      "escalationLevel": "Niveau d'escalade",
+      "available247": "Disponible 24/7",
+      "notes": "Notes",
+      "level": "Niveau",
+      "levelDesc": {
+        "1": "Première réponse (interne)",
+        "2": "Direction / Décision",
+        "3": "Experts externes"
+      },
+      "deleteConfirm": "Supprimer ce contact ?",
+      "loadError": "Erreur lors du chargement des contacts d'urgence.",
+      "emptyTitle": "Aucun contact d'urgence",
+      "emptyDescription": "Ajoutez des contacts d'urgence pour le plan d'alerte BSI 200-4."
+    }
+  },
+  "threatCatalog": {
+    "title": "Catalogue de menaces / mesures",
+    "framework": "Cadre",
+    "assetType": "Type d’actif",
+    "cia": "Objectif de protection",
+    "fromCatalog": "Depuis le catalogue",
+    "createRisk": "Créer un risque",
+    "defaultScore": "Par défaut",
+    "empty": "Aucun résultat pour ce filtre.",
+    "asset": {
+      "server": "Serveur",
+      "endpoint": "Terminal",
+      "data": "Données",
+      "identity": "Identité",
+      "network": "Réseau",
+      "application": "Application",
+      "cloud": "Cloud",
+      "facility": "Bâtiment",
+      "supplier": "Fournisseur",
+      "process": "Processus",
+      "service": "Service"
+    },
+    "ciaShort": {
+      "confidentiality": "Confidentialité",
+      "integrity": "Intégrité",
+      "availability": "Disponibilité"
+    }
+  },
+  "verinice": {
+    "title": "Import verinice",
+    "description": "Importer des données ISMS depuis verinice (.vna) — actifs, contrôles et risques.",
+    "uploadTitle": "Téléverser un fichier",
+    "uploadHint": "Choisissez un fichier d’export verinice (.vna). Un aperçu est généré avant tout import.",
+    "analyze": "Analyser (aperçu)",
+    "previewTitle": "Aperçu (rien n’est encore importé)",
+    "assets": "Actifs",
+    "controls": "Contrôles",
+    "risks": "Risques",
+    "unmapped": "Non mappé",
+    "unmappedTypes": "Types non mappés",
+    "confirmImport": "Confirmer l’import",
+    "doneTitle": "Import terminé",
+    "skipped": "Ignoré",
+    "importAnother": "Importer un autre fichier"
+  },
+  "vvtLinks": {
+    "title": "Activités de traitement liées (RPA)",
+    "empty": "Aucune activité de traitement liée.",
+    "add": "Lier",
+    "remove": "Retirer",
+    "selectPlaceholder": "Choisir une activité de traitement …"
+  },
+  "beta": {
+    "badge": "Bêta privée",
+    "tooltip": "Vakt est en bêta privée — support best-effort, pas de SLA 24/7. Les sauvegardes relèvent de votre responsabilité. Cliquez pour les détails."
+  },
+  "onboarding30": {
+    "title": "30 premiers jours — démarrage guidé",
+    "progress": "{{done}} sur {{total}} étapes terminées",
+    "dismiss": "Masquer",
+    "allDone": "Toutes les étapes terminées — bravo !",
+    "steps": {
+      "scope": "Définir le périmètre SMSI",
+      "assets": "Recenser les actifs",
+      "protection_need": "Définir les besoins de protection des actifs clés",
+      "framework": "Choisir et activer un référentiel",
+      "risks": "Ajouter les risques majeurs au registre",
+      "evidence": "Traiter les premiers contrôles et téléverser des preuves",
+      "policy": "Adopter une première politique depuis un modèle"
     }
   }
 }

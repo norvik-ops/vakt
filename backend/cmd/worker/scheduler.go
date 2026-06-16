@@ -335,6 +335,22 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		log.Error().Err(err).Msg("failed to register BSI KPI snapshot cron")
 	}
 
+	// S86-4: daily at 07:00 UTC — sync DER.4 evidence from BIA/WAP/contact data.
+	if _, err := scheduler.Register("0 7 * * *",
+		asynq.NewTask(vaktcomply.TaskBCMEvidenceSync, nil),
+		asynq.Unique(23*time.Hour), asynq.Queue(vaktcomply.Queue),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register BCM evidence sync cron")
+	}
+
+	// S88-2: daily at 07:30 UTC — flag overdue backups/restore tests, sync A.8.13 evidence.
+	if _, err := scheduler.Register("30 7 * * *",
+		asynq.NewTask(vaktcomply.TaskBackupFreshnessCheck, nil),
+		asynq.Unique(23*time.Hour), asynq.Queue(vaktcomply.Queue),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register backup freshness check cron")
+	}
+
 	// S68-2: daily at 08:15 UTC — mark overdue DSRs and send 3-day deadline warnings.
 	if _, err := scheduler.Register("15 8 * * *",
 		asynq.NewTask(vaktprivacy.TaskDSRDeadlineCheck, nil),

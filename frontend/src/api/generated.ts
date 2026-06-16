@@ -2097,6 +2097,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vaktcomply/risks/export/docx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export risk register as Word/DOCX (Pro)
+         * @description Returns an editable .docx risk register. Requires FeatureAuditPDF. SHA-256 audit-logged. (S89-6)
+         */
+        get: operations["exportRisksDocx"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/vaktcomply/incidents": {
         parameters: {
             query?: never;
@@ -6818,6 +6838,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vaktcomply/soa/export.docx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export SoA as Word/DOCX (Pro)
+         * @description Returns an editable .docx Statement of Applicability. Requires FeatureAuditPDF. SHA-256 audit-logged. (S89-6)
+         */
+        get: operations["exportSoaDocx"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/vaktcomply/soa/entries": {
         parameters: {
             query?: never;
@@ -10260,6 +10300,390 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vaktcomply/bcm/readiness-score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get BCM readiness score (0–100) with criteria breakdown */
+        get: operations["getBCMReadinessScore"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bcm/report.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Notfallhandbuch as PDF (Pro feature) */
+        get: operations["exportBCMHandbuchPDF"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bia/processes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Business Impact Analysis processes */
+        get: operations["listBIAProcesses"];
+        put?: never;
+        /** Create a BIA process */
+        post: operations["createBIAProcess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bia/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get aggregate BIA summary statistics */
+        get: operations["getBIASummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bia/processes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a BIA process */
+        put: operations["updateBIAProcess"];
+        post?: never;
+        /** Delete a BIA process */
+        delete: operations["deleteBIAProcess"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bcm/recovery-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List recovery plans (Wiederanlaufpläne) */
+        get: operations["listRecoveryPlans"];
+        put?: never;
+        /** Create a recovery plan */
+        post: operations["createRecoveryPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bcm/recovery-plans/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a recovery plan */
+        put: operations["updateRecoveryPlan"];
+        post?: never;
+        /** Delete a recovery plan */
+        delete: operations["deleteRecoveryPlan"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bcm/emergency-contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List emergency contacts (Alarmierungsplan) */
+        get: operations["listEmergencyContacts"];
+        put?: never;
+        /** Create an emergency contact */
+        post: operations["createEmergencyContact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/bcm/emergency-contacts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update an emergency contact */
+        put: operations["updateEmergencyContact"];
+        post?: never;
+        /** Delete an emergency contact */
+        delete: operations["deleteEmergencyContact"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/backup/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Backup-evidence health summary (overdue counts) */
+        get: operations["getBackupSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/backup/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List backup jobs (documentation-only registry) */
+        get: operations["listBackupJobs"];
+        put?: never;
+        /** Create a backup job record */
+        post: operations["createBackupJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/backup/jobs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a backup job record */
+        put: operations["updateBackupJob"];
+        post?: never;
+        /** Delete a backup job record */
+        delete: operations["deleteBackupJob"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/backup/jobs/{id}/restore-tests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List restore tests for a backup job */
+        get: operations["listRestoreTests"];
+        put?: never;
+        /** Document a restore test */
+        post: operations["createRestoreTest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/physical-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List physical-control (ISO A.7.x) checklist templates */
+        get: operations["listPhysicalControlTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/physical-templates/{code}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply an A.7.x checklist as structured evidence on the matching control */
+        post: operations["applyPhysicalControlTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/threat-catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List generic threat-library items (optionally filtered) */
+        get: operations["listThreatCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/threat-catalog/create-risk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a pre-filled risk from a threat-catalog item */
+        post: operations["createRiskFromCatalog"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/verinice-import/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dry-run preview of a verinice .vna import (no writes) */
+        post: operations["previewVeriniceImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/verinice-import/commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Commit a verinice .vna import (creates assets, controls, risks) */
+        post: operations["commitVeriniceImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/controls/{id}/vvt-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List VVT entries linked to a control (reverse view) */
+        get: operations["listControlVVTLinks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/vvt-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List controls linked to a VVT entry */
+        get: operations["listVVTControlLinks"];
+        put?: never;
+        /** Link a VVT entry to a control */
+        post: operations["createVVTControlLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/vvt-links/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a VVT↔control link */
+        delete: operations["deleteVVTControlLink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/vaktcomply/pentests": {
         parameters: {
             query?: never;
@@ -10708,6 +11132,75 @@ export interface paths {
         };
         /** List recent Entra ID evidence items */
         get: operations["getEntraIDEvidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/intune/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Microsoft Intune (MDM) integration config (secrets masked) */
+        get: operations["getIntuneConfig"];
+        /** Save Microsoft Intune (MDM) integration config */
+        put: operations["saveIntuneConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/intune/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trigger Intune device-posture evidence sync */
+        post: operations["syncIntune"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/intune/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Intune sync status and device-compliance metrics */
+        get: operations["getIntuneStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cloud/intune/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List recent Intune evidence items */
+        get: operations["getIntuneEvidence"];
         put?: never;
         post?: never;
         delete?: never;
@@ -13681,6 +14174,22 @@ export interface components {
             risky_user_count?: number;
             inactive_user_count?: number;
         };
+        IntuneConfigResponse: {
+            tenant_id: string;
+            client_id: string;
+            /** @description "****" if set */
+            client_secret: string;
+            is_configured: boolean;
+        };
+        SaveIntuneConfigInput: {
+            tenant_id: string;
+            client_id: string;
+            client_secret: string;
+        };
+        IntuneStatus: components["schemas"]["CloudSyncStatus"] & {
+            /** Format: float */
+            device_compliance_pct?: number;
+        };
         KeycloakConfigResponse: {
             keycloak_url: string;
             realm: string;
@@ -14234,6 +14743,226 @@ export interface components {
             /** Format: date-time */
             created_at?: string;
         };
+        BIAProcess: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            name: string;
+            description?: string;
+            process_owner: string;
+            /** @enum {string} */
+            criticality: "low" | "medium" | "high" | "critical";
+            /** @enum {integer} */
+            schutzbedarfsklasse: 1 | 2 | 3;
+            /** Format: float */
+            rto_hours: number;
+            /** Format: float */
+            rpo_hours: number;
+            mbco_percent: number;
+            dependencies?: string[];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        BIAProcessInput: {
+            name: string;
+            description?: string;
+            process_owner: string;
+            /** @enum {string} */
+            criticality: "low" | "medium" | "high" | "critical";
+            /** @enum {integer} */
+            schutzbedarfsklasse: 1 | 2 | 3;
+            /** Format: float */
+            rto_hours: number;
+            /** Format: float */
+            rpo_hours: number;
+            mbco_percent: number;
+            dependencies?: string[];
+        };
+        RecoveryStep: {
+            order: number;
+            action: string;
+            responsible: string;
+            duration_min: number;
+        };
+        RecoveryPlan: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            /** Format: uuid */
+            bia_process_id?: string | null;
+            bia_process_name?: string;
+            title: string;
+            activation_criteria: string;
+            responsible: string;
+            /** Format: float */
+            rto_hours: number;
+            /** @enum {string} */
+            status: "draft" | "active" | "tested";
+            steps: components["schemas"]["RecoveryStep"][];
+            /** Format: date */
+            last_tested_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        RecoveryPlanInput: {
+            /** Format: uuid */
+            bia_process_id?: string | null;
+            title: string;
+            activation_criteria: string;
+            responsible: string;
+            /** Format: float */
+            rto_hours: number;
+            /** @enum {string} */
+            status: "draft" | "active" | "tested";
+            steps: components["schemas"]["RecoveryStep"][];
+            /** Format: date */
+            last_tested_at?: string | null;
+        };
+        EmergencyContact: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            name: string;
+            role: string;
+            phone: string;
+            email: string;
+            /** @enum {integer} */
+            escalation_level: 1 | 2 | 3;
+            available_247: boolean;
+            notes: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        EmergencyContactInput: {
+            name: string;
+            role?: string;
+            phone?: string;
+            email?: string;
+            /** @enum {integer} */
+            escalation_level: 1 | 2 | 3;
+            available_247?: boolean;
+            notes?: string;
+        };
+        BackupJob: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            name: string;
+            source?: string;
+            destination?: string;
+            /** @enum {string} */
+            frequency: "hourly" | "daily" | "weekly" | "monthly";
+            encrypted: boolean;
+            /** Format: date-time */
+            last_success_at?: string | null;
+            /** @enum {string} */
+            last_status: "unknown" | "success" | "failed";
+            restore_max_age_days: number;
+            notes?: string;
+            /** Format: date-time */
+            last_restore_test_at?: string | null;
+            /** @enum {string} */
+            backup_status: "on_track" | "at_risk" | "overdue";
+            /** @enum {string} */
+            restore_status: "on_track" | "at_risk" | "overdue";
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        BackupJobInput: {
+            name: string;
+            source?: string;
+            destination?: string;
+            /** @enum {string} */
+            frequency: "hourly" | "daily" | "weekly" | "monthly";
+            encrypted?: boolean;
+            restore_max_age_days?: number;
+            notes?: string;
+            /** @enum {string} */
+            last_status?: "unknown" | "success" | "failed";
+            /** Format: date-time */
+            last_success_at?: string;
+        };
+        BackupRestoreTest: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            /** Format: uuid */
+            job_id: string;
+            /** Format: date */
+            tested_at: string;
+            /** @enum {string} */
+            result: "success" | "partial" | "failed";
+            rto_target_hours: number;
+            rto_actual_hours: number;
+            tester?: string;
+            notes?: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        RestoreTestInput: {
+            /** Format: date */
+            tested_at: string;
+            /** @enum {string} */
+            result: "success" | "partial" | "failed";
+            rto_target_hours?: number;
+            rto_actual_hours?: number;
+            tester?: string;
+            notes?: string;
+        };
+        VVTControlLink: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            vvt_id: string;
+            vvt_name?: string;
+            /** Format: uuid */
+            control_id: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        PhysicalControlTemplate: {
+            control_code: string;
+            title: string;
+            items: string[];
+        };
+        VeriniceImportPreview: {
+            total_objects: number;
+            assets: number;
+            controls: number;
+            risks: number;
+            unmapped: number;
+            unmapped_types?: string[];
+            sample_titles?: {
+                [key: string]: unknown;
+            };
+        };
+        ThreatCatalogItem: {
+            id: string;
+            title: string;
+            category: string;
+            asset_types?: string[];
+            cia?: string[];
+            frameworks?: string[];
+            scenario: string;
+            suggested_measure: string;
+            control_links?: string[];
+            default_likelihood: number;
+            default_impact: number;
+        };
     };
     responses: never;
     parameters: {
@@ -14246,6 +14975,67 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    exportRisksDocx: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DOCX file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": string;
+                };
+            };
+            /** @description Feature not available (Pro required) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    exportSoaDocx: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DOCX file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": string;
+                };
+            };
+            /** @description Feature not available (Pro required) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description SoA not initialized */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listDORAThirdParties: {
         parameters: {
             query?: never;
@@ -17272,6 +18062,837 @@ export interface operations {
             };
         };
     };
+    getBCMReadinessScore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description BCM readiness score */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        score: number;
+                        criteria: {
+                            key: string;
+                            points: number;
+                            met: boolean;
+                            description: string;
+                        }[];
+                        /** Format: date-time */
+                        computed_at: string;
+                    };
+                };
+            };
+        };
+    };
+    exportBCMHandbuchPDF: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Notfallhandbuch PDF */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Feature not available on current plan */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listBIAProcesses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of BIA processes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BIAProcess"][];
+                };
+            };
+        };
+    };
+    createBIAProcess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BIAProcessInput"];
+            };
+        };
+        responses: {
+            /** @description Created BIA process */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BIAProcess"];
+                };
+            };
+        };
+    };
+    getBIASummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description BIA summary */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        total: number;
+                        high_critical: number;
+                        /** Format: float */
+                        avg_rto_hours: number;
+                        /** Format: float */
+                        avg_rpo_hours: number;
+                    };
+                };
+            };
+        };
+    };
+    updateBIAProcess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BIAProcessInput"];
+            };
+        };
+        responses: {
+            /** @description Updated BIA process */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BIAProcess"];
+                };
+            };
+        };
+    };
+    deleteBIAProcess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listRecoveryPlans: {
+        parameters: {
+            query?: {
+                bia_process_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of recovery plans */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryPlan"][];
+                };
+            };
+        };
+    };
+    createRecoveryPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecoveryPlanInput"];
+            };
+        };
+        responses: {
+            /** @description Created recovery plan */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryPlan"];
+                };
+            };
+        };
+    };
+    updateRecoveryPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecoveryPlanInput"];
+            };
+        };
+        responses: {
+            /** @description Updated recovery plan */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryPlan"];
+                };
+            };
+        };
+    };
+    deleteRecoveryPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listEmergencyContacts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of emergency contacts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmergencyContact"][];
+                };
+            };
+        };
+    };
+    createEmergencyContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmergencyContactInput"];
+            };
+        };
+        responses: {
+            /** @description Created emergency contact */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmergencyContact"];
+                };
+            };
+        };
+    };
+    updateEmergencyContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmergencyContactInput"];
+            };
+        };
+        responses: {
+            /** @description Updated emergency contact */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmergencyContact"];
+                };
+            };
+        };
+    };
+    deleteEmergencyContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getBackupSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Backup summary */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        total_jobs: number;
+                        overdue_backups: number;
+                        overdue_restores: number;
+                        tested_jobs: number;
+                    };
+                };
+            };
+        };
+    };
+    listBackupJobs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of backup jobs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupJob"][];
+                };
+            };
+        };
+    };
+    createBackupJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BackupJobInput"];
+            };
+        };
+        responses: {
+            /** @description Created backup job */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupJob"];
+                };
+            };
+        };
+    };
+    updateBackupJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BackupJobInput"];
+            };
+        };
+        responses: {
+            /** @description Updated backup job */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupJob"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteBackupJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listRestoreTests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of restore tests */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupRestoreTest"][];
+                };
+            };
+        };
+    };
+    createRestoreTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreTestInput"];
+            };
+        };
+        responses: {
+            /** @description Created restore test */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupRestoreTest"];
+                };
+            };
+            /** @description Backup job not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listPhysicalControlTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of templates */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhysicalControlTemplate"][];
+                };
+            };
+        };
+    };
+    applyPhysicalControlTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ISO control code, e.g. A.7.7 */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evidence created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Unknown template or control not present */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listThreatCatalog: {
+        parameters: {
+            query?: {
+                framework?: string;
+                asset_type?: string;
+                cia?: "confidentiality" | "integrity" | "availability";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of threat catalog items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThreatCatalogItem"][];
+                };
+            };
+        };
+    };
+    createRiskFromCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    catalog_id: string;
+                    likelihood?: number;
+                    impact?: number;
+                    owner?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created risk */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Unknown catalog item */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    previewVeriniceImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Import preview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VeriniceImportPreview"];
+                };
+            };
+            /** @description Invalid .vna file */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    commitVeriniceImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Import result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        assets_created: number;
+                        controls_created: number;
+                        risks_created: number;
+                        skipped: number;
+                        framework_id?: string;
+                    };
+                };
+            };
+            /** @description Invalid .vna file */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listControlVVTLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Linked VVT entries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VVTControlLink"][];
+                };
+            };
+        };
+    };
+    listVVTControlLinks: {
+        parameters: {
+            query: {
+                vvt_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Linked controls */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VVTControlLink"][];
+                };
+            };
+        };
+    };
+    createVVTControlLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    vvt_id: string;
+                    vvt_name?: string;
+                    /** Format: uuid */
+                    control_id: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created link */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VVTControlLink"];
+                };
+            };
+            /** @description Control not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteVVTControlLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Link not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listPentests: {
         parameters: {
             query?: {
@@ -18021,6 +19642,112 @@ export interface operations {
         };
     };
     getEntraIDEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evidence items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudEvidenceItem"][];
+                };
+            };
+        };
+    };
+    getIntuneConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Intune config */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntuneConfigResponse"];
+                };
+            };
+        };
+    };
+    saveIntuneConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveIntuneConfigInput"];
+            };
+        };
+        responses: {
+            /** @description Saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    syncIntune: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudSyncResult"];
+                };
+            };
+        };
+    };
+    getIntuneStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Intune status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntuneStatus"];
+                };
+            };
+        };
+    };
+    getIntuneEvidence: {
         parameters: {
             query?: never;
             header?: never;

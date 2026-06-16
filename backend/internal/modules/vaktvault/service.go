@@ -96,12 +96,31 @@ func (s *Service) SetSecret(ctx context.Context, orgID, envID, userID, key, valu
 		return nil, fmt.Errorf("derive project key: %w", err)
 	}
 
+	// Phase 1: upsert to obtain the stable secret_id. The secret_id is part of
+	// the Associated Data (S90-3), but is only known after the INSERT/UPDATE, so
+	// we first store a (still AES-256-GCM-encrypted) non-AAD ciphertext.
 	encrypted, err := Encrypt(projectKey, []byte(value))
 	if err != nil {
 		return nil, fmt.Errorf("encrypt secret: %w", err)
 	}
+	sec, err := s.repo.UpsertSecret(ctx, orgID, envID, userID, key, encrypted)
+	if err != nil {
+		return nil, err
+	}
 
-	return s.repo.UpsertSecret(ctx, orgID, envID, userID, key, encrypted)
+	// Phase 2: re-encrypt binding the ciphertext to org_id + secret_id and
+	// overwrite the value (no version bump). If this fails the row still holds a
+	// valid legacy ciphertext that decrypts via the backward-compatible path, so
+	// the secret is never lost — it self-heals (AAD-binds) on the next write.
+	bound, err := EncryptWithAAD(projectKey, []byte(value), secretAAD(orgID, sec.ID))
+	if err != nil {
+		return nil, fmt.Errorf("encrypt secret (aad): %w", err)
+	}
+	if err := s.repo.UpdateSecretCiphertext(ctx, orgID, sec.ID, bound); err != nil {
+		return nil, fmt.Errorf("bind secret ciphertext: %w", err)
+	}
+
+	return sec, nil
 }
 
 // GetSecret retrieves and decrypts a secret value, writing an access log entry.
@@ -121,7 +140,9 @@ func (s *Service) GetSecret(ctx context.Context, orgID, envID, key, accessVia, i
 		return nil, err
 	}
 
-	plaintext, err := Decrypt(projectKey, encryptedValue)
+	// DecryptWithAAD verifies the org_id+secret_id binding for enc:v2: values and
+	// transparently falls back to the no-AAD path for legacy ciphertexts (S90-3).
+	plaintext, err := DecryptWithAAD(projectKey, encryptedValue, secretAAD(orgID, sec.ID))
 	if err != nil {
 		return nil, fmt.Errorf("decrypt secret: %w", err)
 	}
@@ -324,7 +345,7 @@ func (s *Service) UseShareLink(ctx context.Context, rawToken string) (string, er
 		return "", fmt.Errorf("derive key: %w", err)
 	}
 
-	plaintext, err := Decrypt(projectKey, encVal)
+	plaintext, err := DecryptWithAAD(projectKey, encVal, secretAAD(slOrgID, secWithOrg.ID))
 	if err != nil {
 		return "", fmt.Errorf("decrypt: %w", err)
 	}

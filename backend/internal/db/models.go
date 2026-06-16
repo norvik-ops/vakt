@@ -1675,15 +1675,19 @@ type Webhooks struct {
 // ── S60: BCP / Notfallhandbuch ────────────────────────────────────────────────
 
 type CkBcpPlans struct {
-	ID        string             `json:"id"`
-	OrgID     string             `json:"org_id"`
-	Title     string             `json:"title"`
-	Scope     string             `json:"scope"`
-	Version   string             `json:"version"`
-	Status    string             `json:"status"`
-	Owner     string             `json:"owner"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID                  string             `json:"id"`
+	OrgID               string             `json:"org_id"`
+	Title               string             `json:"title"`
+	Scope               string             `json:"scope"`
+	Version             string             `json:"version"`
+	Status              string             `json:"status"`
+	Owner               string             `json:"owner"`
+	RtoHours            int32              `json:"rto_hours"`
+	RpoHours            int32              `json:"rpo_hours"`
+	Schutzbedarfsklasse int32              `json:"schutzbedarfsklasse"`
+	LastTestedAt        pgtype.Date        `json:"last_tested_at"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 }
 
 type CkBcpTests struct {
@@ -1695,6 +1699,53 @@ type CkBcpTests struct {
 	Outcome   string             `json:"outcome"`
 	Findings  string             `json:"findings"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+// ── S86: BSI-200-4 BCM / Notfallmanagement ───────────────────────────────────
+
+type CkBiaProcesses struct {
+	ID                  string             `json:"id"`
+	OrgID               string             `json:"org_id"`
+	Name                string             `json:"name"`
+	Description         string             `json:"description"`
+	ProcessOwner        string             `json:"process_owner"`
+	Criticality         string             `json:"criticality"`
+	Schutzbedarfsklasse int32              `json:"schutzbedarfsklasse"`
+	RtoHours            int32              `json:"rto_hours"`
+	RpoHours            int32              `json:"rpo_hours"`
+	MbcoPercent         int32              `json:"mbco_percent"`
+	Dependencies        []string           `json:"dependencies"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+}
+
+type CkRecoveryPlans struct {
+	ID                 string             `json:"id"`
+	OrgID              string             `json:"org_id"`
+	BiaProcessID       pgtype.UUID        `json:"bia_process_id"`
+	Title              string             `json:"title"`
+	ActivationCriteria string             `json:"activation_criteria"`
+	Responsible        string             `json:"responsible"`
+	RtoHours           int32              `json:"rto_hours"`
+	Status             string             `json:"status"`
+	Steps              []byte             `json:"steps"`
+	LastTestedAt       pgtype.Date        `json:"last_tested_at"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+}
+
+type CkEmergencyContacts struct {
+	ID              string             `json:"id"`
+	OrgID           string             `json:"org_id"`
+	Name            string             `json:"name"`
+	Role            string             `json:"role"`
+	Phone           string             `json:"phone"`
+	Email           string             `json:"email"`
+	EscalationLevel int32              `json:"escalation_level"`
+	Available247    bool               `json:"available_24_7"`
+	Notes           string             `json:"notes"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 }
 
 // ── S60: Schutzbedarfsfeststellung ────────────────────────────────────────────

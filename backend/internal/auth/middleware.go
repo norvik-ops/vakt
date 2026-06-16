@@ -116,7 +116,7 @@ func PasetoMiddleware(key paseto.V4SymmetricKey, db *pgxpool.Pool, rdb ...*redis
 
 			// Verify pw_version — reject tokens issued before the last password change.
 			if redisClient != nil {
-				if err := checkPwVersion(c.Request().Context(), redisClient, claims); err != nil {
+				if err := checkPwVersion(c.Request().Context(), redisClient, db, claims); err != nil {
 					return c.JSON(http.StatusUnauthorized, map[string]string{
 						"error": "session invalidated — please log in again",
 						"code":  "AUTH_SESSION_INVALIDATED",
@@ -196,7 +196,7 @@ func AuthMiddleware(key paseto.V4SymmetricKey, db *pgxpool.Pool, rdb ...*redis.C
 
 			// Verify pw_version — reject tokens issued before the last password change.
 			if redisClient != nil {
-				if err := checkPwVersion(c.Request().Context(), redisClient, claims); err != nil {
+				if err := checkPwVersion(c.Request().Context(), redisClient, db, claims); err != nil {
 					return c.JSON(http.StatusUnauthorized, map[string]string{
 						"error": "session invalidated — please log in again",
 						"code":  "AUTH_SESSION_INVALIDATED",
@@ -405,25 +405,42 @@ func handleAPIKey(c echo.Context, next echo.HandlerFunc, db *pgxpool.Pool, rawKe
 	}
 
 	// Check whether this key's scopes permit the requested path.
+	//
+	// S90-5: a scope may carry a ":ro" suffix (e.g. "vaktcomply:ro") to grant
+	// read-only access. The base module (suffix stripped) decides the path
+	// prefix; the suffix decides the role. When both a read-write and a
+	// read-only scope match the same path, read-write wins (more permissive).
 	requestPath := c.Request().URL.Path
 	allowed := false
 	isAdmin := false
+	matchedRW := false
+	matchedRO := false
 	for _, scope := range scopes {
 		if scope == "admin" {
 			isAdmin = true
 			allowed = true
 			break
 		}
-		if prefixes, ok := scopePathPrefixes[scope]; ok {
-			for _, prefix := range prefixes {
-				if strings.HasPrefix(requestPath, prefix) {
-					allowed = true
-					break
-				}
-			}
+		// Normalise the scope to its base module name. A scope may carry a ":ro"
+		// read-only suffix and/or the ".*" wildcard form the UI emits
+		// (e.g. "vaktcomply.*", "vaktcomply:ro", "vaktcomply.*:ro").
+		readOnly := strings.HasSuffix(scope, ":ro")
+		base := strings.TrimSuffix(scope, ":ro")
+		base = strings.TrimSuffix(base, ".*")
+		prefixes, ok := scopePathPrefixes[base]
+		if !ok {
+			continue
 		}
-		if allowed {
-			break
+		for _, prefix := range prefixes {
+			if strings.HasPrefix(requestPath, prefix) {
+				allowed = true
+				if readOnly {
+					matchedRO = true
+				} else {
+					matchedRW = true
+				}
+				break
+			}
 		}
 	}
 
@@ -439,10 +456,31 @@ func handleAPIKey(c echo.Context, next echo.HandlerFunc, db *pgxpool.Pool, rawKe
 		})
 	}
 
+	// S90-5: a purely read-only key (only ":ro" scopes matched, no admin/RW) may
+	// only call safe HTTP methods. Enforcing this at the middleware level
+	// guarantees read-only semantics independent of whether each individual
+	// write endpoint carries a RequireRole gate (defense in depth alongside the
+	// Viewer role assigned below).
+	readOnlyKey := !isAdmin && matchedRO && !matchedRW
+	if readOnlyKey && !isSafeMethod(c.Request().Method) {
+		log.Debug().
+			Str("org_id", orgID).
+			Str("method", c.Request().Method).
+			Str("path", requestPath).
+			Msg("read-only api key denied write method")
+		return c.JSON(http.StatusForbidden, map[string]string{
+			"error": "forbidden: read-only api key cannot perform write operations",
+			"code":  "AUTH_READONLY_KEY",
+		})
+	}
+
 	var roles []string
-	if isAdmin {
+	switch {
+	case isAdmin:
 		roles = []string{"Admin"}
-	} else {
+	case readOnlyKey:
+		roles = []string{"Viewer"}
+	default:
 		roles = []string{"SecurityAnalyst"}
 	}
 
@@ -450,6 +488,16 @@ func handleAPIKey(c echo.Context, next echo.HandlerFunc, db *pgxpool.Pool, rawKe
 	c.Set("org_id", orgID)
 	c.Set("roles", roles)
 	return next(c)
+}
+
+// isSafeMethod reports whether an HTTP method is read-only (no state change).
+func isSafeMethod(method string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return true
+	default:
+		return false
+	}
 }
 
 // RequireRole returns middleware that enforces that at least one of the caller's
@@ -481,11 +529,12 @@ func RequireRole(allowedRoles ...string) echo.MiddlewareFunc {
 }
 
 // checkPwVersion compares the pw_version embedded in the token claims against
-// the current value stored in Redis.  Returns a non-nil error if the token is
-// stale (i.e. the user changed their password after this token was issued).
-// Redis unavailability is treated as a pass-through to avoid locking users out
-// during transient Redis downtime.
-func checkPwVersion(ctx context.Context, rdb *redis.Client, claims *Claims) error {
+// the current value. Redis is the hot path; on a Redis outage we fall back to
+// the durable copy in PostgreSQL (S87-6, F-06) instead of failing open, so a
+// token minted before a password change/offboarding stays rejected even during
+// an outage. Returns a non-nil error if the token is stale. db may be nil
+// (integration tests without a pool) — then a Redis outage still passes through.
+func checkPwVersion(ctx context.Context, rdb *redis.Client, db *pgxpool.Pool, claims *Claims) error {
 	key := pwVersionKey(claims.UserID)
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
@@ -493,15 +542,31 @@ func checkPwVersion(ctx context.Context, rdb *redis.Client, claims *Claims) erro
 	current, err := rdb.Get(ctx, key).Int64()
 	if err != nil {
 		if err == redis.Nil {
-			// Key doesn't exist — treat current version as 0.
-			// Tokens with pw_version == 0 are valid.
+			// Key doesn't exist in Redis. It may have been evicted while a
+			// password change wrote a non-zero version to PG — consult PG before
+			// trusting the "absent ⇒ 0" assumption.
+			if pgVer, ok := pwVersionFromDB(ctx, db, claims.UserID); ok {
+				if claims.PwVersion != pgVer {
+					return fmt.Errorf("pw_version mismatch: token=%d current=%d (pg)", claims.PwVersion, pgVer)
+				}
+				return nil
+			}
+			// No PG value available — fall back to the legacy "0 is valid" rule.
 			if claims.PwVersion != 0 {
 				return fmt.Errorf("pw_version mismatch")
 			}
 			return nil
 		}
-		// Redis unavailable — log and allow through.
-		log.Warn().Err(err).Str("user_id", claims.UserID).Msg("pw_version check skipped — Redis unavailable")
+		// Redis unavailable — fall back to PostgreSQL (fail-closed source of truth).
+		if pgVer, ok := pwVersionFromDB(ctx, db, claims.UserID); ok {
+			if claims.PwVersion != pgVer {
+				return fmt.Errorf("pw_version mismatch: token=%d current=%d (pg-fallback)", claims.PwVersion, pgVer)
+			}
+			return nil
+		}
+		// Neither Redis nor PG reachable — log and allow through (no DB pool in
+		// tests, or a full outage where lockout is governed elsewhere).
+		log.Warn().Err(err).Str("user_id", claims.UserID).Msg("pw_version check: Redis unavailable and no PG fallback — allowing through")
 		return nil
 	}
 
@@ -509,6 +574,25 @@ func checkPwVersion(ctx context.Context, rdb *redis.Client, claims *Claims) erro
 		return fmt.Errorf("pw_version mismatch: token=%d current=%d", claims.PwVersion, current)
 	}
 	return nil
+}
+
+// pwVersionFromDB reads the durable pw_version for a user from PostgreSQL.
+// Returns (version, true) on success, (0, false) when db is nil or the query
+// fails so the caller can decide how to treat the absence.
+func pwVersionFromDB(ctx context.Context, db *pgxpool.Pool, userID string) (int64, bool) {
+	if db == nil {
+		return 0, false
+	}
+	qCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	var v int64
+	if err := db.QueryRow(qCtx,
+		`SELECT pw_version FROM users WHERE id = $1::uuid`, userID,
+	).Scan(&v); err != nil {
+		log.Warn().Err(err).Str("user_id", userID).Msg("pw_version PG fallback read failed")
+		return 0, false
+	}
+	return v, true
 }
 
 // bearerToken extracts the token string from an "Authorization: Bearer <token>" header.

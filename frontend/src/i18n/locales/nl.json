@@ -31,7 +31,8 @@
         "frameworks": "Frameworks",
         "operations": "Operaties",
         "documentation": "Documentatie",
-        "thirdParty": "Derden"
+        "thirdParty": "Derden",
+        "bcm": "Noodbeheer (BCM)"
       },
       "overview": "Overzicht",
       "nis2": "NIS2",
@@ -57,7 +58,12 @@
       "certTimeline": "Cert.-plan",
       "suppliers": "Leveranciers",
       "aiSystems": "AI-systemen",
-      "resilience": "Veerkracht"
+      "resilience": "Veerkracht",
+      "bcmDashboard": "BCM-dashboard",
+      "bcmBia": "Business Impact Analyse",
+      "bcmRecoveryPlans": "Herstelplannen",
+      "bcmEmergencyContacts": "Noodcontacten",
+      "backup": "Back-upbewijs"
     },
     "vault": {
       "root": "Vakt Vault",
@@ -461,7 +467,9 @@
       "statusImplemented": "Geïmplementeerd",
       "statusNotApplicable": "Niet van toepassing",
       "activatedOn": "Geactiveerd",
-      "controlsCount": "Beheersmaatregelen"
+      "controlsCount": "Beheersmaatregelen",
+      "applyPhysicalTemplate": "Checklist toepassen",
+      "physicalTemplateApplied": "Checklist als bewijs toegevoegd"
     },
     "policiesPage": {
       "title": "Beleidsbeheer",
@@ -1323,6 +1331,8 @@
       "labelExpiry": "Vervaldatum",
       "labelExpiryOptional": "(optioneel)",
       "labelExpiryHint": "Leeg laten voor geen vervaldatum.",
+      "readOnlyLabel": "Alleen-lezen sleutel",
+      "readOnlyHint": "Staat alleen leestoegang (GET) toe. Schrijfmethoden (POST/PUT/PATCH/DELETE) worden met 403 geweigerd — ideaal voor dashboards of monitoring.",
       "creating": "Aanmaken…",
       "createSubmit": "Aanmaken",
       "newKeyTitle": "API-sleutel aangemaakt",
@@ -1597,7 +1607,60 @@
   },
   "backup": {
     "staleWarning": "Geen back-up in de afgelopen 7 dagen",
-    "staleAction": "Instellingen openen"
+    "staleAction": "Instellingen openen",
+    "title": "Back-up-/herstelbewijs",
+    "description": "Documentatie van back-uptaken en hersteltests (ISO 27001 A.8.13, BSI DER.4) — alleen bewijs, geen back-upbeheer.",
+    "new": "Back-uptaak",
+    "edit": "Back-uptaak bewerken",
+    "name": "Naam",
+    "source": "Bron",
+    "destination": "Bestemming",
+    "frequencyLabel": "Frequentie",
+    "restoreMaxAge": "Hersteltest max. leeftijd (dagen)",
+    "encrypted": "versleuteld",
+    "encryptedLabel": "Back-up is versleuteld",
+    "notes": "Notities",
+    "deleteConfirm": "Deze back-uptaak echt verwijderen?",
+    "loadError": "Back-uptaken konden niet worden geladen.",
+    "emptyTitle": "Nog geen back-uptaken",
+    "emptyDescription": "Documenteer uw back-uptaken en hersteltests als auditbewijs.",
+    "never": "nooit",
+    "lastSuccess": "Laatste succes",
+    "lastRestoreTest": "Laatste hersteltest",
+    "frequency": {
+      "hourly": "per uur",
+      "daily": "dagelijks",
+      "weekly": "wekelijks",
+      "monthly": "maandelijks"
+    },
+    "status": {
+      "on_track": "op schema",
+      "at_risk": "risico",
+      "overdue": "achterstallig"
+    },
+    "label": {
+      "backup": "Back-up",
+      "restore": "Herstel"
+    },
+    "summary": {
+      "total": "Back-uptaken",
+      "tested": "met hersteltest",
+      "overdueBackups": "achterstallige back-ups",
+      "overdueRestores": "achterstallige hersteltests"
+    },
+    "restoreTest": {
+      "new": "Hersteltest documenteren",
+      "document": "Hersteltest documenteren",
+      "testedAt": "Testdatum",
+      "result": "Resultaat",
+      "resultSuccess": "geslaagd",
+      "resultPartial": "gedeeltelijk",
+      "resultFailed": "mislukt",
+      "rtoTarget": "RTO-doel (u)",
+      "rtoActual": "RTO-werkelijk (u)",
+      "tester": "Tester",
+      "notes": "Notities"
+    }
   },
   "language": {
     "switchTo": "Taal wisselen",
@@ -1792,7 +1855,14 @@
       "syncBadgeError": "Fehler",
       "syncBadgeOk": "Synchronisiert",
       "neverSyncedLong": "Noch nie synchronisiert",
-      "saveSuccess": "Konfiguration gespeichert"
+      "saveSuccess": "Konfiguration gespeichert",
+      "syncNow": "Nu synchroniseren"
+    },
+    "intune": {
+      "title": "Microsoft Intune (MDM)-integratie",
+      "description": "Apparaatcompliance (versleuteling, patchniveau, conformiteit) uit Intune (Microsoft Graph, managedDevices) dagelijks als endpoint-bewijs voor ISO A.8.1/A.8.9 en NIS2-cyberhygiëne. Alleen-lezen, geen beheer.",
+      "compliance": "Compliance",
+      "permissionsHint": "Vereist een App Registration met DeviceManagementManagedDevices.Read.All. Het secret wordt AES-256-GCM-versleuteld opgeslagen."
     }
   },
   "auditLog": {
@@ -2454,6 +2524,175 @@
         "title": "Aan de slag-checklist",
         "text": "Deze checklist begeleidt u door de initiële instelling van uw beveiligingsplatform."
       }
+    }
+  },
+  "bcm": {
+    "dashboard": {
+      "title": "BCM-dashboard",
+      "description": "Business Continuity Management volgens BSI 200-4 — gereedheid en nooddocumentatie.",
+      "exportPdf": "Noodhandboek (PDF)",
+      "readinessScore": "BCM-gereedheid",
+      "points": "punten",
+      "biaProcesses": "BIA-processen",
+      "highCritical": "hoog/kritiek",
+      "avgRto": "Gem. RTO",
+      "recoveryPlans": "Herstelplannen",
+      "tested": "getest",
+      "emergencyContacts": "Noodcontacten",
+      "primaryContacts": "primair (niveau 1)",
+      "biaHint": "Kritieke processen vastleggen met RTO/RPO/MBCO",
+      "wapHint": "Stapsgewijze herstelplannen",
+      "contactsHint": "Alarmplan met escalatieniveaus",
+      "warningTitle": "BCM-gereedheid onvolledig",
+      "warningDescription": "Voeg BIA-processen, herstelplannen en noodcontacten toe om te voldoen aan BSI 200-4."
+    },
+    "bia": {
+      "title": "Business Impact Analyse (BIA)",
+      "description": "Kritieke bedrijfsprocessen vastleggen met beschermingsklasse, RTO, RPO en MBCO.",
+      "new": "Nieuw proces",
+      "edit": "Proces bewerken",
+      "name": "Procesnaam",
+      "namePlaceholder": "bijv. IT-infrastructuurbeheer",
+      "descriptionLabel": "Beschrijving",
+      "criticalityLabel": "Kritiekheid",
+      "schutzbedarfsklasse": "Beschermingsklasse",
+      "klasse": "Klasse",
+      "klasse1": "Normaal",
+      "klasse2": "Hoog",
+      "klasse3": "Zeer hoog",
+      "owner": "Proceseigenaar",
+      "ownerPlaceholder": "bijv. IT-manager",
+      "criticality": {
+        "critical": "Kritiek",
+        "high": "Hoog",
+        "medium": "Gemiddeld",
+        "low": "Laag"
+      },
+      "deleteConfirm": "Proces verwijderen?",
+      "loadError": "Fout bij laden van BIA-processen.",
+      "emptyTitle": "Geen BIA-processen",
+      "emptyDescription": "Leg kritieke bedrijfsprocessen en herstelvereisten vast."
+    },
+    "recoveryPlans": {
+      "title": "Herstelplannen (WAP)",
+      "description": "Stapsgewijze herstelplannen voor kritieke processen documenteren.",
+      "new": "Nieuw herstelplan",
+      "edit": "Herstelplan bewerken",
+      "planTitle": "Titel",
+      "planTitlePlaceholder": "bijv. IT-herstelplan",
+      "biaProcess": "BIA-proces",
+      "noBiaProcess": "Geen BIA-proces",
+      "statusLabel": "Status",
+      "responsible": "Verantwoordelijke",
+      "activationCriteria": "Activatiecriteria",
+      "lastTested": "Laatst getest",
+      "steps": "Herstelstappen",
+      "addStep": "Stap toevoegen",
+      "stepAction": "Actie beschrijven...",
+      "stepResponsible": "Verantwoordelijke",
+      "status": {
+        "draft": "Concept",
+        "active": "Actief",
+        "tested": "Getest"
+      },
+      "deleteConfirm": "Herstelplan verwijderen?",
+      "loadError": "Fout bij laden van herstelplannen.",
+      "emptyTitle": "Geen herstelplannen",
+      "emptyDescription": "Documenteer stapsgewijze plannen om kritieke processen te herstellen."
+    },
+    "emergencyContacts": {
+      "title": "Alarmplan",
+      "description": "Noodcontacten met escalatieniveaus voor het alarmplan.",
+      "new": "Contact toevoegen",
+      "edit": "Contact bewerken",
+      "name": "Naam",
+      "role": "Rol / Functie",
+      "phone": "Telefoon",
+      "email": "E-mail",
+      "escalationLevel": "Escalatieniveau",
+      "available247": "24/7 beschikbaar",
+      "notes": "Notities",
+      "level": "Niveau",
+      "levelDesc": {
+        "1": "Eerste reactie (intern)",
+        "2": "Management / Beslissing",
+        "3": "Externe experts"
+      },
+      "deleteConfirm": "Contact verwijderen?",
+      "loadError": "Fout bij laden van noodcontacten.",
+      "emptyTitle": "Geen noodcontacten",
+      "emptyDescription": "Voeg noodcontacten toe voor het BSI 200-4 alarmplan."
+    }
+  },
+  "threatCatalog": {
+    "title": "Dreigingen-/maatregelencatalogus",
+    "framework": "Framework",
+    "assetType": "Asset-type",
+    "cia": "Beschermingsdoel",
+    "fromCatalog": "Uit catalogus",
+    "createRisk": "Risico aanmaken",
+    "defaultScore": "Standaard",
+    "empty": "Geen resultaten voor dit filter.",
+    "asset": {
+      "server": "Server",
+      "endpoint": "Endpoint",
+      "data": "Data",
+      "identity": "Identiteit",
+      "network": "Netwerk",
+      "application": "Applicatie",
+      "cloud": "Cloud",
+      "facility": "Faciliteit",
+      "supplier": "Leverancier",
+      "process": "Proces",
+      "service": "Dienst"
+    },
+    "ciaShort": {
+      "confidentiality": "Vertrouwelijkheid",
+      "integrity": "Integriteit",
+      "availability": "Beschikbaarheid"
+    }
+  },
+  "verinice": {
+    "title": "verinice-import",
+    "description": "ISMS-gegevens importeren uit verinice (.vna) — assets, controls en risico’s.",
+    "uploadTitle": "Bestand uploaden",
+    "uploadHint": "Kies een verinice-exportbestand (.vna). Er wordt eerst een voorbeeld gemaakt voordat er iets wordt geïmporteerd.",
+    "analyze": "Analyseren (voorbeeld)",
+    "previewTitle": "Voorbeeld (nog niets geïmporteerd)",
+    "assets": "Assets",
+    "controls": "Controls",
+    "risks": "Risico’s",
+    "unmapped": "Niet toegewezen",
+    "unmappedTypes": "Niet-toegewezen typen",
+    "confirmImport": "Import bevestigen",
+    "doneTitle": "Import voltooid",
+    "skipped": "Overgeslagen",
+    "importAnother": "Nog een bestand importeren"
+  },
+  "vvtLinks": {
+    "title": "Gekoppelde verwerkingsactiviteiten (VVT)",
+    "empty": "Nog geen verwerkingsactiviteiten gekoppeld.",
+    "add": "Koppelen",
+    "remove": "Verwijderen",
+    "selectPlaceholder": "Kies een verwerkingsactiviteit …"
+  },
+  "beta": {
+    "badge": "Private bèta",
+    "tooltip": "Vakt is in private bèta — best-effort-ondersteuning, geen 24/7-SLA. Back-ups zijn uw verantwoordelijkheid. Klik voor details."
+  },
+  "onboarding30": {
+    "title": "Eerste 30 dagen — begeleide start",
+    "progress": "{{done}} van {{total}} stappen klaar",
+    "dismiss": "Verbergen",
+    "allDone": "Alle stappen voltooid — goed gedaan!",
+    "steps": {
+      "scope": "ISMS-scope definiëren",
+      "assets": "Assets vastleggen",
+      "protection_need": "Beschermingsbehoefte van topassets bepalen",
+      "framework": "Framework kiezen & activeren",
+      "risks": "Toprisico’s in het register zetten",
+      "evidence": "Eerste controls uitvoeren & bewijs uploaden",
+      "policy": "Eerste beleid uit een sjabloon overnemen"
     }
   }
 }

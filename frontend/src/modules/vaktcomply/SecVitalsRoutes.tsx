@@ -63,6 +63,11 @@ const KPIDashboardPage = lazy(() => import('./pages/KPIDashboardPage'))
 const CryptoKeysPage = lazy(() => import('./pages/CryptoKeysPage'))
 const InterestedPartiesPage = lazy(() => import('./pages/InterestedPartiesPage'))
 const AuditProgramPage = lazy(() => import('./pages/AuditProgramPage'))
+const BCMDashboardPage = lazy(() => import('./pages/BCMDashboardPage'))
+const BIAPage = lazy(() => import('./pages/BIAPage'))
+const RecoveryPlansPage = lazy(() => import('./pages/RecoveryPlansPage'))
+const EmergencyContactsPage = lazy(() => import('./pages/EmergencyContactsPage'))
+const BackupEvidencePage = lazy(() => import('./pages/BackupEvidencePage'))
 
 export default function SecVitalsRoutes() {
   return (
@@ -133,6 +138,11 @@ export default function SecVitalsRoutes() {
         <Route path="crypto-keys" element={<CryptoKeysPage />} />
         <Route path="interested-parties" element={<InterestedPartiesPage />} />
         <Route path="audit-program" element={<AuditProgramPage />} />
+        <Route path="bcm" element={<BCMDashboardPage />} />
+        <Route path="bcm/bia" element={<BIAPage />} />
+        <Route path="bcm/recovery-plans" element={<RecoveryPlansPage />} />
+        <Route path="bcm/emergency-contacts" element={<EmergencyContactsPage />} />
+        <Route path="backup" element={<BackupEvidencePage />} />
         <Route path="*" element={<Navigate to="/vaktcomply" replace />} />
       </Routes>
     </Suspense>

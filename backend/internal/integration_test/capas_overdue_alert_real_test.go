@@ -18,7 +18,8 @@ import (
 // 2026-06-14 incident: ListOverdueEffectivenessChecks selected the column
 // ck_capas.created_by, which exists in no migration, so the daily
 // effectiveness-check-overdue alert worker job failed every run with
-//   ERROR: column "created_by" does not exist
+//
+//	ERROR: column "created_by" does not exist
 //
 // Booting a real Postgres and running the query against the migrated schema
 // would have caught this at CI time. The test seeds one matching (overdue,

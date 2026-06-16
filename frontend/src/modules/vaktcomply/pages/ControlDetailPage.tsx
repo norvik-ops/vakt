@@ -3,10 +3,10 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Download, FileText, ChevronRight, RefreshCw, Info,
   Circle, Clock, CheckCircle2, MinusCircle, Trash2, ListChecks, History,
-  Pencil, X, ShieldAlert, CalendarDays, Sparkles, Square, Loader2,
+  Pencil, X, ShieldAlert, CalendarDays, Sparkles, Square, Loader2, ClipboardCheck,
 } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../../api/client'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Breadcrumbs } from '../../../shared/components/Breadcrumbs'
@@ -28,6 +28,7 @@ import {
 import { useFrameworkControls, useFramework } from '../hooks/useFrameworks'
 import { useControlTasks, useCreateControlTask, useToggleControlTask, useDeleteControlTask } from '../hooks/useControlTasks'
 import { MeasuresList } from '../components/MeasuresList'
+import { VVTLinksCard } from '../components/VVTLinksCard'
 import { TasksPanel } from '../components/TasksPanel'
 import { Comments } from '../../../shared/components/Comments'
 import { EvidenceFileUpload } from '../components/EvidenceFileUpload'
@@ -376,9 +377,20 @@ export default function ControlDetailPage() {
   const { data: evidence, isLoading: evidenceLoading } = useEvidence(controlId)
   const { data: tasks } = useControlTasks(controlId)
   const updateControl = useUpdateControl(frameworkId)
+  const queryClient = useQueryClient()
   const addEvidence = useAddEvidence(controlId)
   const uploadEvidence = useUploadEvidence(controlId)
   const collectEvidence = useCollectEvidence(controlId)
+  // S88-5: physical-control (ISO A.7.x) guided checklist → structured evidence.
+  const applyPhysicalTemplate = useMutation({
+    mutationFn: () =>
+      apiFetch(`/vaktcomply/physical-templates/${control?.control_id ?? ''}/apply`, { method: 'POST' }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'controls', controlId, 'evidence'] })
+      toast(t('vaktcomply.controlDetailPage.physicalTemplateApplied'), 'success')
+    },
+    onError: (e) => { handleApiError(e) },
+  })
   const exportControl = useExportControl(controlId)
   const createTask = useCreateControlTask(controlId)
   const toggleTask = useToggleControlTask(controlId)
@@ -964,6 +976,9 @@ export default function ControlDetailPage() {
         {/* Measures catalogue */}
         <MeasuresList controlId={controlId} />
 
+        {/* S88-9: VVT (processing activity) links */}
+        <VVTLinksCard controlId={controlId} />
+
         {/* Control Review Cycle */}
         {control && (
           <ControlReviewPanel
@@ -1043,7 +1058,22 @@ export default function ControlDetailPage() {
         {/* Evidence */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">{t('vaktcomply.controlDetailPage.evidence')}</CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-sm">{t('vaktcomply.controlDetailPage.evidence')}</CardTitle>
+              {control?.control_id.startsWith('A.7.') && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  onClick={() => { applyPhysicalTemplate.mutate(); }}
+                  disabled={applyPhysicalTemplate.isPending}
+                >
+                  <ClipboardCheck className="w-3.5 h-3.5 mr-1" />
+                  {t('vaktcomply.controlDetailPage.applyPhysicalTemplate')}
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             {evidenceLoading ? (

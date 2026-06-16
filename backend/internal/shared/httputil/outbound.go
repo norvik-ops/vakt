@@ -91,3 +91,43 @@ func ValidateOutboundURL(rawURL string, allowPrivate bool) error {
 	}
 	return nil
 }
+
+// ValidateOutboundHostPort validates a "host:port" target (e.g. a syslog/SIEM
+// sink) for SSRF safety. Unlike ValidateOutboundURL it expects no scheme.
+// Rules: host:port must parse, host must resolve (fail-closed on DNS error),
+// and — unless allowPrivate — must not resolve into RFC1918/loopback/IMDS ranges.
+// S88-6.
+func ValidateOutboundHostPort(hostPort string, allowPrivate bool) error {
+	host, port, err := net.SplitHostPort(hostPort)
+	if err != nil {
+		return fmt.Errorf("target must be host:port (%w)", err)
+	}
+	if host == "" || port == "" {
+		return fmt.Errorf("target must include both host and port")
+	}
+	ips, err := net.LookupHost(host)
+	if err != nil {
+		return fmt.Errorf("syslog host %q could not be resolved: %w", host, err)
+	}
+	for _, ipStr := range ips {
+		ip := net.ParseIP(ipStr)
+		if ip == nil {
+			continue
+		}
+		for _, n := range privateRanges {
+			if n.Contains(ip) {
+				if allowPrivate {
+					log.Warn().Str("target", hostPort).Str("resolved_ip", ipStr).
+						Msg("syslog target resolves to private IP — allowed by allow_private flag")
+					return nil
+				}
+				return fmt.Errorf(
+					"syslog target must not resolve to a private/link-local address (resolved to %s) — "+
+						"set VAKT_AUDIT_SYSLOG_ALLOW_PRIVATE=true for an intentional internal SIEM",
+					ipStr,
+				)
+			}
+		}
+	}
+	return nil
+}

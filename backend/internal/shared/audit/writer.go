@@ -125,6 +125,13 @@ func Write(ctx context.Context, db *pgxpool.Pool, e WriteEntry) {
 	}
 	if err := tx.Commit(ctx); err != nil {
 		log.Error().Err(err).Str("org_id", e.OrgID).Msg("audit: commit failed")
+		return
+	}
+
+	// S88-6: opt-in outbound forward to a customer Syslog/SIEM sink. Non-blocking;
+	// only runs after the entry is durably committed. No-op when not configured.
+	if f := currentForwarder(); f != nil {
+		f.Forward(e)
 	}
 }
 

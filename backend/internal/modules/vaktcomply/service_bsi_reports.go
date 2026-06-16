@@ -95,6 +95,23 @@ func (s *Service) GenerateBSIReport(ctx context.Context, orgID, userID, reportTy
 	return data, nil
 }
 
+// LogBCMReportExport records a SHA-256 audit entry for the Notfallhandbuch PDF export.
+// Errors are non-fatal — the download already succeeded by the time this is called.
+func (s *Service) LogBCMReportExport(ctx context.Context, orgID, userID string, data []byte) {
+	sum := sha256.Sum256(data)
+	hashStr := hex.EncodeToString(sum[:])
+	var generatedByArg any
+	if userID != "" {
+		generatedByArg = userID
+	}
+	_, _ = s.db.Exec(ctx, `
+		INSERT INTO ck_bsi_report_exports
+		  (org_id, report_type, generated_by, generated_at, sha256, file_size_bytes, metadata)
+		VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+		orgID, "bcm_notfallhandbuch", generatedByArg, time.Now().UTC(), hashStr, len(data),
+		map[string]any{"generated_at": time.Now().UTC().Format(time.RFC3339)})
+}
+
 // GetBSIReportPreview returns JSON preview data for a report type (before PDF download).
 func (s *Service) GetBSIReportPreview(ctx context.Context, orgID, reportType string) (map[string]any, error) {
 	switch reportType {

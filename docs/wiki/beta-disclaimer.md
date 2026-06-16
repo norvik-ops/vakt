@@ -1,0 +1,56 @@
+# Vakt — Private Beta: Status, Support & Erwartungsmanagement
+
+**Status: Private Beta.** Vakt ist funktional umfangreich und wird aktiv
+weiterentwickelt, befindet sich aber noch in der **Private-Beta-Phase**. Dieses
+Dokument macht transparent, was das für Support, Betrieb und
+Geschäftskontinuität bedeutet — damit es vorab klar ist, statt im Fragebogen.
+
+## Was „Private Beta" bedeutet
+
+- **Funktionsumfang:** breit und produktiv nutzbar (NIS2, ISO 27001:2022, BSI
+  IT-Grundschutz, DSGVO), aber einzelne Workflows können sich noch ändern.
+- **Stabilität:** Kern-Pfade (Auth, Krypto, Migrationen, Audit-Log) sind getestet
+  und durch CI-Gates abgesichert. Trotzdem gilt Beta-Vorbehalt: vor Produktivnutzung
+  eigene Tests fahren und **Backups** einrichten (siehe unten).
+- **Breaking Changes:** werden im `CHANGELOG.md` dokumentiert; Migrationen laufen
+  über `golang-migrate`. Vor Upgrades das Changelog lesen.
+
+## Support — Erwartungsmanagement
+
+- **Best-Effort-Support, keine zugesicherte Reaktionszeit, kein 24/7-SLA.**
+  In der Private Beta gibt es **keine** vertragliche Service-Level-Zusage.
+- Kanal: Issues/Anfragen werden best-effort und in der Regel innerhalb weniger
+  Werktage bearbeitet — ohne Garantie.
+- Sicherheitsrelevante Meldungen siehe `SECURITY.md` /
+  `/.well-known/security.txt`.
+
+## Datensicherung — Verantwortung des Betreibers
+
+Vakt ist **self-hosted**: alle Daten liegen in deiner Infrastruktur. Die
+Datensicherung liegt damit in **deiner** Verantwortung.
+
+- Nutze die mitgelieferten Skripte `scripts/backup.sh` / `restore.sh` /
+  `backup-verify.sh` (signiert + verschlüsselt) und richte geplante Backups ein.
+- Teste den **Restore-Pfad** regelmäßig — ein ungetestetes Backup ist kein Backup.
+- Runbook: [`docs/runbooks/disaster-recovery.md`](../runbooks/disaster-recovery.md)
+  (inkl. letztem verifizierten Restore-Drill + gemessener RTO).
+
+## Geschäftskontinuität (ehrlich, kein Vertrag)
+
+Vakt wird aktuell maßgeblich von **einer Schlüsselperson** entwickelt und
+betrieben (niedriger „Bus-Faktor"). Das ist für eine Private Beta vertretbar,
+ist aber transparent zu nennen:
+
+- Der Quellcode ist **source-available** (Elastic License v2). Selbst im Fall, dass
+  der Maintainer ausfällt, bleibt dein Self-Hosted-Betrieb lauffähig, und der Code
+  ist auditierbar/forkbar — es gibt keine proprietäre Cloud-Abhängigkeit.
+- Es gibt **kein Phone-Home** und **keine** zentrale Norvik-Infrastruktur, von der
+  dein Betrieb abhängt (Ausnahme: optionale Lizenz-Erneuerung, nur Lizenz-Token).
+
+## Kurzfassung für Procurement/Security-Fragebögen
+
+> Vakt befindet sich in Private Beta. Es gibt aktuell keinen vertraglichen
+> Support-SLA (Best-Effort). Datensicherung und Restore liegen beim Betreiber
+> (Skripte + Runbook mitgeliefert). Der Code ist source-available (ELv2), self-
+> hosted, ohne Phone-Home — Geschäftskontinuität ist dadurch unabhängig vom
+> Anbieter gegeben.

@@ -28,6 +28,51 @@ default compose. They are documented at the bottom under
 
 ---
 
+## Verified restore drills (S89-1)
+
+| Date | Scope | Result | Measured RTO |
+|------|-------|--------|--------------|
+| 2026-06-15 | **DB-level end-to-end drill** (`scripts/restore_drill.sh`): `backup.sh` against a live Postgres → `restore.sh` into a **separate fresh** Postgres → data round-trip verified (2/2 rows) → tampered archive rejected | ✅ pass | **~0.1 s** (DB restore + verify of a small dataset) |
+| 2026-06-15 | **Script-level drill** (`scripts/restore_test.sh`): HMAC verification, Master-Key decryption, no key leak to stdout, no `/tmp` key-file residue, tampered-archive rejection | ✅ pass | n/a |
+| _<fill in>_ | **Full machine-level drill** — fresh VM incl. image pull + DNS, see procedure below | _<pass/fail>_ | _<minutes from "machine empty" to "/health green">_ |
+
+> **What's verified vs. what's left to the operator:** the DB-level drill above
+> is a real `backup.sh` → `restore.sh` → verify cycle against fresh Postgres with
+> a measured restore time, and runs reproducibly via `scripts/restore_drill.sh`
+> (requires Docker). The **DB-restore RTO scales with dataset size**; the ~0.1 s
+> above is for a tiny test set. Before a production go-live, run the **full
+> machine-level drill** below on a fresh VM (which additionally includes image
+> pull + DNS) with your real data volume and record that end-to-end RTO in the
+> third row — that is the number that maps to the ≤ 4 h target.
+
+### Full machine-level drill procedure
+
+1. **Take a backup** on the live (or a representative) host:
+   `./scripts/backup.sh /backups/vakt`
+2. **Start the clock.** On a fresh VM/container with Docker + Compose but no Vakt
+   data, clone the deployment repo and place the backup archive + `.sig`.
+3. **Verify + restore:**
+   `./scripts/restore.sh /backups/vakt/vakt-backup-<DATE>.tar.gz`
+   (passphrase via `VAKT_BACKUP_PASSPHRASE` / `VAKT_BACKUP_PASSPHRASE_FILE` for
+   automation, or interactive prompt).
+4. **Boot the stack:** `docker compose up -d`.
+5. **Stop the clock** when `curl -fsS http://localhost/health` returns `200`.
+   That elapsed time is your measured **RTO** — record it above.
+6. **Negative test:** corrupt a copy of the archive (append a byte) and confirm
+   `restore.sh` **rejects** it on the HMAC check (`signature mismatch`).
+
+### Master-Key handling during restore (hardened, S89-1)
+
+`restore.sh` decrypts the backed-up Master Key only to verify the passphrase and
+never echoes it to stdout/logs (not even in `--dry-run`). When the recovered key
+differs from the one in `.env` (key rotation), it is handed over via a **`0600`
+temp file that is `shred`-deleted on every script exit** (success, error, or
+abort) — the operator copies it into `.env` during an interactive pause, after
+which it is securely removed. A `umask 077` at the top of the script protects all
+temp files it creates. No plaintext key ever lingers in `/tmp`.
+
+---
+
 ## Scenario triage
 
 Use this table first. Each row links to a step-by-step section below.

@@ -31,6 +31,7 @@ import (
 	"github.com/matharnica/vakt/internal/services/alerting"
 	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/services/siem"
+	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/bsi"
 	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/emaildigest"
@@ -282,6 +283,12 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	// S74-2: daily BSI check progress snapshot
 	mux.HandleFunc(vaktcomply.TaskBSIKPISnapshot, handleBSIKPISnapshot(pool))
 
+	// S86-4: daily BCM evidence sync for DER.4 controls
+	mux.HandleFunc(vaktcomply.TaskBCMEvidenceSync, handleBCMEvidenceSync(pool))
+
+	// S88-2: daily backup-freshness check (ISO A.8.13 / DER.4 evidence + staleness)
+	mux.HandleFunc(vaktcomply.TaskBackupFreshnessCheck, handleBackupFreshnessCheck(pool))
+
 	return srv, mux
 }
 
@@ -312,6 +319,14 @@ func main() {
 
 	if err := cfg.Validate(); err != nil {
 		logger.Fatal().Err(err).Msg("configuration error — check .env file")
+	}
+
+	// S88-6: opt-in audit Syslog/SIEM forwarder — the worker also emits audit
+	// entries (cross-module evidence, cleanup jobs), so it shares the forwarder.
+	if fwd, fErr := audit.NewSyslogForwarder(audit.SyslogConfigFromEnv()); fErr != nil {
+		logger.Fatal().Err(fErr).Msg("audit syslog forwarder config invalid")
+	} else if fwd != nil {
+		audit.SetForwarder(fwd)
 	}
 
 	// S46-2: Worker startup diagnostics — mirror of api/main.go summary log.

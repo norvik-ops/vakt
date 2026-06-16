@@ -10881,3 +10881,484 @@ func (q *Queries) DeleteCKProtectionNeedAssessment(ctx context.Context, arg Dele
 	}
 	return result.RowsAffected(), nil
 }
+
+// ── S86: BIA Processes ────────────────────────────────────────────────────────
+
+const createCKBIAProcess = `-- name: CreateCKBIAProcess :one
+INSERT INTO ck_bia_processes (org_id, name, description, process_owner, criticality, schutzbedarfsklasse, rto_hours, rpo_hours, mbco_percent, dependencies)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, org_id, name, description, process_owner, criticality, schutzbedarfsklasse, rto_hours, rpo_hours, mbco_percent, dependencies, created_at, updated_at
+`
+
+type CreateCKBIAProcessParams struct {
+	OrgID               string   `json:"org_id"`
+	Name                string   `json:"name"`
+	Description         string   `json:"description"`
+	ProcessOwner        string   `json:"process_owner"`
+	Criticality         string   `json:"criticality"`
+	Schutzbedarfsklasse int32    `json:"schutzbedarfsklasse"`
+	RtoHours            int32    `json:"rto_hours"`
+	RpoHours            int32    `json:"rpo_hours"`
+	MbcoPercent         int32    `json:"mbco_percent"`
+	Dependencies        []string `json:"dependencies"`
+}
+
+func (q *Queries) CreateCKBIAProcess(ctx context.Context, arg CreateCKBIAProcessParams) (CkBiaProcesses, error) {
+	row := q.db.QueryRow(ctx, createCKBIAProcess,
+		arg.OrgID, arg.Name, arg.Description, arg.ProcessOwner, arg.Criticality,
+		arg.Schutzbedarfsklasse, arg.RtoHours, arg.RpoHours, arg.MbcoPercent, arg.Dependencies)
+	var i CkBiaProcesses
+	err := row.Scan(&i.ID, &i.OrgID, &i.Name, &i.Description, &i.ProcessOwner,
+		&i.Criticality, &i.Schutzbedarfsklasse, &i.RtoHours, &i.RpoHours,
+		&i.MbcoPercent, &i.Dependencies, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const listCKBIAProcesses = `-- name: ListCKBIAProcesses :many
+SELECT id, org_id, name, description, process_owner, criticality, schutzbedarfsklasse, rto_hours, rpo_hours, mbco_percent, dependencies, created_at, updated_at
+FROM ck_bia_processes
+WHERE org_id = $1
+ORDER BY criticality DESC, rto_hours ASC
+`
+
+func (q *Queries) ListCKBIAProcesses(ctx context.Context, orgID string) ([]CkBiaProcesses, error) {
+	rows, err := q.db.Query(ctx, listCKBIAProcesses, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CkBiaProcesses
+	for rows.Next() {
+		var i CkBiaProcesses
+		if err := rows.Scan(&i.ID, &i.OrgID, &i.Name, &i.Description, &i.ProcessOwner,
+			&i.Criticality, &i.Schutzbedarfsklasse, &i.RtoHours, &i.RpoHours,
+			&i.MbcoPercent, &i.Dependencies, &i.CreatedAt, &i.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	return items, rows.Err()
+}
+
+const getCKBIAProcess = `-- name: GetCKBIAProcess :one
+SELECT id, org_id, name, description, process_owner, criticality, schutzbedarfsklasse, rto_hours, rpo_hours, mbco_percent, dependencies, created_at, updated_at
+FROM ck_bia_processes
+WHERE id = $1 AND org_id = $2
+`
+
+type GetCKBIAProcessParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+func (q *Queries) GetCKBIAProcess(ctx context.Context, arg GetCKBIAProcessParams) (CkBiaProcesses, error) {
+	row := q.db.QueryRow(ctx, getCKBIAProcess, arg.ID, arg.OrgID)
+	var i CkBiaProcesses
+	err := row.Scan(&i.ID, &i.OrgID, &i.Name, &i.Description, &i.ProcessOwner,
+		&i.Criticality, &i.Schutzbedarfsklasse, &i.RtoHours, &i.RpoHours,
+		&i.MbcoPercent, &i.Dependencies, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const updateCKBIAProcess = `-- name: UpdateCKBIAProcess :one
+UPDATE ck_bia_processes
+SET name = $3, description = $4, process_owner = $5, criticality = $6,
+    schutzbedarfsklasse = $7, rto_hours = $8, rpo_hours = $9, mbco_percent = $10,
+    dependencies = $11, updated_at = NOW()
+WHERE id = $1 AND org_id = $2
+RETURNING id, org_id, name, description, process_owner, criticality, schutzbedarfsklasse, rto_hours, rpo_hours, mbco_percent, dependencies, created_at, updated_at
+`
+
+type UpdateCKBIAProcessParams struct {
+	ID                  string   `json:"id"`
+	OrgID               string   `json:"org_id"`
+	Name                string   `json:"name"`
+	Description         string   `json:"description"`
+	ProcessOwner        string   `json:"process_owner"`
+	Criticality         string   `json:"criticality"`
+	Schutzbedarfsklasse int32    `json:"schutzbedarfsklasse"`
+	RtoHours            int32    `json:"rto_hours"`
+	RpoHours            int32    `json:"rpo_hours"`
+	MbcoPercent         int32    `json:"mbco_percent"`
+	Dependencies        []string `json:"dependencies"`
+}
+
+func (q *Queries) UpdateCKBIAProcess(ctx context.Context, arg UpdateCKBIAProcessParams) (CkBiaProcesses, error) {
+	row := q.db.QueryRow(ctx, updateCKBIAProcess,
+		arg.ID, arg.OrgID, arg.Name, arg.Description, arg.ProcessOwner, arg.Criticality,
+		arg.Schutzbedarfsklasse, arg.RtoHours, arg.RpoHours, arg.MbcoPercent, arg.Dependencies)
+	var i CkBiaProcesses
+	err := row.Scan(&i.ID, &i.OrgID, &i.Name, &i.Description, &i.ProcessOwner,
+		&i.Criticality, &i.Schutzbedarfsklasse, &i.RtoHours, &i.RpoHours,
+		&i.MbcoPercent, &i.Dependencies, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const deleteCKBIAProcess = `-- name: DeleteCKBIAProcess :execrows
+DELETE FROM ck_bia_processes WHERE id = $1 AND org_id = $2
+`
+
+type DeleteCKBIAProcessParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+func (q *Queries) DeleteCKBIAProcess(ctx context.Context, arg DeleteCKBIAProcessParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCKBIAProcess, arg.ID, arg.OrgID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const getCKBIASummary = `-- name: GetCKBIASummary :one
+SELECT
+    COUNT(*)::int                                                              AS total_processes,
+    COUNT(*) FILTER (WHERE criticality = 'high')::int                        AS critical_count,
+    COALESCE(MIN(rto_hours) FILTER (WHERE criticality = 'high'), 0)::int     AS shortest_rto_hours,
+    COUNT(*) FILTER (WHERE schutzbedarfsklasse = 1)::int                     AS klasse1_count,
+    COUNT(*) FILTER (WHERE schutzbedarfsklasse = 2)::int                     AS klasse2_count,
+    COUNT(*) FILTER (WHERE schutzbedarfsklasse = 3)::int                     AS klasse3_count
+FROM ck_bia_processes
+WHERE org_id = $1
+`
+
+type GetCKBIASummaryRow struct {
+	TotalProcesses   int32 `json:"total_processes"`
+	CriticalCount    int32 `json:"critical_count"`
+	ShortestRtoHours int32 `json:"shortest_rto_hours"`
+	Klasse1Count     int32 `json:"klasse1_count"`
+	Klasse2Count     int32 `json:"klasse2_count"`
+	Klasse3Count     int32 `json:"klasse3_count"`
+}
+
+func (q *Queries) GetCKBIASummary(ctx context.Context, orgID string) (GetCKBIASummaryRow, error) {
+	row := q.db.QueryRow(ctx, getCKBIASummary, orgID)
+	var i GetCKBIASummaryRow
+	err := row.Scan(&i.TotalProcesses, &i.CriticalCount, &i.ShortestRtoHours,
+		&i.Klasse1Count, &i.Klasse2Count, &i.Klasse3Count)
+	return i, err
+}
+
+// ── S86: Recovery Plans ───────────────────────────────────────────────────────
+
+const createCKRecoveryPlan = `-- name: CreateCKRecoveryPlan :one
+INSERT INTO ck_recovery_plans (org_id, bia_process_id, title, activation_criteria, responsible, rto_hours, status, steps)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, org_id, bia_process_id, title, activation_criteria, responsible, rto_hours, status, steps, last_tested_at, created_at, updated_at
+`
+
+type CreateCKRecoveryPlanParams struct {
+	OrgID              string      `json:"org_id"`
+	BiaProcessID       pgtype.UUID `json:"bia_process_id"`
+	Title              string      `json:"title"`
+	ActivationCriteria string      `json:"activation_criteria"`
+	Responsible        string      `json:"responsible"`
+	RtoHours           int32       `json:"rto_hours"`
+	Status             string      `json:"status"`
+	Steps              []byte      `json:"steps"`
+}
+
+func (q *Queries) CreateCKRecoveryPlan(ctx context.Context, arg CreateCKRecoveryPlanParams) (CkRecoveryPlans, error) {
+	row := q.db.QueryRow(ctx, createCKRecoveryPlan,
+		arg.OrgID, arg.BiaProcessID, arg.Title, arg.ActivationCriteria,
+		arg.Responsible, arg.RtoHours, arg.Status, arg.Steps)
+	var i CkRecoveryPlans
+	err := row.Scan(&i.ID, &i.OrgID, &i.BiaProcessID, &i.Title, &i.ActivationCriteria,
+		&i.Responsible, &i.RtoHours, &i.Status, &i.Steps, &i.LastTestedAt, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+type ListCKRecoveryPlansRow struct {
+	CkRecoveryPlans
+	BiaProcessName string `json:"bia_process_name"`
+}
+
+const listCKRecoveryPlans = `-- name: ListCKRecoveryPlans :many
+SELECT rp.id, rp.org_id, rp.bia_process_id, rp.title, rp.activation_criteria, rp.responsible,
+       rp.rto_hours, rp.status, rp.steps, rp.last_tested_at, rp.created_at, rp.updated_at,
+       COALESCE(bp.name, '') AS bia_process_name
+FROM ck_recovery_plans rp
+LEFT JOIN ck_bia_processes bp ON bp.id = rp.bia_process_id
+WHERE rp.org_id = $1
+ORDER BY rp.created_at DESC
+`
+
+func (q *Queries) ListCKRecoveryPlans(ctx context.Context, orgID string) ([]ListCKRecoveryPlansRow, error) {
+	rows, err := q.db.Query(ctx, listCKRecoveryPlans, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCKRecoveryPlansRow
+	for rows.Next() {
+		var i ListCKRecoveryPlansRow
+		if err := rows.Scan(&i.ID, &i.OrgID, &i.BiaProcessID, &i.Title, &i.ActivationCriteria,
+			&i.Responsible, &i.RtoHours, &i.Status, &i.Steps, &i.LastTestedAt,
+			&i.CreatedAt, &i.UpdatedAt, &i.BiaProcessName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	return items, rows.Err()
+}
+
+const listCKRecoveryPlansByBIAProcess = `-- name: ListCKRecoveryPlansByBIAProcess :many
+SELECT rp.id, rp.org_id, rp.bia_process_id, rp.title, rp.activation_criteria, rp.responsible,
+       rp.rto_hours, rp.status, rp.steps, rp.last_tested_at, rp.created_at, rp.updated_at,
+       COALESCE(bp.name, '') AS bia_process_name
+FROM ck_recovery_plans rp
+LEFT JOIN ck_bia_processes bp ON bp.id = rp.bia_process_id
+WHERE rp.org_id = $1 AND rp.bia_process_id = $2
+ORDER BY rp.created_at DESC
+`
+
+type ListCKRecoveryPlansByBIAProcessParams struct {
+	OrgID        string      `json:"org_id"`
+	BiaProcessID pgtype.UUID `json:"bia_process_id"`
+}
+
+func (q *Queries) ListCKRecoveryPlansByBIAProcess(ctx context.Context, arg ListCKRecoveryPlansByBIAProcessParams) ([]ListCKRecoveryPlansRow, error) {
+	rows, err := q.db.Query(ctx, listCKRecoveryPlansByBIAProcess, arg.OrgID, arg.BiaProcessID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCKRecoveryPlansRow
+	for rows.Next() {
+		var i ListCKRecoveryPlansRow
+		if err := rows.Scan(&i.ID, &i.OrgID, &i.BiaProcessID, &i.Title, &i.ActivationCriteria,
+			&i.Responsible, &i.RtoHours, &i.Status, &i.Steps, &i.LastTestedAt,
+			&i.CreatedAt, &i.UpdatedAt, &i.BiaProcessName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	return items, rows.Err()
+}
+
+const getCKRecoveryPlan = `-- name: GetCKRecoveryPlan :one
+SELECT rp.id, rp.org_id, rp.bia_process_id, rp.title, rp.activation_criteria, rp.responsible,
+       rp.rto_hours, rp.status, rp.steps, rp.last_tested_at, rp.created_at, rp.updated_at,
+       COALESCE(bp.name, '') AS bia_process_name
+FROM ck_recovery_plans rp
+LEFT JOIN ck_bia_processes bp ON bp.id = rp.bia_process_id
+WHERE rp.id = $1 AND rp.org_id = $2
+`
+
+type GetCKRecoveryPlanParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+func (q *Queries) GetCKRecoveryPlan(ctx context.Context, arg GetCKRecoveryPlanParams) (ListCKRecoveryPlansRow, error) {
+	row := q.db.QueryRow(ctx, getCKRecoveryPlan, arg.ID, arg.OrgID)
+	var i ListCKRecoveryPlansRow
+	err := row.Scan(&i.ID, &i.OrgID, &i.BiaProcessID, &i.Title, &i.ActivationCriteria,
+		&i.Responsible, &i.RtoHours, &i.Status, &i.Steps, &i.LastTestedAt,
+		&i.CreatedAt, &i.UpdatedAt, &i.BiaProcessName)
+	return i, err
+}
+
+const updateCKRecoveryPlan = `-- name: UpdateCKRecoveryPlan :one
+UPDATE ck_recovery_plans
+SET bia_process_id = $3, title = $4, activation_criteria = $5, responsible = $6,
+    rto_hours = $7, status = $8, steps = $9, last_tested_at = $10, updated_at = NOW()
+WHERE id = $1 AND org_id = $2
+RETURNING id, org_id, bia_process_id, title, activation_criteria, responsible, rto_hours, status, steps, last_tested_at, created_at, updated_at
+`
+
+type UpdateCKRecoveryPlanParams struct {
+	ID                 string      `json:"id"`
+	OrgID              string      `json:"org_id"`
+	BiaProcessID       pgtype.UUID `json:"bia_process_id"`
+	Title              string      `json:"title"`
+	ActivationCriteria string      `json:"activation_criteria"`
+	Responsible        string      `json:"responsible"`
+	RtoHours           int32       `json:"rto_hours"`
+	Status             string      `json:"status"`
+	Steps              []byte      `json:"steps"`
+	LastTestedAt       pgtype.Date `json:"last_tested_at"`
+}
+
+func (q *Queries) UpdateCKRecoveryPlan(ctx context.Context, arg UpdateCKRecoveryPlanParams) (CkRecoveryPlans, error) {
+	row := q.db.QueryRow(ctx, updateCKRecoveryPlan,
+		arg.ID, arg.OrgID, arg.BiaProcessID, arg.Title, arg.ActivationCriteria,
+		arg.Responsible, arg.RtoHours, arg.Status, arg.Steps, arg.LastTestedAt)
+	var i CkRecoveryPlans
+	err := row.Scan(&i.ID, &i.OrgID, &i.BiaProcessID, &i.Title, &i.ActivationCriteria,
+		&i.Responsible, &i.RtoHours, &i.Status, &i.Steps, &i.LastTestedAt, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const deleteCKRecoveryPlan = `-- name: DeleteCKRecoveryPlan :execrows
+DELETE FROM ck_recovery_plans WHERE id = $1 AND org_id = $2
+`
+
+type DeleteCKRecoveryPlanParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+func (q *Queries) DeleteCKRecoveryPlan(ctx context.Context, arg DeleteCKRecoveryPlanParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCKRecoveryPlan, arg.ID, arg.OrgID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const countCKRecoveryPlansTested = `-- name: CountCKRecoveryPlansTested :one
+SELECT COUNT(*)::int FROM ck_recovery_plans
+WHERE org_id = $1 AND status = 'tested' AND last_tested_at >= (NOW() - INTERVAL '12 months')::date
+`
+
+func (q *Queries) CountCKRecoveryPlansTested(ctx context.Context, orgID string) (int32, error) {
+	row := q.db.QueryRow(ctx, countCKRecoveryPlansTested, orgID)
+	var n int32
+	return n, row.Scan(&n)
+}
+
+const countCKRecoveryPlansActive = `-- name: CountCKRecoveryPlansActive :one
+SELECT COUNT(*)::int FROM ck_recovery_plans WHERE org_id = $1 AND status IN ('active','tested')
+`
+
+func (q *Queries) CountCKRecoveryPlansActive(ctx context.Context, orgID string) (int32, error) {
+	row := q.db.QueryRow(ctx, countCKRecoveryPlansActive, orgID)
+	var n int32
+	return n, row.Scan(&n)
+}
+
+const countCKRecoveryPlansForHighCriticality = `-- name: CountCKRecoveryPlansForHighCriticality :one
+SELECT COUNT(DISTINCT rp.bia_process_id)::int
+FROM ck_recovery_plans rp
+JOIN ck_bia_processes bp ON bp.id = rp.bia_process_id
+WHERE rp.org_id = $1 AND bp.criticality = 'high' AND bp.org_id = $1
+`
+
+func (q *Queries) CountCKRecoveryPlansForHighCriticality(ctx context.Context, orgID string) (int32, error) {
+	row := q.db.QueryRow(ctx, countCKRecoveryPlansForHighCriticality, orgID)
+	var n int32
+	return n, row.Scan(&n)
+}
+
+const countCKHighCriticalityBIAProcesses = `-- name: CountCKHighCriticalityBIAProcesses :one
+SELECT COUNT(*)::int FROM ck_bia_processes WHERE org_id = $1 AND criticality = 'high'
+`
+
+func (q *Queries) CountCKHighCriticalityBIAProcesses(ctx context.Context, orgID string) (int32, error) {
+	row := q.db.QueryRow(ctx, countCKHighCriticalityBIAProcesses, orgID)
+	var n int32
+	return n, row.Scan(&n)
+}
+
+// ── S86: Emergency Contacts ───────────────────────────────────────────────────
+
+const createCKEmergencyContact = `-- name: CreateCKEmergencyContact :one
+INSERT INTO ck_emergency_contacts (org_id, name, role, phone, email, escalation_level, available_24_7, notes)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, org_id, name, role, phone, email, escalation_level, available_24_7, notes, created_at, updated_at
+`
+
+type CreateCKEmergencyContactParams struct {
+	OrgID           string `json:"org_id"`
+	Name            string `json:"name"`
+	Role            string `json:"role"`
+	Phone           string `json:"phone"`
+	Email           string `json:"email"`
+	EscalationLevel int32  `json:"escalation_level"`
+	Available247    bool   `json:"available_24_7"`
+	Notes           string `json:"notes"`
+}
+
+func (q *Queries) CreateCKEmergencyContact(ctx context.Context, arg CreateCKEmergencyContactParams) (CkEmergencyContacts, error) {
+	row := q.db.QueryRow(ctx, createCKEmergencyContact,
+		arg.OrgID, arg.Name, arg.Role, arg.Phone, arg.Email,
+		arg.EscalationLevel, arg.Available247, arg.Notes)
+	var i CkEmergencyContacts
+	err := row.Scan(&i.ID, &i.OrgID, &i.Name, &i.Role, &i.Phone, &i.Email,
+		&i.EscalationLevel, &i.Available247, &i.Notes, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const listCKEmergencyContacts = `-- name: ListCKEmergencyContacts :many
+SELECT id, org_id, name, role, phone, email, escalation_level, available_24_7, notes, created_at, updated_at
+FROM ck_emergency_contacts
+WHERE org_id = $1
+ORDER BY escalation_level ASC, name ASC
+`
+
+func (q *Queries) ListCKEmergencyContacts(ctx context.Context, orgID string) ([]CkEmergencyContacts, error) {
+	rows, err := q.db.Query(ctx, listCKEmergencyContacts, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CkEmergencyContacts
+	for rows.Next() {
+		var i CkEmergencyContacts
+		if err := rows.Scan(&i.ID, &i.OrgID, &i.Name, &i.Role, &i.Phone, &i.Email,
+			&i.EscalationLevel, &i.Available247, &i.Notes, &i.CreatedAt, &i.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	return items, rows.Err()
+}
+
+const updateCKEmergencyContact = `-- name: UpdateCKEmergencyContact :one
+UPDATE ck_emergency_contacts
+SET name = $3, role = $4, phone = $5, email = $6,
+    escalation_level = $7, available_24_7 = $8, notes = $9, updated_at = NOW()
+WHERE id = $1 AND org_id = $2
+RETURNING id, org_id, name, role, phone, email, escalation_level, available_24_7, notes, created_at, updated_at
+`
+
+type UpdateCKEmergencyContactParams struct {
+	ID              string `json:"id"`
+	OrgID           string `json:"org_id"`
+	Name            string `json:"name"`
+	Role            string `json:"role"`
+	Phone           string `json:"phone"`
+	Email           string `json:"email"`
+	EscalationLevel int32  `json:"escalation_level"`
+	Available247    bool   `json:"available_24_7"`
+	Notes           string `json:"notes"`
+}
+
+func (q *Queries) UpdateCKEmergencyContact(ctx context.Context, arg UpdateCKEmergencyContactParams) (CkEmergencyContacts, error) {
+	row := q.db.QueryRow(ctx, updateCKEmergencyContact,
+		arg.ID, arg.OrgID, arg.Name, arg.Role, arg.Phone, arg.Email,
+		arg.EscalationLevel, arg.Available247, arg.Notes)
+	var i CkEmergencyContacts
+	err := row.Scan(&i.ID, &i.OrgID, &i.Name, &i.Role, &i.Phone, &i.Email,
+		&i.EscalationLevel, &i.Available247, &i.Notes, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const deleteCKEmergencyContact = `-- name: DeleteCKEmergencyContact :execrows
+DELETE FROM ck_emergency_contacts WHERE id = $1 AND org_id = $2
+`
+
+type DeleteCKEmergencyContactParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+func (q *Queries) DeleteCKEmergencyContact(ctx context.Context, arg DeleteCKEmergencyContactParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCKEmergencyContact, arg.ID, arg.OrgID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const countCKEmergencyContacts = `-- name: CountCKEmergencyContacts :one
+SELECT COUNT(*)::int FROM ck_emergency_contacts WHERE org_id = $1
+`
+
+func (q *Queries) CountCKEmergencyContacts(ctx context.Context, orgID string) (int32, error) {
+	row := q.db.QueryRow(ctx, countCKEmergencyContacts, orgID)
+	var n int32
+	return n, row.Scan(&n)
+}

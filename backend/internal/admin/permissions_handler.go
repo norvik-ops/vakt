@@ -10,7 +10,10 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/auth"
 )
 
 // UserModulePermission mirrors what sqlc would generate from the
@@ -42,6 +45,14 @@ type UpdatePermissionsInput struct {
 type PermissionsHandler struct {
 	db       *pgxpool.Pool
 	validate *validator.Validate
+	rdb      *redis.Client // optional — used to invalidate the module-permission cache (S90-4)
+}
+
+// WithRedis attaches a Redis client so permission updates invalidate the
+// per-user module-permission cache immediately (S90-4). No-op if never called.
+func (h *PermissionsHandler) WithRedis(rdb *redis.Client) *PermissionsHandler {
+	h.rdb = rdb
+	return h
 }
 
 // NewPermissionsHandler constructs a PermissionsHandler backed by the given pool.
@@ -191,6 +202,10 @@ func (h *PermissionsHandler) UpdatePermissions(c echo.Context) error {
 			"code":  "ADMIN_PERMISSIONS_ERROR",
 		})
 	}
+
+	// S90-4: drop the cached permission state so the change takes effect
+	// immediately rather than after the cache TTL.
+	auth.InvalidateModulePermissions(ctx, h.rdb, orgID, targetUserID)
 
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "permissions updated",

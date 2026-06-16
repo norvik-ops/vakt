@@ -1529,15 +1529,19 @@ type ClassificationResult struct {
 
 // BCPPlan represents a Business Continuity Plan document.
 type BCPPlan struct {
-	ID        string    `json:"id"`
-	OrgID     string    `json:"org_id"`
-	Title     string    `json:"title"`
-	Scope     string    `json:"scope"`
-	Version   string    `json:"version"`
-	Status    string    `json:"status"`
-	Owner     string    `json:"owner"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID                  string    `json:"id"`
+	OrgID               string    `json:"org_id"`
+	Title               string    `json:"title"`
+	Scope               string    `json:"scope"`
+	Version             string    `json:"version"`
+	Status              string    `json:"status"`
+	Owner               string    `json:"owner"`
+	RTOHours            int       `json:"rto_hours"`
+	RPOHours            int       `json:"rpo_hours"`
+	Schutzbedarfsklasse int       `json:"schutzbedarfsklasse"`
+	LastTestedAt        *string   `json:"last_tested_at"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
 }
 
 // BCPTest represents a single BCP test record for a plan.

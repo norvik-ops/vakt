@@ -976,6 +976,123 @@ func (s *Service) GetEntraIDStatus(ctx context.Context, orgID string) (*EntraIDS
 	return st, nil
 }
 
+// --- Intune (S88-7) ---
+
+const intuneGraphBaseURL = "https://graph.microsoft.com"
+
+func (s *Service) GetIntuneConfig(ctx context.Context, orgID string) (*IntuneConfigResponse, error) {
+	raw, err := s.repo.GetConfig(ctx, orgID, ProviderIntune)
+	if err != nil {
+		return nil, err
+	}
+	resp := &IntuneConfigResponse{}
+	if raw == nil {
+		return resp, nil
+	}
+	var stored map[string]string
+	if err := json.Unmarshal(raw, &stored); err != nil {
+		return resp, nil
+	}
+	resp.TenantID = stored["tenant_id"]
+	resp.ClientID = stored["client_id"]
+	if stored["client_secret"] != "" {
+		resp.ClientSecret = "****"
+	}
+	resp.IsConfigured = resp.TenantID != "" && resp.ClientID != "" && resp.ClientSecret == "****"
+	return resp, nil
+}
+
+// SaveIntuneConfig persists the Intune config, encrypting the client secret.
+// The fixed Microsoft Graph endpoint is validated through the same outbound
+// SSRF guard every collector uses (S88-7 AC), so a future endpoint override can
+// never point at a private/IMDS address.
+func (s *Service) SaveIntuneConfig(ctx context.Context, orgID string, in SaveIntuneConfigInput) error {
+	if err := httputil.ValidateOutboundURL(intuneGraphBaseURL, false); err != nil {
+		return fmt.Errorf("intune graph endpoint rejected by outbound guard: %w", err)
+	}
+	existing, _ := s.getDecryptedIntuneConfig(ctx, orgID)
+	secret := in.ClientSecret
+	if secret == "****" && existing != nil {
+		secret = existing.ClientSecret
+	}
+	encSecret := ""
+	if secret != "" {
+		ct, err := sharedcrypto.Encrypt(s.masterKey, []byte(secret))
+		if err != nil {
+			return fmt.Errorf("encrypt intune client secret: %w", err)
+		}
+		encSecret = hex.EncodeToString(ct)
+	}
+	return s.repo.UpsertConfig(ctx, orgID, ProviderIntune, map[string]any{
+		"tenant_id":     in.TenantID,
+		"client_id":     in.ClientID,
+		"client_secret": encSecret,
+	})
+}
+
+func (s *Service) getDecryptedIntuneConfig(ctx context.Context, orgID string) (*IntuneConfig, error) {
+	raw, err := s.repo.GetConfig(ctx, orgID, ProviderIntune)
+	if err != nil || raw == nil {
+		return nil, err
+	}
+	var stored map[string]string
+	if err := json.Unmarshal(raw, &stored); err != nil {
+		return nil, err
+	}
+	cfg := &IntuneConfig{TenantID: stored["tenant_id"], ClientID: stored["client_id"]}
+	if enc := stored["client_secret"]; enc != "" {
+		ct, err := hex.DecodeString(enc)
+		if err != nil {
+			return nil, fmt.Errorf("decode intune client secret: %w", err)
+		}
+		plain, err := sharedcrypto.Decrypt(s.masterKey, ct)
+		if err != nil {
+			return nil, fmt.Errorf("decrypt intune client secret: %w", err)
+		}
+		cfg.ClientSecret = string(plain)
+	}
+	return cfg, nil
+}
+
+// SyncIntune runs the Intune collector and updates sync status.
+func (s *Service) SyncIntune(ctx context.Context, orgID string) (int, error) {
+	cfg, err := s.getDecryptedIntuneConfig(ctx, orgID)
+	if err != nil {
+		return 0, fmt.Errorf("load intune config: %w", err)
+	}
+	if cfg == nil || cfg.TenantID == "" {
+		return 0, fmt.Errorf("Intune nicht konfiguriert")
+	}
+	collector := NewIntuneCollector(s.db, s.evidence)
+	count, syncErr := collector.Collect(ctx, orgID, *cfg)
+	status := "success"
+	if syncErr != nil {
+		status = "error"
+	}
+	if updateErr := s.repo.UpdateSyncResult(ctx, orgID, ProviderIntune, status, syncErr); updateErr != nil {
+		log.Warn().Err(updateErr).Str("org_id", orgID).Msg("cloud: failed to update Intune sync result")
+	}
+	return count, syncErr
+}
+
+// GetIntuneStatus returns sync status for Intune.
+func (s *Service) GetIntuneStatus(ctx context.Context, orgID string) (*IntuneStatus, error) {
+	ci, err := s.repo.GetIntegration(ctx, orgID, ProviderIntune)
+	if err != nil {
+		return nil, err
+	}
+	st := &IntuneStatus{SyncStatus: SyncStatus{Provider: ProviderIntune, Enabled: true}}
+	if ci != nil {
+		st.Enabled = ci.Enabled
+		st.LastSyncAt = ci.LastSyncAt
+		st.LastSyncStatus = ci.LastSyncStatus
+		st.LastSyncError = ci.LastSyncError
+	}
+	count, _ := s.repo.CountEvidence(ctx, orgID, intuneSource)
+	st.EvidenceCount = count
+	return st, nil
+}
+
 // --- Keycloak ---
 
 // GetKeycloakConfig returns the Keycloak config for an org with secrets masked.
@@ -1671,6 +1788,12 @@ func (s *Service) SyncAllEnabled(ctx context.Context) error {
 			} else {
 				log.Info().Str("org_id", ci.OrgID).Msg("cloud sync: entra id completed")
 			}
+		case ProviderIntune:
+			if _, syncErr := s.SyncIntune(ctx, ci.OrgID); syncErr != nil {
+				log.Error().Err(syncErr).Str("org_id", ci.OrgID).Msg("cloud sync: intune failed")
+			} else {
+				log.Info().Str("org_id", ci.OrgID).Msg("cloud sync: intune completed")
+			}
 		case ProviderKeycloak:
 			if _, syncErr := s.SyncKeycloak(ctx, ci.OrgID); syncErr != nil {
 				log.Error().Err(syncErr).Str("org_id", ci.OrgID).Msg("cloud sync: keycloak failed")
@@ -1711,6 +1834,7 @@ func (s *Service) RecentEvidence(ctx context.Context, orgID, provider string) ([
 		ProviderWazuh:      wazuhSource,
 		ProviderPrometheus: prometheusSource,
 		ProviderEntraID:    entraidSource,
+		ProviderIntune:     intuneSource,
 		ProviderKeycloak:   keycloakSource,
 		ProviderLDAP:       ldapSource,
 		ProviderGitLab:     gitlabSource,

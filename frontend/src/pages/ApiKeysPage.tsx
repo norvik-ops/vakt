@@ -136,6 +136,7 @@ function CreateKeyDialog({ open, onOpenChange, onCreated }: CreateDialogProps) {
   const [expiresAt, setExpiresAt] = useState('')
   const [nameTouched, setNameTouched] = useState(false)
   const [selectedScopes, setSelectedScopes] = useState<Set<string>>(new Set())
+  const [readOnly, setReadOnly] = useState(false)
 
   const createKey = useCreateAPIKey()
 
@@ -145,6 +146,7 @@ function CreateKeyDialog({ open, onOpenChange, onCreated }: CreateDialogProps) {
       setExpiresAt('')
       setNameTouched(false)
       setSelectedScopes(new Set())
+      setReadOnly(false)
     }
     onOpenChange(isOpen)
   }
@@ -162,9 +164,12 @@ function CreateKeyDialog({ open, onOpenChange, onCreated }: CreateDialogProps) {
     setNameTouched(true)
     if (!name.trim()) return
 
+    // S90-5: a read-only key appends the ":ro" suffix to every module scope.
+    // The backend maps ":ro" scopes to the Viewer role and rejects write methods.
+    const scopeList = Array.from(selectedScopes)
     const input: CreateKeyRequest = {
       name: name.trim(),
-      scopes: Array.from(selectedScopes),
+      scopes: readOnly ? scopeList.map((s) => `${s}:ro`) : scopeList,
     }
     if (expiresAt) {
       input.expires_at = new Date(expiresAt).toISOString()
@@ -247,6 +252,19 @@ function CreateKeyDialog({ open, onOpenChange, onCreated }: CreateDialogProps) {
               Leer lassen → Personal-Key mit voller User-Berechtigung. Scopes setzen für CI-Bots
               mit Least-Privilege.
             </p>
+            <label className="flex items-start gap-2.5 px-2 py-1.5 rounded hover:bg-muted/40 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={readOnly}
+                disabled={selectedScopes.size === 0}
+                onChange={() => { setReadOnly((v) => !v); }}
+                className="mt-0.5 h-4 w-4 rounded border-border"
+              />
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-medium text-primary">{t('settings.apiKeysPage.readOnlyLabel')}</span>
+                <p className="text-[11px] text-secondary mt-0.5">{t('settings.apiKeysPage.readOnlyHint')}</p>
+              </div>
+            </label>
           </div>
         </div>
         {createKey.isError && (

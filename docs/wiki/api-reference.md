@@ -34,6 +34,24 @@ Response:
 
 For programmatic access, create a long-lived **API Key** in Settings → API Keys (Pro). API keys use the same `Authorization: Bearer` header.
 
+### API-Key scopes
+
+A key carries one or more scopes that gate which module paths it may call:
+
+| Scope | Grants |
+|-------|--------|
+| _(empty, personal `vakt_…` key)_ | Full user-level access |
+| `admin` | Full access to all modules (role `Admin`) |
+| `vaktcomply` (or wildcard `vaktcomply.*`) | Read-write access to the module (role `SecurityAnalyst`) |
+| `vaktcomply:ro` | **Read-only** access — `GET`/`HEAD` only (role `Viewer`) |
+
+Read-only keys (`:ro` suffix) are rejected with `403 AUTH_READONLY_KEY` on any
+write method (`POST`/`PUT`/`PATCH`/`DELETE`). Use them for dashboards, monitoring
+or auditor-export jobs that must never mutate state. The same module name works
+in bare (`vaktcomply`), wildcard (`vaktcomply.*`) and read-only
+(`vaktcomply:ro`) form. Replace `vaktcomply` with any module
+(`vaktscan`, `vaktvault`, `vaktaware`, `vaktprivacy`, `vakthr`).
+
 ## Pagination
 
 List endpoints accept `?page=1&limit=25` and return:

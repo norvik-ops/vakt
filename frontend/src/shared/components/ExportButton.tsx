@@ -8,7 +8,7 @@ interface ExportButtonProps {
   endpoint: string
   filename: string
   label?: string
-  format?: 'csv' | 'xlsx'
+  format?: 'csv' | 'xlsx' | 'docx'
 }
 
 export function ExportButton({

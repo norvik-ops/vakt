@@ -22,6 +22,7 @@ import (
 	"github.com/matharnica/vakt/internal/services/evidence_auto"
 	"github.com/matharnica/vakt/internal/shared/dashboard"
 	"github.com/matharnica/vakt/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/platform/events"
 	"github.com/matharnica/vakt/internal/shared/platform/webhooks"
 	"github.com/matharnica/vakt/internal/shared/safego"
 )
@@ -343,6 +344,19 @@ func (s *Service) UpsertFinding(ctx context.Context, orgID string, f Finding) (*
 		"severity": result.Severity,
 		"org_id":   orgID,
 	})
+	// S88-8: emit a cross-module finding-created event for critical/high findings
+	// so the Scan→Comply bridge attaches it as evidence on A.8.8/A.8.9 (idempotent,
+	// consumed by the worker — no direct cross-module call here).
+	if s.asynqClient != nil && (result.Severity == "critical" || result.Severity == "high") {
+		if task, taskErr := crossevidence.NewRecordEvidenceTask(
+			events.FindingCreated(orgID, result.ID, result.Title, result.Severity),
+		); taskErr == nil {
+			if _, enqErr := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(crossevidence.Queue)); enqErr != nil {
+				log.Warn().Err(enqErr).Str("finding_id", result.ID).Msg("vaktscan: finding-created event enqueue failed")
+			}
+		}
+	}
+
 	// Notify org on critical/high severity findings.
 	if result.Severity == "critical" || result.Severity == "high" {
 		capturedOrgID := orgID

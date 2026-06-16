@@ -49,6 +49,11 @@ import {
   useSyncEntraID,
   useEntraIDStatus,
   useEntraIDEvidence,
+  useIntuneConfig,
+  useSaveIntuneConfig,
+  useSyncIntune,
+  useIntuneStatus,
+  useIntuneEvidence,
   useKeycloakConfig,
   useSaveKeycloakConfig,
   useSyncKeycloak,
@@ -1496,6 +1501,125 @@ function EntraIDTab() {
   )
 }
 
+// --- Intune tab (S88-7) ---
+
+function IntuneTab() {
+  const { t } = useTranslation()
+  const { data: cfg, isLoading } = useIntuneConfig()
+  const { data: status } = useIntuneStatus()
+  const { data: evidence } = useIntuneEvidence()
+  const saveConfig = useSaveIntuneConfig()
+  const syncIntune = useSyncIntune()
+  const { formatDateTime } = useFormatDate()
+
+  const [tenantID, setTenantID] = useState('')
+  const [clientID, setClientID] = useState('')
+  const [clientSecret, setClientSecret] = useState('')
+  const [initialized, setInitialized] = useState(false)
+
+  if (cfg && !initialized) {
+    setTenantID(cfg.tenant_id)
+    setClientID(cfg.client_id)
+    setClientSecret(cfg.client_secret)
+    setInitialized(true)
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await saveConfig.mutateAsync({ tenant_id: tenantID, client_id: clientID, client_secret: clientSecret })
+      toast(t('integrations.page.saved'), 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('integrations.page.saveFailed'), 'error')
+    }
+  }
+
+  async function handleSync() {
+    try {
+      const result = await syncIntune.mutateAsync()
+      if (result.ok) {
+        toast(`${t('integrations.page.saved')} — ${result.evidence_created} Evidence-Einträge erstellt`, 'success')
+      } else {
+        toast(result.error ?? t('common.error'), 'error')
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t('common.error'), 'error')
+    }
+  }
+
+  if (isLoading) return <div className="flex items-center justify-center h-32"><Spinner size="md" /></div>
+
+  const lastSyncFormatted = status?.last_sync_at
+    ? formatDateTime(status.last_sync_at, { dateStyle: 'short', timeStyle: 'short' })
+    : null
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold text-primary">{t('integrations.intune.title')}</h2>
+        <p className="text-xs text-secondary mt-0.5">{t('integrations.intune.description')}</p>
+      </div>
+
+      {status && (
+        <div className="flex items-center gap-3 mb-5 p-3 rounded-lg border border-border bg-surface">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-secondary">
+              {lastSyncFormatted ? t('integrations.page.lastSync', { date: lastSyncFormatted }) : t('integrations.page.neverSynced')}
+              {status.evidence_count > 0 && ` · ${status.evidence_count} Evidence-Einträge`}
+              {status.device_compliance_pct > 0 && ` · ${t('integrations.intune.compliance')} ${Math.round(status.device_compliance_pct)}%`}
+            </p>
+            {status.last_sync_error && <p className="text-xs text-red-500 truncate mt-0.5">{status.last_sync_error}</p>}
+          </div>
+          <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
+          <button onClick={() => { void handleSync() }} disabled={syncIntune.isPending || !cfg?.is_configured}
+            title={t('integrations.page.syncNow')}
+            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
+            <RefreshCw className={`w-4 h-4 ${syncIntune.isPending ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      )}
+
+      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Tenant ID</label>
+          <input type="text" value={tenantID} onChange={(e) => { setTenantID(e.target.value); }}
+            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Client ID (Application ID)</label>
+          <input type="text" value={clientID} onChange={(e) => { setClientID(e.target.value); }}
+            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            required />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-secondary mb-1">Client Secret</label>
+          <input type="password" value={clientSecret} onChange={(e) => { setClientSecret(e.target.value); }}
+            placeholder={cfg?.is_configured && cfg.client_secret === '****' ? '****' : 'App-Secret aus Azure Portal'}
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
+            required />
+          <p className="text-[11px] text-secondary mt-1">{t('integrations.intune.permissionsHint')}</p>
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button type="submit" disabled={saveConfig.isPending}
+            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+          </button>
+        </div>
+      </form>
+
+      {evidence && evidence.length > 0 && (
+        <div className="mt-6">
+          <p className="text-xs font-medium text-secondary mb-2">{t('integrations.page.recentEvidence')}</p>
+          <RecentEvidenceList items={evidence} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 // --- Keycloak tab ---
 
 function KeycloakTab() {
@@ -2187,7 +2311,7 @@ function PersonioTab() {
 
 // --- Main page ---
 
-type Tab = 'github' | 'aws' | 'azure' | 'hetzner' | 'ionos' | 'wazuh' | 'prometheus' | 'entra-id' | 'keycloak' | 'ldap' | 'gitlab' | 'sonarqube' | 'personio'
+type Tab = 'github' | 'aws' | 'azure' | 'hetzner' | 'ionos' | 'wazuh' | 'prometheus' | 'entra-id' | 'intune' | 'keycloak' | 'ldap' | 'gitlab' | 'sonarqube' | 'personio'
 
 export default function IntegrationsPage() {
   const { t } = useTranslation()
@@ -2202,6 +2326,7 @@ export default function IntegrationsPage() {
     { id: 'wazuh', label: 'Wazuh', icon: <Cloud className="w-4 h-4" /> },
     { id: 'prometheus', label: 'Prometheus', icon: <Cloud className="w-4 h-4" /> },
     { id: 'entra-id', label: 'Entra ID', icon: <ShieldAlert className="w-4 h-4" /> },
+    { id: 'intune', label: 'Intune', icon: <ShieldAlert className="w-4 h-4" /> },
     { id: 'keycloak', label: 'Keycloak', icon: <ShieldAlert className="w-4 h-4" /> },
     { id: 'ldap', label: 'LDAP/AD', icon: <ShieldAlert className="w-4 h-4" /> },
     { id: 'gitlab', label: 'GitLab', icon: <GitBranch className="w-4 h-4" /> },
@@ -2247,6 +2372,7 @@ export default function IntegrationsPage() {
       {activeTab === 'wazuh' && <WazuhTab />}
       {activeTab === 'prometheus' && <PrometheusTab />}
       {activeTab === 'entra-id' && <EntraIDTab />}
+      {activeTab === 'intune' && <IntuneTab />}
       {activeTab === 'keycloak' && <KeycloakTab />}
       {activeTab === 'ldap' && <LDAPTab />}
       {activeTab === 'gitlab' && <GitLabTab />}

@@ -19,6 +19,29 @@ VAKT_DB_URL=postgres://vakt:sicherespasswort@postgres:5432/vakt?sslmode=disable
 POSTGRES_PASSWORD=sicherespasswort
 ```
 
+### Pool-Sizing & Multi-Replica (PgBouncer) — wichtig ab 2 Replikas
+
+`VAKT_DB_MAX_CONNS` (Default **25**) ist die Pool-Größe **pro API-/Worker-Prozess**.
+Die **Gesamtzahl** der Verbindungen zu Postgres ist:
+
+```
+VAKT_DB_MAX_CONNS × (API-Replikas + Worker-Replikas)
+```
+
+Dieser Wert muss **unter** der Postgres-`max_connections` (Default **100**) bleiben —
+mit Reserve für Migrationen/Admin-Zugriffe. Beispiel: 4 Replikas × 25 = **100** →
+überläuft bereits den Default und führt unter Last zu `connection refused`.
+
+**Empfehlung:**
+- **1 Replika:** Default 25 ist passend.
+- **≥ 2 Replikas:** entweder `VAKT_DB_MAX_CONNS` senken (grob `(max_connections − Reserve) / Replikas`)
+  **oder** — bevorzugt — einen **PgBouncer** (Transaction-Pooling) davorschalten und
+  `VAKT_DB_URL` auf den PgBouncer zeigen lassen. Der Pool ist bereits
+  PgBouncer-Transaction-Mode-kompatibel (`QueryExecModeCacheDescribe`, keine
+  serverseitigen Prepared Statements). Im Docker-Compose-Stack ist PgBouncer als
+  Sidecar enthalten; in Kubernetes ein externes PgBouncer-Chart nutzen
+  (`helm/vakt/values.yaml` → `api.env.VAKT_DB_MAX_CONNS`).
+
 ---
 
 ## Redis
@@ -43,11 +66,19 @@ REDIS_PASSWORD=sicherespasswort
 |----------|---------|----------|--------------|
 | `VAKT_SECRET_KEY` | Ja | — | 32-Byte Hex-Master-Key für AES-256-GCM-Verschlüsselung aller Secrets in der Datenbank. Generieren: `openssl rand -hex 32`. **Nie nach dem ersten Start ändern.** |
 | `VAKT_ADMIN_ALLOWED_IPS` | — | — (offen) | Komma-separierte CIDRs/IPs, die auf Admin-Endpunkte zugreifen dürfen, z. B. `10.0.0.0/8,192.168.1.0/24`. Leer = alle IPs erlaubt. |
+| `VAKT_CORS_ORIGINS` | **Prod: Ja** | `http://localhost,http://localhost:5173` | Komma-separierte Liste erlaubter Cross-Origin-Quellen, z. B. `https://vakt.meine-firma.de`. **In Produktion zwingend auf die echte Frontend-Domain setzen.** Der Wert `*` (alle Origins) wird zusammen mit Session-Cookies nur im Demo-Modus (`VAKT_DEMO=true`) akzeptiert — im Nicht-Demo-Modus **bricht der Start mit `*` bewusst ab** (Fail-Closed, S87-2). |
+| `VAKT_FORCE_SECURE_COOKIES` | — | `false` | Wenn `true`, tragen alle Session-/CSRF-Cookies das `Secure`-Attribut **unabhängig** von TLS/`X-Forwarded-Proto`. Empfehlung für Produktion hinter einem TLS-terminierenden Reverse-Proxy: `=true` — schützt als hartes Sicherheitsnetz gegen einen fehlkonfigurierten Proxy, der `X-Forwarded-Proto: https` nicht setzt (S87-5, CWE-614). |
+| `VAKT_AUDIT_SYSLOG_ADDR` | — | — (aus) | **Opt-in.** Ziel `host:port` eines kunden-eigenen Syslog-/SIEM-Servers, an den Audit-Log-Ereignisse (Login, Rollenwechsel, Offboarding, Export …) ausgeleitet werden. Leer = kein ausgehender Traffic. **Datenschutz:** Der Endpunkt wird vom Kunden konfiguriert (analog Outgoing-Webhooks/SMTP) — der Kunde trägt die Verantwortung für die Datenweitergabe. **Kein Norvik-Relay, kein Phone-Home.** Der Audit-Schreibpfad wird nie blockiert (asynchron, Drop-Zähler `vakt_audit_forward_dropped`). |
+| `VAKT_AUDIT_SYSLOG_PROTO` | — | `tcp` | Transport: `tcp` oder `tcp+tls` (TLS 1.2+). |
+| `VAKT_AUDIT_SYSLOG_FORMAT` | — | `rfc5424` | Nachrichtenformat: `rfc5424` (Syslog) oder `cef` (ArcSight CEF). |
+| `VAKT_AUDIT_SYSLOG_ALLOW_PRIVATE` | — | `false` | Erlaubt ein Ziel in privaten/Loopback-Netzen (RFC1918/IMDS), z. B. ein SIEM im selben LAN. Default: solche Ziele werden als SSRF-Schutz abgelehnt. |
 
 **Beispiel:**
 
 ```env
 VAKT_SECRET_KEY=$(openssl rand -hex 32)   # Beispiel — echten Wert generieren!
+VAKT_CORS_ORIGINS=https://vakt.meine-firma.de
+VAKT_FORCE_SECURE_COOKIES=true            # Produktion hinter HTTPS-Proxy
 ```
 
 > **Wichtig:** Der Master-Key wird zur AES-256-GCM-Verschlüsselung aller Secrets (Vakt-Vault-Einträge, SMTP-Passwörter, API-Keys) verwendet. Wird der Key nach dem ersten Deployment geändert, sind alle verschlüsselten Daten dauerhaft unlesbar. Key sicher in einem Passwortmanager oder Vault aufbewahren, niemals in Git committen.
@@ -370,6 +401,46 @@ Die folgenden Integrationen werden **pro Organisation** in der Vakt-Oberfläche 
 Ausführliche Setup-Anleitungen: `docs/wiki/enterprise-sso.md`
 
 ---
+
+## Automatische Backups (S89-4)
+
+Vakt liefert signierte, verschlüsselte Backups (`scripts/backup.sh`) plus einen
+Automations-Wrapper (`scripts/backup-cron.sh`): **erstellen → verifizieren →
+optional off-site pushen → nach Retention rotieren**, mit Benachrichtigung bei
+Fehlschlag.
+
+| Variable | Standard | Beschreibung |
+|----------|----------|--------------|
+| `VAKT_BACKUP_PASSPHRASE` | — | Passphrase, die den Master-Key im Archiv umschließt. **Pflicht für automatische (nicht-interaktive) Backups.** Alternativ `VAKT_BACKUP_PASSPHRASE_FILE`. |
+| `VAKT_BACKUP_DIR` | `./data/backups` | Host-Verzeichnis für die Archive. |
+| `VAKT_BACKUP_SCHEDULE` | `0 2 * * *` | Cron-Ausdruck des Scheduler-Service (täglich 02:00). |
+| `VAKT_BACKUP_RETENTION_DAYS` | `30` | Archive älter als N Tage werden rotiert (gelöscht). |
+| `VAKT_BACKUP_OFFSITE_CMD` | — | **Opt-in** Off-Site-Push. Läuft mit `$ARCHIVE` + `$SIG`. **Kunden-konfiguriertes Ziel — niemals ein Norvik-Endpoint** (Datenschutz-Grundsatz). Beispiel: `aws s3 cp "$ARCHIVE" s3://my-bucket/ && aws s3 cp "$SIG" s3://my-bucket/`. |
+| `VAKT_BACKUP_NOTIFY_WEBHOOK` | — | Eigener Webhook, der bei Fehlschlag `{"text":…}` per POST erhält. |
+| `VAKT_BACKUP_NOTIFY_CMD` | — | Generischer Fehler-Hook; läuft mit `$MESSAGE`. Beispiel: `logger -t vakt-backup "$MESSAGE"`. |
+
+**Variante A — Compose-Service (empfohlen):**
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.backup.yml --profile backup up -d
+```
+
+Der opt-in `backup`-Service läuft `backup-cron.sh` auf `VAKT_BACKUP_SCHEDULE`.
+
+**Variante B — Host-Cron:**
+
+```cron
+# /etc/cron.d/vakt-backup  (täglich 02:00)
+0 2 * * * deploy cd /opt/vakt && VAKT_BACKUP_DIR=/backups/vakt bash scripts/backup-cron.sh run >> /var/log/vakt-backup.log 2>&1
+```
+
+> **Off-Site & Datenschutz:** Der Off-Site-Push ist optional und zielt immer auf
+> ein **vom Kunden konfiguriertes** Ziel (S3-kompatibel, rsync, SFTP …). Vakt
+> sendet niemals Backups an Norvik. Off-Site-Ziel wie das Backup selbst behandeln
+> (verschlüsselt, Zugriff begrenzt).
+
+> **Restore testen:** Ein automatisiertes Backup ist nur so viel wert wie sein
+> getesteter Restore — siehe [Disaster-Recovery-Runbook](../runbooks/disaster-recovery.md).
 
 ## Hinweise
 

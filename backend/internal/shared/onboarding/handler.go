@@ -101,6 +101,29 @@ func GetStatus(db *pgxpool.Pool) echo.HandlerFunc {
 	}
 }
 
+// GetProgressHandler handles GET /api/v1/onboarding/progress — the S89-5 guided
+// "first 30 days" path with 7 steps whose completion is derived from real data.
+func GetProgressHandler(db *pgxpool.Pool) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		orgID, ok := c.Get("org_id").(string)
+		if !ok || orgID == "" {
+			return c.JSON(http.StatusUnauthorized, map[string]string{
+				"error": "unauthorized",
+				"code":  "AUTH_MISSING_ORG",
+			})
+		}
+		p, err := GetProgress(c.Request().Context(), db, orgID)
+		if err != nil {
+			log.Error().Err(err).Str("org_id", orgID).Msg("onboarding: get progress")
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "failed to load onboarding progress",
+				"code":  "ONBOARDING_PROGRESS_FAILED",
+			})
+		}
+		return c.JSON(http.StatusOK, p)
+	}
+}
+
 // Dismiss handles POST /api/v1/onboarding/dismiss.
 // It sets onboarding_dismissed = true on the organisation row so the wizard
 // no longer appears for any user in this org.

@@ -523,6 +523,73 @@ export function useEntraIDEvidence() {
   })
 }
 
+// --- Intune (S88-7) ---
+
+export interface IntuneConfig {
+  tenant_id: string
+  client_id: string
+  client_secret: string // "****" if set
+  is_configured: boolean
+}
+
+export interface SaveIntuneConfigInput {
+  tenant_id: string
+  client_id: string
+  client_secret: string
+}
+
+export interface IntuneStatus extends CloudSyncStatus {
+  device_compliance_pct: number
+}
+
+export function useIntuneConfig() {
+  return useQuery<IntuneConfig>({
+    queryKey: ['integrations', 'cloud', 'intune', 'config'],
+    queryFn: () => apiFetch<IntuneConfig>(`${BASE}/intune/config`),
+    staleTime: 60_000,
+  })
+}
+
+export function useSaveIntuneConfig() {
+  const qc = useQueryClient()
+  return useMutation<{ status: string }, Error, SaveIntuneConfigInput>({
+    mutationFn: (data) =>
+      apiFetch<{ status: string }>(`${BASE}/intune/config`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['integrations', 'cloud', 'intune'] })
+    },
+  })
+}
+
+export function useSyncIntune() {
+  const qc = useQueryClient()
+  return useMutation<CloudSyncResult>({
+    mutationFn: () => apiFetch<CloudSyncResult>(`${BASE}/intune/sync`, { method: 'POST' }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['integrations', 'cloud', 'intune'] })
+    },
+  })
+}
+
+export function useIntuneStatus() {
+  return useQuery<IntuneStatus>({
+    queryKey: ['integrations', 'cloud', 'intune', 'status'],
+    queryFn: () => apiFetch<IntuneStatus>(`${BASE}/intune/status`),
+    staleTime: 30_000,
+  })
+}
+
+export function useIntuneEvidence() {
+  return useQuery<CloudEvidenceItem[]>({
+    queryKey: ['integrations', 'cloud', 'intune', 'evidence'],
+    queryFn: () => apiFetch<CloudEvidenceItem[]>(`${BASE}/intune/evidence`),
+    staleTime: 30_000,
+  })
+}
+
 // --- Keycloak ---
 
 export interface KeycloakConfig {

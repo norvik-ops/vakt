@@ -177,6 +177,12 @@ export async function apiFetch<T>(
     if (res.status === 401) {
       onUnauthorized?.()
       setSessionId(null)
+      // S90-8 (#10): a full-page navigation (not react-router `navigate`) is
+      // deliberate. On session invalidation we want a hard reset of ALL
+      // in-memory state — Zustand stores, React component state, TanStack Query
+      // cache — so no stale authenticated data survives the logout. A soft SPA
+      // navigation would preserve that memory. The minor UX cost (lost router
+      // state) is an acceptable trade for the guaranteed clean slate.
       window.location.href = '/login'
       throw new Error('Unauthorized')
     }

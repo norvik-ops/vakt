@@ -1054,6 +1054,10 @@ func runSeed(ctx context.Context, db *pgxpool.Pool, masterKeyHex, orgName, orgSl
 			"The organisation shall provide a mechanism for personnel to report observed or suspected events.", "implemented"},
 		{"A.7.1", "Physical security perimeters", "Physical Controls",
 			"Security perimeters shall be defined and used to protect areas that contain information.", "implemented"},
+		{"A.7.7", "Clear desk and clear screen", "Physical Controls",
+			"Clear desk rules for papers and removable storage and clear screen rules shall be defined.", "implemented"},
+		{"A.7.10", "Storage media", "Physical Controls",
+			"Storage media shall be managed through their acquisition, use, transportation and disposal.", "in_progress"},
 		{"A.8.1", "User end point devices", "Technological Controls",
 			"Information stored on, processed by, or accessible via user end point devices shall be protected.", "in_progress"},
 		{"A.8.5", "Secure authentication", "Technological Controls",
@@ -1080,6 +1084,19 @@ func runSeed(ctx context.Context, db *pgxpool.Pool, masterKeyHex, orgName, orgSl
 				UPDATE ck_controls SET manual_status = $1 WHERE id = $2::uuid`,
 				ctrl.status, ctrlID); err != nil {
 				return "", "", fmt.Errorf("demoseed: iso27001 control status %s: %w", ctrl.id, err)
+			}
+		}
+		// S88-5: seed applied physical-control checklists as evidence for A.7.7 + A.7.10.
+		if ctrl.id == "A.7.7" || ctrl.id == "A.7.10" {
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO ck_evidence (control_id, org_id, title, description, source, collector_data, status)
+				VALUES ($1::uuid, $2::uuid, $3, $4, 'checklist', $5::jsonb, 'pending')`,
+				ctrlID, orgID,
+				fmt.Sprintf("Checkliste: %s (%s)", ctrl.title, ctrl.id),
+				"Geführte Checkliste für physische Maßnahme angewendet (ISO A.7.x)",
+				fmt.Sprintf(`{"source":"physical_control_template","control_code":%q}`, ctrl.id),
+			); err != nil {
+				return "", "", fmt.Errorf("demoseed: physical checklist %s: %w", ctrl.id, err)
 			}
 		}
 	}
@@ -1161,6 +1178,103 @@ func runSeed(ctx context.Context, db *pgxpool.Pool, masterKeyHex, orgName, orgSl
 			orgID, offboardingEmpID, offboardingChecklistID, string(allOffItems), completedAt); err != nil {
 			return "", "", fmt.Errorf("demoseed: offboarding run: %w", err)
 		}
+	}
+
+	// ── S86: BSI-200-4 BCM Demo-Seed ──────────────────────────────────────────
+	var itInfraID string
+	biaProcesses := []struct {
+		name   string
+		crit   string
+		klasse int
+		rto    int
+		rpo    int
+		mbco   int
+		owner  string
+	}{
+		{"IT-Infrastruktur-Betrieb", "high", 3, 4, 1, 80, "IT-Leitung"},
+		{"Kundendaten-Verarbeitung", "high", 2, 24, 4, 60, "Datenschutzbeauftragter"},
+		{"Personalverwaltung", "medium", 1, 72, 24, 40, "HR-Manager"},
+	}
+	for i, p := range biaProcesses {
+		var id string
+		if err := tx.QueryRow(ctx, `
+			INSERT INTO ck_bia_processes (org_id, name, criticality, schutzbedarfsklasse, rto_hours, rpo_hours, mbco_percent, process_owner, dependencies)
+			VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, '{}')
+			RETURNING id::text`,
+			orgID, p.name, p.crit, p.klasse, p.rto, p.rpo, p.mbco, p.owner,
+		).Scan(&id); err != nil {
+			return "", "", fmt.Errorf("demoseed: bia_process %d: %w", i, err)
+		}
+		if i == 0 {
+			itInfraID = id
+		}
+	}
+
+	// WAP — IT-Infrastruktur-Betrieb
+	if itInfraID != "" {
+		wapSteps, _ := json.Marshal([]map[string]any{
+			{"order": 1, "action": "Incident-Alarm auslösen", "responsible": "IT-Leiter", "duration_min": 15},
+			{"order": 2, "action": "Backup-Systeme aktivieren", "responsible": "SysAdmin", "duration_min": 30},
+			{"order": 3, "action": "Dienste sequenziell starten", "responsible": "DevOps", "duration_min": 60},
+			{"order": 4, "action": "Funktionstests durchführen", "responsible": "QA", "duration_min": 30},
+			{"order": 5, "action": "Management informieren", "responsible": "IT-Leiter", "duration_min": 15},
+		})
+		lastTested := now.AddDate(0, -3, 0).Format("2006-01-02")
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO ck_recovery_plans (org_id, bia_process_id, title, activation_criteria, responsible, rto_hours, status, steps, last_tested_at)
+			VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8, $9::date)`,
+			orgID, itInfraID,
+			"WAP IT-Infrastruktur",
+			"Ausfall von mehr als 2 kritischen Servern oder Netzwerkausfall > 30 Minuten",
+			"IT-Leitung",
+			4, "tested", string(wapSteps), lastTested,
+		); err != nil {
+			return "", "", fmt.Errorf("demoseed: recovery_plan: %w", err)
+		}
+	}
+
+	// Alarmierungsplan (3 Kontakte, 3 Eskalationsstufen)
+	emergencyContacts := []struct {
+		name  string
+		role  string
+		phone string
+		email string
+		level int
+		avail bool
+	}{
+		{"Max Mustermann", "IT-Notfall-Koordinator", "+49 89 123456-10", "it-notfall@example.com", 1, true},
+		{"Anna Schmidt", "IT-Leitung", "+49 89 123456-20", "it-leitung@example.com", 2, false},
+		{"BSI CERT-Bund", "Externer Dienstleister", "+49 228 99 9582-5555", "certbund@bsi.bund.de", 3, false},
+	}
+	for _, c := range emergencyContacts {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO ck_emergency_contacts (org_id, name, role, phone, email, escalation_level, available_24_7)
+			VALUES ($1::uuid, $2, $3, $4, $5, $6, $7)`,
+			orgID, c.name, c.role, c.phone, c.email, c.level, c.avail,
+		); err != nil {
+			return "", "", fmt.Errorf("demoseed: emergency_contact: %w", err)
+		}
+	}
+
+	// ── S88-2: Backup-/Restore-Nachweis Demo-Seed ─────────────────────────────
+	var backupJobID string
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO ck_backup_jobs
+		  (org_id, name, source, destination, frequency, encrypted,
+		   last_success_at, last_status, restore_max_age_days, notes)
+		VALUES ($1::uuid, 'Postgres Nightly Dump', 'vakt-db', 'Hetzner Storage Box (verschlüsselt)',
+		        'daily', TRUE, NOW() - INTERVAL '8 hours', 'success', 365,
+		        'Automatisiertes pg_dump, AES-256-verschlüsselt, Off-Site repliziert')
+		RETURNING id::text`, orgID).Scan(&backupJobID); err != nil {
+		return "", "", fmt.Errorf("demoseed: backup_job: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO ck_backup_restore_tests
+		  (org_id, job_id, tested_at, result, rto_target_hours, rto_actual_hours, tester, notes)
+		VALUES ($1::uuid, $2::uuid, CURRENT_DATE - INTERVAL '45 days', 'success', 4, 3, 'IT-Leitung',
+		        'Vollständiger Restore-Test in Staging, RTO eingehalten')`,
+		orgID, backupJobID); err != nil {
+		return "", "", fmt.Errorf("demoseed: restore_test: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {

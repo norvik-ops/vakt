@@ -1633,3 +1633,206 @@ export interface BSIReportExport {
   sha256: string
   created_at: string
 }
+
+// --- BCM / BSI-200-4 Notfallmanagement (Migration 216–218, S86) ---
+
+export type BIACriticality = 'low' | 'medium' | 'high' | 'critical'
+
+export interface BIAProcess {
+  id: string
+  org_id: string
+  name: string
+  description: string
+  process_owner: string
+  criticality: BIACriticality
+  schutzbedarfsklasse: 1 | 2 | 3
+  rto_hours: number
+  rpo_hours: number
+  mbco_percent: number
+  dependencies: string[]
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateBIAProcessInput {
+  name: string
+  description?: string
+  process_owner?: string
+  criticality: BIACriticality
+  schutzbedarfsklasse?: 1 | 2 | 3
+  rto_hours: number
+  rpo_hours: number
+  mbco_percent?: number
+  dependencies?: string[]
+}
+
+export type UpdateBIAProcessInput = CreateBIAProcessInput
+
+export interface BIASummary {
+  total: number
+  high_critical: number
+  avg_rto_hours: number
+  avg_rpo_hours: number
+}
+
+export interface RecoveryStep {
+  order: number
+  action: string
+  responsible: string
+  duration_min: number
+}
+
+export interface RecoveryPlan {
+  id: string
+  org_id: string
+  bia_process_id?: string | null
+  bia_process_name?: string
+  title: string
+  activation_criteria: string
+  responsible: string
+  rto_hours: number
+  status: 'draft' | 'active' | 'tested'
+  steps: RecoveryStep[]
+  last_tested_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateRecoveryPlanInput {
+  bia_process_id?: string
+  title: string
+  activation_criteria?: string
+  responsible?: string
+  rto_hours?: number
+  status?: RecoveryPlan['status']
+  steps?: RecoveryStep[]
+}
+
+export type UpdateRecoveryPlanInput = CreateRecoveryPlanInput
+
+export interface EmergencyContact {
+  id: string
+  org_id: string
+  name: string
+  role: string
+  phone: string
+  email: string
+  escalation_level: 1 | 2 | 3
+  available_247: boolean
+  notes: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateEmergencyContactInput {
+  name: string
+  role?: string
+  phone?: string
+  email?: string
+  escalation_level?: 1 | 2 | 3
+  available_247?: boolean
+  notes?: string
+}
+
+export type UpdateEmergencyContactInput = CreateEmergencyContactInput
+
+export interface BCMCriterion {
+  key: string
+  points: number
+  met: boolean
+  description: string
+}
+
+export interface BCMReadinessScore {
+  score: number
+  criteria: BCMCriterion[]
+  computed_at: string
+}
+
+// ── S88-2: Backup-/Restore-Nachweis ──────────────────────────────────────────
+export type BackupFrequency = 'hourly' | 'daily' | 'weekly' | 'monthly'
+export type BackupLastStatus = 'unknown' | 'success' | 'failed'
+export type StalenessStatus = 'on_track' | 'at_risk' | 'overdue'
+export type RestoreResult = 'success' | 'partial' | 'failed'
+
+export interface BackupJob {
+  id: string
+  org_id: string
+  name: string
+  source: string
+  destination: string
+  frequency: BackupFrequency
+  encrypted: boolean
+  last_success_at: string | null
+  last_status: BackupLastStatus
+  restore_max_age_days: number
+  notes: string
+  last_restore_test_at?: string | null
+  backup_status: StalenessStatus
+  restore_status: StalenessStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface BackupJobInput {
+  name: string
+  source?: string
+  destination?: string
+  frequency: BackupFrequency
+  encrypted: boolean
+  restore_max_age_days: number
+  notes?: string
+  last_status?: BackupLastStatus
+  last_success_at?: string
+}
+
+export interface BackupRestoreTest {
+  id: string
+  org_id: string
+  job_id: string
+  tested_at: string
+  result: RestoreResult
+  rto_target_hours: number
+  rto_actual_hours: number
+  tester: string
+  notes: string
+  created_at: string
+}
+
+export interface RestoreTestInput {
+  tested_at: string
+  result: RestoreResult
+  rto_target_hours: number
+  rto_actual_hours: number
+  tester?: string
+  notes?: string
+}
+
+export interface BackupSummary {
+  total_jobs: number
+  overdue_backups: number
+  overdue_restores: number
+  tested_jobs: number
+}
+
+// ── S88-3: Threat-Library (Risk-Catalog) ─────────────────────────────────────
+export interface ThreatCatalogItem {
+  id: string
+  title: string
+  category: string
+  asset_types: string[]
+  cia: string[]
+  frameworks: string[]
+  scenario: string
+  suggested_measure: string
+  control_links: string[]
+  default_likelihood: number
+  default_impact: number
+}
+
+export interface CreateRiskFromCatalogInput {
+  catalog_id: string
+  likelihood?: number
+  impact?: number
+  owner?: string
+}

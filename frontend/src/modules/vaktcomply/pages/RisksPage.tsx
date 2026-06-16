@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ShieldAlert, Plus, List, BarChart2, ChevronsUpDown, ChevronUp, ChevronDown, RefreshCw, Trash2 } from 'lucide-react'
+import { ShieldAlert, Plus, List, BarChart2, ChevronsUpDown, ChevronUp, ChevronDown, RefreshCw, Trash2, Library } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../../components/ui/button'
@@ -16,6 +16,7 @@ import { ExportButton } from '../../../shared/components/ExportButton'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Pagination } from '../../../shared/components/Pagination'
 import { BulkActionBar } from '../../../shared/components/BulkActionBar'
+import { ThreatCatalogDialog } from '../components/ThreatCatalogDialog'
 import { useSortableTable } from '../../../shared/hooks/useSortableTable'
 import { useDeferredDelete } from '../../../shared/hooks/useDeferredDelete'
 import { toast } from '../../../shared/hooks/useToast'
@@ -261,6 +262,7 @@ export default function RisksPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [catalogOpen, setCatalogOpen] = useState(false)
   const [form, setForm] = useState<CreateRiskInput>(emptyForm())
   const [view, setView] = useState<'list' | 'heatmap'>('list')
   const [page, setPage] = useState(1)
@@ -399,6 +401,16 @@ export default function RisksPage() {
               label="Exportieren"
               format="xlsx"
             />
+            <ExportButton
+              endpoint="/api/v1/vaktcomply/risks/export/docx"
+              filename={`risikoregister-${new Date().toISOString().slice(0, 10)}`}
+              label="Word"
+              format="docx"
+            />
+            <Button variant="outline" onClick={() => { setCatalogOpen(true); }}>
+              <Library className="w-4 h-4 mr-1" />
+              {t('threatCatalog.fromCatalog')}
+            </Button>
             <Button onClick={openDialog}>
               <Plus className="w-4 h-4 mr-1" />
               {t('vaktcomply.risksPage.addRisk')}
@@ -406,6 +418,7 @@ export default function RisksPage() {
           </div>
         }
       />
+      <ThreatCatalogDialog open={catalogOpen} onClose={() => { setCatalogOpen(false); }} />
 
       <div className="flex-1 p-6 space-y-6">
         {/* Sort toolbar — list view only */}

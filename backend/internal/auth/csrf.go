@@ -9,9 +9,31 @@ import (
 	"encoding/hex"
 	"net/http"
 	"strings"
+	"sync/atomic"
 
 	"github.com/labstack/echo/v4"
 )
+
+// forceSecureCookies, when set, forces the Secure attribute on every session/
+// CSRF cookie regardless of the request's TLS state or X-Forwarded-Proto header.
+// Wired once at startup from VAKT_FORCE_SECURE_COOKIES (S87-5, F-07).
+var forceSecureCookies atomic.Bool
+
+// SetForceSecureCookies wires the VAKT_FORCE_SECURE_COOKIES flag into the
+// cookie-Secure computation. Call once during startup, before serving traffic.
+func SetForceSecureCookies(b bool) { forceSecureCookies.Store(b) }
+
+// CookieSecure reports whether session/CSRF cookies should carry the Secure
+// attribute for this request: true when the request arrived over TLS, when the
+// terminating proxy signalled https via X-Forwarded-Proto, or when the operator
+// forced it on via VAKT_FORCE_SECURE_COOKIES. Centralising the decision here
+// keeps all cookie-issuing sites consistent (S87-5).
+func CookieSecure(c echo.Context) bool {
+	if forceSecureCookies.Load() {
+		return true
+	}
+	return c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
+}
 
 // CSRFCookieName is the cookie that carries the double-submit CSRF token.
 // It is intentionally NOT HttpOnly so the frontend can read its value and
@@ -42,7 +64,7 @@ func GenerateCSRFToken() string {
 // would be invisible to JS there, so the double-submit header could never be
 // echoed and every state-changing request would 403 with "CSRF header missing".
 func SetCSRFCookie(c echo.Context, token string) {
-	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
+	secure := CookieSecure(c)
 	c.SetCookie(&http.Cookie{ // nosemgrep -- HttpOnly:false intentional (CSRF double-submit pattern); Secure via variable
 		Name:     CSRFCookieName,
 		Value:    token,
@@ -56,7 +78,7 @@ func SetCSRFCookie(c echo.Context, token string) {
 
 // ClearCSRFCookie expires the CSRF cookie (called on logout).
 func ClearCSRFCookie(c echo.Context) {
-	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
+	secure := CookieSecure(c)
 	c.SetCookie(&http.Cookie{ // nosemgrep -- HttpOnly:false intentional (CSRF double-submit pattern); Secure via variable
 		Name:     CSRFCookieName,
 		Value:    "",

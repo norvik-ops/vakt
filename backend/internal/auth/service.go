@@ -72,6 +72,11 @@ type Service struct {
 	// setting VAKT_AUTH_FAIL_OPEN_ON_REDIS_OUTAGE=true and calling
 	// svc.WithFailOpenOnRedisOutage(true).
 	failOpenOnRedisOutage bool
+	// dummyBcryptHash is a precomputed bcrypt hash (cost 12) of a random value.
+	// Login() compares against it when the e-mail is unknown so the bcrypt work
+	// is constant-time regardless of whether the user exists — closing the
+	// timing side-channel that allowed user enumeration (S87-3, F-05, CWE-208).
+	dummyBcryptHash []byte
 }
 
 // WithFailOpenOnRedisOutage flips the lockout-check behaviour to "fail
@@ -129,11 +134,31 @@ type refreshPayload struct {
 // NewService constructs an auth Service.
 func NewService(db *pgxpool.Pool, redisClient *redis.Client, key paseto.V4SymmetricKey) *Service {
 	return &Service{
-		db:       db,
-		redis:    redisClient,
-		key:      key,
-		denyFall: &denyListFallback{db: db},
+		db:              db,
+		redis:           redisClient,
+		key:             key,
+		denyFall:        &denyListFallback{db: db},
+		dummyBcryptHash: newDummyBcryptHash(),
 	}
+}
+
+// newDummyBcryptHash precomputes a bcrypt hash (cost 12) of a cryptographically
+// random value. It is compared against during failed logins for unknown e-mails
+// so the bcrypt cost is paid on every attempt, eliminating the timing oracle.
+func newDummyBcryptHash() []byte {
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		// crypto/rand failure is fatal-grade, but Login must still leave constant
+		// work; fall back to a fixed value so CompareHashAndPassword still runs.
+		secret = []byte("vakt-dummy-timing-defense-fallback")
+	}
+	h, err := bcrypt.GenerateFromPassword(secret, 12)
+	if err != nil {
+		// Should never happen; return a static valid-cost-12 hash so the compare
+		// path stays non-nil. ("invalid" placeholder is never the right password.)
+		return []byte("$2a$12$abcdefghijklmnopqrstuuJ9z7yXqj8c.0xZ3o9kF1m2n3o4p5q6r")
+	}
+	return h
 }
 
 // ErrRegistrationDisabled is returned when a registration attempt is made
@@ -260,7 +285,17 @@ func (s *Service) Login(ctx context.Context, email, password, deviceHint string)
 		WHERE email = $1 AND is_active = TRUE`,
 		email,
 	).Scan(&userID, &passwordHash, &displayName)
+
+	// S87-3 (F-05, CWE-208): always run bcrypt.CompareHashAndPassword, even for
+	// unknown e-mails, so the response latency does not reveal whether the user
+	// exists. On a DB miss we compare against a precomputed dummy hash. The error
+	// text + code are identical in both failure branches (no enumeration signal).
 	if err != nil {
+		hashToCheck := s.dummyBcryptHash
+		if len(hashToCheck) == 0 {
+			hashToCheck = newDummyBcryptHash()
+		}
+		_ = bcrypt.CompareHashAndPassword(hashToCheck, []byte(password))
 		// Failed-attempt-Record: kein user_id, nur email + IP-Spur.
 		s.recordLogin(ctx, "", "", email, deviceHint, "password", "bad_password")
 		// Return a generic error to avoid user-enumeration.
@@ -313,6 +348,13 @@ func (s *Service) Login(ctx context.Context, email, password, deviceHint string)
 	}
 
 	// Update last_login_at.
+	//
+	// S90-8 (#8): this and the success-path recordLogin below run synchronously
+	// and on purpose. Login is rate-limited (10/min per IP) and not a latency-hot
+	// path, so the two tiny best-effort writes add no meaningful tail latency.
+	// Keeping them synchronous avoids a context.WithoutCancel detach that could
+	// race with pool teardown in tests and would obscure write failures — the
+	// marginal speedup is not worth that complexity.
 	if _, updateErr := s.db.Exec(ctx,
 		`UPDATE users SET last_login_at = NOW() WHERE id = $1::uuid`, userID,
 	); updateErr != nil {

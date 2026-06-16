@@ -48,6 +48,14 @@ seed-local:
 test:
 	cd backend && go test ./...
 	cd frontend && npm test
+	bash scripts/restore_test.sh
+	bash scripts/backup_cron_test.sh
+
+test-restore: ## S89-1: restore.sh hardening shell test (key-leak + tamper checks)
+	@bash scripts/restore_test.sh
+
+test-backup: ## S89-4: backup-cron.sh retention + notification shell test
+	@bash scripts/backup_cron_test.sh
 
 lint:
 	cd backend && golangci-lint run ./...

@@ -11,4 +11,6 @@ import (
 func RegisterRoutes(g *echo.Group, db *pgxpool.Pool) {
 	g.GET("/status", GetStatus(db))
 	g.POST("/dismiss", Dismiss(db))
+	// S89-5: guided "first 30 days" path (7 data-derived steps).
+	g.GET("/progress", GetProgressHandler(db))
 }

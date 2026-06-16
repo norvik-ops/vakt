@@ -99,6 +99,12 @@ type Config struct {
 	// Set VAKT_BSI_FEED_ENABLED=false to disable in air-gapped environments or
 	// when the outbound connection to bsi.bund.de is not permitted.
 	BSIFeedEnabled bool
+	// ForceSecureCookies forces the Secure attribute on all session/CSRF cookies
+	// regardless of the request's TLS state or X-Forwarded-Proto header. Default
+	// false (Secure is inferred from TLS/XFP). Set VAKT_FORCE_SECURE_COOKIES=true
+	// in production behind a TLS-terminating proxy as a hard safety net against a
+	// misconfigured proxy that drops X-Forwarded-Proto (S87-5, F-07, CWE-614).
+	ForceSecureCookies bool
 }
 
 // Validate checks that all required environment variables are present and
@@ -267,9 +273,10 @@ func Load() (*Config, error) {
 		// einen Schalter umlegen. Jetzt ist der Endpoint immer aktiv (IP-
 		// allowlisted auf Loopback + Docker-Netz), opt-out via
 		// VAKT_METRICS_DISABLED=true wenn jemand das explizit nicht will.
-		MetricsEnabled: getEnv("VAKT_METRICS_DISABLED", "false") != "true",
-		EPSSEnabled:    getEnv("VAKT_EPSS_ENABLED", "false") == "true",
-		BSIFeedEnabled: getEnv("VAKT_BSI_FEED_ENABLED", "true") == "true",
+		MetricsEnabled:     getEnv("VAKT_METRICS_DISABLED", "false") != "true",
+		EPSSEnabled:        getEnv("VAKT_EPSS_ENABLED", "false") == "true",
+		BSIFeedEnabled:     getEnv("VAKT_BSI_FEED_ENABLED", "true") == "true",
+		ForceSecureCookies: getEnv("VAKT_FORCE_SECURE_COOKIES", "false") == "true",
 	}
 
 	// CORS origins — default to wildcard to preserve dev behaviour.

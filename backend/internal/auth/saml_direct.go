@@ -346,7 +346,7 @@ func (h *Handler) SAMLInitiate(c echo.Context) error {
 			"error": "internal error", "code": "AUTH_SAML_AUTHN_ERROR",
 		})
 	}
-	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
+	secure := CookieSecure(c)
 	c.SetCookie(&http.Cookie{ // nosemgrep: cookie-missing-secure -- Secure is set via variable; static analysis can't resolve it
 		Name:     samlRequestIDCookieName,
 		Value:    signed,
@@ -412,7 +412,7 @@ func (h *Handler) SAMLDirectACS(c echo.Context) error {
 		}
 	}
 	// Always expire the cookie immediately — it is single-use by design.
-	secure := c.Request().TLS != nil || c.Request().Header.Get("X-Forwarded-Proto") == "https"
+	secure := CookieSecure(c)
 	c.SetCookie(&http.Cookie{ // nosemgrep: cookie-missing-secure -- Secure is set via variable; static analysis can't resolve it
 		Name:     samlRequestIDCookieName,
 		Value:    "",

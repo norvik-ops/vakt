@@ -45,3 +45,17 @@ func (h *Handler) GetBSIReportPreview(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, preview)
 }
+
+// ExportBCMHandbuchPDF handles GET /api/v1/vaktcomply/bcm/report.pdf
+// Requires FeatureAuditPDF.
+func (h *Handler) ExportBCMHandbuchPDF(c echo.Context) error {
+	ctx := c.Request().Context()
+	data, err := h.service.GenerateBCMHandbuchPDF(ctx, orgID(c))
+	if err != nil {
+		log.Error().Err(err).Msg("generate bcm handbuch pdf")
+		return errResp(c, http.StatusInternalServerError, "failed to generate Notfallhandbuch PDF", "CK_BCM_PDF_FAILED")
+	}
+	h.service.LogBCMReportExport(ctx, orgID(c), userID(c), data)
+	c.Response().Header().Set("Content-Disposition", `attachment; filename="notfallhandbuch.pdf"`)
+	return c.Blob(http.StatusOK, "application/pdf", data)
+}

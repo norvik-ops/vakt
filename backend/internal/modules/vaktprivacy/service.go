@@ -77,7 +77,54 @@ func (s *Service) CreateVVT(ctx context.Context, orgID string, in CreateVVTInput
 	if in.Recipients == nil {
 		in.Recipients = []string{}
 	}
-	return s.repo.CreateVVT(ctx, orgID, in)
+	entry, err := s.repo.CreateVVT(ctx, orgID, in)
+	if err != nil {
+		return nil, err
+	}
+	// S88-8 DPIA-Trigger: a high-risk processing activity (Art. 9 special
+	// categories, large-scale, profiling, or third-country transfer) auto-creates
+	// a DPIA draft (Art. 35 DSGVO) linked to this VVT. Best-effort: a failure here
+	// never blocks the VVT creation. Intra-module (VVT + DPIA both in vaktprivacy).
+	if high, reason := dpiaRiskIndicator(in); high {
+		vvtID := entry.ID
+		if _, dpiaErr := s.repo.CreateDPIA(ctx, orgID, CreateDPIAInput{
+			VVTEntryID:     &vvtID,
+			Title:          "DPIA-Entwurf: " + in.Name,
+			Description:    "Automatisch vorgeschlagen, weil die Verarbeitung Hochrisiko-Indikatoren aufweist.",
+			RiskAssessment: "Hohes Risiko erkannt: " + reason + ". Bitte Notwendigkeit, Risiken und Abhilfemaßnahmen gem. Art. 35 DSGVO bewerten.",
+		}); dpiaErr != nil {
+			log.Warn().Err(dpiaErr).Str("org_id", orgID).Str("vvt_id", vvtID).Msg("dpia auto-trigger failed")
+		}
+	}
+	return entry, nil
+}
+
+// dpiaRiskIndicator returns (true, reason) when a processing activity shows
+// Art. 35 high-risk indicators that warrant a DPIA: special categories of data
+// (Art. 9), third-country transfer, or large-scale / profiling purposes.
+func dpiaRiskIndicator(in CreateVVTInput) (bool, string) {
+	special := []string{"gesundheit", "health", "biometr", "genetisch", "genetic",
+		"religion", "weltanschauung", "ethnisch", "ethnic", "sexual", "gewerkschaft",
+		"strafrecht", "politische", "race", "rasse"}
+	for _, cat := range in.DataCategories {
+		lc := strings.ToLower(cat)
+		for _, kw := range special {
+			if strings.Contains(lc, kw) {
+				return true, "besondere Kategorien personenbezogener Daten (Art. 9 DSGVO)"
+			}
+		}
+	}
+	if in.ThirdCountryTransfer {
+		return true, "Drittlandübermittlung"
+	}
+	purpose := strings.ToLower(in.Purpose)
+	for _, kw := range []string{"profiling", "scoring", "überwachung", "surveillance",
+		"large scale", "großflächig", "systematische beobachtung", "automatisierte entscheidung"} {
+		if strings.Contains(purpose, kw) {
+			return true, "großflächige/systematische Verarbeitung oder Profiling"
+		}
+	}
+	return false, ""
 }
 
 // UpdateVVT replaces all mutable fields of a VVT entry, normalising nil array fields
