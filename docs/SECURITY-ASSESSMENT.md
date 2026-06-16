@@ -118,6 +118,7 @@ Alle Aussagen im TOM-Dokument (`docs/security/tom.md`) wurden gegen die Go-Imple
 | Externer Pentest | Noch nicht durchgeführt — geplant Q3 2026 (RFP: `docs/security/pentest-rfp.md`). Internes Review Mai 2026 abgeschlossen: 17/17 Findings behoben; statische Verifikation + vollständiger Live-Pentest 2026-05-24: alle TOM-Claims bestätigt, 14/14 Checks OK + 6 Low-Findings behoben, 1 Infra-Finding (CF-Demo, kein App-Bug). |
 | SOC 2 | Nicht anwendbar (self-hosted) |
 | Bug-Bounty-Programm | In Planung |
+| Frontend Build-Tool-Advisory (esbuild `GHSA-gv7w-rqvm-qjhr`, high) | **Akzeptiert / Tech-Debt.** Betrifft nur das Build-Tool esbuild (transitiv via vite 6), **nicht das ausgelieferte Bundle** (`npm audit --omit=dev` = 0) und nicht ausnutzbar (Deno-only RCE-Vektor via `NPM_CONFIG_REGISTRY`; gebaut wird mit Node/npm). Fix erfordert vite 6→8 (zwei Majors, inkl. `@vitejs/plugin-react`) — ein erzwungenes `esbuild ^0.28.1` auf vite 6 bricht den Build (SRI-Plugin). Übrige Frontend-dev-dep-Advisories (js-yaml, redocly, babel, vite `fs.deny`) wurden 2026-06-16 (PR #58) gefixt. **Re-Check: 2026-12-16** (als eigener, voll E2E-getesteter vite-Major-PR). |
 
 ## Responsible Disclosure
 
