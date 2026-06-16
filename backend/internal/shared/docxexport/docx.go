@@ -83,7 +83,7 @@ func (d *Document) Table(headers []string, rows [][]string) *Document {
 	var b strings.Builder
 	b.WriteString(`<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders>`)
 	for _, edge := range []string{"top", "left", "bottom", "right", "insideH", "insideV"} {
-		b.WriteString(fmt.Sprintf(`<w:%s w:val="single" w:sz="4" w:space="0" w:color="auto"/>`, edge))
+		fmt.Fprintf(&b, `<w:%s w:val="single" w:sz="4" w:space="0" w:color="auto"/>`, edge)
 	}
 	b.WriteString(`</w:tblBorders></w:tblPr>`)
 
