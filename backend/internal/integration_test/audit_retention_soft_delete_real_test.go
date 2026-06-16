@@ -42,14 +42,19 @@ func TestAuditRetention_SoftDeletePreservesChain(t *testing.T) {
 	// consistent from the start — no SQL back-dating needed (which would
 	// invalidate the stored entry_hash and break the verifier).
 	twoDaysAgo := time.Now().UTC().Add(-48 * time.Hour)
-	for _, action := range []string{"create", "update"} {
+	// Distinct per-row timestamps: the hash chain is ordered by (created_at, id),
+	// and id is a random UUID. Two rows sharing the exact same created_at would
+	// order non-deterministically by their random ids — flaking VerifyOrgChain
+	// ~50% of the time (same class as commit 2d2be0ff). A 1s stride per row keeps
+	// both well over the 1-day retention window while making the order stable.
+	for i, action := range []string{"create", "update"} {
 		audit.Write(ctx, pool, audit.WriteEntry{
 			OrgID:        orgID,
 			UserEmail:    "ops@example.org",
 			Action:       action,
 			ResourceType: "control",
 			ResourceID:   "ctrl-1",
-			CreatedAt:    twoDaysAgo,
+			CreatedAt:    twoDaysAgo.Add(time.Duration(i) * time.Second),
 		})
 	}
 	audit.Write(ctx, pool, audit.WriteEntry{
