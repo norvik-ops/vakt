@@ -1972,8 +1972,12 @@ SELECT COUNT(*)::int FROM ck_incidents
 WHERE org_id = $1::uuid AND created_at >= $2;
 
 -- name: ListActiveOrgIDs :many
--- Alle nicht gelöschten Organisationen (für den täglichen Score-Snapshot-Job).
-SELECT id::text FROM organizations;
+-- Alle Organisationen für den täglichen Score-Snapshot-Job.
+-- Ephemere Demo-Orgs (slug LIKE 'demo-%') werden ausgeschlossen, da sie
+-- keinen persistenten Score-Verlauf benötigen und nach 4h hart gelöscht werden.
+-- Race Condition fix: score_snapshot und demo cleanup laufen beide um 23:00 UTC.
+SELECT id::text FROM organizations
+WHERE slug NOT LIKE 'demo-%';
 
 -- name: GetExecutiveFrameworkScores :many
 -- Pro Framework: Name, Gesamtanzahl Controls, Anzahl implemented.
