@@ -173,21 +173,8 @@ func handleEPSSEnrich(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc 
 			return nil
 		}
 
-		rows, err := pool.Query(ctx, `SELECT id::text FROM organizations`)
+		orgIDs, err := nonDemoOrgIDs(ctx, pool)
 		if err != nil {
-			return fmt.Errorf("epss_enrich: list orgs: %w", err)
-		}
-		defer rows.Close()
-
-		var orgIDs []string
-		for rows.Next() {
-			var id string
-			if err := rows.Scan(&id); err != nil {
-				continue
-			}
-			orgIDs = append(orgIDs, id)
-		}
-		if err := rows.Err(); err != nil {
 			return err
 		}
 
@@ -226,22 +213,9 @@ func handleSBOMGenerate(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFun
 // from this table instead of running generate_series × vb_findings at request time.
 func handleRiskTrendSnapshot(pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
-		rows, err := pool.Query(ctx, `SELECT id::text FROM organizations`)
+		orgIDs, err := nonDemoOrgIDs(ctx, pool)
 		if err != nil {
-			return fmt.Errorf("risk_trend_snapshot: list orgs: %w", err)
-		}
-		defer rows.Close()
-
-		var orgIDs []string
-		for rows.Next() {
-			var id string
-			if err := rows.Scan(&id); err != nil {
-				continue
-			}
-			orgIDs = append(orgIDs, id)
-		}
-		if err := rows.Err(); err != nil {
-			return fmt.Errorf("risk_trend_snapshot: scan orgs: %w", err)
+			return err
 		}
 
 		const upsertSQL = `
@@ -312,19 +286,10 @@ func handleCertScan(pool *pgxpool.Pool) asynq.HandlerFunc {
 		if payload.OrgID != "" {
 			orgIDs = []string{payload.OrgID}
 		} else {
-			rows, err := pool.Query(ctx, `SELECT id::text FROM organizations`)
+			var err error
+			orgIDs, err = nonDemoOrgIDs(ctx, pool)
 			if err != nil {
-				return fmt.Errorf("cert_scan: list orgs: %w", err)
-			}
-			defer rows.Close()
-			for rows.Next() {
-				var id string
-				if e := rows.Scan(&id); e == nil {
-					orgIDs = append(orgIDs, id)
-				}
-			}
-			if err := rows.Err(); err != nil {
-				return fmt.Errorf("cert_scan: iterate orgs: %w", err)
+				return fmt.Errorf("cert_scan: %w", err)
 			}
 		}
 
@@ -377,21 +342,9 @@ func handleCertScan(pool *pgxpool.Pool) asynq.HandlerFunc {
 // Runs daily to update sla_status on all open findings for all orgs.
 func handleSLACheck(pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, t *asynq.Task) error {
-		rows, err := pool.Query(ctx, `SELECT id::text FROM organizations`)
+		orgIDs, err := nonDemoOrgIDs(ctx, pool)
 		if err != nil {
-			return fmt.Errorf("sla_check: list orgs: %w", err)
-		}
-		defer rows.Close()
-
-		var orgIDs []string
-		for rows.Next() {
-			var id string
-			if e := rows.Scan(&id); e == nil {
-				orgIDs = append(orgIDs, id)
-			}
-		}
-		if err := rows.Err(); err != nil {
-			return fmt.Errorf("sla_check: iterate orgs: %w", err)
+			return fmt.Errorf("sla_check: %w", err)
 		}
 
 		for _, orgID := range orgIDs {

@@ -7,7 +7,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -21,22 +20,9 @@ import (
 // Runs daily at 07:00 UTC (S86-4).
 func handleBCMEvidenceSync(pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
-		rows, err := pool.Query(ctx, `SELECT id::text FROM organizations`)
+		orgIDs, err := nonDemoOrgIDs(ctx, pool)
 		if err != nil {
-			return fmt.Errorf("bcm_evidence_sync: list orgs: %w", err)
-		}
-		defer rows.Close()
-
-		var orgIDs []string
-		for rows.Next() {
-			var id string
-			if err := rows.Scan(&id); err != nil {
-				continue
-			}
-			orgIDs = append(orgIDs, id)
-		}
-		if err := rows.Err(); err != nil {
-			return fmt.Errorf("bcm_evidence_sync: scan orgs: %w", err)
+			return err
 		}
 
 		svc := vaktcomply.NewService(pool)

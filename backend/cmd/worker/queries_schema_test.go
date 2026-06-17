@@ -37,12 +37,20 @@ func TestWorkerRawSQLAgainstSchema(t *testing.T) {
 	}
 	defer conn.Close(ctx)
 
-	files, err := filepath.Glob("handlers_*.go")
+	// Scan all non-test .go files in this package, not only handlers_*.go,
+	// so that shared helpers (shared.go, handlers_shared.go, …) are covered too.
+	all, err := filepath.Glob("*.go")
 	if err != nil {
 		t.Fatal(err)
 	}
+	var files []string
+	for _, f := range all {
+		if !strings.HasSuffix(f, "_test.go") {
+			files = append(files, f)
+		}
+	}
 	if len(files) == 0 {
-		t.Fatal("no handlers_*.go files found — wrong working directory?")
+		t.Fatal("no .go files found — wrong working directory?")
 	}
 
 	queries := extractRawQueries(t, files)

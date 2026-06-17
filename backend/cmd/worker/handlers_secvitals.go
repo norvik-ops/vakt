@@ -150,21 +150,8 @@ func handleRecordEvidence(pool *pgxpool.Pool) asynq.HandlerFunc {
 // Runs daily at 09:00 UTC. Uses errgroup with limit 5 to process orgs in parallel.
 func handleEvidenceExpiryAlert(pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
-		rows, err := pool.Query(ctx, `SELECT id::text FROM organizations`)
+		orgIDs, err := nonDemoOrgIDs(ctx, pool)
 		if err != nil {
-			return fmt.Errorf("evidence_expiry_alert: list orgs: %w", err)
-		}
-		defer rows.Close()
-
-		var orgIDs []string
-		for rows.Next() {
-			var id string
-			if err := rows.Scan(&id); err != nil {
-				continue
-			}
-			orgIDs = append(orgIDs, id)
-		}
-		if err := rows.Err(); err != nil {
 			return err
 		}
 
@@ -210,21 +197,8 @@ func handleEvidenceExpiryAlert(pool *pgxpool.Pool) asynq.HandlerFunc {
 // Uses errgroup with limit 5 for parallel org processing.
 func handleIncidentDeadlineCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
-		rows, err := pool.Query(ctx, `SELECT id::text FROM organizations`)
+		orgIDs, err := nonDemoOrgIDs(ctx, pool)
 		if err != nil {
-			return fmt.Errorf("incident_deadline_check: list orgs: %w", err)
-		}
-		defer rows.Close()
-
-		var orgIDs []string
-		for rows.Next() {
-			var orgID string
-			if err := rows.Scan(&orgID); err != nil {
-				continue
-			}
-			orgIDs = append(orgIDs, orgID)
-		}
-		if err := rows.Err(); err != nil {
 			return err
 		}
 
@@ -251,25 +225,8 @@ func handleIncidentDeadlineCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
 // Runs daily at 07:00 UTC. Uses errgroup with limit 5 for parallel org processing.
 func handleCertExpiryCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
-		rows, err := pool.Query(ctx, `SELECT id::text, name FROM organizations`)
+		orgs, err := nonDemoOrgs(ctx, pool)
 		if err != nil {
-			return fmt.Errorf("cert_expiry_check: list orgs: %w", err)
-		}
-		defer rows.Close()
-
-		type orgRow struct {
-			id   string
-			name string
-		}
-		var orgs []orgRow
-		for rows.Next() {
-			var o orgRow
-			if err := rows.Scan(&o.id, &o.name); err != nil {
-				continue
-			}
-			orgs = append(orgs, o)
-		}
-		if err := rows.Err(); err != nil {
 			return err
 		}
 
@@ -337,22 +294,9 @@ func handleControlTestCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
 // IKT-DORA incidents across all orgs. Runs every 5 minutes (S37-4).
 func handleDORADeadlineStatus(pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
-		// Exclude ephemeral demo orgs (slug LIKE 'demo-%'): they have no DORA incidents
-		// and this task runs every 5 minutes — processing thousands of short-lived demo
-		// orgs would dominate DB load on the public demo server.
-		rows, err := pool.Query(ctx, `SELECT id::text FROM organizations WHERE slug NOT LIKE 'demo-%'`)
+		orgIDs, err := nonDemoOrgIDs(ctx, pool)
 		if err != nil {
-			return fmt.Errorf("dora_deadline_status: list orgs: %w", err)
-		}
-		defer rows.Close()
-
-		var orgIDs []string
-		for rows.Next() {
-			var id string
-			if err := rows.Scan(&id); err != nil {
-				continue
-			}
-			orgIDs = append(orgIDs, id)
+			return err
 		}
 
 		svc := vaktcomply.NewService(pool)
@@ -378,21 +322,8 @@ func handleDORADeadlineStatus(pool *pgxpool.Pool) asynq.HandlerFunc {
 // Runs daily. S39-2.
 func handleNIS2ObligationCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
-		rows, err := pool.Query(ctx, `SELECT id::text FROM organizations`)
+		orgIDs, err := nonDemoOrgIDs(ctx, pool)
 		if err != nil {
-			return fmt.Errorf("nis2_obligation_check: list orgs: %w", err)
-		}
-		defer rows.Close()
-
-		var orgIDs []string
-		for rows.Next() {
-			var orgID string
-			if err := rows.Scan(&orgID); err != nil {
-				continue
-			}
-			orgIDs = append(orgIDs, orgID)
-		}
-		if err := rows.Err(); err != nil {
 			return err
 		}
 
@@ -420,21 +351,8 @@ func handleNIS2ObligationCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
 func handleEvidenceFreshnessCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	const staleThresholdDays = 90
 	return func(ctx context.Context, _ *asynq.Task) error {
-		rows, err := pool.Query(ctx, `SELECT id::text FROM organizations`)
+		orgIDs, err := nonDemoOrgIDs(ctx, pool)
 		if err != nil {
-			return fmt.Errorf("evidence_freshness_check: list orgs: %w", err)
-		}
-		defer rows.Close()
-
-		var orgIDs []string
-		for rows.Next() {
-			var id string
-			if err := rows.Scan(&id); err != nil {
-				continue
-			}
-			orgIDs = append(orgIDs, id)
-		}
-		if err := rows.Err(); err != nil {
 			return err
 		}
 

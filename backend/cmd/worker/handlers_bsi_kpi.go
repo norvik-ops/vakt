@@ -5,7 +5,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -19,22 +18,9 @@ import (
 // Runs daily at 06:15 UTC (S74-2).
 func handleBSIKPISnapshot(pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
-		rows, err := pool.Query(ctx, `SELECT id::text FROM organizations`)
+		orgIDs, err := nonDemoOrgIDs(ctx, pool)
 		if err != nil {
-			return fmt.Errorf("bsi_kpi_snapshot: list orgs: %w", err)
-		}
-		defer rows.Close()
-
-		var orgIDs []string
-		for rows.Next() {
-			var id string
-			if err := rows.Scan(&id); err != nil {
-				continue
-			}
-			orgIDs = append(orgIDs, id)
-		}
-		if err := rows.Err(); err != nil {
-			return fmt.Errorf("bsi_kpi_snapshot: scan orgs: %w", err)
+			return err
 		}
 
 		svc := vaktcomply.NewService(pool)

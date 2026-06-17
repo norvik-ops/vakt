@@ -131,22 +131,9 @@ func createGitLeakIncident(ctx context.Context, pool *pgxpool.Pool, orgID, scanI
 // completed runs, inserting a ck_evidence row for each successful run.
 func handleGitHubCISync(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
-		rows, err := pool.Query(ctx, `SELECT id::text FROM organizations`)
+		orgIDs, err := nonDemoOrgIDs(ctx, pool)
 		if err != nil {
-			return fmt.Errorf("github_ci_sync: list orgs: %w", err)
-		}
-		defer rows.Close()
-
-		var orgIDs []string
-		for rows.Next() {
-			var id string
-			if err := rows.Scan(&id); err != nil {
-				continue
-			}
-			orgIDs = append(orgIDs, id)
-		}
-		if err := rows.Err(); err != nil {
-			return err
+			return fmt.Errorf("github_ci_sync: %w", err)
 		}
 
 		for _, orgID := range orgIDs {

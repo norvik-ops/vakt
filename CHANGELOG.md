@@ -7,6 +7,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Worker: SQLSTATE 23503 FK-Race bei Demo-Cleanup** — alle 10 Batch-Cron-Handler (`score_snapshot`, `risk_trend`, `kpi_snapshot`, `bsi_kpi`, `evidence_staleness`, `backup_freshness_check`, `bcm_evidence_sync`, alle 6 `secvitals`-Handler, `epss_enrich`, `cert_scan`, `sla_check`, `github_ci_sync`) schlossen zuvor ephemere Demo-Orgs (`slug LIKE 'demo-%'`) nicht aus. Der stündliche Demo-Cleanup löscht die Org hart aus `organizations`; ein parallel laufender Batch-Job, der kurz zuvor die Org-ID gelesen hat, schreibt dann in eine Tabelle mit FK-Constraint auf `organizations(id)` → SQLSTATE 23503. Zabbix-Alert ausgelöst 2026-06-17 01:02 CEST. Fix: neues `cmd/worker/shared.go` mit `nonDemoOrgIDs()`/`nonDemoOrgs()` (WHERE slug NOT LIKE 'demo-%'), einheitlich in allen betroffenen Handlern angewendet. Demo-Orgs benötigen keine persistente KPI-/Snapshot-/Evidence-History und werden ohnehin nach 4 h gelöscht.
+- **Schema-Drift-Test jetzt vollständig** — `TestWorkerRawSQLAgainstSchema` prüfte bisher nur `handlers_*.go`; nach dem Hinzufügen von `shared.go` und `handlers_shared.go` wurden deren Raw-SQL-Queries nicht validiert. Test-Glob auf alle `*.go` (ohne `_test.go`) erweitert.
+
+---
+
 **Code-Review-Hardening (Sprint 90).**
 Schließt die Härtungs-/Skalierungs-/Wartbarkeits-Findings des Architektur-Reviews — keine CRITICAL/HIGH, Codebasis als „ungewöhnlich reif" bewertet. Krypto-Kontextbindung, Read-Only-API-Keys, Permission-Cache, Repository-Refactor, Multi-Replica-Doku und ein End-to-End-Middleware-Test.
 
