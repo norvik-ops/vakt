@@ -90,6 +90,12 @@ func List(ctx context.Context, db *pgxpool.Pool, orgID string, filters ListFilte
 	}
 
 	// Data query.
+	// ponytail: deliberate OFFSET (S98-6). The audit-log viewer is a page-numbered
+	// admin UI ("page X of N", prev/next) that needs the COUNT(*) total above —
+	// keyset/cursor can't express "page N of M". OFFSET here is index-backed by
+	// audit_log(org_id, created_at DESC) (migration 151), so shallow pages stay
+	// fast; deep paging is bounded by the date filters the UI applies. Findings,
+	// the genuinely write-heavy hot list, already uses keyset (vaktscan handler).
 	dataArgs := append(args, filters.Limit, filters.Offset) //nolint:gocritic // intentional append to copy
 	dataSQL := fmt.Sprintf(`
 		SELECT id, org_id, user_id, user_email, action, resource_type,

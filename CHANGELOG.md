@@ -9,6 +9,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+**Bugfix — SAML-Direct-Private-Key-Speicherung (Migration 226).**
+
+### Fixed
+
+- **`org_saml_configs.key_pem` TEXT → BYTEA (Migration 226)** — Die Spalte war als `TEXT` deklariert, der gesamte SAML-Code (`auth/saml_direct.go`, `cmd/rotate-key`) speichert dort aber rohe AES-GCM-Ciphertext-Bytes. Roher Ciphertext enthält Nicht-UTF8-Bytes → Postgres lehnte den Insert ab (SQLSTATE 22021); SAML-Direct-Private-Key-Speicherung war für echte Keys defekt (latent, da Enterprise-Feature). Schema-only-Fix, kein Code-Change (Code nutzt bereits `[]byte`). Aufgedeckt durch die re-aktivierte Key-Rotation-E2E.
+- **CI-Härtung** — gofmt-Drift (Sprints 99/100), OpenAPI-Type-Drift (`generated.ts` regeneriert), pprof-semgrep (dedizierter Mux statt DefaultServeMux), und der S99-4-Key-Rotation-Gate-False-Positive (traf legitime `testing.Short()`/Docker-Guards) behoben.
+
+---
+
 **Dokumentations-Audit-Remediation — Sprint 93.**
 Schließt die Doku-Korrektheitsfehler für Self-Hoster und ergänzt aufgabenorientierte ISMS-Guides.
 
@@ -31,7 +40,7 @@ Initial-Bundle entlastet (Recharts + Routen lazy), Slowloris-Härtung, opt-in pp
 
 ### Changed
 
-- **Frontend-Initial-Bundle −88 KiB gzip (S98-1/S98-2)** — Recharts (`ForecastChart` im Dashboard) und alle Modul-Route-Pages laden jetzt via `React.lazy` + `<Suspense>`. `vendor-charts` (106 KiB gzip) ist nicht mehr im Initial-`modulepreload`; Initial-Paint-JS sank von 452 → 364 KiB gzip, Entry-Chunk auf 192 KiB (< 200 KiB-Ziel).
+- **Frontend-Initial-Bundle −129 KiB gzip (S98-1/S98-2)** — Recharts (`ForecastChart` im Dashboard) und alle Modul-Route-Pages laden jetzt via `React.lazy` + `<Suspense>`; zusätzlich wurde **framer-motion vollständig durch leichte CSS-Keyframes ersetzt** (`PageTransition`/`EmptyState`/`SkeletonLoaders`/`SlideOver`, `prefers-reduced-motion`-aware) und aus den Dependencies entfernt. `vendor-charts` (106 KiB) und `vendor-motion` (41 KiB) sind nicht mehr im Initial-Pfad; Initial-Paint-JS sank von **452 → 323 KiB gzip** (< 330-KiB-Ziel), Entry-Chunk 192 KiB.
 - **Notifications-SSE: Push statt 2-s-Poll (S98-5)** — Der Notification-Stream nutzt jetzt Redis Pub/Sub (`notify.SetPublisher`) mit 30-s-Safety-Poll-Fallback statt eines 2-s-DB-Polls pro offenem Tab. DB-Grundlast ist damit O(Events) statt O(Nutzer). Fällt Redis aus, fällt der Stream automatisch auf den alten Poll zurück. Migration 225 (Deckindex `idx_user_notifications_org_cursor`).
 - **DB-Pool-Default 25 → 15 (PERF-M01)** — `VAKT_DB_MAX_CONNS` default gesenkt mit Kommentar zum pgBouncer-Zusammenspiel; verhindert Connection-Sättigung bei mehreren Instanzen.
 

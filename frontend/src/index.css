@@ -108,3 +108,37 @@ body {
   /* Brand colors on print */
   .text-brand { color: #2563eb !important; }
 }
+
+/* ── Lightweight CSS animations (replaces framer-motion on the critical path,
+   S98-1: keeps vendor-motion out of the initial bundle) ───────────────── */
+@keyframes vakt-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes vakt-fade-in-up {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+@keyframes vakt-slide-in-right {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes vakt-slide-out-right {
+  from { transform: translateX(0); }
+  to   { transform: translateX(100%); }
+}
+
+.vakt-fade-in       { animation: vakt-fade-in 0.2s ease-out both; }
+.vakt-fade-in-up    { animation: vakt-fade-in-up 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.vakt-overlay-in    { animation: vakt-fade-in 0.15s ease-out both; }
+.vakt-overlay-out   { animation: vakt-fade-in 0.15s ease-out reverse both; }
+.vakt-slide-in      { animation: vakt-slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.vakt-slide-out     { animation: vakt-slide-out-right 0.2s ease-in both; }
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .vakt-fade-in, .vakt-fade-in-up, .vakt-overlay-in, .vakt-overlay-out,
+  .vakt-slide-in, .vakt-slide-out {
+    animation-duration: 0.01ms !important;
+  }
+}

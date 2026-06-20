@@ -90,7 +90,6 @@ export default defineConfig({
           ],
           'vendor-charts': ['recharts'],
           'vendor-i18n':   ['i18next', 'react-i18next'],
-          'vendor-motion': ['framer-motion'],
         },
       },
     },

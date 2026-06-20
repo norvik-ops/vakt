@@ -218,6 +218,7 @@ VAKT_UPDATE_CHECK=true
 |----------|---------|----------|--------------|
 | `VAKT_METRICS_DISABLED` | — | `false` | Wenn `true`, wird der Prometheus-`/metrics`-Endpunkt deaktiviert. |
 | `VAKT_PPROF_ENABLED` | — | `false` | Wenn `true`, wird ein Go-pprof-Server auf `127.0.0.1:6060` gestartet (nur für Diagnose, nie im Internet exponieren). Siehe [pprof-Anleitung](../operations/runbook.md#pprof). |
+| `VAKT_AUDIT_RETENTION_YEARS` | — | `6` | Aufbewahrung der `audit_log`-Jahres-Partitionen. Ein monatlicher Worker-Job legt kommende Partitionen an und droppt Partitionen, die älter als dieser Wert sind. `0` = nichts droppen (Vorab-Anlage läuft weiter). |
 | `VAKT_LOG_LEVEL` | — | `info` | Globales Log-Level (`trace`, `debug`, `info`, `warn`, `error`). Ungültige Werte fallen auf `info` zurück. |
 | `VAKT_SLO_UPTIME` | — | `99.9` | Ziel-Verfügbarkeit (%) für die Fehlerbudget-Berechnung. |
 | `VAKT_SLO_P99_LATENCY_MS` | — | `500` | Ziel-p99-Latenz (ms) für die Fehlerbudget-Berechnung. |

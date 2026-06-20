@@ -138,6 +138,47 @@ func Collect(ctx context.Context, db *pgxpool.Pool, orgID string) (*ReportData, 
 		}
 		_ = fwRows.Err()
 
+		// S98-9: load domains + controls for ALL frameworks in ONE query
+		// (was N+1: one controls query per framework), then group in-memory.
+		type fwDomains struct {
+			domainMap   map[string]*DomainSection
+			domainOrder []string
+		}
+		byFw := make(map[string]*fwDomains)
+		ctrlRows, cerr := db.Query(gctx, `
+			SELECT c.framework_id::text, c.control_id, c.title, c.domain,
+			       COALESCE(c.manual_status, '') AS manual_status,
+			       COUNT(e.id)::int               AS evidence_count
+			FROM ck_controls c
+			LEFT JOIN ck_evidence e ON e.control_id = c.id
+			WHERE c.org_id = $1::uuid
+			GROUP BY c.id, c.framework_id, c.control_id, c.title, c.domain, c.manual_status
+			ORDER BY c.framework_id, c.domain, c.control_id`, orgID)
+		if cerr != nil {
+			log.Error().Err(cerr).Msg("auditreport: controls query")
+		} else {
+			for ctrlRows.Next() {
+				var fwID, domain string
+				var cr ControlRow
+				if err := ctrlRows.Scan(&fwID, &cr.ControlID, &cr.Title, &domain, &cr.Status, &cr.EvidenceCount); err != nil {
+					log.Error().Err(err).Msg("auditreport: scan control")
+					continue
+				}
+				fd := byFw[fwID]
+				if fd == nil {
+					fd = &fwDomains{domainMap: make(map[string]*DomainSection)}
+					byFw[fwID] = fd
+				}
+				if _, ok := fd.domainMap[domain]; !ok {
+					fd.domainMap[domain] = &DomainSection{Name: domain}
+					fd.domainOrder = append(fd.domainOrder, domain)
+				}
+				fd.domainMap[domain].Controls = append(fd.domainMap[domain].Controls, cr)
+			}
+			ctrlRows.Close()
+			_ = ctrlRows.Err()
+		}
+
 		for _, fm := range frameworks {
 			notStarted := fm.total - fm.implemented - fm.inProgress
 			if notStarted < 0 {
@@ -148,50 +189,11 @@ func Collect(ctx context.Context, db *pgxpool.Pool, orgID string) (*ReportData, 
 				scorePct = float64(fm.implemented) / float64(fm.total) * 100
 			}
 
-			// Load domains + controls for this framework.
-			ctrlRows, err := db.Query(gctx, `
-				SELECT c.control_id, c.title, c.domain,
-				       COALESCE(c.manual_status, '') AS manual_status,
-				       COUNT(e.id)::int               AS evidence_count
-				FROM ck_controls c
-				LEFT JOIN ck_evidence e ON e.control_id = c.id
-				WHERE c.framework_id = $1::uuid AND c.org_id = $2::uuid
-				GROUP BY c.id, c.control_id, c.title, c.domain, c.manual_status
-				ORDER BY c.domain, c.control_id`, fm.id, orgID)
-			if err != nil {
-				log.Error().Err(err).Str("framework", fm.name).Msg("auditreport: controls query")
-				// Still add the framework summary without domain detail.
-				d.Frameworks = append(d.Frameworks, FrameworkSection{
-					Name:          fm.name,
-					TotalControls: fm.total,
-					Implemented:   fm.implemented,
-					InProgress:    fm.inProgress,
-					NotStarted:    notStarted,
-					ScorePct:      scorePct,
-				})
-				continue
-			}
-
-			domainMap := make(map[string]*DomainSection)
-			var domainOrder []string
-			for ctrlRows.Next() {
-				var cr ControlRow
-				var domain string
-				if err := ctrlRows.Scan(&cr.ControlID, &cr.Title, &domain, &cr.Status, &cr.EvidenceCount); err != nil {
-					log.Error().Err(err).Msg("auditreport: scan control")
-					continue
-				}
-				if _, ok := domainMap[domain]; !ok {
-					domainMap[domain] = &DomainSection{Name: domain}
-					domainOrder = append(domainOrder, domain)
-				}
-				domainMap[domain].Controls = append(domainMap[domain].Controls, cr)
-			}
-			ctrlRows.Close()
-
 			var domains []DomainSection
-			for _, dn := range domainOrder {
-				domains = append(domains, *domainMap[dn])
+			if fd := byFw[fm.id]; fd != nil {
+				for _, dn := range fd.domainOrder {
+					domains = append(domains, *fd.domainMap[dn])
+				}
 			}
 
 			d.Frameworks = append(d.Frameworks, FrameworkSection{

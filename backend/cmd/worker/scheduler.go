@@ -20,6 +20,7 @@ import (
 	"github.com/matharnica/vakt/internal/modules/vaktvault"
 	"github.com/matharnica/vakt/internal/services/alerting"
 	"github.com/matharnica/vakt/internal/services/siem"
+	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/bsi"
 	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/emaildigest"
@@ -77,6 +78,14 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		retention.NewRetentionRunTask(),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register retention cron")
+	}
+
+	// Monthly (1st at 03:30 UTC): pre-create upcoming audit_log year partitions
+	// and drop partitions past VAKT_AUDIT_RETENTION_YEARS (S98-10).
+	if _, err := scheduler.Register("30 3 1 * *",
+		audit.NewPartitionMaintTask(),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register audit partition maintenance cron")
 	}
 
 	// Hourly: send weekly digest to orgs whose configured weekday+hour matches now.

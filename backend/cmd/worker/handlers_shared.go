@@ -22,6 +22,7 @@ import (
 	"github.com/matharnica/vakt/internal/services/ai"
 	"github.com/matharnica/vakt/internal/services/alerting"
 	"github.com/matharnica/vakt/internal/services/siem"
+	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/bsi"
 	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/emaildigest"
@@ -106,6 +107,14 @@ func handleDemoCleanup(pool *pgxpool.Pool) asynq.HandlerFunc {
 func handleRetentionRun(pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
 		return retention.RunRetentionAllOrgs(ctx, pool)
+	}
+}
+
+// handlePartitionMaint pre-creates upcoming audit_log year partitions and drops
+// partitions past VAKT_AUDIT_RETENTION_YEARS (S98-10).
+func handlePartitionMaint(pool *pgxpool.Pool) asynq.HandlerFunc {
+	return func(ctx context.Context, _ *asynq.Task) error {
+		return audit.MaintainPartitions(ctx, pool, audit.RetentionYearsFromEnv())
 	}
 }
 

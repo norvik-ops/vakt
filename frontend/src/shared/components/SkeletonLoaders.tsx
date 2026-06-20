@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import { Skeleton } from '../../components/ui/skeleton'
 
 /**
@@ -7,7 +6,7 @@ import { Skeleton } from '../../components/ui/skeleton'
  */
 export function SkeletonTable({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="space-y-2" role="status" aria-busy="true" aria-label="Tabelle wird geladen">
+    <div className="vakt-fade-in space-y-2" role="status" aria-busy="true" aria-label="Tabelle wird geladen">
       {/* Header row */}
       <div className="flex gap-3 px-1 pb-2 border-b border-border">
         {Array.from({ length: cols }).map((_, i) => (
@@ -30,7 +29,7 @@ export function SkeletonTable({ rows = 5, cols = 4 }: { rows?: number; cols?: nu
           ))}
         </div>
       ))}
-    </motion.div>
+    </div>
   )
 }
 
@@ -40,11 +39,8 @@ export function SkeletonTable({ rows = 5, cols = 4 }: { rows?: number; cols?: nu
  */
 export function SkeletonCardGrid({ count = 6 }: { count?: number }) {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2 }}
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+    <div
+      className="vakt-fade-in grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
       role="status"
       aria-busy="true"
       aria-label="Karten werden geladen"
@@ -70,7 +66,7 @@ export function SkeletonCardGrid({ count = 6 }: { count?: number }) {
           </div>
         </div>
       ))}
-    </motion.div>
+    </div>
   )
 }
 
@@ -79,7 +75,7 @@ export function SkeletonCardGrid({ count = 6 }: { count?: number }) {
  */
 export function SkeletonDetailPage() {
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="space-y-6" role="status" aria-busy="true" aria-label="Seite wird geladen">
+    <div className="vakt-fade-in space-y-6" role="status" aria-busy="true" aria-label="Seite wird geladen">
       {/* Full-width header block */}
       <div className="space-y-2">
         <Skeleton className="h-7 w-1/3 rounded" />
@@ -132,7 +128,7 @@ export function SkeletonDetailPage() {
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }
 
@@ -142,17 +138,14 @@ export function SkeletonDetailPage() {
  */
 export function SkeletonStatCard() {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2 }}
-      className="rounded-lg border border-border bg-surface p-5 space-y-2"
+    <div
+      className="vakt-fade-in rounded-lg border border-border bg-surface p-5 space-y-2"
       role="status"
       aria-busy="true"
       aria-label="Statistik wird geladen"
     >
       <Skeleton className="h-8 w-1/2 rounded" />
       <Skeleton className="h-4 w-2/3 rounded" />
-    </motion.div>
+    </div>
   )
 }

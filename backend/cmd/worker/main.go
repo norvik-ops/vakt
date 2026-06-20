@@ -194,6 +194,7 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 
 	// Data retention — daily pruning of expired records
 	mux.HandleFunc(retention.TaskRetentionRun, handleRetentionRun(pool))
+	mux.HandleFunc(audit.TaskPartitionMaint, handlePartitionMaint(pool))
 
 	// Weekly e-mail digest — Monday morning status summary
 	mux.HandleFunc(emaildigest.TaskWeeklyDigest, handleWeeklyDigest(cfg, pool))

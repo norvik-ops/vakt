@@ -342,73 +342,48 @@ func CheckCertificationDeadlines(ctx context.Context, db *pgxpool.Pool, _ *Maile
 		return nil
 	}
 
-	// Step 1: find distinct orgs with approaching milestones.
-	orgRows, err := db.Query(ctx, `
-		SELECT DISTINCT org_id::text FROM ck_audit_milestones
+	// S98-9: single query over all upcoming milestones across orgs (was N+1:
+	// a DISTINCT-org query followed by one milestone query per org). Ordered by
+	// org so processing stays grouped; identical notifications are produced.
+	rows, err := db.Query(ctx, `
+		SELECT org_id::text, title, milestone_date, (milestone_date - NOW()::date)::int AS days_until
+		FROM ck_audit_milestones
 		WHERE milestone_date BETWEEN NOW() AND NOW() + INTERVAL '30 days'
 		  AND status != 'completed'
+		ORDER BY org_id, milestone_date
 	`)
 	if err != nil {
-		return fmt.Errorf("CheckCertificationDeadlines: org query: %w", err)
+		return fmt.Errorf("CheckCertificationDeadlines: milestone query: %w", err)
 	}
-	defer orgRows.Close()
+	defer rows.Close()
 
-	var orgIDs []string
-	for orgRows.Next() {
-		var id string
-		if err := orgRows.Scan(&id); err != nil {
-			log.Error().Err(err).Msg("CheckCertificationDeadlines: scan org_id")
-			continue
-		}
-		orgIDs = append(orgIDs, id)
-	}
-	if err := orgRows.Err(); err != nil {
-		return fmt.Errorf("CheckCertificationDeadlines: org rows: %w", err)
-	}
-
-	// Step 2: for each org, load upcoming milestones and send in-app notifications.
-	for _, orgID := range orgIDs {
-		milestoneRows, err := db.Query(ctx, `
-			SELECT title, milestone_date, (milestone_date - NOW()::date)::int AS days_until
-			FROM ck_audit_milestones
-			WHERE org_id = $1::uuid
-			  AND milestone_date BETWEEN NOW() AND NOW() + INTERVAL '30 days'
-			  AND status != 'completed'
-			ORDER BY milestone_date
-		`, orgID)
-		if err != nil {
-			log.Error().Err(err).Str("org_id", orgID).Msg("CheckCertificationDeadlines: milestone query")
+	for rows.Next() {
+		var (
+			orgID      string
+			title      string
+			targetDate time.Time
+			daysUntil  int
+		)
+		if err := rows.Scan(&orgID, &title, &targetDate, &daysUntil); err != nil {
+			log.Error().Err(err).Msg("CheckCertificationDeadlines: scan milestone")
 			continue
 		}
 
-		for milestoneRows.Next() {
-			var (
-				title      string
-				targetDate time.Time
-				daysUntil  int
-			)
-			if err := milestoneRows.Scan(&title, &targetDate, &daysUntil); err != nil {
-				log.Error().Err(err).Msg("CheckCertificationDeadlines: scan milestone")
-				continue
-			}
-
-			notifType := "info"
-			if daysUntil <= 14 {
-				notifType = "warning"
-			}
-
-			notifyTitle := fmt.Sprintf("Zertifizierungs-Deadline in %d Tagen", daysUntil)
-			notifyBody := fmt.Sprintf("Milestone \"%s\" ist am %s fällig.",
-				title, targetDate.Format("02.01.2006"))
-
-			notify.Send(ctx, db, orgID, notifyTitle, notifyBody, notifType, "vaktcomply")
-			log.Info().Str("org_id", orgID).Str("milestone", title).Int("days_until", daysUntil).
-				Msg("CheckCertificationDeadlines: in-app notification sent")
+		notifType := "info"
+		if daysUntil <= 14 {
+			notifType = "warning"
 		}
-		milestoneRows.Close()
-		if err := milestoneRows.Err(); err != nil {
-			log.Error().Err(err).Str("org_id", orgID).Msg("CheckCertificationDeadlines: milestone rows error")
-		}
+
+		notifyTitle := fmt.Sprintf("Zertifizierungs-Deadline in %d Tagen", daysUntil)
+		notifyBody := fmt.Sprintf("Milestone \"%s\" ist am %s fällig.",
+			title, targetDate.Format("02.01.2006"))
+
+		notify.Send(ctx, db, orgID, notifyTitle, notifyBody, notifType, "vaktcomply")
+		log.Info().Str("org_id", orgID).Str("milestone", title).Int("days_until", daysUntil).
+			Msg("CheckCertificationDeadlines: in-app notification sent")
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("CheckCertificationDeadlines: milestone rows: %w", err)
 	}
 	return nil
 }
