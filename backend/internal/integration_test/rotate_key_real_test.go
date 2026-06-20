@@ -206,10 +206,13 @@ func TestRotateKey_EndToEnd(t *testing.T) {
 	_, err = sharedcrypto.Decrypt(oldProjectKey, rotatedVaultCT)
 	assert.Error(t, err, "old project key must no longer decrypt rotated vault row")
 
-	// 2. totp
+	// 2. totp — secret is TEXT storing hex(ciphertext), so hex-decode before
+	// decrypting (matches auth/totp_handler.go and the github column below).
 	newTOTP, _ := sharedcrypto.DeriveServiceKey(newMaster, "vakt-totp-v1")
-	var rotatedTOTPCT []byte
-	require.NoError(t, pool.QueryRow(ctx, `SELECT secret FROM totp_secrets WHERE user_id=$1::uuid`, userID).Scan(&rotatedTOTPCT))
+	var rotatedTOTPHex string
+	require.NoError(t, pool.QueryRow(ctx, `SELECT secret FROM totp_secrets WHERE user_id=$1::uuid`, userID).Scan(&rotatedTOTPHex))
+	rotatedTOTPCT, err := hex.DecodeString(rotatedTOTPHex)
+	require.NoError(t, err)
 	got, err = sharedcrypto.Decrypt(newTOTP, rotatedTOTPCT)
 	require.NoError(t, err)
 	assert.Equal(t, totpPlain, got)
