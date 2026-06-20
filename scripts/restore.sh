@@ -131,6 +131,20 @@ fi
 
 pg_restore --clean --if-exists -d "$DB_URL" "$WORK_DIR/db.pgdump"
 
+if [ -f "$WORK_DIR/uploads.tar.gz" ]; then
+	echo "→ Restoring uploads volume (evidence attachments)..."
+	if ! docker volume inspect uploads_data >/dev/null 2>&1; then
+		docker volume create uploads_data
+	fi
+	docker run --rm \
+		-v uploads_data:/data \
+		-v "$WORK_DIR":/backup:ro \
+		alpine:latest sh -c "cd /data && tar xzf /backup/uploads.tar.gz"
+	echo "✓ Uploads volume restored"
+else
+	echo "   (No uploads.tar.gz in archive — uploads volume not restored)"
+fi
+
 # Hand the recovered key to the operator securely: a 0600 temp file that is
 # SHREDDED when this script exits (cleanup trap). The operator copies it into
 # .env during the pause below; it never lingers in /tmp and is never echoed.

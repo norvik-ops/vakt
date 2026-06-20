@@ -35,6 +35,17 @@ fi
 echo "→ Dumping PostgreSQL..."
 pg_dump "$DB_URL" --format=custom --compress=9 -f "$WORK_DIR/db.pgdump"
 
+echo "→ Backing up uploads volume (evidence attachments)..."
+if docker volume inspect uploads_data >/dev/null 2>&1; then
+	docker run --rm \
+		-v uploads_data:/data:ro \
+		-v "$WORK_DIR":/backup \
+		alpine:latest tar czf /backup/uploads.tar.gz -C /data .
+	echo "   uploads_data volume archived"
+else
+	echo "   uploads_data volume not found — skipping (no evidence attachments yet?)"
+fi
+
 echo "→ Encrypting encryption key..."
 # Non-interactive mode: use env var or passphrase file (for cron/automation).
 # Falls back to interactive prompt when running with a TTY.

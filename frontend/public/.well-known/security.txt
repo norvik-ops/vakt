@@ -1,0 +1,9 @@
+# Vakt — Security contact (RFC 9116)
+# This is a self-hosted instance. Report issues to the operator first;
+# for the Vakt product itself, contact NorvikOps.
+
+Contact: mailto:security@norvikops.de
+Expires: 2027-06-20T00:00:00.000Z
+Preferred-Languages: de, en
+Canonical: https://secdemo.norvikops.de/.well-known/security.txt
+Policy: https://github.com/norvik-ops/vatk/blob/main/SECURITY.md

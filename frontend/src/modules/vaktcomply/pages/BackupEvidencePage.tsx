@@ -32,6 +32,7 @@ import {
   useDeleteBackupJob,
   useCreateRestoreTest,
 } from '../hooks/useBackupJobs'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 import type {
   BackupJob,
   BackupJobInput,
@@ -126,7 +127,7 @@ function RestoreTestDialog({ jobId, onClose }: { jobId: string; onClose: () => v
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>{t('backup.restoreTest.rtoTarget')}</Label>
+              <Label><TermTooltip term="RTO" glossaryKey="RTO">{t('backup.restoreTest.rtoTarget')}</TermTooltip></Label>
               <Input
                 type="number"
                 min={0}

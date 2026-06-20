@@ -30,6 +30,7 @@ import {
   useUpdateBIAProcess,
   useDeleteBIAProcess,
 } from '../hooks/useBIA'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 import type { BIAProcess, BIACriticality, CreateBIAProcessInput } from '../types'
 
 const CRIT_CLASS: Record<BIACriticality, string> = {
@@ -114,7 +115,7 @@ function BIACard({
         <div className="grid grid-cols-3 gap-2 text-xs">
           <div className="text-center p-1.5 rounded bg-muted/40">
             <p className="font-semibold">{process.rto_hours}h</p>
-            <p className="text-muted-foreground">RTO</p>
+            <p className="text-muted-foreground"><TermTooltip term="RTO" glossaryKey="RTO">RTO</TermTooltip></p>
           </div>
           <div className="text-center p-1.5 rounded bg-muted/40">
             <p className="font-semibold">{process.rpo_hours}h</p>

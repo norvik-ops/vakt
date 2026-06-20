@@ -16,6 +16,7 @@ import { useBCMReadinessScore } from '../hooks/useBCMScore'
 import { useBIASummary } from '../hooks/useBIA'
 import { useRecoveryPlans } from '../hooks/useRecoveryPlans'
 import { useEmergencyContacts } from '../hooks/useEmergencyContacts'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 
 function ScoreGauge({ score }: { score: number }) {
   const color =
@@ -124,7 +125,7 @@ export default function BCMDashboardPage() {
             <CardContent className="pt-5 flex flex-col gap-1">
               <div className="flex items-center gap-2 text-muted-foreground text-xs">
                 <ActivitySquare className="w-3.5 h-3.5" />
-                {t('bcm.dashboard.biaProcesses')}
+                <TermTooltip term="BIA" glossaryKey="BIA">{t('bcm.dashboard.biaProcesses')}</TermTooltip>
               </div>
               <p className="text-2xl font-bold">{summary?.total ?? '—'}</p>
               {(summary?.high_critical ?? 0) > 0 && (

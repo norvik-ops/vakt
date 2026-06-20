@@ -5,6 +5,7 @@ import { Button } from '../../../components/ui/button'
 import { Spinner } from '../../../components/Spinner'
 import { toast } from '../../../shared/hooks/useToast'
 import { useKPIDashboard } from '../hooks/useKPIDashboard'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 import type { KPISnapshot } from '../types'
 
 // ── KPI configuration ──────────────────────────────────────────────────────
@@ -128,7 +129,7 @@ export default function KPIDashboardPage() {
   if (isError) {
     return (
       <div className="p-6 text-red-400">
-        Fehler beim Laden des ISMS KPI-Dashboards.
+        Fehler beim Laden des <TermTooltip term="ISMS" glossaryKey="ISMS">ISMS</TermTooltip> KPI-Dashboards.
       </div>
     )
   }

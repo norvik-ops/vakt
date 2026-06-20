@@ -314,7 +314,27 @@
       "statusAccepted": "Accepté",
       "statusClosed": "Clôturé",
       "previewScore": "Score de risque estimé",
-      "saving": "Enregistrement…"
+      "saving": "Enregistrement…",
+      "methodologyBtn": "Méthodologie",
+      "methodologyTitle": "Méthodologie d'évaluation des risques",
+      "methodologyIntro": "Vakt utilise une matrice de risques 5×5 (basée sur ISO 27005). Score = Probabilité × Impact.",
+      "methodologyLikelihoodTitle": "Probabilité (1–5)",
+      "methodologyImpactTitle": "Impact (1–5)",
+      "methodologyScoreTitle": "Catégories de score",
+      "methodologyLikelihood1": "1 — Très improbable (< 1× par 10 ans)",
+      "methodologyLikelihood2": "2 — Improbable (1× par 3–10 ans)",
+      "methodologyLikelihood3": "3 — Possible (1× par an)",
+      "methodologyLikelihood4": "4 — Probable (plusieurs fois par an)",
+      "methodologyLikelihood5": "5 — Très probable (fréquemment / régulièrement)",
+      "methodologyImpact1": "1 — Négligeable (aucun dommage mesurable)",
+      "methodologyImpact2": "2 — Mineur (dommage local, brève interruption)",
+      "methodologyImpact3": "3 — Modéré (dommage notable, jours d'indisponibilité)",
+      "methodologyImpact4": "4 — Significatif (dommage financier/réputation important)",
+      "methodologyImpact5": "5 — Critique (menace existentielle / obligation NIS2/RGPD)",
+      "methodologyScoreLow": "1–4 — Faible : tolérable, surveiller périodiquement",
+      "methodologyScoreMedium": "5–9 — Moyen : planifier et mettre en œuvre des mesures",
+      "methodologyScoreHigh": "10–14 — Élevé : prendre des mesures rapidement",
+      "methodologyScoreCritical": "15–25 — Critique : traitement immédiat requis"
     },
     "incidentsPage": {
       "title": "Registre des incidents",
@@ -1557,7 +1577,29 @@
     "topRisks": "Top 5 des risques",
     "showAll": "Tout afficher",
     "recentActivity": "Activité récente",
-    "modules": "Modules",
+    "modules": {
+      "scan": {
+        "description": "Orchestration de scanners & gestion des vulnérabilités"
+      },
+      "comply": {
+        "description": "Conformité & documentation — NIS2, ISO 27001, BSI"
+      },
+      "vault": {
+        "description": "Gestion des secrets, rotation & scan Git"
+      },
+      "aware": {
+        "description": "Simulation de phishing & sensibilisation à la sécurité"
+      },
+      "privacy": {
+        "description": "Documentation RGPD — RoT, AIPD, DPA, violations"
+      },
+      "badgeCritical": "{{count}} critique(s)",
+      "badgeFramework": "{{count}} framework(s)",
+      "badgeProject": "{{count}} projet(s)",
+      "badgeActive": "{{count}} actif(s)",
+      "badgeOpen": "{{count}} ouvert(s)",
+      "title": "Modules"
+    },
     "settingsSection": "Paramètres",
     "noFrameworks": "Aucun référentiel configuré.",
     "noRisks": "Aucun risque enregistré.",
@@ -1590,7 +1632,13 @@
     "scoreConfig": "Configuration du score",
     "scoreConfigDesc": "Personnaliser la formule de score et les pondérations",
     "alerting": "Alertes",
-    "alertingDesc": "Gérer les canaux de notification"
+    "alertingDesc": "Gérer les canaux de notification",
+    "recentlyVisited": "Récemment visité",
+    "settings_title": "Paramètres",
+    "settings_scoreConfig": "Configuration du score",
+    "settings_scoreConfigDesc": "Ajuster la formule de score et les pondérations",
+    "settings_alerting": "Alertes",
+    "settings_alertingDesc": "Gérer les canaux de notification"
   },
   "theme": {
     "lightMode": "Mode clair",
@@ -2694,5 +2742,32 @@
       "evidence": "Traiter les premiers contrôles et téléverser des preuves",
       "policy": "Adopter une première politique depuis un modèle"
     }
+  },
+  "glossary": {
+    "Control": "Contrôle (ISO 27001 Annexe A) : mesure de sécurité de l'information. ISO 27001:2022 définit 93 contrôles répartis en 4 thèmes.",
+    "Nachweis": "Preuve (Evidence) : document attestant qu'un contrôle a été mis en œuvre — ex. capture d'écran, journal, audit trail, certificat.",
+    "Evidence": "Preuve (Evidence) : document attestant qu'un contrôle a été mis en œuvre — ex. capture d'écran, journal, audit trail, certificat.",
+    "Schutzbedarf": "Besoin de protection (BSI) : classification des données et systèmes selon le potentiel de dommage en cas de perte de confidentialité, intégrité ou disponibilité.",
+    "Residualrisiko": "Risque résiduel : risque subsistant après application de tous les contrôles. Doit être documenté et accepté par la direction (ISO 27001 §6.1.3).",
+    "Eintrittswahrscheinlichkeit": "Probabilité d'occurrence du risque, de 1 (très improbable) à 5 (très probable). Multipliée par l'impact pour obtenir le score de risque.",
+    "Auswirkung": "Impact : étendue des dommages en cas de réalisation du risque, de 1 (négligeable) à 5 (critique/existentiel).",
+    "SoA": "Statement of Applicability — ISO 27001:2022 §6.1.3 : document obligatoire listant l'applicabilité des 93 contrôles de l'Annexe A avec justification des exclusions.",
+    "RTO": "Recovery Time Objective : durée maximale d'indisponibilité tolérable avant reprise. Indicateur clé BCM selon BSI 200-4.",
+    "RPO": "Recovery Point Objective : perte de données maximale acceptable (entre la dernière sauvegarde et la panne). Indicateur clé BCM selon BSI 200-4.",
+    "MBCO": "Minimum Business Continuity Objective : niveau de service minimum qu'un processus doit maintenir en mode dégradé. BSI 200-4.",
+    "BIA": "Business Impact Analysis : analyse des impacts métier en cas de défaillance des processus critiques. Base pour définir RTO/RPO/MBCO.",
+    "Maximumprinzip": "Principe du maximum BSI : le besoin de protection est déterminé par la valeur la plus élevée parmi tous les utilisateurs/données d'un système.",
+    "NC": "Non-conformité : écart par rapport à l'état requis (ISO 19011). NC majeure : exigence non satisfaite. NC mineure : écart isolé sans menace fondamentale.",
+    "CAPA": "Action corrective et préventive : mesure documentée pour corriger une non-conformité et prévenir sa récurrence (ISO 27001 §10.1).",
+    "VVT": "Registre des activités de traitement — Art. 30 RGPD : documentation obligatoire des finalités, bases légales, destinataires, catégories de données et délais de conservation.",
+    "DPIA": "Data Protection Impact Assessment — Art. 35 RGPD : analyse d'impact obligatoire avant les traitements à risque élevé (profilage, biométrie, vidéosurveillance).",
+    "DSFA": "Analyse d'impact relative à la protection des données (DPIA) — Art. 35 RGPD : évaluation obligatoire avant tout traitement à haut risque.",
+    "AVV": "Accord de traitement des données — Art. 28 RGPD : contrat obligatoire avec tout sous-traitant traitant des données personnelles pour votre compte.",
+    "DSR": "Demande des personnes concernées — Art. 15–22 RGPD : droit d'accès, rectification, effacement, limitation, opposition, portabilité. Délai de réponse : 30 jours.",
+    "TOMs": "Mesures techniques et organisationnelles (Art. 32 RGPD) : safeguards pour les données personnelles — chiffrement, contrôle d'accès, sauvegardes, pseudonymisation.",
+    "NIS2": "Directive NIS2 (UE 2022/2555) : directive européenne de cybersécurité pour les opérateurs d'entités essentielles et importantes.",
+    "ISO27001": "ISO/IEC 27001:2022 : norme internationale pour les systèmes de management de la sécurité de l'information (SMSI). Définit 93 contrôles en Annexe A.",
+    "BSI200": "BSI IT-Grundschutz (BSI-Standard 200-x) : méthodologie de l'Office fédéral allemand de la sécurité informatique pour la protection systématique des SI.",
+    "ISMS": "Système de management de la sécurité de l'information : approche systématique de gestion des informations confidentielles — base pour la certification ISO 27001."
   }
 }

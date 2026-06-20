@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ShieldAlert, Plus, List, BarChart2, ChevronsUpDown, ChevronUp, ChevronDown, RefreshCw, Trash2, Library } from 'lucide-react'
+import { ShieldAlert, Plus, List, BarChart2, ChevronsUpDown, ChevronUp, ChevronDown, RefreshCw, Trash2, Library, HelpCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../../components/ui/button'
@@ -18,6 +18,7 @@ import { Pagination } from '../../../shared/components/Pagination'
 import { BulkActionBar } from '../../../shared/components/BulkActionBar'
 import { ThreatCatalogDialog } from '../components/ThreatCatalogDialog'
 import { useSortableTable } from '../../../shared/hooks/useSortableTable'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 import { useDeferredDelete } from '../../../shared/hooks/useDeferredDelete'
 import { toast } from '../../../shared/hooks/useToast'
 import { useRisks, useCreateRisk, useDeleteRisk, useUpdateRiskStatus } from '../hooks/useRisks'
@@ -84,7 +85,7 @@ function RiskMatrixHeatmap({ risks }: { risks: Risk[] }) {
               <span key={l} className="w-10 m-0.5 text-center text-xs text-gray-500">{l}</span>
             ))}
           </div>
-          <div className="text-xs text-gray-500 text-center mt-1 pl-4">← Eintrittswahrscheinlichkeit</div>
+          <div className="text-xs text-gray-500 text-center mt-1 pl-4">← <TermTooltip term="Eintrittswahrscheinlichkeit" glossaryKey="Eintrittswahrscheinlichkeit">Eintrittswahrscheinlichkeit</TermTooltip></div>
         </div>
         {/* Legend */}
         <div className="ml-0 mt-3 sm:ml-4 sm:mt-0 flex flex-row flex-wrap sm:flex-col gap-x-3 gap-y-1 sm:justify-center text-xs shrink-0">
@@ -263,6 +264,7 @@ export default function RisksPage() {
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [catalogOpen, setCatalogOpen] = useState(false)
+  const [methodologyOpen, setMethodologyOpen] = useState(false)
   const [form, setForm] = useState<CreateRiskInput>(emptyForm())
   const [view, setView] = useState<'list' | 'heatmap'>('list')
   const [page, setPage] = useState(1)
@@ -407,6 +409,10 @@ export default function RisksPage() {
               label="Word"
               format="docx"
             />
+            <Button variant="ghost" size="sm" onClick={() => { setMethodologyOpen(true); }} title={t('vaktcomply.risksPage.methodologyBtn')}>
+              <HelpCircle className="w-4 h-4 mr-1" />
+              {t('vaktcomply.risksPage.methodologyBtn')}
+            </Button>
             <Button variant="outline" onClick={() => { setCatalogOpen(true); }}>
               <Library className="w-4 h-4 mr-1" />
               {t('threatCatalog.fromCatalog')}
@@ -419,6 +425,50 @@ export default function RisksPage() {
         }
       />
       <ThreatCatalogDialog open={catalogOpen} onClose={() => { setCatalogOpen(false); }} />
+
+      {/* Risk methodology dialog */}
+      <Dialog open={methodologyOpen} onOpenChange={setMethodologyOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t('vaktcomply.risksPage.methodologyTitle')}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">{t('vaktcomply.risksPage.methodologyIntro')}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">{t('vaktcomply.risksPage.methodologyLikelihoodTitle')}</h4>
+              <ul className="space-y-0.5 text-xs text-foreground">
+                {(['1','2','3','4','5'] as const).map(n => (
+                  <li key={n}>{t(`vaktcomply.risksPage.methodologyLikelihood${n}`)}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">{t('vaktcomply.risksPage.methodologyImpactTitle')}</h4>
+              <ul className="space-y-0.5 text-xs text-foreground">
+                {(['1','2','3','4','5'] as const).map(n => (
+                  <li key={n}>{t(`vaktcomply.risksPage.methodologyImpact${n}`)}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <div className="mt-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">{t('vaktcomply.risksPage.methodologyScoreTitle')}</h4>
+            <ul className="space-y-1 text-xs">
+              {[
+                { key: 'Low', color: '#d1fae5' },
+                { key: 'Medium', color: '#fef3c7' },
+                { key: 'High', color: '#fed7aa' },
+                { key: 'Critical', color: '#fecaca' },
+              ].map(({ key, color }) => (
+                <li key={key} className="flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: color }} />
+                  {t(`vaktcomply.risksPage.methodologyScore${key}`)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex-1 p-6 space-y-6">
         {/* Sort toolbar — list view only */}

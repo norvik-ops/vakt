@@ -33,6 +33,7 @@ import {
   useLinkAssetToPNA,
 } from '../hooks/useProtectionNeeds'
 import { apiFetch } from '../../../api/client'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 import type {
   ProtectionNeedAssessment,
   ProtectionLevel,
@@ -405,7 +406,7 @@ export default function ProtectionNeedsPage() {
               <div className="grid grid-cols-3 gap-3">
                 {(['confidentiality', 'integrity', 'availability'] as const).map((dim) => (
                   <div key={dim} className="space-y-1.5">
-                    <Label className="text-xs">{t(`protectionNeeds.dim.${dim}`)}</Label>
+                    <Label className="text-xs"><TermTooltip term="Schutzbedarf" glossaryKey="Schutzbedarf">{t(`protectionNeeds.dim.${dim}`)}</TermTooltip></Label>
                     <Select
                       value={form[dim]}
                       onValueChange={(v) => { setForm((f) => ({ ...f, [dim]: v as ProtectionLevel })); }}

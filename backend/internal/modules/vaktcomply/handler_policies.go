@@ -163,5 +163,10 @@ func (h *Handler) GeneratePolicyDraft(c echo.Context) error {
 		}
 		return errResp(c, http.StatusInternalServerError, "AI generation failed", "CK_AI_FAILED")
 	}
-	return c.JSON(http.StatusOK, map[string]string{"draft": draft})
+	// EU AI Act Art. 52: users must be informed when content is AI-generated.
+	return c.JSON(http.StatusOK, map[string]any{
+		"draft":         draft,
+		"ai_generated":  true,
+		"ai_disclaimer": "KI-generierter Entwurf gemäß EU-KI-Verordnung Art. 52 — bitte von einem qualifizierten Experten prüfen lassen.",
+	})
 }

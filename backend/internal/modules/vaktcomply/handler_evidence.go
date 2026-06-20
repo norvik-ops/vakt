@@ -18,9 +18,14 @@ import (
 )
 
 // UploadEvidence handles POST /api/v1/vaktcomply/controls/:id/evidence/upload.
-// Accepts multipart/form-data with fields: file (required), title (required),
-// notes (optional), expires_at (optional, RFC3339 or YYYY-MM-DD).
+// Deprecated: use POST /controls/:id/evidence-files (UploadEvidenceFile) instead,
+// which routes through EvidenceFileService with proper MIME validation and
+// a separate ck_evidence_files table. This legacy route is retained for
+// backwards compatibility and will be removed in a future release.
 func (h *Handler) UploadEvidence(c echo.Context) error {
+	c.Response().Header().Set("Deprecation", "true")
+	c.Response().Header().Set("Link", `</api/v1/vaktcomply/controls/{id}/evidence-files>; rel="successor-version"`)
+
 	controlID := c.Param("id")
 
 	title := c.FormValue("title")

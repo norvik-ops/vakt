@@ -31,6 +31,7 @@ import {
   useDeleteRecoveryPlan,
 } from '../hooks/useRecoveryPlans'
 import { useBIAProcesses } from '../hooks/useBIA'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 import type { RecoveryPlan, RecoveryStep, CreateRecoveryPlanInput } from '../types'
 
 const STATUS_CLASS: Record<RecoveryPlan['status'], string> = {
@@ -113,7 +114,7 @@ function PlanCard({
               <Badge className={STATUS_CLASS[plan.status]} variant="outline">
                 {t(`bcm.recoveryPlans.status.${plan.status}`)}
               </Badge>
-              <span className="text-xs text-muted-foreground">RTO: {plan.rto_hours}h</span>
+              <span className="text-xs text-muted-foreground"><TermTooltip term="RTO" glossaryKey="RTO">RTO</TermTooltip>: {plan.rto_hours}h</span>
               {plan.bia_process_name && (
                 <span className="text-xs text-muted-foreground truncate max-w-[120px]">
                   {plan.bia_process_name}

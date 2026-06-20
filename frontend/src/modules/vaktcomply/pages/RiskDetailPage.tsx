@@ -18,6 +18,7 @@ import { useRiskNarrative } from '../hooks/useAIInsights'
 import RiskTreatmentPanel from '../components/RiskTreatmentPanel'
 import type { Risk, UpdateRiskInput } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 
 const SCORE_COLOR = (score: number) => {
   if (score >= 15) return 'bg-red-500/20 text-red-400 border-red-500/30'
@@ -274,7 +275,7 @@ export default function RiskDetailPage() {
           {/* S61-4: Residualrisiko-Berechnung */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Residualrisiko-Berechnung (ISO 27001 Clause 8.3)</CardTitle>
+              <CardTitle className="text-sm"><TermTooltip term="Residualrisiko" glossaryKey="Residualrisiko">Residualrisiko</TermTooltip>-Berechnung (ISO 27001 Clause 8.3)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
               {/* Score indicators */}

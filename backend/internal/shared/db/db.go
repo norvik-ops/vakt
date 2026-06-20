@@ -20,7 +20,10 @@ func Connect(ctx context.Context, connStr string) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("parse db config: %w", err)
 	}
 
-	maxConns := int32(25)
+	// ponytail: 15 leaves headroom for pgBouncer's own pool (default pool_size=20)
+	// without saturating the Postgres max_connections (default 100). Raise via
+	// VAKT_DB_MAX_CONNS only when running without pgBouncer. (PERF-M01)
+	maxConns := int32(15)
 	if v := os.Getenv("VAKT_DB_MAX_CONNS"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= math.MaxInt32 { // nosemgrep: string-to-int-signedness-cast -- bounds checked in condition
 			maxConns = int32(n)

@@ -6,6 +6,31 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestSanitizeHeader_StripsCRLF(t *testing.T) {
+	// \r and \n are stripped; surrounding characters are not padded.
+	assert.Equal(t, "EvilHeader", sanitizeHeader("Evil\r\nHeader"))
+	assert.Equal(t, "InjectedField: x", sanitizeHeader("Injected\rField: x"))
+	assert.Equal(t, "normal value", sanitizeHeader("normal value"))
+}
+
+func TestBuildMIMEMessage_NoCRLFInjection(t *testing.T) {
+	msg := buildMIMEMessage(
+		"Attacker\r\nBcc: victim@evil.com",
+		"from@example.com",
+		"to@example.com",
+		"Subject\r\nX-Injected: yes",
+		"<p>body</p>",
+		"", "", false,
+	)
+	raw := string(msg)
+	// The injected content must not appear as a separate RFC 5322 header line
+	// (i.e. at the start of a line). The payload may still appear inline in an
+	// existing header value — that is acceptable; what CRLF injection would
+	// enable (a standalone Bcc:/X-Injected: header) is the risk we block.
+	assert.NotContains(t, raw, "\r\nBcc:")
+	assert.NotContains(t, raw, "\r\nX-Injected:")
+}
+
 func TestValidateTemplateHTML_AllowsRelativeURLs(t *testing.T) {
 	err := validateTemplateHTML(`<img src="/images/logo.png"><a href="{{tracking_url}}">click</a>`)
 	assert.NoError(t, err)

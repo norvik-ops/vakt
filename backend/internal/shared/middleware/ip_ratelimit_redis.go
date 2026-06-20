@@ -18,24 +18,38 @@ import (
 // where multi-replica deployments share rate-limit state via Redis.
 //
 // Parameters:
-//   - rdb: Redis client. When nil, the middleware fails open (no limiting).
+//   - rdb: Redis client. When nil, behaviour depends on failClosed.
 //   - keyPrefix: namespaces the Redis key (e.g. "nis2", "setup", "auditor").
 //   - limit: maximum requests per window from a single IP.
 //   - window: rolling time window over which limit is enforced.
+//   - failClosed: when true, a Redis error or nil client returns 503 instead
+//     of passing the request through. Use for public, abuse-sensitive endpoints
+//     where Vakt already requires Redis to be running (SEC-M08).
 //
-// On Redis unavailability, the middleware fails open so legitimate requests
-// are not dropped during Redis outages. This is the same policy used by
-// DemoStartRateLimiter and AuthRateLimit.
-func IPRateLimitRedis(rdb *redis.Client, keyPrefix string, limit int64, window time.Duration) echo.MiddlewareFunc {
+// Auth-path rate limiters (DemoStartRateLimiter, AuthRateLimit) use their own
+// fail-open policy — they must not lock users out during Redis outages.
+func IPRateLimitRedis(rdb *redis.Client, keyPrefix string, limit int64, window time.Duration, failClosed bool) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			if rdb == nil {
+				if failClosed {
+					return c.JSON(http.StatusServiceUnavailable, map[string]string{
+						"error": "rate limiter unavailable",
+						"code":  "RATE_LIMITER_UNAVAILABLE",
+					})
+				}
 				return next(c)
 			}
 			key := "rate:" + keyPrefix + ":" + c.RealIP()
 			count, err := incrWithTTL(c.Request().Context(), rdb, key, window)
 			if err != nil {
-				// Redis unavailable — fail open.
+				if failClosed {
+					return c.JSON(http.StatusServiceUnavailable, map[string]string{
+						"error": "rate limiter unavailable",
+						"code":  "RATE_LIMITER_UNAVAILABLE",
+					})
+				}
+				// Redis unavailable — fail open (auth-path default).
 				return next(c)
 			}
 			if count > limit {

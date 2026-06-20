@@ -8,7 +8,6 @@ import { useBreaches } from '../modules/vaktprivacy/hooks/useBreaches'
 import { useScoreHistory } from '../modules/vaktcomply/hooks/useScoreHistory'
 import { useNextMilestone } from '../modules/vaktcomply/hooks/useMilestones'
 import { useRecentPages } from '../shared/hooks/useRecentPages'
-import { useOnboardingStatus } from '../hooks/useOnboarding'
 import { useDashboardOrder, DEFAULT_WIDGET_ORDER } from './useDashboardOrder'
 import { loadWidgets, WIDGETS_KEY } from './WidgetConfigPanel'
 import type { WidgetKey } from './WidgetConfigPanel'
@@ -16,9 +15,6 @@ import { DashboardLayout } from './DashboardLayout'
 import { WidgetGrid } from './WidgetGrid'
 
 export default function Dashboard() {
-  const { data: onboarding } = useOnboardingStatus()
-  const [wizardOpen, setWizardOpen] = useState(false)
-
   const { data: scoreData, isLoading: scoreLoading, isError: scoreError } = useDashboardScore()
   const { data: agg, isLoading: aggLoading, isError: aggError } = useDashboardAggregate()
   const { data: scoreHistory } = useScoreHistory(30)
@@ -125,9 +121,6 @@ export default function Dashboard() {
         aggLoading={aggLoading}
         scoreHistory={scoreHistory}
         widgets={widgets}
-        onboarding={onboarding}
-        wizardOpen={wizardOpen}
-        setWizardOpen={setWizardOpen}
         scoreError={scoreError}
         aggError={aggError}
         recentPages={recentPages}

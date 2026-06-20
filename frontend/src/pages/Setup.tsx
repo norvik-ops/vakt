@@ -84,7 +84,7 @@ function Step2AdminAccount({
   onNext,
 }: Step2Props) {
   const { t } = useTranslation()
-  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && password.length >= 8
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && password.length >= 10
 
   return (
     <div className="space-y-4">

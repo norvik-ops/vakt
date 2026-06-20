@@ -59,6 +59,7 @@ export function OnboardingChecklist() {
   return (
     <div
       data-testid="onboarding-checklist"
+      data-tour="getting-started"
       className="rounded-xl border border-border bg-surface p-4 mb-4"
     >
       <div className="flex items-start justify-between gap-2 mb-3">

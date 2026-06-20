@@ -189,7 +189,11 @@ func (c *AIClient) StreamGenerate(ctx context.Context, system, userPrompt string
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	}
 
-	// Eigener Client ohne Timeout — Streaming kann lange dauern.
+	// ponytail: 90 s ceiling prevents a hung AI provider from blocking a goroutine
+	// forever. The caller's ctx may have no deadline (SSE handler). (PERF-M03)
+	streamCtx, streamCancel := context.WithTimeout(ctx, 90*time.Second)
+	defer streamCancel()
+	req = req.WithContext(streamCtx)
 	stream := &http.Client{Timeout: 0}
 	resp, err := stream.Do(req)
 	if err != nil {

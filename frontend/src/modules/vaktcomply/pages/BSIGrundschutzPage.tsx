@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ChevronDown, ChevronRight, CheckCircle2, Circle, ArrowRight } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Badge } from '../../../components/ui/badge'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 
 // ─── Data ──────────────────────────────────────────────────────────────────────
 
@@ -326,7 +327,7 @@ export default function BSIGrundschutzPage() {
 
         {/* Intro */}
         <p className="text-sm text-secondary leading-relaxed">
-          Das BSI IT-Grundschutz-Kompendium definiert Bausteine für die systematische Absicherung
+          Das <TermTooltip term="BSI IT-Grundschutz" glossaryKey="BSI200">BSI IT-Grundschutz</TermTooltip>-Kompendium definiert Bausteine für die systematische Absicherung
           von IT-Systemen. Diese Übersicht zeigt, welche Vakt-Module die jeweiligen
           Anforderungen unterstützen.
         </p>

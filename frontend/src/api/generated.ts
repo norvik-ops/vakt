@@ -8058,7 +8058,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Upload a file as evidence for a control */
+        /**
+         * Upload a file as evidence for a control
+         * @deprecated
+         * @description Deprecated — use POST /vaktcomply/controls/{controlId}/evidence with type=file instead (S100-5/ARCH-M03).
+         */
         post: {
             parameters: {
                 query?: never;
@@ -13155,7 +13159,7 @@ export interface components {
             refresh_token: string;
         };
         RefreshResponse: {
-            /** @description New Paseto v2 access token */
+            /** @description New Paseto v4 access token */
             token?: string;
             /** @description New refresh token */
             refresh_token?: string;

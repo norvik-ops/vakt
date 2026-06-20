@@ -40,23 +40,9 @@ func TestRotateKey_EndToEnd(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: -short mode")
 	}
-	// SKIP REASON — production schema drift, not the rotate-key tool:
-	//
-	//   notification_channels was created in migration 013 with columns
-	//   (channel TEXT, config JSONB). Migration 025 attempts a redefinition
-	//   with (type TEXT, url_encrypted BYTEA, events TEXT[], enabled BOOL)
-	//   but uses CREATE TABLE IF NOT EXISTS, which is a no-op against the
-	//   013-shaped table that already exists. Result: a freshly-migrated DB
-	//   has the 013 columns, but services/alerting/repository.go and
-	//   cmd/rotate-key/rotate.go (rotateAlertChannelURLs) reference the
-	//   025 columns. This test trips the drift the moment it tries to seed
-	//   a row.
-	//
-	// Captured in docs/post-rls-tenant-lint-backlog.md / next sprint as
-	// "migration 152: ALTER TABLE notification_channels ADD COLUMN type,
-	// url_encrypted, events, enabled (backfill from channel/is_active)".
-	// Until that migration ships, this test cannot pass against a fresh DB.
-	t.Skip("blocked by notification_channels schema drift — see docs/post-rls-tenant-lint-backlog.md")
+	// Migration 152 (fix_notification_channels_schema) shipped — the schema
+	// drift that previously blocked this test (SEC-H08 / S99-4) is resolved.
+	// This test is now the canonical CI gate for key-rotation correctness.
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 

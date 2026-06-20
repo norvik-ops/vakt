@@ -123,6 +123,15 @@ func (s *Service) Notify(ctx context.Context, msg Message) error {
 	return nil
 }
 
+// pubClient is an optional Redis client used to push a wakeup signal to open
+// SSE notification streams (S98-5). Set once at startup via SetPublisher.
+// nil → no push (the SSE safety-poll still delivers within 30 s).
+var pubClient *redis.Client
+
+// SetPublisher wires the Redis client used by Send to push SSE wakeups.
+// Call once during API/worker startup. Safe to leave unset (push becomes no-op).
+func SetPublisher(rdb *redis.Client) { pubClient = rdb }
+
 // Send inserts a single row into user_notifications for in-app display.
 // It is intentionally non-fatal: any database error is logged via zerolog and
 // silently discarded so that callers (scanner workers, training completions,
@@ -134,6 +143,14 @@ func Send(ctx context.Context, db *pgxpool.Pool, orgID, title, body, notifType, 
 		orgID, title, body, notifType, module)
 	if err != nil {
 		log.Error().Err(err).Str("module", module).Msg("notify.Send failed")
+		return
+	}
+	// S98-5: push a wakeup to open SSE streams. Channel key MUST match
+	// dashboard.notifyChannel ("notify:<org_id>"). Best-effort.
+	if pubClient != nil {
+		if perr := pubClient.Publish(ctx, "notify:"+orgID, "1").Err(); perr != nil {
+			log.Warn().Err(perr).Str("org_id", orgID).Msg("notify.Send: SSE publish failed")
+		}
 	}
 }
 

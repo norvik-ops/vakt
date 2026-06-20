@@ -25,10 +25,10 @@ func CalculateKPIsForOrg(ctx context.Context, db *pgxpool.Pool, orgID string) KP
 		IncidentMTTRDays:      calcIncidentMTTR(ctx, db, orgID),
 		EvidenceCoverage:      calcEvidenceCoverage(ctx, db, orgID),
 		ExpiringEvidenceCount: calcExpiringEvidence(ctx, db, orgID),
-		FindingSLACompliance:  nil, // deferred — requires vb_findings schema analysis
-		OpenMajorNCs:          nil, // deferred — ck_capas lacks nc_classification column
-		SuppliersOverduePct:   nil, // deferred — complex supplier assessment logic
-		PhishingClickRate:     nil, // deferred — awareness module data not yet linked
+		FindingSLACompliance:  calcFindingSLACompliance(ctx, db, orgID),
+		OpenMajorNCs:          calcOpenMajorNCs(ctx, db, orgID),
+		SuppliersOverduePct:   nil, // TODO(data-source): vakt-msp supplier assessment module, planned Q4 2026
+		PhishingClickRate:     nil, // TODO(data-source): sr_events click-rate aggregate, requires campaign-period scoping — see Sprint 100 ADR
 	}
 }
 
@@ -180,6 +180,48 @@ func calcExpiringEvidence(ctx context.Context, db *pgxpool.Pool, orgID string) *
 		  AND expires_at IS NOT NULL
 		  AND expires_at < NOW() + INTERVAL '30 days'
 		  AND expires_at > NOW()`, orgID).Scan(&val)
+	if !val.Valid {
+		return nil
+	}
+	v := int(val.Int32)
+	return &v
+}
+
+// calcFindingSLACompliance returns the percentage of SLA-tracked findings
+// (sla_status IS NOT NULL) that have not breached their SLA.
+// Compliant = on_track | at_risk | resolved_on_time; non-compliant = overdue | resolved_late.
+// NIS2 Art. 21f: organisations must measure remediation effectiveness.
+func calcFindingSLACompliance(ctx context.Context, db *pgxpool.Pool, orgID string) *float64 {
+	if db == nil {
+		return nil
+	}
+	var val pgtype.Numeric
+	_ = db.QueryRow(ctx, `
+		SELECT CASE WHEN COUNT(*) > 0
+			THEN ROUND(
+				100.0 * COUNT(CASE WHEN sla_status NOT IN ('overdue','resolved_late') THEN 1 END)::numeric
+				/ COUNT(*), 2)
+			ELSE NULL END
+		FROM vb_findings
+		WHERE org_id = $1
+		  AND sla_status IS NOT NULL`, orgID).Scan(&val)
+	return numericToFloat64Ptr(val)
+}
+
+// calcOpenMajorNCs returns the count of open major non-conformities from internal
+// or external audits — CAPAs with nc_classification = 'major_nc' that are not
+// yet verified or closed. ISO 27001:2022 clause 10.1 requires tracking and
+// closure of major NCs within agreed timescales.
+func calcOpenMajorNCs(ctx context.Context, db *pgxpool.Pool, orgID string) *int {
+	if db == nil {
+		return nil
+	}
+	var val pgtype.Int4
+	_ = db.QueryRow(ctx, `
+		SELECT COUNT(*)::int FROM ck_capas
+		WHERE org_id = $1
+		  AND nc_classification = 'major_nc'
+		  AND status NOT IN ('verified','closed')`, orgID).Scan(&val)
 	if !val.Valid {
 		return nil
 	}

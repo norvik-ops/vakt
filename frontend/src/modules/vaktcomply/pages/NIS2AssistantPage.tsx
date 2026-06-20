@@ -10,6 +10,7 @@ import { Badge } from '../../../components/ui/badge'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -201,7 +202,7 @@ function Step1SectorSelection({ selectedSectorId, onSelect, onNext }: Step1Props
     <div>
       <h2 className="text-base font-semibold text-primary mb-1">In welchem Sektor ist Ihr Unternehmen tätig?</h2>
       <p className="text-[12px] text-secondary mb-5">
-        NIS2 gilt nur für bestimmte Sektoren. Wählen Sie den zutreffenden Sektor aus.
+        <TermTooltip term="NIS2" glossaryKey="NIS2">NIS2</TermTooltip> gilt nur für bestimmte Sektoren. Wählen Sie den zutreffenden Sektor aus.
       </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

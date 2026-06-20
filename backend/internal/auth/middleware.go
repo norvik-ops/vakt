@@ -501,11 +501,12 @@ func isSafeMethod(method string) bool {
 }
 
 // RequireRole returns middleware that enforces that at least one of the caller's
-// roles appears in the allowedRoles list.
+// roles appears in the allowedRoles list using exact string matching (not a
+// role hierarchy). Callers must explicitly list every role that should be
+// permitted; no implicit inheritance takes place.
 //
-// Role hierarchy (highest to lowest): Admin > SecurityAnalyst > Viewer > AuditorReadOnly
-// SoD role (parallel, not hierarchical): InternalAuditor — can approve audit-program closures
-// and management reviews; must be assigned separately from rw roles (Vier-Augen-Prinzip).
+// Known roles: Admin, SecurityAnalyst, Viewer, AuditorReadOnly, InternalAuditor.
+// InternalAuditor is parallel (SoD), not in the rw chain (Vier-Augen-Prinzip).
 func RequireRole(allowedRoles ...string) echo.MiddlewareFunc {
 	allowed := make(map[string]struct{}, len(allowedRoles))
 	for _, r := range allowedRoles {

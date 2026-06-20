@@ -5,6 +5,7 @@ import { PageHeader } from '../../../shared/components/PageHeader'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
 import { useFrameworks, useDownloadAuditPackage, useDownloadSoAPDF } from '../hooks/useFrameworks'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 
 // ─── Data ──────────────────────────────────────────────────────────────────────
 
@@ -300,7 +301,7 @@ export default function ISO27001ChecklistPage() {
         {/* Summary badges */}
         <div className="flex flex-wrap gap-2 items-center">
           <Badge className="bg-severity-info-bg text-severity-info border-transparent text-xs">
-            ISO/IEC 27001:2022
+            <TermTooltip term="ISO 27001" glossaryKey="ISO27001">ISO/IEC 27001:2022</TermTooltip>
           </Badge>
           <Badge className="bg-surface2 text-muted border-transparent text-xs">
             93 Controls gesamt

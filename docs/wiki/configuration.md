@@ -95,7 +95,7 @@ VAKT_FORCE_SECURE_COOKIES=true            # Produktion hinter HTTPS-Proxy
 | `AUTO_MIGRATE` | — | `false` | Wenn `true`, führt der API-Container beim Start automatisch ausstehende Datenbankmigrationen aus. |
 | `VAKT_DEMO` | — | `false` | Wenn `true`: Beispieldaten + öffentlich erreichbarer `/api/v1/demo/start`-Endpoint. **Nur für Test-/Demo-Umgebungen — niemals mit echten Compliance-Daten.** |
 | `VAKT_FRONTEND_URL` | — | `http://localhost:5173` | Öffentlich erreichbare URL des Frontends. Wird für E-Mail-Links in Benachrichtigungen, Vakt-Aware-Kampagnen und Policy-Akzeptanz-E-Mails verwendet. In Produktion auf die echte Domain setzen. |
-| `VAKT_UPLOAD_DIR` | — | `./data/uploads` | Verzeichnis für hochgeladene Dateien (Evidence-Anhänge). In Docker-Deployments als Volume mounten. |
+| `VAKT_UPLOAD_DIR` | — | `/app/data/uploads` | Verzeichnis für hochgeladene Dateien (Evidence-Anhänge). Im Docker-Compose-Stack als Volume `uploads_data` gemountet — nicht als Host-Pfad ändern. |
 | `VAKT_WORKER_CONCURRENCY` | — | `8` | Anzahl paralleler Asynq-Hintergrund-Jobs im Worker-Container. Bei vielen gleichzeitigen Scans/Reports ggf. erhöhen, auf kleinen VMs senken. |
 
 **Beispiel:**
@@ -106,7 +106,7 @@ APP_VERSION=1.0.0
 VAKT_MODULES_ENABLED=vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,vakthr
 AUTO_MIGRATE=false
 VAKT_FRONTEND_URL=https://vakt.meine-firma.de
-VAKT_UPLOAD_DIR=/data/uploads
+VAKT_UPLOAD_DIR=/app/data/uploads
 ```
 
 > **`VAKT_DEMO=true` nur für Test-/Demo-Umgebungen:** Aktiviert Beispieldaten und
@@ -217,6 +217,7 @@ VAKT_UPDATE_CHECK=true
 | Variable | Pflicht | Standard | Beschreibung |
 |----------|---------|----------|--------------|
 | `VAKT_METRICS_DISABLED` | — | `false` | Wenn `true`, wird der Prometheus-`/metrics`-Endpunkt deaktiviert. |
+| `VAKT_PPROF_ENABLED` | — | `false` | Wenn `true`, wird ein Go-pprof-Server auf `127.0.0.1:6060` gestartet (nur für Diagnose, nie im Internet exponieren). Siehe [pprof-Anleitung](../operations/runbook.md#pprof). |
 | `VAKT_LOG_LEVEL` | — | `info` | Globales Log-Level (`trace`, `debug`, `info`, `warn`, `error`). Ungültige Werte fallen auf `info` zurück. |
 | `VAKT_SLO_UPTIME` | — | `99.9` | Ziel-Verfügbarkeit (%) für die Fehlerbudget-Berechnung. |
 | `VAKT_SLO_P99_LATENCY_MS` | — | `500` | Ziel-p99-Latenz (ms) für die Fehlerbudget-Berechnung. |
@@ -348,7 +349,7 @@ APP_VERSION=1.0.0
 VAKT_MODULES_ENABLED=vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,vakthr
 AUTO_MIGRATE=false
 VAKT_FRONTEND_URL=https://vakt.meine-firma.de
-VAKT_UPLOAD_DIR=/data/uploads
+VAKT_UPLOAD_DIR=/app/data/uploads
 # VAKT_UPDATE_CHECK=false   # opt-in: täglicher Check auf neue Versionen via GitHub API
 
 # ── SMTP ────────────────────────────────────────────────────────────────────────

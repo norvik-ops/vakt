@@ -14,6 +14,7 @@ import {
   useSaveISMSScope,
   useApproveISMSScope,
 } from '../hooks/useISMSScope'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 import type { ISMSScopeExclusion, CreateISMSScopeInput } from '../types'
 
 const STATUS_CLASS: Record<'draft' | 'approved', string> = {
@@ -235,7 +236,7 @@ export default function ISMSScopePage() {
       )}
 
       {!current && !isLoading && (
-        <p className="text-sm text-muted-foreground">Kein ISMS-Scope vorhanden. Erstellen Sie den ersten Entwurf.</p>
+        <p className="text-sm text-muted-foreground">Kein <TermTooltip term="ISMS" glossaryKey="ISMS">ISMS</TermTooltip>-Scope vorhanden. Erstellen Sie den ersten Entwurf.</p>
       )}
     </div>
   )

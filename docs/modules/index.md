@@ -12,11 +12,11 @@ VAKT_MODULES_ENABLED=vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,vakthr
 
 | Modul | Datei | Zweck |
 |---|---|---|
-| **Vakt Comply** (`vaktcomply`) | [secvitals.md](secvitals.md) | Compliance-Hub: Controls, Risiken, Vorfälle, Richtlinien, KI-Berichte |
-| **Vakt Scan** (`vaktscan`) | [secpulse.md](secpulse.md) | Scanner-Orchestrierung: Trivy, Nuclei, OpenVAS, BSI CERT-Bund |
-| **Vakt Vault** (`vaktvault`) | [secvault.md](secvault.md) | Secrets-Management: AES-256, Git-Scanner, CI/CD-Integration |
-| **Vakt Aware** (`vaktaware`) | [secreflex.md](secreflex.md) | Security Awareness: Phishing-Simulationen, Micro-Trainings |
-| **Vakt Privacy** (`vaktprivacy`) | [secprivacy.md](secprivacy.md) | DSGVO-Dokumentation: VVT, DPIA, AVV, Datenpannen, DSR |
+| **Vakt Comply** (`vaktcomply`) | [vaktcomply.md](vaktcomply.md) | Compliance-Hub: Controls, Risiken, Vorfälle, Richtlinien, KI-Berichte |
+| **Vakt Scan** (`vaktscan`) | [vaktscan.md](vaktscan.md) | Scanner-Orchestrierung: Trivy, Nuclei, OpenVAS, BSI CERT-Bund |
+| **Vakt Vault** (`vaktvault`) | [vaktvault.md](vaktvault.md) | Secrets-Management: AES-256, Git-Scanner, CI/CD-Integration |
+| **Vakt Aware** (`vaktaware`) | [vaktaware.md](vaktaware.md) | Security Awareness: Phishing-Simulationen, Micro-Trainings |
+| **Vakt Privacy** (`vaktprivacy`) | [vaktprivacy.md](vaktprivacy.md) | DSGVO-Dokumentation: VVT, DPIA, AVV, Datenpannen, DSR |
 | **Vakt HR** (`vakthr`) | *(Dokumentation ausstehend)* | Employee Lifecycle: Onboarding/Offboarding Checklisten, Mitarbeiterverzeichnis, Compliance-Evidenz |
 
 ---

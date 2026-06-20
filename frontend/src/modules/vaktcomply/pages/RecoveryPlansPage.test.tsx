@@ -67,7 +67,9 @@ describe('RecoveryPlansPage', () => {
     } as unknown as ReturnType<typeof useRecoveryPlans>)
     render(<RecoveryPlansPage />, { wrapper })
     expect(screen.getByText('WAP IT-Infrastruktur')).toBeTruthy()
-    expect(screen.getByText('RTO: 4h')).toBeTruthy()
+    // RTO is now wrapped in TermTooltip; verify the term label and value are both present
+    expect(screen.getAllByRole('button', { name: /RTO/ })[0]).toBeTruthy()
+    expect(screen.getByText(/: 4h/)).toBeTruthy()
     expect(screen.getByText('Totalausfall RZ')).toBeTruthy()
   })
 

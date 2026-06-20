@@ -39,6 +39,7 @@ import (
 	"github.com/matharnica/vakt/internal/shared/metrics"
 	"github.com/matharnica/vakt/internal/shared/nis2wizard"
 	"github.com/matharnica/vakt/internal/shared/notifications"
+	"github.com/matharnica/vakt/internal/shared/notify"
 	cloudintegration "github.com/matharnica/vakt/internal/shared/platform/integrations/cloud"
 	"github.com/matharnica/vakt/internal/shared/retention"
 	"github.com/matharnica/vakt/internal/shared/scheduledreports"
@@ -121,6 +122,8 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	// endpoint. Best-effort — Redis failures never affect task execution.
 	if rdb := newMetricsRedis(cfg.RedisUrl); rdb != nil {
 		mux.Use(metrics.AsynqInstrumentingMiddleware(rdb))
+		// S98-5: worker-generated notifications also push SSE wakeups.
+		notify.SetPublisher(rdb)
 	}
 
 	// ── SecPulse scan handlers ────────────────────────────────────────────────

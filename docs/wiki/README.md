@@ -18,6 +18,17 @@ Vakt ist eine selbst gehostete Security- & Compliance-Plattform für KMU im DACH
 | [Support & Diagnose](support.md) | Logs einsammeln, Health prüfen, Diagnose-Bundle für Support-Fälle erstellen |
 | [FAQ](faq.md) | Häufige Fragen zu Lizenz, Datenschutz, Updates und Unterschieden zu kommerziellen Tools |
 
+### ISMS-Workflow-Guides (ISB-Alltag)
+
+Aufgabenorientierte Schritt-für-Schritt-Anleitungen für die tägliche ISMS-Arbeit:
+
+| Guide | Aufgabe |
+|-------|---------|
+| [Schutzbedarfsfeststellung](../guides/schutzbedarfsfeststellung.md) | CIA-Schutzbedarf je Zielobjekt bestimmen (BSI-Maximumprinzip) |
+| [Vom Risiko zur Maßnahme](../guides/risiko-zu-massnahme.md) | Risiko bewerten → Behandlungsstrategie → Control verknüpfen → Restrisiko |
+| [Internes Audit vorbereiten](../guides/internes-audit-vorbereiten.md) | Audit-Programm → Findings → CAPA → Audit-Paket-Export (ISO 9.2) |
+| [NIS2-Vorfall melden](../guides/nis2-vorfall-melden.md) | Vorfall erfassen → Meldepflicht prüfen → T+24h/72h/30d dokumentieren |
+
 ### Module
 
 | Modul | Beschreibung |

@@ -8,6 +8,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
@@ -30,6 +31,10 @@ import (
 	sharedcrypto "github.com/matharnica/vakt/internal/shared/crypto"
 	"github.com/matharnica/vakt/internal/shared/logsafe"
 )
+
+// samlMetadataMaxBytes is the maximum allowed size for an IdP metadata XML
+// document. This prevents Billion-Laughs-style XML entity expansion (SEC-M03).
+const samlMetadataMaxBytes = 512 * 1024 // 512 KiB
 
 // samlAttr extracts the first value of a named attribute from a SAML assertion.
 // Tries each candidateName in order; returns "" if none match.
@@ -208,9 +213,15 @@ func buildSAMLSP(cfg *OrgSAMLConfig) (*saml.ServiceProvider, error) {
 		return nil, fmt.Errorf("saml: parse certificate: %w", err)
 	}
 
-	// Parse IdP metadata
+	// Parse IdP metadata — limit input size before decoding to mitigate
+	// Billion-Laughs XML entity expansion attacks (SEC-M03 / CWE-776).
+	if len(cfg.IDPMetadata) > samlMetadataMaxBytes {
+		return nil, fmt.Errorf("saml: IdP metadata exceeds %d byte limit", samlMetadataMaxBytes)
+	}
 	var idpMetadata saml.EntityDescriptor
-	if err := xml.Unmarshal([]byte(cfg.IDPMetadata), &idpMetadata); err != nil {
+	dec := xml.NewDecoder(bytes.NewReader([]byte(cfg.IDPMetadata)))
+	dec.Entity = map[string]string{} // disable entity expansion
+	if err := dec.Decode(&idpMetadata); err != nil {
 		return nil, fmt.Errorf("saml: parse IdP metadata: %w", err)
 	}
 

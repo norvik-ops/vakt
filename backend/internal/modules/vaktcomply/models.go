@@ -149,7 +149,7 @@ type Evidence struct {
 	Title            string     `json:"title"`
 	Description      string     `json:"description,omitempty"`
 	Source           string     `json:"source"`
-	FilePath         string     `json:"file_path,omitempty"`
+	FilePath         string     `json:"-"` // server-side path — never expose in API responses (ARCH-M03)
 	FileSize         int64      `json:"file_size,omitempty"`
 	CollectorData    []byte     `json:"collector_data,omitempty"`
 	Status           string     `json:"status"`

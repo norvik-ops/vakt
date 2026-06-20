@@ -10,6 +10,7 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { apiFetch } from '../../../api/client'
 import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 import { EmptyState } from '../../../shared/components/EmptyState'
 
 interface AuditProgramAudit {
@@ -205,7 +206,7 @@ export default function AuditProgramPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Audit-Programm</h1>
-          <p className="text-gray-500 text-sm mt-1">ISO 27001 Klausel 9.2 — Interne Audits planen und dokumentieren</p>
+          <p className="text-gray-500 text-sm mt-1"><TermTooltip term="ISO 27001" glossaryKey="ISO27001">ISO 27001</TermTooltip> Klausel 9.2 — Interne Audits planen und dokumentieren</p>
         </div>
         <Button size="sm" onClick={() => { setCreateOpen(true); }}>
           <Plus className="h-4 w-4 mr-1.5" />

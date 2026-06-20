@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"net/http"
+	httppprof "net/http/pprof" // S98-4: pprof handlers, registered on a dedicated mux (not DefaultServeMux)
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -363,11 +364,13 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 			rdb = redis.NewClient(redisOpt)
 		}
 	}
+	// S98-5: let notify.Send push SSE wakeups via Redis Pub/Sub (no-op if rdb nil).
+	notify.SetPublisher(rdb)
 
 	// Sprint 19 / S19-1: NIS2-Self-Assessment-Wizard — public, no auth.
 	// Rate-limited against abuse (5 req/min/IP). Redis-backed via IPRateLimitRedis
 	// (fails open when Redis is unavailable, so the wizard stays reachable).
-	nis2RateLimiter := sharedmw.IPRateLimitRedis(rdb, "nis2", 5, 5*time.Minute)
+	nis2RateLimiter := sharedmw.IPRateLimitRedis(rdb, "nis2", 5, 5*time.Minute, true)
 	nis2wizardHandler := nis2wizard.NewHandler(nis2wizard.NewService(pool), cfg.SecretKey)
 	nis2wizard.Register(api.Group("/public/nis2-assessment", nis2RateLimiter), nis2wizardHandler)
 	log.Info().Msg("nis2 wizard public routes registered")
@@ -394,7 +397,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	})
 
 	// Setup wizard — rate-limited, no auth (only works before first org exists).
-	setupRateLimiter := sharedmw.IPRateLimitRedis(rdb, "setup", 5, 5*time.Minute)
+	setupRateLimiter := sharedmw.IPRateLimitRedis(rdb, "setup", 5, 5*time.Minute, true)
 	setupHandler := setup.NewHandler(pool)
 	setup.Register(api.Group("/setup", setupRateLimiter), setupHandler)
 	log.Info().Msg("setup routes registered")
@@ -465,7 +468,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	// Auth routes — Redis-backed IP rate limit (5 req/min) on the four
 	// credential-submission endpoints, plus a per-IP Redis limiter on the full
 	// auth group for burst protection on other endpoints (S45-5, S78-6d).
-	authRateLimiter := sharedmw.IPRateLimitRedis(rdb, "auth", 5, time.Minute)
+	authRateLimiter := sharedmw.IPRateLimitRedis(rdb, "auth", 5, time.Minute, false)
 	redisAuthRL := sharedmw.AuthRateLimit(rdb)
 	authSvc := auth.NewService(pool, rdb, pasetoKey)
 	// ADR-0044: default fail-closed on Redis outage. Operators can opt back
@@ -590,8 +593,8 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	}
 
 	// S78-6d: Redis-backed rate limiters (multi-replica safe).
-	auditorRateLimiter := sharedmw.IPRateLimitRedis(rdb, "auditor", 30, time.Minute)
-	auditorAcceptRateLimiter := sharedmw.IPRateLimitRedis(rdb, "auditor_accept", 10, time.Minute)
+	auditorRateLimiter := sharedmw.IPRateLimitRedis(rdb, "auditor", 30, time.Minute, false)
+	auditorAcceptRateLimiter := sharedmw.IPRateLimitRedis(rdb, "auditor_accept", 10, time.Minute, false)
 
 	// cloudEvidence bridges vaktcomply → cloud integration without a direct import.
 	// It is set inside the vaktcomply block and falls back to a no-op when vaktcomply is disabled.
@@ -648,7 +651,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		// (POST /vaktcomply/nis2-assessment/migrate-from-anonymous).
 		nis2wizard.RegisterAuthenticated(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), nis2wizardHandler)
 		// Auditor portal uses URL token — exempt from Bearer auth; rate-limited to 30 req/min per IP
-		portalRateLimiter := sharedmw.IPRateLimitRedis(rdb, "portal", 30, time.Minute)
+		portalRateLimiter := sharedmw.IPRateLimitRedis(rdb, "portal", 30, time.Minute, false)
 		vaktcomply.RegisterPublic(api.Group("/vaktcomply", portalRateLimiter), ckHandler)
 		// Policy acceptance — public token routes (no Bearer auth), rate-limited
 		vaktcomply.RegisterPolicyAcceptPublic(api.Group("", portalRateLimiter), ckHandler)
@@ -723,7 +726,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		}
 		vaktprivacy.Register(protected.Group("/vaktprivacy", auth.RequireModuleAccess(pool, "vaktprivacy", rdb)), poHandler)
 		// DSR portal uses URL slug/token — exempt from Bearer auth; rate-limited to 30 req/min per IP
-		dsrPortalRateLimiter := sharedmw.IPRateLimitRedis(rdb, "dsr_portal", 30, time.Minute)
+		dsrPortalRateLimiter := sharedmw.IPRateLimitRedis(rdb, "dsr_portal", 30, time.Minute, false)
 		vaktprivacy.RegisterPublic(api.Group("/vaktprivacy", dsrPortalRateLimiter), poHandler)
 		log.Info().Msg("vaktprivacy routes registered")
 	}
@@ -813,7 +816,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 
 	// User management & team invitations
 	// Public invite accept route rate-limited to 10 req/min per IP (same as auth).
-	inviteRateLimiter := sharedmw.IPRateLimitRedis(rdb, "invite", 10, time.Minute)
+	inviteRateLimiter := sharedmw.IPRateLimitRedis(rdb, "invite", 10, time.Minute, false)
 	umSvc := usermgmt.NewService(pool, usermgmt.SMTPConfig{
 		Host: cfg.SMTPHost, Port: cfg.SMTPPort,
 		User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
@@ -912,6 +915,31 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 		log.Info().Msg("metrics endpoint registered")
 	}
 
+	// S98-4: pprof — only when VAKT_PPROF_ENABLED=true.
+	// Handlers go on a DEDICATED mux (never DefaultServeMux, so nothing is
+	// auto-exposed on the main API server) and the server is bound to
+	// 127.0.0.1:6060 only, so it is unreachable from outside the host.
+	if os.Getenv("VAKT_PPROF_ENABLED") == "true" {
+		pprofMux := http.NewServeMux()
+		pprofMux.HandleFunc("/debug/pprof/", httppprof.Index) // serves heap/goroutine/allocs/... by name
+		pprofMux.HandleFunc("/debug/pprof/cmdline", httppprof.Cmdline)
+		pprofMux.HandleFunc("/debug/pprof/profile", httppprof.Profile)
+		pprofMux.HandleFunc("/debug/pprof/symbol", httppprof.Symbol)
+		pprofMux.HandleFunc("/debug/pprof/trace", httppprof.Trace)
+		pprofSrv := &http.Server{
+			Addr:              "127.0.0.1:6060",
+			Handler:           pprofMux,
+			ReadHeaderTimeout: 5 * time.Second,
+		}
+		go func() {
+			log.Warn().Str("addr", pprofSrv.Addr).Msg("pprof server started — localhost only")
+			// nosemgrep: go.lang.security.audit.net.use-tls.use-tls -- loopback-only (127.0.0.1) diagnostic endpoint; TLS unnecessary and adds no security on the local interface
+			if err := pprofSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Error().Err(err).Msg("pprof server error")
+			}
+		}()
+	}
+
 	// API documentation — Swagger UI + OpenAPI spec
 	apidocs.Register(e)
 	log.Info().Msg("api docs registered")
@@ -921,7 +949,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	// S78-6d: Redis-backed; 5 req/min per IP, fail-open on Redis outage.
 	// S90-2: persistence + admin view moved behind clienterrors.Repository/Handler
 	// so main.go no longer executes raw SQL.
-	clientErrRL := sharedmw.IPRateLimitRedis(rdb, "client_err", 5, time.Minute)
+	clientErrRL := sharedmw.IPRateLimitRedis(rdb, "client_err", 5, time.Minute, false)
 	ce := clienterrors.NewHandler(clienterrors.NewRepository(pool))
 	api.POST("/errors", ce.Record, clientErrRL)
 	protected.GET("/admin/client-errors", ce.List, auth.RequireRole("Admin"))
@@ -1085,6 +1113,13 @@ func main() {
 	if strings.HasPrefix(cfg.FrontendURL, "https://") {
 		log.Info().Msg("HTTPS frontend detected — ensure reverse proxy sets X-Forwarded-Proto: https so session cookies get the Secure flag")
 	}
+
+	// S98-3: Slowloris hardening — cap slow header/body readers.
+	// WriteTimeout=0 because SSE streams (notifications, AI) must not be cut.
+	e.Server.ReadHeaderTimeout = 5 * time.Second
+	e.Server.ReadTimeout = 15 * time.Second
+	e.Server.IdleTimeout = 120 * time.Second
+	e.Server.WriteTimeout = 0
 
 	go func() {
 		if err := e.Start(":" + cfg.APIPort); err != nil && err != http.ErrServerClosed {

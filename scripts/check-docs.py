@@ -319,18 +319,95 @@ def check_env_vars() -> None:
         )
 
 
+# ── 5. Volume/Path-Drift ─────────────────────────────────────────────────────
+# Fängt zwei Drift-Klassen rund um Docker-Volumes:
+#   (a) Volumes in docker-compose.yml, die Backup-Daten enthalten, MÜSSEN in
+#       docs/operations/backup-restore.md erwähnt sein — verhindert Datenverlust
+#       beim Restore nach einem Volume-Hinzufügen.
+#   (b) Stale Host-Pfad `./data/uploads` in Docs — das korrekte Äquivalent ist
+#       das Docker-Volume `uploads_data`; ein Host-Pfad existiert im Stack nicht.
+_BACKUP_DOC = "docs/operations/backup-restore.md"
+# Volumes die kein Volume-Export-Backup brauchen (ephemer, regenerierbar, oder
+# über andere Mechanismen gesichert).
+_VOLUME_BACKUP_EXEMPT = {
+    "postgres_data",   # Inhalt via pg_dump gesichert, nicht als Volume-Export
+    "redis_data",      # Session-State — explizit als kein Backup nötig dokumentiert
+    "scanner_bins",    # Scanner-Binaries werden beim Start neu geladen
+    "frontend_dist",   # Build-Artefakte — werden beim Start regeneriert
+    "ollama_models",   # KI-Modell-Download — kein Kundendaten, re-downloadbar
+}
+
+
+def check_volume_backup() -> None:
+    compose_path = "docker-compose.yml"
+    if not os.path.exists(compose_path):
+        return
+    compose = open(compose_path, encoding="utf-8", errors="ignore").read()
+
+    # Extract named volumes from the top-level `volumes:` block.
+    top_volumes: set[str] = set()
+    in_vol_block = False
+    for line in compose.splitlines():
+        stripped = line.rstrip()
+        if re.match(r"^volumes:", stripped):
+            in_vol_block = True
+            continue
+        if in_vol_block:
+            # A new top-level key ends the block
+            if stripped and not stripped.startswith(" ") and not stripped.startswith("#"):
+                in_vol_block = False
+                continue
+            m = re.match(r"^\s{2}(\w+):", stripped)
+            if m:
+                top_volumes.add(m.group(1))
+
+    if not os.path.exists(_BACKUP_DOC):
+        err(f"{_BACKUP_DOC} fehlt — Backup-Dokumentation nicht gefunden")
+        return
+    backup_text = open(_BACKUP_DOC, encoding="utf-8", errors="ignore").read()
+
+    for vol in sorted(top_volumes):
+        if vol in _VOLUME_BACKUP_EXEMPT:
+            continue
+        if vol not in backup_text:
+            err(
+                f"Docker-Volume '{vol}' (docker-compose.yml) ist nicht in "
+                f"{_BACKUP_DOC} erwähnt — Backup-Doku nachziehen oder in "
+                f"_VOLUME_BACKUP_EXEMPT eintragen"
+            )
+
+    # (b) Stale host path references in user-facing docs (not planning/story docs,
+    #     which may reference the old path as the problem description).
+    stale_path = "./data/uploads"
+    doc_files = [
+        f
+        for f in subprocess.run(
+            ["git", "ls-files", "docs"], capture_output=True, text=True
+        ).stdout.split()
+        if f.endswith(".md") and not any(f.startswith(x) for x in _DOC_EXCL)
+    ]
+    for f in doc_files:
+        text = open(f, encoding="utf-8", errors="ignore").read()
+        if stale_path in text:
+            err(
+                f"{f}: enthält veralteten Host-Pfad '{stale_path}' — "
+                f"korrekt ist das Docker-Volume 'uploads_data'"
+            )
+
+
 def main() -> int:
     check_go_version()
     check_ai_default()
     check_links()
     check_env_vars()
+    check_volume_backup()
     if errors:
         print("Doku-Drift gefunden:\n")
         for e in errors:
             print("  ❌", e)
         print(f"\n{len(errors)} Problem(e). Quelle der Wahrheit ist der Code (go.mod/config.go).")
         return 1
-    print("✓ Doku-Konsistenz OK (Go-Version, AI-Default, interne Links, Env-Var-Coverage)")
+    print("✓ Doku-Konsistenz OK (Go-Version, AI-Default, interne Links, Env-Var-Coverage, Volume-Backup)")
     return 0
 
 

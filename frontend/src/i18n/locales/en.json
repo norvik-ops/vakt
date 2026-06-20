@@ -314,7 +314,27 @@
       "statusAccepted": "Accepted",
       "statusClosed": "Closed",
       "previewScore": "Estimated Risk Score",
-      "saving": "Saving…"
+      "saving": "Saving…",
+      "methodologyBtn": "Methodology",
+      "methodologyTitle": "Risk Assessment Methodology",
+      "methodologyIntro": "Vakt uses a 5×5 risk matrix (based on ISO 27005). Risk Score = Likelihood × Impact.",
+      "methodologyLikelihoodTitle": "Likelihood (1–5)",
+      "methodologyImpactTitle": "Impact (1–5)",
+      "methodologyScoreTitle": "Score Categories",
+      "methodologyLikelihood1": "1 — Very unlikely (< once per 10 years)",
+      "methodologyLikelihood2": "2 — Unlikely (once per 3–10 years)",
+      "methodologyLikelihood3": "3 — Possible (once per year)",
+      "methodologyLikelihood4": "4 — Likely (several times per year)",
+      "methodologyLikelihood5": "5 — Very likely (frequently / regularly)",
+      "methodologyImpact1": "1 — Negligible (no measurable damage)",
+      "methodologyImpact2": "2 — Minor (local damage, brief disruption)",
+      "methodologyImpact3": "3 — Moderate (noticeable damage, days of downtime)",
+      "methodologyImpact4": "4 — Significant (major financial/reputational damage)",
+      "methodologyImpact5": "5 — Critical (existential threat / NIS2/GDPR reporting obligation)",
+      "methodologyScoreLow": "1–4 — Low: tolerable, monitor periodically",
+      "methodologyScoreMedium": "5–9 — Medium: plan and implement measures",
+      "methodologyScoreHigh": "10–14 — High: take action promptly",
+      "methodologyScoreCritical": "15–25 — Critical: immediate treatment required"
     },
     "incidentsPage": {
       "title": "Incident Register",
@@ -1557,7 +1577,29 @@
     "topRisks": "Top 5 Risks",
     "showAll": "Show all",
     "recentActivity": "Recent Activity",
-    "modules": "Modules",
+    "modules": {
+      "scan": {
+        "description": "Scanner orchestration & vulnerability management"
+      },
+      "comply": {
+        "description": "Compliance & documentation — NIS2, ISO 27001, BSI"
+      },
+      "vault": {
+        "description": "Secrets management, rotation & Git scanning"
+      },
+      "aware": {
+        "description": "Phishing simulation & security awareness"
+      },
+      "privacy": {
+        "description": "GDPR documentation — RoPA, DPIA, DPA, breach notifications"
+      },
+      "badgeCritical": "{{count}} critical",
+      "badgeFramework": "{{count}} framework(s)",
+      "badgeProject": "{{count}} project(s)",
+      "badgeActive": "{{count}} active",
+      "badgeOpen": "{{count}} open",
+      "title": "Modules"
+    },
     "settingsSection": "Settings",
     "noFrameworks": "No frameworks configured.",
     "noRisks": "No risks recorded.",
@@ -1590,7 +1632,13 @@
     "scoreConfig": "Score Configuration",
     "scoreConfigDesc": "Customize score formula and weightings",
     "alerting": "Alerting",
-    "alertingDesc": "Manage notification channels"
+    "alertingDesc": "Manage notification channels",
+    "recentlyVisited": "Recently visited",
+    "settings_title": "Settings",
+    "settings_scoreConfig": "Score configuration",
+    "settings_scoreConfigDesc": "Adjust scoring formula and weights",
+    "settings_alerting": "Alerting",
+    "settings_alertingDesc": "Manage notification channels"
   },
   "theme": {
     "lightMode": "Light Mode",
@@ -2694,5 +2742,32 @@
       "evidence": "Work the first controls & upload evidence",
       "policy": "Adopt a first policy from a template"
     }
+  },
+  "glossary": {
+    "Control": "Control (ISO 27001 Annex A): a measure or requirement to manage information security. ISO 27001:2022 defines 93 controls across 4 themes.",
+    "Nachweis": "Evidence: documented proof that a control has been implemented — e.g. screenshot, log, audit trail, certificate.",
+    "Evidence": "Evidence: documented proof that a control has been implemented — e.g. screenshot, log, audit trail, certificate.",
+    "Schutzbedarf": "Protection need (BSI): classification of data and systems by damage potential for loss of confidentiality, integrity or availability. Levels: normal / high / very high.",
+    "Residualrisiko": "Residual risk: remaining risk after all controls are applied. Must be documented and accepted by management (ISO 27001 cl. 6.1.3).",
+    "Eintrittswahrscheinlichkeit": "Likelihood of risk occurrence on a scale of 1 (very unlikely) to 5 (very likely). Multiplied by impact to give the risk score.",
+    "Auswirkung": "Impact: extent of damage if the risk occurs, on a scale of 1 (negligible) to 5 (critical/existential).",
+    "SoA": "Statement of Applicability — ISO 27001:2022 cl. 6.1.3: mandatory document listing the applicability of all 93 Annex A controls with justification for exclusions.",
+    "RTO": "Recovery Time Objective: maximum tolerable downtime for a process or system before recovery. Core BCM metric per BSI 200-4.",
+    "RPO": "Recovery Point Objective: maximum tolerable data loss period (time of last backup to failure). Core BCM metric per BSI 200-4.",
+    "MBCO": "Minimum Business Continuity Objective: minimum service level a process must maintain during an emergency. BSI 200-4.",
+    "BIA": "Business Impact Analysis: analysis of business consequences from failure of critical processes. Basis for RTO/RPO/MBCO determination.",
+    "Maximumprinzip": "BSI Grundschutz maximum principle: protection need is determined by the highest need of any user/data on a system — the weakest link sets the requirement.",
+    "NC": "Nonconformity: deviation from the required state (ISO 19011). Major NC: requirement not met. Minor NC: isolated deviation not fundamentally threatening the ISMS.",
+    "CAPA": "Corrective Action and Preventive Action: documented measure to correct a nonconformity and prevent recurrence (ISO 27001 cl. 10.1).",
+    "VVT": "Record of Processing Activities — Art. 30 GDPR: mandatory documentation of processing purposes, legal basis, recipients, data categories and retention periods.",
+    "DPIA": "Data Protection Impact Assessment — Art. 35 GDPR: mandatory assessment before high-risk processing (profiling, biometrics, surveillance).",
+    "DSFA": "Data Protection Impact Assessment (DPIA) — Art. 35 GDPR: mandatory review before processing with high risk to data subjects.",
+    "AVV": "Data Processing Agreement — Art. 28 GDPR: mandatory contract with every processor handling personal data on your behalf. Absence makes the engagement unlawful.",
+    "DSR": "Data Subject Request — Art. 15–22 GDPR: right of access, rectification, erasure, restriction, objection, portability. Response deadline: 30 days.",
+    "TOMs": "Technical and Organisational Measures (Art. 32 GDPR): security safeguards for personal data — encryption, access control, backups, pseudonymisation.",
+    "NIS2": "NIS2 Directive (EU 2022/2555): EU cybersecurity directive for operators of essential and important entities. Transposed in DE by NIS2UmsuCG (in force since 06.12.2025).",
+    "ISO27001": "ISO/IEC 27001:2022: international standard for information security management systems (ISMS). Defines requirements and 93 Annex A controls.",
+    "BSI200": "BSI IT-Grundschutz (BSI-Standard 200-x): methodology of Germany's Federal Office for Information Security for systematic IT protection.",
+    "ISMS": "Information Security Management System: systematic approach for managing confidential information — basis for ISO 27001 and BSI Grundschutz certification."
   }
 }

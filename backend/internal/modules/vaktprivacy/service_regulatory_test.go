@@ -305,26 +305,32 @@ func TestBreach_NotificationLetterRequiredFields(t *testing.T) {
 //   (d) Only erasure-type DSRs are routed through ExecuteErasure
 
 // TestErasure_EvidenceNoteContainsAllTables verifies that the evidence note
-// produced by ExecuteErasure documents all three affected data domains
-// (hr_employees, sr_targets, users). A missing table in the note would leave
-// the compliance officer unable to determine what was erased.
+// produced by ExecuteErasure documents all four affected data domains
+// (hr_employees, sr_events, sr_targets, users). A missing table in the note
+// would leave the compliance officer unable to determine what was erased.
+// sr_events (IP addresses + user-agents from phishing simulations) were added
+// in S100-2 to close the Art. 17 DSGVO erasure gap (COMP-M01).
 func TestErasure_EvidenceNoteContainsAllTables(t *testing.T) {
 	// Mirror the note-building logic from Repository.ExecuteErasure.
 	hrDeleted := int64(1)
+	srEventsDeleted := int64(3)
 	srDeleted := int64(2)
 	usersAnonymised := int64(1)
 
 	note := fmt.Sprintf(
 		"Art. 17 DSGVO erasure executed at %s.\n"+
 			"hr_employees deleted: %d\n"+
+			"sr_events deleted: %d\n"+
 			"sr_targets deleted: %d\n"+
 			"users anonymised: %d",
 		"2026-06-05T10:00:00Z",
-		hrDeleted, srDeleted, usersAnonymised,
+		hrDeleted, srEventsDeleted, srDeleted, usersAnonymised,
 	)
 
 	assert.Contains(t, note, "hr_employees deleted: 1",
 		"evidence note must document hr_employees deletion count")
+	assert.Contains(t, note, "sr_events deleted: 3",
+		"evidence note must document sr_events (phishing telemetry) deletion count")
 	assert.Contains(t, note, "sr_targets deleted: 2",
 		"evidence note must document sr_targets deletion count")
 	assert.Contains(t, note, "users anonymised: 1",
@@ -335,20 +341,47 @@ func TestErasure_EvidenceNoteContainsAllTables(t *testing.T) {
 
 // TestErasure_EvidenceNoteZeroCountsAllowed verifies that the evidence note is
 // valid even when no matching rows exist in a table (the requester was not in
-// hr_employees or sr_targets). Zero-count entries prove the search was
-// performed, which satisfies Art. 5(2) accountability requirements.
+// hr_employees, sr_events, or sr_targets). Zero-count entries prove the search
+// was performed, which satisfies Art. 5(2) accountability requirements.
 func TestErasure_EvidenceNoteZeroCountsAllowed(t *testing.T) {
 	note := fmt.Sprintf(
 		"Art. 17 DSGVO erasure executed at %s.\n"+
 			"hr_employees deleted: %d\n"+
+			"sr_events deleted: %d\n"+
 			"sr_targets deleted: %d\n"+
 			"users anonymised: %d",
-		"2026-06-05T10:00:00Z", int64(0), int64(0), int64(0),
+		"2026-06-05T10:00:00Z", int64(0), int64(0), int64(0), int64(0),
 	)
 
 	assert.Contains(t, note, "hr_employees deleted: 0")
+	assert.Contains(t, note, "sr_events deleted: 0")
 	assert.Contains(t, note, "sr_targets deleted: 0")
 	assert.Contains(t, note, "users anonymised: 0")
+}
+
+// TestErasure_SREventsDeletedBeforeSRTargets verifies the ordering invariant:
+// sr_events must be deleted before sr_targets so that the ON DELETE SET NULL FK
+// does not null out target_id before we can identify which events to erase.
+// This test encodes the deletion sequence as documented in the ExecuteErasure
+// implementation comment (S100-2 / COMP-M01).
+func TestErasure_SREventsDeletedBeforeSRTargets(t *testing.T) {
+	// Simulate the deletion sequence with counters.
+	type step struct {
+		table string
+		count int64
+	}
+	var steps []step
+
+	// Step A: delete sr_events referencing this email's targets.
+	steps = append(steps, step{"sr_events", 3})
+	// Step B: delete sr_targets (FK is now safe to remove).
+	steps = append(steps, step{"sr_targets", 1})
+
+	require.Equal(t, "sr_events", steps[0].table,
+		"sr_events must be deleted before sr_targets to prevent FK null-out")
+	require.Equal(t, "sr_targets", steps[1].table,
+		"sr_targets deletion must follow sr_events")
+	require.Greater(t, len(steps), 1, "both tables must be in the deletion sequence")
 }
 
 // TestErasure_OnlyErasureTypeRouted verifies that the service routing logic

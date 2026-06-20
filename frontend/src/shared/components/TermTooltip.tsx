@@ -1,18 +1,26 @@
 import { useState } from 'react'
 import { HelpCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface TermTooltipProps {
   term: string
-  explanation: string
+  /** Inline explanation. If omitted, looks up glossary.{glossaryKey ?? term}. */
+  explanation?: string
+  /** Override glossary lookup key (defaults to `term`). */
+  glossaryKey?: string
   children?: React.ReactNode
 }
 
 let _id = 0
 function nextId() { return `term-tooltip-${String(++_id)}` }
 
-export function TermTooltip({ term, explanation, children }: TermTooltipProps) {
+export function TermTooltip({ term, explanation, glossaryKey, children }: TermTooltipProps) {
+  const { t } = useTranslation()
   const [visible, setVisible] = useState(false)
   const [tooltipId] = useState(nextId)
+
+  const key = glossaryKey ?? term
+  const resolvedExplanation = explanation ?? t(`glossary.${key}`, { defaultValue: key })
 
   return (
     <span
@@ -37,7 +45,7 @@ export function TermTooltip({ term, explanation, children }: TermTooltipProps) {
           visible ? 'opacity-100' : 'opacity-0',
         ].join(' ')}
       >
-        {explanation}
+        {resolvedExplanation}
         <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
       </span>
     </span>

@@ -237,15 +237,16 @@ Vakt prüft nicht automatisch auf neue Versionen. Wenn du informiert werden möc
 
 **Option 2 — Watchtower:** Für automatische Container-Updates siehe die [Deployment-Dokumentation](../setup.md).
 
-Migrationen laufen automatisch beim Start (wenn `AUTO_MIGRATE=true` gesetzt ist). Bei kritischen Produktionssystemen empfiehlt sich der manuelle Ablauf:
+Datenbankmigrationen laufen über den `migrate`-Container, der in `docker-compose.yml` als Abhängigkeit vor `api` und `worker` eingetragen ist. Der Container startet, migriert und beendet sich — `docker compose up -d` reicht:
 
 ```bash
-# 1. Backup anlegen
-# 2. Migration testen
-docker compose exec api /api migrate
-# 3. Anwendung starten
+git pull
+docker compose pull
 docker compose up -d
+# migrate-Container läuft zuerst, dann starten api/worker
 ```
+
+> **`AUTO_MIGRATE=false` (Default):** Die API migriert nicht selbst — nur der dedizierte `migrate`-Container tut das. Setze `AUTO_MIGRATE=true` nur in lokalen Entwicklungsumgebungen ohne laufenden `migrate`-Container.
 
 ---
 
@@ -297,4 +298,4 @@ Vakt speichert alle Daten in PostgreSQL. Eine einfache Backup-Strategie:
 docker compose exec postgres pg_dump -U vakt vakt > backup-$(date +%Y%m%d).sql
 ```
 
-Hochgeladene Dateien (Evidence-Anhänge) liegen im Volume `./data/uploads` und müssen separat gesichert werden.
+Hochgeladene Dateien (Evidence-Anhänge) liegen im Docker-Volume `uploads_data` und müssen separat gesichert werden — siehe [`docs/operations/backup-restore.md`](../operations/backup-restore.md).

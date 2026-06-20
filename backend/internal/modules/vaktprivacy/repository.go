@@ -837,7 +837,24 @@ func (r *Repository) ExecuteErasure(ctx context.Context, orgID, id string) (*DSR
 	}
 	hrDeleted := hrTag.RowsAffected()
 
-	// 3b. Delete from sr_targets.
+	// 3b. Delete tracking events for the requester's targets BEFORE deleting
+	// sr_targets — the FK is ON DELETE SET NULL, so deleting targets first would
+	// null out target_id and leave IP addresses / user-agents orphaned in the table.
+	// Art. 17 DSGVO requires erasure of all personal data including phishing
+	// simulation telemetry (IP addresses, user agents) stored in sr_events.
+	srEventsTag, err := tx.Exec(ctx, `
+		DELETE FROM sr_events
+		WHERE target_id IN (
+			SELECT id FROM sr_targets
+			WHERE org_id = $1::uuid AND lower(email) = lower($2)
+		)`, orgID, requesterEmail,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("execute erasure: delete sr_events: %w", err)
+	}
+	srEventsDeleted := srEventsTag.RowsAffected()
+
+	// 3c. Delete from sr_targets (after events — see ordering note above).
 	srTag, err := tx.Exec(ctx,
 		`DELETE FROM sr_targets WHERE org_id = $1 AND lower(email) = lower($2)`,
 		orgID, requesterEmail,
@@ -847,7 +864,7 @@ func (r *Repository) ExecuteErasure(ctx context.Context, orgID, id string) (*DSR
 	}
 	srDeleted := srTag.RowsAffected()
 
-	// 3c. Anonymise matching users row (same org), if any.
+	// 3d. Anonymise matching users row (same org), if any.
 	// We replace email with "deleted-<uuid>@vakt.local", wipe the password hash,
 	// clear OIDC mappings, and mark the account inactive — identical to the
 	// pattern in internal/shared/account.DeleteUserAccount.
@@ -894,10 +911,11 @@ func (r *Repository) ExecuteErasure(ctx context.Context, orgID, id string) (*DSR
 	evidenceNote := fmt.Sprintf(
 		"Art. 17 DSGVO erasure executed at %s.\n"+
 			"hr_employees deleted: %d\n"+
+			"sr_events deleted: %d\n"+
 			"sr_targets deleted: %d\n"+
 			"users anonymised: %d",
 		time.Now().UTC().Format(time.RFC3339),
-		hrDeleted, srDeleted, usersAnonymised,
+		hrDeleted, srEventsDeleted, srDeleted, usersAnonymised,
 	)
 
 	// 5. Mark the DSR as completed — AFTER all deletions, inside the same tx.

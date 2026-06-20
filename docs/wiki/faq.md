@@ -112,7 +112,7 @@ docker compose pull
 docker compose up -d
 ```
 
-Datenbankmigrationen laufen automatisch beim Start (wenn `AUTO_MIGRATE=true` gesetzt ist). Bei kritischen Produktionssystemen empfiehlt sich vorher ein Backup.
+Datenbankmigrationen führt im Produktions-Setup der dedizierte `migrate`-Container aus (`docker compose run --rm migrate up`) — `AUTO_MIGRATE` bleibt dort auf dem Default `false`. `AUTO_MIGRATE=true` (API migriert selbst beim Start) ist nur für lokale Entwicklungsumgebungen ohne `migrate`-Container gedacht. Details: [Installation → Migrationen](installation.md). Bei kritischen Produktionssystemen vorher ein Backup erstellen.
 
 Vakt prüft automatisch, ob eine neue Version verfügbar ist, und zeigt es im Dashboard an (via GitHub Releases API, keine Daten werden übermittelt).
 
@@ -160,8 +160,9 @@ Vakt speichert alle Daten in PostgreSQL. Backup-Strategie:
 # Datenbankdump
 docker compose exec postgres pg_dump -U vakt vakt > backup-$(date +%Y%m%d).sql
 
-# Evidence-Anhänge (hochgeladene Dateien)
-tar -czf uploads-$(date +%Y%m%d).tar.gz ./data/uploads
+# Evidence-Anhänge (Docker-Volume uploads_data exportieren)
+docker run --rm -v uploads_data:/data:ro -v "$(pwd)":/backup \
+  alpine:latest tar czf /backup/uploads-$(date +%Y%m%d).tar.gz -C /data .
 ```
 
 Beide Backups sicher aufbewahren — idealerweise verschlüsselt und auf einem separaten System.

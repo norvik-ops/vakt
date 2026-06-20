@@ -813,6 +813,13 @@ func (s *Service) sendSMTP(from, to string, msg []byte) error {
 	return sendViaClient(client, from, to, msg)
 }
 
+// sanitizeHeader removes CR and LF characters from an email header value to
+// prevent CRLF injection attacks (CWE-93). Callers must apply this to every
+// user-supplied value that appears in a raw MIME header line.
+func sanitizeHeader(v string) string {
+	return strings.NewReplacer("\r", "", "\n", "").Replace(v)
+}
+
 // buildMIMEMessage constructs a minimal HTML email with optional open-tracking pixel.
 func buildMIMEMessage(fromName, fromEmail, to, subject, htmlBody, trackingToken, appURL string, trackOpens bool) []byte {
 	body := htmlBody
@@ -827,9 +834,9 @@ func buildMIMEMessage(fromName, fromEmail, to, subject, htmlBody, trackingToken,
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "From: %s <%s>\r\n", fromName, fromEmail)
-	fmt.Fprintf(&b, "To: %s\r\n", to)
-	fmt.Fprintf(&b, "Subject: %s\r\n", subject)
+	fmt.Fprintf(&b, "From: %s <%s>\r\n", sanitizeHeader(fromName), sanitizeHeader(fromEmail))
+	fmt.Fprintf(&b, "To: %s\r\n", sanitizeHeader(to))
+	fmt.Fprintf(&b, "Subject: %s\r\n", sanitizeHeader(subject))
 	b.WriteString("MIME-Version: 1.0\r\n")
 	b.WriteString("Content-Type: text/html; charset=UTF-8\r\n")
 	b.WriteString("\r\n")

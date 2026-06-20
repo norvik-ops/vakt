@@ -1,3 +1,5 @@
+import { lazy, Suspense } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import {
   Bug, FileCheck, Key, Fish, Eye,
@@ -9,14 +11,14 @@ import {
   KPICard, FrameworkProgress, TopRisksList, ActivityTimeline,
   ComplianceProgressCard, relativeTime,
 } from './DashboardComponents'
-import { ScoreHistoryCard, ScoreForecastHint } from './ForecastChart'
+// ponytail: lazy-split removes ~106 KiB gzip Recharts from initial bundle (S98-1)
+const ScoreHistoryCard = lazy(() => import('./ForecastChart').then(m => ({ default: m.ScoreHistoryCard })))
+const ScoreForecastHint = lazy(() => import('./ForecastChart').then(m => ({ default: m.ScoreForecastHint })))
 import { TodayWidget, MyTasksWidget, QuickWinsCard } from './DashboardWidgets'
-import { OnboardingBanner, OnboardingWizard } from '../components/OnboardingWizard'
 import { OnboardingChecklist } from '../shared/components/OnboardingChecklist'
 import type { WidgetKey } from './WidgetConfigPanel'
 import type { DashboardAggregate } from '../hooks/useDashboard'
 import type { ScoreHistoryEntry } from '../modules/vaktcomply/hooks/useScoreHistory'
-import type { OnboardingStatus } from '../hooks/useOnboarding'
 import type { RecentPage } from '../shared/hooks/useRecentPages'
 import type { AuditMilestone } from '../modules/vaktcomply/types'
 
@@ -30,9 +32,6 @@ interface WidgetGridProps {
   aggLoading: boolean
   scoreHistory: ScoreHistoryEntry[] | undefined
   widgets: Record<WidgetKey, boolean>
-  onboarding: OnboardingStatus | undefined
-  wizardOpen: boolean
-  setWizardOpen: React.Dispatch<React.SetStateAction<boolean>>
   scoreError: boolean
   aggError: boolean
   recentPages: RecentPage[]
@@ -48,43 +47,45 @@ interface WidgetGridProps {
 export function WidgetGrid({
   widgetOrder, editMode, handleDragStart, handleDragOver, handleDrop,
   agg, aggLoading, scoreHistory, widgets,
-  onboarding, wizardOpen, setWizardOpen, scoreError, aggError,
+  scoreError, aggError,
   recentPages, nextMilestone, kpiLoading,
   critCount, fwCount, projCount, activeCampaignCount, openBreachCount,
 }: WidgetGridProps) {
+  const { t } = useTranslation()
+
   const MODULES = [
     {
-      label: 'Vakt Scan', description: 'Scanner-Orchestrierung & Vulnerability Management',
+      label: 'Vakt Scan', description: t('dashboard.modules.scan.description'),
       icon: Bug, iconColor: 'text-severity-critical',
-      badge: critCount != null ? `${String(critCount)} kritisch` : '—',
+      badge: critCount != null ? t('dashboard.modules.badgeCritical', { count: critCount }) : '—',
       badgeColor: critCount ? 'text-severity-critical' : 'text-secondary',
       path: '/vaktscan',
     },
     {
-      label: 'Vakt Comply', description: 'Compliance & Dokumentation — NIS2, ISO 27001, BSI',
+      label: 'Vakt Comply', description: t('dashboard.modules.comply.description'),
       icon: FileCheck, iconColor: 'text-severity-low',
-      badge: fwCount != null ? `${String(fwCount)} Framework${fwCount === 1 ? '' : 's'}` : '—',
+      badge: fwCount != null ? t('dashboard.modules.badgeFramework', { count: fwCount }) : '—',
       badgeColor: fwCount ? 'text-severity-low' : 'text-secondary',
       path: '/vaktcomply',
     },
     {
-      label: 'Vakt Vault', description: 'Secrets Management, Rotation & Git-Scanning',
+      label: 'Vakt Vault', description: t('dashboard.modules.vault.description'),
       icon: Key, iconColor: 'text-severity-medium',
-      badge: projCount != null ? `${String(projCount)} Projekt${projCount === 1 ? '' : 'e'}` : '—',
+      badge: projCount != null ? t('dashboard.modules.badgeProject', { count: projCount }) : '—',
       badgeColor: 'text-secondary',
       path: '/vaktvault',
     },
     {
-      label: 'Vakt Aware', description: 'Phishing-Simulation & Security Awareness',
+      label: 'Vakt Aware', description: t('dashboard.modules.aware.description'),
       icon: Fish, iconColor: 'text-brand-hover',
-      badge: activeCampaignCount != null ? `${String(activeCampaignCount)} aktiv` : '—',
+      badge: activeCampaignCount != null ? t('dashboard.modules.badgeActive', { count: activeCampaignCount }) : '—',
       badgeColor: activeCampaignCount ? 'text-brand-hover' : 'text-secondary',
       path: '/vaktaware',
     },
     {
-      label: 'Vakt Privacy', description: 'DSGVO-Dokumentation — VVT, DPIA, AVV, Meldepflichten',
+      label: 'Vakt Privacy', description: t('dashboard.modules.privacy.description'),
       icon: Eye, iconColor: 'text-severity-info',
-      badge: openBreachCount != null ? `${String(openBreachCount)} offen` : '—',
+      badge: openBreachCount != null ? t('dashboard.modules.badgeOpen', { count: openBreachCount }) : '—',
       badgeColor: openBreachCount ? 'text-severity-critical' : 'text-secondary',
       path: '/vaktprivacy',
     },
@@ -98,7 +99,7 @@ export function WidgetGrid({
       {widgets.recent_pages && recentPages.length > 0 && (
         <section>
           <p className="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-2 opacity-60">
-            Zuletzt besucht
+            {t('dashboard.recentlyVisited')}
           </p>
           <div className="flex flex-wrap gap-2">
             {recentPages.map((page) => (
@@ -125,25 +126,18 @@ export function WidgetGrid({
           className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
         >
           <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span>Dashboard-Daten konnten nicht geladen werden.</span>
+          <span>{t('dashboard.loadError')}</span>
         </div>
-      )}
-
-      {widgets.onboarding && !widgets.evidence_expiry && onboarding && !onboarding.completed && !onboarding.dismissed && (
-        <OnboardingBanner status={onboarding} onOpen={() => { setWizardOpen(true) }} />
-      )}
-      {onboarding && !onboarding.dismissed && (
-        <OnboardingWizard open={wizardOpen} onClose={() => { setWizardOpen(false) }} status={onboarding} />
       )}
 
       {widgets.open_findings && (
         <section>
-          <h2 className="text-[14px] font-semibold text-primary mb-3">Compliance-Übersicht</h2>
+          <h2 className="text-[14px] font-semibold text-primary mb-3">{t('dashboard.complianceOverview')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <KPICard label="Offene CAPAs" value={agg?.open_capas} icon={ClipboardList} to="/vaktcomply/capas" critical isLoading={kpiLoading} />
-            <KPICard label="Überfällige Controls" value={agg?.overdue_controls} icon={Clock} to="/vaktcomply/overdue-reviews" critical isLoading={kpiLoading} />
-            <KPICard label="Kritische Risiken" value={agg?.critical_risks} icon={TriangleAlert} to="/vaktcomply/risks" critical isLoading={kpiLoading} />
-            <KPICard label="Offene Aufgaben" value={agg?.overdue_tasks} icon={ListTodo} to="/vaktcomply/overdue-reviews" critical isLoading={kpiLoading} />
+            <KPICard label={t('dashboard.kpi.openCapas')} value={agg?.open_capas} icon={ClipboardList} to="/vaktcomply/capas" critical isLoading={kpiLoading} />
+            <KPICard label={t('dashboard.kpi.overdueControls')} value={agg?.overdue_controls} icon={Clock} to="/vaktcomply/overdue-reviews" critical isLoading={kpiLoading} />
+            <KPICard label={t('dashboard.kpi.criticalRisks')} value={agg?.critical_risks} icon={TriangleAlert} to="/vaktcomply/risks" critical isLoading={kpiLoading} />
+            <KPICard label={t('dashboard.kpi.openTasks')} value={agg?.overdue_tasks} icon={ListTodo} to="/vaktcomply/overdue-reviews" critical isLoading={kpiLoading} />
           </div>
         </section>
       )}
@@ -160,14 +154,14 @@ export function WidgetGrid({
           }`} />
           <div className="flex-1 min-w-0">
             <p className="text-[12px] font-semibold text-primary truncate">
-              Nächste Prüfung: {nextMilestone.title}
+              {t('dashboard.nextAudit', { title: nextMilestone.title })}
             </p>
             <p className="text-[11px] text-secondary">
               {nextMilestone.days_remaining === 0
-                ? 'Heute'
+                ? t('dashboard.today')
                 : nextMilestone.days_remaining != null && nextMilestone.days_remaining > 0
-                ? `in ${String(nextMilestone.days_remaining)} Tagen`
-                : `${String(Math.abs(nextMilestone.days_remaining ?? 0))} Tage überfällig`}
+                ? t('dashboard.inDays', { count: nextMilestone.days_remaining })
+                : t('dashboard.overdueDays', { count: Math.abs(nextMilestone.days_remaining ?? 0) })}
             </p>
           </div>
           <ChevronRight className="w-4 h-4 text-brand shrink-0" />
@@ -221,10 +215,12 @@ export function WidgetGrid({
                   <div className={widgetOpacity}>
                     <ComplianceProgressCard scores={agg?.framework_scores ?? []} isLoading={aggLoading} />
                     <div className="mt-4">
-                      <ScoreHistoryCard />
-                      {scoreHistory && scoreHistory.length >= 2 && (
-                        <ScoreForecastHint entries={scoreHistory} />
-                      )}
+                      <Suspense fallback={<div className="h-32 animate-pulse rounded bg-muted" />}>
+                        <ScoreHistoryCard />
+                        {scoreHistory && scoreHistory.length >= 2 && (
+                          <ScoreForecastHint entries={scoreHistory} />
+                        )}
+                      </Suspense>
                     </div>
                   </div>
                 </div>
@@ -245,10 +241,10 @@ export function WidgetGrid({
                   <div className={widgetOpacity}>
                     <section className="rounded-lg border border-border bg-surface p-4">
                       <div className="flex items-center justify-between mb-3">
-                        <h2 className="text-[13px] font-semibold text-primary">Framework-Fortschritt</h2>
+                        <h2 className="text-[13px] font-semibold text-primary">{t('dashboard.frameworkProgress')}</h2>
                         {agg && (
                           <span className="text-[10px] text-secondary">
-                            {agg.policies_approved} / {agg.policies_total} Richtlinien aktiv
+                            {t('dashboard.policiesActive', { approved: agg.policies_approved, total: agg.policies_total })}
                           </span>
                         )}
                       </div>
@@ -264,8 +260,8 @@ export function WidgetGrid({
                   <div className={widgetOpacity}>
                     <section className="rounded-lg border border-border bg-surface p-4">
                       <div className="flex items-center justify-between mb-3">
-                        <h2 className="text-[13px] font-semibold text-primary">Top-5-Risiken</h2>
-                        <Link to="/vaktcomply/risks" className="text-[10px] text-brand hover:underline">Alle anzeigen</Link>
+                        <h2 className="text-[13px] font-semibold text-primary">{t('dashboard.topRisks')}</h2>
+                        <Link to="/vaktcomply/risks" className="text-[10px] text-brand hover:underline">{t('dashboard.showAll')}</Link>
                       </div>
                       <TopRisksList risks={agg?.top_risks ?? []} />
                     </section>
@@ -278,7 +274,7 @@ export function WidgetGrid({
                   {dragHandle}
                   <div className={widgetOpacity}>
                     <section className="rounded-lg border border-border bg-surface p-4">
-                      <h2 className="text-[13px] font-semibold text-primary mb-3">Letzte Aktivitäten</h2>
+                      <h2 className="text-[13px] font-semibold text-primary mb-3">{t('dashboard.recentActivity')}</h2>
                       <ActivityTimeline entries={agg?.recent_activity ?? []} />
                     </section>
                   </div>
@@ -291,7 +287,7 @@ export function WidgetGrid({
                   <div className={widgetOpacity}>
                     <section>
                       <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-[16px] font-semibold text-primary">Module</h2>
+                        <h2 className="text-[16px] font-semibold text-primary">{t('dashboard.modules.title')}</h2>
                       </div>
                       <div className="space-y-px">
                         {MODULES.map(({ label, description, icon: Icon, iconColor, badge, badgeColor, path }) => (
@@ -325,11 +321,11 @@ export function WidgetGrid({
       </div>
 
       <section>
-        <h2 className="text-[16px] font-semibold text-primary mb-4">Einstellungen</h2>
+        <h2 className="text-[16px] font-semibold text-primary mb-4">{t('dashboard.settingsSection')}</h2>
         <div className="space-y-px">
           {[
-            { to: '/settings/score-config', label: 'Score-Konfiguration', desc: 'Score-Formel und Gewichtungen anpassen' },
-            { to: '/settings/alerting', label: 'Alerting', desc: 'Benachrichtigungskanäle verwalten' },
+            { to: '/settings/score-config', label: t('dashboard.scoreConfig'), desc: t('dashboard.scoreConfigDesc') },
+            { to: '/settings/alerting', label: t('dashboard.alerting'), desc: t('dashboard.alertingDesc') },
           ].map(({ to, label, desc }) => (
             <Link
               key={to}

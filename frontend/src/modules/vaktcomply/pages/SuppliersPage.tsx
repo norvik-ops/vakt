@@ -19,6 +19,7 @@ import { FieldError } from '../../../shared/components/FieldError'
 import { useFormValidation } from '../../../shared/hooks/useFormValidation'
 import { toast } from '../../../shared/hooks/useToast'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { TermTooltip } from '../../../shared/components/TermTooltip'
 
 // ─── Toast (minimal inline) ───────────────────────────────────────────────────
 
@@ -426,7 +427,7 @@ export default function SuppliersPage() {
               <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <input type="checkbox" checked={form.nis2_relevant ?? false}
                   onChange={(e) => { setForm((f) => ({ ...f, nis2_relevant: e.target.checked })); }} />
-                NIS2-relevant
+                <TermTooltip term="NIS2" glossaryKey="NIS2">NIS2</TermTooltip>-relevant
               </label>
               <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <input type="checkbox" checked={form.dora_relevant ?? false}

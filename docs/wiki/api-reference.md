@@ -10,7 +10,7 @@ https://<your-vakt-host>/api/v1
 
 ## Authentication
 
-All endpoints (except `POST /auth/login`, `POST /auth/register`, and health checks) require a **Paseto v2** bearer token:
+All endpoints (except `POST /auth/login`, `POST /auth/register`, and health checks) require a **Paseto v4** bearer token:
 
 ```http
 Authorization: Bearer <token>

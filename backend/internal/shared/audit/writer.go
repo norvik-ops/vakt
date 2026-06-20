@@ -22,10 +22,17 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// SystemWorkerActorID is the canonical actor_id used by background worker jobs
+// when they write audit-log entries without an authenticated user (SEC-M01 /
+// S99-11). Using a recognisable constant instead of an empty string makes it
+// possible to distinguish system writes from genuinely anonymous ones in the
+// audit trail.
+const SystemWorkerActorID = "system/worker"
+
 // WriteEntry describes a single compliance audit event.
 type WriteEntry struct {
 	OrgID        string
-	UserID       string // empty string = system / anonymous
+	UserID       string // empty string = system / anonymous; use SystemWorkerActorID for scheduled jobs
 	UserEmail    string
 	Action       string // create | update | delete | approve | export
 	ResourceType string // vvt | dpia | avv | breach | dsr | control | policy | risk | incident

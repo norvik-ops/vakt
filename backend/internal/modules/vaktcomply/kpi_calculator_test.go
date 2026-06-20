@@ -88,9 +88,38 @@ func TestCalculateKPIsForOrgNilDB(t *testing.T) {
 	assert.Nil(t, snap.IncidentMTTRDays)
 	assert.Nil(t, snap.EvidenceCoverage)
 	assert.Nil(t, snap.ExpiringEvidenceCount)
-	// Statically deferred KPIs are always nil regardless.
+	// DB-backed KPIs return nil when db is nil (nil guard in each sub-calculator).
 	assert.Nil(t, snap.FindingSLACompliance)
 	assert.Nil(t, snap.OpenMajorNCs)
+	// Future data-source KPIs are always nil (no DB backing yet).
 	assert.Nil(t, snap.SuppliersOverduePct)
 	assert.Nil(t, snap.PhishingClickRate)
+}
+
+// TestCalcFindingSLAComplianceNilDB verifies that calcFindingSLACompliance returns nil
+// when db is nil — matching the nil-guard contract shared by all sub-calculators.
+func TestCalcFindingSLAComplianceNilDB(t *testing.T) {
+	ctx := context.Background()
+	result := calcFindingSLACompliance(ctx, nil, "org-nil")
+	assert.Nil(t, result, "calcFindingSLACompliance must return nil when db is nil")
+}
+
+// TestCalcOpenMajorNCsNilDB verifies that calcOpenMajorNCs returns nil
+// when db is nil.
+func TestCalcOpenMajorNCsNilDB(t *testing.T) {
+	ctx := context.Background()
+	result := calcOpenMajorNCs(ctx, nil, "org-nil")
+	assert.Nil(t, result, "calcOpenMajorNCs must return nil when db is nil")
+}
+
+// TestKPISnapshotSuppliersAndPhishingAreNil verifies that SuppliersOverduePct
+// and PhishingClickRate remain nil (no DB backing) — they document the
+// TODO(data-source) invariant that no partial data reaches the KPI snapshot.
+func TestKPISnapshotSuppliersAndPhishingAreNil(t *testing.T) {
+	ctx := context.Background()
+	snap := CalculateKPIsForOrg(ctx, nil, "org-nil")
+	assert.Nil(t, snap.SuppliersOverduePct,
+		"SuppliersOverduePct has no data source yet — must always be nil")
+	assert.Nil(t, snap.PhishingClickRate,
+		"PhishingClickRate has no data source yet — must always be nil")
 }

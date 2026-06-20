@@ -6,7 +6,7 @@ info:
     Self-hosted Security & Compliance Platform API.
     All data stays within your infrastructure — no phone-home, no cloud dependency.
 
-    **Authentication:** Paseto v2 bearer tokens. Obtain a token via `POST /auth/login`.
+    **Authentication:** Paseto v4 bearer tokens. Obtain a token via `POST /auth/login`.
     Include it as `Authorization: Bearer <token>` on all protected endpoints.
 
     **Base URL:** `/api/v1`
@@ -82,7 +82,7 @@ components:
       properties:
         token:
           type: string
-          description: New Paseto v2 access token
+          description: New Paseto v4 access token
         refresh_token:
           type: string
           description: New refresh token
@@ -6465,6 +6465,8 @@ paths:
         schema: { type: string, format: uuid }
     post:
       summary: Upload a file as evidence for a control
+      deprecated: true
+      description: "Deprecated — use POST /vaktcomply/controls/{controlId}/evidence with type=file instead (S100-5/ARCH-M03)."
       tags: [vaktcomply]
       requestBody:
         required: true

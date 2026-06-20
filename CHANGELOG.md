@@ -7,6 +7,126 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+---
+
+**Dokumentations-Audit-Remediation — Sprint 93.**
+Schließt die Doku-Korrektheitsfehler für Self-Hoster und ergänzt aufgabenorientierte ISMS-Guides.
+
+### Added
+
+- **ISMS-Workflow-Guides (S93-5)** — 4 aufgabenorientierte Schritt-für-Schritt-Guides unter `docs/guides/`: Schutzbedarfsfeststellung, Vom Risiko zur Maßnahme, Internes Audit vorbereiten, NIS2-Vorfall melden. Mit realen Vakt-UI-Pfaden, verlinkt aus getting-started + wiki/README.
+- **`/.well-known/security.txt` (S93-7)** — RFC-9116-Sicherheitskontakt unter `frontend/public/.well-known/`.
+- **Operations-Index (S93-9)** — `docs/operations/README.md` als Einstieg in alle Betriebs-Runbooks mit klarer Hierarchie zu Installation/Konfig/DR.
+
+### Fixed
+
+- **Migrations-Doku-Widerspruch (S93-3)** — `faq.md` implizierte fälschlich, Migrationen bräuchten `AUTO_MIGRATE=true`. Jetzt konsistent mit `installation.md`: der `migrate`-Container ist der Prod-Default, `AUTO_MIGRATE` ist dev-only.
+- **Falsche Paseto-Version (S93-14)** — `api-reference.md` nannte „Paseto v2", der Code nutzt v4 (`V4SymmetricKey`). Korrigiert auf v4 (SECURITY.md war bereits korrekt).
+- **Sprint-Status-Drift (S93-13)** — `docs/sprints/overview.md` Sprints 91/93/94/98 auf ✅ nachgezogen.
+
+---
+
+**Performance- & Skalierungs-Härtung — Sprint 98.**
+Initial-Bundle entlastet (Recharts + Routen lazy), Slowloris-Härtung, opt-in pprof, SSE-Push statt DB-Polling, AI-Stream-Deadline.
+
+### Changed
+
+- **Frontend-Initial-Bundle −88 KiB gzip (S98-1/S98-2)** — Recharts (`ForecastChart` im Dashboard) und alle Modul-Route-Pages laden jetzt via `React.lazy` + `<Suspense>`. `vendor-charts` (106 KiB gzip) ist nicht mehr im Initial-`modulepreload`; Initial-Paint-JS sank von 452 → 364 KiB gzip, Entry-Chunk auf 192 KiB (< 200 KiB-Ziel).
+- **Notifications-SSE: Push statt 2-s-Poll (S98-5)** — Der Notification-Stream nutzt jetzt Redis Pub/Sub (`notify.SetPublisher`) mit 30-s-Safety-Poll-Fallback statt eines 2-s-DB-Polls pro offenem Tab. DB-Grundlast ist damit O(Events) statt O(Nutzer). Fällt Redis aus, fällt der Stream automatisch auf den alten Poll zurück. Migration 225 (Deckindex `idx_user_notifications_org_cursor`).
+- **DB-Pool-Default 25 → 15 (PERF-M01)** — `VAKT_DB_MAX_CONNS` default gesenkt mit Kommentar zum pgBouncer-Zusammenspiel; verhindert Connection-Sättigung bei mehreren Instanzen.
+
+### Added
+
+- **HTTP-Server-Timeouts (S98-3)** — `ReadHeaderTimeout` (5 s), `ReadTimeout` (15 s), `IdleTimeout` (120 s) am API-Server gegen Slowloris; `WriteTimeout=0` damit SSE-Streams nicht gekappt werden.
+- **pprof opt-in (S98-4)** — `VAKT_PPROF_ENABLED=true` startet einen Go-pprof-Server auf `127.0.0.1:6060` (nur localhost). Anleitung in `docs/operations/runbook.md#pprof`.
+- **AI-Stream-Deadline (PERF-M03)** — Der AI-Streaming-Client erzwingt jetzt eine 90-s-Context-Deadline, damit ein hängender Provider keine Goroutine dauerhaft blockiert.
+- **k6-ISMS-Last-Test (S98-11)** — `loadtest/vakt-isms-load.js` (Ramp 10→50→100 VU, p95-Gates) für private Staging-Instanzen + optionaler `workflow_dispatch`-Job.
+- `docs/operations/scaling.md` — Skalierungs-/Sizing-Doku (Statelessness-Checkliste, Sizing-Tabelle, SSE-Push als Multi-Instance-Voraussetzung).
+- ADR-0065 — Recharts-Bundle-Strategie (lazy statt Lib-Wechsel).
+
+---
+
+**UX & Onboarding-Polish — Sprint 94.**
+Durchgängige „Sie"-Form in allen deutschen Texten, i18n-Drift-Guard in CI, Risikobewertungs-Methodik-Dialog, i18n-Styleguide.
+
+### Changed
+
+- **Sie-Form durchgängig (S94-3)** — 30 Du-Form-Strings in `de.json` auf „Sie" umgestellt (account settings, notifications, trust center, scanner hints, error messages, AI tooltips, app tour). Kein `du`/`dein` mehr in deutschen UI-Texten.
+- **i18n-Drift-Guard in CI (S94-4)** — `scripts/check-i18n-drift.py` prüft fehlende Keys in en/fr/nl vs. de, Du-Formen in de.json, und warnt bei hardkodierten Umlauten in JSX. Eingebunden in `.github/workflows/docs.yml` (blockiert bei Fehler, warnt bei hardkodierten Strings).
+- **Risiko-Methodik-Dialog (S94-5)** — RisksPage hat jetzt einen „Methodik"-Button (HelpCircle) der die 5×5-ISO-27005-Matrix-Legende öffnet: Wahrscheinlichkeits- und Auswirkungsskala 1–5, Score-Kategorien Niedrig/Mittel/Hoch/Kritisch mit Farbkodierung. Alle 4 Sprachen (de/en/fr/nl).
+
+### Added
+
+- `docs/dev/i18n-style-guide.md` — Styleguide für i18n-Konventionen (Sie-Form, Key-Struktur, Plural, Drift-Guard-Befehl).
+
+---
+
+**Compliance-Lücken & Datenqualität — Sprint 100 (Phase-A-Audit-Nachgang).**
+Schließt DSGVO-Löschpipeline-Lücke, NIS2-KPI-Blindstellen, Docker-Netzwerksegmentierung und legt erste Benchmarks für kritische Pfade an.
+
+### Security
+
+- **NIS2 Art. 21f — KPIs aus Echtdaten befüllt** — `kpi_calculator.go` gibt für `FindingSLACompliance` (% Findings innerhalb SLA aus `vb_findings`) und `OpenMajorNCs` (offene Major-NCs aus `ck_capas` ISO 27001 Cl. 10.1) jetzt echte DB-Werte zurück. `SuppliersOverduePct` und `PhishingClickRate` sind bewusst `nil` mit `TODO(data-source)`-Kommentar (Datenquellen Q4 2026). 4 neue Unit-Tests (S100-1, COMP-C01).
+- **DSGVO Art. 17 — Erasure-Pipeline vervollständigt** — `ExecuteErasure()` löscht jetzt `sr_events` (IP-Adressen + User-Agents aus Phishing-Simulationen) **vor** `sr_targets`, damit der FK-Constraint nicht dazwischenfunkt. Evidenz-Notiz dokumentiert alle 4 betroffenen Tabellen. Unit-Tests prüfen Reihenfolge, Evidenz-Note und Idempotenz (S100-2, COMP-M01).
+- **EU AI Act Art. 52 Disclaimer auf alle AI-Ausgabekanäle ausgeweitet** — E-Mail-Digests (`emaildigest/service.go`) und Policy-Draft-Exports (`handler_policies.go`) tragen jetzt denselben Art.-52-Transparenzhinweis wie die `AIReportPage` (S100-3, COMP-M02).
+
+### Infrastructure
+
+- **Docker-Netzwerksegmentierung (ISO A.8.22)** — `docker-compose.yml` verwendet jetzt zwei interne Netzwerke: `db-net` (nur Postgres + pgBouncer) und `app-net` (API, Worker, Redis, Nginx, Ollama). API und Worker joinen beide Netze; Nginx und Redis erreichen Postgres damit **nicht** direkt (S100-4, COMP-M03).
+- **Legacy Evidence Upload deprecated** — `POST /controls/:id/evidence/upload` setzt `Deprecation: true`-Header und verweist auf `POST /controls/:id/evidence-files` (EvidenceFileService). `file_path` (Server-Pfad) fehlt in allen Evidence-API-Responses (`json:"-"`). Entfernung im nächsten Minor (S100-5, ARCH-M03).
+- **Migration-Lücke 203–209 dokumentiert** — [ADR-0064](docs/adr/0064-migration-gap-203-209.md) erklärt Ursache (verworfene Sprint-84/85-Branches), bestätigt dass golang-migrate Lücken toleriert und legt fest, dass künftige Migrationen ab 225 lückenlos vergeben werden (S100-6, OPS-H01).
+
+### Added
+
+- **Benchmarks für kritische Pfade** — `crypto_bench_test.go`: 8 Benchmarks für AES-256-GCM Encrypt/Decrypt/EncryptWithAAD/DecryptWithAAD (1 KB, Größenreihe 64 B–64 KB) und HKDF-Derivation. `kpi_calculator_bench_test.go`: 3 Benchmarks für den nil-DB-Pfad und `numericToFloat64Ptr`. Dazu 4 tabellengetriebene Property-Invariant-Tests (Round-Trip für 10 Payload-Größen, AAD-Varianten, Wrong-AAD-rejection, Legacy-Backward-Compatibility). Upgrade auf `pgregory.net/rapid` als Follow-up geplant (S100-7, ARCH-L01).
+
+---
+
+**Security-Härtung III — Sprint 99 (Phase-A- und v3-Audit-Nachgang).**
+Schließt alle neuen CRITICAL/HIGH-Security-Findings, die S87/S90 nicht abgedeckt haben: zwei CRITICALs (SMTP-Credential-Leak, E-Mail-Header-Injection) und zwei HIGHs (SSRF-Scanner-Bypass, Key-Rotation-CI-Gate).
+
+### Security
+
+- **E-Mail-Header-Injection verhindert (CWE-93)** — `fromName`, `fromEmail` und `subject` in `vaktaware/service.go` werden jetzt durch `sanitizeHeader()` von CR/LF-Zeichen bereinigt, bevor sie in MIME-Header eingebaut werden. Verhindert SMTP-Header-Injection durch Kampagnen-Absendernamen (S99-2).
+- **SSRF-Bypass in Scanner durch Hostname-Auflösung geschlossen** — `isPrivateOrLoopback()` prüfte bisher nur IP-Adressen; Hostnamen (z. B. `internal.corp`) wurden nie aufgelöst und passierten den Check. Jetzt werden Hostnamen via `net.LookupHost` aufgelöst und **alle** resultierenden IPs gegen private CIDR-Ranges geprüft. DNS-zu-Private-IP-Redirect-Angriffe werden damit abgeblockt (S99-3, CWE-918).
+- **Key-Rotation-Integrationstest reaktiviert** — `rotate_key_real_test.go` war seit Migration 152 mit `t.Skip()` auskommentiert und gab kein Signal mehr über gebrochene Rotation. Test aktualisiert, `t.Skip()` entfernt; CI blockiert jetzt, wenn diese Datei wieder einen Skip enthält (S99-4).
+- **Alle CI-Actions auf SHA-Commit-Hashes gepinnt** — mutable Tags wie `@master` und `@v4` wurden durch verifizierte SHA-Pins ersetzt; `aquasecurity/trivy-action`, `github/codeql-action` und alle anderen Actions sind damit Supply-Chain-sicher (S99-5, SEC-H01/H02).
+- **SAML-Parsing: XML-Entity-Expansion begrenzt** — `saml_direct.go` nutzt jetzt einen Decoder mit `Entity`-Limit, um Billion-Laughs-Angriffe auf den SAML-Response-Parser abzuwehren (S99-7, SEC-M03).
+- **Rate-Limiter fail-closed bei Redis-Ausfall** — öffentliche Endpunkte (Login, Demo-Start) fallen bei Redis-Ausfall jetzt auf `503 Service Unavailable` zurück statt alle Requests durchzulassen. Interne Endpunkte (bereits authentifiziert) bleiben fail-open (S99-8, SEC-M08).
+- **`RequireRole`-Kommentar korrigiert** — der Middleware-Kommentar beschrieb eine Rollenhierarchie, die Implementierung prüft exakt eine Rolle. Kommentar klargestellt; parametrisierte Rollenkombinations-Tests hinzugefügt (S99-12, ARCH-L02).
+- **System-Worker-Actor-ID für Audit-Log** — Hintergrund-Jobs schreiben jetzt `actor_id = "system/worker"` in den Audit-Log statt einen leeren String zu hinterlassen; zentrales `SystemWorkerActorID`-Constant in `shared/audit` (S99-11, SEC-M01).
+
+### Docs / CI
+
+- **Dependency-License-Gate (go-licenses + license-checker)** — neuer CI-Job prüft bei jedem Push, ob alle Go- und npm-Abhängigkeiten unter erlaubten OSS-Lizenzen stehen (MIT, Apache-2.0, BSD-*). AGPL und GPL-only-Lizenzen schlagen den Build fehl; Ausnahmen in `.license-exceptions.json`. `NOTICE`-Datei automatisch aus `go-licenses csv` aktualisiert (S91-9).
+- **Paseto v4 in OpenAPI und Security-Doku korrigiert** — zwei Stellen in `openapi.yaml` (API-Beschreibung + `RefreshResponse`) und `SECURITY.md` nannten „Paseto v2"; tatsächlich wird Paseto v4 (local) verwendet. Beide Stellen korrigiert (S93-14).
+
+---
+
+**Dokumentations-Audit-Remediation — Sprint 93 (P0-Blocker).**
+Beseitigt drei datenverlust- oder erststartblockierende Fehler in der Self-Hoster-Dokumentation.
+
+### Fixed (Docs)
+
+- **Backup-Doku: `uploads_data`-Volume ergänzt** — `docs/operations/backup-restore.md` und `scripts/backup.sh`/`restore.sh` sicherten bisher nur die Postgres-Datenbank. Das `uploads_data`-Volume (Nachweis-Dateianhänge) wurde komplett übersehen. Backup-Script erzeugt jetzt `uploads.tar.gz` via `docker run alpine tar`; Restore-Script stellt das Volume wieder her; FAQ und Backup-Doku korrigiert (S93-1).
+- **Phantom-Installer-Link entfernt** — `docs/guides/getting-started.md` verwies auf `curl -sSL https://get.vakt.app | sh`; die Domain löst nicht auf. Abschnitt entfernt; einzig dokumentierter Installationspfad ist `git clone` + `docker compose up` (S93-2).
+- **`AUTO_MIGRATE`-Widerspruch aufgelöst** — README, `docs/wiki/installation.md` und FAQ beschrieben `AUTO_MIGRATE` inkonsistent. Klargestellt: der `migrate`-Container läuft bei `docker compose up` automatisch; `AUTO_MIGRATE=true` ist ausschließlich ein Dev-Convenience-Flag und kein empfohlener Produktionspfad (S93-3).
+- **Modul-Dokumentation auf aktuelle Namen umbenannt** — `docs/modules/` enthielt noch die Pre-Rebrand-Dateinamen (`secvitals.md`, `secpulse.md`, `secvault.md`, `secreflex.md`, `secprivacy.md`). Alle Dateien auf `vaktcomply.md`, `vaktscan.md`, `vaktvault.md`, `vaktaware.md`, `vaktprivacy.md` umbenannt; `docs/modules/index.md` entsprechend aktualisiert (S93-4).
+- **`check-docs.py` erkennt jetzt Volume-Backup-Drift** — neuer `check_volume_backup()`-Check stellt sicher, dass jedes Docker-Named-Volume (das kein ephemeres Artefakt ist) in `docs/operations/backup-restore.md` erwähnt wird; meldet außerdem veraltete `./data/uploads`-Pfade in benutzersichtbaren Docs (S93-11).
+
+---
+
+**UX- & Onboarding-Polish — Sprint 94 (P0-Beta-Blocker).**
+Behebt die drei ersten Fehler, die ein neuer Nutzer nach dem Login sieht: hartkodiertes Deutsch, zwei konkurrierende Onboarding-Systeme und fehlende Passwort-Mindestlängen-Konsistenz.
+
+### Fixed
+
+- **Dashboard vollständig i18n** — `WidgetGrid.tsx` enthielt ~30 hartkodierte deutsche Strings (Sektionsüberschriften, KPI-Labels, Modul-Beschreibungen, Badge-Texte, Fehler-Banner, Einstellungslinks). Alle durch `t()`-Aufrufe ersetzt; Übersetzungskeys in allen 4 Locales (de/en/fr/nl) ergänzt (S94-1).
+- **Onboarding-Doppelsystem konsolidiert** — `OnboardingWizard`/`OnboardingBanner` (veraltetes Komponent) und `GettingStartedChecklist` entfernt; einziger Onboarding-Einstieg ist jetzt die `OnboardingChecklist` (S89-5, 7 datenabgeleitete Schritte). `data-tour="getting-started"`-Attribut auf das konsolidierte Komponent übertragen, damit AppTour weiterhin funktioniert (S94-2).
+- **Passwort-Mindestlänge überall 10 Zeichen** — `Setup.tsx` und `InviteAcceptPage.tsx` prüften bisher auf `>= 8`; auf `>= 10` (Backend-Minimum) angeglichen (S94-7).
+
+---
+
 ### Fixed
 
 - **Worker: SQLSTATE 23503 FK-Race bei Demo-Cleanup** — alle 10 Batch-Cron-Handler (`score_snapshot`, `risk_trend`, `kpi_snapshot`, `bsi_kpi`, `evidence_staleness`, `backup_freshness_check`, `bcm_evidence_sync`, alle 6 `secvitals`-Handler, `epss_enrich`, `cert_scan`, `sla_check`, `github_ci_sync`) schlossen zuvor ephemere Demo-Orgs (`slug LIKE 'demo-%'`) nicht aus. Der stündliche Demo-Cleanup löscht die Org hart aus `organizations`; ein parallel laufender Batch-Job, der kurz zuvor die Org-ID gelesen hat, schreibt dann in eine Tabelle mit FK-Constraint auf `organizations(id)` → SQLSTATE 23503. Zabbix-Alert ausgelöst 2026-06-17 01:02 CEST. Fix: neues `cmd/worker/shared.go` mit `nonDemoOrgIDs()`/`nonDemoOrgs()` (WHERE slug NOT LIKE 'demo-%'), einheitlich in allen betroffenen Handlern angewendet. Demo-Orgs benötigen keine persistente KPI-/Snapshot-/Evidence-History und werden ohnehin nach 4 h gelöscht.

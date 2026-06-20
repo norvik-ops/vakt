@@ -42,10 +42,28 @@ func parseCIDR(cidr string) net.IPNet {
 	return *network
 }
 
+// isIPPrivateOrLoopback checks a single parsed IP against loopback, link-local,
+// and RFC-1918 private ranges.
+func isIPPrivateOrLoopback(ip net.IP) bool {
+	if ip.IsLoopback() || ip.IsLinkLocalUnicast() {
+		return true
+	}
+	for _, network := range privateRanges {
+		if network.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
 // isPrivateOrLoopback returns true when target resolves to a loopback address,
 // an IPv6 link-local address, or an RFC-1918 private range.  It also catches
 // the string literals "localhost" and "::1" before any DNS resolution.
 // When VAKT_SCAN_ALLOW_PRIVATE=true the caller bypasses this check entirely.
+//
+// SEC-H07: hostnames are resolved via net.LookupHost and ALL resulting IPs are
+// checked. This closes the DNS-rebinding / SSRF bypass where a crafted hostname
+// could resolve to a private address that the bare-IP check missed.
 func isPrivateOrLoopback(target string) bool {
 	// Strip port if present (e.g. "192.168.1.1:8080" or "[::1]:443").
 	host := target
@@ -59,17 +77,20 @@ func isPrivateOrLoopback(target string) bool {
 	}
 
 	ip := net.ParseIP(host)
-	if ip == nil {
-		// Not a bare IP — not a private literal, let the scanner handle DNS.
-		return false
+	if ip != nil {
+		return isIPPrivateOrLoopback(ip)
 	}
 
-	if ip.IsLoopback() || ip.IsLinkLocalUnicast() {
+	// Hostname — resolve all IPs and block if any resolves to a private range.
+	// Fail-safe: treat lookup errors as private to prevent scanners from
+	// reaching unresolvable internal names via error suppression.
+	addrs, err := net.LookupHost(host)
+	if err != nil {
 		return true
 	}
-
-	for _, network := range privateRanges {
-		if network.Contains(ip) {
+	for _, addr := range addrs {
+		parsed := net.ParseIP(addr)
+		if parsed == nil || isIPPrivateOrLoopback(parsed) {
 			return true
 		}
 	}

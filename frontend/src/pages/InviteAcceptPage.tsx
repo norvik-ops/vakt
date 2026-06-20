@@ -43,7 +43,7 @@ export default function InviteAcceptPage() {
       setFormError(t('invite.errorPasswordMismatch'))
       return
     }
-    if (password.length < 8) {
+    if (password.length < 10) {
       setFormError(t('invite.errorPasswordTooShort'))
       return
     }
