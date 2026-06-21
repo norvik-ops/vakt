@@ -7,6 +7,33 @@ This page documents what is real and reachable — not what is merely planned.
 
 ---
 
+## Mitgeliefertes Monitoring-Bundle (opt-in)
+
+Vakt liefert einen vollständigen Observability-Stack mit: **Loki** (Logs), **Promtail**
+(Log-Collector), **Tempo** (Traces), **Prometheus** (Metrics + Alert-Rules) und
+**Grafana** (provisionierte Datasources + Dashboards in `observability/dashboards/`).
+
+```bash
+# Bundle zusammen mit dem Haupt-Stack starten (empfohlen):
+docker compose -f docker-compose.yml -f docker-compose.observability.yml \
+  --profile observability up -d
+
+# Grafana: http://localhost:3000 (admin / Wert aus GRAFANA_ADMIN_PASSWORD, Default: admin)
+# Provisionierte Datasources: Loki, Tempo, Prometheus
+# Provisionierte Dashboards: API-Overview, Worker, Demo-Metrics
+```
+
+Voraussetzung: `VAKT_METRICS_TOKEN` in `.env` setzen, damit Prometheus `/metrics` mit
+Bearer-Auth scrapen kann (siehe Abschnitt "Prometheus Metrics" unten).
+
+Alternativ dauerhaft via `COMPOSE_FILE`:
+```bash
+echo 'COMPOSE_FILE=docker-compose.yml:docker-compose.observability.yml' >> .env
+docker compose --profile observability up -d
+```
+
+---
+
 ## Health Endpoints
 
 Both the **API** (`:8080` / behind nginx `:80`) and the **Worker** (`:9090`) expose health routes.

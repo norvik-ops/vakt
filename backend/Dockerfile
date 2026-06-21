@@ -26,6 +26,7 @@ COPY --from=builder /worker /worker
 COPY --from=builder /migrate /migrate
 COPY --from=builder /healthcheck /healthcheck
 COPY --from=builder /app/db/migrations /app/db/migrations
+COPY --from=builder /app/NOTICE /NOTICE
 # Evidence upload dir, owned by the distroless nonroot UID/GID (65532) so a
 # fresh named volume mounted at /data is writable by the app.
 COPY --from=builder --chown=65532:65532 /data /data

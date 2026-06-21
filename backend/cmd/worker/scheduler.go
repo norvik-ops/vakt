@@ -65,12 +65,14 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		log.Error().Err(err).Msg("failed to register DSR overdue check cron")
 	}
 
-	// Hourly: delete ephemeral demo orgs older than 4 hours.
-	if _, err := scheduler.Register("0 * * * *",
-		demo.NewCleanupTask(),
-		asynq.Unique(65*time.Minute),
-	); err != nil {
-		log.Error().Err(err).Msg("failed to register demo cleanup cron")
+	// Hourly: delete ephemeral demo orgs older than 4 hours (demo instances only).
+	if cfg != nil && cfg.DemoSeed {
+		if _, err := scheduler.Register("0 * * * *",
+			demo.NewCleanupTask(),
+			asynq.Unique(65*time.Minute),
+		); err != nil {
+			log.Error().Err(err).Msg("failed to register demo cleanup cron")
+		}
 	}
 
 	// Daily at 02:00 UTC: prune expired data per org retention policy.

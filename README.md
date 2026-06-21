@@ -1,23 +1,27 @@
 # Vakt
 
-**Self-hosted Security & Compliance Platform — NIS2, ISO 27001, BSI-Grundschutz, DORA, TISAX, EU AI Act. Deploy in 5 minutes.**
+**Self-hosted Security & Compliance Platform — NIS2, ISO 27001, BSI-Grundschutz, DORA, TISAX, EU AI Act. Deploy in 5 minutes. Local AI — your data never leaves your server.**
 
 ![Status: Private Beta](https://img.shields.io/badge/status-Private_Beta-6366f1)
 ![License: ELv2](https://img.shields.io/badge/license-Elastic_License_2.0-blue)
 ![Go](https://img.shields.io/badge/go-1.26%2B-blue)
 ![Docker](https://img.shields.io/badge/docker-compose%20v2-blue)
 
-> **Private Beta** — Vakt is under active development. Expect rough edges and breaking changes between releases. Support is **best-effort (no 24/7 SLA)**, and as a self-hosted product **backups/restore are your responsibility** (scripts + runbook included). See the [Beta Disclaimer](docs/wiki/beta-disclaimer.md) for support, backup, and business-continuity expectations. Feedback welcome: [hello@norvikops.de](mailto:hello@norvikops.de)
+> **Private Beta** — Vakt is under active development. Expect rough edges and breaking changes between releases. Support is **best-effort (no SLA)**, and as a self-hosted product **backups/restore are your responsibility** (scripts + runbook included). See the [Beta Disclaimer](docs/wiki/beta-disclaimer.md) for details. Feedback welcome: [hello@norvikops.de](mailto:hello@norvikops.de)
 
-**[Live Demo](https://secdemo.norvikops.de)** — ephemeral credentials, auto-generated, expires after 4 hours.
+**[Live Demo](https://secdemo.norvikops.de)** — ephemeral credentials, auto-generated, expires after 4 hours. No sign-up required.
 
 ---
 
 ## What is Vakt?
 
-Vakt is a self-hosted, source-available security and compliance platform built for SMEs in the DACH region. It helps IT teams implement and document NIS2, ISO 27001, BSI IT-Grundschutz, GDPR Art. 32 (TOM), CIS Controls v8, KRITIS, BSI C5, EU AI Act, EU CRA, DORA, TISAX, ISO 42001, and ISO 27017/27018 requirements — without sending any data outside your own infrastructure.
+Vakt is a **self-hosted, source-available** compliance documentation platform for SMEs in the DACH region. It helps IT security officers implement and document NIS2, ISO 27001, BSI IT-Grundschutz, GDPR (Art. 32 TOM), and more — **without sending any data outside your own infrastructure**.
 
-It is a free-to-self-host alternative to commercial tools like Vanta or Drata (~€10,000/year), licensed under the Elastic License 2.0. Deploy it with a single `docker compose up` command — the platform is **ready in under 5 minutes**. The bundled local AI advisor takes a bit longer on first start because it downloads the ~4.5 GB `qwen2.5:7b` model — depending on your bandwidth, expect an extra **3–30 minutes** until AI features are available. The platform itself works without waiting for the model.
+**Why self-hosted?** Compliance data (vulnerability findings, risk registers, audit evidence) is among the most sensitive data your organisation holds. Sending it to a US cloud compliance platform creates regulatory exposure (SCHREMS II, GDPR Art. 44+) and strategic risk. Vakt keeps all data local — including the AI advisor, which runs via Ollama on your own server.
+
+**Why source-available?** Business continuity. An ISMS platform is critical infrastructure. With ELv2, the full source code is auditable and you can keep running Vakt independently if we ever disappear — no data held hostage, no vendor lock-in.
+
+Free-to-self-host alternative to Vanta, Drata, or DataGuard (~€9,000–25,000/year). Deploy with a single `docker compose up` — **ready in under 5 minutes**. The bundled local AI advisor takes a bit longer on first start (downloads the ~4.5 GB `qwen2.5:7b` model on first launch — 3–30 minutes depending on bandwidth). The platform itself is ready immediately.
 
 ---
 
@@ -86,7 +90,8 @@ The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key requi
 
 | | **Community** | **Pro** | **Enterprise** |
 |---|:---:|:---:|:---:|
-| **Price** | Free | €199/month · €1,990/year | Contact us |
+| **Price** | Free | €299/month · €2,999/year | Contact us |
+| **Hosted by** | You | You | You |
 | **Self-hosted** | ✅ | ✅ | ✅ |
 | **No telemetry** | ✅ | ✅ | ✅ |
 | **Unlimited users** | ✅ | ✅ | ✅ |
@@ -140,7 +145,7 @@ The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key requi
 | SSO / OIDC | — | ✅ | ✅ |
 | Webhook integrations | — | ✅ | ✅ |
 | NIS2 reporting assistant | — | ✅ | ✅ |
-| Supplier portal | — | ✅ | ✅ |
+| Supplier portal | — | Planned Q3 2026 | Planned Q3 2026 |
 | SCIM provisioning | — | — | ✅ |
 | White-label | — | — | ✅ |
 | Multi-entity / group structures | — | — | ✅ |
@@ -151,6 +156,23 @@ The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key requi
 **Get a license key:** [buy.polar.sh](https://buy.polar.sh/polar_cl_3evwYMHJEFIS6SAIBbO3QFHCPwDwvLNbW29cH30tlfr) — purchase and receive your key by email. Activate in **Settings → License**.
 
 **Enterprise:** Contact [hello@norvikops.de](mailto:hello@norvikops.de) for SCIM, TISAX, DORA, white-label, or custom SLA requirements.
+
+---
+
+## Compared to
+
+| | Vakt | verinice | secjur | Vanta |
+|---|:---:|:---:|:---:|:---:|
+| Self-hosted | ✅ | ✅ | ❌ | ❌ |
+| Local AI (no cloud) | ✅ | ❌ | ❌ cloud | ❌ Azure |
+| NIS2 native | ✅ | ⚠️ plugin | ✅ | ✅ |
+| BSI IT-Grundschutz | ✅ | ✅ | ❌ | ❌ |
+| Modern web UI | ✅ | ❌ Eclipse | ✅ | ✅ |
+| Source-available | ✅ ELv2 | ⚠️ partial | ❌ | ❌ |
+| Free self-hosted | ✅ | ❌ | ❌ | ❌ |
+| No GDPR data transfer risk | ✅ | ✅ | ❌ SaaS | ❌ US cloud |
+
+verinice users: Vakt can import `.vna` exports — no rebuilding from scratch.
 
 ---
 
