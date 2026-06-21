@@ -68,7 +68,6 @@ We follow coordinated disclosure. We ask that you:
 1. Give us time to fix the issue before public disclosure
 2. Avoid accessing or modifying data that does not belong to you
 3. Not perform DoS attacks or automated scanning at scale against public infrastructure
-4. Not access `secdemo.norvikops.de` with automated tools at scale
 
 We aim to issue a fix and a public advisory (GitHub Security Advisory) within the SLA above.
 

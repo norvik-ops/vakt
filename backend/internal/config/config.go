@@ -223,6 +223,10 @@ func Load() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	licenseKey, err := readEnvOrFile("VAKT_LICENSE_KEY", "VAKT_LICENSE_KEY_FILE")
+	if err != nil {
+		return nil, err
+	}
 
 	cfg := &Config{
 		DBUrl:               dbURL,
@@ -259,7 +263,7 @@ func Load() (*Config, error) {
 		LDAPGroupFilter:     getEnv("VAKT_LDAP_GROUP_FILTER", "(objectClass=group)"),
 		LDAPTLS:             getEnv("VAKT_LDAP_TLS", "false") == "true",
 		UploadDir:           getEnv("VAKT_UPLOAD_DIR", "./data/uploads"),
-		LicenseKey:          getEnv("VAKT_LICENSE_KEY", ""),
+		LicenseKey:          licenseKey,
 		LicenseToken:        getEnv("VAKT_LICENSE_TOKEN", ""),
 		LicenseRefreshURL:   getEnv("VAKT_LICENSE_REFRESH_URL", ""),
 		LSWebhookSecret:     getEnv("VAKT_LS_WEBHOOK_SECRET", ""),

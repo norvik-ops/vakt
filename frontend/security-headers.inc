@@ -7,7 +7,7 @@
 # Content-Security-Policy and the rest of the security headers from
 # the parent server block.
 #
-# Keep this file in sync with caddy/Caddyfile's secdemo block in the
+# Keep this file in sync with caddy/Caddyfile in
 # vakt-server repo — the live demo runs both layers.
 
 add_header X-Frame-Options "DENY" always;

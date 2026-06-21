@@ -282,8 +282,8 @@ or tune `VAKT_DB_MAX_CONNS` to match your PostgreSQL `max_connections`.
 
 ---
 
-## Zabbix Integration (Norvik Demo Server)
+## Zabbix Integration (Norvik ISMS Server)
 
-The public demo at `secdemo.norvikops.de` runs Zabbix + a Prometheus pull bridge.
+The internal ISMS instance at `isms.norvikops.de` runs Zabbix + a Prometheus pull bridge.
 Vakt metrics appear as `vakt.*` items in Zabbix after the bridge polls `/metrics`.
 This is a Norvik-internal setup — self-hosted customers do not need Zabbix.

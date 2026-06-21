@@ -61,7 +61,7 @@ func randomPassword(n int) string {
 // Run seeds the shared "demo" org (idempotent — skips if slug "demo" exists).
 //
 // Hinweis: Diese statische Variante wird primär für lokale Entwicklung und
-// Tests genutzt. Auf `secdemo.norvikops.de` werden pro Visitor ephemere
+// Tests genutzt. Bei lokalem Demo-Betrieb (VAKT_DEMO=true) werden pro Visitor ephemere
 // Sessions per `RunEphemeral` erzeugt (Random-Passwörter, 4h-Lifetime).
 // Passwörter müssen ≥ 10 Zeichen sein (auth-Validierung in service.go).
 func Run(ctx context.Context, db *pgxpool.Pool, masterKeyHex string) error {

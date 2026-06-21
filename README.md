@@ -9,7 +9,7 @@
 
 > **Private Beta** — Vakt is under active development. Expect rough edges and breaking changes between releases. Support is **best-effort (no SLA)**, and as a self-hosted product **backups/restore are your responsibility** (scripts + runbook included). See the [Beta Disclaimer](docs/wiki/beta-disclaimer.md) for details. Feedback welcome: [hello@norvikops.de](mailto:hello@norvikops.de)
 
-**[Live Demo](https://secdemo.norvikops.de)** — ephemeral credentials, auto-generated, expires after 4 hours. No sign-up required.
+**Try it locally** — `docker compose up -d` and open [http://localhost](http://localhost). No sign-up, no cloud, no data leaving your machine.
 
 ---
 
@@ -67,7 +67,13 @@ docker compose up -d
 
 Open [http://localhost](http://localhost) in your browser.
 
-> When `VAKT_DEMO=true` is set, the login screen automatically shows a set of fresh, ephemeral credentials. These credentials are randomly generated per session and expire after 4 hours — there are no static demo passwords.
+**Just want to try it out first?** Run with demo mode — no user account setup needed:
+
+```bash
+VAKT_DEMO=true docker compose --profile demo up -d
+```
+
+The login screen will show ready-to-use credentials automatically. When you're ready to set up your real instance, stop the demo (`docker compose --profile demo down`) and run the standard setup above.
 
 > **Migrations** run automatically on every `docker compose up -d` — a dedicated `migrate` container applies all pending migrations before the API and worker start.
 
@@ -187,7 +193,7 @@ The most important environment variables:
 | `VAKT_SECRET_KEY` | — | 32-byte hex master encryption key (required) |
 | `VAKT_MODULES_ENABLED` | all | Comma-separated list of enabled modules |
 | `AUTO_MIGRATE` | `false` | Run DB migrations automatically on startup |
-| `VAKT_DEMO` | `false` | Seed demo data and enable demo login |
+| `VAKT_DEMO` | `false` | Enable demo mode for local try-out (auto-generates login credentials) |
 | `VAKT_AI_PROVIDER` | — | AI provider (`openai` for OpenAI-compatible APIs) |
 | `VAKT_AI_BASE_URL` | — | Base URL of the AI API |
 | `VAKT_AI_API_KEY` | — | API key for the AI provider |
@@ -294,7 +300,6 @@ For MSPs deploying Vakt per customer, see [`docs/wiki/msp-onboarding.md`](docs/w
 
 | | |
 |---|---|
-| Live Demo | [secdemo.norvikops.de](https://secdemo.norvikops.de) |
 | Product Site | [sec.norvikops.de](https://sec.norvikops.de) |
 | CHANGELOG | [CHANGELOG.md](CHANGELOG.md) |
 | Security | [SECURITY.md](SECURITY.md) |

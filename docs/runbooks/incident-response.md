@@ -17,7 +17,7 @@ NIS2 Art.21.
 | Level | Definition | Examples | Response time |
 |-------|-----------|---------|---------------|
 | **P0** | Platform down or active security breach | Auth bypass discovered, confirmed data breach, all containers down, master key compromised | Immediate |
-| **P1** | Significant degradation or security risk | Demo server down > 15 min, backup failure, TLS cert expiry < 48 h, suspected brute-force campaign | < 1 hour |
+| **P1** | Significant degradation or security risk | ISMS down > 15 min, backup failure, TLS cert expiry < 48 h, suspected brute-force campaign | < 1 hour |
 | **P2** | Non-critical service degraded | Slow response, single worker failure, non-critical feature broken, Asynq queue growing | < 4 hours |
 | **P3** | Minor issue | Cosmetic bug, log noise, non-urgent config drift | Next sprint |
 
@@ -35,8 +35,8 @@ Run these in order. Stop at the step that reveals the problem.
 #    Read the alert text — it names the trigger and the host.
 
 # 2. Health check — is the app responding at all?
-curl -sf https://secdemo.norvikops.de/health | jq '.version, .demo'
-# Expected: version string + true. Any curl error or non-200 → go to S1.
+curl -sf https://isms.norvikops.de/health | jq '.version'
+# Expected: version string. Any curl error or non-200 → go to S1.
 
 # 3. Container state
 ssh norvikserver 'docker compose -f /opt/vakt/docker-compose.yml ps'
@@ -110,7 +110,7 @@ docker compose up -d --force-recreate api worker
 **Verify:**
 
 ```bash
-curl -sf https://secdemo.norvikops.de/health | jq
+curl -sf https://isms.norvikops.de/health | jq
 # Must return 200 with version and demo fields populated.
 ```
 
@@ -119,49 +119,7 @@ log excerpt that identified the cause and the fix applied.
 
 ---
 
-### S2: Demo server degraded or down
-
-**Detection:** OBS-005 Telegram alert (30-minute smoke test failure) or user
-report that the demo login button produces an error.
-
-**Note on ephemeral sessions:** Demo sessions are ephemeral by design (4-hour
-TTL, random credentials via `POST /api/v1/demo/start`). If a user's session
-expired, that is expected, not an incident.
-
-**Quick restore:**
-
-```bash
-ssh norvikserver 'docker compose -f /opt/vakt/docker-compose.yml restart api worker'
-# Wait 15 seconds, then:
-curl -sf https://secdemo.norvikops.de/health | jq
-```
-
-**If restart does not help:** Follow S1 above.
-
-**Demo rate limit hit (not an outage):**
-
-```bash
-# Symptom: POST /api/v1/demo/start returns 429 {"message":"rate limit exceeded"}
-# Limit: 10/min, 5-min reset — this is correct security posture, not a bug.
-# Action: wait 5 minutes; no operator action needed unless the rate-limiter
-# key is stuck.
-ssh norvikserver 'docker compose -f /opt/vakt/docker-compose.yml exec redis \
-  redis-cli KEYS "demo_start_rl:*"'
-```
-
-**Verify:**
-
-```bash
-curl -sX POST https://secdemo.norvikops.de/api/v1/demo/start | jq '.admin_email'
-# Must return a random email like admin@demo-<slug>.demo
-```
-
-**Document:** P2 or below — document if the outage lasted > 15 minutes; skip
-otherwise.
-
----
-
-### S3: Credential stuffing / brute-force detected
+### S2: Credential stuffing / brute-force detected
 
 **Detection:** Zabbix auth-failure spike trigger, or users report "account
 locked" / "IP locked" errors.
@@ -320,7 +278,7 @@ ssh norvikserver 'docker compose -f /opt/vakt/docker-compose.yml restart nginx'
 **Verify:**
 
 ```bash
-echo | openssl s_client -connect secdemo.norvikops.de:443 2>/dev/null \
+echo | openssl s_client -connect isms.norvikops.de:443 2>/dev/null \
   | openssl x509 -noout -dates
 # notAfter should be > 60 days from now after successful renewal.
 ```

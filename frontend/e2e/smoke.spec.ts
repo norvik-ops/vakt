@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 /**
- * Smoke tests — laufen gegen die Live-Demo (secdemo.norvikops.de).
+ * Smoke tests — laufen gegen eine lokale Instanz (E2E_DEMO_URL, default: http://localhost).
  * Jeder Test prüft: Seite lädt, kein Error-Boundary, kein JS-Absturz,
  * main-Element sichtbar.
  *
