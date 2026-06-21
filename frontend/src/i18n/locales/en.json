@@ -402,7 +402,8 @@
       "disableFramework": "Disable Framework",
       "disableConfirm": "Do you really want to remove {{name}}? All associated controls and evidence will be permanently deleted.",
       "disabling": "Removing…",
-      "confirmDisable": "Yes, disable"
+      "confirmDisable": "Yes, disable",
+      "frameworkStatusDraft": "Draft — expected end of 2026"
     },
     "controlDetailPage": {
       "addEvidence": "Add Evidence",

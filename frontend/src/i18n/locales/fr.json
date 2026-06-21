@@ -402,7 +402,8 @@
       "disableFramework": "Désactiver le référentiel",
       "disableConfirm": "Voulez-vous vraiment supprimer {{name}} ? Tous les contrôles et preuves associés seront définitivement supprimés.",
       "disabling": "Suppression…",
-      "confirmDisable": "Oui, désactiver"
+      "confirmDisable": "Oui, désactiver",
+      "frameworkStatusDraft": "Brouillon — attendu fin 2026"
     },
     "controlDetailPage": {
       "addEvidence": "Ajouter des preuves",

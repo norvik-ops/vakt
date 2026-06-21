@@ -1,0 +1,61 @@
+{
+  "name": "prEN 18286",
+  "version": "draft-2024",
+  "status": "draft",
+  "expected_publication": "2026-12-31",
+  "description": "European Standard on AI Management Systems — harmonisierter Standard zum EU AI Act (Entwurfsphase). Basiert auf ISO/IEC 42001:2023 und adressiert spezifische EU-AI-Act-Anforderungen.",
+  "crossmappings": {
+    "ISO27001": ["A.5.9", "A.5.10", "A.8.24", "A.8.25"],
+    "EUAIACT_Art52": ["Art.52(1)", "Art.52(2)", "Art.52(3)"]
+  },
+  "clauses": [
+    {
+      "id": "prEN18286-4.1",
+      "title": "Understanding the organization and its context (AI)",
+      "description": "Die Organisation muss externe und interne Themen bestimmen, die für ihren Zweck relevant sind und die ihre Fähigkeit beeinflussen, die beabsichtigten Ergebnisse ihres KI-Managementsystems zu erzielen.",
+      "crossmappings": { "ISO27001": ["A.5.9"], "EUAIACT": ["Art.9"] }
+    },
+    {
+      "id": "prEN18286-4.2",
+      "title": "Understanding the needs and expectations of interested parties (AI)",
+      "description": "Die Organisation muss die am KI-System interessierten Parteien und deren relevante Anforderungen bezüglich des KI-Managementsystems bestimmen.",
+      "crossmappings": { "ISO27001": ["A.5.9", "A.5.10"], "EUAIACT": ["Art.9", "Art.13"] }
+    },
+    {
+      "id": "prEN18286-5.1",
+      "title": "Leadership and commitment (AI)",
+      "description": "Die oberste Leitung muss Führung und Verpflichtung in Bezug auf das KI-Managementsystem durch aktive Unterstützung der KI-Richtlinien nachweisen.",
+      "crossmappings": { "ISO27001": ["A.5.1"], "EUAIACT": ["Art.9"] }
+    },
+    {
+      "id": "prEN18286-6.1",
+      "title": "Actions to address risks and opportunities (AI)",
+      "description": "Bei der Planung des KI-Managementsystems muss die Organisation Risiken und Chancen bestimmen, die sich aus KI-bezogenen Aspekten ergeben.",
+      "crossmappings": { "ISO27001": ["A.8.24", "A.8.25"], "EUAIACT": ["Art.9", "Art.10"] }
+    },
+    {
+      "id": "prEN18286-6.2",
+      "title": "AI risk assessment",
+      "description": "Die Organisation muss ein KI-Risikobewertungsverfahren festlegen und anwenden, das Risikoidentifikation, Risikoanalyse und Risikobewertung umfasst.",
+      "crossmappings": { "ISO27001": ["A.8.24"], "EUAIACT": ["Art.9", "Art.10"] }
+    },
+    {
+      "id": "prEN18286-8.1",
+      "title": "Operational planning and control (AI)",
+      "description": "Die Organisation muss die Prozesse planen, umsetzen, steuern, überwachen und aufrechterhalten, die erforderlich sind, um die Anforderungen zu erfüllen.",
+      "crossmappings": { "ISO27001": ["A.8.25"], "EUAIACT": ["Art.9"] }
+    },
+    {
+      "id": "prEN18286-9.1",
+      "title": "Monitoring, measurement, analysis and evaluation (AI)",
+      "description": "Die Organisation muss festlegen, was überwacht und gemessen werden muss, einschließlich KI-System-Performance-Indikatoren.",
+      "crossmappings": { "ISO27001": ["A.8.24", "A.8.25"], "EUAIACT": ["Art.9", "Art.72"] }
+    },
+    {
+      "id": "prEN18286-10.1",
+      "title": "Continual improvement (AI)",
+      "description": "Die Organisation muss kontinuierlich die Eignung, Angemessenheit und Wirksamkeit des KI-Managementsystems verbessern.",
+      "crossmappings": { "ISO27001": ["A.5.9", "A.5.10", "A.8.24", "A.8.25"], "EUAIACT": ["Art.9", "Art.72"] }
+    }
+  ]
+}

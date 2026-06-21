@@ -20,7 +20,7 @@ const TaskBCMEvidenceSync = "comply:bcm_evidence_sync"
 // BCM data is present for the organisation.
 func (s *Service) SyncBCMEvidence(ctx context.Context, orgID string) error {
 	// DER.4.A4 — BIA erstellt (if ≥1 critical process)
-	highCount, err := s.repo.CountHighCriticalityBIAProcesses(ctx, orgID)
+	highCount, err := s.BCM.CountHighCriticalityBIAProcesses(ctx, orgID)
 	if err != nil {
 		return fmt.Errorf("bcm_evidence_sync: count bia processes: %w", err)
 	}
@@ -34,7 +34,7 @@ func (s *Service) SyncBCMEvidence(ctx context.Context, orgID string) error {
 	}
 
 	// DER.4.A5 — Notfallkonzept vorhanden (if ≥1 active WAP)
-	activeWAPs, err := s.repo.CountRecoveryPlansActive(ctx, orgID)
+	activeWAPs, err := s.BCM.CountRecoveryPlansActive(ctx, orgID)
 	if err != nil {
 		return fmt.Errorf("bcm_evidence_sync: count active waps: %w", err)
 	}
@@ -48,7 +48,7 @@ func (s *Service) SyncBCMEvidence(ctx context.Context, orgID string) error {
 	}
 
 	// DER.4.A6 — Übung durchgeführt (if ≥1 tested WAP in last 12 months)
-	testedCount, err := s.repo.CountRecoveryPlansTested(ctx, orgID)
+	testedCount, err := s.BCM.CountRecoveryPlansTested(ctx, orgID)
 	if err != nil {
 		return fmt.Errorf("bcm_evidence_sync: count tested waps: %w", err)
 	}
@@ -62,7 +62,7 @@ func (s *Service) SyncBCMEvidence(ctx context.Context, orgID string) error {
 	}
 
 	// DER.4.A8 — Alarmierungsplan/Kontaktverzeichnis vorhanden (if ≥1 contact)
-	contactCount, err := s.repo.CountEmergencyContacts(ctx, orgID)
+	contactCount, err := s.BCM.CountEmergencyContacts(ctx, orgID)
 	if err != nil {
 		return fmt.Errorf("bcm_evidence_sync: count emergency contacts: %w", err)
 	}

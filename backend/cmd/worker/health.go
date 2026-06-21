@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/hibiken/asynq"
 )
@@ -25,14 +26,15 @@ type queueInspector interface {
 	GetQueueInfo(qname string) (*asynq.QueueInfo, error)
 }
 
-// buildHealthHandlers wires the three health endpoints onto a fresh mux and
-// returns it.  Keeping the construction in a pure function (no goroutines,
-// no global state, no http.Server) makes the handlers unit-testable with a
+// buildHealthHandlers wires the health endpoints onto a fresh mux and returns
+// it.  Keeping the construction in a pure function (no goroutines, no global
+// state, no http.Server) makes the handlers unit-testable with a
 // httptest.ResponseRecorder.
 //
 // /health        — liveness; always 200 while the process is up
 // /health/ready  — readiness; 200 only if DB + queue transport both reachable
 // /health/queue  — JSON snapshot of all queues, useful for dashboards
+// /metrics       — Prometheus text format; exposes vakt_worker_up gauge
 //
 // Audit P1-5 closure: the original endpoint did not probe Asynq, so a Redis
 // outage or backed-up queue did not surface in the readiness signal.
@@ -41,6 +43,7 @@ func buildHealthHandlers(db dbPinger, inspector queueInspector) *http.ServeMux {
 	mux.HandleFunc("/health", liveness)
 	mux.HandleFunc("/health/ready", readiness(db, inspector))
 	mux.HandleFunc("/health/queue", queueStats(inspector))
+	mux.HandleFunc("/metrics", workerMetrics(db, inspector))
 	return mux
 }
 
@@ -65,6 +68,33 @@ func readiness(db dbPinger, inspector queueInspector) http.HandlerFunc {
 		}
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	}
+}
+
+// workerMetrics serves a minimal Prometheus text-format /metrics endpoint for
+// the worker process.  It emits vakt_worker_up (1 = ready, 0 = degraded) by
+// running the same DB + queue probe that /health/ready uses.
+//
+// No external Prometheus client library is used — metrics are written directly
+// in the Prometheus text exposition format (version 0.0.4), consistent with
+// the pattern in internal/shared/metrics/handler.go.
+func workerMetrics(db dbPinger, inspector queueInspector) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+
+		up := 1
+		if err := db.Ping(r.Context()); err != nil {
+			up = 0
+		} else if inspector != nil {
+			if _, err := inspector.Queues(); err != nil {
+				up = 0
+			}
+		}
+
+		_, _ = w.Write([]byte("# HELP vakt_worker_up Worker health status: 1=healthy, 0=degraded\n"))
+		_, _ = w.Write([]byte("# TYPE vakt_worker_up gauge\n"))
+		_, _ = w.Write([]byte("vakt_worker_up " + strconv.Itoa(up) + "\n"))
 	}
 }
 

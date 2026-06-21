@@ -3,7 +3,7 @@
 
 // S86-6: PDF-Export Notfallhandbuch (BSI-200-4 §8)
 
-package vaktcomply
+package bcm
 
 import (
 	"bytes"

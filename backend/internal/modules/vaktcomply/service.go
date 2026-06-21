@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/bcm"
 	"github.com/matharnica/vakt/internal/services/ai"
 	"github.com/matharnica/vakt/internal/shared/dashboard"
 	"github.com/matharnica/vakt/internal/shared/notify"
@@ -29,6 +30,7 @@ type Service struct {
 	q          *db.Queries
 	rdb        *redis.Client
 	repo       *Repository
+	BCM        *bcm.Service
 	notifSvc   notifyService
 	aiClient   *ai.AIClient
 	webhookSvc webhookTrigger
@@ -51,6 +53,7 @@ func NewService(dbPool *pgxpool.Pool) *Service {
 		db:     dbPool,
 		q:      db.New(dbPool),
 		repo:   NewRepository(dbPool),
+		BCM:    bcm.NewService(dbPool),
 		scorer: KompendiumScorer{},
 	}
 }

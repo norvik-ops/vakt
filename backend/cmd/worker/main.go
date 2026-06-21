@@ -362,14 +362,19 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
-	// Health server on :9090 — see health.go for the endpoint set.
+	// Health server — port is configurable via WORKER_HEALTH_PORT (default 9090).
+	// See health.go for the endpoint set.
 	// Audit P1-5 closure: the readiness probe now covers Asynq queue
 	// reachability, not just the DB ping.
+	healthAddr := ":9090"
+	if p := os.Getenv("WORKER_HEALTH_PORT"); p != "" {
+		healthAddr = ":" + p
+	}
 	go func() {
 		inspector := asynq.NewInspector(asynqRedisOpt(cfg.RedisUrl))
 		defer func() { _ = inspector.Close() }()
 		healthSrv := &http.Server{
-			Addr:         ":9090",
+			Addr:         healthAddr,
 			Handler:      buildHealthHandlers(pool, inspector),
 			ReadTimeout:  5 * time.Second,
 			WriteTimeout: 5 * time.Second,

@@ -402,7 +402,8 @@
       "disableFramework": "Framework deaktivieren",
       "disableConfirm": "Möchtest du {{name}} wirklich entfernen? Alle zugehörigen Controls und Nachweise werden unwiderruflich gelöscht.",
       "disabling": "Wird entfernt…",
-      "confirmDisable": "Ja, deaktivieren"
+      "confirmDisable": "Ja, deaktivieren",
+      "frameworkStatusDraft": "Entwurf — erwartet Ende 2026"
     },
     "controlDetailPage": {
       "addEvidence": "Nachweis hinzufügen",

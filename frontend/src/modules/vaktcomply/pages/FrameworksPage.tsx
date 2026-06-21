@@ -16,7 +16,16 @@ import type { Framework } from '../types'
 import { formatLocale } from '../../../shared/utils/locale'
 
 // Pre-defined compliance frameworks users can enable with one click
-const FRAMEWORK_CATALOGUE = [
+const FRAMEWORK_CATALOGUE: Array<{
+  key: string
+  name: string
+  fullName: string
+  description: string
+  category: string
+  controls: string
+  color: string
+  draft?: boolean
+}> = [
   {
     key: 'NIS2',
     name: 'NIS2',
@@ -88,6 +97,16 @@ const FRAMEWORK_CATALOGUE = [
     category: 'EU-Recht / Produkte',
     controls: '13 Controls',
     color: 'text-indigo-500',
+  },
+  {
+    key: 'prEN18286',
+    name: 'prEN 18286',
+    fullName: 'prEN 18286 — EU AI Act harmonisierter Standard',
+    description: 'Harmonisierter Standard zum EU AI Act für KI-Managementsysteme. Komplementär zu ISO/IEC 42001:2023. Publikation erwartet Ende 2026 — Entwurf bereits in Vakt hinterlegt.',
+    category: 'EU-Recht / KI',
+    controls: '8 Abschnitte (Entwurf)',
+    color: 'text-amber-500',
+    draft: true,
   },
 ]
 
@@ -359,6 +378,7 @@ export default function FrameworksPage() {
                         <span className="text-sm font-semibold text-primary">{fw.name}</span>
                         <Badge variant="secondary" className="text-[10px]">{fw.category}</Badge>
                         {alreadyEnabled && <Badge variant="success" className="text-[10px]">{t('vaktcomply.frameworksPage.activated')}</Badge>}
+                        {fw.draft && <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/40">{t('vaktcomply.frameworksPage.frameworkStatusDraft')}</Badge>}
                       </div>
                       <p className="text-xs text-secondary mt-0.5">{fw.fullName}</p>
                     </div>
@@ -395,6 +415,15 @@ export default function FrameworksPage() {
                           </Button>
                         )}
                       </div>
+                    ) : fw.draft ? (
+                      <Button
+                        size="sm"
+                        disabled
+                        title={t('vaktcomply.frameworksPage.frameworkStatusDraft')}
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1" />
+                        {t('vaktcomply.frameworksPage.activate')}
+                      </Button>
                     ) : (
                       <Button
                         size="sm"

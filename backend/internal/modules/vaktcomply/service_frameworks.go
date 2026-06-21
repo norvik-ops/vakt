@@ -42,6 +42,14 @@ func (s *Service) EnableFramework(ctx context.Context, orgID, name, variant stri
 	if variant == "" {
 		variant = "full"
 	}
+
+	// Reject enabling of draft frameworks.
+	for _, b := range builtinAvailable {
+		if strings.EqualFold(b.name, name) && b.status == "draft" {
+			return nil, fmt.Errorf("framework %s is in draft status and cannot be enabled yet", name)
+		}
+	}
+
 	exists, err := s.repo.FrameworkExists(ctx, orgID, name)
 	if err != nil {
 		return nil, err
@@ -118,11 +126,13 @@ func (s *Service) ListAvailableFrameworks(ctx context.Context, orgID string) ([]
 	result := make([]AvailableFramework, 0, len(builtinAvailable))
 	for _, b := range builtinAvailable {
 		result = append(result, AvailableFramework{
-			Name:        b.name,
-			Version:     builtinVersion(b.name),
-			Description: b.description,
-			IsBuiltin:   true,
-			IsEnabled:   enabledByName[b.name],
+			Name:                b.name,
+			Version:             builtinVersion(b.name),
+			Description:         b.description,
+			IsBuiltin:           true,
+			IsEnabled:           enabledByName[b.name],
+			Status:              b.status,
+			ExpectedPublication: b.expectedPublication,
 		})
 	}
 	return result, nil

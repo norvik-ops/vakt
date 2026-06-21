@@ -50,7 +50,7 @@ func (h *Handler) GetBSIReportPreview(c echo.Context) error {
 // Requires FeatureAuditPDF.
 func (h *Handler) ExportBCMHandbuchPDF(c echo.Context) error {
 	ctx := c.Request().Context()
-	data, err := h.service.GenerateBCMHandbuchPDF(ctx, orgID(c))
+	data, err := h.service.BCM.GenerateBCMHandbuchPDF(ctx, orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("generate bcm handbuch pdf")
 		return errResp(c, http.StatusInternalServerError, "failed to generate Notfallhandbuch PDF", "CK_BCM_PDF_FAILED")

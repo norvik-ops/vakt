@@ -1,11 +1,12 @@
 // Copyright (c) 2026 NorvikOps. All rights reserved.
 // SPDX-License-Identifier: Elastic-2.0
 
-package vaktcomply
+package bcm
 
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -149,8 +150,8 @@ func bcpPlanFromRow(row db.CkBcpPlans) BCPPlan {
 		RPOHours:            int(row.RpoHours),
 		Schutzbedarfsklasse: int(row.Schutzbedarfsklasse),
 		LastTestedAt:        lastTested,
-		CreatedAt:           ckTsToTime(row.CreatedAt),
-		UpdatedAt:           ckTsToTime(row.UpdatedAt),
+		CreatedAt:           bcmTsToTime(row.CreatedAt),
+		UpdatedAt:           bcmTsToTime(row.UpdatedAt),
 	}
 }
 
@@ -168,6 +169,14 @@ func bcpTestFromRow(row db.CkBcpTests) BCPTest {
 		TestType:  row.TestType,
 		Outcome:   row.Outcome,
 		Findings:  row.Findings,
-		CreatedAt: ckTsToTime(row.CreatedAt),
+		CreatedAt: bcmTsToTime(row.CreatedAt),
 	}
+}
+
+// bcmTsToTime converts pgtype.Timestamptz to time.Time (zero on NULL).
+func bcmTsToTime(t pgtype.Timestamptz) time.Time {
+	if !t.Valid {
+		return time.Time{}
+	}
+	return t.Time
 }

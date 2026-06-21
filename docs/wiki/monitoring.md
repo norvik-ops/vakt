@@ -142,11 +142,11 @@ scrape_configs:
       credentials: "<VAKT_METRICS_TOKEN>"
     scrape_interval: 60s
 
-  # Worker health (liveness only — the worker does not expose a Prometheus /metrics)
+  # Worker metrics — exposes vakt_worker_up gauge (1=healthy, 0=degraded)
   - job_name: vakt-worker
     static_configs:
       - targets: ["vakt-worker:9090"]
-    metrics_path: /health/ready
+    metrics_path: /metrics
     scrape_interval: 30s
 ```
 
@@ -257,7 +257,7 @@ the API and Worker are stateless and can be restarted freely.
 | Component | RAM | Notes |
 |---|---|---|
 | vakt-api | 128–256 MB | Stateless; scales horizontally (Redis-backed sessions) |
-| vakt-worker | 64–128 MB | **Do not run > 1 replica** until leader election exists (Sprint 82+) |
+| vakt-worker | ~200 MB | Horizontal skalierbar via `WORKER_REPLICAS`. Asynq garantiert exakt-einmal-Ausführung. |
 | vakt-frontend | 32–64 MB | Static nginx; scales freely |
 | PostgreSQL | 512 MB–2 GB | Primary bottleneck; monitor with `pg_stat_activity` |
 | Redis | 64–256 MB | Queue + session store; persistence optional |
@@ -276,9 +276,50 @@ or tune `VAKT_DB_MAX_CONNS` to match your PostgreSQL `max_connections`.
 | Component | HA Strategy |
 |---|---|
 | API | Multiple replicas (stateless, Redis-backed) |
-| Worker | **Single replica** until leader election (Sprint 82+). `asynq.Unique()` prevents duplicate task execution if two workers briefly overlap. |
+| Worker | Horizontal scaling via `WORKER_REPLICAS`. Asynq (Redis-backed) ensures tasks run exactly once. See "Worker skalieren" below. |
 | PostgreSQL | Streaming replication or managed DB (RDS, Hetzner Managed PostgreSQL) |
 | Redis | Redis Sentinel or managed Redis |
+
+---
+
+## Worker skalieren
+
+Der Worker ist zustandslos — alle Jobs werden über Redis/Asynq koordiniert.
+Asynq garantiert, dass ein Task **exakt einmal** ausgeführt wird, auch wenn mehrere
+Worker-Replicas gleichzeitig laufen.
+
+### Schnellstart
+
+```bash
+# 3 Worker-Replicas starten
+WORKER_REPLICAS=3 docker compose up -d
+
+# Status prüfen
+docker compose ps worker
+```
+
+### Kapazitätsplanung
+
+| Parameter | Formel | Beispiel (3 Replicas) |
+|---|---|---|
+| Parallele Tasks gesamt | `VAKT_WORKER_CONCURRENCY` × `WORKER_REPLICAS` | 8 × 3 = 24 |
+| Redis `maxclients` (Minimum) | `VAKT_WORKER_CONCURRENCY` × `WORKER_REPLICAS` + Reserve | 24 + 10 = 34 |
+| RAM-Bedarf (Worker) | ~200 MB × `WORKER_REPLICAS` | ~600 MB |
+
+Redis `maxclients` lässt sich prüfen mit:
+```bash
+docker compose exec redis redis-cli CONFIG GET maxclients
+```
+
+### Hinweise
+
+- `WORKER_HEALTH_PORT` (Standard `9090`) muss pro Replica eindeutig sein, wenn mehrere
+  Worker auf demselben Host mit gemappten Ports laufen. Im Docker-Netzwerk ist das
+  kein Problem — jede Replica bekommt eine eigene IP.
+- Die Prometheus-Scrape-Config in `monitoring.md` scrapt alle Replicas automatisch,
+  wenn der `vakt-worker`-DNS-Name auf mehrere Container auflöst.
+- Für `docker compose` (ohne Swarm) ist `deploy.replicas` ab Compose Spec v3.4
+  unterstützt.
 
 ---
 

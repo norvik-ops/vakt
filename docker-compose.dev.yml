@@ -31,6 +31,8 @@ services:
     depends_on:
       redis:
         condition: service_started
+    deploy:
+      replicas: 2
 
   frontend:
     image: node:22-alpine

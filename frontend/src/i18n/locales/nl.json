@@ -402,7 +402,8 @@
       "disableFramework": "Raamwerk deactiveren",
       "disableConfirm": "Wilt u {{name}} echt verwijderen? Alle bijbehorende beheersmaatregelen en bewijsmateriaal worden definitief verwijderd.",
       "disabling": "Verwijderen…",
-      "confirmDisable": "Ja, deactiveren"
+      "confirmDisable": "Ja, deactiveren",
+      "frameworkStatusDraft": "Concept — verwacht eind 2026"
     },
     "controlDetailPage": {
       "addEvidence": "Bewijsmateriaal toevoegen",

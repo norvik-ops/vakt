@@ -8,35 +8,37 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	bcm "github.com/matharnica/vakt/internal/modules/vaktcomply/bcm"
 )
 
 // ── BIA Processes ─────────────────────────────────────────────────────────────
 
 // ListBIAProcesses handles GET /api/v1/vaktcomply/bia/processes.
 func (h *Handler) ListBIAProcesses(c echo.Context) error {
-	processes, err := h.service.ListBIAProcesses(c.Request().Context(), orgID(c))
+	processes, err := h.service.BCM.ListBIAProcesses(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("list bia processes")
 		return errResp(c, http.StatusInternalServerError, "failed to list BIA processes", "CK_LIST_BIA_FAILED")
 	}
 	if processes == nil {
-		processes = []BIAProcess{}
+		processes = []bcm.BIAProcess{}
 	}
 	return c.JSON(http.StatusOK, processes)
 }
 
 // CreateBIAProcess handles POST /api/v1/vaktcomply/bia/processes.
 func (h *Handler) CreateBIAProcess(c echo.Context) error {
-	var in CreateBIAProcessInput
+	var in bcm.CreateBIAProcessInput
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	p, err := h.service.CreateBIAProcess(c.Request().Context(), orgID(c), in)
+	p, err := h.service.BCM.CreateBIAProcess(c.Request().Context(), orgID(c), in)
 	if err != nil {
-		if err == ErrRPOExceedsRTO || err == ErrMBCOOutOfRange {
+		if err == bcm.ErrRPOExceedsRTO || err == bcm.ErrMBCOOutOfRange {
 			return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": err.Error(), "code": "VALIDATION_ERROR"})
 		}
 		log.Error().Err(err).Msg("create bia process")
@@ -47,7 +49,7 @@ func (h *Handler) CreateBIAProcess(c echo.Context) error {
 
 // GetBIAProcess handles GET /api/v1/vaktcomply/bia/processes/:id.
 func (h *Handler) GetBIAProcess(c echo.Context) error {
-	p, err := h.service.GetBIAProcess(c.Request().Context(), orgID(c), c.Param("id"))
+	p, err := h.service.BCM.GetBIAProcess(c.Request().Context(), orgID(c), c.Param("id"))
 	if err != nil {
 		return errResp(c, http.StatusNotFound, "BIA process not found", "CK_BIA_NOT_FOUND")
 	}
@@ -56,16 +58,16 @@ func (h *Handler) GetBIAProcess(c echo.Context) error {
 
 // UpdateBIAProcess handles PUT /api/v1/vaktcomply/bia/processes/:id.
 func (h *Handler) UpdateBIAProcess(c echo.Context) error {
-	var in UpdateBIAProcessInput
+	var in bcm.UpdateBIAProcessInput
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	p, err := h.service.UpdateBIAProcess(c.Request().Context(), orgID(c), c.Param("id"), in)
+	p, err := h.service.BCM.UpdateBIAProcess(c.Request().Context(), orgID(c), c.Param("id"), in)
 	if err != nil {
-		if err == ErrRPOExceedsRTO || err == ErrMBCOOutOfRange {
+		if err == bcm.ErrRPOExceedsRTO || err == bcm.ErrMBCOOutOfRange {
 			return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": err.Error(), "code": "VALIDATION_ERROR"})
 		}
 		log.Error().Err(err).Str("id", c.Param("id")).Msg("update bia process")
@@ -76,7 +78,7 @@ func (h *Handler) UpdateBIAProcess(c echo.Context) error {
 
 // DeleteBIAProcess handles DELETE /api/v1/vaktcomply/bia/processes/:id.
 func (h *Handler) DeleteBIAProcess(c echo.Context) error {
-	if err := h.service.DeleteBIAProcess(c.Request().Context(), orgID(c), c.Param("id")); err != nil {
+	if err := h.service.BCM.DeleteBIAProcess(c.Request().Context(), orgID(c), c.Param("id")); err != nil {
 		log.Error().Err(err).Str("id", c.Param("id")).Msg("delete bia process")
 		return errResp(c, http.StatusInternalServerError, "failed to delete BIA process", "CK_DELETE_BIA_FAILED")
 	}
@@ -85,7 +87,7 @@ func (h *Handler) DeleteBIAProcess(c echo.Context) error {
 
 // GetBIASummary handles GET /api/v1/vaktcomply/bia/summary.
 func (h *Handler) GetBIASummary(c echo.Context) error {
-	summary, err := h.service.GetBIASummary(c.Request().Context(), orgID(c))
+	summary, err := h.service.BCM.GetBIASummary(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("get bia summary")
 		return errResp(c, http.StatusInternalServerError, "failed to get BIA summary", "CK_BIA_SUMMARY_FAILED")
@@ -98,35 +100,35 @@ func (h *Handler) GetBIASummary(c echo.Context) error {
 // ListRecoveryPlans handles GET /api/v1/vaktcomply/bcm/recovery-plans.
 func (h *Handler) ListRecoveryPlans(c echo.Context) error {
 	biaID := c.QueryParam("bia_id")
-	var plans []RecoveryPlan
+	var plans []bcm.RecoveryPlan
 	var err error
 	if biaID != "" {
-		plans, err = h.service.ListRecoveryPlansByBIAProcess(c.Request().Context(), orgID(c), biaID)
+		plans, err = h.service.BCM.ListRecoveryPlansByBIAProcess(c.Request().Context(), orgID(c), biaID)
 	} else {
-		plans, err = h.service.ListRecoveryPlans(c.Request().Context(), orgID(c))
+		plans, err = h.service.BCM.ListRecoveryPlans(c.Request().Context(), orgID(c))
 	}
 	if err != nil {
 		log.Error().Err(err).Msg("list recovery plans")
 		return errResp(c, http.StatusInternalServerError, "failed to list recovery plans", "CK_LIST_RECOVERY_PLANS_FAILED")
 	}
 	if plans == nil {
-		plans = []RecoveryPlan{}
+		plans = []bcm.RecoveryPlan{}
 	}
 	return c.JSON(http.StatusOK, plans)
 }
 
 // CreateRecoveryPlan handles POST /api/v1/vaktcomply/bcm/recovery-plans.
 func (h *Handler) CreateRecoveryPlan(c echo.Context) error {
-	var in CreateRecoveryPlanInput
+	var in bcm.CreateRecoveryPlanInput
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	plan, err := h.service.CreateRecoveryPlan(c.Request().Context(), orgID(c), in)
+	plan, err := h.service.BCM.CreateRecoveryPlan(c.Request().Context(), orgID(c), in)
 	if err != nil {
-		if err == ErrRTORequired || err == ErrStepsOrderInvalid {
+		if err == bcm.ErrRTORequired || err == bcm.ErrStepsOrderInvalid {
 			return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": err.Error(), "code": "VALIDATION_ERROR"})
 		}
 		log.Error().Err(err).Msg("create recovery plan")
@@ -137,7 +139,7 @@ func (h *Handler) CreateRecoveryPlan(c echo.Context) error {
 
 // GetRecoveryPlan handles GET /api/v1/vaktcomply/bcm/recovery-plans/:id.
 func (h *Handler) GetRecoveryPlan(c echo.Context) error {
-	plan, err := h.service.GetRecoveryPlan(c.Request().Context(), orgID(c), c.Param("id"))
+	plan, err := h.service.BCM.GetRecoveryPlan(c.Request().Context(), orgID(c), c.Param("id"))
 	if err != nil {
 		return errResp(c, http.StatusNotFound, "recovery plan not found", "CK_RECOVERY_PLAN_NOT_FOUND")
 	}
@@ -146,16 +148,16 @@ func (h *Handler) GetRecoveryPlan(c echo.Context) error {
 
 // UpdateRecoveryPlan handles PUT /api/v1/vaktcomply/bcm/recovery-plans/:id.
 func (h *Handler) UpdateRecoveryPlan(c echo.Context) error {
-	var in UpdateRecoveryPlanInput
+	var in bcm.UpdateRecoveryPlanInput
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	plan, err := h.service.UpdateRecoveryPlan(c.Request().Context(), orgID(c), c.Param("id"), in)
+	plan, err := h.service.BCM.UpdateRecoveryPlan(c.Request().Context(), orgID(c), c.Param("id"), in)
 	if err != nil {
-		if err == ErrRTORequired || err == ErrStepsOrderInvalid {
+		if err == bcm.ErrRTORequired || err == bcm.ErrStepsOrderInvalid {
 			return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": err.Error(), "code": "VALIDATION_ERROR"})
 		}
 		log.Error().Err(err).Str("id", c.Param("id")).Msg("update recovery plan")
@@ -166,7 +168,7 @@ func (h *Handler) UpdateRecoveryPlan(c echo.Context) error {
 
 // DeleteRecoveryPlan handles DELETE /api/v1/vaktcomply/bcm/recovery-plans/:id.
 func (h *Handler) DeleteRecoveryPlan(c echo.Context) error {
-	if err := h.service.DeleteRecoveryPlan(c.Request().Context(), orgID(c), c.Param("id")); err != nil {
+	if err := h.service.BCM.DeleteRecoveryPlan(c.Request().Context(), orgID(c), c.Param("id")); err != nil {
 		log.Error().Err(err).Str("id", c.Param("id")).Msg("delete recovery plan")
 		return errResp(c, http.StatusInternalServerError, "failed to delete recovery plan", "CK_DELETE_RECOVERY_PLAN_FAILED")
 	}
@@ -177,27 +179,27 @@ func (h *Handler) DeleteRecoveryPlan(c echo.Context) error {
 
 // ListEmergencyContacts handles GET /api/v1/vaktcomply/bcm/emergency-contacts.
 func (h *Handler) ListEmergencyContacts(c echo.Context) error {
-	contacts, err := h.service.ListEmergencyContacts(c.Request().Context(), orgID(c))
+	contacts, err := h.service.BCM.ListEmergencyContacts(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("list emergency contacts")
 		return errResp(c, http.StatusInternalServerError, "failed to list emergency contacts", "CK_LIST_EMERGENCY_CONTACTS_FAILED")
 	}
 	if contacts == nil {
-		contacts = []EmergencyContact{}
+		contacts = []bcm.EmergencyContact{}
 	}
 	return c.JSON(http.StatusOK, contacts)
 }
 
 // CreateEmergencyContact handles POST /api/v1/vaktcomply/bcm/emergency-contacts.
 func (h *Handler) CreateEmergencyContact(c echo.Context) error {
-	var in CreateEmergencyContactInput
+	var in bcm.CreateEmergencyContactInput
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	contact, err := h.service.CreateEmergencyContact(c.Request().Context(), orgID(c), in)
+	contact, err := h.service.BCM.CreateEmergencyContact(c.Request().Context(), orgID(c), in)
 	if err != nil {
 		log.Error().Err(err).Msg("create emergency contact")
 		return errResp(c, http.StatusInternalServerError, "failed to create emergency contact", "CK_CREATE_EMERGENCY_CONTACT_FAILED")
@@ -207,14 +209,14 @@ func (h *Handler) CreateEmergencyContact(c echo.Context) error {
 
 // UpdateEmergencyContact handles PUT /api/v1/vaktcomply/bcm/emergency-contacts/:id.
 func (h *Handler) UpdateEmergencyContact(c echo.Context) error {
-	var in UpdateEmergencyContactInput
+	var in bcm.UpdateEmergencyContactInput
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	contact, err := h.service.UpdateEmergencyContact(c.Request().Context(), orgID(c), c.Param("id"), in)
+	contact, err := h.service.BCM.UpdateEmergencyContact(c.Request().Context(), orgID(c), c.Param("id"), in)
 	if err != nil {
 		log.Error().Err(err).Str("id", c.Param("id")).Msg("update emergency contact")
 		return errResp(c, http.StatusInternalServerError, "failed to update emergency contact", "CK_UPDATE_EMERGENCY_CONTACT_FAILED")
@@ -224,7 +226,7 @@ func (h *Handler) UpdateEmergencyContact(c echo.Context) error {
 
 // DeleteEmergencyContact handles DELETE /api/v1/vaktcomply/bcm/emergency-contacts/:id.
 func (h *Handler) DeleteEmergencyContact(c echo.Context) error {
-	if err := h.service.DeleteEmergencyContact(c.Request().Context(), orgID(c), c.Param("id")); err != nil {
+	if err := h.service.BCM.DeleteEmergencyContact(c.Request().Context(), orgID(c), c.Param("id")); err != nil {
 		log.Error().Err(err).Str("id", c.Param("id")).Msg("delete emergency contact")
 		return errResp(c, http.StatusInternalServerError, "failed to delete emergency contact", "CK_DELETE_EMERGENCY_CONTACT_FAILED")
 	}
@@ -233,7 +235,7 @@ func (h *Handler) DeleteEmergencyContact(c echo.Context) error {
 
 // GetBCMReadinessScore handles GET /api/v1/vaktcomply/bcm/readiness-score.
 func (h *Handler) GetBCMReadinessScore(c echo.Context) error {
-	score, err := h.service.GetBCMReadinessScore(c.Request().Context(), orgID(c))
+	score, err := h.service.BCM.GetBCMReadinessScore(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("get bcm readiness score")
 		return errResp(c, http.StatusInternalServerError, "failed to get BCM readiness score", "CK_BCM_SCORE_FAILED")
