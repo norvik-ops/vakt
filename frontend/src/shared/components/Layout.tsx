@@ -492,7 +492,7 @@ export default function Layout() {
                     to={path}
                     onClick={() => { setSidebarOpen(false); setFlyoutPath(null) }}
                     aria-current={active ? 'page' : undefined}
-                    title={sidebarCollapsed ? label : undefined}
+                    title={sidebarCollapsed ? t(label) : undefined}
                     onMouseEnter={sidebarCollapsed && hasChildren ? (e) => { openFlyout(path, e) } : undefined}
                     onMouseLeave={sidebarCollapsed && hasChildren ? closeFlyout : undefined}
                     className={cn(
@@ -504,7 +504,7 @@ export default function Layout() {
                     )}
                   >
                     <Icon className={cn('w-4 h-4 shrink-0', active ? 'text-brand' : '')} aria-hidden="true" />
-                    {!sidebarCollapsed && label}
+                    {!sidebarCollapsed && t(label)}
                   </Link>
                   {expanded && !sidebarCollapsed && (
                     <div className="ml-3 mt-0.5 mb-1 pl-3 border-l border-border space-y-[1px]">
