@@ -126,7 +126,7 @@ def check_ai_default() -> None:
 
 # ── 3. Interne .md-Links ─────────────────────────────────────────────────────
 _LINK = re.compile(r"\]\(([^)#?]+\.md)(?:#[^)]*)?\)")
-_EXCL = ("public-mirror/", ".beta-analyse/", "outputs/", "docs/history/", ".forgehive/")
+_EXCL = ("public-mirror/", ".beta-analyse/", "outputs/", "docs/history/", ".forgehive/", ".claude/")
 
 
 def check_links() -> None:
@@ -181,7 +181,7 @@ _HELM_KEY = re.compile(r"^\s*(VAKT_[A-Z0-9_]+|CASDOOR_[A-Z0-9_]+):", re.MULTILIN
 # Verzeichnisse, die KEINE Referenz-Doku sind (Historie/Planung/Analyse).
 _DOC_EXCL = (
     "docs/history/", "docs/reviews/", "docs/planning/", "docs/sprints/",
-    "docs/stories/", "docs/marketing/", "docs/audit-responses/",
+    "docs/stories/", "docs/marketing/", "docs/audit-responses/", "docs/reports/",
 )
 # (A) In .env.example, aber bewusst NICHT in der zentralen User-Referenz
 #     (anderswo dokumentiert oder reine Ops-/CI-/Install-Vars).
