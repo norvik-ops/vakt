@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
+	auditmod "github.com/matharnica/vakt/internal/modules/vaktcomply/audit"
 	"github.com/matharnica/vakt/internal/shared/audit"
 )
 
@@ -21,7 +22,7 @@ func (h *Handler) isOrgAdmin(c echo.Context) (bool, error) {
 	if uid == "" || oid == "" {
 		return false, nil
 	}
-	roleName, err := h.service.repo.GetOrgMemberRole(c.Request().Context(), uid, oid)
+	roleName, err := h.service.Audit.GetOrgMemberRole(c.Request().Context(), uid, oid)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return false, nil
@@ -71,7 +72,7 @@ func (h *Handler) RequestControlApproval(c echo.Context) error {
 		return errResp(c, http.StatusNotFound, "control not found", "CK_NOT_FOUND")
 	}
 
-	approval, err := h.service.repo.CreateApprovalRequest(
+	approval, err := h.service.Audit.CreateApprovalRequest(
 		c.Request().Context(),
 		orgID(c), controlID, userID(c),
 		in.RequestedStatus, ctrl.Status, in.Comment,
@@ -108,13 +109,13 @@ func (h *Handler) ListPendingApprovals(c echo.Context) error {
 		return errResp(c, http.StatusForbidden, "admin role required", "CK_FORBIDDEN")
 	}
 
-	approvals, err := h.service.repo.ListPendingApprovals(c.Request().Context(), orgID(c))
+	approvals, err := h.service.Audit.ListPendingApprovals(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("list pending approvals")
 		return errResp(c, http.StatusInternalServerError, "failed to list approvals", "CK_INTERNAL")
 	}
 	if approvals == nil {
-		approvals = []ApprovalWithDetails{}
+		approvals = []auditmod.ApprovalWithDetails{}
 	}
 	return c.JSON(http.StatusOK, approvals)
 }
@@ -122,7 +123,7 @@ func (h *Handler) ListPendingApprovals(c echo.Context) error {
 // CountPendingApprovals handles GET /api/v1/vaktcomply/approvals/count.
 // Returns the number of pending approvals — used for the nav badge.
 func (h *Handler) CountPendingApprovals(c echo.Context) error {
-	count, err := h.service.repo.CountPendingApprovals(c.Request().Context(), orgID(c))
+	count, err := h.service.Audit.CountPendingApprovals(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("count pending approvals")
 		return errResp(c, http.StatusInternalServerError, "failed to count approvals", "CK_INTERNAL")
@@ -154,7 +155,7 @@ func (h *Handler) reviewApproval(c echo.Context, approve bool) error {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 
-	if err := h.service.repo.ReviewApproval(
+	if err := h.service.Audit.ReviewApproval(
 		c.Request().Context(),
 		orgID(c), approvalID, userID(c),
 		approve, in.Comment,
@@ -189,7 +190,7 @@ func (h *Handler) RejectApproval(c echo.Context) error { return h.reviewApproval
 
 // GetApprovalSetting handles GET /api/v1/vaktcomply/org/approval-setting.
 func (h *Handler) GetApprovalSetting(c echo.Context) error {
-	required, err := h.service.repo.OrgApprovalRequired(c.Request().Context(), orgID(c))
+	required, err := h.service.Audit.OrgApprovalRequired(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("get approval setting")
 		return errResp(c, http.StatusInternalServerError, "failed to get setting", "CK_INTERNAL")
@@ -219,7 +220,7 @@ func (h *Handler) UpdateApprovalSetting(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 
-	if err := h.service.repo.SetOrgApprovalRequired(c.Request().Context(), orgID(c), in.ApprovalRequired); err != nil {
+	if err := h.service.Audit.SetOrgApprovalRequired(c.Request().Context(), orgID(c), in.ApprovalRequired); err != nil {
 		log.Error().Err(err).Msg("update approval setting")
 		return errResp(c, http.StatusInternalServerError, "failed to update setting", "CK_INTERNAL")
 	}

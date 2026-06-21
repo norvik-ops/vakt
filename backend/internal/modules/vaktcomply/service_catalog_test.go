@@ -182,38 +182,3 @@ func TestBSIRequirementLevels_AllHaveLevel(t *testing.T) {
 		assert.NotEmpty(t, stufe, "empty stufe for %s", id)
 	}
 }
-
-func TestKompendiumScorer_ScoreFiltered_BasisOnly_CatalogTest(t *testing.T) {
-	rows := []BSICheckResult{
-		{RequirementLevel: "basis", Umsetzungsstatus: "ja"},
-		{RequirementLevel: "basis", Umsetzungsstatus: "nein"},
-		{RequirementLevel: "standard", Umsetzungsstatus: "nein"},
-		{RequirementLevel: "erhoeht", Umsetzungsstatus: "nein"},
-	}
-	// Basis-Absicherung: only the 2 basis rows count
-	pct := KompendiumScorer{}.ScoreFiltered(rows, "basis")
-	// ja=1, teilweise=0, entbehrlich=0, total=2 → 1/2 * 100 = 50
-	assert.InDelta(t, 50.0, pct, 0.01)
-}
-
-func TestKompendiumScorer_ScoreFiltered_StandardIncludesBasis_CatalogTest(t *testing.T) {
-	rows := []BSICheckResult{
-		{RequirementLevel: "basis", Umsetzungsstatus: "ja"},
-		{RequirementLevel: "standard", Umsetzungsstatus: "ja"},
-		{RequirementLevel: "erhoeht", Umsetzungsstatus: "nein"},
-	}
-	// Standard: basis + standard = 2 rows, both ja; erhoeht excluded
-	pct := KompendiumScorer{}.ScoreFiltered(rows, "standard")
-	assert.InDelta(t, 100.0, pct, 0.01)
-}
-
-func TestKompendiumScorer_ScoreFiltered_KernSameAsStandard_CatalogTest(t *testing.T) {
-	rows := []BSICheckResult{
-		{RequirementLevel: "basis", Umsetzungsstatus: "ja"},
-		{RequirementLevel: "standard", Umsetzungsstatus: "nein"},
-		{RequirementLevel: "erhoeht", Umsetzungsstatus: "nein"},
-	}
-	pctStandard := KompendiumScorer{}.ScoreFiltered(rows, "standard")
-	pctKern := KompendiumScorer{}.ScoreFiltered(rows, "kern")
-	assert.Equal(t, pctStandard, pctKern, "kern and standard should produce the same result per BSI 200-2 §8.3")
-}

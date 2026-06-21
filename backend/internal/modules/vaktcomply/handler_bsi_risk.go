@@ -10,17 +10,19 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	bsi "github.com/matharnica/vakt/internal/modules/vaktcomply/bsi"
 )
 
 // ListBSIThreats handles GET /api/v1/vaktcomply/bsi/threats
 func (h *Handler) ListBSIThreats(c echo.Context) error {
-	threats, err := h.service.ListBSIThreats(c.Request().Context())
+	threats, err := h.service.BSI.ListBSIThreats(c.Request().Context())
 	if err != nil {
 		log.Error().Err(err).Msg("list bsi threats")
 		return errResp(c, http.StatusInternalServerError, "failed to list threats", "CK_BSI_THREATS_FAILED")
 	}
 	if threats == nil {
-		threats = []BSIThreat{}
+		threats = []bsi.BSIThreat{}
 	}
 	return c.JSON(http.StatusOK, threats)
 }
@@ -28,13 +30,13 @@ func (h *Handler) ListBSIThreats(c echo.Context) error {
 // ListBSIRisks handles GET /api/v1/vaktcomply/bsi/target-objects/:id/risks
 func (h *Handler) ListBSIRisks(c echo.Context) error {
 	id := c.Param("id")
-	risks, err := h.service.ListBSIRisks(c.Request().Context(), orgID(c), id)
+	risks, err := h.service.BSI.ListBSIRisks(c.Request().Context(), orgID(c), id)
 	if err != nil {
 		log.Error().Err(err).Str("id", id).Msg("list bsi risks")
 		return errResp(c, http.StatusInternalServerError, "failed to list risks", "CK_BSI_RISK_LIST_FAILED")
 	}
 	if risks == nil {
-		risks = []BSIRiskAssessment{}
+		risks = []bsi.BSIRiskAssessment{}
 	}
 	return c.JSON(http.StatusOK, risks)
 }
@@ -42,14 +44,14 @@ func (h *Handler) ListBSIRisks(c echo.Context) error {
 // CreateBSIRisk handles POST /api/v1/vaktcomply/bsi/target-objects/:id/risks
 func (h *Handler) CreateBSIRisk(c echo.Context) error {
 	id := c.Param("id")
-	var in CreateBSIRiskInput
+	var in bsi.CreateBSIRiskInput
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	risk, err := h.service.CreateBSIRisk(c.Request().Context(), orgID(c), id, in)
+	risk, err := h.service.BSI.CreateBSIRisk(c.Request().Context(), orgID(c), id, in)
 	if err != nil {
 		log.Error().Err(err).Str("id", id).Msg("create bsi risk")
 		return errResp(c, http.StatusInternalServerError, "failed to create risk", "CK_BSI_RISK_CREATE_FAILED")
@@ -61,14 +63,14 @@ func (h *Handler) CreateBSIRisk(c echo.Context) error {
 func (h *Handler) UpdateBSIRisk(c echo.Context) error {
 	id := c.Param("id")
 	riskID := c.Param("riskId")
-	var in UpdateBSIRiskInput
+	var in bsi.UpdateBSIRiskInput
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	risk, err := h.service.UpdateBSIRisk(c.Request().Context(), orgID(c), id, riskID, in)
+	risk, err := h.service.BSI.UpdateBSIRisk(c.Request().Context(), orgID(c), id, riskID, in)
 	if err != nil {
 		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "risk not found", "CK_BSI_RISK_NOT_FOUND")
@@ -83,7 +85,7 @@ func (h *Handler) UpdateBSIRisk(c echo.Context) error {
 func (h *Handler) DeleteBSIRisk(c echo.Context) error {
 	id := c.Param("id")
 	riskID := c.Param("riskId")
-	if err := h.service.DeleteBSIRisk(c.Request().Context(), orgID(c), id, riskID); err != nil {
+	if err := h.service.BSI.DeleteBSIRisk(c.Request().Context(), orgID(c), id, riskID); err != nil {
 		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "risk not found", "CK_BSI_RISK_NOT_FOUND")
 		}
@@ -96,7 +98,7 @@ func (h *Handler) DeleteBSIRisk(c echo.Context) error {
 // GetBSIRiskSummary handles GET /api/v1/vaktcomply/bsi/target-objects/:id/risks/summary
 func (h *Handler) GetBSIRiskSummary(c echo.Context) error {
 	id := c.Param("id")
-	summary, err := h.service.GetBSIRiskSummary(c.Request().Context(), orgID(c), id)
+	summary, err := h.service.BSI.GetBSIRiskSummary(c.Request().Context(), orgID(c), id)
 	if err != nil {
 		log.Error().Err(err).Str("id", id).Msg("get bsi risk summary")
 		return errResp(c, http.StatusInternalServerError, "failed to get risk summary", "CK_BSI_RISK_SUMMARY_FAILED")

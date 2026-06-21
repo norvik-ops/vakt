@@ -14,7 +14,7 @@ import (
 
 // ListBSIReportExports handles GET /api/v1/vaktcomply/bsi/reports
 func (h *Handler) ListBSIReportExports(c echo.Context) error {
-	exports, err := h.service.ListBSIReportExports(c.Request().Context(), orgID(c))
+	exports, err := h.service.BSI.ListBSIReportExports(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("list bsi report exports")
 		return errResp(c, http.StatusInternalServerError, "failed to list report exports", "CK_BSI_REPORTS_FAILED")
@@ -25,7 +25,7 @@ func (h *Handler) ListBSIReportExports(c echo.Context) error {
 // GenerateBSIReport handles GET /api/v1/vaktcomply/bsi/reports/:type
 func (h *Handler) GenerateBSIReport(c echo.Context) error {
 	reportType := c.Param("type")
-	data, err := h.service.GenerateBSIReport(c.Request().Context(), orgID(c), userID(c), reportType)
+	data, err := h.service.BSI.GenerateBSIReport(c.Request().Context(), orgID(c), userID(c), reportType)
 	if err != nil {
 		log.Error().Err(err).Str("type", reportType).Msg("generate bsi report")
 		return errResp(c, http.StatusInternalServerError, "failed to generate report", "CK_BSI_REPORT_GEN_FAILED")
@@ -38,7 +38,7 @@ func (h *Handler) GenerateBSIReport(c echo.Context) error {
 // GetBSIReportPreview handles GET /api/v1/vaktcomply/bsi/reports/:type/preview
 func (h *Handler) GetBSIReportPreview(c echo.Context) error {
 	reportType := c.Param("type")
-	preview, err := h.service.GetBSIReportPreview(c.Request().Context(), orgID(c), reportType)
+	preview, err := h.service.BSI.GetBSIReportPreview(c.Request().Context(), orgID(c), reportType)
 	if err != nil {
 		log.Error().Err(err).Str("type", reportType).Msg("bsi report preview")
 		return errResp(c, http.StatusInternalServerError, "failed to get report preview", "CK_BSI_PREVIEW_FAILED")
@@ -55,7 +55,7 @@ func (h *Handler) ExportBCMHandbuchPDF(c echo.Context) error {
 		log.Error().Err(err).Msg("generate bcm handbuch pdf")
 		return errResp(c, http.StatusInternalServerError, "failed to generate Notfallhandbuch PDF", "CK_BCM_PDF_FAILED")
 	}
-	h.service.LogBCMReportExport(ctx, orgID(c), userID(c), data)
+	h.service.BSI.LogBCMReportExport(ctx, orgID(c), userID(c), data)
 	c.Response().Header().Set("Content-Disposition", `attachment; filename="notfallhandbuch.pdf"`)
 	return c.Blob(http.StatusOK, "application/pdf", data)
 }

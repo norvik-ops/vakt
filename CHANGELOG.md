@@ -9,6 +9,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+**Code-Architektur — vaktcomply Phase 2 (Sprint 102).**
+Rein internes Refactoring, keine User-Facing-Änderungen.
+
+### Internal
+
+- **`vaktcomply/bsi/` Sub-Package (S102-1)** — BSI-Grundschutz-Domäne aus dem God-Module extrahiert: 27 Typen, BSI-Check-Workflow, Strukturanalyse, Abhängigkeitsgraph, Risikobewertung (BSI 200-3), Referenzberichte A1–A6, KompendiumScorer, DER.4-Crossmappings. Root-Handlers delegieren via `service.BSI.*`.
+- **`vaktcomply/audit/` Sub-Package (S102-2)** — Interne Audits, Audit-Programm, Management-Review und Approval-Workflow extrahiert. Root-Handlers delegieren via `service.Audit.*`.
+- Evidence-Extraktion (S102-3) auf S103 verschoben — 18 Aufrufer im Root-Package erfordern Interface-Injection-Design vor der Extraktion.
+
+---
+
 **Bugfix — SAML-Direct-Private-Key-Speicherung (Migration 226).**
 
 ### Fixed

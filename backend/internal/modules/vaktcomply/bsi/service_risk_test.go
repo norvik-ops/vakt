@@ -3,7 +3,7 @@
 
 // S74-3 unit tests for BSI 200-3 risk matrix logic (pure functions, no DB).
 
-package vaktcomply
+package bsi
 
 import (
 	"testing"

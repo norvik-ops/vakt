@@ -3,7 +3,7 @@
 
 // S74-1: IT-Grundschutz-Check-Workflow + S74-2: Grundschutz-Cockpit
 
-package vaktcomply
+package bsi
 
 import (
 	"context"

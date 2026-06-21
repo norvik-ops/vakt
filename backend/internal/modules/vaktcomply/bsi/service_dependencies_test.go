@@ -3,7 +3,7 @@
 
 // S76-2: Unit tests for CIA-Schutzbedarfsvererbung (BSI 200-2 §8.2)
 
-package vaktcomply
+package bsi
 
 import (
 	"testing"

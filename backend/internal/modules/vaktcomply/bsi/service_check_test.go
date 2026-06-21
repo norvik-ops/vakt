@@ -4,7 +4,7 @@
 // S78-2 regression: the ck_controls LEFT JOIN in BSI check queries must be
 // scoped to the current org to prevent cross-org row multiplication on the demo.
 
-package vaktcomply
+package bsi
 
 import (
 	"strings"

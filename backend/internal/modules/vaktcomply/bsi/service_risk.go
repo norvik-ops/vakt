@@ -3,7 +3,7 @@
 
 // S74-3: Risikobewertung BSI 200-3
 
-package vaktcomply
+package bsi
 
 import (
 	"context"

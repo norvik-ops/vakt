@@ -3,7 +3,7 @@
 
 // S76-2: CIA-Schutzbedarfsvererbung nach BSI 200-2 Kap. 8.2 (ADR-0054)
 
-package vaktcomply
+package bsi
 
 import (
 	"context"

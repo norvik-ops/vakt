@@ -5,7 +5,7 @@
 // so that the GS++ Leistungszahlen-engine can be swapped in Sprint 84 without
 // touching the GS-Check workflow (ADR-0056).
 
-package vaktcomply
+package bsi
 
 // ComplianceScorer abstracts the compliance progress formula.
 // KompendiumScorer implements BSI 200-2 §8.4; Sprint 84 will add a

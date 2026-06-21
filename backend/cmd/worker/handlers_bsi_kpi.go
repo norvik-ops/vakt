@@ -32,7 +32,7 @@ func handleBSIKPISnapshot(pool *pgxpool.Pool) asynq.HandlerFunc {
 			sem <- struct{}{}
 			g.Go(func() error {
 				defer func() { <-sem }()
-				if err := svc.CalculateAndStoreBSIKPISnapshot(gCtx, orgID); err != nil {
+				if err := svc.BSI.CalculateAndStoreBSIKPISnapshot(gCtx, orgID); err != nil {
 					log.Warn().Err(err).Str("org_id", orgID).Msg("bsi_kpi_snapshot: failed for org")
 				}
 				return nil

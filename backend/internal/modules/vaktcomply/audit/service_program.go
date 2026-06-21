@@ -1,7 +1,7 @@
 // Copyright (c) 2026 NorvikOps. All rights reserved.
 // SPDX-License-Identifier: Elastic-2.0
 
-package vaktcomply
+package audit
 
 import (
 	"bytes"
@@ -249,4 +249,12 @@ func severityLabel(s string) string {
 		return l
 	}
 	return s
+}
+
+// truncate shortens s to at most max runes (audit-local copy of the root helper).
+func truncate(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max-1] + "…"
 }

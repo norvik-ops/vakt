@@ -10,7 +10,9 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/audit"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/bcm"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/bsi"
 	"github.com/matharnica/vakt/internal/services/ai"
 	"github.com/matharnica/vakt/internal/shared/dashboard"
 	"github.com/matharnica/vakt/internal/shared/notify"
@@ -31,10 +33,11 @@ type Service struct {
 	rdb        *redis.Client
 	repo       *Repository
 	BCM        *bcm.Service
+	BSI        *bsi.Service
+	Audit      *audit.Service
 	notifSvc   notifyService
 	aiClient   *ai.AIClient
 	webhookSvc webhookTrigger
-	scorer     ComplianceScorer
 }
 
 // notifyService abstracts the notify.Service dependency for testability.
@@ -50,11 +53,12 @@ type webhookTrigger interface {
 // NewService creates a new ComplyKit service.
 func NewService(dbPool *pgxpool.Pool) *Service {
 	return &Service{
-		db:     dbPool,
-		q:      db.New(dbPool),
-		repo:   NewRepository(dbPool),
-		BCM:    bcm.NewService(dbPool),
-		scorer: KompendiumScorer{},
+		db:    dbPool,
+		q:     db.New(dbPool),
+		repo:  NewRepository(dbPool),
+		BCM:   bcm.NewService(dbPool),
+		BSI:   bsi.NewService(dbPool),
+		Audit: audit.NewService(dbPool),
 	}
 }
 

@@ -3,7 +3,7 @@
 
 // S74-4: BSI Referenzberichte A1–A6 PDF Renderer
 
-package vaktcomply
+package bsi
 
 import (
 	"bytes"
@@ -56,7 +56,7 @@ func (r *BSIReportRenderer) RenderA1(ctx context.Context) ([]byte, error) {
 
 // RenderA2 renders the Strukturanalyse (Zielobjekt-Inventar) report.
 func (r *BSIReportRenderer) RenderA2(ctx context.Context) ([]byte, error) {
-	svc := &Service{db: r.db}
+	svc := NewService(r.db)
 	objects, err := svc.ListBSITargetObjects(ctx, r.orgID)
 	if err != nil {
 		return nil, err
@@ -102,7 +102,7 @@ func (r *BSIReportRenderer) RenderA2(ctx context.Context) ([]byte, error) {
 
 // RenderA3 renders the Schutzbedarfsfeststellung report.
 func (r *BSIReportRenderer) RenderA3(ctx context.Context) ([]byte, error) {
-	svc := &Service{db: r.db}
+	svc := NewService(r.db)
 	objects, err := svc.ListBSITargetObjects(ctx, r.orgID)
 	if err != nil {
 		return nil, err

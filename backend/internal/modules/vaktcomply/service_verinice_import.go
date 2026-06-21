@@ -17,6 +17,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/bsi"
 	"github.com/matharnica/vakt/internal/shared/veriniceimport"
 )
 
@@ -50,7 +51,7 @@ func (s *Service) CommitVeriniceImport(ctx context.Context, orgID, userID string
 		switch o.Category {
 		case "asset":
 			itype := mapAssetType(o.Type)
-			if _, err := s.CreateBSITargetObject(ctx, orgID, CreateBSITargetObjectInput{
+			if _, err := s.BSI.CreateBSITargetObject(ctx, orgID, bsi.CreateBSITargetObjectInput{
 				Name:               truncateStr(o.Title, 200),
 				Type:               itype,
 				Description:        "Importiert aus verinice (.vna)",

@@ -9,31 +9,33 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	bsi "github.com/matharnica/vakt/internal/modules/vaktcomply/bsi"
 )
 
 // GetBSIModelingMatrix handles GET /api/v1/vaktcomply/bsi-modeling.
 func (h *Handler) GetBSIModelingMatrix(c echo.Context) error {
-	entries, err := h.service.GetBSIModelingMatrix(c.Request().Context(), orgID(c))
+	entries, err := h.service.BSI.GetBSIModelingMatrix(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("get bsi modeling matrix")
 		return errResp(c, http.StatusInternalServerError, "failed to get BSI modeling matrix", "CK_BSI_MATRIX_FAILED")
 	}
 	if entries == nil {
-		entries = []BSIModelingEntry{}
+		entries = []bsi.BSIModelingEntry{}
 	}
 	return c.JSON(http.StatusOK, entries)
 }
 
 // CreateBSIModeling handles POST /api/v1/vaktcomply/bsi-modeling.
 func (h *Handler) CreateBSIModeling(c echo.Context) error {
-	var in CreateBSIModelingInput
+	var in bsi.CreateBSIModelingInput
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	entry, err := h.service.CreateBSIModeling(c.Request().Context(), orgID(c), userID(c), in)
+	entry, err := h.service.BSI.CreateBSIModeling(c.Request().Context(), orgID(c), userID(c), in)
 	if err != nil {
 		if strings.Contains(err.Error(), "mapping already exists") {
 			return errResp(c, http.StatusConflict, "A mapping for this asset and control already exists", "CK_BSI_DUPLICATE")
@@ -47,14 +49,14 @@ func (h *Handler) CreateBSIModeling(c echo.Context) error {
 // UpdateBSIModeling handles PATCH /api/v1/vaktcomply/bsi-modeling/:id.
 func (h *Handler) UpdateBSIModeling(c echo.Context) error {
 	id := c.Param("id")
-	var in UpdateBSIModelingInput
+	var in bsi.UpdateBSIModelingInput
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	entry, err := h.service.UpdateBSIModeling(c.Request().Context(), orgID(c), id, in)
+	entry, err := h.service.BSI.UpdateBSIModeling(c.Request().Context(), orgID(c), id, in)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return errResp(c, http.StatusNotFound, "BSI modeling entry not found", "CK_BSI_NOT_FOUND")
@@ -68,7 +70,7 @@ func (h *Handler) UpdateBSIModeling(c echo.Context) error {
 // DeleteBSIModeling handles DELETE /api/v1/vaktcomply/bsi-modeling/:id.
 func (h *Handler) DeleteBSIModeling(c echo.Context) error {
 	id := c.Param("id")
-	if err := h.service.DeleteBSIModeling(c.Request().Context(), orgID(c), id); err != nil {
+	if err := h.service.BSI.DeleteBSIModeling(c.Request().Context(), orgID(c), id); err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return errResp(c, http.StatusNotFound, "BSI modeling entry not found", "CK_BSI_NOT_FOUND")
 		}
@@ -82,7 +84,7 @@ func (h *Handler) DeleteBSIModeling(c echo.Context) error {
 // Query param: ?asset_type=server
 func (h *Handler) GetBSIBausteinSuggestions(c echo.Context) error {
 	assetType := c.QueryParam("asset_type")
-	suggestions := h.service.GetSuggestedBausteine(assetType)
+	suggestions := h.service.BSI.GetSuggestedBausteine(assetType)
 	return c.JSON(http.StatusOK, map[string][]string{"suggestions": suggestions})
 }
 
@@ -100,7 +102,7 @@ func (h *Handler) ExportBSIModelingXLSX(c echo.Context) error {
 
 // GetBSIModelingStats handles GET /api/v1/vaktcomply/bsi-modeling/stats.
 func (h *Handler) GetBSIModelingStats(c echo.Context) error {
-	stats, err := h.service.GetBSIModelingStats(c.Request().Context(), orgID(c))
+	stats, err := h.service.BSI.GetBSIModelingStats(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("get bsi modeling stats")
 		return errResp(c, http.StatusInternalServerError, "failed to get BSI modeling stats", "CK_BSI_STATS_FAILED")

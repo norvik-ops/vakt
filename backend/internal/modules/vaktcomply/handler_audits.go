@@ -6,13 +6,14 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
+	auditmod "github.com/matharnica/vakt/internal/modules/vaktcomply/audit"
 	"github.com/matharnica/vakt/internal/shared/audit"
 )
 
 // GetAuditRecord handles GET /api/v1/vaktcomply/audits/:id.
 func (h *Handler) GetAuditRecord(c echo.Context) error {
 	id := c.Param("id")
-	record, err := h.service.GetAuditRecord(c.Request().Context(), orgID(c), id)
+	record, err := h.service.Audit.GetAuditRecord(c.Request().Context(), orgID(c), id)
 	if err != nil {
 		return errResp(c, http.StatusNotFound, "audit record not found", "CK_AUDIT_NOT_FOUND")
 	}
@@ -22,14 +23,14 @@ func (h *Handler) GetAuditRecord(c echo.Context) error {
 // UpdateAuditRecord handles PATCH /api/v1/vaktcomply/audits/:id.
 func (h *Handler) UpdateAuditRecord(c echo.Context) error {
 	id := c.Param("id")
-	var in UpdateAuditRecordInput
+	var in auditmod.UpdateAuditRecordInput
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	record, err := h.service.UpdateAuditRecord(c.Request().Context(), orgID(c), id, in)
+	record, err := h.service.Audit.UpdateAuditRecord(c.Request().Context(), orgID(c), id, in)
 	if err != nil {
 		log.Error().Err(err).Msg("update audit record")
 		return errResp(c, http.StatusInternalServerError, "failed to update audit record", "CK_UPDATE_AUDIT_FAILED")
@@ -44,7 +45,7 @@ func (h *Handler) UpdateAuditRecord(c echo.Context) error {
 
 // ListAuditRecords handles GET /api/v1/vaktcomply/audits.
 func (h *Handler) ListAuditRecords(c echo.Context) error {
-	records, err := h.service.ListAuditRecords(c.Request().Context(), orgID(c))
+	records, err := h.service.Audit.ListAuditRecords(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("list audit records")
 		return errResp(c, http.StatusInternalServerError, "failed to list audit records", "CK_LIST_AUDITS_FAILED")
@@ -54,14 +55,14 @@ func (h *Handler) ListAuditRecords(c echo.Context) error {
 
 // CreateAuditRecord handles POST /api/v1/vaktcomply/audits.
 func (h *Handler) CreateAuditRecord(c echo.Context) error {
-	var in CreateAuditRecordInput
+	var in auditmod.CreateAuditRecordInput
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	record, err := h.service.CreateAuditRecord(c.Request().Context(), orgID(c), in)
+	record, err := h.service.Audit.CreateAuditRecord(c.Request().Context(), orgID(c), in)
 	if err != nil {
 		log.Error().Err(err).Msg("create audit record")
 		return errResp(c, http.StatusInternalServerError, "failed to create audit record", "CK_CREATE_AUDIT_FAILED")

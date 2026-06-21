@@ -145,7 +145,7 @@ func (h *Handler) AuditorExportZIP(c echo.Context) error {
 		return errResp(c, http.StatusInternalServerError, "failed to build export", "CK_EXPORT_ERROR")
 	}
 
-	auditRecords, err := h.service.ListAuditRecords(ctx, oid)
+	auditRecords, err := h.service.Audit.ListAuditRecords(ctx, oid)
 	if err != nil {
 		log.Error().Err(err).Str("org_id", oid).Msg("auditor export zip: list audit records")
 		return errResp(c, http.StatusInternalServerError, "failed to build export", "CK_EXPORT_ERROR")

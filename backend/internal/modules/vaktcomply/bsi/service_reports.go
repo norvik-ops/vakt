@@ -3,7 +3,7 @@
 
 // S74-4: BSI Referenzberichte A1–A6 — Service Layer
 
-package vaktcomply
+package bsi
 
 import (
 	"context"
@@ -116,7 +116,7 @@ func (s *Service) LogBCMReportExport(ctx context.Context, orgID, userID string, 
 func (s *Service) GetBSIReportPreview(ctx context.Context, orgID, reportType string) (map[string]any, error) {
 	switch reportType {
 	case "A2", "full":
-		svc := &Service{db: s.db}
+		svc := NewService(s.db)
 		objects, err := svc.ListBSITargetObjects(ctx, orgID)
 		if err != nil {
 			return nil, err
