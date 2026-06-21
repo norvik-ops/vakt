@@ -21,7 +21,7 @@ func (h *Handler) BulkUpdateControls(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	if err := h.service.Policy.BulkUpdateControlStatus(c.Request().Context(), orgID(c), in.IDs, in.Status); err != nil {
+	if err := h.service.BulkUpdateControlStatus(c.Request().Context(), orgID(c), in.IDs, in.Status); err != nil {
 		log.Error().Err(err).Msg("bulk update controls")
 		return errResp(c, http.StatusInternalServerError, "failed to bulk update controls", "CK_BULK_UPDATE_FAILED")
 	}
@@ -38,7 +38,7 @@ func (h *Handler) BulkUpdateControls(c echo.Context) error {
 
 // GetControlByID handles GET /api/v1/vaktcomply/controls/:id.
 func (h *Handler) GetControlByID(c echo.Context) error {
-	ctrl, err := h.service.Policy.GetControl(c.Request().Context(), orgID(c), c.Param("id"))
+	ctrl, err := h.service.GetControl(c.Request().Context(), orgID(c), c.Param("id"))
 	if err != nil {
 		return errResp(c, http.StatusNotFound, "control not found", "CK_CONTROL_NOT_FOUND")
 	}
@@ -48,7 +48,7 @@ func (h *Handler) GetControlByID(c echo.Context) error {
 // GetControlMappings handles GET /vaktcomply/controls/:id/mappings.
 // Returns all cross-framework control mappings for the given control, resolved to org-specific UUIDs.
 func (h *Handler) GetControlMappings(c echo.Context) error {
-	mappings, err := h.service.Policy.GetControlMappings(c.Request().Context(), orgID(c), c.Param("id"))
+	mappings, err := h.service.GetControlMappings(c.Request().Context(), orgID(c), c.Param("id"))
 	if err != nil {
 		log.Error().Err(err).Msg("get control mappings")
 		return errResp(c, http.StatusInternalServerError, "failed to get control mappings", "CK_CONTROL_MAPPINGS_FAILED")
@@ -85,9 +85,9 @@ func (h *Handler) UpdateControl(c echo.Context) error {
 	}
 
 	// Snapshot old values for changelog comparison.
-	oldCtrl, _ := h.service.Policy.GetControl(c.Request().Context(), orgID(c), c.Param("id"))
+	oldCtrl, _ := h.service.GetControl(c.Request().Context(), orgID(c), c.Param("id"))
 
-	ctrl, err := h.service.Policy.UpdateControl(c.Request().Context(), orgID(c), c.Param("id"), in)
+	ctrl, err := h.service.UpdateControl(c.Request().Context(), orgID(c), c.Param("id"), in)
 	if err != nil {
 		if errors.Is(err, ErrInvalidMaturityScore) {
 			return errResp(c, http.StatusUnprocessableEntity, err.Error(), "CK_VALIDATION_ERROR")
@@ -153,7 +153,7 @@ func (h *Handler) UpdateControlSoAMetadata(c echo.Context) error {
 func (h *Handler) ListControlTasks(c echo.Context) error {
 	controlID := c.Param("id")
 	ctx := c.Request().Context()
-	tasks, err := h.service.Policy.ListControlTasks(ctx, orgID(c), controlID)
+	tasks, err := h.service.ListControlTasks(ctx, orgID(c), controlID)
 	if err != nil {
 		return errResp(c, http.StatusInternalServerError, "failed to list tasks", "CK_LIST_TASKS_FAILED")
 	}
@@ -171,7 +171,7 @@ func (h *Handler) CreateControlTask(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return errResp(c, http.StatusUnprocessableEntity, "Ungültige Eingabe", "VALIDATION_ERROR")
 	}
-	task, err := h.service.Policy.CreateControlTask(ctx, orgID(c), controlID, in)
+	task, err := h.service.CreateControlTask(ctx, orgID(c), controlID, in)
 	if err != nil {
 		return errResp(c, http.StatusInternalServerError, "failed to create task", "CK_CREATE_TASK_FAILED")
 	}
@@ -187,7 +187,7 @@ func (h *Handler) UpdateControlTask(c echo.Context) error {
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_INVALID_INPUT")
 	}
-	task, err := h.service.Policy.UpdateControlTask(ctx, orgID(c), controlID, taskID, in)
+	task, err := h.service.UpdateControlTask(ctx, orgID(c), controlID, taskID, in)
 	if err != nil {
 		return errResp(c, http.StatusInternalServerError, "failed to update task", "CK_UPDATE_TASK_FAILED")
 	}
@@ -199,7 +199,7 @@ func (h *Handler) DeleteControlTask(c echo.Context) error {
 	controlID := c.Param("id")
 	taskID := c.Param("taskId")
 	ctx := c.Request().Context()
-	if err := h.service.Policy.DeleteControlTask(ctx, orgID(c), controlID, taskID); err != nil {
+	if err := h.service.DeleteControlTask(ctx, orgID(c), controlID, taskID); err != nil {
 		return errResp(c, http.StatusInternalServerError, "failed to delete task", "CK_DELETE_TASK_FAILED")
 	}
 	return c.NoContent(http.StatusNoContent)

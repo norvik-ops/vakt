@@ -14,13 +14,13 @@ import (
 
 // ListPhysicalControlTemplates handles GET /api/v1/vaktcomply/physical-templates
 func (h *Handler) ListPhysicalControlTemplates(c echo.Context) error {
-	return c.JSON(http.StatusOK, h.service.Policy.ListPhysicalControlTemplates())
+	return c.JSON(http.StatusOK, h.service.ListPhysicalControlTemplates())
 }
 
 // ApplyPhysicalControlTemplate handles POST /api/v1/vaktcomply/physical-templates/:code/apply
 func (h *Handler) ApplyPhysicalControlTemplate(c echo.Context) error {
 	code := c.Param("code")
-	ev, err := h.service.Policy.ApplyPhysicalControlTemplate(c.Request().Context(), orgID(c), code, userID(c))
+	ev, err := h.service.ApplyPhysicalControlTemplate(c.Request().Context(), orgID(c), code, userID(c))
 	if err != nil {
 		log.Warn().Err(err).Str("control_code", code).Msg("apply physical template")
 		return errResp(c, http.StatusBadRequest, err.Error(), "CK_PHYS_TEMPLATE_FAILED")

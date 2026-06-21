@@ -66,7 +66,7 @@ func (h *Handler) RequestControlApproval(c echo.Context) error {
 	}
 
 	// Fetch current control status.
-	ctrl, err := h.service.Policy.GetControl(c.Request().Context(), orgID(c), controlID)
+	ctrl, err := h.service.GetControl(c.Request().Context(), orgID(c), controlID)
 	if err != nil {
 		log.Error().Err(err).Msg("get control for approval request")
 		return errResp(c, http.StatusNotFound, "control not found", "CK_NOT_FOUND")

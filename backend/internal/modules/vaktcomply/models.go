@@ -6,93 +6,6 @@ import (
 	"time"
 )
 
-// Review represents a control review assignment.
-type Review struct {
-	ID          string     `json:"id"`
-	ControlID   string     `json:"control_id"`
-	OrgID       string     `json:"org_id"`
-	AssignedTo  string     `json:"assigned_to"`
-	AssignedBy  string     `json:"assigned_by"`
-	DueDate     time.Time  `json:"due_date"`
-	Status      string     `json:"status"`
-	Notes       string     `json:"notes,omitempty"`
-	CompletedAt *time.Time `json:"completed_at,omitempty"`
-	CreatedAt   time.Time  `json:"created_at"`
-}
-
-// AuditorLink represents a time-limited read-only access token for external auditors.
-type AuditorLink struct {
-	ID                string    `json:"id"`
-	OrgID             string    `json:"org_id"`
-	FrameworkID       string    `json:"framework_id"`
-	TokenHash         string    `json:"-"` // never exposed
-	CreatedBy         string    `json:"created_by"`
-	ExpiresAt         time.Time `json:"expires_at"`
-	UsedCount         int       `json:"used_count"`
-	MaxUses           *int      `json:"max_uses,omitempty"`
-	Description       string    `json:"description,omitempty"`        // S67-5
-	AllowedFrameworks []string  `json:"allowed_frameworks,omitempty"` // S67-5
-	CreatedAt         time.Time `json:"created_at"`
-	// ShareURL is populated on creation with the raw token embedded.
-	ShareURL string `json:"share_url,omitempty"`
-}
-
-// AuditorLinkListItem is the response shape for listing auditor links (E09.1).
-type AuditorLinkListItem struct {
-	ID                string     `json:"id"`
-	OrgID             string     `json:"org_id"`
-	FrameworkID       string     `json:"framework_id"`
-	Label             string     `json:"label"`
-	Description       string     `json:"description,omitempty"`        // S67-5
-	AllowedFrameworks []string   `json:"allowed_frameworks,omitempty"` // S67-5
-	CreatedBy         string     `json:"created_by"`
-	ExpiresAt         time.Time  `json:"expires_at"`
-	LastAccessedAt    *time.Time `json:"last_accessed_at,omitempty"`
-	AccessCount       int        `json:"access_count"`
-	RevokedAt         *time.Time `json:"revoked_at,omitempty"`
-	CreatedAt         time.Time  `json:"created_at"`
-}
-
-// ControlWithEvidence holds a control and its associated evidence items for auditor detail view (E09.2).
-type ControlWithEvidence struct {
-	Control  Control    `json:"control"`
-	Evidence []Evidence `json:"evidence"`
-}
-
-// AuditorDetailView is the enhanced auditor view response (E09.2).
-type AuditorDetailView struct {
-	Framework Framework             `json:"framework"`
-	Report    *ReadinessReport      `json:"report"`
-	Controls  []ControlWithEvidence `json:"controls"`
-}
-
-// EvidenceMetadata is written into evidence_metadata.json inside the export ZIP (E09.3).
-type EvidenceMetadata struct {
-	Control  Control    `json:"control"`
-	Evidence []Evidence `json:"evidence"`
-}
-
-// EvidenceHistoryEntry represents a single audit history record for an evidence item.
-type EvidenceHistoryEntry struct {
-	ID         string    `json:"id"`
-	EvidenceID string    `json:"evidence_id"`
-	ChangedBy  *string   `json:"changed_by_id,omitempty"`
-	ChangedAt  time.Time `json:"changed_at"`
-	Title      string    `json:"title,omitempty"`
-	Status     string    `json:"status,omitempty"`
-	ChangeNote string    `json:"change_note,omitempty"`
-}
-
-// AddEvidenceInput holds validated input for adding evidence to a control.
-type AddEvidenceInput struct {
-	Title       string     `json:"title"       validate:"required,max=255"`
-	Description string     `json:"description"`
-	Source      string     `json:"source"      validate:"required,oneof=manual github aws azure ad"`
-	FilePath    string     `json:"file_path"`
-	FileSize    int64      `json:"file_size"`
-	ExpiresAt   *time.Time `json:"expires_at"`
-}
-
 // --- Risk Assessment (FR-CK12) ---
 
 // --- Incident Register (FR-CK13) ---
@@ -584,29 +497,6 @@ type SaveAnswersInput struct {
 
 // --- DORA Dashboard (Story 27.5) ---
 
-// DORADashboard holds the computed DORA readiness summary for the dashboard.
-type DORADashboard struct {
-	ReadinessPct         float64       `json:"readiness_pct"`
-	OpenCriticalControls int           `json:"open_critical_controls"`
-	NextDeadline         *NextDeadline `json:"next_deadline,omitempty"`
-	ExpiredSuppliers     int           `json:"expired_suppliers"`
-	TLPTOverdueWarning   bool          `json:"tlpt_overdue_warning"`
-	// IKT-Drittanbieter (S38-1/2/3)
-	ThirdPartyCount       int `json:"third_party_count"`
-	CriticalThirdParties  int `json:"critical_third_parties"`
-	MissingExitStrategies int `json:"missing_exit_strategies"`
-	// TLPT summary (S40-1) — last 3 TLPT tests for PDF
-	RecentResilienceTests []ResilienceTest `json:"recent_resilience_tests,omitempty"`
-}
-
-// NextDeadline holds the nearest unreported DORA deadline.
-type NextDeadline struct {
-	IncidentID   string    `json:"incident_id"`
-	Title        string    `json:"title"`
-	DeadlineType string    `json:"deadline_type"` // "4h" | "24h" | "72h" | "30d"
-	DeadlineAt   time.Time `json:"deadline_at"`
-}
-
 // --- Assessment Review & Evidence Import (Story 29.4) ---
 
 // ReviewAnswerInput holds validated input for reviewing a single supplier answer.
@@ -875,40 +765,9 @@ type CreateCommentInput struct {
 
 // --- Evidence Files (Migration 074) ---
 
-// EvidenceFile represents an uploaded document attached to a compliance evidence record.
-type EvidenceFile struct {
-	ID           string    `json:"id"`
-	OrgID        string    `json:"org_id"`
-	EvidenceID   string    `json:"evidence_id"`
-	ControlID    string    `json:"control_id"`
-	OriginalName string    `json:"original_name"`
-	StoredName   string    `json:"stored_name"`
-	MimeType     string    `json:"mime_type"`
-	SizeBytes    int64     `json:"size_bytes"`
-	UploadedBy   string    `json:"uploaded_by"`
-	CreatedAt    time.Time `json:"created_at"`
-	DownloadURL  string    `json:"download_url"` // computed, not stored
-}
-
 // --- DORA IKT-Drittanbieter-Register (Art. 28-44 / S38-1) ---
 
 // --- S39-1: BSI-Meldepflicht-Klassifizierung ---
-
-// ClassifyReportingInput is the request body for POST /incidents/:id/classify-reporting.
-// It accepts a simple 3-question wizard payload.
-type ClassifyReportingInput struct {
-	EssentialService bool `json:"essential_service"`
-	CustomerData     bool `json:"customer_data"`
-	PersonalData     bool `json:"personal_data"`
-}
-
-// ClassificationResult is returned by the classify-reporting endpoint and stored
-// in ck_incidents.classification_result JSONB (Migration 140).
-type ClassificationResult struct {
-	Obligation string `json:"obligation"` // "probably" | "none" | "unclear"
-	Authority  string `json:"authority"`  // "BSI" | "BaFin+BSI" | "LDA" | ""
-	Reason     string `json:"reason"`
-}
 
 // ── S60: Schutzbedarfsfeststellung ────────────────────────────────────────────
 
@@ -1038,4 +897,145 @@ type KPISnapshot struct {
 type KPIDashboard struct {
 	Current *KPISnapshot  `json:"current"`
 	History []KPISnapshot `json:"history"`
+}
+
+// AuditorLink represents a time-limited read-only access token for external auditors.
+type AuditorLink struct {
+	ID                string    `json:"id"`
+	OrgID             string    `json:"org_id"`
+	FrameworkID       string    `json:"framework_id"`
+	TokenHash         string    `json:"-"` // never exposed
+	CreatedBy         string    `json:"created_by"`
+	ExpiresAt         time.Time `json:"expires_at"`
+	UsedCount         int       `json:"used_count"`
+	MaxUses           *int      `json:"max_uses,omitempty"`
+	Description       string    `json:"description,omitempty"`        // S67-5
+	AllowedFrameworks []string  `json:"allowed_frameworks,omitempty"` // S67-5
+	CreatedAt         time.Time `json:"created_at"`
+	// ShareURL is populated on creation with the raw token embedded.
+	ShareURL string `json:"share_url,omitempty"`
+}
+
+// AuditorLinkListItem is the response shape for listing auditor links (E09.1).
+type AuditorLinkListItem struct {
+	ID                string     `json:"id"`
+	OrgID             string     `json:"org_id"`
+	FrameworkID       string     `json:"framework_id"`
+	Label             string     `json:"label"`
+	Description       string     `json:"description,omitempty"`        // S67-5
+	AllowedFrameworks []string   `json:"allowed_frameworks,omitempty"` // S67-5
+	CreatedBy         string     `json:"created_by"`
+	ExpiresAt         time.Time  `json:"expires_at"`
+	LastAccessedAt    *time.Time `json:"last_accessed_at,omitempty"`
+	AccessCount       int        `json:"access_count"`
+	RevokedAt         *time.Time `json:"revoked_at,omitempty"`
+	CreatedAt         time.Time  `json:"created_at"`
+}
+
+// ControlWithEvidence holds a control and its associated evidence items for auditor detail view (E09.2).
+type ControlWithEvidence struct {
+	Control  Control    `json:"control"`
+	Evidence []Evidence `json:"evidence"`
+}
+
+// AuditorDetailView is the enhanced auditor view response (E09.2).
+type AuditorDetailView struct {
+	Framework Framework             `json:"framework"`
+	Report    *ReadinessReport      `json:"report"`
+	Controls  []ControlWithEvidence `json:"controls"`
+}
+
+// EvidenceMetadata is written into evidence_metadata.json inside the export ZIP (E09.3).
+type EvidenceMetadata struct {
+	Control  Control    `json:"control"`
+	Evidence []Evidence `json:"evidence"`
+}
+
+// EvidenceHistoryEntry represents a single audit history record for an evidence item.
+type EvidenceHistoryEntry struct {
+	ID         string    `json:"id"`
+	EvidenceID string    `json:"evidence_id"`
+	ChangedBy  *string   `json:"changed_by_id,omitempty"`
+	ChangedAt  time.Time `json:"changed_at"`
+	Title      string    `json:"title,omitempty"`
+	Status     string    `json:"status,omitempty"`
+	ChangeNote string    `json:"change_note,omitempty"`
+}
+
+// AddEvidenceInput holds validated input for adding evidence to a control.
+type AddEvidenceInput struct {
+	Title       string     `json:"title"       validate:"required,max=255"`
+	Description string     `json:"description"`
+	Source      string     `json:"source"      validate:"required,oneof=manual github aws azure ad"`
+	FilePath    string     `json:"file_path"`
+	FileSize    int64      `json:"file_size"`
+	ExpiresAt   *time.Time `json:"expires_at"`
+}
+
+// --- Evidence Files (Migration 074) ---
+
+// EvidenceFile represents an uploaded document attached to a compliance evidence record.
+type EvidenceFile struct {
+	ID           string    `json:"id"`
+	OrgID        string    `json:"org_id"`
+	EvidenceID   string    `json:"evidence_id"`
+	ControlID    string    `json:"control_id"`
+	OriginalName string    `json:"original_name"`
+	StoredName   string    `json:"stored_name"`
+	MimeType     string    `json:"mime_type"`
+	SizeBytes    int64     `json:"size_bytes"`
+	UploadedBy   string    `json:"uploaded_by"`
+	CreatedAt    time.Time `json:"created_at"`
+	DownloadURL  string    `json:"download_url"` // computed, not stored
+}
+
+// --- DORA Dashboard (Story 27.5) ---
+
+// DORADashboard holds the computed DORA readiness summary for the dashboard.
+type DORADashboard struct {
+	ReadinessPct         float64       `json:"readiness_pct"`
+	OpenCriticalControls int           `json:"open_critical_controls"`
+	NextDeadline         *NextDeadline `json:"next_deadline,omitempty"`
+	ExpiredSuppliers     int           `json:"expired_suppliers"`
+	TLPTOverdueWarning   bool          `json:"tlpt_overdue_warning"`
+	// IKT-Drittanbieter (S38-1/2/3)
+	ThirdPartyCount       int `json:"third_party_count"`
+	CriticalThirdParties  int `json:"critical_third_parties"`
+	MissingExitStrategies int `json:"missing_exit_strategies"`
+	// TLPT summary (S40-1) — last 3 TLPT tests for PDF
+	RecentResilienceTests []ResilienceTest `json:"recent_resilience_tests,omitempty"`
+}
+
+// NextDeadline holds the nearest unreported DORA deadline.
+type NextDeadline struct {
+	IncidentID   string    `json:"incident_id"`
+	Title        string    `json:"title"`
+	DeadlineType string    `json:"deadline_type"` // "4h" | "24h" | "72h" | "30d"
+	DeadlineAt   time.Time `json:"deadline_at"`
+}
+
+// Review represents a control review assignment.
+type Review struct {
+	ID          string     `json:"id"`
+	ControlID   string     `json:"control_id"`
+	OrgID       string     `json:"org_id"`
+	AssignedTo  string     `json:"assigned_to"`
+	AssignedBy  string     `json:"assigned_by"`
+	DueDate     time.Time  `json:"due_date"`
+	Status      string     `json:"status"`
+	Notes       string     `json:"notes,omitempty"`
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+}
+
+type ClassifyReportingInput struct {
+	EssentialService bool `json:"essential_service"`
+	CustomerData     bool `json:"customer_data"`
+	PersonalData     bool `json:"personal_data"`
+}
+
+type ClassificationResult struct {
+	Obligation string `json:"obligation"` // "probably" | "none" | "unclear"
+	Authority  string `json:"authority"`  // "BSI" | "BaFin+BSI" | "LDA" | ""
+	Reason     string `json:"reason"`
 }

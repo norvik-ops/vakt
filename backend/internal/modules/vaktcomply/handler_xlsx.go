@@ -75,7 +75,7 @@ func (h *Handler) ExportControlsXLSX(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "framework_id is required", "CK_MISSING_PARAM")
 	}
 
-	controls, err := h.service.Policy.ListControls(ctx, org, frameworkID)
+	controls, err := h.service.ListControls(ctx, org, frameworkID)
 	if err != nil {
 		log.Error().Err(err).Str("org_id", org).Str("framework_id", frameworkID).Msg("export controls xlsx")
 		return errResp(c, http.StatusInternalServerError, "export failed", "CK_EXPORT_ERROR")

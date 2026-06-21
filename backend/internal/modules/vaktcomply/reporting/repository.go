@@ -1,14 +1,59 @@
-package vaktcomply
+// Copyright (c) 2026 NorvikOps. All rights reserved.
+// SPDX-License-Identifier: Elastic-2.0
+
+package reporting
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/matharnica/vakt/internal/db"
 )
+
+// Repository provides reporting-domain database operations (CCM checks/results).
+type Repository struct {
+	db *pgxpool.Pool
+	q  *db.Queries
+}
+
+// NewRepository creates a new reporting-domain repository.
+func NewRepository(pool *pgxpool.Pool) *Repository {
+	return &Repository{db: pool, q: db.New(pool)}
+}
+
+// --- shared pgtype helpers (duplicated from the parent vaktcomply package) ---
+
+// ckTsToTime converts pgtype.Timestamptz to time.Time (zero on NULL).
+func ckTsToTime(t pgtype.Timestamptz) time.Time {
+	if !t.Valid {
+		return time.Time{}
+	}
+	return t.Time
+}
+
+// ckTsToTimePtr converts pgtype.Timestamptz to *time.Time (nil on NULL).
+func ckTsToTimePtr(t pgtype.Timestamptz) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	tm := t.Time
+	return &tm
+}
+
+// ckOptText: empty string → invalid pgtype.Text (NULL in DB).
+func ckOptText(s string) pgtype.Text {
+	if s == "" {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: s, Valid: true}
+}
+
+// --- CCM mapping ---
 
 // ccmCheckFields is the shared field-container for all CCM-Check Row-Types
 // (Create/Get/List/ListDue). Alle Row-Types haben identische Shape; eine

@@ -14,6 +14,7 @@ import (
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/bcm"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/bsi"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/reporting"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/risk"
 	"github.com/matharnica/vakt/internal/services/ai"
 	"github.com/matharnica/vakt/internal/shared/dashboard"
@@ -34,11 +35,12 @@ type Service struct {
 	q          *db.Queries
 	rdb        *redis.Client
 	repo       *Repository
-	BCM        *bcm.Service
-	BSI        *bsi.Service
-	Audit      *audit.Service
-	Risk       *risk.Service
-	Policy     *policy.Service
+	BCM       *bcm.Service
+	BSI       *bsi.Service
+	Audit     *audit.Service
+	Risk      *risk.Service
+	Policy    *policy.Service
+	Reporting *reporting.Service
 	notifSvc   notifyService
 	aiClient   *ai.AIClient
 	webhookSvc webhookTrigger
@@ -60,10 +62,11 @@ func NewService(dbPool *pgxpool.Pool) *Service {
 		db:    dbPool,
 		q:     db.New(dbPool),
 		repo:  NewRepository(dbPool),
-		BCM:   bcm.NewService(dbPool),
-		BSI:   bsi.NewService(dbPool),
-		Audit: audit.NewService(dbPool),
-		Risk:  risk.NewService(dbPool),
+		BCM:       bcm.NewService(dbPool),
+		BSI:       bsi.NewService(dbPool),
+		Audit:     audit.NewService(dbPool),
+		Risk:      risk.NewService(dbPool),
+		Reporting: reporting.NewService(dbPool),
 	}
 	svc.Policy = policy.NewService(dbPool)
 	// Inject the dashboard cache invalidator so risk-domain writes invalidate

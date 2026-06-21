@@ -1,43 +1,18 @@
 package vaktcomply
 
-import "time"
+import "github.com/matharnica/vakt/internal/modules/vaktcomply/reporting"
 
-// CCMCheck represents an automated compliance control check definition.
-type CCMCheck struct {
-	ID            string            `json:"id"`
-	OrgID         string            `json:"org_id"`
-	ControlID     string            `json:"control_id"`
-	Name          string            `json:"name"`
-	CheckType     string            `json:"check_type"`
-	Config        map[string]string `json:"config"`
-	IntervalHours int               `json:"interval_hours"`
-	LastRunAt     *time.Time        `json:"last_run_at,omitempty"`
-	LastStatus    string            `json:"last_status,omitempty"`
-	LastOutput    string            `json:"last_output,omitempty"`
-	Enabled       bool              `json:"enabled"`
-	CreatedAt     time.Time         `json:"created_at"`
-	UpdatedAt     time.Time         `json:"updated_at"`
-}
-
-// CreateCCMCheckInput holds validated input for creating a CCM check.
-type CreateCCMCheckInput struct {
-	ControlID     string            `json:"control_id"     validate:"required"`
-	Name          string            `json:"name"           validate:"required,max=255"`
-	CheckType     string            `json:"check_type"     validate:"required,oneof=http_endpoint trivy_no_critical evidence_freshness custom_script"`
-	Config        map[string]string `json:"config"`
-	IntervalHours int               `json:"interval_hours" validate:"min=1,max=8760"`
-}
-
-// ToggleCCMCheckInput holds the enabled flag for toggling a CCM check.
-type ToggleCCMCheckInput struct {
-	Enabled bool `json:"enabled"`
-}
-
-// CCMResult represents the result of a single CCM check execution.
-type CCMResult struct {
-	ID      string    `json:"id"`
-	CheckID string    `json:"check_id"`
-	Status  string    `json:"status"`
-	Output  string    `json:"output,omitempty"`
-	RanAt   time.Time `json:"ran_at"`
-}
+// CCM (Continuous Control Monitoring) types and logic live in the reporting
+// sub-package (S103-3). These aliases keep the existing handler/route surface
+// (`ccm_handler.go`, `routes.go`) and the worker entrypoint stable while the
+// implementation has moved out of the root package.
+type (
+	// CCMCheck represents an automated compliance control check definition.
+	CCMCheck = reporting.CCMCheck
+	// CreateCCMCheckInput holds validated input for creating a CCM check.
+	CreateCCMCheckInput = reporting.CreateCCMCheckInput
+	// ToggleCCMCheckInput holds the enabled flag for toggling a CCM check.
+	ToggleCCMCheckInput = reporting.ToggleCCMCheckInput
+	// CCMResult represents the result of a single CCM check execution.
+	CCMResult = reporting.CCMResult
+)

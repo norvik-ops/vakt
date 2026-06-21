@@ -69,6 +69,10 @@ type (
 	PolicyAcceptanceCampaign   = policy.PolicyAcceptanceCampaign
 	PolicyAcceptanceRequest    = policy.PolicyAcceptanceRequest
 	PolicyAcceptanceSMTPConfig = policy.PolicyAcceptanceSMTPConfig
+
+	// Framework-mapping return types (defined in policy/service_framework_mappings.go).
+	MappingCoverageResponse = policy.MappingCoverageResponse
+	ImplementationStep      = policy.ImplementationStep
 )
 
 // Re-exported package-level symbols moved into the policy/ sub-package that
@@ -83,3 +87,4 @@ var (
 	// ErrExclusionReasonRequired signals a SoA exclusion lacks a justification.
 	ErrExclusionReasonRequired = policy.ErrExclusionReasonRequired
 )
+
