@@ -6,11 +6,11 @@ Diese Anleitung führt dich von null bis zu einer laufenden Vakt-Instanz.
 
 ## Systemanforderungen
 
-| | Minimum | Empfohlen | Mit KI (Minimum) | Mit KI (Empfohlen) |
-|---|---|---|---|---|
-| **CPU** | 2 vCPU | 4 vCPU | 4 vCPU | 4 vCPU |
-| **RAM** | 2 GB | 4 GB | **8 GB** | **16 GB** |
-| **Disk** | 20 GB SSD | 40 GB SSD | 40 GB SSD (+5 GB für das Modell) | 40 GB SSD (+5 GB für das Modell) |
+| | Minimum | Empfohlen |
+|---|---|---|
+| **CPU** | 4 Kerne | 6 Kerne |
+| **RAM** | 16 GB | 16 GB |
+| **Disk** | 160 GB SSD | 160 GB SSD |
 | **Docker Engine** | 24+ | 24+ | 24+ | 24+ |
 | **Docker Compose** | v2 | v2 | v2 | v2 |
 | **Betriebssystem** | Linux (empfohlen), macOS, Windows (WSL2) | Linux | Linux | Linux |

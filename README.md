@@ -77,9 +77,9 @@ Open [http://localhost](http://localhost) in your browser.
 
 | | Minimum | Recommended | With AI Advisor (default) |
 |---|---|---|---|
-| **CPU** | 2 vCPU | 4 vCPU | 4 vCPU — no GPU needed |
-| **RAM** | 2 GB | 4 GB | 8 GB (+4.5 GB for model) |
-| **Disk** | 20 GB SSD | 40 GB SSD | 40 GB SSD (+5 GB for model) |
+| **CPU** | 4 cores | 6 cores | 6 cores — no GPU needed |
+| **RAM** | 16 GB | 16 GB | 16 GB |
+| **Disk** | 160 GB SSD | 160 GB SSD | 160 GB SSD |
 | **Docker Engine** | 24+ | 24+ | 24+ |
 
 The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key required, and **Community since v0.6.x** (no Pro license needed). Ollama starts automatically with `docker compose up`; an `ollama-init` container pulls the default model (`qwen2.5:7b`, Apache 2.0, ~4.5 GB RAM, needs 8 GB) on first launch — no manual `ollama pull` step. On smaller VMs switch to `qwen2.5:3b` (~1.9 GB, set `VAKT_AI_MODEL=qwen2.5:3b`), or use `phi3.5:mini` (Microsoft, MIT) or the Mistral EU API. To disable on small VMs: set `VAKT_AI_PROVIDER=disabled` and remove the `ollama`/`ollama-init` services via compose-override.
@@ -220,8 +220,8 @@ docker compose restart api worker
 
 | Model | RAM | License | Note |
 |-------|-----|---------|------|
-| `qwen2.5:7b` | 4.5 GB | Apache 2.0 | Default — best DE compliance quality (needs 8 GB RAM) |
-| `qwen2.5:3b` | 1.9 GB | Apache 2.0 | Lighter — for VMs with < 8 GB RAM |
+| `qwen2.5:7b` | 4.5 GB | Apache 2.0 | Default — best DE compliance quality |
+| `qwen2.5:3b` | 1.9 GB | Apache 2.0 | Lighter — for servers with < 16 GB RAM |
 | `llama3.2:1b` | 1.3 GB | Llama Comm. | Most economical |
 | `llama3.2:3b` | 2.0 GB | Llama Comm. | Meta, balanced |
 | `phi3.5:mini` | 2.3 GB | MIT | Microsoft, structured outputs |

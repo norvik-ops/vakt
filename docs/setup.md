@@ -30,9 +30,9 @@ Vakt benötigt **Docker Engine 24+** und **Docker Compose v2**.
 
 | Ressource | Minimum | Empfohlen | Mit KI-Berater (Standard) |
 |---|---|---|---|
-| CPU | 2 vCPUs | 4 vCPUs | 4 vCPUs (kein GPU nötig) |
-| RAM | 2 GB | 4 GB | 4 GB (+2 GB für Ollama-Modell) |
-| Disk | 20 GB SSD | 50 GB SSD | 50 GB SSD (+3 GB für Modell) |
+| CPU | 4 Kerne | 6 Kerne | 6 Kerne (kein GPU nötig) |
+| RAM | 16 GB | 16 GB | 16 GB |
+| Disk | 160 GB SSD | 160 GB SSD | 160 GB SSD |
 | Betriebssystem | Linux 64-bit | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
 
 > **Hinweis:** Der KI-Berater ist standardmäßig aktiviert und läuft lokal via Ollama auf der CPU — kein GPU, kein Cloud-API-Key nötig. Das Default-Modell wird beim ersten Start automatisch geladen (`qwen2.5:7b`, ~4.5 GB) — manuell: `docker compose exec ollama ollama pull qwen2.5:7b`
@@ -47,7 +47,7 @@ curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER   # Neuanmeldung danach erforderlich
 
 # 2. Vakt klonen
-git clone https://github.com/Matharnica/vakt-app
+git clone https://github.com/norvik-ops/vatk
 cd vakt-app
 
 # 3. Konfiguration
@@ -342,8 +342,8 @@ Empfohlene CPU-taugliche Modelle (kein VRAM nötig):
 
 | Modell | Stärke |
 |---|---|
-| `qwen2.5:7b` | Standard — beste DE-Compliance-Qualität (~4.5 GB, braucht 8 GB RAM) |
-| `qwen2.5:3b` | Leichter — für VMs mit < 8 GB RAM, starkes Deutsch (~1.9 GB) |
+| `qwen2.5:7b` | Standard — beste DE-Compliance-Qualität (~4.5 GB) |
+| `qwen2.5:3b` | Leichter — für Server mit < 16 GB RAM (~1.9 GB) |
 | `phi3.5:mini` | Sehr schnell, gutes Reasoning (~2.3 GB) |
 | `llama3.2:3b` | Gutes Deutsch, schnell (~2.0 GB) |
 

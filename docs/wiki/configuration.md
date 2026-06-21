@@ -149,11 +149,11 @@ VAKT_SMTP_FROM=vakt@meine-firma.de
 
 ---
 
-## KI-Berater (optional)
+## KI-Berater (Standard — lokal via Ollama)
 
-Vakt kann Compliance-Berichte und Empfehlungen über einen OpenAI-kompatiblen KI-Provider generieren. Standardmäßig ist Ollama mit `qwen2.5:7b` lokal konfiguriert (~4.5 GB RAM, braucht 8 GB; auf kleinen VMs `qwen2.5:3b`) — kein GPU, kein Cloud-API-Key nötig.
+Vakt enthält einen integrierten KI-Compliance-Berater, der standardmäßig lokal via Ollama läuft. Das Default-Modell `qwen2.5:7b` (~4.5 GB, Apache 2.0, CPU-tauglich) wird beim ersten Start automatisch geladen — kein GPU, kein Cloud-API-Key nötig. Auf VMs mit < 8 GB RAM `qwen2.5:3b` verwenden oder KI mit `VAKT_AI_PROVIDER=disabled` abschalten.
 
-Unterstützte Provider: Ollama, Mistral AI, OpenAI, Groq, LM Studio, vLLM und jeder weitere OpenAI-kompatible Endpunkt.
+Cloud-Alternative: **Mistral AI** (EU-Server, DSGVO-freundlich via AVV) — schneller, aber Daten verlassen die Instanz.
 
 | Variable | Pflicht | Standard | Beschreibung |
 |----------|---------|----------|--------------|

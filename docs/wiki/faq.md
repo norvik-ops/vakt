@@ -61,7 +61,7 @@ Keine. Vakt arbeitet vollständig lokal:
 
 Die einzige externe Verbindung, die Vakt standardmäßig aufbaut, ist eine Prüfung auf neue Releases bei GitHub (`/api/v1/version/check`) — rein lesend, sendet keine Daten. Wenn du auch das unterbinden willst, kannst du den API-Container netzwerktechnisch isolieren.
 
-Wenn du einen Cloud-KI-Provider (z. B. Mistral AI) konfigurierst, gehen die Compliance-Abfragen an diesen Provider. Das ist optional und explizit konfiguriert — nichts passiert ohne dein Wissen.
+Der KI-Berater ist standardmäßig aktiv und läuft lokal auf deinem Server — keine Daten verlassen die Instanz. Wer Cloud-KI bevorzugt (z. B. Mistral AI, EU-Server), konfiguriert das explizit in der `.env`. Wer keine KI möchte, setzt `VAKT_AI_PROVIDER=disabled`.
 
 ---
 
