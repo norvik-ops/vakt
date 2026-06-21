@@ -14,7 +14,7 @@ import (
 // GetRisk handles GET /api/v1/vaktcomply/risks/:id.
 func (h *Handler) GetRisk(c echo.Context) error {
 	id := c.Param("id")
-	risk, err := h.service.GetRisk(c.Request().Context(), orgID(c), id)
+	risk, err := h.service.Risk.GetRisk(c.Request().Context(), orgID(c), id)
 	if err != nil {
 		return errResp(c, http.StatusNotFound, "risk not found", "CK_RISK_NOT_FOUND")
 	}
@@ -31,7 +31,7 @@ func (h *Handler) UpdateRisk(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	risk, err := h.service.UpdateRisk(c.Request().Context(), orgID(c), id, in)
+	risk, err := h.service.Risk.UpdateRisk(c.Request().Context(), orgID(c), id, in)
 	if err != nil {
 		log.Error().Err(err).Msg("update risk")
 		return errResp(c, http.StatusInternalServerError, "failed to update risk", "CK_UPDATE_RISK_FAILED")
@@ -50,7 +50,7 @@ func (h *Handler) UpdateRiskTreatment(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	risk, err := h.service.UpdateRiskTreatment(c.Request().Context(), orgID(c), id, in)
+	risk, err := h.service.Risk.UpdateRiskTreatment(c.Request().Context(), orgID(c), id, in)
 	if err != nil {
 		log.Error().Err(err).Msg("update risk treatment")
 		return errResp(c, http.StatusInternalServerError, "failed to update risk treatment", "CK_UPDATE_RISK_TREATMENT_FAILED")
@@ -65,7 +65,7 @@ func (h *Handler) ListRisks(c echo.Context) error {
 	if c.QueryParam("page") == "" {
 		cp := pagination.CursorFromRequest(c)
 		cursorID, cursorTS := pagination.DecodeCursor(cp.Cursor)
-		rows, err := h.service.ListRisksCursor(c.Request().Context(), orgID(c), cursorID, cursorTS, cp.Limit)
+		rows, err := h.service.Risk.ListRisksCursor(c.Request().Context(), orgID(c), cursorID, cursorTS, cp.Limit)
 		if err != nil {
 			log.Error().Err(err).Msg("list risks cursor")
 			return errResp(c, http.StatusInternalServerError, "failed to list risks", "CK_LIST_RISKS_FAILED")
@@ -78,7 +78,7 @@ func (h *Handler) ListRisks(c echo.Context) error {
 	c.Response().Header().Set("Deprecation", "true")
 	c.Response().Header().Set("Sunset", "2027-01-01")
 	offset, limit, meta := pagination.FromRequest(c)
-	risks, total, err := h.service.ListRisksPaged(c.Request().Context(), orgID(c), offset, limit)
+	risks, total, err := h.service.Risk.ListRisksPaged(c.Request().Context(), orgID(c), offset, limit)
 	if err != nil {
 		log.Error().Err(err).Msg("list risks")
 		return errResp(c, http.StatusInternalServerError, "failed to list risks", "CK_LIST_RISKS_FAILED")
@@ -96,7 +96,7 @@ func (h *Handler) CreateRisk(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	risk, err := h.service.CreateRisk(c.Request().Context(), orgID(c), in)
+	risk, err := h.service.Risk.CreateRisk(c.Request().Context(), orgID(c), in)
 	if err != nil {
 		log.Error().Err(err).Msg("create risk")
 		return errResp(c, http.StatusInternalServerError, "failed to create risk", "CK_CREATE_RISK_FAILED")
@@ -119,7 +119,7 @@ func (h *Handler) DeleteRisk(c echo.Context) error {
 	if _, err := uuid.Parse(id); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid risk id", "CK_BAD_REQUEST")
 	}
-	if err := h.service.DeleteRisk(c.Request().Context(), orgID(c), id); err != nil {
+	if err := h.service.Risk.DeleteRisk(c.Request().Context(), orgID(c), id); err != nil {
 		return errResp(c, http.StatusNotFound, "risk not found", "CK_RISK_NOT_FOUND")
 	}
 	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
@@ -185,7 +185,7 @@ func (h *Handler) UpdateRiskResidualFields(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	if err := h.service.UpdateRiskResidualFields(c.Request().Context(), orgID(c), id, in); err != nil {
+	if err := h.service.Risk.UpdateRiskResidualFields(c.Request().Context(), orgID(c), id, in); err != nil {
 		log.Error().Err(err).Msg("update risk residual fields")
 		return errResp(c, http.StatusInternalServerError, "failed to update residual fields", "CK_UPDATE_RESIDUAL_FAILED")
 	}
@@ -202,7 +202,7 @@ func (h *Handler) AcceptRisk(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	if err := h.service.AcceptRisk(c.Request().Context(), orgID(c), id, userID(c), in); err != nil {
+	if err := h.service.Risk.AcceptRisk(c.Request().Context(), orgID(c), id, userID(c), in); err != nil {
 		if err.Error() == "risk must have treatment_status=accepted before formal acceptance" {
 			return errResp(c, http.StatusConflict, err.Error(), "CK_RISK_NOT_ACCEPTED_TREATMENT")
 		}

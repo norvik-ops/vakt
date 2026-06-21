@@ -64,7 +64,7 @@ func (s *Service) CommitVeriniceImport(ctx context.Context, orgID, userID string
 			res.AssetsCreated++
 
 		case "risk":
-			if _, err := s.CreateRisk(ctx, orgID, CreateRiskInput{
+			if _, err := s.Risk.CreateRisk(ctx, orgID, CreateRiskInput{
 				Title:          truncateStr(o.Title, 255),
 				Description:    "Importiert aus verinice (.vna). Bitte Eintrittswahrscheinlichkeit und Auswirkung prüfen.",
 				Category:       "verinice-Import",

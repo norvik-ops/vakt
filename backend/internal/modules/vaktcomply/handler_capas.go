@@ -21,7 +21,7 @@ func (h *Handler) BulkUpdateCAPAs(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	if err := h.service.BulkUpdateCAPAStatus(c.Request().Context(), orgID(c), in.IDs, in.Status); err != nil {
+	if err := h.service.Risk.BulkUpdateCAPAStatus(c.Request().Context(), orgID(c), in.IDs, in.Status); err != nil {
 		log.Error().Err(err).Msg("bulk update capas")
 		return errResp(c, http.StatusInternalServerError, "failed to bulk update capas", "CK_BULK_UPDATE_FAILED")
 	}
@@ -198,7 +198,7 @@ func (h *Handler) UpdateCAPANCFields(c echo.Context) error {
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
-	if err := h.service.UpdateCAPANCFields(c.Request().Context(), orgID(c), c.Param("id"), in); err != nil {
+	if err := h.service.Risk.UpdateCAPANCFields(c.Request().Context(), orgID(c), c.Param("id"), in); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return errResp(c, http.StatusNotFound, "capa not found", "CK_CAPA_NOT_FOUND")
 		}
@@ -224,7 +224,7 @@ func (h *Handler) CompleteEffectivenessCheck(c echo.Context) error {
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
-	if err := h.service.CompleteEffectivenessCheck(c.Request().Context(), orgID(c), c.Param("id"), userID(c), in); err != nil {
+	if err := h.service.Risk.CompleteEffectivenessCheck(c.Request().Context(), orgID(c), c.Param("id"), userID(c), in); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return errResp(c, http.StatusNotFound, "capa not found", "CK_CAPA_NOT_FOUND")
 		}

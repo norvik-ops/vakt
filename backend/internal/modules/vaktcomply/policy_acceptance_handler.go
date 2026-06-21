@@ -45,7 +45,7 @@ func (h *Handler) CreateAcceptanceCampaign(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, err.Error(), "CK_VALIDATION_ERROR")
 	}
 
-	smtpCfg := policyAcceptanceSMTPConfig{
+	smtpCfg := PolicyAcceptanceSMTPConfig{
 		Host: h.paCfg.SMTPHost,
 		Port: h.paCfg.SMTPPort,
 		User: h.paCfg.SMTPUser,
@@ -53,7 +53,7 @@ func (h *Handler) CreateAcceptanceCampaign(c echo.Context) error {
 		From: h.paCfg.SMTPFrom,
 	}
 
-	campaign, err := h.service.CreateAcceptanceCampaign(
+	campaign, err := h.service.Policy.CreateAcceptanceCampaign(
 		c.Request().Context(),
 		orgID(c), userID(c),
 		in,
@@ -74,7 +74,7 @@ func (h *Handler) ListAcceptanceCampaigns(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "policy ID required", "CK_BAD_REQUEST")
 	}
 
-	campaigns, err := h.service.ListCampaigns(c.Request().Context(), orgID(c), policyID)
+	campaigns, err := h.service.Policy.ListCampaigns(c.Request().Context(), orgID(c), policyID)
 	if err != nil {
 		log.Error().Err(err).Msg("list acceptance campaigns")
 		return errResp(c, http.StatusInternalServerError, "failed to list campaigns", "CK_CAMPAIGN_LIST_FAILED")
@@ -92,7 +92,7 @@ func (h *Handler) GetCampaignStats(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "campaign ID required", "CK_BAD_REQUEST")
 	}
 
-	stats, err := h.service.GetCampaignStats(c.Request().Context(), cid)
+	stats, err := h.service.Policy.GetCampaignStats(c.Request().Context(), cid)
 	if err != nil {
 		log.Error().Err(err).Msg("get campaign stats")
 		return errResp(c, http.StatusInternalServerError, "failed to get stats", "CK_CAMPAIGN_STATS_FAILED")
@@ -107,7 +107,7 @@ func (h *Handler) ListCampaignRequests(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "campaign ID required", "CK_BAD_REQUEST")
 	}
 
-	requests, err := h.service.ListCampaignRequests(c.Request().Context(), cid)
+	requests, err := h.service.Policy.ListCampaignRequests(c.Request().Context(), cid)
 	if err != nil {
 		log.Error().Err(err).Msg("list campaign requests")
 		return errResp(c, http.StatusInternalServerError, "failed to list requests", "CK_CAMPAIGN_REQUESTS_FAILED")
@@ -126,7 +126,7 @@ func (h *Handler) GetAcceptanceInfo(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "token required", "CK_BAD_REQUEST")
 	}
 
-	info, err := h.service.GetAcceptanceRequestInfo(c.Request().Context(), token)
+	info, err := h.service.Policy.GetAcceptanceRequestInfo(c.Request().Context(), token)
 	if err != nil {
 		return errResp(c, http.StatusNotFound, "token not found or expired", "CK_TOKEN_NOT_FOUND")
 	}
@@ -142,7 +142,7 @@ func (h *Handler) AcceptPolicy(c echo.Context) error {
 	}
 
 	ip := c.RealIP()
-	if err := h.service.AcceptPolicy(c.Request().Context(), token, ip); err != nil {
+	if err := h.service.Policy.AcceptPolicy(c.Request().Context(), token, ip); err != nil {
 		log.Warn().Err(err).Str("ip", ip).Msg("accept policy")
 		return errResp(c, http.StatusNotFound, "token not found or expired", "CK_TOKEN_NOT_FOUND")
 	}

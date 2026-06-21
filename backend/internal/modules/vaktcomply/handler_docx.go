@@ -42,7 +42,7 @@ func (h *Handler) ExportRisksDOCX(c echo.Context) error {
 	ctx := c.Request().Context()
 	org := orgID(c)
 
-	risks, _, err := h.service.ListRisksPaged(ctx, org, 0, 10_000)
+	risks, _, err := h.service.Risk.ListRisksPaged(ctx, org, 0, 10_000)
 	if err != nil {
 		log.Error().Err(err).Str("org_id", org).Msg("export risks docx")
 		return errResp(c, http.StatusInternalServerError, "export failed", "CK_EXPORT_ERROR")
@@ -78,7 +78,7 @@ func (h *Handler) ExportSoADOCX(c echo.Context) error {
 	ctx := c.Request().Context()
 	org := orgID(c)
 
-	entries, err := h.service.ListDedicatedSoAEntries(ctx, org)
+	entries, err := h.service.Policy.ListDedicatedSoAEntries(ctx, org)
 	if err != nil {
 		if errors.Is(err, ErrSoANotInitialized) {
 			return errResp(c, http.StatusNotFound, err.Error(), "CK_SOA_NOT_INITIALIZED")
@@ -86,7 +86,7 @@ func (h *Handler) ExportSoADOCX(c echo.Context) error {
 		log.Error().Err(err).Msg("export soa docx: list entries")
 		return errResp(c, http.StatusInternalServerError, "export failed", "CK_SOA_EXPORT_FAILED")
 	}
-	summary, err := h.service.GetDedicatedSoASummary(ctx, org)
+	summary, err := h.service.Policy.GetDedicatedSoASummary(ctx, org)
 	if err != nil {
 		log.Error().Err(err).Msg("export soa docx: get summary")
 		return errResp(c, http.StatusInternalServerError, "export failed", "CK_SOA_EXPORT_FAILED")

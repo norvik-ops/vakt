@@ -198,7 +198,7 @@ func (h *Handler) ExportEvidenceBundle(c echo.Context) error {
 	ctx := c.Request().Context()
 	org := orgID(c)
 
-	ctrl, err := h.service.GetControl(ctx, org, controlID)
+	ctrl, err := h.service.Policy.GetControl(ctx, org, controlID)
 	if err != nil {
 		return errResp(c, http.StatusNotFound, "control not found", "CK_CONTROL_NOT_FOUND")
 	}

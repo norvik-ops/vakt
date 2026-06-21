@@ -3,6 +3,7 @@ package vaktcomply
 import (
 	"errors"
 	"fmt"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 	"io"
 	"net/http"
 
@@ -15,7 +16,7 @@ import (
 
 // ListFrameworks handles GET /api/v1/vaktcomply/frameworks.
 func (h *Handler) ListFrameworks(c echo.Context) error {
-	frameworks, err := h.service.ListFrameworks(c.Request().Context(), orgID(c))
+	frameworks, err := h.service.Policy.ListFrameworks(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("list frameworks")
 		return errResp(c, http.StatusInternalServerError, "failed to list frameworks", "CK_LIST_FRAMEWORKS_FAILED")
@@ -41,7 +42,7 @@ func (h *Handler) EnableFramework(c echo.Context) error {
 		}
 	}
 
-	fw, err := h.service.EnableFramework(c.Request().Context(), orgID(c), name, input.Variant)
+	fw, err := h.service.Policy.EnableFramework(c.Request().Context(), orgID(c), name, input.Variant)
 	if err != nil {
 		log.Error().Err(err).Str("name", name).Msg("enable framework")
 		return errResp(c, http.StatusInternalServerError, "failed to enable framework", "CK_ENABLE_FRAMEWORK_FAILED")
@@ -65,12 +66,12 @@ func (h *Handler) SwitchDORAVariant(c echo.Context) error {
 	}
 
 	// Find the org's DORA framework.
-	fw, err := h.service.FindFrameworkByName(c.Request().Context(), orgID(c), "DORA")
+	fw, err := h.service.Policy.FindFrameworkByName(c.Request().Context(), orgID(c), "DORA")
 	if err != nil || fw == nil {
 		return errResp(c, http.StatusNotFound, "DORA framework not enabled for this organisation", "CK_DORA_NOT_FOUND")
 	}
 
-	updated, err := h.service.SwitchDORAVariant(c.Request().Context(), orgID(c), fw.ID, input.Variant)
+	updated, err := h.service.Policy.SwitchDORAVariant(c.Request().Context(), orgID(c), fw.ID, input.Variant)
 	if err != nil {
 		log.Error().Err(err).Str("variant", input.Variant).Msg("switch dora variant")
 		return errResp(c, http.StatusInternalServerError, "failed to switch DORA variant", "CK_DORA_VARIANT_FAILED")
@@ -89,7 +90,7 @@ func (h *Handler) DeleteFramework(c echo.Context) error {
 	if frameworkID == "" {
 		return errResp(c, http.StatusBadRequest, "framework id is required", "CK_BAD_REQUEST")
 	}
-	if err := h.service.DeleteFramework(c.Request().Context(), orgID(c), frameworkID); err != nil {
+	if err := h.service.Policy.DeleteFramework(c.Request().Context(), orgID(c), frameworkID); err != nil {
 		log.Error().Err(err).Str("framework_id", frameworkID).Msg("delete framework")
 		return errResp(c, http.StatusInternalServerError, "failed to delete framework", "CK_DELETE_FRAMEWORK_FAILED")
 	}
@@ -103,7 +104,7 @@ func (h *Handler) DeleteFramework(c echo.Context) error {
 
 // GetFrameworkByID handles GET /api/v1/vaktcomply/frameworks/:id.
 func (h *Handler) GetFrameworkByID(c echo.Context) error {
-	fw, err := h.service.GetFramework(c.Request().Context(), orgID(c), c.Param("id"))
+	fw, err := h.service.Policy.GetFramework(c.Request().Context(), orgID(c), c.Param("id"))
 	if err != nil {
 		return errResp(c, http.StatusNotFound, "framework not found", "CK_FRAMEWORK_NOT_FOUND")
 	}
@@ -113,7 +114,7 @@ func (h *Handler) GetFrameworkByID(c echo.Context) error {
 // GetReadinessReport handles GET /api/v1/vaktcomply/frameworks/:id/report.
 func (h *Handler) GetReadinessReport(c echo.Context) error {
 	frameworkID := c.Param("id")
-	report, err := h.service.GetReadinessReport(c.Request().Context(), orgID(c), frameworkID)
+	report, err := h.service.Policy.GetReadinessReport(c.Request().Context(), orgID(c), frameworkID)
 	if err != nil {
 		log.Error().Err(err).Str("framework_id", frameworkID).Msg("get readiness report")
 		return errResp(c, http.StatusInternalServerError, "failed to generate readiness report", "CK_READINESS_REPORT_FAILED")
@@ -124,7 +125,7 @@ func (h *Handler) GetReadinessReport(c echo.Context) error {
 // GetGapAnalysis handles GET /api/v1/vaktcomply/frameworks/:id/gaps.
 func (h *Handler) GetGapAnalysis(c echo.Context) error {
 	frameworkID := c.Param("id")
-	analysis, err := h.service.GetGapAnalysis(c.Request().Context(), orgID(c), frameworkID)
+	analysis, err := h.service.Policy.GetGapAnalysis(c.Request().Context(), orgID(c), frameworkID)
 	if err != nil {
 		log.Error().Err(err).Str("framework_id", frameworkID).Msg("get gap analysis")
 		return errResp(c, http.StatusInternalServerError, "failed to generate gap analysis", "CK_GAP_ANALYSIS_FAILED")
@@ -147,8 +148,8 @@ func (h *Handler) ListControls(c echo.Context) error {
 			log.Error().Err(err).Str("framework_id", frameworkID).Msg("list controls cursor")
 			return errResp(c, http.StatusInternalServerError, "failed to list controls", "CK_LIST_CONTROLS_FAILED")
 		}
-		enrichControlsWithNIS2Meta(rows)
-		rows = filterControlsByScope(rows, scopeFilter)
+		policy.EnrichControlsWithNIS2Meta(rows)
+		rows = policy.FilterControlsByScope(rows, scopeFilter)
 		resp := pagination.WrapCursor(rows, cp, func(ctrl Control) string {
 			return pagination.EncodeControlCursor(ctrl.ControlID, ctrl.ID)
 		})
@@ -162,28 +163,16 @@ func (h *Handler) ListControls(c echo.Context) error {
 		log.Error().Err(err).Str("framework_id", frameworkID).Msg("list controls")
 		return errResp(c, http.StatusInternalServerError, "failed to list controls", "CK_LIST_CONTROLS_FAILED")
 	}
-	enrichControlsWithNIS2Meta(controls)
-	controls = filterControlsByScope(controls, scopeFilter)
+	policy.EnrichControlsWithNIS2Meta(controls)
+	controls = policy.FilterControlsByScope(controls, scopeFilter)
 	pagination.Complete(&meta, len(controls))
 	return c.JSON(http.StatusOK, pagination.Wrap(controls, meta))
-}
-
-// enrichControlsWithNIS2Meta sets RegulationSource, ThematicArea, and ApplicabilityScope
-// on any control whose ID appears in nis2ControlMeta (S70-2).
-func enrichControlsWithNIS2Meta(cs []Control) {
-	for i := range cs {
-		if m, ok := nis2ControlMeta[cs[i].ControlID]; ok {
-			cs[i].RegulationSource = m.source
-			cs[i].ThematicArea = m.area
-			cs[i].ApplicabilityScope = m.scopes
-		}
-	}
 }
 
 // ListAvailableFrameworks handles GET /api/v1/vaktcomply/frameworks/available.
 // Returns all frameworks (builtin + installed plugins) with their enabled status for this org.
 func (h *Handler) ListAvailableFrameworks(c echo.Context) error {
-	available, err := h.service.ListAvailableFrameworks(c.Request().Context(), orgID(c))
+	available, err := h.service.Policy.ListAvailableFrameworks(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("list available frameworks")
 		return errResp(c, http.StatusInternalServerError, "failed to list available frameworks", "CK_LIST_AVAILABLE_FAILED")
@@ -214,14 +203,14 @@ func (h *Handler) InstallFrameworkPlugin(c echo.Context) error {
 	}
 
 	var plugin FrameworkPlugin
-	if err := yamlUnmarshal(data, &plugin); err != nil {
+	if err := policy.YAMLUnmarshal(data, &plugin); err != nil {
 		return errResp(c, http.StatusUnprocessableEntity, "invalid plugin YAML: "+err.Error(), "CK_PLUGIN_INVALID_YAML")
 	}
 	if plugin.Name == "" {
 		return errResp(c, http.StatusUnprocessableEntity, "plugin 'name' field is required", "CK_PLUGIN_MISSING_NAME")
 	}
 
-	fw, err := h.service.InstallFrameworkPlugin(c.Request().Context(), orgID(c), &plugin)
+	fw, err := h.service.Policy.InstallFrameworkPlugin(c.Request().Context(), orgID(c), &plugin)
 	if err != nil {
 		log.Error().Err(err).Str("plugin", plugin.Name).Msg("install framework plugin")
 		return errResp(c, http.StatusInternalServerError, "failed to install framework plugin", "CK_PLUGIN_INSTALL_FAILED")
@@ -231,7 +220,7 @@ func (h *Handler) InstallFrameworkPlugin(c echo.Context) error {
 
 // ListFrameworkMappings handles GET /api/v1/vaktcomply/framework-mappings.
 func (h *Handler) ListFrameworkMappings(c echo.Context) error {
-	mappings, err := h.service.ListFrameworkMappings(c.Request().Context(), orgID(c))
+	mappings, err := h.service.Policy.ListFrameworkMappings(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("list framework mappings")
 		return errResp(c, http.StatusInternalServerError, "failed to list framework mappings", "CK_LIST_MAPPINGS_FAILED")
@@ -248,7 +237,7 @@ func (h *Handler) DeleteFrameworkMapping(c echo.Context) error {
 	if mappingID == "" {
 		return errResp(c, http.StatusBadRequest, "mapping id is required", "CK_BAD_REQUEST")
 	}
-	if err := h.service.DeleteFrameworkMapping(c.Request().Context(), orgID(c), mappingID); err != nil {
+	if err := h.service.Policy.DeleteFrameworkMapping(c.Request().Context(), orgID(c), mappingID); err != nil {
 		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "mapping not found", "CK_MAPPING_NOT_FOUND")
 		}
@@ -266,7 +255,7 @@ func (h *Handler) GetTISAXControls(c echo.Context) error {
 	if protectionLevel == "" {
 		protectionLevel = "normal"
 	}
-	controls, err := h.service.ListTISAXControls(c.Request().Context(), orgID(c), frameworkID, protectionLevel)
+	controls, err := h.service.Policy.ListTISAXControls(c.Request().Context(), orgID(c), frameworkID, protectionLevel)
 	if err != nil {
 		log.Error().Err(err).Str("framework_id", frameworkID).Str("protection_level", protectionLevel).Msg("get tisax controls")
 		return errResp(c, http.StatusInternalServerError, "failed to list TISAX controls", "CK_LIST_TISAX_CONTROLS_FAILED")
@@ -277,7 +266,7 @@ func (h *Handler) GetTISAXControls(c echo.Context) error {
 // GetTISAXGapAnalysis handles GET /api/v1/vaktcomply/frameworks/:id/tisax-gaps.
 func (h *Handler) GetTISAXGapAnalysis(c echo.Context) error {
 	frameworkID := c.Param("id")
-	analysis, err := h.service.GetTISAXGapAnalysis(c.Request().Context(), orgID(c), frameworkID)
+	analysis, err := h.service.Policy.GetTISAXGapAnalysis(c.Request().Context(), orgID(c), frameworkID)
 	if err != nil {
 		log.Error().Err(err).Str("framework_id", frameworkID).Msg("get tisax gap analysis")
 		return errResp(c, http.StatusInternalServerError, "failed to generate TISAX gap analysis", "CK_TISAX_GAP_ANALYSIS_FAILED")
@@ -293,14 +282,14 @@ func (h *Handler) GetTISAXISOMapping(c echo.Context) error {
 
 	frameworkID := c.QueryParam("framework_id")
 	if frameworkID == "" {
-		fw, err := h.service.FindFrameworkByName(ctx, oid, "TISAX")
+		fw, err := h.service.Policy.FindFrameworkByName(ctx, oid, "TISAX")
 		if err != nil || fw == nil {
 			return c.JSON(http.StatusOK, []MappingResult{})
 		}
 		frameworkID = fw.ID
 	}
 
-	results, err := h.service.GetTISAXCoverageByISO(ctx, oid, frameworkID)
+	results, err := h.service.Policy.GetTISAXCoverageByISO(ctx, oid, frameworkID)
 	if err != nil {
 		log.Error().Err(err).Str("framework_id", frameworkID).Msg("get tisax iso mapping")
 		return errResp(c, http.StatusInternalServerError, "failed to compute TISAX↔ISO mapping", "CK_TISAX_ISO_MAPPING_FAILED")
@@ -316,14 +305,14 @@ func (h *Handler) GetTISAXCoverageAfterISO(c echo.Context) error {
 
 	frameworkID := c.QueryParam("framework_id")
 	if frameworkID == "" {
-		fw, err := h.service.FindFrameworkByName(ctx, oid, "TISAX")
+		fw, err := h.service.Policy.FindFrameworkByName(ctx, oid, "TISAX")
 		if err != nil || fw == nil {
 			return c.JSON(http.StatusOK, []Control{})
 		}
 		frameworkID = fw.ID
 	}
 
-	gaps, err := h.service.GetTISAXGapsAfterISO(ctx, oid, frameworkID)
+	gaps, err := h.service.Policy.GetTISAXGapsAfterISO(ctx, oid, frameworkID)
 	if err != nil {
 		log.Error().Err(err).Str("framework_id", frameworkID).Msg("get tisax coverage after iso")
 		return errResp(c, http.StatusInternalServerError, "failed to compute TISAX gaps after ISO", "CK_TISAX_GAPS_FAILED")
@@ -340,7 +329,7 @@ func (h *Handler) GetDSGVOTOMCoverage(c echo.Context) error {
 	org := orgID(c)
 	frameworkID := c.QueryParam("framework_id")
 	if frameworkID == "" {
-		fw, err := h.service.FindFrameworkByName(ctx, org, "DSGVO-TOM")
+		fw, err := h.service.Policy.FindFrameworkByName(ctx, org, "DSGVO-TOM")
 		if err != nil {
 			log.Error().Err(err).Msg("get dsgvo-tom framework")
 			return echo.ErrInternalServerError
@@ -413,7 +402,7 @@ func (h *Handler) ExportTISAXReportPDF(c echo.Context) error {
 // GetMappingCoverage handles GET /api/v1/vaktcomply/frameworks/mapping-coverage.
 // Returns the cross-framework mapping coverage matrix for the org.
 func (h *Handler) GetMappingCoverage(c echo.Context) error {
-	resp, err := h.service.GetMappingCoverage(c.Request().Context(), orgID(c))
+	resp, err := h.service.Policy.GetMappingCoverage(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("get mapping coverage")
 		return errResp(c, http.StatusInternalServerError, "failed to get mapping coverage", "CK_MAPPING_COVERAGE_FAILED")
@@ -424,7 +413,7 @@ func (h *Handler) GetMappingCoverage(c echo.Context) error {
 // GetImplementationPath handles GET /api/v1/vaktcomply/frameworks/:id/implementation-path.
 // Returns controls in topological order based on prerequisite chains.
 func (h *Handler) GetImplementationPath(c echo.Context) error {
-	steps, err := h.service.GetImplementationPath(c.Request().Context(), orgID(c), c.Param("id"))
+	steps, err := h.service.Policy.GetImplementationPath(c.Request().Context(), orgID(c), c.Param("id"))
 	if err != nil {
 		log.Error().Err(err).Str("framework_id", c.Param("id")).Msg("get implementation path")
 		return errResp(c, http.StatusInternalServerError, "failed to get implementation path", "CK_IMPL_PATH_FAILED")

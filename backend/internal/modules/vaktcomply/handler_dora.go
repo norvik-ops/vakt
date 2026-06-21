@@ -441,7 +441,7 @@ func (h *Handler) GetDORAPDF(c echo.Context) error {
 // ListDORAThirdParties handles GET /api/v1/vaktcomply/dora/third-parties.
 func (h *Handler) ListDORAThirdParties(c echo.Context) error {
 	criticality := c.QueryParam("criticality")
-	list, err := h.service.ListDORAThirdParties(c.Request().Context(), orgID(c), criticality)
+	list, err := h.service.Risk.ListDORAThirdParties(c.Request().Context(), orgID(c), criticality)
 	if err != nil {
 		log.Error().Err(err).Msg("list dora third parties")
 		return errResp(c, http.StatusInternalServerError, "failed to list third parties", "CK_LIST_DORA_TP_FAILED")
@@ -452,7 +452,7 @@ func (h *Handler) ListDORAThirdParties(c echo.Context) error {
 // GetDORAThirdParty handles GET /api/v1/vaktcomply/dora/third-parties/:id.
 func (h *Handler) GetDORAThirdParty(c echo.Context) error {
 	id := c.Param("id")
-	tp, err := h.service.GetDORAThirdParty(c.Request().Context(), orgID(c), id)
+	tp, err := h.service.Risk.GetDORAThirdParty(c.Request().Context(), orgID(c), id)
 	if err != nil {
 		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "third party not found", "CK_NOT_FOUND")
@@ -471,7 +471,7 @@ func (h *Handler) CreateDORAThirdParty(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	tp, err := h.service.CreateDORAThirdParty(c.Request().Context(), orgID(c), userID(c), in)
+	tp, err := h.service.Risk.CreateDORAThirdParty(c.Request().Context(), orgID(c), userID(c), in)
 	if err != nil {
 		log.Error().Err(err).Msg("create dora third party")
 		return errResp(c, http.StatusInternalServerError, "failed to create third party", "CK_CREATE_DORA_TP_FAILED")
@@ -489,7 +489,7 @@ func (h *Handler) UpdateDORAThirdParty(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	tp, err := h.service.UpdateDORAThirdParty(c.Request().Context(), orgID(c), id, in)
+	tp, err := h.service.Risk.UpdateDORAThirdParty(c.Request().Context(), orgID(c), id, in)
 	if err != nil {
 		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "third party not found", "CK_NOT_FOUND")
@@ -503,7 +503,7 @@ func (h *Handler) UpdateDORAThirdParty(c echo.Context) error {
 // DeleteDORAThirdParty handles DELETE /api/v1/vaktcomply/dora/third-parties/:id.
 func (h *Handler) DeleteDORAThirdParty(c echo.Context) error {
 	id := c.Param("id")
-	if err := h.service.DeleteDORAThirdParty(c.Request().Context(), orgID(c), id); err != nil {
+	if err := h.service.Risk.DeleteDORAThirdParty(c.Request().Context(), orgID(c), id); err != nil {
 		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "third party not found", "CK_NOT_FOUND")
 		}
@@ -525,7 +525,7 @@ func (h *Handler) LinkDORAThirdPartyControl(c echo.Context) error {
 	if err := h.validate.Struct(body); err != nil {
 		return errResp(c, http.StatusUnprocessableEntity, "control_id is required", "VALIDATION_ERROR")
 	}
-	if err := h.service.LinkDORAThirdPartyControl(c.Request().Context(), orgID(c), id, body.ControlID); err != nil {
+	if err := h.service.Risk.LinkDORAThirdPartyControl(c.Request().Context(), orgID(c), id, body.ControlID); err != nil {
 		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "third party not found", "CK_NOT_FOUND")
 		}
@@ -538,7 +538,7 @@ func (h *Handler) LinkDORAThirdPartyControl(c echo.Context) error {
 func (h *Handler) UnlinkDORAThirdPartyControl(c echo.Context) error {
 	id := c.Param("id")
 	controlID := c.Param("controlId")
-	if err := h.service.UnlinkDORAThirdPartyControl(c.Request().Context(), orgID(c), id, controlID); err != nil {
+	if err := h.service.Risk.UnlinkDORAThirdPartyControl(c.Request().Context(), orgID(c), id, controlID); err != nil {
 		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "third party not found", "CK_NOT_FOUND")
 		}

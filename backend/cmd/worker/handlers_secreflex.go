@@ -20,6 +20,7 @@ import (
 	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/modules/vaktaware"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/risk"
 )
 
 // taskControlOwnerReminder is the Asynq task name for the daily control-owner reminder.
@@ -93,9 +94,10 @@ func awarenessRiskLikelihood(clickRate float64) int {
 // per-campaign CAPA. Privacy guard: only aggregated stats reach this function (no names/emails).
 func syncAwarenessRisk(ctx context.Context, pool *pgxpool.Pool, orgID, campaignName, campaignID string, clickRate float64) {
 	complyRepo := vaktcomply.NewRepository(pool)
+	riskRepo := risk.NewRepository(pool)
 
 	// Upsert: find existing persistent risk for this org/category.
-	risks, err := complyRepo.ListRisks(ctx, orgID)
+	risks, err := riskRepo.ListRisks(ctx, orgID)
 	if err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Msg("awareness_risk_sync: list risks failed")
 		return
@@ -107,7 +109,7 @@ func syncAwarenessRisk(ctx context.Context, pool *pgxpool.Pool, orgID, campaignN
 	for _, r := range risks {
 		if r.Category == awarenessRiskCategory {
 			riskID = r.ID
-			_, updateErr := complyRepo.UpdateRisk(ctx, orgID, r.ID, vaktcomply.UpdateRiskInput{
+			_, updateErr := riskRepo.UpdateRisk(ctx, orgID, r.ID, vaktcomply.UpdateRiskInput{
 				Title:       r.Title,
 				Description: r.Description,
 				Category:    r.Category,
@@ -127,7 +129,7 @@ func syncAwarenessRisk(ctx context.Context, pool *pgxpool.Pool, orgID, campaignN
 
 	if riskID == "" {
 		// No persistent risk yet — create one.
-		newRisk, createErr := complyRepo.CreateRisk(ctx, orgID, vaktcomply.CreateRiskInput{
+		newRisk, createErr := riskRepo.CreateRisk(ctx, orgID, vaktcomply.CreateRiskInput{
 			Title:       "Awareness-Risiko (Phishing-Simulationen)",
 			Description: "Persistentes Risiko aus internen Phishing-Simulationen. Likelihood wird automatisch nach jeder Kampagne aktualisiert.",
 			Category:    awarenessRiskCategory,

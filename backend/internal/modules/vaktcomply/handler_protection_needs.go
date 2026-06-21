@@ -12,7 +12,7 @@ import (
 
 // ListProtectionNeedAssessments handles GET /api/v1/vaktcomply/protection-needs/assessments.
 func (h *Handler) ListProtectionNeedAssessments(c echo.Context) error {
-	items, err := h.service.ListProtectionNeedAssessments(c.Request().Context(), orgID(c))
+	items, err := h.service.Risk.ListProtectionNeedAssessments(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("list protection need assessments")
 		return errResp(c, http.StatusInternalServerError, "failed to list assessments", "CK_LIST_PNA_FAILED")
@@ -32,7 +32,7 @@ func (h *Handler) CreateProtectionNeedAssessment(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	pna, err := h.service.CreateProtectionNeedAssessment(c.Request().Context(), orgID(c), in)
+	pna, err := h.service.Risk.CreateProtectionNeedAssessment(c.Request().Context(), orgID(c), in)
 	if err != nil {
 		log.Error().Err(err).Msg("create protection need assessment")
 		return errResp(c, http.StatusInternalServerError, "failed to create assessment", "CK_CREATE_PNA_FAILED")
@@ -43,7 +43,7 @@ func (h *Handler) CreateProtectionNeedAssessment(c echo.Context) error {
 // GetProtectionNeedAssessment handles GET /api/v1/vaktcomply/protection-needs/assessments/:id.
 func (h *Handler) GetProtectionNeedAssessment(c echo.Context) error {
 	id := c.Param("id")
-	pna, err := h.service.GetProtectionNeedAssessment(c.Request().Context(), orgID(c), id)
+	pna, err := h.service.Risk.GetProtectionNeedAssessment(c.Request().Context(), orgID(c), id)
 	if err != nil {
 		return errResp(c, http.StatusNotFound, "assessment not found", "CK_PNA_NOT_FOUND")
 	}
@@ -61,7 +61,7 @@ func (h *Handler) UpdateProtectionNeedAssessment(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	pna, err := h.service.UpdateProtectionNeedAssessment(c.Request().Context(), orgID(c), id, in)
+	pna, err := h.service.Risk.UpdateProtectionNeedAssessment(c.Request().Context(), orgID(c), id, in)
 	if err != nil {
 		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "assessment not found", "CK_PNA_NOT_FOUND")
@@ -75,7 +75,7 @@ func (h *Handler) UpdateProtectionNeedAssessment(c echo.Context) error {
 // FinalizeProtectionNeedAssessment handles POST /api/v1/vaktcomply/protection-needs/assessments/:id/finalize.
 func (h *Handler) FinalizeProtectionNeedAssessment(c echo.Context) error {
 	id := c.Param("id")
-	pna, err := h.service.FinalizeProtectionNeedAssessment(c.Request().Context(), orgID(c), id)
+	pna, err := h.service.Risk.FinalizeProtectionNeedAssessment(c.Request().Context(), orgID(c), id)
 	if err != nil {
 		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "assessment not found", "CK_PNA_NOT_FOUND")
@@ -89,7 +89,7 @@ func (h *Handler) FinalizeProtectionNeedAssessment(c echo.Context) error {
 // DeleteProtectionNeedAssessment handles DELETE /api/v1/vaktcomply/protection-needs/assessments/:id.
 func (h *Handler) DeleteProtectionNeedAssessment(c echo.Context) error {
 	id := c.Param("id")
-	if err := h.service.DeleteProtectionNeedAssessment(c.Request().Context(), orgID(c), id); err != nil {
+	if err := h.service.Risk.DeleteProtectionNeedAssessment(c.Request().Context(), orgID(c), id); err != nil {
 		log.Error().Err(err).Str("id", id).Msg("delete protection need assessment")
 		return errResp(c, http.StatusInternalServerError, "failed to delete assessment", "CK_DELETE_PNA_FAILED")
 	}
@@ -106,7 +106,7 @@ func (h *Handler) LinkPNAAsset(c echo.Context) error {
 	if err := c.Bind(&body); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
-	if err := h.service.LinkAssetToPNA(c.Request().Context(), orgID(c), id, body.VBAssetID); err != nil {
+	if err := h.service.Risk.LinkAssetToPNA(c.Request().Context(), orgID(c), id, body.VBAssetID); err != nil {
 		log.Error().Err(err).Str("id", id).Msg("link asset to pna")
 		return errResp(c, http.StatusInternalServerError, "failed to link asset", "CK_LINK_ASSET_FAILED")
 	}

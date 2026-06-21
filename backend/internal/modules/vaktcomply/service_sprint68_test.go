@@ -14,13 +14,13 @@ import (
 // --- SoA seed controls count ---
 
 func TestISO27001AnnexAControls_Count(t *testing.T) {
-	assert.Len(t, iso27001AnnexAControls, 93,
+	assert.Len(t, ISO27001AnnexAControls, 93,
 		"ISO 27001:2022 Annex A must have exactly 93 controls (A.5.1–A.8.34)")
 }
 
 func TestISO27001AnnexAControls_Groups(t *testing.T) {
 	groups := map[string]int{}
-	for _, c := range iso27001AnnexAControls {
+	for _, c := range ISO27001AnnexAControls {
 		groups[c.Group]++
 	}
 	// ISO 27001:2022 group sizes: A.5=37, A.6=8, A.7=14, A.8=34
@@ -32,14 +32,14 @@ func TestISO27001AnnexAControls_Groups(t *testing.T) {
 
 func TestISO27001AnnexAControls_UniqueRefs(t *testing.T) {
 	seen := map[string]bool{}
-	for _, c := range iso27001AnnexAControls {
+	for _, c := range ISO27001AnnexAControls {
 		assert.False(t, seen[c.Ref], "duplicate control ref: %s", c.Ref)
 		seen[c.Ref] = true
 	}
 }
 
 func TestISO27001AnnexAControls_NoEmptyNames(t *testing.T) {
-	for _, c := range iso27001AnnexAControls {
+	for _, c := range ISO27001AnnexAControls {
 		assert.NotEmpty(t, c.Name, "control %s must have a name", c.Ref)
 	}
 }

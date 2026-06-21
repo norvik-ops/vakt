@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 	"io"
 	"strconv"
 	"strings"
@@ -353,7 +354,7 @@ func (s *Service) CreateAssessment(ctx context.Context, orgID, supplierID string
 		return nil, "", fmt.Errorf("questionnaire not found: %w", err)
 	}
 
-	rawToken, tokenHash, err := generateToken()
+	rawToken, tokenHash, err := policy.GenerateToken()
 	if err != nil {
 		return nil, "", fmt.Errorf("generate assessment token: %w", err)
 	}

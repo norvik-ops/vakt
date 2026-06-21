@@ -104,7 +104,7 @@ func (s *Service) GetBoardReportData(ctx context.Context, orgID string) (*BoardR
 
 	// 4. Open risks.
 	g.Go(func() error {
-		risks, _, err := s.ListRisksPaged(gctx, orgID, 0, 10_000)
+		risks, _, err := s.Risk.ListRisksPaged(gctx, orgID, 0, 10_000)
 		if err != nil {
 			return nil //nolint:nilerr
 		}

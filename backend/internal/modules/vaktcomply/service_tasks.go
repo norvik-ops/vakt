@@ -6,8 +6,8 @@ package vaktcomply
 import (
 	"context"
 	"fmt"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 	"strings"
-	"time"
 
 	"github.com/rs/zerolog/log"
 )
@@ -302,19 +302,14 @@ func (s *Service) ListControlsPaged(ctx context.Context, orgID, frameworkID stri
 	}
 	for i := range controls {
 		controls[i].EvidenceCount = counts[controls[i].ID]
-		controls[i].Status = resolveStatus(controls[i])
+		controls[i].Status = policy.ResolveStatus(controls[i])
 		if strings.HasPrefix(controls[i].ControlID, "DORA-") {
-			if m, ok := doraISO27001Mapping[controls[i].ControlID]; ok {
+			if m, ok := policy.DoraISO27001Mapping[controls[i].ControlID]; ok {
 				controls[i].ISO27001Mapping = m
 			}
 		}
 	}
 	return controls, total, nil
-}
-
-// ListRisksPaged returns a page of risks plus the total count.
-func (s *Service) ListRisksPaged(ctx context.Context, orgID string, offset, limit int) ([]Risk, int, error) {
-	return s.repo.ListRisksPaged(ctx, orgID, offset, limit)
 }
 
 // ListIncidentsPaged returns a page of incidents plus the total count.
@@ -337,11 +332,6 @@ func (s *Service) ListPoliciesPaged(ctx context.Context, orgID string, offset, l
 // ListCAPAsPaged returns a page of CAPAs plus the total count.
 func (s *Service) ListCAPAsPaged(ctx context.Context, orgID, statusFilter string, offset, limit int) ([]CAPA, int, error) {
 	return s.repo.ListCAPAsPaged(ctx, orgID, statusFilter, offset, limit)
-}
-
-// ListRisksCursor returns risks using keyset pagination.
-func (s *Service) ListRisksCursor(ctx context.Context, orgID string, cursorID string, cursorTS time.Time, limit int) ([]Risk, error) {
-	return s.repo.ListRisksCursor(ctx, orgID, cursorID, cursorTS, limit)
 }
 
 // ListControlsCursor returns controls using keyset pagination.

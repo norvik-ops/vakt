@@ -14,7 +14,7 @@ import (
 func (h *Handler) ListControlExceptions(c echo.Context) error {
 	controlID := c.QueryParam("control_id")
 	if controlID == "" {
-		exceptions, err := h.service.ListAllControlExceptions(c.Request().Context(), orgID(c))
+		exceptions, err := h.service.Risk.ListAllControlExceptions(c.Request().Context(), orgID(c))
 		if err != nil {
 			log.Error().Err(err).Msg("list all control exceptions")
 			return errResp(c, http.StatusInternalServerError, "failed to list exceptions", "CK_LIST_EXCEPTIONS_FAILED")
@@ -24,7 +24,7 @@ func (h *Handler) ListControlExceptions(c echo.Context) error {
 	if _, err := uuid.Parse(controlID); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid control_id", "CK_INVALID_ID")
 	}
-	exceptions, err := h.service.ListControlExceptions(c.Request().Context(), orgID(c), controlID)
+	exceptions, err := h.service.Risk.ListControlExceptions(c.Request().Context(), orgID(c), controlID)
 	if err != nil {
 		log.Error().Err(err).Str("control_id", controlID).Msg("list control exceptions")
 		return errResp(c, http.StatusInternalServerError, "failed to list exceptions", "CK_LIST_EXCEPTIONS_FAILED")
@@ -45,7 +45,7 @@ func (h *Handler) CreateControlException(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	exception, err := h.service.CreateControlException(c.Request().Context(), orgID(c), controlID, in, userID(c))
+	exception, err := h.service.Risk.CreateControlException(c.Request().Context(), orgID(c), controlID, in, userID(c))
 	if err != nil {
 		log.Error().Err(err).Str("control_id", controlID).Msg("create control exception")
 		return errResp(c, http.StatusInternalServerError, "failed to create exception", "CK_CREATE_EXCEPTION_FAILED")
@@ -66,7 +66,7 @@ func (h *Handler) UpdateControlException(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	exception, err := h.service.UpdateControlException(c.Request().Context(), orgID(c), id, in)
+	exception, err := h.service.Risk.UpdateControlException(c.Request().Context(), orgID(c), id, in)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return errResp(c, http.StatusNotFound, "exception not found", "CK_NOT_FOUND")
@@ -83,7 +83,7 @@ func (h *Handler) DeleteControlException(c echo.Context) error {
 	if _, err := uuid.Parse(id); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid exception ID", "CK_INVALID_ID")
 	}
-	if err := h.service.DeleteControlException(c.Request().Context(), orgID(c), id); err != nil {
+	if err := h.service.Risk.DeleteControlException(c.Request().Context(), orgID(c), id); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return errResp(c, http.StatusNotFound, "exception not found", "CK_NOT_FOUND")
 		}

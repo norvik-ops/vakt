@@ -81,7 +81,7 @@ func TestAcceptRiskInput_Justification(t *testing.T) {
 func TestService_AcceptRisk_MethodExists(t *testing.T) {
 	// This is a compile-time signature check. Service cannot be instantiated without a DB in unit tests.
 	var _ = func(s *Service) {
-		_ = s.AcceptRisk
-		_ = s.UpdateRiskResidualFields
+		_ = s.Risk.AcceptRisk
+		_ = s.Risk.UpdateRiskResidualFields
 	}
 }

@@ -6,6 +6,7 @@ package vaktcomply
 import (
 	"context"
 	"fmt"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -14,11 +15,11 @@ import (
 // ExportFrameworkPDF generates a human-readable compliance overview PDF.
 // Returns (pdfBytes, filename, error).
 func (s *Service) ExportFrameworkPDF(ctx context.Context, orgID, frameworkID string) ([]byte, string, error) {
-	report, err := s.GetReadinessReport(ctx, orgID, frameworkID)
+	report, err := s.Policy.GetReadinessReport(ctx, orgID, frameworkID)
 	if err != nil {
 		return nil, "", fmt.Errorf("get readiness report: %w", err)
 	}
-	gaps, err := s.GetGapAnalysis(ctx, orgID, frameworkID)
+	gaps, err := s.Policy.GetGapAnalysis(ctx, orgID, frameworkID)
 	if err != nil {
 		return nil, "", fmt.Errorf("get gap analysis: %w", err)
 	}
@@ -79,17 +80,17 @@ func (s *Service) ExportTISAXReportPDF(ctx context.Context, orgID, frameworkID, 
 		return nil, "", fmt.Errorf("invalid assessment_level %q: must be one of AL1, AL2, AL3", assessmentLevel)
 	}
 
-	report, err := s.GetReadinessReport(ctx, orgID, frameworkID)
+	report, err := s.Policy.GetReadinessReport(ctx, orgID, frameworkID)
 	if err != nil {
 		return nil, "", fmt.Errorf("get readiness report: %w", err)
 	}
 
-	controls, err := s.ListTISAXControls(ctx, orgID, frameworkID, protectionLevel)
+	controls, err := s.Policy.ListTISAXControls(ctx, orgID, frameworkID, protectionLevel)
 	if err != nil {
 		return nil, "", fmt.Errorf("list tisax controls: %w", err)
 	}
 
-	gaps, err := s.GetTISAXGapAnalysis(ctx, orgID, frameworkID)
+	gaps, err := s.Policy.GetTISAXGapAnalysis(ctx, orgID, frameworkID)
 	if err != nil {
 		return nil, "", fmt.Errorf("get tisax gap analysis: %w", err)
 	}
@@ -181,13 +182,13 @@ func (s *Service) GetDORADashboard(ctx context.Context, orgID string) (*DORADash
 	}
 
 	// 2. Readiness score.
-	report, err := s.GetReadinessReport(ctx, orgID, framework.ID)
+	report, err := s.Policy.GetReadinessReport(ctx, orgID, framework.ID)
 	if err != nil {
 		return nil, fmt.Errorf("get readiness report: %w", err)
 	}
 
 	// 3. Open critical controls (Weight >= 3, status not "covered").
-	controls, err := s.ListControls(ctx, orgID, framework.ID)
+	controls, err := s.Policy.ListControls(ctx, orgID, framework.ID)
 	if err != nil {
 		return nil, fmt.Errorf("list controls: %w", err)
 	}
@@ -228,7 +229,7 @@ func (s *Service) GetDORADashboard(ctx context.Context, orgID string) (*DORADash
 	}
 
 	// 8. IKT-Drittanbieter counts (S38-1/2/3).
-	thirdParties, err := s.repo.ListDORAThirdParties(ctx, orgID, "")
+	thirdParties, err := s.Risk.ListDORAThirdParties(ctx, orgID, "")
 	if err != nil {
 		return nil, fmt.Errorf("list dora third parties: %w", err)
 	}
@@ -338,7 +339,7 @@ func (s *Service) SeedDSGVOMappings(ctx context.Context, orgID string) error {
 
 // GetDSGVOTOMCoverage returns coverage status for each TOM based on mapped ISO 27001 controls.
 func (s *Service) GetDSGVOTOMCoverage(ctx context.Context, orgID, dsgvoFrameworkID string) ([]MappingResult, error) {
-	tomControls, err := s.ListControls(ctx, orgID, dsgvoFrameworkID)
+	tomControls, err := s.Policy.ListControls(ctx, orgID, dsgvoFrameworkID)
 	if err != nil {
 		return nil, fmt.Errorf("list DSGVO-TOM controls: %w", err)
 	}
@@ -351,7 +352,7 @@ func (s *Service) GetDSGVOTOMCoverage(ctx context.Context, orgID, dsgvoFramework
 	var isoControls []Control
 	var evidenceCounts map[string]int
 	if isoFW != nil {
-		isoControls, err = s.ListControls(ctx, orgID, isoFW.ID)
+		isoControls, err = s.Policy.ListControls(ctx, orgID, isoFW.ID)
 		if err != nil {
 			return nil, fmt.Errorf("list ISO27001 controls: %w", err)
 		}
@@ -437,7 +438,7 @@ func (s *Service) recordOrgScoreSnapshot(ctx context.Context, orgID string) erro
 			continue
 		}
 
-		report := computeReadinessReport(&fw, controls, evidenceCounts)
+		report := policy.ComputeReadinessReport(&fw, controls, evidenceCounts)
 		totalAll += report.TotalControls
 		implementedAll += report.Covered
 

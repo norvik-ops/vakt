@@ -2,6 +2,7 @@ package vaktcomply
 
 import (
 	"context"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 	"strings"
 	"testing"
 	"time"
@@ -10,56 +11,56 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// --- readinessScore ---
+// --- policy.ReadinessScore ---
 
 func TestReadinessScore_AllCovered(t *testing.T) {
-	score := readinessScore(10, 0, 10)
+	score := policy.ReadinessScore(10, 0, 10)
 	assert.InDelta(t, 100.0, score, 0.001)
 }
 
 func TestReadinessScore_AllMissing(t *testing.T) {
-	score := readinessScore(0, 0, 10)
+	score := policy.ReadinessScore(0, 0, 10)
 	assert.InDelta(t, 0.0, score, 0.001)
 }
 
 func TestReadinessScore_HalfPartial(t *testing.T) {
 	// 0 covered, 10 partial out of 10 → 0 + 10*0.5 / 10 * 100 = 50
-	score := readinessScore(0, 10, 10)
+	score := policy.ReadinessScore(0, 10, 10)
 	assert.InDelta(t, 50.0, score, 0.001)
 }
 
 func TestReadinessScore_MixedCoverage(t *testing.T) {
 	// 6 covered + 2 partial + 2 missing out of 10
 	// weighted = 6 + 2*0.5 = 7 → 70%
-	score := readinessScore(6, 2, 10)
+	score := policy.ReadinessScore(6, 2, 10)
 	assert.InDelta(t, 70.0, score, 0.001)
 }
 
 func TestReadinessScore_ZeroTotal(t *testing.T) {
-	score := readinessScore(0, 0, 0)
+	score := policy.ReadinessScore(0, 0, 0)
 	assert.InDelta(t, 0.0, score, 0.001)
 }
 
-// --- controlStatus ---
+// --- policy.ControlStatus ---
 
 func TestControlStatus_Covered(t *testing.T) {
-	assert.Equal(t, "covered", controlStatus(2))
-	assert.Equal(t, "covered", controlStatus(5))
+	assert.Equal(t, "covered", policy.ControlStatus(2))
+	assert.Equal(t, "covered", policy.ControlStatus(5))
 }
 
 func TestControlStatus_Partial(t *testing.T) {
-	assert.Equal(t, "partial", controlStatus(1))
+	assert.Equal(t, "partial", policy.ControlStatus(1))
 }
 
 func TestControlStatus_Missing(t *testing.T) {
-	assert.Equal(t, "missing", controlStatus(0))
+	assert.Equal(t, "missing", policy.ControlStatus(0))
 }
 
-// --- computeReadinessReport ---
+// --- policy.ComputeReadinessReport ---
 
 func TestComputeReadinessReport_Empty(t *testing.T) {
 	fw := &Framework{ID: "fw-1", Name: "NIS2"}
-	report := computeReadinessReport(fw, nil, nil)
+	report := policy.ComputeReadinessReport(fw, nil, nil)
 
 	require.NotNil(t, report)
 	assert.Equal(t, "fw-1", report.FrameworkID)
@@ -81,7 +82,7 @@ func TestComputeReadinessReport_AllCovered(t *testing.T) {
 		"c-3": 4,
 	}
 
-	report := computeReadinessReport(fw, controls, counts)
+	report := policy.ComputeReadinessReport(fw, controls, counts)
 	require.NotNil(t, report)
 	assert.Equal(t, 3, report.TotalControls)
 	assert.Equal(t, 3, report.Covered)
@@ -104,7 +105,7 @@ func TestComputeReadinessReport_Mixed(t *testing.T) {
 		"c-4": 3,
 	}
 
-	report := computeReadinessReport(fw, controls, counts)
+	report := policy.ComputeReadinessReport(fw, controls, counts)
 	require.NotNil(t, report)
 	assert.Equal(t, 4, report.TotalControls)
 	assert.Equal(t, 2, report.Covered)
@@ -125,7 +126,7 @@ func TestComputeReadinessReport_AllMissing(t *testing.T) {
 		{ID: "c-2", Domain: "Organisation"},
 	}
 
-	report := computeReadinessReport(fw, controls, map[string]int{})
+	report := policy.ComputeReadinessReport(fw, controls, map[string]int{})
 	require.NotNil(t, report)
 	assert.Equal(t, 0, report.Covered)
 	assert.Equal(t, 0, report.Partial)
@@ -133,13 +134,13 @@ func TestComputeReadinessReport_AllMissing(t *testing.T) {
 	assert.InDelta(t, 0.0, report.ReadinessScore, 0.001)
 }
 
-// --- generateToken ---
+// --- policy.GenerateToken ---
 
 func TestGenerateToken_Uniqueness(t *testing.T) {
-	tok1, hash1, err := generateToken()
+	tok1, hash1, err := policy.GenerateToken()
 	require.NoError(t, err)
 
-	tok2, hash2, err := generateToken()
+	tok2, hash2, err := policy.GenerateToken()
 	require.NoError(t, err)
 
 	assert.NotEqual(t, tok1, tok2, "tokens must be unique")
@@ -147,7 +148,7 @@ func TestGenerateToken_Uniqueness(t *testing.T) {
 }
 
 func TestGenerateToken_HashConsistency(t *testing.T) {
-	raw, hash, err := generateToken()
+	raw, hash, err := policy.GenerateToken()
 	require.NoError(t, err)
 	require.NotEmpty(t, raw)
 	require.NotEmpty(t, hash)
@@ -157,19 +158,19 @@ func TestGenerateToken_HashConsistency(t *testing.T) {
 	assert.Len(t, hash, 64)
 }
 
-// --- builtinVersion ---
+// --- policy.BuiltinVersion ---
 
 func TestBuiltinVersion(t *testing.T) {
-	assert.Equal(t, "2022", builtinVersion("NIS2"))
-	assert.Equal(t, "2022", builtinVersion("ISO27001"))
-	assert.Equal(t, "2023", builtinVersion("BSI"))
-	assert.Equal(t, "", builtinVersion("CustomFramework"))
+	assert.Equal(t, "2022", policy.BuiltinVersion("NIS2"))
+	assert.Equal(t, "2022", policy.BuiltinVersion("ISO27001"))
+	assert.Equal(t, "2023", policy.BuiltinVersion("BSI"))
+	assert.Equal(t, "", policy.BuiltinVersion("CustomFramework"))
 }
 
-// --- builtinControls ---
+// --- policy.BuiltinControls ---
 
 func TestBuiltinControls_NIS2(t *testing.T) {
-	controls := builtinControls("fw-1", "org-1", "NIS2", "")
+	controls := policy.BuiltinControls("fw-1", "org-1", "NIS2", "")
 	assert.NotEmpty(t, controls)
 	for _, c := range controls {
 		assert.Equal(t, "fw-1", c.FrameworkID)
@@ -182,17 +183,17 @@ func TestBuiltinControls_NIS2(t *testing.T) {
 }
 
 func TestBuiltinControls_ISO27001(t *testing.T) {
-	controls := builtinControls("fw-2", "org-1", "ISO27001", "")
+	controls := policy.BuiltinControls("fw-2", "org-1", "ISO27001", "")
 	assert.NotEmpty(t, controls)
 }
 
 func TestBuiltinControls_BSI(t *testing.T) {
-	controls := builtinControls("fw-3", "org-1", "BSI", "")
+	controls := policy.BuiltinControls("fw-3", "org-1", "BSI", "")
 	assert.NotEmpty(t, controls)
 }
 
 func TestBuiltinControls_Unknown(t *testing.T) {
-	controls := builtinControls("fw-4", "org-1", "MyCustomFramework", "")
+	controls := policy.BuiltinControls("fw-4", "org-1", "MyCustomFramework", "")
 	assert.Empty(t, controls)
 }
 
@@ -247,19 +248,19 @@ func TestGapAnalysis_ExpiringEvidence(t *testing.T) {
 // --- DORA controls ---
 
 func TestDORAControls_Count(t *testing.T) {
-	controls := doraControls("fw-dora", "org-1")
-	assert.Len(t, controls, 24, "doraControls must return exactly 24 controls")
+	controls := policy.DoraControls("fw-dora", "org-1")
+	assert.Len(t, controls, 24, "policy.DoraControls must return exactly 24 controls")
 }
 
 func TestDORAControls_AllHaveDomain(t *testing.T) {
-	controls := doraControls("fw-dora", "org-1")
+	controls := policy.DoraControls("fw-dora", "org-1")
 	for _, c := range controls {
 		assert.NotEmpty(t, c.Domain, "control %s must have a non-empty Domain", c.ControlID)
 	}
 }
 
 func TestDORAControls_RequiredIDsPresent(t *testing.T) {
-	controls := doraControls("fw-dora", "org-1")
+	controls := policy.DoraControls("fw-dora", "org-1")
 	ids := make(map[string]bool, len(controls))
 	for _, c := range controls {
 		ids[c.ControlID] = true
@@ -273,33 +274,33 @@ func TestDORAControls_RequiredIDsPresent(t *testing.T) {
 		"DORA-4.1", "DORA-4.2", "DORA-4.3",
 	}
 	for _, id := range required {
-		assert.True(t, ids[id], "control %s must be present in doraControls", id)
+		assert.True(t, ids[id], "control %s must be present in policy.DoraControls", id)
 	}
 }
 
 // --- DORA ISO 27001 mapping ---
 
 func TestDORAISO27001Mapping_AllControlsCovered(t *testing.T) {
-	controls := doraControls("fw-dora", "org-1")
+	controls := policy.DoraControls("fw-dora", "org-1")
 	for _, c := range controls {
-		mapping, ok := doraISO27001Mapping[c.ControlID]
-		assert.True(t, ok, "doraISO27001Mapping must contain an entry for %s", c.ControlID)
+		mapping, ok := policy.DoraISO27001Mapping[c.ControlID]
+		assert.True(t, ok, "policy.DoraISO27001Mapping must contain an entry for %s", c.ControlID)
 		assert.NotEmpty(t, mapping, "ISO 27001 mapping for %s must not be empty", c.ControlID)
 	}
 }
 
 func TestDORAISO27001Mapping_KnownValues(t *testing.T) {
-	assert.Equal(t, "A.5.30, A.8.6, A.6.4", doraISO27001Mapping["DORA-1.1"])
-	assert.Equal(t, "A.5.24, A.5.25", doraISO27001Mapping["DORA-2.1"])
-	assert.Equal(t, "A.5.19", doraISO27001Mapping["DORA-4.3"])
+	assert.Equal(t, "A.5.30, A.8.6, A.6.4", policy.DoraISO27001Mapping["DORA-1.1"])
+	assert.Equal(t, "A.5.24, A.5.25", policy.DoraISO27001Mapping["DORA-2.1"])
+	assert.Equal(t, "A.5.19", policy.DoraISO27001Mapping["DORA-4.3"])
 }
 
 func TestDORAControl_HasISO27001MappingField(t *testing.T) {
 	// Simulate what GetControl / ListControls do: populate ISO27001Mapping from the map.
-	controls := doraControls("fw-dora", "org-1")
+	controls := policy.DoraControls("fw-dora", "org-1")
 	for i := range controls {
 		if strings.HasPrefix(controls[i].ControlID, "DORA-") {
-			if m, ok := doraISO27001Mapping[controls[i].ControlID]; ok {
+			if m, ok := policy.DoraISO27001Mapping[controls[i].ControlID]; ok {
 				controls[i].ISO27001Mapping = m
 			}
 		}
@@ -390,23 +391,23 @@ func TestEvidenceMetadata_Structure(t *testing.T) {
 	assert.Equal(t, "Security Policy Doc", meta.Evidence[0].Title)
 }
 
-// --- controlStatus boundary cases ---
+// --- policy.ControlStatus boundary cases ---
 
 func TestControlStatus_BoundaryValues(t *testing.T) {
 	// Exactly 2 is "covered"
-	assert.Equal(t, "covered", controlStatus(2))
+	assert.Equal(t, "covered", policy.ControlStatus(2))
 	// Exactly 1 is "partial"
-	assert.Equal(t, "partial", controlStatus(1))
+	assert.Equal(t, "partial", policy.ControlStatus(1))
 	// 0 is "missing"
-	assert.Equal(t, "missing", controlStatus(0))
+	assert.Equal(t, "missing", policy.ControlStatus(0))
 }
 
-// --- readinessScore precision ---
+// --- policy.ReadinessScore precision ---
 
 func TestReadinessScore_Precision(t *testing.T) {
 	// 1 covered, 1 partial, 3 missing out of 5
 	// weighted = 1 + 0.5 = 1.5; score = 1.5/5 * 100 = 30.0
-	score := readinessScore(1, 1, 5)
+	score := policy.ReadinessScore(1, 1, 5)
 	assert.InDelta(t, 30.0, score, 0.001)
 }
 
@@ -865,9 +866,9 @@ func TestHashToken_Consistency(t *testing.T) {
 }
 
 func TestHashToken_Uniqueness(t *testing.T) {
-	tok1, _, err1 := generateToken()
+	tok1, _, err1 := policy.GenerateToken()
 	require.NoError(t, err1)
-	tok2, _, err2 := generateToken()
+	tok2, _, err2 := policy.GenerateToken()
 	require.NoError(t, err2)
 
 	h1 := hashToken(tok1)
@@ -1125,7 +1126,7 @@ func TestGenerateDORAPDF_NoNextDeadline(t *testing.T) {
 func TestUpdateControl_MaturityScoreValidation(t *testing.T) {
 	// repo is nil — safe for the out-of-range cases because the service returns
 	// before reaching the repository call when score validation fails.
-	svc := &Service{repo: nil}
+	svc := policy.NewService(nil)
 	ctx := context.Background()
 
 	// Only invalid scores are tested here; valid scores proceed to the DB and
@@ -1141,7 +1142,7 @@ func TestUpdateControl_MaturityScoreValidation(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			s := tc.score
-			input := UpdateControlInput{MaturityScore: &s}
+			input := policy.UpdateControlInput{MaturityScore: &s}
 			_, err := svc.UpdateControl(ctx, "org-1", "ctrl-1", input)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "maturity_score must be between")
@@ -1161,7 +1162,7 @@ func TestFilterTISAXByProtectionLevel(t *testing.T) {
 	}
 
 	t.Run("normal protection level excludes TISAX-15 controls", func(t *testing.T) {
-		filtered := filterTISAXByProtectionLevel(allControls, "normal")
+		filtered := policy.FilterTISAXByProtectionLevel(allControls, "normal")
 		for _, c := range filtered {
 			if strings.HasPrefix(c.ControlID, "TISAX-15") {
 				t.Errorf("control %s must not appear for protection_level=normal", c.ControlID)
@@ -1171,12 +1172,12 @@ func TestFilterTISAXByProtectionLevel(t *testing.T) {
 	})
 
 	t.Run("high protection level excludes TISAX-15 controls", func(t *testing.T) {
-		filtered := filterTISAXByProtectionLevel(allControls, "high")
+		filtered := policy.FilterTISAXByProtectionLevel(allControls, "high")
 		assert.Len(t, filtered, 3)
 	})
 
 	t.Run("very_high protection level includes TISAX-15 controls", func(t *testing.T) {
-		filtered := filterTISAXByProtectionLevel(allControls, "very_high")
+		filtered := policy.FilterTISAXByProtectionLevel(allControls, "very_high")
 		assert.Len(t, filtered, 5)
 		found15 := false
 		for _, c := range filtered {
@@ -1196,7 +1197,7 @@ func TestTISAXGapAnalysis_MaturityGap(t *testing.T) {
 			{ID: "c-1", ControlID: "TISAX-1.1", MaturityScore: 1},
 			{ID: "c-2", ControlID: "TISAX-2.1", MaturityScore: 3},
 		}
-		analysis := buildTISAXGapAnalysis("fw-tisax", controls)
+		analysis := policy.BuildTISAXGapAnalysis("fw-tisax", controls)
 		require.Len(t, analysis.Gaps, 1)
 		assert.Equal(t, "c-1", analysis.Gaps[0].Control.ID)
 		assert.Equal(t, 2, analysis.Gaps[0].MaturityGap)
@@ -1207,7 +1208,7 @@ func TestTISAXGapAnalysis_MaturityGap(t *testing.T) {
 		controls := []Control{
 			{ID: "c-1", ControlID: "TISAX-1.1", MaturityScore: 3},
 		}
-		analysis := buildTISAXGapAnalysis("fw-tisax", controls)
+		analysis := policy.BuildTISAXGapAnalysis("fw-tisax", controls)
 		assert.Empty(t, analysis.Gaps)
 	})
 
@@ -1215,7 +1216,7 @@ func TestTISAXGapAnalysis_MaturityGap(t *testing.T) {
 		controls := []Control{
 			{ID: "c-1", ControlID: "TISAX-1.1", MaturityScore: 0},
 		}
-		analysis := buildTISAXGapAnalysis("fw-tisax", controls)
+		analysis := policy.BuildTISAXGapAnalysis("fw-tisax", controls)
 		require.Len(t, analysis.Gaps, 1)
 		assert.Equal(t, 3, analysis.Gaps[0].MaturityGap)
 		assert.Equal(t, 3, analysis.TargetScore)
@@ -1226,17 +1227,17 @@ func TestTISAXGapAnalysis_MaturityGap(t *testing.T) {
 
 func TestStaticTISAXISOMappings_Complete(t *testing.T) {
 	t.Run("mapping has at least 20 entries", func(t *testing.T) {
-		assert.GreaterOrEqual(t, len(tisaxToISO27001Mappings), 20)
+		assert.GreaterOrEqual(t, len(policy.TisaxToISO27001Mappings), 20)
 	})
 
 	t.Run("all keys start with TISAX-", func(t *testing.T) {
-		for k := range tisaxToISO27001Mappings {
+		for k := range policy.TisaxToISO27001Mappings {
 			assert.True(t, strings.HasPrefix(k, "TISAX-"), "key %q must start with 'TISAX-'", k)
 		}
 	})
 
 	t.Run("all values start with A.", func(t *testing.T) {
-		for _, v := range tisaxToISO27001Mappings {
+		for _, v := range policy.TisaxToISO27001Mappings {
 			assert.True(t, strings.HasPrefix(v, "A."), "value %q must start with 'A.'", v)
 		}
 	})
@@ -1337,7 +1338,7 @@ func TestGetTISAXCoverageByISO_CoveredWhenEvidenceExists(t *testing.T) {
 	assert.True(t, mr.Covered, "control should be covered when evidence_count >= 1")
 }
 
-// --- computeTISAXMaturity (Story 28.3) ---
+// --- policy.ComputeTISAXMaturity (Story 28.3) ---
 
 func TestComputeTISAXMaturity_AvgScore(t *testing.T) {
 	controls := []Control{
@@ -1346,7 +1347,7 @@ func TestComputeTISAXMaturity_AvgScore(t *testing.T) {
 		{ID: "c-3", ControlID: "TISAX-1.3", Domain: "Zugangskontrolle", MaturityScore: 2},
 		{ID: "c-4", ControlID: "TISAX-1.4", Domain: "Zugangskontrolle", MaturityScore: 3},
 	}
-	summary := computeTISAXMaturity(controls)
+	summary := policy.ComputeTISAXMaturity(controls)
 	require.NotNil(t, summary)
 	assert.InDelta(t, 1.5, summary.AvgScore, 0.001, "avg_score should be 1.5 for scores [0,1,2,3]")
 }
@@ -1356,7 +1357,7 @@ func TestComputeTISAXMaturity_ByChapter(t *testing.T) {
 		{ID: "c-1", ControlID: "TISAX-5.1", Domain: "Zugangskontrolle", MaturityScore: 2},
 		{ID: "c-2", ControlID: "TISAX-5.2", Domain: "Zugangskontrolle", MaturityScore: 3},
 	}
-	summary := computeTISAXMaturity(controls)
+	summary := policy.ComputeTISAXMaturity(controls)
 	require.NotNil(t, summary)
 	require.Len(t, summary.ByChapter, 1, "should have one chapter for domain 'Zugangskontrolle'")
 	ch := summary.ByChapter[0]
@@ -1372,7 +1373,7 @@ func TestComputeTISAXMaturity_ColorYellow(t *testing.T) {
 		{ID: "c-1", Domain: "Kryptographie", MaturityScore: 1},
 		{ID: "c-2", Domain: "Kryptographie", MaturityScore: 2},
 	}
-	summary := computeTISAXMaturity(controls)
+	summary := policy.ComputeTISAXMaturity(controls)
 	require.NotNil(t, summary)
 	require.Len(t, summary.ByChapter, 1)
 	assert.Equal(t, "yellow", summary.ByChapter[0].Color, "avg 1.5 should be yellow")
@@ -1383,14 +1384,14 @@ func TestComputeTISAXMaturity_ColorRed(t *testing.T) {
 		{ID: "c-1", Domain: "Netzwerksicherheit", MaturityScore: 0},
 		{ID: "c-2", Domain: "Netzwerksicherheit", MaturityScore: 1},
 	}
-	summary := computeTISAXMaturity(controls)
+	summary := policy.ComputeTISAXMaturity(controls)
 	require.NotNil(t, summary)
 	require.Len(t, summary.ByChapter, 1)
 	assert.Equal(t, "red", summary.ByChapter[0].Color, "avg 0.5 should be red")
 }
 
 func TestComputeTISAXMaturity_EmptyControls(t *testing.T) {
-	summary := computeTISAXMaturity(nil)
+	summary := policy.ComputeTISAXMaturity(nil)
 	require.NotNil(t, summary)
 	assert.InDelta(t, 0.0, summary.AvgScore, 0.001)
 	assert.InDelta(t, 0.0, summary.ReadinessPercent, 0.001)
@@ -1401,7 +1402,7 @@ func TestComputeTISAXMaturity_ReadinessPercent(t *testing.T) {
 	controls := []Control{
 		{ID: "c-1", Domain: "Informationssicherheit", MaturityScore: 3},
 	}
-	summary := computeTISAXMaturity(controls)
+	summary := policy.ComputeTISAXMaturity(controls)
 	require.NotNil(t, summary)
 	assert.InDelta(t, 100.0, summary.ReadinessPercent, 0.001, "single fully mature control should give 100% readiness")
 }
@@ -1412,7 +1413,7 @@ func TestComputeTISAXMaturity_MultipleChaptersAreStablySorted(t *testing.T) {
 		{ID: "c-2", Domain: "Kryptographie", MaturityScore: 1},
 		{ID: "c-3", Domain: "Informationssicherheit", MaturityScore: 3},
 	}
-	summary := computeTISAXMaturity(controls)
+	summary := policy.ComputeTISAXMaturity(controls)
 	require.NotNil(t, summary)
 	require.Len(t, summary.ByChapter, 3)
 	// Alphabetical order: Informationssicherheit, Kryptographie, Zutrittskontrolle
@@ -1432,12 +1433,12 @@ func TestGetReadinessReport_TISAXFramework_HasMaturityField(t *testing.T) {
 	}
 	evidenceCounts := map[string]int{"c-1": 1, "c-2": 2}
 
-	report := computeReadinessReport(tisaxFW, controls, evidenceCounts)
+	report := policy.ComputeReadinessReport(tisaxFW, controls, evidenceCounts)
 	require.NotNil(t, report)
 
 	// Simulate what GetReadinessReport does for TISAX.
 	if tisaxFW.Name == "TISAX" {
-		report.TISAXMaturity = computeTISAXMaturity(controls)
+		report.TISAXMaturity = policy.ComputeTISAXMaturity(controls)
 	}
 
 	assert.NotNil(t, report.TISAXMaturity, "TISAX framework report must have TISAXMaturity set")
@@ -1452,12 +1453,12 @@ func TestGetReadinessReport_NIS2Framework_NoMaturityField(t *testing.T) {
 	}
 	evidenceCounts := map[string]int{}
 
-	report := computeReadinessReport(nis2FW, controls, evidenceCounts)
+	report := policy.ComputeReadinessReport(nis2FW, controls, evidenceCounts)
 	require.NotNil(t, report)
 
 	// Simulate what GetReadinessReport does: only TISAX gets TISAXMaturity.
 	if nis2FW.Name == "TISAX" {
-		report.TISAXMaturity = computeTISAXMaturity(controls)
+		report.TISAXMaturity = policy.ComputeTISAXMaturity(controls)
 	}
 
 	assert.Nil(t, report.TISAXMaturity, "NIS2 framework report must have TISAXMaturity == nil")
@@ -1490,7 +1491,7 @@ func TestGenerateTISAXReportPDF_WithControls(t *testing.T) {
 		{ID: "c-1", ControlID: "TISAX-1.1", Title: "Informationssicherheitspolitik", Domain: "IS-Politik", MaturityScore: 2, EvidenceCount: 1},
 		{ID: "c-2", ControlID: "TISAX-5.1", Title: "Zugangskontrolle", Domain: "Zugang", MaturityScore: 0, EvidenceCount: 0},
 	}
-	summary := computeTISAXMaturity(controls)
+	summary := policy.ComputeTISAXMaturity(controls)
 	report := &ReadinessReport{
 		FrameworkID:    "fw-tisax",
 		FrameworkName:  "TISAX",
@@ -1501,7 +1502,7 @@ func TestGenerateTISAXReportPDF_WithControls(t *testing.T) {
 		ReadinessScore: 50.0,
 		TISAXMaturity:  summary,
 	}
-	gaps := buildTISAXGapAnalysis("fw-tisax", controls)
+	gaps := policy.BuildTISAXGapAnalysis("fw-tisax", controls)
 
 	pdfBytes, err := GenerateTISAXReportPDF(report, controls, gaps, "AutoTech GmbH", "high", "AL2", time.Date(2026, 5, 14, 0, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
@@ -2265,21 +2266,21 @@ func TestReportabilityResult_GDPRFlag(t *testing.T) {
 	assert.Equal(t, "BSI", result.NotificationAuthority)
 }
 
-// --- dsgvoTOMControls ---
+// --- policy.DsgvoTOMControls ---
 
 func TestDSGVOTOMControls_Count(t *testing.T) {
-	controls := dsgvoTOMControls("fw-1", "org-1")
+	controls := policy.DsgvoTOMControls("fw-1", "org-1")
 	assert.Len(t, controls, 13, "Art. 32 DSGVO defines 13 TOMs")
 }
 
 func TestDSGVOTOMControls_IDs(t *testing.T) {
-	controls := dsgvoTOMControls("fw-1", "org-1")
+	controls := policy.DsgvoTOMControls("fw-1", "org-1")
 	assert.Equal(t, "TOM-1", controls[0].ControlID)
 	assert.Equal(t, "TOM-13", controls[12].ControlID)
 }
 
 func TestDSGVOTOMControls_FrameworkBinding(t *testing.T) {
-	controls := dsgvoTOMControls("fw-abc", "org-xyz")
+	controls := policy.DsgvoTOMControls("fw-abc", "org-xyz")
 	for _, c := range controls {
 		assert.Equal(t, "fw-abc", c.FrameworkID)
 		assert.Equal(t, "org-xyz", c.OrgID)
@@ -2296,7 +2297,7 @@ func TestDSGVOToISOMappings_Count(t *testing.T) {
 }
 
 func TestDSGVOToISOMappings_AllTOMsCovered(t *testing.T) {
-	controls := dsgvoTOMControls("fw-1", "org-1")
+	controls := policy.DsgvoTOMControls("fw-1", "org-1")
 	for _, c := range controls {
 		_, ok := dsgvoToISOMappings[c.ControlID]
 		assert.True(t, ok, "TOM %s has no ISO mapping", c.ControlID)

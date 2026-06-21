@@ -52,7 +52,7 @@ func (h *Handler) AuditorView(c echo.Context) error {
 	}
 
 	// Return a read-only framework view — report without org-internal details.
-	report, err := h.service.GetReadinessReport(c.Request().Context(), fw.OrgID, fw.ID)
+	report, err := h.service.Policy.GetReadinessReport(c.Request().Context(), fw.OrgID, fw.ID)
 	if err != nil {
 		log.Error().Err(err).Str("framework_id", fw.ID).Msg("auditor view: readiness report")
 		return errResp(c, http.StatusInternalServerError, "failed to generate report", "CK_AUDITOR_REPORT_FAILED")
@@ -127,7 +127,7 @@ func (h *Handler) AuditorExportZIP(c echo.Context) error {
 	ctx := c.Request().Context()
 	oid := orgID(c)
 
-	risks, _, err := h.service.ListRisksPaged(ctx, oid, 0, 10_000)
+	risks, _, err := h.service.Risk.ListRisksPaged(ctx, oid, 0, 10_000)
 	if err != nil {
 		log.Error().Err(err).Str("org_id", oid).Msg("auditor export zip: list risks")
 		return errResp(c, http.StatusInternalServerError, "failed to build export", "CK_EXPORT_ERROR")
@@ -152,14 +152,14 @@ func (h *Handler) AuditorExportZIP(c echo.Context) error {
 	}
 
 	// Collect controls across all frameworks.
-	frameworks, err := h.service.ListFrameworks(ctx, oid)
+	frameworks, err := h.service.Policy.ListFrameworks(ctx, oid)
 	if err != nil {
 		log.Error().Err(err).Str("org_id", oid).Msg("auditor export zip: list frameworks")
 		return errResp(c, http.StatusInternalServerError, "failed to build export", "CK_EXPORT_ERROR")
 	}
 	var allControls []Control
 	for _, fw := range frameworks {
-		controls, cErr := h.service.ListControls(ctx, oid, fw.ID)
+		controls, cErr := h.service.Policy.ListControls(ctx, oid, fw.ID)
 		if cErr != nil {
 			log.Warn().Err(cErr).Str("framework_id", fw.ID).Msg("auditor export zip: list controls for framework")
 			continue

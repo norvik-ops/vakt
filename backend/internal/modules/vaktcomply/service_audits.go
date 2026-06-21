@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 	"io"
 	"strings"
 	"time"
@@ -23,7 +24,7 @@ import (
 // CreateAuditorLink generates a time-limited read-only access token for an external auditor.
 // Returns the raw (unhashed) token that should be delivered to the auditor.
 func (s *Service) CreateAuditorLink(ctx context.Context, orgID, frameworkID, userID string, expiresIn time.Duration, maxUses *int) (string, error) {
-	rawToken, tokenHash, err := generateToken()
+	rawToken, tokenHash, err := policy.GenerateToken()
 	if err != nil {
 		return "", fmt.Errorf("generate auditor token: %w", err)
 	}
@@ -147,7 +148,7 @@ func (s *Service) AuditorViewDetailed(ctx context.Context, rawToken string) (*Au
 		return nil, fmt.Errorf("count evidence: %w", err)
 	}
 
-	report := computeReadinessReport(fw, controls, evidenceCounts)
+	report := policy.ComputeReadinessReport(fw, controls, evidenceCounts)
 
 	// Collect all control IDs for a single batch query instead of N per-control queries.
 	controlIDs := make([]string, len(controls))
@@ -163,7 +164,7 @@ func (s *Service) AuditorViewDetailed(ctx context.Context, rawToken string) (*Au
 	for i := range controls {
 		c := controls[i]
 		c.EvidenceCount = evidenceCounts[c.ID]
-		c.Status = resolveStatus(c)
+		c.Status = policy.ResolveStatus(c)
 
 		items := evidenceByControl[c.ID]
 		if items == nil {

@@ -17,21 +17,9 @@ import (
 	"github.com/matharnica/vakt/internal/shared/xlsxexport"
 )
 
-// SoAEntry is one row in the Statement of Applicability.
-type SoAEntry struct {
-	ControlID                  string `json:"control_id"`
-	FrameworkName              string `json:"framework_name"`
-	Domain                     string `json:"domain"`
-	Title                      string `json:"title"`
-	Applicable                 bool   `json:"applicable"`
-	Status                     string `json:"status"`
-	JustificationApplicable    string `json:"justification_applicable,omitempty"`
-	JustificationNotApplicable string `json:"justification_not_applicable,omitempty"`
-}
-
 // GetSoA handles GET /api/v1/vaktcomply/soa
 func (h *Handler) GetSoA(c echo.Context) error {
-	entries, err := h.service.GetSoAEntries(c.Request().Context(), orgID(c))
+	entries, err := h.service.Policy.GetSoAEntries(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("get soa")
 		return errResp(c, http.StatusInternalServerError, "failed to get SoA", "CK_SOA_FAILED")
@@ -41,7 +29,7 @@ func (h *Handler) GetSoA(c echo.Context) error {
 
 // GetSoACSV handles GET /api/v1/vaktcomply/soa.csv
 func (h *Handler) GetSoACSV(c echo.Context) error {
-	entries, err := h.service.GetSoAEntries(c.Request().Context(), orgID(c))
+	entries, err := h.service.Policy.GetSoAEntries(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("get soa csv")
 		return errResp(c, http.StatusInternalServerError, "failed to generate SoA CSV", "CK_SOA_FAILED")
@@ -77,7 +65,7 @@ func (h *Handler) UpdateSoAApplicability(c echo.Context) error {
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
-	if err := h.service.UpdateSoAApplicability(c.Request().Context(), orgID(c), c.Param("control_id"), in.Applicable, in.JustificationApplicable, in.JustificationNotApplicable); err != nil {
+	if err := h.service.Policy.UpdateSoAApplicability(c.Request().Context(), orgID(c), c.Param("control_id"), in.Applicable, in.JustificationApplicable, in.JustificationNotApplicable); err != nil {
 		log.Error().Err(err).Msg("update soa applicability")
 		return errResp(c, http.StatusInternalServerError, "failed to update SoA", "CK_SOA_FAILED")
 	}
@@ -89,7 +77,7 @@ func (h *Handler) UpdateSoAApplicability(c echo.Context) error {
 // InitDedicatedSoA handles POST /api/v1/vaktcomply/soa/init
 // Creates version 1 with all 93 ISO 27001:2022 Annex A controls for the org.
 func (h *Handler) InitDedicatedSoA(c echo.Context) error {
-	if err := h.service.InitDedicatedSoA(c.Request().Context(), orgID(c)); err != nil {
+	if err := h.service.Policy.InitDedicatedSoA(c.Request().Context(), orgID(c)); err != nil {
 		log.Error().Err(err).Msg("init dedicated soa")
 		return errResp(c, http.StatusInternalServerError, "failed to initialize SoA", "CK_SOA_INIT_FAILED")
 	}
@@ -98,7 +86,7 @@ func (h *Handler) InitDedicatedSoA(c echo.Context) error {
 
 // GetDedicatedSoAEntries handles GET /api/v1/vaktcomply/soa/entries
 func (h *Handler) GetDedicatedSoAEntries(c echo.Context) error {
-	entries, err := h.service.ListDedicatedSoAEntries(c.Request().Context(), orgID(c))
+	entries, err := h.service.Policy.ListDedicatedSoAEntries(c.Request().Context(), orgID(c))
 	if err != nil {
 		if errors.Is(err, ErrSoANotInitialized) {
 			return errResp(c, http.StatusNotFound, err.Error(), "CK_SOA_NOT_INITIALIZED")
@@ -111,7 +99,7 @@ func (h *Handler) GetDedicatedSoAEntries(c echo.Context) error {
 
 // GetDedicatedSoAEntry handles GET /api/v1/vaktcomply/soa/entries/:control_ref
 func (h *Handler) GetDedicatedSoAEntry(c echo.Context) error {
-	entry, err := h.service.GetDedicatedSoAEntry(c.Request().Context(), orgID(c), c.Param("control_ref"))
+	entry, err := h.service.Policy.GetDedicatedSoAEntry(c.Request().Context(), orgID(c), c.Param("control_ref"))
 	if err != nil {
 		if errors.Is(err, ErrSoANotInitialized) {
 			return errResp(c, http.StatusNotFound, err.Error(), "CK_SOA_NOT_INITIALIZED")
@@ -130,7 +118,7 @@ func (h *Handler) UpdateDedicatedSoAEntry(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	if err := h.service.UpdateDedicatedSoAEntry(c.Request().Context(), orgID(c), c.Param("control_ref"), in); err != nil {
+	if err := h.service.Policy.UpdateDedicatedSoAEntry(c.Request().Context(), orgID(c), c.Param("control_ref"), in); err != nil {
 		if errors.Is(err, ErrSoANotInitialized) {
 			return errResp(c, http.StatusNotFound, err.Error(), "CK_SOA_NOT_INITIALIZED")
 		}
@@ -146,7 +134,7 @@ func (h *Handler) ApproveDedicatedSoA(c echo.Context) error {
 		Notes string `json:"notes"`
 	}
 	_ = c.Bind(&in)
-	if err := h.service.ApproveDedicatedSoA(c.Request().Context(), orgID(c), userID(c)); err != nil {
+	if err := h.service.Policy.ApproveDedicatedSoA(c.Request().Context(), orgID(c), userID(c)); err != nil {
 		if errors.Is(err, ErrExclusionReasonRequired) {
 			return errResp(c, http.StatusUnprocessableEntity, err.Error(), "CK_SOA_EXCLUSION_REASON_MISSING")
 		}
@@ -158,7 +146,7 @@ func (h *Handler) ApproveDedicatedSoA(c echo.Context) error {
 
 // GetDedicatedSoAVersions handles GET /api/v1/vaktcomply/soa/versions
 func (h *Handler) GetDedicatedSoAVersions(c echo.Context) error {
-	versions, err := h.service.GetDedicatedSoAVersions(c.Request().Context(), orgID(c))
+	versions, err := h.service.Policy.GetDedicatedSoAVersions(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("get dedicated soa versions")
 		return errResp(c, http.StatusInternalServerError, "failed to get SoA versions", "CK_SOA_FAILED")
@@ -168,7 +156,7 @@ func (h *Handler) GetDedicatedSoAVersions(c echo.Context) error {
 
 // GetDedicatedSoASummary handles GET /api/v1/vaktcomply/soa/summary
 func (h *Handler) GetDedicatedSoASummary(c echo.Context) error {
-	summary, err := h.service.GetDedicatedSoASummary(c.Request().Context(), orgID(c))
+	summary, err := h.service.Policy.GetDedicatedSoASummary(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("get dedicated soa summary")
 		return errResp(c, http.StatusInternalServerError, "failed to get SoA summary", "CK_SOA_FAILED")
@@ -185,7 +173,7 @@ func (h *Handler) ExportDedicatedSoAXLSX(c echo.Context) error {
 	ctx := c.Request().Context()
 	org := orgID(c)
 
-	entries, err := h.service.ListDedicatedSoAEntries(ctx, org)
+	entries, err := h.service.Policy.ListDedicatedSoAEntries(ctx, org)
 	if err != nil {
 		if errors.Is(err, ErrSoANotInitialized) {
 			return errResp(c, http.StatusNotFound, err.Error(), "CK_SOA_NOT_INITIALIZED")
@@ -194,7 +182,7 @@ func (h *Handler) ExportDedicatedSoAXLSX(c echo.Context) error {
 		return errResp(c, http.StatusInternalServerError, "export failed", "CK_SOA_EXPORT_FAILED")
 	}
 
-	summary, err := h.service.GetDedicatedSoASummary(ctx, org)
+	summary, err := h.service.Policy.GetDedicatedSoASummary(ctx, org)
 	if err != nil {
 		log.Error().Err(err).Msg("export soa xlsx: get summary")
 		return errResp(c, http.StatusInternalServerError, "export failed", "CK_SOA_EXPORT_FAILED")
@@ -257,7 +245,7 @@ func (h *Handler) ExportDedicatedSoA(c echo.Context) error {
 
 	switch format {
 	case "pdf":
-		data, err := h.service.ExportDedicatedSoAPDF(ctx, org)
+		data, err := h.service.Policy.ExportDedicatedSoAPDF(ctx, org)
 		if err != nil {
 			if errors.Is(err, ErrSoANotInitialized) {
 				return errResp(c, http.StatusNotFound, err.Error(), "CK_SOA_NOT_INITIALIZED")
@@ -270,7 +258,7 @@ func (h *Handler) ExportDedicatedSoA(c echo.Context) error {
 		return c.Blob(http.StatusOK, "application/pdf", data)
 
 	default: // csv / xlsx
-		rows, err := h.service.ExportDedicatedSoACSV(ctx, org)
+		rows, err := h.service.Policy.ExportDedicatedSoACSV(ctx, org)
 		if err != nil {
 			if errors.Is(err, ErrSoANotInitialized) {
 				return errResp(c, http.StatusNotFound, err.Error(), "CK_SOA_NOT_INITIALIZED")

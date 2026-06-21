@@ -143,7 +143,7 @@ func (s *Service) CreateRiskFromCatalog(ctx context.Context, orgID string, in Cr
 	} else {
 		desc += "\n\nVorgeschlagene Maßnahme: " + item.SuggestedMeasure
 	}
-	risk, err := s.CreateRisk(ctx, orgID, CreateRiskInput{
+	risk, err := s.Risk.CreateRisk(ctx, orgID, CreateRiskInput{
 		Title:          item.Title,
 		Description:    desc,
 		Category:       item.Category,

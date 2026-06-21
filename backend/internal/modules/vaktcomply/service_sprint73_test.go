@@ -4,6 +4,7 @@
 package vaktcomply
 
 import (
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 	"strings"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 // TestBSIDemoSeedControls_Coverage verifies that the 8 BSI seed controls used
 // in demoseed cover the key BSI IT-Grundschutz Schichten (layers) and have
-// matching control IDs in the full bsiControls catalog.
+// matching control IDs in the full policy.BsiControls catalog.
 func TestBSIDemoSeedControls_Coverage(t *testing.T) {
 	seedIDs := []string{
 		"BSI-ISMS.1.A1",
@@ -26,7 +27,7 @@ func TestBSIDemoSeedControls_Coverage(t *testing.T) {
 		"BSI-NET.1.1.A1",
 	}
 
-	catalog := bsiControls("fw-id", "org-id")
+	catalog := policy.BsiControls("fw-id", "org-id")
 	catalogByID := make(map[string]struct{}, len(catalog))
 	for _, c := range catalog {
 		catalogByID[c.ControlID] = struct{}{}
@@ -34,7 +35,7 @@ func TestBSIDemoSeedControls_Coverage(t *testing.T) {
 
 	for _, id := range seedIDs {
 		_, ok := catalogByID[id]
-		assert.True(t, ok, "BSI seed control %s must exist in bsiControls catalog", id)
+		assert.True(t, ok, "BSI seed control %s must exist in policy.BsiControls catalog", id)
 	}
 
 	// Seed controls must span at least 4 distinct Schichten.

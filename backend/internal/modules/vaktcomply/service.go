@@ -13,6 +13,8 @@ import (
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/audit"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/bcm"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/bsi"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/risk"
 	"github.com/matharnica/vakt/internal/services/ai"
 	"github.com/matharnica/vakt/internal/shared/dashboard"
 	"github.com/matharnica/vakt/internal/shared/notify"
@@ -35,6 +37,8 @@ type Service struct {
 	BCM        *bcm.Service
 	BSI        *bsi.Service
 	Audit      *audit.Service
+	Risk       *risk.Service
+	Policy     *policy.Service
 	notifSvc   notifyService
 	aiClient   *ai.AIClient
 	webhookSvc webhookTrigger
@@ -52,14 +56,22 @@ type webhookTrigger interface {
 
 // NewService creates a new ComplyKit service.
 func NewService(dbPool *pgxpool.Pool) *Service {
-	return &Service{
+	svc := &Service{
 		db:    dbPool,
 		q:     db.New(dbPool),
 		repo:  NewRepository(dbPool),
 		BCM:   bcm.NewService(dbPool),
 		BSI:   bsi.NewService(dbPool),
 		Audit: audit.NewService(dbPool),
+		Risk:  risk.NewService(dbPool),
 	}
+	svc.Policy = policy.NewService(dbPool)
+	// Inject the dashboard cache invalidator so risk-domain writes invalidate
+	// the same cached aggregate the parent service maintains.
+	svc.Risk.WithCacheInvalidator(svc.invalidateDashboardCache)
+	svc.Policy.WithCacheInvalidator(svc.invalidateDashboardCache)
+	svc.Policy.WithWebhookTrigger(svc.triggerWebhook)
+	return svc
 }
 
 // WithRedis sets the Redis client used for dashboard cache invalidation.
@@ -78,11 +90,17 @@ func (s *Service) invalidateDashboardCache(ctx context.Context, orgID string) {
 // WithNotifyService sets the notification service used for external email delivery.
 func (s *Service) WithNotifyService(n notifyService) {
 	s.notifSvc = n
+	if s.Policy != nil {
+		s.Policy.WithNotifyService(n)
+	}
 }
 
 // WithAIClient sets the AI client used for policy draft generation.
 func (s *Service) WithAIClient(c *ai.AIClient) {
 	s.aiClient = c
+	if s.Policy != nil {
+		s.Policy.WithAIClient(c)
+	}
 }
 
 // WithWebhooks sets the webhook service used to fire outgoing events.

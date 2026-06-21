@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/modules/vaktcomply"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/risk"
 	"github.com/matharnica/vakt/internal/shared/notify"
 )
 
@@ -25,7 +25,7 @@ const taskEffectivenessCheckOverdueAlert = "vaktcomply:effectiveness_check_overd
 // in-app notification per org.
 func handleEffectivenessCheckOverdueAlert(pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
-		repo := vaktcomply.NewRepository(pool)
+		repo := risk.NewRepository(pool)
 		items, err := repo.ListOverdueEffectivenessChecks(ctx)
 		if err != nil {
 			return fmt.Errorf("effectiveness overdue alert: list: %w", err)

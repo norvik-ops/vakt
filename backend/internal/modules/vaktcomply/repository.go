@@ -1,50 +1,29 @@
 package vaktcomply
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 )
 
 // Repository handles ComplyKit data access. Migrating to sqlc incrementally
-// (ADR-0005). Methods using r.q are sqlc-backed. Two methods bleiben bewusst
-// embedded und sind oben mit „embedded SQL by design" markiert:
-//   - GetMappingsForControl: UNION mit 4-stufigem JOIN-Chain (LIKE-Subqueries)
-//   - RecordControlReview: dynamische UPDATE-Klausel innerhalb einer Transaktion
+// (ADR-0005). The policy-domain repository (controls, policies, frameworks,
+// SoA, framework mappings) is embedded so its methods are promoted onto the
+// root Repository — root callers using r.X keep working. ADR-0066.
 type Repository struct {
+	*policy.Repository
 	db *pgxpool.Pool
 	q  *db.Queries
 }
 
 // NewRepository creates a new ComplyKit repository.
 func NewRepository(pool *pgxpool.Pool) *Repository {
-	return &Repository{db: pool, q: db.New(pool)}
-}
-
-// frameworkFromCkFrameworks maps the sqlc-generated row to the Framework
-// domain type. ReadinessScore is not stored in the table — it's computed
-// per-call in service layer.
-func frameworkFromCkFrameworks(r db.CkFrameworks) Framework {
-	variant := r.FrameworkVariant
-	if variant == "" {
-		variant = "full"
-	}
-	return Framework{
-		ID:               r.ID,
-		OrgID:            r.OrgID,
-		Name:             r.Name,
-		Version:          r.Version,
-		IsBuiltin:        r.IsBuiltin,
-		FrameworkVariant: variant,
-		CreatedAt:        ckTsToTime(r.CreatedAt),
-	}
+	return &Repository{Repository: policy.NewRepository(pool), db: pool, q: db.New(pool)}
 }
 
 // ckTsToTime converts pgtype.Timestamptz to time.Time (zero on NULL).
@@ -73,7 +52,7 @@ func ckDateToTimePtr(d pgtype.Date) *time.Time {
 	return &tm
 }
 
-// ckOptText: empty string → invalid pgtype.Text (NULL in DB).
+// ckOptText: empty string -> invalid pgtype.Text (NULL in DB).
 func ckOptText(s string) pgtype.Text {
 	if s == "" {
 		return pgtype.Text{}
@@ -81,7 +60,7 @@ func ckOptText(s string) pgtype.Text {
 	return pgtype.Text{String: s, Valid: true}
 }
 
-// ckOptIntPtr: nil → invalid pgtype.Int4 (NULL in DB).
+// ckOptIntPtr: nil -> invalid pgtype.Int4 (NULL in DB).
 func ckOptIntPtr(i *int) pgtype.Int4 {
 	if i == nil {
 		return pgtype.Int4{}
@@ -89,7 +68,7 @@ func ckOptIntPtr(i *int) pgtype.Int4 {
 	return pgtype.Int4{Int32: int32(*i), Valid: true}
 }
 
-// ckOptUUIDFromStr converts a string to pgtype.UUID; empty → invalid.
+// ckOptUUIDFromStr converts a string to pgtype.UUID; empty -> invalid.
 func ckOptUUIDFromStr(s string) pgtype.UUID {
 	if s == "" {
 		return pgtype.UUID{}
@@ -99,7 +78,7 @@ func ckOptUUIDFromStr(s string) pgtype.UUID {
 	return u
 }
 
-// ckOptTsPtr converts *time.Time to pgtype.Timestamptz; nil → invalid.
+// ckOptTsPtr converts *time.Time to pgtype.Timestamptz; nil -> invalid.
 func ckOptTsPtr(t *time.Time) pgtype.Timestamptz {
 	if t == nil {
 		return pgtype.Timestamptz{}
@@ -107,7 +86,7 @@ func ckOptTsPtr(t *time.Time) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: *t, Valid: true}
 }
 
-// ckOptDatePtr: nil string ptr → invalid; "YYYY-MM-DD" string → pgtype.Date.
+// ckOptDatePtr: nil string ptr -> invalid; "YYYY-MM-DD" string -> pgtype.Date.
 func ckOptDatePtr(s *string) pgtype.Date {
 	if s == nil || *s == "" {
 		return pgtype.Date{}
@@ -117,67 +96,6 @@ func ckOptDatePtr(s *string) pgtype.Date {
 		return pgtype.Date{}
 	}
 	return pgtype.Date{Time: t, Valid: true}
-}
-
-// controlFields holds all columns shared between ListCKControls and GetCKControl
-// row types. ADR-0013: explicit container so a single mapper handles both.
-type controlFields struct {
-	ID, FrameworkID, OrgID, ControlID, Title string
-	Description                              pgtype.Text
-	Domain, EvidenceType                     string
-	Weight                                   int32
-	NotApplicable                            bool
-	NotApplicableReason, ManualStatus        pgtype.Text
-	MaturityScore                            int16
-	Owner                                    pgtype.Text
-	LastReviewedAt                           pgtype.Timestamptz
-	ReviewIntervalDays                       int32
-	NextReviewDue                            pgtype.Timestamptz
-	LastReviewedBy, ReviewNote               string
-	DueDate                                  pgtype.Date
-}
-
-// policyFields collects the columns shared by all Policy-returning sqlc rows.
-type policyFields struct {
-	ID, OrgID, Title, Description, Category, Status, Version string
-	EffectiveDate, ReviewDate                                pgtype.Date
-	Owner                                                    string
-	CreatedAt, UpdatedAt                                     pgtype.Timestamptz
-	VersionNum                                               int32
-	VersionNote, LastUpdatedBy                               string
-	ReviewedAt                                               pgtype.Timestamptz
-	NextReviewDue                                            pgtype.Date
-}
-
-func policyFromFields(f policyFields) Policy {
-	return Policy{
-		ID:            f.ID,
-		OrgID:         f.OrgID,
-		Title:         f.Title,
-		Description:   f.Description,
-		Category:      f.Category,
-		Status:        f.Status,
-		Version:       f.Version,
-		VersionNum:    int(f.VersionNum),
-		VersionNote:   f.VersionNote,
-		LastUpdatedBy: f.LastUpdatedBy,
-		ReviewedAt:    ckTsToTimePtr(f.ReviewedAt),
-		NextReviewDue: dateToStringPtrLocal(f.NextReviewDue),
-		EffectiveDate: ckDateToTimePtr(f.EffectiveDate),
-		ReviewDate:    ckDateToTimePtr(f.ReviewDate),
-		Owner:         f.Owner,
-		CreatedAt:     ckTsToTime(f.CreatedAt),
-		UpdatedAt:     ckTsToTime(f.UpdatedAt),
-	}
-}
-
-// dateToStringPtrLocal yields "YYYY-MM-DD" or nil from pgtype.Date.
-func dateToStringPtrLocal(d pgtype.Date) *string {
-	if !d.Valid {
-		return nil
-	}
-	s := d.Time.Format("2006-01-02")
-	return &s
 }
 
 // incidentFields holds all columns shared between every Incident-returning
@@ -363,35 +281,7 @@ func evidenceFromFields(f evidenceFields) Evidence {
 	}
 }
 
-func controlFromFields(f controlFields) Control {
-	nextReview := ckTsToTimePtr(f.NextReviewDue)
-	overdue := nextReview != nil && nextReview.Before(time.Now())
-	return Control{
-		ID:                  f.ID,
-		FrameworkID:         f.FrameworkID,
-		OrgID:               f.OrgID,
-		ControlID:           f.ControlID,
-		Title:               f.Title,
-		Description:         f.Description.String,
-		Domain:              f.Domain,
-		EvidenceType:        f.EvidenceType,
-		Weight:              int(f.Weight),
-		NotApplicable:       f.NotApplicable,
-		NotApplicableReason: f.NotApplicableReason.String,
-		ManualStatus:        f.ManualStatus.String,
-		MaturityScore:       int(f.MaturityScore),
-		Owner:               f.Owner.String,
-		LastReviewedAt:      ckTsToTimePtr(f.LastReviewedAt),
-		ReviewIntervalDays:  int(f.ReviewIntervalDays),
-		NextReviewDue:       nextReview,
-		LastReviewedBy:      f.LastReviewedBy,
-		ReviewNote:          f.ReviewNote,
-		IsReviewOverdue:     overdue,
-		DueDate:             ckDateToTimePtr(f.DueDate),
-	}
-}
-
-// optTextStrPtr converts *string to pgtype.Text (nil → invalid, *"" → valid empty).
+// optTextStrPtr converts *string to pgtype.Text (nil -> invalid, *"" -> valid empty).
 func optTextStrPtr(s *string) pgtype.Text {
 	if s == nil {
 		return pgtype.Text{}
@@ -399,7 +289,7 @@ func optTextStrPtr(s *string) pgtype.Text {
 	return pgtype.Text{String: *s, Valid: true}
 }
 
-// ckOptUUIDFromPtr converts *string to pgtype.UUID; nil/empty → invalid.
+// ckOptUUIDFromPtr converts *string to pgtype.UUID; nil/empty -> invalid.
 func ckOptUUIDFromPtr(s *string) pgtype.UUID {
 	if s == nil || *s == "" {
 		return pgtype.UUID{}
@@ -415,113 +305,10 @@ func uuidStringFromPgtype(u pgtype.UUID) string {
 	return u.String()
 }
 
-// policyDateFromTimePtr converts *time.Time → pgtype.Date.
+// policyDateFromTimePtr converts *time.Time -> pgtype.Date.
 func policyDateFromTimePtr(t *time.Time) pgtype.Date {
 	if t == nil {
 		return pgtype.Date{}
 	}
 	return pgtype.Date{Time: *t, Valid: true}
-}
-
-// --- Frameworks ---
-
-// CreateFramework inserts a new framework for an organisation.
-// variant is "full" or "simplified" (DORA Art. 16); empty defaults to "full".
-func (r *Repository) CreateFramework(ctx context.Context, orgID, name, version string, isBuiltin bool, variant string) (*Framework, error) {
-	if variant == "" {
-		variant = "full"
-	}
-	row, err := r.q.CreateCKFramework(ctx, db.CreateCKFrameworkParams{
-		OrgID:            orgID,
-		Name:             name,
-		Version:          version,
-		IsBuiltin:        isBuiltin,
-		FrameworkVariant: variant,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("create framework: %w", err)
-	}
-	f := frameworkFromCkFrameworks(row)
-	return &f, nil
-}
-
-// UpdateFrameworkVariant sets the framework_variant column for a framework.
-func (r *Repository) UpdateFrameworkVariant(ctx context.Context, orgID, frameworkID, variant string) error {
-	return r.q.UpdateCKFrameworkVariant(ctx, db.UpdateCKFrameworkVariantParams{
-		FrameworkVariant: variant,
-		ID:               frameworkID,
-		OrgID:            orgID,
-	})
-}
-
-// ListFrameworks returns all frameworks enabled for an organisation.
-func (r *Repository) ListFrameworks(ctx context.Context, orgID string) ([]Framework, error) {
-	rows, err := r.q.ListCKFrameworks(ctx, orgID)
-	if err != nil {
-		return nil, fmt.Errorf("list frameworks: %w", err)
-	}
-	out := make([]Framework, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, frameworkFromCkFrameworks(row))
-	}
-	return out, nil
-}
-
-// DeleteFramework removes a framework and all its controls/evidence (cascade).
-func (r *Repository) DeleteFramework(ctx context.Context, orgID, frameworkID string) error {
-	n, err := r.q.DeleteCKFramework(ctx, db.DeleteCKFrameworkParams{ID: frameworkID, OrgID: orgID})
-	if err != nil {
-		return fmt.Errorf("delete framework: %w", err)
-	}
-	if n == 0 {
-		return fmt.Errorf("framework not found")
-	}
-	return nil
-}
-
-// GetFramework returns a single framework by ID within an organisation.
-func (r *Repository) GetFramework(ctx context.Context, orgID, frameworkID string) (*Framework, error) {
-	row, err := r.q.GetCKFramework(ctx, db.GetCKFrameworkParams{ID: frameworkID, OrgID: orgID})
-	if err != nil {
-		return nil, fmt.Errorf("get framework: %w", err)
-	}
-	f := frameworkFromCkFrameworks(row)
-	return &f, nil
-}
-
-// FindFrameworkByName returns a single framework by name within an organisation.
-// Returns nil, nil if not found.
-func (r *Repository) FindFrameworkByName(ctx context.Context, orgID, name string) (*Framework, error) {
-	row, err := r.q.FindCKFrameworkByName(ctx, db.FindCKFrameworkByNameParams{OrgID: orgID, Name: name})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("find framework by name: %w", err)
-	}
-	f := frameworkFromCkFrameworks(row)
-	return &f, nil
-}
-
-// ListAllBuiltinFrameworks returns all builtin frameworks across all organisations.
-// Used for startup reseeding of controls.
-func (r *Repository) ListAllBuiltinFrameworks(ctx context.Context) ([]Framework, error) {
-	rows, err := r.q.ListAllBuiltinCKFrameworks(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("list all builtin frameworks: %w", err)
-	}
-	out := make([]Framework, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, frameworkFromCkFrameworks(row))
-	}
-	return out, nil
-}
-
-// FrameworkExists reports whether a framework with the given name already exists for the org.
-func (r *Repository) FrameworkExists(ctx context.Context, orgID, name string) (bool, error) {
-	exists, err := r.q.CKFrameworkExists(ctx, db.CKFrameworkExistsParams{OrgID: orgID, Name: name})
-	if err != nil {
-		return false, fmt.Errorf("framework exists check: %w", err)
-	}
-	return exists, nil
 }

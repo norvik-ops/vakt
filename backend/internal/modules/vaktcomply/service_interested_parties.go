@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 	"time"
 
 	"github.com/go-pdf/fpdf"
@@ -152,8 +153,8 @@ func buildInterestedPartiesPDF(parties []InterestedParty) ([]byte, error) {
 		pdf.SetFillColor(255, 255, 255)
 		pdf.CellFormat(colW[0], 5, p.Name, "1", 0, "L", false, 0, "")
 		pdf.CellFormat(colW[1], 5, cat, "1", 0, "L", false, 0, "")
-		pdf.CellFormat(colW[2], 5, truncate(p.Requirements, 55), "1", 0, "L", false, 0, "")
-		pdf.CellFormat(colW[3], 5, truncate(p.Concerns, 45), "1", 0, "L", false, 0, "")
+		pdf.CellFormat(colW[2], 5, policy.Truncate(p.Requirements, 55), "1", 0, "L", false, 0, "")
+		pdf.CellFormat(colW[3], 5, policy.Truncate(p.Concerns, 45), "1", 0, "L", false, 0, "")
 		pdf.CellFormat(colW[4], 5, reviewDate, "1", 1, "C", false, 0, "")
 	}
 
