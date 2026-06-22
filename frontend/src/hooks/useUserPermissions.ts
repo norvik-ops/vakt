@@ -10,7 +10,7 @@ export interface ModulePermission {
 export function useUserPermissions(userId: string) {
   return useQuery<ModulePermission[]>({
     queryKey: ['users', userId, 'permissions'],
-    queryFn: () => apiFetch<ModulePermission[]>(`/admin/users/${userId}/permissions`),
+    queryFn: () => apiFetch<{ data: ModulePermission[] }>(`/admin/users/${userId}/permissions`).then((r) => r.data),
     enabled: !!userId,
   })
 }

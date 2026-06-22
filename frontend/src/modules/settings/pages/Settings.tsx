@@ -1171,12 +1171,15 @@ function AISettingsSection() {
           <div className="space-y-1.5">
             <Label className="text-xs">Modell</Label>
             {ollamaModels.length > 0 ? (
-              <Select value={model} onValueChange={setModel}>
+              <Select
+                value={model === '' ? '__default__' : model}
+                onValueChange={(v) => { setModel(v === '__default__' ? '' : v); }}
+              >
                 <SelectTrigger className="h-8 text-sm">
                   <SelectValue placeholder="System-Standard verwenden" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">System-Standard</SelectItem>
+                  <SelectItem value="__default__">System-Standard</SelectItem>
                   {ollamaModels.map((m) => (
                     <SelectItem key={m} value={m}>{m}</SelectItem>
                   ))}

@@ -1,6 +1,6 @@
 import { Link, Navigate } from 'react-router-dom'
 import {
-  HeartPulse, Building2, ShieldAlert, ScrollText, ChevronRight,
+  HeartPulse, ShieldAlert, ScrollText, ChevronRight,
 } from 'lucide-react'
 import { PageHeader } from '../shared/components/PageHeader'
 import { useAuthStore } from '../shared/stores/auth'
@@ -18,12 +18,6 @@ const TILES: AdminTile[] = [
     icon: HeartPulse,
     title: 'System-Status',
     description: 'Datenbank, Redis-Queue, Goroutines, API-Latenzen.',
-  },
-  {
-    to: '/admin/tenants',
-    icon: Building2,
-    title: 'Mandanten',
-    description: 'Organisationen verwalten, Nutzungsstatistiken einsehen.',
   },
   {
     to: '/admin/security',

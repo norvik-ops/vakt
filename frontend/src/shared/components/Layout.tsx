@@ -28,6 +28,7 @@ import { useOverdueControls } from '../../modules/vaktcomply/hooks/useControlRev
 import { useAutoEvidence } from '../../modules/vaktcomply/hooks/useEvidenceAuto'
 import { usePendingApprovalCount } from '../hooks/useApprovals'
 import { useUpdateCheck } from '../hooks/useUpdateCheck'
+import { useLicenseStatus } from '../hooks/useFeature'
 import { Toaster } from './Toaster'
 import { PWAInstallPrompt } from './PWAInstallPrompt'
 import { PageTransition } from './PageTransition'
@@ -220,6 +221,8 @@ export default function Layout() {
     return null
   })
   const { data: updateInfo } = useUpdateCheck()
+  const { data: licenseStatus } = useLicenseStatus()
+  const isUserPro = licenseStatus?.is_pro ?? false
   const isAdminOrOwner = user?.roles.some((r) => r.toLowerCase() === 'admin' || r.toLowerCase() === 'owner') ?? false
   const demoMode = useDemoMode()
 
@@ -343,7 +346,7 @@ export default function Layout() {
             {pendingApprovalCount}
           </span>
         )}
-        {c.pro && !isOverduePath && !isAutoEvidencePath && !isApprovalsPath && <ProBadge />}
+        {c.pro && !isUserPro && !isOverduePath && !isAutoEvidencePath && !isApprovalsPath && <ProBadge />}
       </Link>
     )
   }
@@ -674,7 +677,7 @@ export default function Layout() {
                     >
                       <CIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                       <span className="flex-1 truncate">{t(c.label)}</span>
-                      {c.pro && <ProBadge />}
+                      {c.pro && !isUserPro && <ProBadge />}
                     </Link>
                   )
                 })}
@@ -697,7 +700,7 @@ export default function Layout() {
                 >
                   <CIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                   <span className="flex-1 truncate">{t(c.label)}</span>
-                  {c.pro && <ProBadge />}
+                  {c.pro && !isUserPro && <ProBadge />}
                 </Link>
               )
             })}

@@ -7,7 +7,7 @@ interface LicenseStatus {
   features: string[]
 }
 
-function useLicenseStatus() {
+export function useLicenseStatus() {
   return useQuery<LicenseStatus>({
     queryKey: ['license'],
     queryFn: () => apiFetch<LicenseStatus>('/license'),
