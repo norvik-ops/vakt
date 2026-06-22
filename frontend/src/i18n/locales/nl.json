@@ -926,6 +926,7 @@
     "channelError": "Aanmaken van kanaal mislukt. Probeer het opnieuw.",
     "updatesTitle": "Updates",
     "updatesChecking": "Controleren…",
+    "updatesCheckEnabled": "Automatische updatecontroles inschakelen",
     "updatesDisabled": "Updatecontrole uitgeschakeld. Schakel in met VAKT_UPDATE_CHECK=true in .env.",
     "installedVersion": "Geïnstalleerde versie",
     "latestVersion": "Nieuwste versie",

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Vakt API
-  version: "0.42.14"
+  version: "0.42.15"
   description: |
     Self-hosted Security & Compliance Platform API.
     All data stays within your infrastructure — no phone-home, no cloud dependency.
@@ -48,6 +48,24 @@ components:
         maximum: 100
 
   schemas:
+    UpdateInfo:
+      type: object
+      required: [check_enabled, current_version, update_available]
+      properties:
+        check_enabled:
+          type: boolean
+        current_version:
+          type: string
+          example: "0.42.16"
+        latest_version:
+          type: string
+          example: "0.42.16"
+        update_available:
+          type: boolean
+        release_url:
+          type: string
+          format: uri
+
     Error:
       type: object
       properties:
@@ -12601,3 +12619,44 @@ paths:
           description: Action rejected
         '402':
           description: agent_write_tools feature not available
+
+  # ── System ────────────────────────────────────────────────────────────────
+  /system/update:
+    get:
+      summary: Get update check status
+      tags: [admin]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateInfo'
+    put:
+      summary: Enable or disable automatic update checks (Admin only, persisted in Redis)
+      tags: [admin]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateInfo'
+        '400':
+          description: Bad request
+        '403':
+          description: Forbidden — Admin role required

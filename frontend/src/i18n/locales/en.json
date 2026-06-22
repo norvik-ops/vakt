@@ -926,6 +926,7 @@
     "channelError": "Failed to create channel. Please try again.",
     "updatesTitle": "Updates",
     "updatesChecking": "Checking…",
+    "updatesCheckEnabled": "Enable automatic update checks",
     "updatesDisabled": "Update check disabled. Enable with VAKT_UPDATE_CHECK=true in .env.",
     "installedVersion": "Installed Version",
     "latestVersion": "Latest Version",

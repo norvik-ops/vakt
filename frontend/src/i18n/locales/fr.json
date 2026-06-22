@@ -926,6 +926,7 @@
     "channelError": "Échec de la création du canal. Veuillez réessayer.",
     "updatesTitle": "Mises à jour",
     "updatesChecking": "Vérification…",
+    "updatesCheckEnabled": "Activer les vérifications automatiques de mises à jour",
     "updatesDisabled": "Vérification des mises à jour désactivée. Activez avec VAKT_UPDATE_CHECK=true dans .env.",
     "installedVersion": "Version installée",
     "latestVersion": "Dernière version",

@@ -926,6 +926,7 @@
     "channelError": "Fehler beim Erstellen des Kanals. Bitte erneut versuchen.",
     "updatesTitle": "Updates",
     "updatesChecking": "Wird geprüft…",
+    "updatesCheckEnabled": "Automatische Update-Prüfung aktivieren",
     "updatesDisabled": "Update-Prüfung deaktiviert. Aktivieren mit VAKT_UPDATE_CHECK=true in der .env.",
     "installedVersion": "Installierte Version",
     "latestVersion": "Neueste Version",

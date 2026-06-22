@@ -27,7 +27,7 @@ import { SECTOR_LABELS } from '../../../shared/types/sectors'
 import { useExportData } from '../../../hooks/useDataExport'
 import { useAuditReport } from '../../../shared/hooks/useAuditReport'
 import { ProGate } from '../../../shared/components/ProGate'
-import { useUpdateCheck } from '../../../shared/hooks/useUpdateCheck'
+import { useUpdateCheck, useToggleUpdateCheck } from '../../../shared/hooks/useUpdateCheck'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 // ─── Retention / Digest hooks (used by DigestToggleSection) ──────────────────
@@ -1428,17 +1428,24 @@ function SAMLSetupSection() {
 function UpdateSection() {
   const { t } = useTranslation()
   const { data, isLoading } = useUpdateCheck()
+  const toggle = useToggleUpdateCheck()
 
   return (
     <SectionCard title={t('settingsPage.updatesTitle')} icon={RefreshCw}>
       <div className="space-y-2 text-xs">
-        {isLoading && <p className="text-secondary">{t('settingsPage.updatesChecking')}</p>}
+        <div className="flex items-center justify-between">
+          <label htmlFor="update-check-toggle" className="text-secondary cursor-pointer">
+            {t('settingsPage.updatesCheckEnabled')}
+          </label>
+          <Switch
+            id="update-check-toggle"
+            checked={data?.check_enabled ?? false}
+            disabled={isLoading || toggle.isPending}
+            onCheckedChange={(v) => toggle.mutate(v)}
+          />
+        </div>
 
-        {!isLoading && !data?.check_enabled && (
-          <p className="text-secondary">
-            {t('settingsPage.updatesDisabled')}
-          </p>
-        )}
+        {isLoading && <p className="text-secondary">{t('settingsPage.updatesChecking')}</p>}
 
         {!isLoading && data?.check_enabled && (
           <div className="space-y-1.5">

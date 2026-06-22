@@ -14,6 +14,7 @@ import (
 
 const (
 	cacheKey          = "system:latest_version"
+	overrideKey       = "system:update_check_enabled"
 	cacheTTL          = 24 * time.Hour
 	githubReleasesURL = "https://api.github.com/repos/norvik-ops/vatk/releases/latest"
 )
@@ -42,10 +43,29 @@ func NewService(enabled bool, currentVersion string, rdb *redis.Client) *Service
 	}
 }
 
+// isEnabled returns true if update checks are active.
+// Redis override (set via PUT /system/update) takes precedence over the env var.
+func (s *Service) isEnabled(ctx context.Context) bool {
+	v, err := s.rdb.Get(ctx, overrideKey).Result()
+	if err == nil {
+		return v == "true"
+	}
+	return s.enabled
+}
+
+// SetEnabled persists the toggle to Redis (survives restarts until explicitly changed).
+func (s *Service) SetEnabled(ctx context.Context, enabled bool) error {
+	v := "false"
+	if enabled {
+		v = "true"
+	}
+	return s.rdb.Set(ctx, overrideKey, v, 0).Err()
+}
+
 // GetUpdateInfo returns current update status, reading from Redis cache first.
 // If the cache is empty or stale, it fetches from the GitHub releases API.
 func (s *Service) GetUpdateInfo(ctx context.Context) UpdateInfo {
-	if !s.enabled {
+	if !s.isEnabled(ctx) {
 		return UpdateInfo{Enabled: false, CurrentVersion: s.currentVersion}
 	}
 
@@ -71,7 +91,7 @@ func (s *Service) GetUpdateInfo(ctx context.Context) UpdateInfo {
 
 // StartBackgroundRefresh runs a daily goroutine that refreshes the cached latest version.
 func (s *Service) StartBackgroundRefresh(ctx context.Context) {
-	if !s.enabled {
+	if !s.isEnabled(ctx) {
 		return
 	}
 	go func() {
