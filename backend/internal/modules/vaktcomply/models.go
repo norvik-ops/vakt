@@ -871,33 +871,8 @@ type ImprovementDecision struct {
 
 // ManagementReview and its input types now live in the audit sub-package.
 
-// ── S61-7: ISMS KPI Dashboard ─────────────────────────────────────────────────
-
-// KPISnapshot holds the 12 ISMS KPIs computed for a single organisation on a given date.
-type KPISnapshot struct {
-	ID                    string    `json:"id"`
-	OrgID                 string    `json:"org_id"`
-	SnapshotDate          string    `json:"snapshot_date"`
-	ComplianceScore       *float64  `json:"kpi_compliance_score"`
-	OpenCriticalControls  *int      `json:"kpi_open_critical_controls"`
-	OpenHighRisks         *int      `json:"kpi_open_high_risks"`
-	ResidualRiskAvg       *float64  `json:"kpi_residual_risk_avg"`
-	OpenIncidents         *int      `json:"kpi_open_incidents"`
-	IncidentMTTRDays      *float64  `json:"kpi_incident_mttr_days"`
-	EvidenceCoverage      *float64  `json:"kpi_evidence_coverage"`
-	ExpiringEvidenceCount *int      `json:"kpi_expiring_evidence_count"`
-	FindingSLACompliance  *float64  `json:"kpi_finding_sla_compliance"`
-	OpenMajorNCs          *int      `json:"kpi_open_major_ncs"`
-	SuppliersOverduePct   *float64  `json:"kpi_suppliers_overdue_pct"`
-	PhishingClickRate     *float64  `json:"kpi_phishing_click_rate"`
-	CreatedAt             time.Time `json:"created_at"`
-}
-
-// KPIDashboard bundles the most recent KPI snapshot with 90-day history.
-type KPIDashboard struct {
-	Current *KPISnapshot  `json:"current"`
-	History []KPISnapshot `json:"history"`
-}
+// KPISnapshot and KPIDashboard now live in the reporting sub-package.
+// Type aliases are provided in reporting_aliases.go.
 
 // AuditorLink represents a time-limited read-only access token for external auditors.
 type AuditorLink struct {

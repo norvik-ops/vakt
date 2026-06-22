@@ -6,14 +6,14 @@ package reporting
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 )
 
-// Service handles the reporting domain of vaktcomply. Today it owns Continuous
-// Control Monitoring (CCM): scheduled automated compliance checks and their
-// execution results.
+// Service handles the reporting domain of vaktcomply. It owns Continuous
+// Control Monitoring (CCM), KPI dashboards, and NIS2 Art.23 stage reporting.
 type Service struct {
 	db   *pgxpool.Pool
 	repo *Repository
@@ -138,4 +138,34 @@ func (s *Service) RunDueCCMChecks(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// ── KPI Dashboard ─────────────────────────────────────────────────────────────
+
+// CalculateAndStoreKPIs computes all ISMS KPIs for the organisation and persists
+// them as a daily snapshot (upsert on org_id + snapshot_date).
+func (s *Service) CalculateAndStoreKPIs(ctx context.Context, orgID string) error {
+	snap := CalculateKPIsForOrg(ctx, s.db, orgID)
+	snap.OrgID = orgID
+	if err := s.repo.UpsertKPISnapshot(ctx, orgID, snap); err != nil {
+		return fmt.Errorf("calculate and store kpis for org %s: %w", orgID, err)
+	}
+	return nil
+}
+
+// GetKPIDashboard returns the latest KPI snapshot and the 90-day history.
+func (s *Service) GetKPIDashboard(ctx context.Context, orgID string) (KPIDashboard, error) {
+	current, err := s.repo.GetLatestKPISnapshot(ctx, orgID)
+	if err != nil {
+		return KPIDashboard{}, fmt.Errorf("get kpi dashboard current: %w", err)
+	}
+	since := time.Now().AddDate(0, -3, 0) // ~90 days
+	history, err := s.repo.ListKPISnapshots(ctx, orgID, since)
+	if err != nil {
+		return KPIDashboard{}, fmt.Errorf("get kpi dashboard history: %w", err)
+	}
+	if history == nil {
+		history = []KPISnapshot{}
+	}
+	return KPIDashboard{Current: current, History: history}, nil
 }

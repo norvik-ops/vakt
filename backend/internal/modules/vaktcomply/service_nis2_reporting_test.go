@@ -19,7 +19,7 @@ func TestNIS2ReportabilityCheck_IsReportable(t *testing.T) {
 	}{
 		{
 			name: "all false → not reportable",
-			c:    NIS2ReportabilityCheck{false, false, false},
+			c:    NIS2ReportabilityCheck{CausesSignificantDisruption: false, AffectsThirdParties: false, CausesFinancialDamage: false},
 			want: false,
 		},
 		{
@@ -39,7 +39,7 @@ func TestNIS2ReportabilityCheck_IsReportable(t *testing.T) {
 		},
 		{
 			name: "all true → reportable",
-			c:    NIS2ReportabilityCheck{true, true, true},
+			c:    NIS2ReportabilityCheck{CausesSignificantDisruption: true, AffectsThirdParties: true, CausesFinancialDamage: true},
 			want: true,
 		},
 	}
