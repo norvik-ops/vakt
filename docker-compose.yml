@@ -272,6 +272,8 @@ services:
     volumes:
       - ollama_models:/root/.ollama
     restart: unless-stopped
+    environment:
+      OLLAMA_KEEP_ALIVE: "-1"
     logging: *default-logging
     healthcheck:
       test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
@@ -297,7 +299,9 @@ services:
       - >
         echo 'Pre-pulling default model ${VAKT_AI_MODEL:-qwen2.5:7b} (one-time)...';
         OLLAMA_HOST=http://ollama:11434 ollama pull ${VAKT_AI_MODEL:-qwen2.5:7b};
-        echo 'Model ready.'
+        echo 'Warming up model (loads into RAM)...';
+        OLLAMA_HOST=http://ollama:11434 ollama run ${VAKT_AI_MODEL:-qwen2.5:7b} '' 2>/dev/null || true;
+        echo 'Model ready and loaded.'
     depends_on:
       ollama:
         condition: service_healthy
