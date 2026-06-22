@@ -35,12 +35,12 @@ type Service struct {
 	q          *db.Queries
 	rdb        *redis.Client
 	repo       *Repository
-	BCM       *bcm.Service
-	BSI       *bsi.Service
-	Audit     *audit.Service
-	Risk      *risk.Service
-	Policy    *policy.Service
-	Reporting *reporting.Service
+	BCM        *bcm.Service
+	BSI        *bsi.Service
+	Audit      *audit.Service
+	Risk       *risk.Service
+	Policy     *policy.Service
+	Reporting  *reporting.Service
 	notifSvc   notifyService
 	aiClient   *ai.AIClient
 	webhookSvc webhookTrigger
@@ -59,9 +59,9 @@ type webhookTrigger interface {
 // NewService creates a new ComplyKit service.
 func NewService(dbPool *pgxpool.Pool) *Service {
 	svc := &Service{
-		db:    dbPool,
-		q:     db.New(dbPool),
-		repo:  NewRepository(dbPool),
+		db:        dbPool,
+		q:         db.New(dbPool),
+		repo:      NewRepository(dbPool),
 		BCM:       bcm.NewService(dbPool),
 		BSI:       bsi.NewService(dbPool),
 		Audit:     audit.NewService(dbPool),

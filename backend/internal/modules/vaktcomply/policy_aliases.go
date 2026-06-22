@@ -87,4 +87,3 @@ var (
 	// ErrExclusionReasonRequired signals a SoA exclusion lacks a justification.
 	ErrExclusionReasonRequired = policy.ErrExclusionReasonRequired
 )
-
