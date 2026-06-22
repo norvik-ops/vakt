@@ -5,6 +5,23 @@ HEALTH_URL="http://localhost/health/ready"
 MAX_WAIT=180
 POLL_INTERVAL=2
 
+# ── Swap (Linux only, best-effort, skip if already present) ─────────────────
+if [ "$(uname)" = "Linux" ] && [ "$(id -u)" = "0" ]; then
+	if ! swapon --show | grep -q .; then
+		echo "No swap detected — creating 4 GB swapfile..."
+		fallocate -l 4G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=4096 2>/dev/null || true
+		if [ -f /swapfile ] && [ "$(stat -c %s /swapfile 2>/dev/null || echo 0)" -ge 1073741824 ]; then
+			chmod 600 /swapfile
+			mkswap /swapfile
+			swapon /swapfile
+			grep -qF '/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+			echo "Swap enabled (4 GB, persistent)"
+		else
+			echo "WARNING: could not create swapfile — continuing without swap"
+		fi
+	fi
+fi
+
 # ── Dependency checks ────────────────────────────────────────────────────────
 if ! command -v docker &>/dev/null; then
 	echo "ERROR: Docker is not installed. See https://docs.docker.com/get-docker/"
