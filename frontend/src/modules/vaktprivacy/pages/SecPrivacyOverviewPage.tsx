@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { FileText, FileSearch, Handshake, AlertTriangle, ChevronRight, Clock, Users } from 'lucide-react'
+import { FileText, FileSearch, Handshake, AlertTriangle, ChevronRight, Clock, Users, Sparkles } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { useVVT } from '../hooks/useVVT'
 import { useDPIAs } from '../hooks/useDPIAs'
@@ -149,32 +149,37 @@ export default function SecPrivacyOverviewPage() {
                 title: 'Verzeichnis von Verarbeitungstätigkeiten (VVT)',
                 desc: 'Art. 30 DSGVO — Alle Datenverarbeitungen Ihrer Organisation dokumentieren.',
                 path: '/vaktprivacy/vvt',
+                pro: false,
               },
               {
                 icon: FileSearch,
                 title: 'Datenschutz-Folgenabschätzung (DSFA)',
                 desc: 'Art. 35 DSGVO — Risikoanalyse für hochriskante Verarbeitungen.',
                 path: '/vaktprivacy/dpia',
+                pro: true,
               },
               {
                 icon: Handshake,
                 title: 'Auftragsverarbeiter-Verträge (AVV)',
                 desc: 'Art. 28 DSGVO — Verträge mit Dienstleistern verwalten und Ablaufdaten überwachen.',
                 path: '/vaktprivacy/avv',
+                pro: false,
               },
               {
                 icon: AlertTriangle,
                 title: 'Datenpannen-Register',
                 desc: 'Art. 33/34 DSGVO — Datenpannen dokumentieren und die 72h-Meldepflicht einhalten.',
                 path: '/vaktprivacy/breach',
+                pro: false,
               },
               {
                 icon: Users,
                 title: 'Datenschutzanfragen (DSR)',
                 desc: 'Art. 15–21 DSGVO — Betroffenenrechte verwalten und die 30-Tage-Frist einhalten.',
                 path: '/vaktprivacy/dsr',
+                pro: false,
               },
-            ].map(({ icon: Icon, title, desc, path }) => (
+            ].map(({ icon: Icon, title, desc, path, pro }) => (
               <button
                 key={path}
                 onClick={() => { navigate(path); }}
@@ -183,9 +188,17 @@ export default function SecPrivacyOverviewPage() {
                 <div className="p-2 rounded-lg bg-surface2 text-brand shrink-0">
                   <Icon className="w-4 h-4" />
                 </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-primary group-hover:text-brand transition-colors">
-                    {title}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-primary group-hover:text-brand transition-colors">
+                      {title}
+                    </span>
+                    {pro && (
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-brand/10 text-brand border border-brand/20 shrink-0">
+                        <Sparkles className="w-2.5 h-2.5" />
+                        Pro
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-secondary mt-0.5 leading-relaxed">{desc}</div>
                 </div>

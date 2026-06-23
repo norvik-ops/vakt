@@ -511,9 +511,9 @@ func TestIssueKey_IssuedKeyHasExpiry(t *testing.T) {
 	}
 }
 
-// TestProFeaturesTiering locks the Pro/Enterprise split to the public pricing page
-// (sec.norvikops.de): Enterprise-only features must never ship with a Polar-issued
-// Pro key, and the gated module workflows must always be included.
+// TestProFeaturesTiering locks the Pro feature set to the public pricing page
+// (sec.norvikops.de): TISAX, DORA, ISO 42001, and multi_framework are not offered
+// publicly and must never ship with a Polar-issued Pro key.
 func TestProFeaturesTiering(t *testing.T) {
 	has := func(f string) bool {
 		for _, p := range proFeatures {
@@ -524,10 +524,10 @@ func TestProFeaturesTiering(t *testing.T) {
 		return false
 	}
 
-	enterpriseOnly := []string{"tisax", "dora", "iso_42001", "multi_framework", "scim_provisioning", "siem_export"}
-	for _, f := range enterpriseOnly {
+	notOffered := []string{"tisax", "dora", "iso_42001", "multi_framework"}
+	for _, f := range notOffered {
 		if has(f) {
-			t.Errorf("proFeatures must not include Enterprise-only feature %q", f)
+			t.Errorf("proFeatures must not include non-public feature %q", f)
 		}
 	}
 
@@ -536,7 +536,7 @@ func TestProFeaturesTiering(t *testing.T) {
 		"vaktaware_advanced", "vaktscan_advanced", "vaktvault_advanced",
 		"vaktprivacy_advanced", "bsi_grundschutz",
 		"granular_permissions", "supplier_portal", "nis2_reporting", "saml_auth",
-		"agent_write_tools",
+		"agent_write_tools", "scim_provisioning", "siem_export",
 	}
 	for _, f := range required {
 		if !has(f) {

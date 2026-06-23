@@ -29,15 +29,13 @@ VAKT_MODULES_ENABLED=vaktscan,vaktvault,vaktaware,vaktprivacy
 
 > **Lizenz-Hinweis:** NIS2, ISO 27001, DSGVO-TOM, CIS, KRITIS und C5 sind in der Community
 > Edition enthalten. Der BSI-IT-Grundschutz-Workflow (Modellierung, Grundschutz-Check,
-> Cockpit, Referenzberichte), EU AI Act und CRA erfordern **Pro**; DORA, TISAX, ISO 42001,
-> ISO 27017 und ISO 27018 sind **Enterprise**-Frameworks. Details: [FAQ → Editionen](../faq.md).
+> Cockpit, Referenzberichte), EU AI Act und CRA erfordern **Pro**. Details: [FAQ → Editionen](../faq.md).
 | **CRA** (Cyber Resilience Act) | Controls für Hersteller von Produkten mit digitalen Elementen |
 | **CIS Controls v8** | 61 IG1-Safeguards in 18 Kontrollgruppen mit CIS ↔ ISO 27001 Mapping |
 | **ISO 27017:2015** | Cloud-Security-Controls für CSP & CSC; 31 Controls inkl. CLD-Erweiterungen; Mapping ↔ ISO 27001/C5/BSI |
 | **ISO 27018:2019** | PII-Schutz in Public Clouds (Art.-28-DSGVO-Auftragsverarbeiter); Mapping ↔ DSGVO-TOM/C5/ISO 27001 |
 
-> **ISO 27017 und ISO 27018** erfordern **Enterprise** (Multi-Framework-Lizenz). Ideal für Cloud-Anbieter und
-> Organisationen, die IaaS/PaaS/SaaS auf Compliance nachweisen müssen (Hetzner, IONOS, Mittwald, StackIT).
+> **ISO 27017 und ISO 27018** sind im Code vorhanden, werden aber aktuell nicht öffentlich angeboten.
 
 Mehrere Frameworks können gleichzeitig aktiv sein. Vakt zeigt pro Framework einen Readiness-Score und eine Gap-Analyse.
 

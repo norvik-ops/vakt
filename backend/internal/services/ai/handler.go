@@ -45,6 +45,14 @@ func (h *Handler) checkCELimit(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
 	used := h.svc.usage.CEMonthlyUsage(c.Request().Context(), orgID)
 	if used >= CEMonthlyLimit {
+		// ponytail: structured log for funnel-observability (S96-8); queryable in Loki on dogfood instance.
+		log.Info().
+			Str("event", "upgrade_trigger").
+			Str("trigger", "ai_ce_limit").
+			Str("org_id", orgID).
+			Int("used", used).
+			Int("limit", CEMonthlyLimit).
+			Msg("CE AI monthly limit reached")
 		return c.JSON(http.StatusPaymentRequired, ceLimitResponse{
 			Error:     "AI-Limit für Community Edition erreicht",
 			Code:      "AI_CE_MONTHLY_LIMIT",

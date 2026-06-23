@@ -129,7 +129,7 @@ Jede Kunden-Instanz benötigt einen eigenen Pro-License-Key. License-Keys sind n
 zwischen Instanzen teilbar.
 
 - **Community-Edition:** Kein License-Key erforderlich. Funktionsumfang eingeschränkt
-  (kein Enterprise-Auth, keine White-Label-Reports, keine SAML/SCIM-Integration).
+  (kein SCIM/SIEM, keine White-Label-Reports, kein OIDC/OAuth2-SSO).
 - **Pro-Edition:** License-Key über das Vakt-Reseller-Programm beziehen. Der Key wird
   in `VAKT_LICENSE_KEY` eingetragen und beim Start validiert (offline-fähig via
   signiertes Token).

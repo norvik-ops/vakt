@@ -229,8 +229,6 @@ func (h *Handler) issueKey(ctx context.Context, email, orgName, lsSubID string) 
 	}
 
 	proFeatures := []string{
-		features.FeatureTISAX,
-		features.FeatureDORA,
 		features.FeatureEUAIAct,
 		features.FeatureCRA,
 		features.FeatureAIAdvisor,
@@ -239,6 +237,16 @@ func (h *Handler) issueKey(ctx context.Context, email, orgName, lsSubID string) 
 		features.FeatureAPI,
 		features.FeatureSecReflex,
 		features.FeatureSecPulse,
+		features.FeatureSecVault,
+		features.FeatureSecPrivacy,
+		features.FeatureBSIGrundschutz,
+		features.FeatureGranularPermissions,
+		features.FeatureSupplierPortal,
+		features.FeatureNIS2Reporting,
+		features.FeatureSAMLAuth,
+		features.FeatureAgentWriteTools,
+		features.FeatureSCIMProvisioning,
+		features.FeatureSIEM,
 	}
 
 	key, err := license.Sign(h.privateKeyPEM, "pro", orgName, proFeatures, nil)

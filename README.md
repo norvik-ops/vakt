@@ -94,44 +94,38 @@ The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key requi
 
 ## Pricing
 
-| | **Community** | **Pro** | **Enterprise** |
-|---|:---:|:---:|:---:|
-| **Price** | Free | €299/month · €2,999/year | Contact us |
-| **Hosted by** | You | You | You |
-| **Self-hosted** | ✅ | ✅ | ✅ |
-| **No telemetry** | ✅ | ✅ | ✅ |
-| **Unlimited users** | ✅ | ✅ | ✅ |
+| | **Community** | **Pro** |
+|---|:---:|:---:|
+| **Price** | Free | €299/month · €2,990/year |
+| **Hosted by** | You | You |
+| **Self-hosted** | ✅ | ✅ |
+| **No telemetry** | ✅ | ✅ |
+| **Unlimited users** | ✅ | ✅ |
 
 ### Compliance Frameworks
 
-| Framework | Community | Pro | Enterprise |
-|---|:---:|:---:|:---:|
-| NIS2 | ✅ | ✅ | ✅ |
-| ISO 27001 | ✅ | ✅ | ✅ |
-| GDPR Art. 32 (TOM) | ✅ | ✅ | ✅ |
-| CIS Controls v8 | ✅ | ✅ | ✅ |
-| KRITIS-DachG | ✅ | ✅ | ✅ |
-| BSI C5 | ✅ | ✅ | ✅ |
-| BSI IT-Grundschutz | — | ✅ | ✅ |
-| EU AI Act | — | ✅ | ✅ |
-| EU CRA | — | ✅ | ✅ |
-| DORA | — | — | ✅ |
-| TISAX | — | — | ✅ |
-| ISO 42001 | — | — | ✅ |
-| ISO 27017 | — | — | ✅ |
-| ISO 27018 | — | — | ✅ |
-| Custom frameworks | — | — | ✅ |
+| Framework | Community | Pro |
+|---|:---:|:---:|
+| NIS2 | ✅ | ✅ |
+| ISO 27001 | ✅ | ✅ |
+| GDPR Art. 32 (TOM) | ✅ | ✅ |
+| CIS Controls v8 | ✅ | ✅ |
+| KRITIS-DachG | ✅ | ✅ |
+| BSI C5 | ✅ | ✅ |
+| BSI IT-Grundschutz | — | ✅ |
+| EU AI Act | — | ✅ |
+| EU CRA | — | ✅ |
 
 ### Modules
 
-| Module | Community | Pro | Enterprise |
-|---|:---:|:---:|:---:|
-| Vakt Comply (controls, risks, incidents, policies) | ✅ | ✅ | ✅ |
-| Vakt HR (onboarding/offboarding checklists) | ✅ | ✅ | ✅ |
-| Vakt Scan (asset registry, scans, findings, SLA) | ✅ Basis | ✅ | ✅ |
-| Vakt Vault (secrets storage & sharing) | ✅ Basis | ✅ | ✅ |
-| Vakt Aware (training assignment & tracking) | ✅ Basis | ✅ | ✅ |
-| Vakt Privacy (VVT, AVV, DSR, breach records) | ✅ Basis | ✅ | ✅ |
+| Module | Community | Pro |
+|---|:---:|:---:|
+| Vakt Comply (controls, risks, incidents, policies) | ✅ | ✅ |
+| Vakt HR (onboarding/offboarding checklists) | ✅ | ✅ |
+| Vakt Scan (asset registry, scans, findings, SLA) | ✅ Basis | ✅ |
+| Vakt Vault (secrets storage & sharing) | ✅ Basis | ✅ |
+| Vakt Aware (training assignment & tracking) | ✅ Basis | ✅ |
+| Vakt Privacy (VVT, AVV, DSR, breach records) | ✅ Basis | ✅ |
 
 > **Basis** — these modules are usable in Community with their core functionality. **Pro** unlocks the advanced features per module:
 > - **Vakt Scan** — SBOM scanning, EOL tracking, report generation & export, Wazuh import
@@ -141,27 +135,22 @@ The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key requi
 
 ### Features
 
-| Feature | Community | Pro | Enterprise |
-|---|:---:|:---:|:---:|
-| AI Compliance Advisor | 25 req/month | Unlimited | Unlimited |
-| PDF audit exports | ✅ | ✅ | ✅ |
-| Advanced PDF (branding, executive summary) | — | ✅ | ✅ |
-| Evidence versioning | — | ✅ | ✅ |
-| Custom controls | — | ✅ | ✅ |
-| SSO / OIDC | — | ✅ | ✅ |
-| Webhook integrations | — | ✅ | ✅ |
-| NIS2 reporting assistant | — | ✅ | ✅ |
-| Supplier portal | — | Planned Q3 2026 | Planned Q3 2026 |
-| SCIM provisioning | — | — | ✅ |
-| White-label | — | — | ✅ |
-| Multi-entity / group structures | — | — | ✅ |
-| Dedicated onboarding | — | — | ✅ |
-| SLA with response time guarantee | — | — | ✅ |
-| Audit API (read-only, for SIEM/GRC) | — | — | ✅ |
+| Feature | Community | Pro |
+|---|:---:|:---:|
+| AI Compliance Advisor | 25 req/month | Unlimited |
+| PDF audit exports | ✅ | ✅ |
+| Advanced PDF (branding, executive summary) | — | ✅ |
+| Evidence versioning | — | ✅ |
+| Custom controls | — | ✅ |
+| SSO / OIDC | — | ✅ |
+| SAML 2.0 | ✅ | ✅ |
+| Webhook integrations | — | ✅ |
+| NIS2 reporting assistant | — | ✅ |
+| Supplier portal | — | ✅ |
+| SCIM provisioning | — | ✅ |
+| SIEM export (Splunk, Elastic, Webhook) | — | ✅ |
 
 **Get a license key:** [buy.polar.sh](https://buy.polar.sh/polar_cl_3evwYMHJEFIS6SAIBbO3QFHCPwDwvLNbW29cH30tlfr) — purchase and receive your key by email. Activate in **Settings → License**.
-
-**Enterprise:** Contact [hello@norvikops.de](mailto:hello@norvikops.de) for SCIM, TISAX, DORA, white-label, or custom SLA requirements.
 
 ---
 
@@ -212,7 +201,7 @@ See [`docs/wiki/configuration.md`](docs/wiki/configuration.md) for the full refe
 
 Vakt includes a built-in AI advisor that analyses your organisation's real compliance gaps and answers "What should I do this week?" — specific to your data, running entirely on your server.
 
-**Enabled by default** via a local Ollama container (CPU-only, no GPU, no API key, no Pro license). The Community edition includes **25 AI requests per month**; Pro and Enterprise are unlimited. Default model is `qwen2.5:7b` (Apache 2.0, ~4.5 GB RAM, needs 8 GB, best German compliance quality). The model is pulled automatically by the `ollama-init` container on first `docker compose up` — no manual step. On VMs with less than 8 GB RAM, switch to `qwen2.5:3b` (~1.9 GB).
+**Enabled by default** via a local Ollama container (CPU-only, no GPU, no API key, no Pro license). The Community edition includes **25 AI requests per month**; Pro is unlimited. Default model is `qwen2.5:7b` (Apache 2.0, ~4.5 GB RAM, needs 8 GB, best German compliance quality). The model is pulled automatically by the `ollama-init` container on first `docker compose up` — no manual step. On VMs with less than 8 GB RAM, switch to `qwen2.5:3b` (~1.9 GB).
 
 To switch to a different model:
 

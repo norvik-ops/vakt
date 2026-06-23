@@ -10,9 +10,7 @@ Vakt gibt es in zwei Editionen:
 
 **Community Edition (CE)** — kostenlos, für immer. Alle 6 Module in der Basis nutzbar (inkl. KI-Berater lokal via Ollama, NIS2 & ISO 27001, VVT/AVV/DSR, Secrets-Speicher, On-/Offboarding). Kein Ablaufdatum, keine Kreditkarte, keine Registrierung. Einzige Voraussetzung: eigener Server.
 
-**Pro** — 199 €/Monat oder 1.990 €/Jahr (zzgl. MwSt.). Schaltet spezialisierte Frameworks und erweiterte Workflows frei: BSI IT-Grundschutz (Modellierung, Grundschutz-Check, 200-3-Risiken, Cockpit, Berichte), EU AI Act, CRA, Audit-PDF-Export, NIS2-Meldungsassistent, Lieferantenportal, erweiterte Scan-/Aware-/Vault-/Privacy-Workflows (Reports & Importe, Phishing-Kampagnen, Secret-Rotation & Access Reviews, DPIA & TIA), SSO (OIDC/SAML), granulare Berechtigungen und API-Zugang. Nach dem Kauf erhältst du automatisch einen Lizenzschlüssel per E-Mail.
-
-**Enterprise** — alles aus Pro, zusätzlich TISAX, DORA, ISO 42001, Custom Frameworks, SCIM-Provisionierung, SIEM-Export, White-Label, dediziertes Onboarding und custom SLA. Auf Anfrage unter hello@norvikops.de.
+**Pro** — 299 €/Monat oder 2.990 €/Jahr (zzgl. MwSt.). Schaltet spezialisierte Frameworks und erweiterte Workflows frei: BSI IT-Grundschutz (Modellierung, Grundschutz-Check, 200-3-Risiken, Cockpit, Berichte), EU AI Act, CRA, Audit-PDF-Export, NIS2-Meldungsassistent, Lieferantenportal, erweiterte Scan-/Aware-/Vault-/Privacy-Workflows (Reports & Importe, Phishing-Kampagnen, Secret-Rotation & Access Reviews, DPIA & TIA), SSO (OIDC/SAML), SCIM-Provisionierung, SIEM-Export, granulare Berechtigungen und API-Zugang. Nach dem Kauf erhältst du automatisch einen Lizenzschlüssel per E-Mail.
 
 Nicht erlaubt: Vakt als gehosteten oder verwalteten Service an Dritte verkaufen (mehr dazu unter [Was ist ELv2?](#was-ist-elv2)).
 
@@ -72,7 +70,7 @@ Die wichtigsten Unterschiede:
 | | Vakt | Vanta / Drata |
 |---|---|---|
 | **Hosting** | Selbst gehostet, eigene Infrastruktur | Cloud, Daten beim Anbieter |
-| **Preis** | CE kostenlos · Pro ab 199 €/Monat | ~€10.000–30.000/Jahr |
+| **Preis** | CE kostenlos · Pro ab 299 €/Monat | ~€10.000–30.000/Jahr |
 | **Datenhoheit** | Vollständig bei dir | Beim Cloud-Anbieter |
 | **DSGVO** | Keine Drittübermittlung | Datenexport in US-Cloud |
 | **Anpassbarkeit** | Quellcode zugänglich | Closed Source |
