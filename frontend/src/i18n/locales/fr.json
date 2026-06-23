@@ -927,7 +927,7 @@
     "updatesTitle": "Mises à jour",
     "updatesChecking": "Vérification…",
     "updatesCheckEnabled": "Activer les vérifications automatiques de mises à jour",
-    "updatesDisabled": "Vérification des mises à jour désactivée. Activez avec VAKT_UPDATE_CHECK=true dans .env.",
+    "updatesDisabled": "Vérification des mises à jour désactivée. Activez via le bouton ci-dessus ou définissez VAKT_UPDATE_CHECK=true dans .env.",
     "installedVersion": "Version installée",
     "latestVersion": "Dernière version",
     "updateAvailable": "Mise à jour disponible",

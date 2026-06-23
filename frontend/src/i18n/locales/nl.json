@@ -927,7 +927,7 @@
     "updatesTitle": "Updates",
     "updatesChecking": "Controleren…",
     "updatesCheckEnabled": "Automatische updatecontroles inschakelen",
-    "updatesDisabled": "Updatecontrole uitgeschakeld. Schakel in met VAKT_UPDATE_CHECK=true in .env.",
+    "updatesDisabled": "Updatecontrole uitgeschakeld. Schakel in via de knop hierboven of stel VAKT_UPDATE_CHECK=true in .env in.",
     "installedVersion": "Geïnstalleerde versie",
     "latestVersion": "Nieuwste versie",
     "updateAvailable": "Update beschikbaar",

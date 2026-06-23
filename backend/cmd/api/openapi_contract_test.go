@@ -67,6 +67,9 @@ var contractCases = []contractCase{
 		realPath: "/api/v1/vaktprivacy/vvt", specPath: "/api/v1/vaktprivacy/vvt"},
 	{name: "vakthr_contractors", method: http.MethodGet,
 		realPath: "/api/v1/vakthr/contractors", specPath: "/api/v1/vakthr/contractors"},
+	// GET /system/update — no auth required for read; returns 200 with UpdateInfo schema.
+	{name: "system_update_get", method: http.MethodGet,
+		realPath: "/api/v1/system/update", specPath: "/api/v1/system/update"},
 }
 
 // TestOpenAPIContract spins up the same Echo instance the production binary

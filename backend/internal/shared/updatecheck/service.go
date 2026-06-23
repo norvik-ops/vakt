@@ -90,10 +90,9 @@ func (s *Service) GetUpdateInfo(ctx context.Context) UpdateInfo {
 }
 
 // StartBackgroundRefresh runs a daily goroutine that refreshes the cached latest version.
+// The goroutine always starts so that toggling the check on via the UI takes effect
+// at the next tick without requiring a restart.
 func (s *Service) StartBackgroundRefresh(ctx context.Context) {
-	if !s.isEnabled(ctx) {
-		return
-	}
 	go func() {
 		// Initial fetch after 30s (let the app fully start up first).
 		select {
@@ -101,14 +100,18 @@ func (s *Service) StartBackgroundRefresh(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		}
-		s.refresh(ctx)
+		if s.isEnabled(ctx) {
+			s.refresh(ctx)
+		}
 
 		ticker := time.NewTicker(cacheTTL)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
-				s.refresh(ctx)
+				if s.isEnabled(ctx) {
+					s.refresh(ctx)
+				}
 			case <-ctx.Done():
 				return
 			}

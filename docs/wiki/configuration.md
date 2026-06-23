@@ -206,11 +206,15 @@ VAKT_AI_PROVIDER=disabled
 |----------|---------|----------|--------------|
 | `VAKT_UPDATE_CHECK` | — | `false` | Aktiviert den täglichen Check auf neue Vakt-Versionen via GitHub Releases API. Zeigt Admins und Eigentümern ein Banner in der UI wenn eine neue Version verfügbar ist. Es werden keine Daten gesendet — nur ein lesender GET-Request an die öffentliche GitHub-API, ohne Instanz-ID oder Telemetrie. |
 
-**Beispiel:**
+**Env-Var (Boot-Default):**
 
 ```env
 VAKT_UPDATE_CHECK=true
 ```
+
+**UI-Toggle (Admin-only, überschreibt die Env-Var, persistiert in Redis):**
+
+Admins können die Update-Prüfung auch zur Laufzeit unter **Einstellungen → Updates** ein- und ausschalten, ohne die Instanz neu zu starten. Der Redis-Wert hat Vorrang vor der Env-Var; wird er gelöscht, gilt wieder der Env-Var-Default.
 
 ---
 
@@ -389,15 +393,15 @@ VAKT_LDAP_TLS=false
 
 ---
 
-## Enterprise-Integrationen (keine Env-Vars)
+## Pro-Integrationen (keine Env-Vars)
 
 Die folgenden Integrationen werden **pro Organisation** in der Vakt-Oberfläche konfiguriert (Admin → Einstellungen) und benötigen keine eigenen Umgebungsvariablen:
 
 | Integration | Edition | Setup |
 |-------------|---------|-------|
-| **SAML 2.0 Direct SP** | CE | Admin → Enterprise SSO → SAML → IdP-Metadaten hochladen |
-| **OIDC via Casdoor** | CE | `CASDOOR_*`-Vars (siehe oben) |
-| **SCIM 2.0 Provisioning** | Pro | Admin → Enterprise SSO → SCIM → Token generieren |
+| **SAML 2.0 Direct SP** | Community | Admin → SSO → SAML → IdP-Metadaten hochladen |
+| **OIDC via Casdoor** | Community | `CASDOOR_*`-Vars (siehe oben) |
+| **SCIM 2.0 Provisioning** | Pro | Admin → SSO → SCIM → Token generieren |
 | **SIEM-Forwarder** (Splunk, Elastic, Webhook) | Pro | Admin → Integrationen → SIEM → Adapter + Endpoint konfigurieren |
 | **IP-Allowlist für Admin-Endpunkte** | Pro | Admin → Sicherheit → IP-Allowlist → CIDR-Einträge |
 | **MFA für sensitive API-Calls** | Pro | Admin → Sicherheit → MFA-Enforcement |

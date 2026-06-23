@@ -927,7 +927,7 @@
     "updatesTitle": "Updates",
     "updatesChecking": "Wird geprüft…",
     "updatesCheckEnabled": "Automatische Update-Prüfung aktivieren",
-    "updatesDisabled": "Update-Prüfung deaktiviert. Aktivieren mit VAKT_UPDATE_CHECK=true in der .env.",
+    "updatesDisabled": "Update-Prüfung deaktiviert. Über den Schalter oben oder VAKT_UPDATE_CHECK=true in der .env aktivieren.",
     "installedVersion": "Installierte Version",
     "latestVersion": "Neueste Version",
     "updateAvailable": "Update verfügbar",
