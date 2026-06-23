@@ -78,14 +78,6 @@ func ckOptUUIDFromStr(s string) pgtype.UUID {
 	return u
 }
 
-// ckOptTsPtr converts *time.Time to pgtype.Timestamptz; nil -> invalid.
-func ckOptTsPtr(t *time.Time) pgtype.Timestamptz {
-	if t == nil {
-		return pgtype.Timestamptz{}
-	}
-	return pgtype.Timestamptz{Time: *t, Valid: true}
-}
-
 // ckOptDatePtr: nil string ptr -> invalid; "YYYY-MM-DD" string -> pgtype.Date.
 func ckOptDatePtr(s *string) pgtype.Date {
 	if s == nil || *s == "" {
@@ -98,44 +90,12 @@ func ckOptDatePtr(s *string) pgtype.Date {
 	return pgtype.Date{Time: t, Valid: true}
 }
 
-// optTextStrPtr converts *string to pgtype.Text (nil -> invalid, *"" -> valid empty).
-func optTextStrPtr(s *string) pgtype.Text {
-	if s == nil {
-		return pgtype.Text{}
-	}
-	return pgtype.Text{String: *s, Valid: true}
-}
-
-// ckOptUUIDFromPtr converts *string to pgtype.UUID; nil/empty -> invalid.
-func ckOptUUIDFromPtr(s *string) pgtype.UUID {
-	if s == nil || *s == "" {
-		return pgtype.UUID{}
-	}
-	return ckOptUUIDFromStr(*s)
-}
-
-// uuidStringFromPgtype returns the UUID as string ("" when invalid).
-func uuidStringFromPgtype(u pgtype.UUID) string {
-	if !u.Valid {
-		return ""
-	}
-	return u.String()
-}
-
 // policyDateFromTimePtr converts *time.Time -> pgtype.Date.
 func policyDateFromTimePtr(t *time.Time) pgtype.Date {
 	if t == nil {
 		return pgtype.Date{}
 	}
 	return pgtype.Date{Time: *t, Valid: true}
-}
-
-func intPtrFromInt4(v pgtype.Int4) *int {
-	if !v.Valid {
-		return nil
-	}
-	i := int(v.Int32)
-	return &i
 }
 
 // --- domain mappers (moved from the root vaktcomply package) ---

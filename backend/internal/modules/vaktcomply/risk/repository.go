@@ -76,26 +76,6 @@ func ckOptTsPtr(t *time.Time) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: *t, Valid: true}
 }
 
-// ckOptDatePtr: nil string ptr → invalid; "YYYY-MM-DD" string → pgtype.Date.
-func ckOptDatePtr(s *string) pgtype.Date {
-	if s == nil || *s == "" {
-		return pgtype.Date{}
-	}
-	t, err := time.Parse("2006-01-02", *s)
-	if err != nil {
-		return pgtype.Date{}
-	}
-	return pgtype.Date{Time: t, Valid: true}
-}
-
-// optTextStrPtr converts *string to pgtype.Text (nil → invalid, *"" → valid empty).
-func optTextStrPtr(s *string) pgtype.Text {
-	if s == nil {
-		return pgtype.Text{}
-	}
-	return pgtype.Text{String: *s, Valid: true}
-}
-
 func intPtrFromInt4(v pgtype.Int4) *int {
 	if !v.Valid {
 		return nil
