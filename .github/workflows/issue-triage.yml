@@ -5,51 +5,12 @@ on:
     types: [opened]
 
 jobs:
-  triage:
-    runs-on: ubuntu-latest
-    permissions:
-      issues: write
-      contents: read
-    steps:
-      - name: Claude Triage Agent
-        uses: actions/github-script@v7
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        with:
-          script: |
-            const issue = context.payload.issue;
-            const labels = issue.labels.map(l => l.name);
-            const systemPrompt = [
-              "Du bist der Triage-Agent fuer Vakt, eine selbst gehostete ISMS-Plattform fuer den DACH-Mittelstand.",
-              "Antworte AUSSCHLIESSLICH mit einem JSON-Objekt ohne Markdown:",
-              '{"type":"bug|feature|question|spam","labels_add":[],"labels_remove":[],"severity":"critical|high|medium|low|none","comment":"Kommentar auf Deutsch"}',
-              "Regeln:",
-              "- type: bug/feature/question/spam erkennen",
-              "- labels_add: bug, feature, question, severity: critical, severity: high, severity: medium, severity: low, status: needs-info, status: confirmed",
-              "- labels_remove: 'status: needs-triage' entfernen wenn Typ klar ist",
-              "- severity: critical NUR bei Datenverlust oder Auth-Bypass",
-              "- comment: Spezifisch auf Deutsch, 3-5 Saetze. Kein generisches Danke. Bei Bugs: bestaetigen was du verstanden hast, was als naechstes passiert, Einschaetzung zur Prioritaet. Bei lueckenhaften Reports: gezielt nachfragen. Bei Features: ehrliche Einschaetzung ob/wann realistisch."
-            ].join("\n");
-            const userMessage = "Issue #" + issue.number + ": " + issue.title + "\nLabels: " + (labels.join(", ") || "keine") + "\n\n" + (issue.body || "(leer)");
-            const res = await fetch("https://api.anthropic.com/v1/messages", {
-              method: "POST",
-              headers: {"Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01"},
-              body: JSON.stringify({model: "claude-haiku-4-5-20251001", max_tokens: 1024, system: systemPrompt, messages: [{role: "user", content: userMessage}]})
-            });
-            const data = await res.json();
-            core.info("Claude: " + JSON.stringify(data));
-            let result;
-            try {
-              const m = data.content[0].text.trim().match(/\{[\s\S]*\}/);
-              result = JSON.parse(m ? m[0] : data.content[0].text.trim());
-            } catch(e) { core.error("Parse Error: " + data.content[0].text); return; }
-            core.info("Result: " + JSON.stringify(result));
-            if (result.labels_add && result.labels_add.length) {
-              await github.rest.issues.addLabels({owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number, labels: result.labels_add});
-            }
-            for (const label of (result.labels_remove || [])) {
-              try { await github.rest.issues.removeLabel({owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number, name: label}); } catch(e) {}
-            }
-            if (result.comment) {
-              await github.rest.issues.createComment({owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number, body: result.comment + "\n\n_\u2014 Vakt Team_"});
-            }
+  call-triage:
+    uses: norvik-ops/vakt-internal/.github/workflows/issue-triage.yml@main
+    with:
+      issue_number: ${{ github.event.issue.number }}
+      issue_title: ${{ github.event.issue.title }}
+      issue_body: ${{ github.event.issue.body || '' }}
+      issue_labels: ${{ join(github.event.issue.labels.*.name, ',') }}
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
