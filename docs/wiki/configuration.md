@@ -399,8 +399,8 @@ Die folgenden Integrationen werden **pro Organisation** in der Vakt-Oberfläche 
 
 | Integration | Edition | Setup |
 |-------------|---------|-------|
-| **SAML 2.0 Direct SP** | Community | Admin → SSO → SAML → IdP-Metadaten hochladen |
-| **OIDC via Casdoor** | Community | `CASDOOR_*`-Vars (siehe oben) |
+| **SAML 2.0 Direct SP** | Pro | Admin → SSO → SAML → IdP-Metadaten hochladen |
+| **OIDC via Casdoor** | Pro | `CASDOOR_*`-Vars (siehe oben) |
 | **SCIM 2.0 Provisioning** | Pro | Admin → SSO → SCIM → Token generieren |
 | **SIEM-Forwarder** (Splunk, Elastic, Webhook) | Pro | Admin → Integrationen → SIEM → Adapter + Endpoint konfigurieren |
 | **IP-Allowlist für Admin-Endpunkte** | Pro | Admin → Sicherheit → IP-Allowlist → CIDR-Einträge |

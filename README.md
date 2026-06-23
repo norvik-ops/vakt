@@ -143,7 +143,7 @@ The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key requi
 | Evidence versioning | — | ✅ |
 | Custom controls | — | ✅ |
 | SSO / OIDC | — | ✅ |
-| SAML 2.0 | ✅ | ✅ |
+| SAML 2.0 | — | ✅ |
 | Webhook integrations | — | ✅ |
 | NIS2 reporting assistant | — | ✅ |
 | Supplier portal | — | ✅ |
