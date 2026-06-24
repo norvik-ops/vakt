@@ -1,0 +1,17 @@
+name: Issue Closed
+
+on:
+  issues:
+    types: [closed]
+
+jobs:
+  call-store:
+    uses: norvik-ops/vakt-internal/.github/workflows/issue-closed.yml@main
+    with:
+      issue_number: ${{ github.event.issue.number }}
+      issue_title: ${{ github.event.issue.title }}
+      issue_body: ${{ github.event.issue.body || '' }}
+      issue_labels: ${{ join(github.event.issue.labels.*.name, ',') }}
+      issue_state_reason: ${{ github.event.issue.state_reason || 'completed' }}
+    secrets:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
