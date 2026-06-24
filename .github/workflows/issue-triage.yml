@@ -5,13 +5,45 @@ on:
     types: [opened]
 
 jobs:
-  call-triage:
-    uses: norvik-ops/vakt-internal/.github/workflows/issue-triage.yml@main
-    with:
-      issue_number: ${{ github.event.issue.number }}
-      issue_title: ${{ github.event.issue.title }}
-      issue_body: ${{ github.event.issue.body || '' }}
-      issue_labels: ${{ join(github.event.issue.labels.*.name, ',') }}
-    secrets:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+  acknowledge:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Sofort-Kommentar + Dispatch
+        uses: actions/github-script@v7
+        env:
+          DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
+        with:
+          script: |
+            const issue = context.payload.issue;
+
+            // Sofort-Kommentar: haben's empfangen
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: "Danke für dein Issue — wir haben es erhalten und schauen es uns gleich an. Melden uns in Kürze.\n\n_— Vakt Team_"
+            });
+
+            // repository_dispatch an vakt-internal
+            await fetch("https://api.github.com/repos/norvik-ops/vakt-internal/dispatches", {
+              method: "POST",
+              headers: {
+                "Accept": "application/vnd.github+json",
+                "Authorization": "Bearer " + process.env.DISPATCH_TOKEN,
+                "X-GitHub-Api-Version": "2022-11-28",
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                event_type: "issue-triage",
+                client_payload: {
+                  issue_number: issue.number,
+                  issue_title: issue.title,
+                  issue_body: issue.body || "",
+                  issue_labels: issue.labels.map(l => l.name).join(","),
+                  repo: context.repo.repo,
+                  owner: context.repo.owner
+                }
+              })
+            });
