@@ -1,10 +1,10 @@
-.PHONY: dev api-local frontend-local stop stop-local test lint build migrate seed seed-local backup public-mirror rotate-key
+.PHONY: dev api-local frontend-local stop stop-local test lint build migrate seed seed-local backup public-mirror rotate-key install-hooks
 
 # ── Docker-based dev (requires Docker) ─────────────────────────────────────
 dev:
 	docker compose -f docker-compose.dev.yml up --build
 
-# ── Public Mirror — materialisiert lokal das, was nach norvik-ops/vatk synct
+# ── Public Mirror — materialisiert lokal das, was nach norvik-ops/vakt synct
 # Verifiziert mit `go build ./...` dass das Mirror kompiliert.
 # Output: ./public-mirror/ (gitignored)
 public-mirror:
@@ -60,6 +60,11 @@ test-backup: ## S89-4: backup-cron.sh retention + notification shell test
 lint:
 	cd backend && golangci-lint run ./...
 	cd frontend && npm run lint
+
+install-hooks:
+	cp scripts/hooks/pre-commit .git/hooks/pre-commit
+	chmod +x .git/hooks/pre-commit
+	@echo "Git hooks installed."
 
 build:
 	cd backend && go build ./...

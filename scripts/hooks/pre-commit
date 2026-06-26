@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# pre-commit: enforce gofmt on staged Go files
+set -euo pipefail
+
+staged_go=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$' || true)
+[ -z "$staged_go" ] && exit 0
+
+unformatted=$(echo "$staged_go" | xargs gofmt -l)
+if [ -n "$unformatted" ]; then
+  echo "gofmt: the following files need formatting:"
+  echo "$unformatted" | sed 's/^/  /'
+  echo ""
+  echo "  Fix with: gofmt -w \$(git diff --cached --name-only | grep '\\.go\$')"
+  exit 1
+fi
