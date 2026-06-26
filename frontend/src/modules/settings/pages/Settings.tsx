@@ -1593,7 +1593,7 @@ function OIDCConfigSection() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => disable.mutate()}
+                onClick={() => { disable.mutate() }}
                 disabled={disable.isPending}
                 className="h-8 text-xs text-destructive hover:text-destructive"
               >
@@ -1626,7 +1626,7 @@ function UpdateSection() {
             id="update-check-toggle"
             checked={data?.check_enabled ?? false}
             disabled={isLoading || toggle.isPending}
-            onCheckedChange={(v) => toggle.mutate(v)}
+            onCheckedChange={(v) => { toggle.mutate(v) }}
           />
         </div>
 

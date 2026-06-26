@@ -96,10 +96,10 @@ func isPublicIP(ip net.IP) bool {
 		{IP: net.ParseIP("10.0.0.0"), Mask: net.CIDRMask(8, 32)},
 		{IP: net.ParseIP("172.16.0.0"), Mask: net.CIDRMask(12, 32)},
 		{IP: net.ParseIP("192.168.0.0"), Mask: net.CIDRMask(16, 32)},
-		{IP: net.ParseIP("100.64.0.0"), Mask: net.CIDRMask(10, 32)},   // carrier-grade NAT
-		{IP: net.ParseIP("169.254.0.0"), Mask: net.CIDRMask(16, 32)},  // link-local
-		{IP: net.ParseIP("fc00::"), Mask: net.CIDRMask(7, 128)},       // IPv6 ULA
-		{IP: net.ParseIP("fe80::"), Mask: net.CIDRMask(10, 128)},      // IPv6 link-local
+		{IP: net.ParseIP("100.64.0.0"), Mask: net.CIDRMask(10, 32)},  // carrier-grade NAT
+		{IP: net.ParseIP("169.254.0.0"), Mask: net.CIDRMask(16, 32)}, // link-local
+		{IP: net.ParseIP("fc00::"), Mask: net.CIDRMask(7, 128)},      // IPv6 ULA
+		{IP: net.ParseIP("fe80::"), Mask: net.CIDRMask(10, 128)},     // IPv6 link-local
 	}
 	if ip.IsLoopback() || ip.IsMulticast() || ip.IsUnspecified() || ip.IsLinkLocalUnicast() {
 		return false

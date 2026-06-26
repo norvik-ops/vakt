@@ -289,13 +289,13 @@ func (r *Repository) RevokeSCIMToken(ctx context.Context, orgID, tokenID string)
 
 // OrgSAMLConfigPublic is the DB record for org_saml_configs without the private key.
 type OrgSAMLConfigPublic struct {
-	OrgID            string
-	EntityID         string
-	ACSURL           string
-	IDPMetadata      string
-	CertPEM          string
-	Enabled          bool
-	JITProvisioning  bool
+	OrgID           string
+	EntityID        string
+	ACSURL          string
+	IDPMetadata     string
+	CertPEM         string
+	Enabled         bool
+	JITProvisioning bool
 }
 
 // GetOrgSAMLConfigPublic returns the SAML config for an org (no key PEM).

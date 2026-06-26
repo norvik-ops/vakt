@@ -720,12 +720,7 @@ func (h *Handler) UpdateOrgOIDCConfig(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": err.Error(), "code": "ADMIN_VALIDATION_ERROR"})
 	}
-	if err := h.service.UpsertOIDCConfig(c.Request().Context(), orgID, OIDCConfigInput{
-		ProviderURL:  in.ProviderURL,
-		ClientID:     in.ClientID,
-		ClientSecret: in.ClientSecret,
-		Enabled:      in.Enabled,
-	}); err != nil {
+	if err := h.service.UpsertOIDCConfig(c.Request().Context(), orgID, OIDCConfigInput(in)); err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Msg("update oidc config failed")
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to update OIDC config", "code": "ADMIN_OIDC_ERROR"})
 	}

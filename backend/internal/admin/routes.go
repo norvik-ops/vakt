@@ -23,7 +23,7 @@ func Register(g *echo.Group, h *Handler, health *HealthHandler, db *pgxpool.Pool
 	admin.GET("/audit-log/export.syslog", siem.ExportSyslog)
 
 	admin.GET("/users", h.ListUsers)
-	admin.POST("/users", h.CreateUser)       // S105-1: direct creation, no SMTP
+	admin.POST("/users", h.CreateUser) // S105-1: direct creation, no SMTP
 	admin.POST("/users/invite", h.InviteUser)
 	admin.PATCH("/users/:id/role", h.UpdateUserRole)
 	admin.GET("/modules", h.ListModules)
