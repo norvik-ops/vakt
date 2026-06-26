@@ -70,6 +70,16 @@ var contractCases = []contractCase{
 	// GET /system/update — no auth required for read; returns 200 with UpdateInfo schema.
 	{name: "system_update_get", method: http.MethodGet,
 		realPath: "/api/v1/system/update", specPath: "/api/v1/system/update"},
+	// S105-1: direct user creation — no auth → 401
+	{name: "admin_create_user", method: http.MethodPost,
+		realPath: "/api/v1/admin/users", specPath: "/api/v1/admin/users",
+		body: `{"email":"x@x.com","password":"tencharpass","role":"Viewer"}`},
+	// S105-2: OIDC config — no auth → 401
+	{name: "admin_oidc_config_get", method: http.MethodGet,
+		realPath: "/api/v1/admin/org/oidc-config", specPath: "/api/v1/admin/org/oidc-config"},
+	// S105-3: SAML config — no auth → 401 (Pro-gated, but auth runs first)
+	{name: "admin_saml_config_get", method: http.MethodGet,
+		realPath: "/api/v1/admin/org/saml-config", specPath: "/api/v1/admin/org/saml-config"},
 }
 
 // TestOpenAPIContract spins up the same Echo instance the production binary

@@ -23,6 +23,7 @@ func Register(g *echo.Group, h *Handler, health *HealthHandler, db *pgxpool.Pool
 	admin.GET("/audit-log/export.syslog", siem.ExportSyslog)
 
 	admin.GET("/users", h.ListUsers)
+	admin.POST("/users", h.CreateUser)       // S105-1: direct creation, no SMTP
 	admin.POST("/users/invite", h.InviteUser)
 	admin.PATCH("/users/:id/role", h.UpdateUserRole)
 	admin.GET("/modules", h.ListModules)
@@ -64,10 +65,16 @@ func Register(g *echo.Group, h *Handler, health *HealthHandler, db *pgxpool.Pool
 	admin.PUT("/org/siem", siemH.UpdateSIEMConfig, features.Require(features.FeatureSIEM))
 	admin.POST("/org/siem/test", siemH.TestForward, features.Require(features.FeatureSIEM))
 
-	// SAML direct SP config (CE — no feature gate)
-	admin.GET("/org/saml-config", h.GetOrgSAMLConfig)
-	admin.PUT("/org/saml-config", h.UpdateOrgSAMLConfig)
-	admin.POST("/org/saml-config/regenerate-cert", h.RegenerateSAMLCert)
+	// SAML direct SP config — Pro feature (S105-4: moved from CE in v0.17.0)
+	admin.GET("/org/saml-config", h.GetOrgSAMLConfig, features.Require(features.FeatureSAMLAuth))
+	admin.PUT("/org/saml-config", h.UpdateOrgSAMLConfig, features.Require(features.FeatureSAMLAuth))
+	admin.POST("/org/saml-config/regenerate-cert", h.RegenerateSAMLCert, features.Require(features.FeatureSAMLAuth))
+	admin.POST("/org/saml-config/fetch-metadata", h.FetchSAMLMetadata, features.Require(features.FeatureSAMLAuth))
+
+	// Pro: OIDC/Casdoor config in DB (S105-2)
+	admin.GET("/org/oidc-config", h.GetOrgOIDCConfig, features.Require(features.FeatureSSO))
+	admin.PUT("/org/oidc-config", h.UpdateOrgOIDCConfig, features.Require(features.FeatureSSO))
+	admin.DELETE("/org/oidc-config", h.DeleteOrgOIDCConfig, features.Require(features.FeatureSSO))
 
 	// Pro-gated SCIM token management (S21-4)
 	admin.GET("/scim/tokens", h.ListSCIMTokens, features.Require(features.FeatureSCIMProvisioning))

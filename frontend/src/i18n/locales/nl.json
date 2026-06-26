@@ -1013,7 +1013,15 @@
     "revokeDialogTitle": "Uitnodiging intrekken?",
     "revokeDialogDesc": "De uitnodiging aan {{email}} wordt ingetrokken.",
     "days": "dagen",
-    "roleSaved": "Rol opgeslagen"
+    "roleSaved": "Rol opgeslagen",
+    "createUserAction": "Direct aanmaken",
+    "createUserDialogTitle": "Gebruiker direct aanmaken",
+    "labelPassword": "Wachtwoord",
+    "placeholderPassword": "min. 10 tekens",
+    "passwordMinLen": "Wachtwoord moet minimaal 10 tekens lang zijn.",
+    "creating": "Aanmaken…",
+    "createUser": "Gebruiker aanmaken",
+    "userCreated": "Gebruiker succesvol aangemaakt"
   },
   "accountSettingsPage": {
     "title": "Accountinstellingen",
@@ -1148,6 +1156,11 @@
     "signIn": "Inloggen",
     "signingIn": "Inloggen…",
     "loginFailed": "Inloggen mislukt",
+    "samlLoginFailed": "SAML-aanmelding mislukt.",
+    "samlAssertionInvalid": "SAML-bewering is ongeldig of verlopen.",
+    "samlMissingEmail": "De identiteitsprovider heeft geen e-mailadres geretourneerd.",
+    "samlUserNotProvisioned": "Uw account is nog niet aangemaakt. Neem contact op met uw beheerder.",
+    "samlProvisionFailed": "SAML-aanmelding mislukt. Neem contact op met uw beheerder.",
     "emailLabel": "E-mail",
     "emailPlaceholder": "admin@voorbeeld.nl",
     "passwordLabel": "Wachtwoord",

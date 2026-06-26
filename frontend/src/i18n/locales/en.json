@@ -1013,7 +1013,15 @@
     "revokeDialogTitle": "Revoke invitation?",
     "revokeDialogDesc": "The invitation to {{email}} will be revoked.",
     "days": "days",
-    "roleSaved": "Role saved"
+    "roleSaved": "Role saved",
+    "createUserAction": "Create directly",
+    "createUserDialogTitle": "Create user directly",
+    "labelPassword": "Password",
+    "placeholderPassword": "min. 10 characters",
+    "passwordMinLen": "Password must be at least 10 characters.",
+    "creating": "Creating...",
+    "createUser": "Create user",
+    "userCreated": "User created successfully"
   },
   "accountSettingsPage": {
     "title": "Account Settings",
@@ -1148,6 +1156,11 @@
     "signIn": "Sign in",
     "signingIn": "Signing in…",
     "loginFailed": "Login failed",
+    "samlLoginFailed": "SAML login failed.",
+    "samlAssertionInvalid": "SAML assertion is invalid or expired.",
+    "samlMissingEmail": "The identity provider did not return an email address.",
+    "samlUserNotProvisioned": "Your account has not been provisioned yet. Please contact your administrator.",
+    "samlProvisionFailed": "SAML login failed. Please contact your administrator.",
     "emailLabel": "Email",
     "emailPlaceholder": "admin@example.com",
     "passwordLabel": "Password",

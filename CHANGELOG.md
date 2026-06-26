@@ -9,6 +9,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+**Auth & User Provisioning — Sprint 105.**
+
+### Added
+
+- **Direktes User-Anlegen ohne SMTP (S105-1, CE)** — `POST /api/v1/admin/users` legt Nutzer direkt mit E-Mail, Passwort (min. 10 Zeichen) und Rolle an — kein SMTP erforderlich. Nutzer ist sofort aktiv. Settings → Team: zweite Schaltfläche „Direkt anlegen" neben „Einladen".
+- **OIDC/Casdoor-Konfiguration in der Settings-UI (S105-2, Pro)** — OIDC-Verbindungsdaten (Provider-URL, Client-ID, Client-Secret) können in der Settings-UI gespeichert werden, ohne Container-Neustart. Migration 227: Tabelle `org_oidc_configs`. Client-Secret wird AES-256-GCM-verschlüsselt. `/health`-Endpoint liest `sso_enabled` jetzt zur Laufzeit aus der DB; Env-Vars (`CASDOOR_URL` etc.) bleiben als Fallback aktiv.
+- **SAML JIT-Provisioning (S105-3, Pro)** — Nutzer werden bei erfolgreichem SAML-Login automatisch angelegt, wenn sie noch nicht in Vakt existieren. Toggle in Settings → Zugang → SAML 2.0 (Standard: an). Migration 228: Spalte `jit_provisioning` in `org_saml_configs`.
+- **SAML Metadaten-Import via URL (S105-3, Pro)** — IdP-Metadaten können per URL importiert werden statt XML manuell einzufügen. Schaltfläche „URL laden" in den SAML-Settings.
+- **SAML CE → Pro (S105-4, Pro)** — SAML 2.0 SP ist jetzt ein Pro-Feature. SAML-Settings-Sektion zeigt CE-Nutzern einen Upgrade-Prompt.
+
+### Fixed
+
+- **SAML-ACS-Fehlermeldungen (S105-3)** — SAML-Fehler beim Login gaben bisher generische 500er zurück. Jetzt: Browser-Redirect auf `/login?error=saml_*` mit i18n-Fehlermeldung (de/en/fr/nl). Fehlercodes: `saml_assertion_invalid`, `saml_missing_email`, `saml_user_not_provisioned`, `saml_provision_failed`.
+
+---
+
+**Security — SSRF DNS-Rebinding-Fix (S105-3 SAML Metadata-Fetch).**
+
+### Security
+
+- **SSRF DNS-Rebinding TOCTOU geschlossen (`internal/admin/saml_metadata.go`)** — Pre-flight-DNS-Check für den SAML-Metadaten-URL-Import wurde durch einen custom `DialContext` im HTTP-Transport ersetzt. Resolve, Validate (`isPublicIP`) und Dial passieren jetzt atomar in einem Schritt; eine zwischen Validation und `client.Do` geänderte DNS-Antwort (DNS-Rebinding) wird damit unmöglich. Redirects nutzen denselben Transport — keine zweite Validate-Lücke. Maximale Redirect-Tiefe auf 3 begrenzt. Verhalten für legitime IdP-URLs identisch.
+
+---
+
 **Code-Architektur — vaktcomply Phase 2 (Sprint 102).**
 Rein internes Refactoring, keine User-Facing-Änderungen.
 

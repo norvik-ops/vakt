@@ -1013,7 +1013,15 @@
     "revokeDialogTitle": "Révoquer l'invitation ?",
     "revokeDialogDesc": "L'invitation adressée à {{email}} sera révoquée.",
     "days": "jours",
-    "roleSaved": "Rôle enregistré"
+    "roleSaved": "Rôle enregistré",
+    "createUserAction": "Créer directement",
+    "createUserDialogTitle": "Créer un utilisateur directement",
+    "labelPassword": "Mot de passe",
+    "placeholderPassword": "min. 10 caractères",
+    "passwordMinLen": "Le mot de passe doit comporter au moins 10 caractères.",
+    "creating": "Création…",
+    "createUser": "Créer l'utilisateur",
+    "userCreated": "Utilisateur créé avec succès"
   },
   "accountSettingsPage": {
     "title": "Paramètres du compte",
@@ -1148,6 +1156,11 @@
     "signIn": "Se connecter",
     "signingIn": "Connexion…",
     "loginFailed": "Échec de la connexion",
+    "samlLoginFailed": "Échec de la connexion SAML.",
+    "samlAssertionInvalid": "L'assertion SAML est invalide ou expirée.",
+    "samlMissingEmail": "Le fournisseur d'identité n'a pas retourné d'adresse e-mail.",
+    "samlUserNotProvisioned": "Votre compte n'a pas encore été activé. Veuillez contacter votre administrateur.",
+    "samlProvisionFailed": "Échec de la connexion SAML. Veuillez contacter votre administrateur.",
     "emailLabel": "E-mail",
     "emailPlaceholder": "admin@exemple.com",
     "passwordLabel": "Mot de passe",

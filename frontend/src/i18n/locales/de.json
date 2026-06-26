@@ -1013,7 +1013,15 @@
     "revokeDialogTitle": "Einladung widerrufen?",
     "revokeDialogDesc": "Die Einladung an {{email}} wird widerrufen.",
     "days": "Tage",
-    "roleSaved": "Rolle gespeichert"
+    "roleSaved": "Rolle gespeichert",
+    "createUserAction": "Direkt anlegen",
+    "createUserDialogTitle": "Nutzer direkt anlegen",
+    "labelPassword": "Passwort",
+    "placeholderPassword": "min. 10 Zeichen",
+    "passwordMinLen": "Passwort muss mindestens 10 Zeichen lang sein.",
+    "creating": "Anlegen...",
+    "createUser": "Nutzer anlegen",
+    "userCreated": "Nutzer erfolgreich angelegt"
   },
   "accountSettingsPage": {
     "title": "Konto-Einstellungen",
@@ -1148,6 +1156,11 @@
     "signIn": "Anmelden",
     "signingIn": "Anmeldung läuft…",
     "loginFailed": "Anmeldung fehlgeschlagen",
+    "samlLoginFailed": "SAML-Anmeldung fehlgeschlagen.",
+    "samlAssertionInvalid": "SAML-Assertion ungültig oder abgelaufen.",
+    "samlMissingEmail": "Der IdP hat keine E-Mail-Adresse übermittelt.",
+    "samlUserNotProvisioned": "Ihr Konto ist noch nicht freigeschaltet. Bitte wenden Sie sich an Ihren Administrator.",
+    "samlProvisionFailed": "SAML-Login fehlgeschlagen. Bitte kontaktieren Sie den Administrator.",
     "emailLabel": "E-Mail",
     "emailPlaceholder": "admin@example.com",
     "passwordLabel": "Passwort",

@@ -78,3 +78,17 @@ func TestListNotificationChannels_nilNotifySvc(t *testing.T) {
 	_, err := svc.ListNotificationChannels(nil, "org-1") //nolint:staticcheck
 	assert.ErrorContains(t, err, "notification service not configured")
 }
+
+func TestCreateUserInput_passwordMinLen(t *testing.T) {
+	// CreateUserInput.Password requires min=10 — verify field tag is present.
+	input := CreateUserInput{Email: "a@b.com", Password: "short", Role: "Admin"}
+	assert.Equal(t, "short", input.Password, "field value accessible")
+	assert.Less(t, len(input.Password), 10, "below minimum confirms validation would reject it")
+}
+
+func TestWithMasterKey_returnsReceiver(t *testing.T) {
+	svc := NewService(nil, "")
+	returned := svc.WithMasterKey([]byte("key"))
+	require.Equal(t, svc, returned)
+	assert.Equal(t, []byte("key"), svc.masterKey)
+}

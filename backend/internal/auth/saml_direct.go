@@ -55,17 +55,18 @@ func samlAttr(a *saml.Assertion, names ...string) string {
 
 // OrgSAMLConfig holds the persisted SAML SP configuration for one org.
 type OrgSAMLConfig struct {
-	OrgID       string
-	EntityID    string // SP entity ID URL
-	ACSURL      string // Assertion Consumer Service URL
-	IDPMetadata string // IdP metadata XML blob
-	CertPEM     string // SP X.509 certificate PEM
-	KeyPEM      string // SP RSA private key PEM (stored encrypted in DB)
-	Enabled     bool
+	OrgID           string
+	EntityID        string // SP entity ID URL
+	ACSURL          string // Assertion Consumer Service URL
+	IDPMetadata     string // IdP metadata XML blob
+	CertPEM         string // SP X.509 certificate PEM
+	KeyPEM          string // SP RSA private key PEM (stored encrypted in DB)
+	Enabled         bool
+	JITProvisioning bool // S105-3: auto-create user on first SAML login
 }
 
 // samlConfigColumns is the SELECT list used when loading org_saml_configs.
-const samlConfigColumns = `org_id::text, entity_id, acs_url, idp_metadata, cert_pem, key_pem, enabled`
+const samlConfigColumns = `org_id::text, entity_id, acs_url, idp_metadata, cert_pem, key_pem, enabled, jit_provisioning`
 
 // samlServiceKey returns the HKDF-derived sub-key used to encrypt SAML SP
 // private keys at rest.  The same purpose string is used by cmd/rotate-key,
@@ -100,7 +101,7 @@ func LoadOrgSAMLConfig(ctx context.Context, db *pgxpool.Pool, orgID string, mast
 	err := db.QueryRow(ctx,
 		`SELECT `+samlConfigColumns+` FROM org_saml_configs WHERE org_id = $1::uuid`,
 		orgID,
-	).Scan(&c.OrgID, &c.EntityID, &c.ACSURL, &c.IDPMetadata, &c.CertPEM, &keyEnc, &c.Enabled)
+	).Scan(&c.OrgID, &c.EntityID, &c.ACSURL, &c.IDPMetadata, &c.CertPEM, &keyEnc, &c.Enabled, &c.JITProvisioning)
 	if err != nil {
 		// pgx returns pgx.ErrNoRows when no row found; treat as unconfigured
 		return nil, nil //nolint:nilerr
@@ -437,10 +438,7 @@ func (h *Handler) SAMLDirectACS(c echo.Context) error {
 	assertion, err := sp.ParseResponse(c.Request(), allowedRequestIDs)
 	if err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("saml_acs: assertion validation failed")
-		return c.JSON(http.StatusUnauthorized, map[string]string{
-			"error": "SAML assertion validation failed",
-			"code":  "AUTH_SAML_INVALID_ASSERTION",
-		})
+		return c.Redirect(http.StatusFound, "/login?error=saml_assertion_invalid")
 	}
 
 	// Extract user attributes from assertion
@@ -451,10 +449,7 @@ func (h *Handler) SAMLDirectACS(c echo.Context) error {
 	name := samlAttr(assertion, "displayName", "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname")
 
 	if email == "" {
-		return c.JSON(http.StatusUnauthorized, map[string]string{
-			"error": "SAML assertion missing email claim",
-			"code":  "AUTH_SAML_MISSING_EMAIL",
-		})
+		return c.Redirect(http.StatusFound, "/login?error=saml_missing_email")
 	}
 
 	deviceHint := c.Request().Header.Get("User-Agent")
@@ -462,13 +457,13 @@ func (h *Handler) SAMLDirectACS(c echo.Context) error {
 		deviceHint = deviceHint[:120]
 	}
 
-	authResp, err := h.service.provisionSAMLUser(c.Request().Context(), orgID, assertion.Subject.NameID.Value, email, name, deviceHint)
+	authResp, err := h.service.provisionSAMLUser(c.Request().Context(), orgID, assertion.Subject.NameID.Value, email, name, deviceHint, cfg.JITProvisioning)
 	if err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Str("email_redacted", logsafe.RedactEmail(email)).Msg("saml_acs: provision user failed")
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "SAML user provisioning failed",
-			"code":  "AUTH_SAML_PROVISION_FAILED",
-		})
+		if err == ErrSAMLUserNotProvisioned {
+			return c.Redirect(http.StatusFound, "/login?error=saml_user_not_provisioned")
+		}
+		return c.Redirect(http.StatusFound, "/login?error=saml_provision_failed")
 	}
 
 	return c.JSON(http.StatusOK, authResp)

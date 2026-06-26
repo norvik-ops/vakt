@@ -19,7 +19,7 @@ describe('AdminHubPage', () => {
     expect(screen.queryByRole('heading', { name: /Administration/i })).toBeNull()
   })
 
-  it('renders the four admin tiles for an admin', () => {
+  it('renders the three admin tiles for an admin', () => {
     useAuthStore.setState({
       user: { id: '1', email: 'a@b.de', display_name: 'Adm', roles: ['admin'] },
       hydrating: false,
@@ -27,7 +27,6 @@ describe('AdminHubPage', () => {
     renderWithProviders(<AdminHubPage />, { initialPath: '/admin' })
     expect(screen.getByRole('heading', { name: /Administration/i })).toBeTruthy()
     expect(screen.getByRole('link', { name: /System-Status/i })).toBeTruthy()
-    expect(screen.getByRole('link', { name: /Mandanten/i })).toBeTruthy()
     expect(screen.getByRole('link', { name: /Sicherheitsereignisse/i })).toBeTruthy()
     expect(screen.getByRole('link', { name: /Audit-Log/i })).toBeTruthy()
   })

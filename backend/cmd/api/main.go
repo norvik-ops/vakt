@@ -108,11 +108,20 @@ type healthResponse struct {
 // healthHandler builds the /health response. db and rdb may be nil when called
 // before the DB/Redis connections are established (early startup).
 func healthHandler(c echo.Context, cfg *config.Config, db *pgxpool.Pool, rdb *redis.Client) error {
+	// sso_enabled: env-var Casdoor OR DB-stored OIDC config (S105-2)
+	ssoEnabled := cfg.CasdoorURL != "" && cfg.CasdoorClientID != ""
+	if !ssoEnabled && db != nil {
+		ctx, cancel := context.WithTimeout(c.Request().Context(), 1*time.Second)
+		defer cancel()
+		if ok, err := admin.NewRepository(db).OIDCEnabledExists(ctx); err == nil {
+			ssoEnabled = ok
+		}
+	}
 	resp := healthResponse{
 		Status:     "ok",
 		Version:    cfg.Version,
 		Demo:       cfg.DemoSeed,
-		SSOEnabled: cfg.CasdoorURL != "" && cfg.CasdoorClientID != "",
+		SSOEnabled: ssoEnabled,
 	}
 
 	// DB component check
@@ -547,6 +556,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisOpt.Addr})
 	adminSvc := admin.NewService(pool, cfg.ModulesEnabled)
 	adminSvc.WithNotifyService(notify.NewService(pool, cfg))
+	adminSvc.WithMasterKey(rawMasterKey)
 	adminHealth := admin.NewHealthHandler(pool, rdb, cfg)
 	adminHandler := admin.NewHandler(adminSvc)
 	// S90-4: wire Redis so permission changes invalidate the module-permission cache.

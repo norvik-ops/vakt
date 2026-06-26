@@ -38,6 +38,10 @@ var ErrCasdoorNotConfigured = errors.New("OIDC: configure CASDOOR_URL env var")
 // accepting IdP. See ADR-0033.
 var ErrEmailNotVerified = errors.New("OIDC: email not verified by identity provider; refusing to link to existing account")
 
+// ErrSAMLUserNotProvisioned is returned when JIT provisioning is disabled and
+// the SAML user has no pre-existing account.
+var ErrSAMLUserNotProvisioned = errors.New("SAML: user not found and JIT provisioning is disabled")
+
 // casdoorTokenResponse is the JSON response from Casdoor's token endpoint.
 type casdoorTokenResponse struct {
 	AccessToken string `json:"access_token"`
@@ -156,7 +160,7 @@ func (s *Service) OIDCLogin(ctx context.Context, cfg *config.Config, provider, c
 	// Step 3: Provision or load user.
 	// emailVerified is sourced from Casdoor's profile. False forbids linking to
 	// existing local accounts (ADR-0033).
-	userID, orgID, roles, err := s.provisionOIDCUser(ctx, profile.Sub, provider, profile.Email, profile.Name, profile.Avatar, profile.EmailVerified)
+	userID, orgID, roles, err := s.provisionOIDCUser(ctx, profile.Sub, provider, profile.Email, profile.Name, profile.Avatar, profile.EmailVerified, true)
 	if err != nil {
 		// S22-3: failed OIDC-Provisionierung wird auch persistiert
 		s.recordLogin(ctx, "", "", profile.Email, deviceHint, "oidc", "oidc_failed")
@@ -223,7 +227,7 @@ func (s *Service) SAMLLogin(ctx context.Context, cfg *config.Config, samlRespons
 
 	// SAML assertions carry an XML-DSig that Casdoor verifies before answering us,
 	// so the email is considered IdP-verified.
-	userID, orgID, roles, err := s.provisionOIDCUser(ctx, samlResp.Sub, "saml", samlResp.Email, samlResp.Name, "", true)
+	userID, orgID, roles, err := s.provisionOIDCUser(ctx, samlResp.Sub, "saml", samlResp.Email, samlResp.Name, "", true, true)
 	if err != nil {
 		// S22-3: failed SAML auch persistieren.
 		s.recordLogin(ctx, "", "", samlResp.Email, deviceHint, "saml", "oidc_failed")
@@ -239,14 +243,14 @@ func (s *Service) SAMLLogin(ctx context.Context, cfg *config.Config, samlRespons
 }
 
 // provisionSAMLUser provisions a user from a direct SAML assertion (S21-1).
-// It reuses provisionOIDCUser with provider="saml" and then issues a token pair.
-func (s *Service) provisionSAMLUser(ctx context.Context, orgID, nameID, email, displayName, deviceHint string) (*AuthResponse, error) {
+// When jitEnabled=false, a missing user causes ErrSAMLUserNotProvisioned.
+func (s *Service) provisionSAMLUser(ctx context.Context, orgID, nameID, email, displayName, deviceHint string, jitEnabled bool) (*AuthResponse, error) {
 	// Direct SAML assertions are signature-verified by saml_direct.go before
 	// this code path is reached, so the email is treated as IdP-verified.
-	userID, resolvedOrgID, roles, err := s.provisionOIDCUser(ctx, nameID, "saml", email, displayName, "", true)
+	userID, resolvedOrgID, roles, err := s.provisionOIDCUser(ctx, nameID, "saml", email, displayName, "", true, jitEnabled)
 	if err != nil {
 		s.recordLogin(ctx, orgID, "", email, deviceHint, "saml_direct", "provision_failed")
-		return nil, fmt.Errorf("saml_direct: provision user: %w", err)
+		return nil, err
 	}
 	authResp, tokErr := s.issueTokenPair(ctx, userID, resolvedOrgID, roles, deviceHint)
 	if tokErr == nil {
@@ -262,7 +266,10 @@ func (s *Service) provisionSAMLUser(ctx context.Context, orgID, nameID, email, d
 // of the email address. When false, the function refuses to link the OIDC
 // subject to a pre-existing local account that happens to share the email —
 // this would otherwise allow a trivial account-takeover (ADR-0033).
-func (s *Service) provisionOIDCUser(ctx context.Context, oidcSubject, provider, email, displayName, avatarURL string, emailVerified bool) (string, string, []string, error) {
+//
+// createIfNotFound controls JIT provisioning: when false, a missing user
+// causes ErrSAMLUserNotProvisioned instead of auto-creating an account.
+func (s *Service) provisionOIDCUser(ctx context.Context, oidcSubject, provider, email, displayName, avatarURL string, emailVerified, createIfNotFound bool) (string, string, []string, error) {
 	// Try to find an existing user by OIDC subject.
 	var userID string
 	err := s.db.QueryRow(ctx,
@@ -292,6 +299,9 @@ func (s *Service) provisionOIDCUser(ctx context.Context, oidcSubject, provider, 
 					log.Warn().Err(updateErr).Str("user_id", userID).Msg("failed to link OIDC subject to existing user")
 				}
 			} else {
+				if !createIfNotFound {
+					return "", "", nil, ErrSAMLUserNotProvisioned
+				}
 				// Truly new user — create account.
 				userID, err = s.createOIDCUser(ctx, oidcSubject, provider, email, displayName, avatarURL)
 				if err != nil {
@@ -299,6 +309,9 @@ func (s *Service) provisionOIDCUser(ctx context.Context, oidcSubject, provider, 
 				}
 			}
 		} else {
+			if !createIfNotFound {
+				return "", "", nil, ErrSAMLUserNotProvisioned
+			}
 			// No email available — create with empty email placeholder.
 			userID, err = s.createOIDCUser(ctx, oidcSubject, provider, email, displayName, avatarURL)
 			if err != nil {

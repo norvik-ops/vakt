@@ -29,6 +29,18 @@ export interface InviteInput {
   role: 'admin' | 'editor' | 'viewer'
 }
 
+export interface CreateUserInput {
+  email: string
+  password: string
+  role: 'Admin' | 'SecurityAnalyst' | 'Viewer' | 'AuditorReadOnly'
+}
+
+export interface CreateUserResult {
+  user_id: string
+  email: string
+  role: string
+}
+
 export interface UpdateRoleInput {
   role: 'admin' | 'editor' | 'viewer'
 }
@@ -97,6 +109,20 @@ export function useCreateInvitation() {
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['team', 'invitations'] })
+    },
+  })
+}
+
+export function useCreateUser() {
+  const qc = useQueryClient()
+  return useMutation<CreateUserResult, Error, CreateUserInput>({
+    mutationFn: (data) =>
+      apiFetch<CreateUserResult>('/admin/users', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['team', 'members'] })
     },
   })
 }

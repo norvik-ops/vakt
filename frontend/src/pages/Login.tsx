@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { Spinner } from '../components/Spinner'
 import { Building2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -74,6 +74,20 @@ export default function Login() {
       setDemoStarting(null)
     }
   }
+
+  const [searchParams] = useSearchParams()
+
+  useEffect(() => {
+    const samlError = searchParams.get('error')
+    if (!samlError) return
+    const msg: Record<string, string> = {
+      saml_assertion_invalid: t('auth.samlAssertionInvalid'),
+      saml_missing_email:     t('auth.samlMissingEmail'),
+      saml_user_not_provisioned: t('auth.samlUserNotProvisioned'),
+      saml_provision_failed:  t('auth.samlProvisionFailed'),
+    }
+    toast(msg[samlError] ?? t('auth.samlLoginFailed'), { variant: 'error', duration: 10000 })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)

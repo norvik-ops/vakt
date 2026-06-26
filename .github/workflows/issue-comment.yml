@@ -5,15 +5,52 @@ on:
     types: [created]
 
 jobs:
-  call-comment:
-    if: github.event.issue.pull_request == null && github.event.comment.user.type != 'Bot'
-    uses: norvik-ops/vakt-internal/.github/workflows/issue-comment.yml@main
-    with:
-      issue_number: ${{ github.event.issue.number }}
-      issue_title: ${{ github.event.issue.title }}
-      issue_body: ${{ github.event.issue.body || '' }}
-      issue_labels: ${{ join(github.event.issue.labels.*.name, ',') }}
-      comment_body: ${{ github.event.comment.body }}
-      comment_author: ${{ github.event.comment.user.login }}
-    secrets:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  triage-comment:
+    runs-on: ubuntu-latest
+    if: github.event.issue.pull_request == null
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - name: Claude Comment Agent
+        uses: actions/github-script@v7
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        with:
+          script: |
+            const comment = context.payload.comment;
+            const issue = context.payload.issue;
+            if (comment.user.type === "Bot" || comment.user.login === "github-actions[bot]") { core.info("Bot skip."); return; }
+            const currentLabels = issue.labels.map(l => l.name);
+            const systemPrompt = [
+              "Du bist der Triage-Agent fuer Vakt, eine selbst gehostete ISMS-Plattform fuer den DACH-Mittelstand.",
+              "Ein User hat auf ein GitHub Issue geantwortet. Analysiere ob die Antwort die fehlenden Informationen liefert.",
+              "Antworte AUSSCHLIESSLICH mit einem JSON-Objekt ohne Markdown:",
+              '{"info_complete":true,"labels_add":[],"labels_remove":[],"comment":"Antwort auf Deutsch oder null"}',
+              "Regeln:",
+              "- info_complete: true wenn die Antwort genuegend Infos liefert",
+              "- labels_add: 'status: confirmed' wenn info_complete",
+              "- labels_remove: 'status: needs-info' wenn info_complete",
+              "- comment: Kurze Bestaetigung wenn info_complete, sonst gezielt nachfragen. null wenn nichts zu sagen."
+            ].join("\n");
+            const res = await fetch("https://api.anthropic.com/v1/messages", {
+              method: "POST",
+              headers: {"Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01"},
+              body: JSON.stringify({model: "claude-haiku-4-5-20251001", max_tokens: 512, system: systemPrompt, messages: [{role: "user", content: "Issue: " + issue.title + "\n\nOriginal:\n" + (issue.body || "") + "\n\nNeuer Kommentar von " + comment.user.login + ":\n" + comment.body + "\n\nLabels: " + currentLabels.join(", ")}]})
+            });
+            const data = await res.json();
+            let result;
+            try {
+              const m = data.content[0].text.trim().match(/\{[\s\S]*\}/);
+              result = JSON.parse(m ? m[0] : data.content[0].text.trim());
+            } catch(e) { core.error("Parse Error: " + data.content[0].text); return; }
+            if (result.labels_add && result.labels_add.length) {
+              await github.rest.issues.addLabels({owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number, labels: result.labels_add});
+            }
+            for (const label of (result.labels_remove || [])) {
+              try { await github.rest.issues.removeLabel({owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number, name: label}); } catch(e) {}
+            }
+            if (result.comment) {
+              await github.rest.issues.createComment({owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number, body: result.comment + "\n\n_\u2014 Vakt Team_"});
+            }
+

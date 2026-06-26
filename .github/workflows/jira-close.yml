@@ -1,0 +1,45 @@
+name: Jira Issue Closed
+
+on:
+  repository_dispatch:
+    types: [jira-closed]
+
+jobs:
+  close-github-issue:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - name: Close GitHub Issue
+        uses: actions/github-script@v7
+        env:
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+        with:
+          script: |
+            const payload = context.payload.client_payload;
+            const jiraKey = payload.jira_key;
+            if (!jiraKey) { core.error("Kein jira_key"); return; }
+            core.info("Jira erledigt: " + jiraKey);
+            const jiraRes = await fetch("https://norvikops.atlassian.net/rest/api/3/issue/" + jiraKey + "?fields=description,summary,fixVersions", {
+              headers: {"Authorization": "Basic " + Buffer.from(process.env.JIRA_EMAIL + ":" + process.env.JIRA_API_TOKEN).toString("base64"), "Accept": "application/json"}
+            });
+            const jiraData = await jiraRes.json();
+            core.info("Jira: " + JSON.stringify(jiraData.fields));
+            let githubIssueNumber = null;
+            try {
+              const descStr = JSON.stringify(jiraData.fields.description || {});
+              const match = descStr.match(/GitHub #(\d+)/);
+              if (match) { githubIssueNumber = parseInt(match[1]); core.info("GitHub Issue: #" + githubIssueNumber); }
+              else { core.warning("Kein GitHub Issue in Beschreibung: " + descStr.substring(0, 200)); }
+            } catch(e) { core.warning("Parse-Fehler: " + e.message); }
+            if (!githubIssueNumber) return;
+            const fixVersion = jiraData.fields.fixVersions && jiraData.fields.fixVersions.length > 0 ? jiraData.fields.fixVersions[0].name : null;
+            const commentBody = fixVersion
+              ? "Dieser Bug wurde behoben und ist in **" + fixVersion + "** enthalten. Bitte aktualisiere deine Vakt-Installation und melde dich, falls das Problem weiterhin besteht.\n\n_\u2014 Vakt Team_"
+              : "Dieser Bug wurde behoben und wird mit dem naechsten Release ausgerollt. Bitte aktualisiere deine Vakt-Installation sobald das Update verfuegbar ist und melde dich, falls das Problem danach weiterhin auftreten sollte.\n\n_\u2014 Vakt Team_";
+            await github.rest.issues.createComment({owner: context.repo.owner, repo: context.repo.repo, issue_number: githubIssueNumber, body: commentBody});
+            await github.rest.issues.update({owner: context.repo.owner, repo: context.repo.repo, issue_number: githubIssueNumber, state: "closed", state_reason: "completed"});
+            core.info("Issue #" + githubIssueNumber + " geschlossen.");
+

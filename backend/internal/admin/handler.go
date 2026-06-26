@@ -144,6 +144,49 @@ func (h *Handler) InviteUser(c echo.Context) error {
 	})
 }
 
+// CreateUser handles POST /api/v1/admin/users.
+// Creates a user directly (no email invite, no SMTP required). The user is
+// immediately active. Admin sees the initial password; it cannot be retrieved again.
+func (h *Handler) CreateUser(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	creatorID, _ := c.Get("user_id").(string)
+
+	var input CreateUserInput
+	if err := c.Bind(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid request body",
+			"code":  "ADMIN_BAD_REQUEST",
+		})
+	}
+	if err := h.validate.Struct(input); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
+			"error": err.Error(),
+			"code":  "ADMIN_VALIDATION_ERROR",
+		})
+	}
+
+	result, err := h.service.CreateUser(c.Request().Context(), orgID, creatorID, input)
+	if err != nil {
+		if err.Error() == "create user: email already exists" {
+			return c.JSON(http.StatusConflict, map[string]string{
+				"error": "email already in use",
+				"code":  "ADMIN_USER_EXISTS",
+			})
+		}
+		log.Error().Err(err).Str("org_id", orgID).Str("email_redacted", logsafe.RedactEmail(input.Email)).Msg("create user failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to create user",
+			"code":  "ADMIN_CREATE_USER_ERROR",
+		})
+	}
+
+	return c.JSON(http.StatusCreated, map[string]any{
+		"user_id": result.UserID,
+		"email":   input.Email,
+		"role":    input.Role,
+	})
+}
+
 // UpdateUserRole handles PATCH /api/v1/admin/users/:id/role.
 func (h *Handler) UpdateUserRole(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
@@ -461,12 +504,13 @@ func (h *Handler) UpdateOrgMFASensitive(c echo.Context) error {
 
 // GetOrgSAMLConfigResponse is the public view of OrgSAMLConfig (key PEM omitted).
 type GetOrgSAMLConfigResponse struct {
-	OrgID       string `json:"org_id"`
-	EntityID    string `json:"entity_id"`
-	ACSURL      string `json:"acs_url"`
-	IDPMetadata string `json:"idp_metadata"`
-	CertPEM     string `json:"cert_pem"` // public cert only — private key never returned
-	Enabled     bool   `json:"enabled"`
+	OrgID           string `json:"org_id"`
+	EntityID        string `json:"entity_id"`
+	ACSURL          string `json:"acs_url"`
+	IDPMetadata     string `json:"idp_metadata"`
+	CertPEM         string `json:"cert_pem"` // public cert only — private key never returned
+	Enabled         bool   `json:"enabled"`
+	JITProvisioning bool   `json:"jit_provisioning"`
 }
 
 // GetOrgSAMLConfig handles GET /api/v1/admin/org/saml-config.
@@ -481,24 +525,26 @@ func (h *Handler) GetOrgSAMLConfig(c echo.Context) error {
 		})
 	}
 	if cfg == nil {
-		return c.JSON(http.StatusOK, GetOrgSAMLConfigResponse{OrgID: orgID, Enabled: false})
+		return c.JSON(http.StatusOK, GetOrgSAMLConfigResponse{OrgID: orgID, Enabled: false, JITProvisioning: true})
 	}
 	return c.JSON(http.StatusOK, GetOrgSAMLConfigResponse{
-		OrgID:       cfg.OrgID,
-		EntityID:    cfg.EntityID,
-		ACSURL:      cfg.ACSURL,
-		IDPMetadata: cfg.IDPMetadata,
-		CertPEM:     cfg.CertPEM,
-		Enabled:     cfg.Enabled,
+		OrgID:           cfg.OrgID,
+		EntityID:        cfg.EntityID,
+		ACSURL:          cfg.ACSURL,
+		IDPMetadata:     cfg.IDPMetadata,
+		CertPEM:         cfg.CertPEM,
+		Enabled:         cfg.Enabled,
+		JITProvisioning: cfg.JITProvisioning,
 	})
 }
 
 // UpdateOrgSAMLConfigInput is the request body for PUT /api/v1/admin/org/saml-config.
 type UpdateOrgSAMLConfigInput struct {
-	EntityID    string `json:"entity_id"    validate:"required,url"`
-	ACSURL      string `json:"acs_url"      validate:"required,url"`
-	IDPMetadata string `json:"idp_metadata" validate:"required"`
-	Enabled     bool   `json:"enabled"`
+	EntityID        string `json:"entity_id"        validate:"required,url"`
+	ACSURL          string `json:"acs_url"          validate:"required,url"`
+	IDPMetadata     string `json:"idp_metadata"     validate:"required"`
+	Enabled         bool   `json:"enabled"`
+	JITProvisioning bool   `json:"jit_provisioning"`
 }
 
 // UpdateOrgSAMLConfig handles PUT /api/v1/admin/org/saml-config.
@@ -512,7 +558,7 @@ func (h *Handler) UpdateOrgSAMLConfig(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": err.Error(), "code": "ADMIN_VALIDATION_ERROR"})
 	}
-	if err := h.service.repo.UpsertOrgSAMLConfig(c.Request().Context(), orgID, in.EntityID, in.ACSURL, in.IDPMetadata, in.Enabled); err != nil {
+	if err := h.service.repo.UpsertOrgSAMLConfig(c.Request().Context(), orgID, in.EntityID, in.ACSURL, in.IDPMetadata, in.Enabled, in.JITProvisioning); err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Msg("update org saml config failed")
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to update SAML config", "code": "ADMIN_SAML_ERROR"})
 	}
@@ -629,4 +675,97 @@ func (h *Handler) RevokeSCIMToken(c echo.Context) error {
 		})
 	}
 	return c.JSON(http.StatusOK, map[string]string{"status": "revoked"})
+}
+
+// ─── S105-2: OIDC/Casdoor Config ─────────────────────────────────────────────
+
+// GetOrgOIDCConfig handles GET /api/v1/admin/org/oidc-config.
+func (h *Handler) GetOrgOIDCConfig(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	cfg, err := h.service.GetOIDCConfig(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("get oidc config failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to retrieve OIDC config",
+			"code":  "ADMIN_OIDC_ERROR",
+		})
+	}
+	if cfg == nil {
+		return c.JSON(http.StatusOK, map[string]any{"configured": false})
+	}
+	return c.JSON(http.StatusOK, map[string]any{
+		"configured":   true,
+		"provider_url": cfg.ProviderURL,
+		"client_id":    cfg.ClientID,
+		"enabled":      cfg.Enabled,
+		"updated_at":   cfg.UpdatedAt,
+	})
+}
+
+// UpdateOrgOIDCConfigInput is the request body for PUT /api/v1/admin/org/oidc-config.
+type UpdateOrgOIDCConfigInput struct {
+	ProviderURL  string `json:"provider_url"  validate:"required,url"`
+	ClientID     string `json:"client_id"     validate:"required"`
+	ClientSecret string `json:"client_secret" validate:"required"`
+	Enabled      bool   `json:"enabled"`
+}
+
+// UpdateOrgOIDCConfig handles PUT /api/v1/admin/org/oidc-config.
+func (h *Handler) UpdateOrgOIDCConfig(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	var in UpdateOrgOIDCConfigInput
+	if err := c.Bind(&in); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid input", "code": "ADMIN_BAD_REQUEST"})
+	}
+	if err := h.validate.Struct(in); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": err.Error(), "code": "ADMIN_VALIDATION_ERROR"})
+	}
+	if err := h.service.UpsertOIDCConfig(c.Request().Context(), orgID, OIDCConfigInput{
+		ProviderURL:  in.ProviderURL,
+		ClientID:     in.ClientID,
+		ClientSecret: in.ClientSecret,
+		Enabled:      in.Enabled,
+	}); err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("update oidc config failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to update OIDC config", "code": "ADMIN_OIDC_ERROR"})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// DeleteOrgOIDCConfig handles DELETE /api/v1/admin/org/oidc-config (disables, doesn't delete).
+func (h *Handler) DeleteOrgOIDCConfig(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	if err := h.service.DisableOIDCConfig(c.Request().Context(), orgID); err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("disable oidc config failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to disable OIDC config", "code": "ADMIN_OIDC_ERROR"})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "disabled"})
+}
+
+// ─── S105-3: SAML Metadata URL fetch ─────────────────────────────────────────
+
+// FetchSAMLMetadataInput is the request body for POST /admin/org/saml-config/fetch-metadata.
+type FetchSAMLMetadataInput struct {
+	URL string `json:"url" validate:"required,url"`
+}
+
+// FetchSAMLMetadata handles POST /api/v1/admin/org/saml-config/fetch-metadata.
+// Fetches IdP metadata XML from a URL (max 512 KB, 10s timeout).
+func (h *Handler) FetchSAMLMetadata(c echo.Context) error {
+	var in FetchSAMLMetadataInput
+	if err := c.Bind(&in); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid input", "code": "ADMIN_BAD_REQUEST"})
+	}
+	if err := h.validate.Struct(in); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": err.Error(), "code": "ADMIN_VALIDATION_ERROR"})
+	}
+
+	xml, err := fetchMetadataFromURL(c.Request().Context(), in.URL)
+	if err != nil {
+		return c.JSON(http.StatusBadGateway, map[string]string{
+			"error": err.Error(),
+			"code":  "ADMIN_SAML_FETCH_ERROR",
+		})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"metadata": xml})
 }

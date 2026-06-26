@@ -289,12 +289,13 @@ func (r *Repository) RevokeSCIMToken(ctx context.Context, orgID, tokenID string)
 
 // OrgSAMLConfigPublic is the DB record for org_saml_configs without the private key.
 type OrgSAMLConfigPublic struct {
-	OrgID       string
-	EntityID    string
-	ACSURL      string
-	IDPMetadata string
-	CertPEM     string
-	Enabled     bool
+	OrgID            string
+	EntityID         string
+	ACSURL           string
+	IDPMetadata      string
+	CertPEM          string
+	Enabled          bool
+	JITProvisioning  bool
 }
 
 // GetOrgSAMLConfigPublic returns the SAML config for an org (no key PEM).
@@ -302,18 +303,18 @@ type OrgSAMLConfigPublic struct {
 func (r *Repository) GetOrgSAMLConfigPublic(ctx context.Context, orgID string) (*OrgSAMLConfigPublic, error) {
 	var c OrgSAMLConfigPublic
 	err := r.db.QueryRow(ctx,
-		`SELECT org_id::text, entity_id, acs_url, idp_metadata, cert_pem, enabled
+		`SELECT org_id::text, entity_id, acs_url, idp_metadata, cert_pem, enabled, jit_provisioning
 		 FROM org_saml_configs WHERE org_id = $1::uuid`, orgID,
-	).Scan(&c.OrgID, &c.EntityID, &c.ACSURL, &c.IDPMetadata, &c.CertPEM, &c.Enabled)
+	).Scan(&c.OrgID, &c.EntityID, &c.ACSURL, &c.IDPMetadata, &c.CertPEM, &c.Enabled, &c.JITProvisioning)
 	if err != nil {
 		return nil, nil //nolint:nilerr
 	}
 	return &c, nil
 }
 
-// UpsertOrgSAMLConfig writes entity_id, acs_url, idp_metadata, enabled.
+// UpsertOrgSAMLConfig writes entity_id, acs_url, idp_metadata, enabled, jit_provisioning.
 // If no cert/key row exists yet, a new self-signed cert is generated and stored.
-func (r *Repository) UpsertOrgSAMLConfig(ctx context.Context, orgID, entityID, acsURL, idpMetadata string, enabled bool) error {
+func (r *Repository) UpsertOrgSAMLConfig(ctx context.Context, orgID, entityID, acsURL, idpMetadata string, enabled, jitProvisioning bool) error {
 	// Check if cert already exists
 	var existingCert, existingKey []byte
 	_ = r.db.QueryRow(ctx,
@@ -331,17 +332,18 @@ func (r *Repository) UpsertOrgSAMLConfig(ctx context.Context, orgID, entityID, a
 	}
 
 	_, err := r.db.Exec(ctx, `
-		INSERT INTO org_saml_configs (org_id, entity_id, acs_url, idp_metadata, cert_pem, key_pem, enabled, updated_at)
-		VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, NOW())
+		INSERT INTO org_saml_configs (org_id, entity_id, acs_url, idp_metadata, cert_pem, key_pem, enabled, jit_provisioning, updated_at)
+		VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, NOW())
 		ON CONFLICT (org_id) DO UPDATE SET
-			entity_id    = EXCLUDED.entity_id,
-			acs_url      = EXCLUDED.acs_url,
-			idp_metadata = EXCLUDED.idp_metadata,
-			cert_pem     = EXCLUDED.cert_pem,
-			key_pem      = EXCLUDED.key_pem,
-			enabled      = EXCLUDED.enabled,
-			updated_at   = NOW()`,
-		orgID, entityID, acsURL, idpMetadata, certPEM, []byte(keyPEM), enabled,
+			entity_id        = EXCLUDED.entity_id,
+			acs_url          = EXCLUDED.acs_url,
+			idp_metadata     = EXCLUDED.idp_metadata,
+			cert_pem         = EXCLUDED.cert_pem,
+			key_pem          = EXCLUDED.key_pem,
+			enabled          = EXCLUDED.enabled,
+			jit_provisioning = EXCLUDED.jit_provisioning,
+			updated_at       = NOW()`,
+		orgID, entityID, acsURL, idpMetadata, certPEM, []byte(keyPEM), enabled, jitProvisioning,
 	)
 	return err
 }
@@ -359,4 +361,65 @@ func (r *Repository) RegenerateSAMLCert(ctx context.Context, orgID string) (stri
 		orgID, certPEM, []byte(keyPEM),
 	)
 	return certPEM, err
+}
+
+// ─── S105-2: OIDC/Casdoor Config ─────────────────────────────────────────────
+
+// OrgOIDCConfig is the public view of org_oidc_configs (secret never returned).
+type OrgOIDCConfig struct {
+	OrgID       string    `json:"org_id"`
+	ProviderURL string    `json:"provider_url"`
+	ClientID    string    `json:"client_id"`
+	Enabled     bool      `json:"enabled"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// GetOrgOIDCConfig returns the OIDC config for an org. Returns nil, nil when absent.
+func (r *Repository) GetOrgOIDCConfig(ctx context.Context, orgID string) (*OrgOIDCConfig, error) {
+	var c OrgOIDCConfig
+	err := r.db.QueryRow(ctx,
+		`SELECT org_id::text, provider_url, client_id, enabled, created_at, updated_at
+		 FROM org_oidc_configs WHERE org_id = $1::uuid`, orgID,
+	).Scan(&c.OrgID, &c.ProviderURL, &c.ClientID, &c.Enabled, &c.CreatedAt, &c.UpdatedAt)
+	if err != nil {
+		return nil, nil //nolint:nilerr
+	}
+	return &c, nil
+}
+
+// UpsertOrgOIDCConfig writes or updates the OIDC configuration for an org.
+// clientSecretEnc must already be AES-256-GCM encrypted.
+func (r *Repository) UpsertOrgOIDCConfig(ctx context.Context, orgID, providerURL, clientID string, clientSecretEnc []byte, enabled bool) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO org_oidc_configs (org_id, provider_url, client_id, client_secret_enc, enabled, updated_at)
+		VALUES ($1::uuid, $2, $3, $4, $5, NOW())
+		ON CONFLICT (org_id) DO UPDATE SET
+			provider_url        = EXCLUDED.provider_url,
+			client_id           = EXCLUDED.client_id,
+			client_secret_enc   = EXCLUDED.client_secret_enc,
+			enabled             = EXCLUDED.enabled,
+			updated_at          = NOW()`,
+		orgID, providerURL, clientID, clientSecretEnc, enabled,
+	)
+	return err
+}
+
+// DisableOrgOIDCConfig sets enabled=false for an org's OIDC config.
+func (r *Repository) DisableOrgOIDCConfig(ctx context.Context, orgID string) error {
+	_, err := r.db.Exec(ctx,
+		`UPDATE org_oidc_configs SET enabled = FALSE, updated_at = NOW() WHERE org_id = $1::uuid`,
+		orgID,
+	)
+	return err
+}
+
+// OIDCEnabledExists returns true when any org has an active OIDC config in the DB.
+// Used by the /health endpoint to determine sso_enabled at runtime.
+func (r *Repository) OIDCEnabledExists(ctx context.Context) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM org_oidc_configs WHERE enabled = TRUE)`,
+	).Scan(&exists)
+	return exists, err
 }

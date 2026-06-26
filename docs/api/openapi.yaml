@@ -6772,6 +6772,202 @@ paths:
         '429':
           description: Rate limit exceeded
 
+  # ── S105: Auth & User Provisioning ──────────────────────────────────────────
+
+  /admin/users:
+    post:
+      summary: Create a user directly (no SMTP required)
+      operationId: createUser
+      description: Creates an active user in the org without an email invitation. CE feature — no feature gate.
+      tags: [admin]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, role]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 10 }
+                role:
+                  type: string
+                  enum: [Admin, SecurityAnalyst, Viewer, AuditorReadOnly]
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user_id, email, role]
+                properties:
+                  user_id: { type: string, format: uuid }
+                  email: { type: string }
+                  role: { type: string }
+        '401':
+          description: Unauthorized
+        '409':
+          description: Email already in use
+        '422':
+          description: Validation error
+
+  /admin/org/saml-config:
+    get:
+      summary: Get SAML SP configuration
+      operationId: getOrgSAMLConfig
+      tags: [admin]
+      x-pro-feature: true
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: SAML configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  org_id: { type: string }
+                  entity_id: { type: string }
+                  acs_url: { type: string }
+                  idp_metadata: { type: string }
+                  cert_pem: { type: string }
+                  enabled: { type: boolean }
+                  jit_provisioning: { type: boolean }
+        '401':
+          description: Unauthorized
+        '402':
+          description: Feature not available on this plan
+    put:
+      summary: Update SAML SP configuration
+      operationId: updateOrgSAMLConfig
+      tags: [admin]
+      x-pro-feature: true
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entity_id, acs_url, idp_metadata]
+              properties:
+                entity_id: { type: string, format: uri }
+                acs_url: { type: string, format: uri }
+                idp_metadata: { type: string }
+                enabled: { type: boolean }
+                jit_provisioning: { type: boolean }
+      responses:
+        '200':
+          description: Updated
+        '401':
+          description: Unauthorized
+        '402':
+          description: Feature not available on this plan
+
+  /admin/org/saml-config/fetch-metadata:
+    post:
+      summary: Fetch IdP metadata XML from a URL
+      operationId: fetchSAMLMetadata
+      tags: [admin]
+      x-pro-feature: true
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: { type: string, format: uri }
+      responses:
+        '200':
+          description: Metadata XML
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  metadata: { type: string }
+        '401':
+          description: Unauthorized
+        '402':
+          description: Feature not available on this plan
+        '502':
+          description: Failed to fetch metadata
+
+  /admin/org/oidc-config:
+    get:
+      summary: Get OIDC/Casdoor configuration
+      operationId: getOrgOIDCConfig
+      tags: [admin]
+      x-pro-feature: true
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: OIDC configuration (client_secret not included)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  configured: { type: boolean }
+                  provider_url: { type: string }
+                  client_id: { type: string }
+                  enabled: { type: boolean }
+                  updated_at: { type: string, format: date-time }
+        '401':
+          description: Unauthorized
+        '402':
+          description: Feature not available on this plan
+    put:
+      summary: Update OIDC/Casdoor configuration
+      operationId: updateOrgOIDCConfig
+      tags: [admin]
+      x-pro-feature: true
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider_url, client_id, client_secret]
+              properties:
+                provider_url: { type: string, format: uri }
+                client_id: { type: string }
+                client_secret: { type: string }
+                enabled: { type: boolean }
+      responses:
+        '200':
+          description: Updated
+        '401':
+          description: Unauthorized
+        '402':
+          description: Feature not available on this plan
+    delete:
+      summary: Disable OIDC configuration
+      operationId: disableOrgOIDCConfig
+      tags: [admin]
+      x-pro-feature: true
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Disabled
+        '401':
+          description: Unauthorized
+        '402':
+          description: Feature not available on this plan
+
   /admin/client-errors:
     get:
       summary: List recent frontend errors (Admin only)

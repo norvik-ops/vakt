@@ -2,11 +2,15 @@ package admin
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/crypto/bcrypt"
 
+	"github.com/matharnica/vakt/internal/shared/crypto"
 	"github.com/matharnica/vakt/internal/shared/notify"
 )
 
@@ -40,6 +44,26 @@ type InviteInput struct {
 	Role  string `json:"role"  validate:"required,oneof=Admin SecurityAnalyst Viewer AuditorReadOnly"`
 }
 
+// CreateUserInput is the request body for POST /admin/users (direct creation, no SMTP needed).
+type CreateUserInput struct {
+	Email    string `json:"email"    validate:"required,email"`
+	Password string `json:"password" validate:"required,min=10"`
+	Role     string `json:"role"     validate:"required,oneof=Admin SecurityAnalyst Viewer AuditorReadOnly"`
+}
+
+// CreateUserResult carries the new user's ID and the one-time plaintext password.
+type CreateUserResult struct {
+	UserID string `json:"user_id"`
+}
+
+// OIDCConfigInput is the request body for PUT /admin/org/oidc-config.
+type OIDCConfigInput struct {
+	ProviderURL  string `json:"provider_url"  validate:"required,url"`
+	ClientID     string `json:"client_id"     validate:"required"`
+	ClientSecret string `json:"client_secret" validate:"required"`
+	Enabled      bool   `json:"enabled"`
+}
+
 // RoleUpdateInput is the request body for PATCH /admin/users/:id/role.
 type RoleUpdateInput struct {
 	Role string `json:"role" validate:"required,oneof=Admin SecurityAnalyst Viewer AuditorReadOnly"`
@@ -57,6 +81,7 @@ type Service struct {
 	repo           *Repository
 	modulesEnabled string
 	notifySvc      *notify.Service
+	masterKey      []byte
 }
 
 // NewService constructs an admin Service.
@@ -66,6 +91,12 @@ func NewService(db *pgxpool.Pool, modulesEnabled string) *Service {
 		repo:           NewRepository(db),
 		modulesEnabled: modulesEnabled,
 	}
+}
+
+// WithMasterKey attaches the encryption master key to the Service (for OIDC secret encryption).
+func (s *Service) WithMasterKey(key []byte) *Service {
+	s.masterKey = key
+	return s
 }
 
 // WithNotifyService attaches a notify.Service to the admin Service for channel management.
@@ -266,6 +297,87 @@ func (s *Service) UpdateUserRole(ctx context.Context, orgID, targetUserID string
 		return fmt.Errorf("user not found in org")
 	}
 	return nil
+}
+
+// CreateUser directly creates an active user in the org without requiring SMTP.
+// The caller receives the userID; password is already supplied by the admin.
+func (s *Service) CreateUser(ctx context.Context, orgID, createdByID string, input CreateUserInput) (*CreateUserResult, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), 12)
+	if err != nil {
+		return nil, fmt.Errorf("create user: hash password: %w", err)
+	}
+
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("create user: begin tx: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback(ctx)
+		}
+	}()
+
+	var userID string
+	err = tx.QueryRow(ctx, `
+		INSERT INTO users (email, password_hash, is_active)
+		VALUES ($1, $2, TRUE)
+		RETURNING id::text`,
+		input.Email, string(hash),
+	).Scan(&userID)
+	if err != nil {
+		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
+			return nil, fmt.Errorf("create user: email already exists")
+		}
+		return nil, fmt.Errorf("create user: insert user: %w", err)
+	}
+
+	var roleID string
+	err = tx.QueryRow(ctx, `SELECT id::text FROM roles WHERE name = $1`, input.Role).Scan(&roleID)
+	if err != nil {
+		return nil, fmt.Errorf("create user: lookup role %q: %w", input.Role, err)
+	}
+
+	var inviterID *string
+	if createdByID != "" {
+		inviterID = &createdByID
+	}
+	_, err = tx.Exec(ctx, `
+		INSERT INTO org_members (org_id, user_id, role_id, invited_by)
+		VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid)
+		ON CONFLICT (org_id, user_id) DO NOTHING`,
+		orgID, userID, roleID, inviterID)
+	if err != nil {
+		return nil, fmt.Errorf("create user: insert org member: %w", err)
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("create user: commit: %w", err)
+	}
+	return &CreateUserResult{UserID: userID}, nil
+}
+
+// GetOIDCConfig returns the OIDC config for the org (secret not included).
+func (s *Service) GetOIDCConfig(ctx context.Context, orgID string) (*OrgOIDCConfig, error) {
+	return s.repo.GetOrgOIDCConfig(ctx, orgID)
+}
+
+// UpsertOIDCConfig stores or updates the OIDC configuration.
+// The client_secret is encrypted before storage.
+func (s *Service) UpsertOIDCConfig(ctx context.Context, orgID string, input OIDCConfigInput) error {
+	if len(s.masterKey) == 0 {
+		return fmt.Errorf("oidc config: VAKT_SECRET_KEY not configured; refusing to store client_secret without encryption")
+	}
+	ct, err := crypto.Encrypt(s.masterKey, []byte(input.ClientSecret))
+	if err != nil {
+		return fmt.Errorf("oidc config: encrypt secret: %w", err)
+	}
+	secretEnc := []byte("enc:v1:" + base64.URLEncoding.EncodeToString(ct))
+	return s.repo.UpsertOrgOIDCConfig(ctx, orgID, input.ProviderURL, input.ClientID, secretEnc, input.Enabled)
+}
+
+// DisableOIDCConfig disables OIDC for the org without deleting the config.
+func (s *Service) DisableOIDCConfig(ctx context.Context, orgID string) error {
+	return s.repo.DisableOrgOIDCConfig(ctx, orgID)
 }
 
 // ListModules returns the enabled/disabled state for each known module.

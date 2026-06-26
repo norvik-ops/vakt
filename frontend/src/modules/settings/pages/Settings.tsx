@@ -1262,6 +1262,15 @@ interface OrgSAMLConfig {
   idp_metadata: string
   cert_pem: string
   enabled: boolean
+  jit_provisioning: boolean
+}
+
+interface OrgOIDCConfig {
+  configured: boolean
+  provider_url?: string
+  client_id?: string
+  enabled?: boolean
+  updated_at?: string
 }
 
 function useOrgSAMLConfig() {
@@ -1292,32 +1301,81 @@ function useRegenerateSAMLCert() {
   })
 }
 
+function useFetchSAMLMetadata() {
+  return useMutation<{ metadata: string }, Error, { url: string }>({
+    mutationFn: (data) =>
+      apiFetch<{ metadata: string }>('/admin/org/saml-config/fetch-metadata', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  })
+}
+
+function useOrgOIDCConfig() {
+  return useQuery<OrgOIDCConfig>({
+    queryKey: ['org-oidc-config'],
+    queryFn: () => apiFetch<OrgOIDCConfig>('/admin/org/oidc-config'),
+  })
+}
+
+function useUpdateOIDCConfig() {
+  const qc = useQueryClient()
+  return useMutation<undefined, Error, { provider_url: string; client_id: string; client_secret: string; enabled: boolean }>({
+    mutationFn: (data) =>
+      apiFetch<undefined>('/admin/org/oidc-config', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['org-oidc-config'] }),
+  })
+}
+
+function useDisableOIDCConfig() {
+  const qc = useQueryClient()
+  return useMutation<undefined>({
+    mutationFn: () => apiFetch<undefined>('/admin/org/oidc-config', { method: 'DELETE' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['org-oidc-config'] }),
+  })
+}
+
 function SAMLSetupSection() {
-  const { data, isLoading } = useOrgSAMLConfig()
+  const { data, isLoading, error } = useOrgSAMLConfig()
   const update = useUpdateSAMLConfig()
   const regen = useRegenerateSAMLCert()
+  const fetchMeta = useFetchSAMLMetadata()
 
   const [entityID, setEntityID] = useState('')
   const [acsURL, setACSURL] = useState('')
   const [idpMeta, setIdpMeta] = useState('')
+  const [idpMetaURL, setIdpMetaURL] = useState('')
   const [enabled, setEnabled] = useState(false)
+  const [jitProvisioning, setJitProvisioning] = useState(true)
   const [saved, setSaved] = useState(false)
   const [regenDone, setRegenDone] = useState(false)
 
   useEffect(() => {
     if (data) {
-      setEntityID(data.entity_id)
-      setACSURL(data.acs_url)
-      setIdpMeta(data.idp_metadata)
-      setEnabled(data.enabled)
+      setEntityID(data.entity_id ?? '')
+      setACSURL(data.acs_url ?? '')
+      setIdpMeta(data.idp_metadata ?? '')
+      setEnabled(data.enabled ?? false)
+      setJitProvisioning(data.jit_provisioning ?? true)
     }
   }, [data])
 
   const handleSave = () => {
     update.mutate(
-      { entity_id: entityID, acs_url: acsURL, idp_metadata: idpMeta, enabled },
+      { entity_id: entityID, acs_url: acsURL, idp_metadata: idpMeta, enabled, jit_provisioning: jitProvisioning },
       { onSuccess: () => { setSaved(true); setTimeout(() => { setSaved(false); }, 2000) } },
     )
+  }
+
+  const handleFetchMetadata = () => {
+    if (!idpMetaURL) return
+    fetchMeta.mutate({ url: idpMetaURL }, {
+      onSuccess: (res) => { setIdpMeta(res.metadata); setIdpMetaURL('') },
+      onError: (err) => { alert(err.message) },
+    })
   }
 
   const handleRegen = () => {
@@ -1331,7 +1389,9 @@ function SAMLSetupSection() {
 
   return (
     <SectionCard title="SAML 2.0 (Single Sign-On)" icon={Shield}>
-      {isLoading ? (
+      {error instanceof FeatureLockedError ? (
+        <ProGate error={error}>{''}</ProGate>
+      ) : isLoading ? (
         <Spinner size="sm" />
       ) : (
         <div className="space-y-4">
@@ -1375,6 +1435,23 @@ function SAMLSetupSection() {
 
           <div className="space-y-1.5">
             <Label className="text-xs">IdP Metadata XML</Label>
+            <div className="flex gap-2">
+              <Input
+                value={idpMetaURL}
+                onChange={(e) => { setIdpMetaURL(e.target.value); }}
+                placeholder="https://login.microsoftonline.com/.../federationmetadata.xml"
+                className="h-8 text-sm font-mono flex-1"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleFetchMetadata}
+                disabled={!idpMetaURL || fetchMeta.isPending}
+                className="h-8 text-xs shrink-0"
+              >
+                {fetchMeta.isPending ? <Spinner size="sm" /> : 'URL laden'}
+              </Button>
+            </div>
             <textarea
               value={idpMeta}
               onChange={(e) => { setIdpMeta(e.target.value); }}
@@ -1382,8 +1459,13 @@ function SAMLSetupSection() {
               className="w-full h-28 rounded-md border border-input bg-transparent px-3 py-2 text-xs font-mono resize-y focus:outline-none focus:ring-1 focus:ring-ring"
             />
             <p className="text-[11px] text-secondary">
-              Aus dem IdP herunterladen (AzureAD: Enterprise-App → SAML → Federation Metadata XML).
+              Aus dem IdP herunterladen oder URL oben eintragen (AzureAD: Enterprise-App → SAML → Federation Metadata XML).
             </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Switch checked={jitProvisioning} onCheckedChange={setJitProvisioning} id="saml-jit" />
+            <Label htmlFor="saml-jit" className="text-xs">Neue Nutzer bei SAML-Login automatisch anlegen (JIT-Provisioning)</Label>
           </div>
 
           {data?.cert_pem && (
@@ -1416,6 +1498,109 @@ function SAMLSetupSection() {
               'Speichern'
             )}
           </Button>
+          {update.isError && <p className="text-xs text-destructive">{update.error.message}</p>}
+        </div>
+      )}
+    </SectionCard>
+  )
+}
+
+// ─── S105-2: OIDC/Casdoor Config ──────────────────────────────────────────────
+
+function OIDCConfigSection() {
+  const { data, isLoading, error } = useOrgOIDCConfig()
+  const update = useUpdateOIDCConfig()
+  const disable = useDisableOIDCConfig()
+
+  const [providerURL, setProviderURL] = useState('')
+  const [clientID, setClientID] = useState('')
+  const [clientSecret, setClientSecret] = useState('')
+  const [enabled, setEnabled] = useState(true)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    if (data?.configured) {
+      setProviderURL(data.provider_url ?? '')
+      setClientID(data.client_id ?? '')
+      setEnabled(data.enabled ?? true)
+    }
+  }, [data])
+
+  const handleSave = () => {
+    update.mutate(
+      { provider_url: providerURL, client_id: clientID, client_secret: clientSecret, enabled },
+      { onSuccess: () => { setSaved(true); setClientSecret(''); setTimeout(() => { setSaved(false); }, 2000) } },
+    )
+  }
+
+  return (
+    <SectionCard title="SSO / OIDC (Casdoor)" icon={Shield}>
+      {error instanceof FeatureLockedError ? (
+        <ProGate error={error}>{''}</ProGate>
+      ) : isLoading ? (
+        <Spinner size="sm" />
+      ) : (
+        <div className="space-y-4">
+          <p className="text-xs text-secondary">
+            OIDC-Konfiguration überschreibt die Env-Vars <code>CASDOOR_URL</code> / <code>CASDOOR_CLIENT_ID</code> / <code>CASDOOR_CLIENT_SECRET</code>.
+          </p>
+
+          <div className="flex items-center gap-2">
+            <Switch checked={enabled} onCheckedChange={setEnabled} id="oidc-enabled" />
+            <Label htmlFor="oidc-enabled" className="text-xs">OIDC aktiviert</Label>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Provider URL</Label>
+            <Input
+              value={providerURL}
+              onChange={(e) => { setProviderURL(e.target.value); }}
+              placeholder="https://casdoor.company.com"
+              className="h-8 text-sm font-mono"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Client ID</Label>
+            <Input
+              value={clientID}
+              onChange={(e) => { setClientID(e.target.value); }}
+              className="h-8 text-sm font-mono"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Client Secret</Label>
+            <Input
+              type="password"
+              value={clientSecret}
+              onChange={(e) => { setClientSecret(e.target.value); }}
+              placeholder={data?.configured ? '(unverändert — nur eingeben zum Ändern)' : ''}
+              className="h-8 text-sm"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={update.isPending || !providerURL || !clientID || (!data?.configured && !clientSecret)}
+              className="h-8 text-xs"
+            >
+              {saved ? <><Check className="w-3.5 h-3.5 mr-1" />Gespeichert</> : update.isPending ? <><Spinner size="sm" />Speichern…</> : 'Speichern'}
+            </Button>
+            {data?.configured && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => disable.mutate()}
+                disabled={disable.isPending}
+                className="h-8 text-xs text-destructive hover:text-destructive"
+              >
+                Deaktivieren
+              </Button>
+            )}
+          </div>
           {update.isError && <p className="text-xs text-destructive">{update.error.message}</p>}
         </div>
       )}
@@ -1793,6 +1978,7 @@ export default function Settings() {
                   linkLabel="Auditoren verwalten"
                 />
                 <SAMLSetupSection />
+                <OIDCConfigSection />
               </div>
             </TabsContent>
 

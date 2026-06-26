@@ -20,6 +20,7 @@ import {
   useInvitations,
   useCreateInvitation,
   useRevokeInvitation,
+  useCreateUser,
   type TeamMember,
   type TeamInvitation,
 } from '../../../hooks/useTeam'
@@ -130,6 +131,107 @@ function InviteDialog({ open, onClose }: InviteDialogProps) {
           <Button variant="outline" onClick={handleClose}>{t('common.cancel')}</Button>
           <Button onClick={handleSend} disabled={!email.trim() || !!emailValidation.error || create.isPending}>
             {create.isPending ? t('teamSettingsPage.sending') : t('teamSettingsPage.sendInvitation')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Create User Dialog (S105-1 — direct creation, no SMTP required)
+// ---------------------------------------------------------------------------
+
+type BackendRole = 'Admin' | 'SecurityAnalyst' | 'Viewer' | 'AuditorReadOnly'
+
+interface CreateUserDialogProps {
+  open: boolean
+  onClose: () => void
+}
+
+function CreateUserDialog({ open, onClose }: CreateUserDialogProps) {
+  const { t } = useTranslation()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [role, setRole] = useState<BackendRole>('Viewer')
+  const create = useCreateUser()
+  const emailValidation = useFieldValidation(email, [required, emailRule])
+
+  function handleCreate() {
+    if (!email.trim() || emailValidation.error || password.length < 10) return
+    create.mutate({ email: email.trim(), password, role }, {
+      onSuccess: () => {
+        handleClose()
+        toast(t('teamSettingsPage.userCreated'), 'success')
+      },
+      onError: (err) => toast(`Fehler: ${err.message}`, 'error'),
+    })
+  }
+
+  function handleClose() {
+    setEmail('')
+    setPassword('')
+    setRole('Viewer')
+    onClose()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { handleClose(); } }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t('teamSettingsPage.createUserDialogTitle')}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-1">
+            <Label htmlFor="create-email">{t('teamSettingsPage.labelEmail')}</Label>
+            <Input
+              id="create-email"
+              type="email"
+              placeholder={t('teamSettingsPage.placeholderEmail')}
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); }}
+              aria-invalid={!!emailValidation.error}
+            />
+            <FieldError error={emailValidation.error} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="create-password">{t('teamSettingsPage.labelPassword')}</Label>
+            <Input
+              id="create-password"
+              type="password"
+              placeholder={t('teamSettingsPage.placeholderPassword')}
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); }}
+              aria-invalid={password.length > 0 && password.length < 10}
+            />
+            {password.length > 0 && password.length < 10 && (
+              <p className="text-xs text-destructive">{t('teamSettingsPage.passwordMinLen')}</p>
+            )}
+          </div>
+          <div className="space-y-1">
+            <Label>{t('teamSettingsPage.labelRole')}</Label>
+            <Select value={role} onValueChange={(v) => { setRole(v as BackendRole); }}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Admin">{t('teamSettingsPage.roleAdmin')}</SelectItem>
+                <SelectItem value="SecurityAnalyst">{t('teamSettingsPage.roleEditor')}</SelectItem>
+                <SelectItem value="Viewer">{t('teamSettingsPage.roleViewer')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {create.error && (
+            <p className="text-sm text-destructive">{create.error.message}</p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose}>{t('common.cancel')}</Button>
+          <Button
+            onClick={handleCreate}
+            disabled={!email.trim() || !!emailValidation.error || password.length < 10 || create.isPending}
+          >
+            {create.isPending ? t('teamSettingsPage.creating') : t('teamSettingsPage.createUser')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -399,7 +501,8 @@ function InvitationsTable({ invitations }: { invitations: TeamInvitation[] }) {
 
 export default function TeamSettingsPage() {
   const { t } = useTranslation()
-  const [dialogOpen, setDialogOpen] = useState(false)
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
   const { user } = useAuthStore()
   const { data: members = [], isLoading: membersLoading, isError: membersError, refetch: refetchMembers } = useTeamMembers()
   const { data: invitations = [], isLoading: invLoading, isError: invError, refetch: refetchInv } = useInvitations()
@@ -413,10 +516,16 @@ export default function TeamSettingsPage() {
         title={t('teamSettingsPage.title')}
         description={t('teamSettingsPage.description')}
         actions={
-          <Button onClick={() => { setDialogOpen(true); }}>
-            <Plus className="w-4 h-4 mr-2" />
-            {t('teamSettingsPage.inviteMember')}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => { setCreateOpen(true); }}>
+              <Plus className="w-4 h-4 mr-2" />
+              {t('teamSettingsPage.createUserAction')}
+            </Button>
+            <Button onClick={() => { setInviteOpen(true); }}>
+              <Plus className="w-4 h-4 mr-2" />
+              {t('teamSettingsPage.inviteMember')}
+            </Button>
+          </div>
         }
       />
 
@@ -449,7 +558,8 @@ export default function TeamSettingsPage() {
         </div>
       )}
 
-      <InviteDialog open={dialogOpen} onClose={() => { setDialogOpen(false); }} />
+      <InviteDialog open={inviteOpen} onClose={() => { setInviteOpen(false); }} />
+      <CreateUserDialog open={createOpen} onClose={() => { setCreateOpen(false); }} />
     </div>
   )
 }

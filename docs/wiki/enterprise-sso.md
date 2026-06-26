@@ -1,7 +1,7 @@
 # SSO, SCIM & SIEM — Setup-Guide
 
-**Gilt ab:** v0.16.0  
-**Tier:** SAML Pro · SCIM/SIEM Pro
+**Gilt ab:** v0.16.0 · **S105-Updates:** v0.18.0  
+**Tier:** SAML Pro · OIDC/Casdoor Pro · SCIM/SIEM Pro
 
 ---
 
@@ -10,6 +10,7 @@
 | Feature | Tier | Endpunkt |
 |---------|------|----------|
 | SAML 2.0 SP (direkter IdP) | Pro | `/api/v1/auth/saml/*` |
+| OIDC/Casdoor DB-Konfiguration | Pro | `/api/v1/admin/org/oidc-config` |
 | SCIM 2.0 Provisioning | Pro | `/api/v1/scim/v2/*` |
 | SIEM Audit-Forwarder | Pro | konfigurierbar über Admin-Settings |
 
@@ -124,6 +125,67 @@ Authorization: Bearer <admin-paseto>
 ```
 
 Nach Erneuerung muss das neue Zertifikat im IdP eingetragen werden.
+
+---
+
+### 1.7 IdP-Metadaten via URL importieren (ab v0.18.0)
+
+Statt das XML manuell einzufügen, kann eine Metadata-URL übergeben werden:
+
+```
+POST /api/v1/admin/org/saml-config/fetch-metadata
+Authorization: Bearer <admin-paseto>
+Content-Type: application/json
+
+{ "url": "https://idp.example.com/metadata" }
+```
+
+Gibt `{ "metadata": "<xml>..." }` zurück. Das XML kann dann im Settings-UI übernommen werden.  
+Limit: 512 KB · Timeout: 10 s · Nur öffentliche IP-Adressen (SSRF-Schutz).
+
+---
+
+### 1.8 JIT-Provisioning (ab v0.18.0)
+
+**Just-in-Time Provisioning** legt Nutzer automatisch an, wenn sie sich zum ersten Mal via SAML einloggen (Email aus der Assertion, Rolle `member`, kein Passwort). Kein manuelles Voranlegen per Invite nötig.
+
+- Standard: **an**
+- Toggle: Admin → Einstellungen → Zugang → SAML 2.0 → „Neue Nutzer bei SAML-Login automatisch anlegen"
+- Bei deaktiviertem JIT: Login schlägt fehl mit Redirect `/login?error=saml_user_not_provisioned`
+
+---
+
+### 1.9 SAML-Fehlercodes (ab v0.18.0)
+
+SAML-ACS-Fehler werden als Browser-Redirects zurückgegeben:
+
+| Error-Param | Ursache |
+|-------------|---------|
+| `saml_assertion_invalid` | Assertion abgelaufen oder Signatur ungültig |
+| `saml_missing_email` | IdP hat kein Email-Attribut übermittelt |
+| `saml_user_not_provisioned` | JIT deaktiviert, Nutzer nicht in Vakt vorhanden |
+| `saml_provision_failed` | Interner Fehler beim Anlegen |
+
+---
+
+## 1b. OIDC/Casdoor — DB-Konfiguration (Pro, ab v0.18.0)
+
+Casdoor kann ab v0.18.0 über die Settings-UI konfiguriert werden, ohne Container-Neustart.
+
+**Admin → Einstellungen → Zugang → SSO / OIDC (Casdoor)**:
+- Provider URL (Casdoor-Basis-URL)
+- Client ID
+- Client Secret (verschlüsselt gespeichert mit `VAKT_SECRET_KEY`)
+- Aktivieren/Deaktivieren ohne Datenverlust
+
+Die DB-Konfiguration hat Vorrang vor den Env-Vars `CASDOOR_URL` / `CASDOOR_CLIENT_ID` / `CASDOOR_CLIENT_SECRET`. Bestehende Env-Var-Deployments funktionieren weiterhin als Fallback.
+
+**API:**
+```
+GET  /api/v1/admin/org/oidc-config   → aktuelle Konfiguration (client_secret nicht zurückgegeben)
+PUT  /api/v1/admin/org/oidc-config   → speichern/aktualisieren
+DELETE /api/v1/admin/org/oidc-config → deaktivieren
+```
 
 ---
 
