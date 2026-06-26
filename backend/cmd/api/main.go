@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -487,6 +488,12 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) *echo.Echo {
 	if os.Getenv("VAKT_AUTH_FAIL_OPEN_ON_REDIS_OUTAGE") == "true" {
 		authSvc = authSvc.WithFailOpenOnRedisOutage(true)
 		log.Warn().Msg("auth: VAKT_AUTH_FAIL_OPEN_ON_REDIS_OUTAGE=true — lockout checks will fail open during Redis outages (audit-relevant choice)")
+	}
+	if raw := os.Getenv("VAKT_RATELIMIT_IP_MAX"); raw != "" {
+		if ipMax, err := strconv.Atoi(raw); err == nil && ipMax > 0 {
+			authSvc = authSvc.WithIPLockoutMax(ipMax)
+			log.Info().Int("ip_max", ipMax).Msg("auth: custom VAKT_RATELIMIT_IP_MAX configured")
+		}
 	}
 	authHandler := auth.NewHandler(authSvc, cfg)
 	authGroup := api.Group("/auth", authRateLimiter)

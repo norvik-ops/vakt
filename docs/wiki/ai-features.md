@@ -25,7 +25,7 @@ Vakt enthält einen **lokalen KI-Berater**, der auf deiner eigenen Infrastruktur
 | Setup | RAM | CPU | Geschwindigkeit | Anwendbar für |
 |-------|-----|-----|-----------------|----------------|
 | **Minimum** | 8 GB (+4.5 GB Modell) | 4 vCPU | 5–9 tok/s | Funktioniert, bei Lastspitzen etwas zäh |
-| **Empfohlen** | 16 GB (+4.5 GB Modell) | 4 vCPU | 5–9 tok/s | KMU-Standard, komfortabel nutzbar |
+| **Empfohlen** | 8 GB (+4.5 GB Modell qwen2.5:7b) | 4 vCPU | 5–9 tok/s | KMU-Standard, komfortabel nutzbar |
 | **Komfort** | 16 GB+ | NVIDIA T4 oder besser | 50–100+ tok/s | Wenn die KI häufig genutzt wird |
 
 **Konkrete Erwartung (Default-Modell `qwen2.5:7b` auf 4 vCPU):**

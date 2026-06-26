@@ -7,8 +7,8 @@ Vakt kommt mit einem **Demo-Modus**, der eine vollständige Instanz mit realisti
 ## Quickstart
 
 ```bash
-git clone https://github.com/norvik-ops/vatk.git
-cd vatk
+git clone https://github.com/norvik-ops/vakt.git
+cd vakt
 cp .env.example .env
 
 # Demo-Modus aktivieren

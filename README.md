@@ -55,8 +55,8 @@ Free-to-self-host alternative to Vanta, Drata, or DataGuard (~€9,000–25,000/
 ## Quick Start
 
 ```bash
-git clone https://github.com/norvik-ops/vatk
-cd vatk
+git clone https://github.com/norvik-ops/vakt
+cd vakt
 cp .env.example .env
 
 # Generate a secure secret key (required):
@@ -83,9 +83,9 @@ The login screen will show ready-to-use credentials automatically. When you're r
 
 | | Minimum | Recommended | With AI Advisor (default) |
 |---|---|---|---|
-| **CPU** | 4 cores | 6 cores | 6 cores — no GPU needed |
-| **RAM** | 16 GB | 16 GB | 16 GB |
-| **Disk** | 160 GB SSD | 160 GB SSD | 160 GB SSD |
+| **CPU** | 2 cores | 4 cores | 4 cores — no GPU needed |
+| **RAM** | 2 GB | 4 GB | 8 GB (for qwen2.5:7b; 2 GB if AI disabled) |
+| **Disk** | 20 GB SSD | 40 GB SSD | 40 GB SSD + ~5 GB for AI model |
 | **Docker Engine** | 24+ | 24+ | 24+ |
 
 The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key required, and **Community since v0.6.x** (no Pro license needed). Ollama starts automatically with `docker compose up`; an `ollama-init` container pulls the default model (`qwen2.5:7b`, Apache 2.0, ~4.5 GB RAM, needs 8 GB) on first launch — no manual `ollama pull` step. On smaller VMs switch to `qwen2.5:3b` (~1.9 GB, set `VAKT_AI_MODEL=qwen2.5:3b`), or use `phi3.5:mini` (Microsoft, MIT) or the Mistral EU API. To disable on small VMs: set `VAKT_AI_PROVIDER=disabled` and remove the `ollama`/`ollama-init` services via compose-override.
@@ -293,6 +293,7 @@ For MSPs deploying Vakt per customer, see [`docs/wiki/msp-onboarding.md`](docs/w
 | CHANGELOG | [CHANGELOG.md](CHANGELOG.md) |
 | Security | [SECURITY.md](SECURITY.md) |
 | Getting Started | [docs/guides/getting-started.md](docs/guides/getting-started.md) |
+| Troubleshooting | [docs/wiki/troubleshooting.md](docs/wiki/troubleshooting.md) |
 
 ---
 

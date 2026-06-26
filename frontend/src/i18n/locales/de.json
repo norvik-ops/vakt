@@ -1755,7 +1755,8 @@
       "rateLimited": "Zu viele AI-Anfragen — kurz warten und erneut versuchen.",
       "quotaExceeded": "Tages-Token-Quota erreicht — morgen wieder verfügbar."
     },
-    "disclaimer": "KI-generiert — bitte fachlich prüfen"
+    "disclaimer": "KI-generiert — bitte fachlich prüfen",
+    "draftDisclaimer": "KI-generierter Entwurf — bitte vor Verwendung prüfen"
   },
   "bcp": {
     "title": "Notfallhandbuch / BCP",

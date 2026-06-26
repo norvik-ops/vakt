@@ -72,6 +72,9 @@ type Service struct {
 	// setting VAKT_AUTH_FAIL_OPEN_ON_REDIS_OUTAGE=true and calling
 	// svc.WithFailOpenOnRedisOutage(true).
 	failOpenOnRedisOutage bool
+	// ipLockoutMax is the secondary pure-IP lockout threshold (across any email).
+	// Configurable via WithIPLockoutMax; defaults to ipLockoutSecondaryFailMax.
+	ipLockoutMax int
 	// dummyBcryptHash is a precomputed bcrypt hash (cost 12) of a random value.
 	// Login() compares against it when the e-mail is unknown so the bcrypt work
 	// is constant-time regardless of whether the user exists — closing the
@@ -85,6 +88,15 @@ type Service struct {
 // trade-off in favour of availability. See ADR-0044.
 func (s *Service) WithFailOpenOnRedisOutage(b bool) *Service {
 	s.failOpenOnRedisOutage = b
+	return s
+}
+
+// WithIPLockoutMax sets the secondary pure-IP lockout threshold (across any email).
+// Default is 50. Lower values block aggressive spraying faster; higher values
+// are safer on shared NAT (corporate VPN, school networks) where many users
+// share one IP.
+func (s *Service) WithIPLockoutMax(n int) *Service {
+	s.ipLockoutMax = n
 	return s
 }
 
@@ -139,6 +151,7 @@ func NewService(db *pgxpool.Pool, redisClient *redis.Client, key paseto.V4Symmet
 		key:             key,
 		denyFall:        &denyListFallback{db: db},
 		dummyBcryptHash: newDummyBcryptHash(),
+		ipLockoutMax:    ipLockoutSecondaryFailMax,
 	}
 }
 
@@ -531,10 +544,16 @@ const (
 	// loginLockoutTTL is the lockout duration and the TTL of the failure counter.
 	loginLockoutTTL = 15 * time.Minute
 
-	// ipLockoutFailMax is the number of failed login attempts from a single IP
-	// (across any email address) that trigger an IP-level lockout.
-	ipLockoutFailMax = 10
-	// ipLockoutTTL is the IP lockout duration.
+	// ipEmailLockoutFailMax is the number of failed login attempts for a specific
+	// (IP, email) pair that trigger a per-pair lockout. Primary protection: stops
+	// a single attacker from brute-forcing one account without affecting other
+	// users behind the same NAT.
+	ipEmailLockoutFailMax = 10
+	// ipLockoutSecondaryFailMax is the secondary pure-IP lockout threshold
+	// (across any email). Blocks broad credential-spraying attacks. Configurable
+	// via WithIPLockoutMax / VAKT_RATELIMIT_IP_MAX; default 50.
+	ipLockoutSecondaryFailMax = 50
+	// ipLockoutTTL is the lockout duration for both IP-level lockouts.
 	ipLockoutTTL = 15 * time.Minute
 )
 
@@ -546,6 +565,47 @@ func loginFailKey(email string) string {
 // loginIPFailKey returns the Redis key for counting per-IP login failures.
 func loginIPFailKey(ip string) string {
 	return "login_fail_ip:" + ip
+}
+
+// loginIPEmailFailKey returns the Redis key for counting per-(IP, email) failures.
+// Using email directly is acceptable here — same exposure level as loginFailKey.
+func loginIPEmailFailKey(ip, email string) string {
+	return "login_fail_ip_email:" + ip + ":" + email
+}
+
+// checkIPEmailLocked returns true if the (IP, email) pair has exceeded the
+// per-pair failure threshold. This is the primary NAT-safe lockout: only the
+// specific account being targeted gets blocked, not the entire IP.
+func (s *Service) checkIPEmailLocked(ctx context.Context, ip, email string) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	val, err := s.redis.Get(ctx, loginIPEmailFailKey(ip, email)).Int64()
+	if err == redis.Nil {
+		return false, nil
+	}
+	if err != nil {
+		log.Warn().Err(err).Str("ip", ip).Bool("fail_open", s.failOpenOnRedisOutage).Msg("ip+email lockout check: Redis unavailable")
+		if s.failOpenOnRedisOutage {
+			return false, nil
+		}
+		return true, ErrLockoutCheckUnavailable
+	}
+	return val >= ipEmailLockoutFailMax, nil
+}
+
+// recordIPEmailLoginFailure increments the per-(IP, email) failure counter.
+func (s *Service) recordIPEmailLoginFailure(ctx context.Context, ip, email string) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	key := loginIPEmailFailKey(ip, email)
+	pipe := s.redis.Pipeline()
+	incrCmd := pipe.Incr(ctx, key)
+	pipe.ExpireNX(ctx, key, ipLockoutTTL)
+	if _, err := pipe.Exec(ctx); err != nil {
+		log.Warn().Err(err).Str("ip", ip).Msg("login: failed to record IP+email login failure")
+		return
+	}
+	log.Debug().Str("ip", ip).Str("email_redacted", logsafe.RedactEmail(email)).Int64("count", incrCmd.Val()).Msg("login: recorded IP+email failure")
 }
 
 // checkAccountLocked returns true if the account is currently locked out.
@@ -611,7 +671,7 @@ func (s *Service) checkIPLocked(ctx context.Context, ip string) (bool, error) {
 		}
 		return true, ErrLockoutCheckUnavailable
 	}
-	return val >= ipLockoutFailMax, nil
+	return val >= int64(s.ipLockoutMax), nil
 }
 
 // recordIPLoginFailure increments the per-IP failure counter.

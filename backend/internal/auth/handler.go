@@ -213,12 +213,12 @@ func (h *Handler) Login(c echo.Context) error {
 
 	clientIP := c.RealIP()
 
-	// IP-level lockout: reject if this IP has too many recent failures across any account.
+	// Secondary IP-level lockout: reject if this IP has exceeded the threshold
+	// across ANY email address (credential-spraying defense). Threshold is
+	// configurable via VAKT_RATELIMIT_IP_MAX (default 50) — high enough that
+	// shared NAT isn't a problem under normal circumstances.
 	ipLocked, ipLockErr := h.service.checkIPLocked(c.Request().Context(), clientIP)
 	if errors.Is(ipLockErr, ErrLockoutCheckUnavailable) {
-		// Fail-closed: Redis outage and the operator did not opt in to
-		// degrading. Surface 503 instead of letting attempts through —
-		// this closes the brute-force-during-outage window (ADR-0044).
 		return c.JSON(http.StatusServiceUnavailable, map[string]string{
 			"error": "Authentication temporarily unavailable. Please retry shortly.",
 			"code":  "AUTH_LOCKOUT_UNAVAILABLE",
@@ -231,6 +231,25 @@ func (h *Handler) Login(c echo.Context) error {
 		return c.JSON(http.StatusTooManyRequests, map[string]string{
 			"error": "Too many failed attempts from this IP. Try again in 15 minutes.",
 			"code":  "IP_LOCKED",
+		})
+	}
+
+	// Primary (IP, email) lockout: blocks targeted brute-force of one account
+	// without locking out other users behind the same NAT/VPN.
+	ipEmailLocked, ipEmailLockErr := h.service.checkIPEmailLocked(c.Request().Context(), clientIP, body.Email)
+	if errors.Is(ipEmailLockErr, ErrLockoutCheckUnavailable) {
+		return c.JSON(http.StatusServiceUnavailable, map[string]string{
+			"error": "Authentication temporarily unavailable. Please retry shortly.",
+			"code":  "AUTH_LOCKOUT_UNAVAILABLE",
+		})
+	}
+	if ipEmailLockErr != nil {
+		log.Warn().Err(ipEmailLockErr).Str("ip", clientIP).Msg("login: IP+email lockout check error")
+	}
+	if ipEmailLocked {
+		return c.JSON(http.StatusTooManyRequests, map[string]string{
+			"error": "Account temporarily locked. Try again in 15 minutes.",
+			"code":  "ACCOUNT_LOCKED",
 		})
 	}
 
@@ -259,8 +278,9 @@ func (h *Handler) Login(c echo.Context) error {
 	resp, err := h.service.Login(c.Request().Context(), body.Email, body.Password, loginDeviceHint)
 	if err != nil {
 		log.Debug().Err(err).Str("email_redacted", logsafe.RedactEmail(body.Email)).Msg("login failed")
-		// Record failure for both email lockout and IP lockout.
+		// Record failure for per-email, per-(IP,email), and secondary per-IP lockouts.
 		h.service.recordLoginFailure(c.Request().Context(), body.Email)
+		h.service.recordIPEmailLoginFailure(c.Request().Context(), clientIP, body.Email)
 		h.service.recordIPLoginFailure(c.Request().Context(), clientIP)
 		return c.JSON(http.StatusUnauthorized, map[string]string{
 			"error": "invalid credentials",

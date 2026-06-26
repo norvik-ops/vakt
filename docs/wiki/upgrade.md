@@ -189,7 +189,7 @@ This can be run against a live database without downtime.  Rows in
 `audit_log_default` continue to be served while the partition is being created.
 
 Repeat annually for each subsequent year.  A reminder has been added to
-the [2028 milestone](https://github.com/norvik-ops/vatk/milestones) —
+the [2028 milestone](https://github.com/norvik-ops/vakt/milestones) —
 create the partition before the Vakt release closest to 2028-12-01.
 
 ---

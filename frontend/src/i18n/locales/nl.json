@@ -1755,7 +1755,8 @@
       "rateLimited": "Te veel AI-verzoeken — wacht even en probeer opnieuw.",
       "quotaExceeded": "Dagelijkse tokenquota bereikt — morgen weer beschikbaar."
     },
-    "disclaimer": "AI-gegenereerd — controleer met een expert"
+    "disclaimer": "AI-gegenereerd — controleer met een expert",
+    "draftDisclaimer": "AI-gegenereerd concept — controleer voor gebruik"
   },
   "bcp": {
     "title": "Bedrijfscontinuïteitsplannen",

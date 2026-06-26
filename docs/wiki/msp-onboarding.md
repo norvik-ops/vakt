@@ -71,7 +71,7 @@ VAKT_SMTP_FROM=vakt@kunde-a.example.com
 
 ```bash
 # Repository klonen (oder als Zip-Archiv herunterladen)
-git clone https://github.com/norvik-ops/vatk.git vakt-kunde-a
+git clone https://github.com/norvik-ops/vakt.git vakt-kunde-a
 cd vakt-kunde-a
 
 # .env befüllen (aus Vorlage)
@@ -291,7 +291,7 @@ und Backup anlegen.
 | Kunden-Konfiguration in Vakt (Org-Settings, User-Management) | MSP (1st Level) |
 
 **Vakt-Support kontaktieren:**
-- GitHub Issues: [github.com/norvik-ops/vatk/issues](https://github.com/norvik-ops/vatk/issues)
+- GitHub Issues: [github.com/norvik-ops/vakt/issues](https://github.com/norvik-ops/vakt/issues)
 - Für Sicherheitslücken: `security@vakt.io` (nicht öffentlich melden)
 
 Bei einem Support-Ticket bitte immer folgende Informationen beifügen — am

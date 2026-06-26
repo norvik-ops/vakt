@@ -321,4 +321,4 @@ SCIM-Operationen erscheinen als `actor: "scim_provisioner"` mit der jeweiligen O
 
 ---
 
-*Weitere Fragen? → [GitHub Issues](https://github.com/norvik-ops/vatk/issues) oder Community-Forum.*
+*Weitere Fragen? → [GitHub Issues](https://github.com/norvik-ops/vakt/issues) oder Community-Forum.*

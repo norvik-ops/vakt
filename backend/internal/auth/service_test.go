@@ -101,7 +101,8 @@ func TestLoginIPFailKey(t *testing.T) {
 
 // TestIPLockoutConstants documents the expected lockout thresholds.
 func TestIPLockoutConstants(t *testing.T) {
-	assert.Equal(t, int64(10), int64(ipLockoutFailMax), "IP lockout triggers at 10 failures")
+	assert.Equal(t, int64(10), int64(ipEmailLockoutFailMax), "primary (IP,email) lockout triggers at 10 failures")
+	assert.Equal(t, int64(50), int64(ipLockoutSecondaryFailMax), "secondary pure-IP lockout triggers at 50 failures")
 }
 
 // TestTokenDenyKey verifies that token revocation keys are deterministic SHA-256 hashes.

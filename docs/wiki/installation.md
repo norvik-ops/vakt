@@ -8,9 +8,9 @@ Diese Anleitung führt dich von null bis zu einer laufenden Vakt-Instanz.
 
 | | Minimum | Empfohlen |
 |---|---|---|
-| **CPU** | 4 Kerne | 6 Kerne |
-| **RAM** | 16 GB | 16 GB |
-| **Disk** | 160 GB SSD | 160 GB SSD |
+| **CPU** | 2 Kerne | 4 Kerne |
+| **RAM** | 2 GB (ohne KI-Berater) / 8 GB (mit Standard-Modell qwen2.5:7b) | 4 GB (ohne KI) / 8 GB (mit KI) |
+| **Disk** | 20 GB SSD | 40 GB SSD (+5 GB für KI-Modell) |
 | **Docker Engine** | 24+ | 24+ | 24+ | 24+ |
 | **Docker Compose** | v2 | v2 | v2 | v2 |
 | **Betriebssystem** | Linux (empfohlen), macOS, Windows (WSL2) | Linux | Linux | Linux |
@@ -24,8 +24,8 @@ Der KI-Berater läuft standardmäßig lokal über einen Ollama-Container — rei
 ### 1. Repository klonen
 
 ```bash
-git clone https://github.com/norvik-ops/vatk
-cd vatk
+git clone https://github.com/norvik-ops/vakt
+cd vakt
 ```
 
 ### 2. Konfiguration vorbereiten
@@ -233,7 +233,7 @@ docker compose up -d
 
 Vakt prüft nicht automatisch auf neue Versionen. Wenn du informiert werden möchtest, wenn eine neue Version verfügbar ist, gibt es zwei Möglichkeiten:
 
-**Option 1 — In-App-Banner:** Setze `VAKT_UPDATE_CHECK=true` in deiner `.env`. Vakt prüft dann einmal täglich die [GitHub Releases API](https://github.com/norvik-ops/vatk/releases) und zeigt Administratoren einen Hinweis-Banner in der Oberfläche. Es werden dabei keine Daten gesendet.
+**Option 1 — In-App-Banner:** Setze `VAKT_UPDATE_CHECK=true` in deiner `.env`. Vakt prüft dann einmal täglich die [GitHub Releases API](https://github.com/norvik-ops/vakt/releases) und zeigt Administratoren einen Hinweis-Banner in der Oberfläche. Es werden dabei keine Daten gesendet.
 
 **Option 2 — Watchtower:** Für automatische Container-Updates siehe die [Deployment-Dokumentation](../setup.md).
 

@@ -47,7 +47,7 @@ curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER   # Neuanmeldung danach erforderlich
 
 # 2. Vakt klonen
-git clone https://github.com/norvik-ops/vatk
+git clone https://github.com/norvik-ops/vakt
 cd vakt-app
 
 # 3. Konfiguration
@@ -184,7 +184,7 @@ Aktiviere in deiner `.env`:
 VAKT_UPDATE_CHECK=true
 ```
 
-Vakt prüft einmal täglich gegen die [GitHub Releases API](https://github.com/norvik-ops/vatk/releases), ob eine neuere Version verfügbar ist. Administratoren und Eigentümer sehen dann einen Hinweis-Banner in der Oberfläche. Dabei werden **keine Daten gesendet** — es ist ein einfacher GET-Request gegen die öffentliche GitHub-API, ohne Instanz-ID oder sonstige Informationen.
+Vakt prüft einmal täglich gegen die [GitHub Releases API](https://github.com/norvik-ops/vakt/releases), ob eine neuere Version verfügbar ist. Administratoren und Eigentümer sehen dann einen Hinweis-Banner in der Oberfläche. Dabei werden **keine Daten gesendet** — es ist ein einfacher GET-Request gegen die öffentliche GitHub-API, ohne Instanz-ID oder sonstige Informationen.
 
 ### Option 2 — Watchtower (automatische Updates)
 

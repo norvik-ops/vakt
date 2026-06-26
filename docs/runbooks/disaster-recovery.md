@@ -141,7 +141,7 @@ Whole VM lost. The recovery hardware must reach the same DNS name + cert.
 # 1. Provision the new host: same Ubuntu version, same Docker + Compose,
 #    same hostname, same TLS cert (LE or your own CA).
 # 2. Clone the deployment repo.
-git clone git@github.com:norvik-ops/vatk.git /opt/vakt && cd /opt/vakt
+git clone git@github.com:norvik-ops/vakt.git /opt/vakt && cd /opt/vakt
 
 # 3. Place the freshest backup on the new host and restore.
 scp old-backup-host:/backups/vakt/vakt-backup-<DATE>.tar.gz /backups/vakt/
@@ -217,7 +217,7 @@ The freshest archive is corrupt and no copy survived.
 2. **Check filesystem snapshots** — ZFS / Btrfs / LVM snapshots on the
    backup host often hold older copies.
 3. **No backup at all** — accept partial loss and rebuild from:
-   - Source: still in Git (`norvik-ops/vatk` mirror).
+   - Source: still in Git (`norvik-ops/vakt` mirror).
    - Org configuration: re-onboard the customer; no shortcut.
    - Compliance evidence: lost permanently if no backup. Inform customer
      and document in their incident register (Vakt Comply → Incidents).

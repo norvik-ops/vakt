@@ -1755,7 +1755,8 @@
       "rateLimited": "Trop de requêtes IA — patientez un instant et réessayez.",
       "quotaExceeded": "Quota quotidien atteint — disponible à nouveau demain."
     },
-    "disclaimer": "Généré par IA — veuillez vérifier avec un expert"
+    "disclaimer": "Généré par IA — veuillez vérifier avec un expert",
+    "draftDisclaimer": "Brouillon généré par IA — veuillez vérifier avant utilisation"
   },
   "bcp": {
     "title": "Plans de continuité d'activité",

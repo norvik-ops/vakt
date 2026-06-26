@@ -98,7 +98,7 @@ Was nicht erlaubt ist: Eine zentrale Vakt-Installation betreiben und mehreren Ku
 
 ### Wie erfahre ich, wenn eine neue Version verfügbar ist?
 
-Setze `VAKT_UPDATE_CHECK=true` in deiner `.env`. Vakt prüft dann einmal täglich ob eine neue Version auf GitHub verfügbar ist und zeigt Administratoren ein Banner in der Benutzeroberfläche. Alternativ kannst du [Watchtower](https://containrrr.dev/watchtower/) für automatische Updates verwenden oder das [GitHub-Repository](https://github.com/norvik-ops/vatk) beobachten (Watch → Releases only).
+Setze `VAKT_UPDATE_CHECK=true` in deiner `.env`. Vakt prüft dann einmal täglich ob eine neue Version auf GitHub verfügbar ist und zeigt Administratoren ein Banner in der Benutzeroberfläche. Alternativ kannst du [Watchtower](https://containrrr.dev/watchtower/) für automatische Updates verwenden oder das [GitHub-Repository](https://github.com/norvik-ops/vakt) beobachten (Watch → Releases only).
 
 ---
 

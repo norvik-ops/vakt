@@ -1755,7 +1755,8 @@
       "rateLimited": "Too many AI requests — wait a moment and retry.",
       "quotaExceeded": "Daily token quota reached — available again tomorrow."
     },
-    "disclaimer": "AI-generated — please verify with an expert"
+    "disclaimer": "AI-generated — please verify with an expert",
+    "draftDisclaimer": "AI-generated draft — please review before use"
   },
   "bcp": {
     "title": "Business Continuity Plans",

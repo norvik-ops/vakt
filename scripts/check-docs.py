@@ -395,19 +395,81 @@ def check_volume_backup() -> None:
             )
 
 
+# ── 6. Preis-Konsistenz ──────────────────────────────────────────────────────
+# Verbotene Preis-Strings in öffentlich zugänglichen Materialien (UWG §5 /
+# PAngV). Kanonisch: 2.990 EUR/Jahr. Historische Sprint-/Changelog-Dateien
+# sind absichtlich ausgenommen.
+_PRICE_EXCL = (
+    "docs/sprints/", "docs/stories/", "docs/planning/", "docs/history/",
+    "sites/vakt/node_modules/", "sites/vakt/dist/", "sites/main/node_modules/",
+    "sites/main/dist/", "sites/dirhealth/node_modules/", "sites/dirhealth/dist/",
+)
+_PRICE_PATTERNS = [
+    (re.compile(r"2\.999"), "2.999 € — kanonisch: 2.990 €"),
+    (re.compile(r"1\.990\s*€"), "1.990 € — kanonisch: 2.990 €"),
+]
+
+
+def check_prices() -> None:
+    checked = subprocess.run(
+        ["git", "ls-files", "sites", "docs"], capture_output=True, text=True
+    ).stdout.split()
+    for f in checked:
+        if any(f.startswith(x) for x in _PRICE_EXCL):
+            continue
+        try:
+            text = open(f, encoding="utf-8", errors="ignore").read()
+        except OSError:
+            continue
+        for pattern, label in _PRICE_PATTERNS:
+            for m in pattern.finditer(text):
+                lineno = text.count("\n", 0, m.start()) + 1
+                err(f"{f}:{lineno}: verbotener Preis-String '{label}' — UWG §5/PAngV-Risiko")
+
+
+_TYPO_EXCL = (
+    "docs/stories/",
+    "docs/sprints/",
+    "docs/history/",
+    "docs/reviews/",
+    "docs/planning/",
+    "docs/adr/",          # ADRs document historical repo names
+)
+_TYPO_VATK = re.compile(r"\bvatk\b")
+
+
+def check_typos() -> None:
+    """Catch 'vatk' (wrong) instead of 'vakt' in user-facing docs (S108-1)."""
+    tracked = subprocess.run(
+        ["git", "ls-files", "docs", "README.md", "Makefile"], capture_output=True, text=True
+    ).stdout.split()
+    for f in tracked:
+        if any(f.startswith(x) for x in _TYPO_EXCL):
+            continue
+        try:
+            text = open(f, encoding="utf-8", errors="ignore").read()
+        except OSError:
+            continue
+        for m in _TYPO_VATK.finditer(text):
+            lineno = text.count("\n", 0, m.start()) + 1
+            err(f"{f}:{lineno}: Tippfehler 'vatk' gefunden — muss 'vakt' heißen")
+
+
 def main() -> int:
     check_go_version()
     check_ai_default()
     check_links()
     check_env_vars()
     check_volume_backup()
+    check_prices()
+    check_typos()
     if errors:
         print("Doku-Drift gefunden:\n")
         for e in errors:
             print("  ❌", e)
         print(f"\n{len(errors)} Problem(e). Quelle der Wahrheit ist der Code (go.mod/config.go).")
         return 1
-    print("✓ Doku-Konsistenz OK (Go-Version, AI-Default, interne Links, Env-Var-Coverage, Volume-Backup)")
+    print("✓ Doku-Konsistenz OK (Go-Version, AI-Default, interne Links, Env-Var-Coverage, Volume-Backup, Preis, Tippfehler)")
     return 0
 
 
