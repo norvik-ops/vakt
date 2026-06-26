@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/matharnica/vakt/internal/modules/vaktcomply"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/risk"
 )
 
 // TestListOverdueEffectivenessChecks_SchemaMatches is a regression test for the
@@ -63,7 +63,7 @@ func TestListOverdueEffectivenessChecks_SchemaMatches(t *testing.T) {
 	`, orgID)
 	require.NoError(t, err)
 
-	repo := vaktcomply.NewRepository(pool)
+	repo := risk.NewRepository(pool)
 	items, err := repo.ListOverdueEffectivenessChecks(ctx)
 	require.NoError(t, err, "query must match the ck_capas schema (regression: created_by)")
 
