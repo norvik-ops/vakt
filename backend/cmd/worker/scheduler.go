@@ -173,7 +173,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 
 	// Daily at 06:00 UTC: sync BSI CERT-Bund advisories and match to assets.
 	// Opt-out via VAKT_BSI_FEED_ENABLED=false for air-gapped environments.
-	if cfg.BSIFeedEnabled {
+	if cfg != nil && cfg.BSIFeedEnabled {
 		if _, err := scheduler.Register("0 6 * * *",
 			bsi.NewBSIFeedSyncTask(),
 			asynq.Unique(23*time.Hour),
