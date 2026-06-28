@@ -170,8 +170,10 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) (*echo.Echo, *e
 	// security.txt — public, no auth, RFC 9116.
 	e.GET("/.well-known/security.txt", admin.HandleSecurityTXT)
 
-	// Internal server — not exposed via Caddy/Nginx, Docker-network only.
-	// Hosts routes that must never be reachable from the public internet.
+	// Internal server — binds on all interfaces but port 8081 is NOT published
+	// in docker-compose.yml (no ports: entry), so it is only reachable from
+	// containers in the same Docker network (e.g. backup-cron). Auth is still
+	// required (master-key bearer token). Never add a ports: mapping for 8081.
 	internal := echo.New()
 	internal.HideBanner = true
 	internal.HidePort = true
