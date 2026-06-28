@@ -2,6 +2,7 @@ import '@testing-library/jest-dom'
 import 'vitest-axe/extend-expect'
 import { expect, vi } from 'vitest'
 import * as matchers from 'vitest-axe/matchers'
+import './i18n'
 
 expect.extend(matchers)
 

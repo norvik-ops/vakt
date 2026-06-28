@@ -45,6 +45,20 @@ func Register(g *echo.Group, h *Handler, health *HealthHandler, db *pgxpool.Pool
 	admin.GET("/org/ai-settings", h.GetOrgAISettings)
 	admin.PUT("/org/ai-settings", h.UpdateOrgAISettings)
 
+	// Per-org SMTP configuration (DB-backed, password encrypted with master key)
+	admin.GET("/org/smtp", h.GetOrgSMTPSettings)
+	admin.PUT("/org/smtp", h.UpdateOrgSMTPSettings)
+
+	// Per-org backup configuration (DB-backed, secrets encrypted with master key)
+	admin.GET("/org/backup-config", h.GetOrgBackupConfig)
+	admin.PUT("/org/backup-config", h.UpdateOrgBackupConfig)
+
+	// Per-org LDAP/AD configuration (DB-backed, bind password encrypted with master key)
+	admin.GET("/org/ldap", h.GetOrgLDAPConfig)
+	admin.PUT("/org/ldap", h.UpdateOrgLDAPConfig)
+	admin.POST("/org/ldap/test", h.TestOrgLDAPConnection)
+	admin.POST("/org/ldap/sync", h.SyncOrgLDAP)
+
 	// Pro: per-org IP allowlist + MFA-for-sensitive-calls (S21-5, S21-6)
 	admin.GET("/org/security-ext", h.GetOrgSecurityExtensions)
 	admin.PUT("/org/ip-allowlist", h.UpdateOrgIPAllowlist, features.Require(features.FeatureAPI))

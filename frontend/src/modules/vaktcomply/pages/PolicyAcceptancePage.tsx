@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Users, Plus, ChevronDown, ChevronUp, CheckCircle2, Clock } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { useQuery } from '@tanstack/react-query'
@@ -28,11 +29,12 @@ import {
 // ---------------------------------------------------------------------------
 
 function ProgressBar({ accepted, total }: { accepted: number; total: number }) {
+  const { t } = useTranslation()
   const pct = total > 0 ? Math.round((accepted / total) * 100) : 0
   return (
     <div className="w-full">
       <div className="flex justify-between text-xs text-muted-foreground mb-1">
-        <span>{accepted} von {total} bestätigt</span>
+        <span>{t('policyAcceptance.confirmedOf', { accepted, total })}</span>
         <span>{pct}%</span>
       </div>
       <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
@@ -52,6 +54,7 @@ function CampaignStatsRow({ campaignId }: { campaignId: string }) {
 }
 
 function RequestRow({ req }: { req: PolicyAcceptanceRequest }) {
+  const { t } = useTranslation()
   const { formatDateTime } = useFormatDate()
   const isAccepted = !!req.accepted_at
   const acceptedDate = req.accepted_at
@@ -66,12 +69,12 @@ function RequestRow({ req }: { req: PolicyAcceptanceRequest }) {
         {isAccepted ? (
           <span className="flex items-center gap-1 text-green-500">
             <CheckCircle2 size={14} />
-            Akzeptiert {acceptedDate}
+            {t('policyAcceptance.accepted', { date: acceptedDate })}
           </span>
         ) : (
           <span className="flex items-center gap-1 text-muted-foreground">
             <Clock size={14} />
-            Ausstehend
+            {t('policyAcceptance.pendingStatus')}
           </span>
         )}
       </td>
@@ -80,11 +83,12 @@ function RequestRow({ req }: { req: PolicyAcceptanceRequest }) {
 }
 
 function CampaignDetails({ campaignId }: { campaignId: string }) {
+  const { t } = useTranslation()
   const { data: requests, isLoading } = useCampaignRequests(campaignId)
 
-  if (isLoading) return <p className="text-sm text-muted-foreground py-2">Lade...</p>
+  if (isLoading) return <p className="text-sm text-muted-foreground py-2">{t('policyAcceptance.loadingRequests')}</p>
   if (!requests || requests.length === 0) {
-    return <p className="text-sm text-muted-foreground py-2">Keine Empfänger.</p>
+    return <p className="text-sm text-muted-foreground py-2">{t('policyAcceptance.noRecipients')}</p>
   }
 
   return (
@@ -92,9 +96,9 @@ function CampaignDetails({ campaignId }: { campaignId: string }) {
       <table className="w-full mt-3">
         <thead>
           <tr className="text-xs text-muted-foreground border-b border-border">
-            <th className="text-left pb-1 pr-4 font-medium">E-Mail</th>
-            <th className="text-left pb-1 pr-4 font-medium">Name</th>
-            <th className="text-left pb-1 font-medium">Status</th>
+            <th className="text-left pb-1 pr-4 font-medium">{t('policyAcceptance.colEmail')}</th>
+            <th className="text-left pb-1 pr-4 font-medium">{t('common.name')}</th>
+            <th className="text-left pb-1 font-medium">{t('common.status')}</th>
           </tr>
         </thead>
         <tbody>
@@ -108,6 +112,7 @@ function CampaignDetails({ campaignId }: { campaignId: string }) {
 }
 
 function CampaignCard({ campaign }: { campaign: PolicyAcceptanceCampaign }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const { formatDate } = useFormatDate()
   const createdAt = formatDate(campaign.created_at, { day: '2-digit', month: 'short', year: 'numeric' })
@@ -118,9 +123,9 @@ function CampaignCard({ campaign }: { campaign: PolicyAcceptanceCampaign }) {
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="font-medium text-sm">{campaign.name}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Erstellt: {createdAt}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t('policyAcceptance.createdAt', { date: createdAt })}</p>
             {campaign.deadline && (
-              <p className="text-xs text-muted-foreground">Deadline: {campaign.deadline}</p>
+              <p className="text-xs text-muted-foreground">{t('policyAcceptance.deadline', { date: campaign.deadline })}</p>
             )}
           </div>
           <Button
@@ -129,7 +134,7 @@ function CampaignCard({ campaign }: { campaign: PolicyAcceptanceCampaign }) {
             onClick={() => { setOpen((v) => !v); }}
             className="flex items-center gap-1 text-xs"
           >
-            Details {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            {t('policyAcceptance.details')} {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
           </Button>
         </div>
 
@@ -153,6 +158,7 @@ interface CreateDialogProps {
 }
 
 function CreateCampaignDialog({ policyId, policyTitle, open, onClose }: CreateDialogProps) {
+  const { t } = useTranslation()
   const [name, setName] = useState('')
   const [message, setMessage] = useState('')
   const [deadline, setDeadline] = useState('')
@@ -169,11 +175,11 @@ function CreateCampaignDialog({ policyId, policyTitle, open, onClose }: CreateDi
       .filter(Boolean)
 
     if (!name.trim()) {
-      setError('Kampagnenname ist erforderlich.')
+      setError(t('policyAcceptance.errorNameRequired'))
       return
     }
     if (lines.length === 0) {
-      setError('Mindestens eine E-Mail-Adresse erforderlich.')
+      setError(t('policyAcceptance.errorEmailRequired'))
       return
     }
 
@@ -209,12 +215,12 @@ function CreateCampaignDialog({ policyId, policyTitle, open, onClose }: CreateDi
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Neue Kampagne — {policyTitle}</DialogTitle>
+          <DialogTitle>{t('policyAcceptance.createDialogTitle', { policyTitle })}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div>
-            <Label htmlFor="camp-name">Kampagnenname *</Label>
+            <Label htmlFor="camp-name">{t('policyAcceptance.labelCampaignName')}</Label>
             <Input
               id="camp-name"
               value={name}
@@ -225,7 +231,7 @@ function CreateCampaignDialog({ policyId, policyTitle, open, onClose }: CreateDi
           </div>
 
           <div>
-            <Label htmlFor="camp-message">Nachricht (optional)</Label>
+            <Label htmlFor="camp-message">{t('policyAcceptance.labelMessage')}</Label>
             <Textarea
               id="camp-message"
               value={message}
@@ -237,7 +243,7 @@ function CreateCampaignDialog({ policyId, policyTitle, open, onClose }: CreateDi
           </div>
 
           <div>
-            <Label htmlFor="camp-deadline">Deadline (optional)</Label>
+            <Label htmlFor="camp-deadline">{t('policyAcceptance.labelDeadline')}</Label>
             <Input
               id="camp-deadline"
               type="date"
@@ -248,9 +254,9 @@ function CreateCampaignDialog({ policyId, policyTitle, open, onClose }: CreateDi
           </div>
 
           <div>
-            <Label htmlFor="camp-emails">E-Mail-Adressen *</Label>
+            <Label htmlFor="camp-emails">{t('policyAcceptance.labelEmails')}</Label>
             <p className="text-xs text-muted-foreground mb-1">
-              Eine Adresse pro Zeile. Optional: <code>email,Name</code>
+              {t('policyAcceptance.emailsHint')} <code>email,Name</code>
             </p>
             <Textarea
               id="camp-emails"
@@ -266,9 +272,9 @@ function CreateCampaignDialog({ policyId, policyTitle, open, onClose }: CreateDi
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>Abbrechen</Button>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
           <Button onClick={handleSubmit} disabled={createMutation.isPending}>
-            {createMutation.isPending ? 'Wird erstellt...' : 'Kampagne erstellen & E-Mails senden'}
+            {createMutation.isPending ? t('policyAcceptance.submitting') : t('policyAcceptance.submitButton')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -281,6 +287,7 @@ function CreateCampaignDialog({ policyId, policyTitle, open, onClose }: CreateDi
 // ---------------------------------------------------------------------------
 
 export default function PolicyAcceptancePage() {
+  const { t } = useTranslation()
   const { id: policyId = '' } = useParams<{ id: string }>()
   const [dialogOpen, setDialogOpen] = useState(false)
 
@@ -292,16 +299,16 @@ export default function PolicyAcceptancePage() {
 
   const { data: campaigns, isLoading } = useCampaigns(policyId)
 
-  const policyTitle = policy?.title ?? 'Richtlinie'
+  const policyTitle = policy?.title ?? t('policyAcceptance.defaultPolicy')
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Richtlinien-Akzeptanz"
-        description={`Akzeptanzkampagnen für: ${policyTitle}`}
+        title={t('policyAcceptance.title')}
+        description={t('policyAcceptance.description', { policyTitle })}
         actions={
           <Button size="sm" onClick={() => { setDialogOpen(true); }}>
-            <Plus size={14} className="mr-1" /> Neue Kampagne
+            <Plus size={14} className="mr-1" /> {t('policyAcceptance.newCampaign')}
           </Button>
         }
       />
@@ -315,12 +322,12 @@ export default function PolicyAcceptancePage() {
       {!isLoading && (!campaigns || campaigns.length === 0) && (
         <EmptyState
           icon={Users}
-          title="Noch keine Akzeptanzkampagne"
-          description="Erstellen Sie eine Kampagne, um Mitarbeiter um Bestätigung dieser Richtlinie zu bitten."
+          title={t('policyAcceptance.emptyTitle')}
+          description={t('policyAcceptance.emptyDescription')}
           action={
             <Button size="sm" onClick={() => { setDialogOpen(true); }}>
               <Plus size={14} className="mr-1" />
-              Neue Kampagne
+              {t('policyAcceptance.newCampaign')}
             </Button>
           }
         />

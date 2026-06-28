@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import { Spinner } from '../../../components/Spinner'
 import { ArrowLeft, Save, Clock, CheckCircle2, AlertTriangle, FileDown, ShieldAlert } from 'lucide-react'
@@ -30,14 +31,6 @@ const SEVERITY_CLASS: Record<Incident['severity'], string> = {
   high: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
   critical: 'bg-red-500/20 text-red-400 border-red-500/30',
 }
-const SEVERITY_LABELS: Record<Incident['severity'], string> = {
-  low: 'Niedrig', medium: 'Mittel', high: 'Hoch', critical: 'Kritisch',
-}
-const STATUS_LABELS: Record<Incident['status'], string> = {
-  open: 'Offen', investigating: 'In Untersuchung', resolved: 'Gelöst', closed: 'Geschlossen',
-}
-const INCIDENT_TYPE_LABELS = { general: 'Allgemein', nis2: 'NIS2', dora: 'DORA' }
-const OBLIGATION_LABELS = { unknown: 'Unbekannt', required: 'Meldepflichtig', not_required: 'Keine Meldepflicht' }
 
 function deadlineStatusColor(status: DeadlineInfo['status']) {
   switch (status) {
@@ -57,15 +50,6 @@ function deadlineBadgeClass(status: DeadlineInfo['status']) {
   }
 }
 
-function deadlineBadgeLabel(status: DeadlineInfo['status']) {
-  switch (status) {
-    case 'done': return 'Gemeldet'
-    case 'green': return 'Offen'
-    case 'yellow': return 'Bald fällig'
-    case 'red': return 'Überfällig'
-  }
-}
-
 function DeadlineRow({
   label, info, deadlineKey, incidentId,
 }: {
@@ -74,9 +58,19 @@ function DeadlineRow({
   deadlineKey: '4h' | '24h' | '72h' | '30d'
   incidentId: string
 }) {
+  const { t } = useTranslation()
   const mark = useMarkDeadlineReported(incidentId)
   const { formatDateTime } = useFormatDate()
   const isDone = info.status === 'done'
+
+  function deadlineBadgeLabel(status: DeadlineInfo['status']) {
+    switch (status) {
+      case 'done': return t('vaktcomply.incidentDetail.deadlineReported')
+      case 'green': return t('vaktcomply.incidentDetail.deadlineOpen')
+      case 'yellow': return t('vaktcomply.incidentDetail.deadlineSoon')
+      case 'red': return t('vaktcomply.incidentDetail.deadlineOverdue')
+    }
+  }
 
   return (
     <div
@@ -94,14 +88,14 @@ function DeadlineRow({
             {formatDateTime(info.deadline)}
             {isDone && info.reported_at && (
               <span className="ml-2 text-green-400">
-                ✓ Gemeldet: {formatDateTime(info.reported_at)}
+                {t('vaktcomply.incidentDetail.deadlineReportedAt')} {formatDateTime(info.reported_at)}
               </span>
             )}
             {!isDone && (
               <span className={`ml-2 ${deadlineStatusColor(info.status)}`}>
                 {info.hours_left > 0
-                  ? `${Math.round(info.hours_left)}h verbleibend`
-                  : `${Math.abs(Math.round(info.hours_left))}h überfällig`}
+                  ? t('vaktcomply.incidentDetail.deadlineHoursLeft', { hours: Math.round(info.hours_left) })
+                  : t('vaktcomply.incidentDetail.deadlineHoursOverdue', { hours: Math.abs(Math.round(info.hours_left)) })}
               </span>
             )}
           </p>
@@ -122,7 +116,7 @@ function DeadlineRow({
           onClick={() => { mark.mutate({ deadline: deadlineKey }); }}
           data-testid={`deadline-mark-reported-${deadlineKey}`}
         >
-          Als gemeldet markieren
+          {t('vaktcomply.incidentDetail.markReported')}
         </Button>
       )}
     </div>
@@ -130,6 +124,7 @@ function DeadlineRow({
 }
 
 export default function IncidentDetailPage() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { formatDate, formatDateTime } = useFormatDate()
@@ -144,6 +139,29 @@ export default function IncidentDetailPage() {
   const [wizardOpen, setWizardOpen] = useState(false)
   const [classifyWizardOpen, setClassifyWizardOpen] = useState(false)
   const [pdfError, setPdfError] = useState<Error | null>(null)
+
+  const severityLabels: Record<Incident['severity'], string> = {
+    low: t('vaktcomply.incidentsPage.severityLow'),
+    medium: t('vaktcomply.incidentsPage.severityMedium'),
+    high: t('vaktcomply.incidentsPage.severityHigh'),
+    critical: t('vaktcomply.incidentsPage.severityCritical'),
+  }
+  const statusLabels: Record<Incident['status'], string> = {
+    open: t('vaktcomply.incidentsPage.statusOpen'),
+    investigating: t('vaktcomply.incidentsPage.statusInvestigating'),
+    resolved: t('vaktcomply.incidentsPage.statusResolved'),
+    closed: t('vaktcomply.incidentsPage.statusClosed'),
+  }
+  const incidentTypeLabels = {
+    general: t('vaktcomply.incidentDetail.typeGeneral'),
+    nis2: t('vaktcomply.incidentDetail.typeNIS2'),
+    dora: t('vaktcomply.incidentDetail.typeDORA'),
+  }
+  const obligationLabels = {
+    unknown: t('vaktcomply.incidentDetail.obligationUnknown'),
+    required: t('vaktcomply.incidentDetail.obligationRequired'),
+    not_required: t('vaktcomply.incidentDetail.obligationNotRequired'),
+  }
 
   async function handleDownloadPDF() {
     if (!id) return
@@ -210,24 +228,24 @@ export default function IncidentDetailPage() {
     </div>
   )
   if (isError || !incident) return (
-    <div className="p-6 text-sm text-red-400">Vorfall nicht gefunden.</div>
+    <div className="p-6 text-sm text-red-400">{t('vaktcomply.incidentDetail.notFound')}</div>
   )
 
   return (
     <div className="flex flex-col h-full">
       <Breadcrumbs items={[
         { label: 'Vakt Comply', href: '/vaktcomply' },
-        { label: 'Incidents', href: '/vaktcomply/incidents' },
+        { label: t('vaktcomply.incidentDetail.breadcrumbIncidents'), href: '/vaktcomply/incidents' },
         { label: incident.title },
       ]} />
       <PageHeader
         title={incident.title}
-        description={`Entdeckt: ${formatDate(incident.discovered_at)}`}
+        description={`${t('vaktcomply.incidentDetail.discoveredAt')} ${formatDate(incident.discovered_at)}`}
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => { navigate('/vaktcomply/incidents'); }}>
               <ArrowLeft className="w-4 h-4 mr-1" />
-              Zurück
+              {t('common.back')}
             </Button>
             {incident?.incident_type === 'dora' && (
               <Button
@@ -236,7 +254,7 @@ export default function IncidentDetailPage() {
                 data-testid="download-pdf-button"
               >
                 <FileDown className="w-4 h-4 mr-1" />
-                BaFin-Bericht PDF
+                {t('vaktcomply.incidentDetail.bafinReportPdf')}
               </Button>
             )}
             {(incident?.incident_type === 'nis2' || incident?.incident_type === 'general') && (
@@ -247,7 +265,7 @@ export default function IncidentDetailPage() {
                   data-testid="assess-reportability-btn"
                 >
                   <ShieldAlert className="w-4 h-4 mr-1" />
-                  Meldepflicht prüfen
+                  {t('vaktcomply.incidentDetail.checkReportability')}
                 </Button>
                 <Button
                   variant="outline"
@@ -255,13 +273,13 @@ export default function IncidentDetailPage() {
                   data-testid="classify-reporting-btn"
                 >
                   <ShieldAlert className="w-4 h-4 mr-1" />
-                  BSI-Klassifizierung
+                  {t('vaktcomply.incidentDetail.bsiClassification')}
                 </Button>
               </>
             )}
             <Button onClick={handleSave} disabled={!dirty || update.isPending}>
               <Save className="w-4 h-4 mr-1" />
-              {update.isPending ? 'Speichern …' : 'Speichern'}
+              {update.isPending ? t('common.savePending') : t('common.save')}
             </Button>
           </div>
         }
@@ -271,15 +289,15 @@ export default function IncidentDetailPage() {
         <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
             <Card>
-              <CardHeader><CardTitle className="text-sm">Vorfalldetails</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{t('vaktcomply.incidentDetail.cardIncidentDetails')}</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label>Bezeichnung</Label>
+                  <Label>{t('vaktcomply.incidentDetail.labelTitle')}</Label>
                   <Input value={form.title} onChange={(e) => { set('title', e.target.value); }} />
                 </div>
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label>Beschreibung</Label>
+                    <Label>{t('vaktcomply.incidentDetail.labelDescription')}</Label>
                     <AISuggestActionsButton
                       summary={form.description}
                       type={incident.incident_type}
@@ -289,7 +307,7 @@ export default function IncidentDetailPage() {
                   <Textarea rows={4} value={form.description} onChange={(e) => { set('description', e.target.value); }} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Betroffene Systeme (kommagetrennt)</Label>
+                  <Label>{t('vaktcomply.incidentDetail.labelAffectedSystems')}</Label>
                   <Input value={rawSystems} onChange={(e) => { setRawSystems(e.target.value); setDirty(true) }} />
                 </div>
               </CardContent>
@@ -300,7 +318,7 @@ export default function IncidentDetailPage() {
                 <CardHeader>
                   <CardTitle className="text-sm flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 text-amber-400" />
-                    Meldefristen
+                    {t('vaktcomply.incidentDetail.cardDeadlines')}
                     <Badge variant="outline" className="text-xs ml-auto">
                       {incident.incident_type === 'dora' ? 'DORA' : 'NIS2'}
                     </Badge>
@@ -308,16 +326,16 @@ export default function IncidentDetailPage() {
                 </CardHeader>
                 <CardContent className="divide-y divide-border">
                   {ds.has_4h && ds.d_4h && id && (
-                    <DeadlineRow label="Erstmeldung (4h)" info={ds.d_4h} deadlineKey="4h" incidentId={id} />
+                    <DeadlineRow label={t('vaktcomply.incidentDetail.deadlineLabel4h')} info={ds.d_4h} deadlineKey="4h" incidentId={id} />
                   )}
                   {ds.has_24h && ds.d_24h && id && (
-                    <DeadlineRow label="Frühmeldung (24h)" info={ds.d_24h} deadlineKey="24h" incidentId={id} />
+                    <DeadlineRow label={t('vaktcomply.incidentDetail.deadlineLabel24h')} info={ds.d_24h} deadlineKey="24h" incidentId={id} />
                   )}
                   {ds.has_72h && ds.d_72h && id && (
-                    <DeadlineRow label="Vollständige Meldung (72h)" info={ds.d_72h} deadlineKey="72h" incidentId={id} />
+                    <DeadlineRow label={t('vaktcomply.incidentDetail.deadlineLabel72h')} info={ds.d_72h} deadlineKey="72h" incidentId={id} />
                   )}
                   {ds.has_30d && ds.d_30d && id && (
-                    <DeadlineRow label="Abschlussbericht (30 Tage)" info={ds.d_30d} deadlineKey="30d" incidentId={id} />
+                    <DeadlineRow label={t('vaktcomply.incidentDetail.deadlineLabel30d')} info={ds.d_30d} deadlineKey="30d" incidentId={id} />
                   )}
                 </CardContent>
               </Card>
@@ -329,7 +347,7 @@ export default function IncidentDetailPage() {
                 <CardHeader>
                   <CardTitle className="text-sm flex items-center gap-2">
                     <FileDown className="w-4 h-4" />
-                    Meldungsformulare
+                    {t('vaktcomply.incidentDetail.cardReportForms')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -343,14 +361,14 @@ export default function IncidentDetailPage() {
                         onClick={() => { generateReport.mutate({ report_type: rt }); }}
                         data-testid={`generate-report-btn-${rt}`}
                       >
-                        Meldung {rt} erstellen
+                        {t('vaktcomply.incidentDetail.createReport', { type: rt })}
                       </Button>
                     ))}
                   </div>
 
                   {incidentReports && incidentReports.length > 0 && (
                     <div data-testid="report-history">
-                      <p className="text-xs text-muted-foreground mb-2">Meldungshistorie:</p>
+                      <p className="text-xs text-muted-foreground mb-2">{t('vaktcomply.incidentDetail.reportHistory')}</p>
                       <div className="space-y-1">
                         {incidentReports.map((r: IncidentReport) => (
                           <div key={r.id} className="flex items-center justify-between text-xs bg-muted/30 rounded px-2 py-1.5">
@@ -384,33 +402,33 @@ export default function IncidentDetailPage() {
               <Card className="border-blue-500/30" data-testid="dora-fields-card">
                 <CardHeader>
                   <CardTitle className="text-sm flex items-center gap-2">
-                    DORA-spezifische Angaben
+                    {t('vaktcomply.incidentDetail.doraFields')}
                     {incident.is_major_incident && (
                       <Badge className="text-xs bg-red-500/20 text-red-400 border-red-500/30 ml-auto" data-testid="major-incident-badge">
-                        Art. 18 DORA — Schwerwiegend
+                        {t('vaktcomply.incidentDetail.doraMajorBadge')}
                       </Badge>
                     )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="affected-customers">Betroffene Kunden</Label>
+                    <Label htmlFor="affected-customers">{t('vaktcomply.incidentDetail.labelAffectedCustomers')}</Label>
                     <Input
                       id="affected-customers"
                       type="number"
                       min={0}
-                      placeholder="Anzahl betroffener Kunden"
+                      placeholder={t('vaktcomply.incidentDetail.placeholderAffectedCustomers')}
                       value={form.affected_customers ?? ''}
                       onChange={(e) => { set('affected_customers', e.target.value ? Number(e.target.value) : undefined); }}
                       data-testid="affected-customers-input"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="financial-impact">Geschätzter finanzieller Schaden</Label>
+                    <Label htmlFor="financial-impact">{t('vaktcomply.incidentDetail.labelFinancialImpact')}</Label>
                     <Textarea
                       id="financial-impact"
                       rows={2}
-                      placeholder="z.B. ca. 500.000 EUR"
+                      placeholder={t('vaktcomply.incidentDetail.placeholderFinancialImpact')}
                       value={form.financial_impact_estimate ?? ''}
                       onChange={(e) => { set('financial_impact_estimate', e.target.value); }}
                       data-testid="financial-impact-textarea"
@@ -426,7 +444,7 @@ export default function IncidentDetailPage() {
                       data-testid="is-major-incident-checkbox"
                     />
                     <Label htmlFor="is-major-incident" className="cursor-pointer">
-                      Schwerwiegender IKT-Vorfall (Art. 18 DORA)
+                      {t('vaktcomply.incidentDetail.labelMajorIncident')}
                     </Label>
                   </div>
                 </CardContent>
@@ -438,7 +456,7 @@ export default function IncidentDetailPage() {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <ShieldAlert className="w-4 h-4 text-amber-400" />
-                    Verknüpfte Datenpanne
+                    {t('vaktcomply.incidentDetail.linkedBreach')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -446,7 +464,7 @@ export default function IncidentDetailPage() {
                     href={`/vaktprivacy/breaches/${incident.breach_id}`}
                     className="text-sm text-amber-400 hover:underline"
                   >
-                    Datenpanne öffnen →
+                    {t('vaktcomply.incidentDetail.openBreach')}
                   </a>
                 </CardContent>
               </Card>
@@ -455,18 +473,18 @@ export default function IncidentDetailPage() {
 
           <div className="space-y-4">
             <Card>
-              <CardHeader><CardTitle className="text-sm">Klassifizierung</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{t('vaktcomply.incidentDetail.cardClassification')}</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label>Schweregrad</Label>
+                  <Label>{t('vaktcomply.incidentDetail.labelSeverity')}</Label>
                   <Select value={form.severity} onValueChange={(v) => { set('severity', v as Incident['severity']); }}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {(Object.keys(SEVERITY_LABELS) as Incident['severity'][]).map((k) => (
+                      {(Object.keys(severityLabels) as Incident['severity'][]).map((k) => (
                         <SelectItem key={k} value={k}>
                           <span className="flex items-center gap-2">
                             <span className={`inline-block w-2 h-2 rounded-full ${SEVERITY_CLASS[k].split(' ')[0]}`} />
-                            {SEVERITY_LABELS[k]}
+                            {severityLabels[k]}
                           </span>
                         </SelectItem>
                       ))}
@@ -474,51 +492,51 @@ export default function IncidentDetailPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Status</Label>
+                  <Label>{t('vaktcomply.incidentDetail.labelStatus')}</Label>
                   <Select value={form.status} onValueChange={(v) => { set('status', v as Incident['status']); }}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {(Object.keys(STATUS_LABELS) as Incident['status'][]).map((k) => (
-                        <SelectItem key={k} value={k}>{STATUS_LABELS[k]}</SelectItem>
+                      {(Object.keys(statusLabels) as Incident['status'][]).map((k) => (
+                        <SelectItem key={k} value={k}>{statusLabels[k]}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex gap-2 flex-wrap text-xs">
-                  <Badge className={SEVERITY_CLASS[form.severity]}>{SEVERITY_LABELS[form.severity]}</Badge>
+                  <Badge className={SEVERITY_CLASS[form.severity]}>{severityLabels[form.severity]}</Badge>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader><CardTitle className="text-sm">Meldepflicht</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{t('vaktcomply.incidentDetail.cardReportingObligation')}</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label>Vorfalltyp</Label>
+                  <Label>{t('vaktcomply.incidentDetail.labelIncidentType')}</Label>
                   <Select value={form.incident_type ?? 'general'} onValueChange={(v) => { set('incident_type', v as Incident['incident_type']); }}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {Object.entries(INCIDENT_TYPE_LABELS).map(([k, label]) => (
+                      {Object.entries(incidentTypeLabels).map(([k, label]) => (
                         <SelectItem key={k} value={k}>{label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Meldepflicht</Label>
+                  <Label>{t('vaktcomply.incidentDetail.labelObligation')}</Label>
                   <Select value={form.reporting_obligation ?? 'unknown'} onValueChange={(v) => { set('reporting_obligation', v as Incident['reporting_obligation']); }}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {Object.entries(OBLIGATION_LABELS).map(([k, label]) => (
+                      {Object.entries(obligationLabels).map(([k, label]) => (
                         <SelectItem key={k} value={k}>{label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Behörde / Meldestelle</Label>
+                  <Label>{t('vaktcomply.incidentDetail.labelAuthority')}</Label>
                   <Input
-                    placeholder="z.B. BSI, BaFin, BNetzA"
+                    placeholder={t('vaktcomply.incidentDetail.placeholderAuthority')}
                     value={form.notification_authority ?? ''}
                     onChange={(e) => { set('notification_authority', e.target.value); }}
                   />
@@ -528,9 +546,9 @@ export default function IncidentDetailPage() {
 
             <Card>
               <CardContent className="pt-4 space-y-1 text-xs text-muted-foreground">
-                <p>Entdeckt: {formatDateTime(incident.discovered_at)}</p>
-                {incident.resolved_at && <p>Gelöst: {formatDateTime(incident.resolved_at)}</p>}
-                <p>Erstellt: {formatDate(incident.created_at)}</p>
+                <p>{t('vaktcomply.incidentDetail.metaDiscovered')} {formatDateTime(incident.discovered_at)}</p>
+                {incident.resolved_at && <p>{t('vaktcomply.incidentDetail.metaResolved')} {formatDateTime(incident.resolved_at)}</p>}
+                <p>{t('vaktcomply.incidentDetail.metaCreated')} {formatDate(incident.created_at)}</p>
               </CardContent>
             </Card>
           </div>
@@ -566,6 +584,7 @@ interface AISuggestActionsProps {
 // and appends the returned numbered checklist to the incident description.
 // Disabled while the description is empty — the LLM needs context to work with.
 function AISuggestActionsButton({ summary, type, onAppend }: AISuggestActionsProps) {
+  const { t } = useTranslation()
   const { incidentGuide } = useAICopilot()
   const handleClick = () => {
     if (!summary.trim()) return
@@ -574,10 +593,10 @@ function AISuggestActionsButton({ summary, type, onAppend }: AISuggestActionsPro
       {
         onSuccess: (resp) => {
           onAppend(resp.guide)
-          toast('KI-Sofortmaßnahmen angehängt', { variant: 'success' })
+          toast(t('vaktcomply.incidentDetail.aiActionsAppended'), { variant: 'success' })
         },
         onError: () => {
-          toast('KI temporär nicht verfügbar', { variant: 'error' })
+          toast(t('vaktcomply.incidentDetail.aiUnavailable'), { variant: 'error' })
         },
       },
     )
@@ -588,10 +607,10 @@ function AISuggestActionsButton({ summary, type, onAppend }: AISuggestActionsPro
       onClick={handleClick}
       disabled={!summary.trim() || incidentGuide.isPending}
       className="text-[11px] text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
-      title="KI-Vorschlag für Sofortmaßnahmen anhängen (lokales LLM)"
+      title={t('vaktcomply.incidentDetail.aiButtonTitle')}
     >
       <Sparkles className="w-3 h-3" aria-hidden="true" />
-      {incidentGuide.isPending ? 'KI denkt…' : 'KI-Sofortmaßnahmen'}
+      {incidentGuide.isPending ? t('vaktcomply.incidentDetail.aiThinking') : t('vaktcomply.incidentDetail.aiActions')}
     </button>
   )
 }

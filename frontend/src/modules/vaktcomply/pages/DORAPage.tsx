@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ArrowLeft, ChevronDown } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { Button } from '../../../components/ui/button'
@@ -57,11 +58,14 @@ function statusVariant(status: Control['status']): React.ComponentProps<typeof B
   return 'destructive'
 }
 
-function statusLabel(status: Control['status']): string {
-  if (status === 'covered' || status === 'implemented') return 'Umgesetzt'
-  if (status === 'partial' || status === 'in_progress') return 'In Bearbeitung'
-  if (status === 'not_applicable') return 'N/A'
-  return 'Offen'
+function useStatusLabel() {
+  const { t } = useTranslation()
+  return (status: Control['status']): string => {
+    if (status === 'covered' || status === 'implemented') return t('vaktcomply.doraPage.implemented')
+    if (status === 'partial' || status === 'in_progress') return t('vaktcomply.doraPage.inProgress')
+    if (status === 'not_applicable') return t('vaktcomply.doraPage.notApplicable')
+    return t('vaktcomply.doraPage.open')
+  }
 }
 
 // ── Article Section ───────────────────────────────────────────────────────────
@@ -75,8 +79,10 @@ function ArticleSection({
   controls: Control[]
   frameworkId: string
 }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(true)
   const navigate = useNavigate()
+  const statusLabel = useStatusLabel()
   const done = controls.filter((c) => c.status === 'covered' || c.status === 'implemented').length
 
   return (
@@ -94,7 +100,7 @@ function ArticleSection({
           </span>
         </div>
         <span className="text-xs text-secondary shrink-0">
-          {done}/{controls.length} umgesetzt
+          {t('vaktcomply.doraPage.implementedCount', { done, total: controls.length })}
         </span>
       </button>
 
@@ -126,6 +132,7 @@ function ArticleSection({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DORAPage() {
+  const { t } = useTranslation()
   const { frameworkId = '' } = useParams<{ frameworkId: string }>()
   const navigate = useNavigate()
   const { data: controls, isLoading, isError, error } = useFrameworkControls(frameworkId)
@@ -136,8 +143,8 @@ export default function DORAPage() {
     <ProGate error={isError ? error : null}>
       <div className="flex flex-col h-full">
         <PageHeader
-          title="DORA — Artikel-Übersicht"
-          description="Controls gegliedert nach den DORA-Artikelgruppen (Art. 5–16, 17–23, 24–27, 28–44, 45–49)."
+          title={t('vaktcomply.doraPage.title')}
+          description={t('vaktcomply.doraPage.description')}
           actions={
             <Button
               variant="outline"
@@ -145,7 +152,7 @@ export default function DORAPage() {
               onClick={() => { navigate(`/vaktcomply/frameworks/${frameworkId}`); }}
             >
               <ArrowLeft className="w-4 h-4 mr-1" />
-              Zurück
+              {t('vaktcomply.doraPage.backButton')}
             </Button>
           }
         />

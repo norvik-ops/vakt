@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Clock, AlertTriangle } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -65,6 +66,7 @@ function ProgressBar({ entry }: { entry: SLAEntry }) {
  */
 export default function SLADashboardPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { data: entries, isLoading, error } = useSLADashboard()
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
 
@@ -80,16 +82,16 @@ export default function SLADashboardPage() {
   const atRiskCount = all.filter((e) => !e.overdue && slaPercent(e) >= 50).length
 
   const tabs: { key: FilterTab; label: string; count: number }[] = [
-    { key: 'all', label: 'Alle', count: all.length },
-    { key: 'overdue', label: 'Überfällig', count: overdueCount },
-    { key: 'at_risk', label: 'Gefährdet (>50%)', count: atRiskCount },
+    { key: 'all', label: t('vaktscan.slaPage.tabAll'), count: all.length },
+    { key: 'overdue', label: t('vaktscan.slaPage.tabOverdue'), count: overdueCount },
+    { key: 'at_risk', label: t('vaktscan.slaPage.tabAtRisk'), count: atRiskCount },
   ]
 
   return (
     <div className="flex flex-col h-full">
       <PageHeader
         title="SLA-Dashboard"
-        description="Überfällige und gefährdete Findings nach SLA."
+        description={t('vaktscan.slaPage.description')}
       />
 
       <div className="flex-1 p-6 space-y-4">
@@ -124,24 +126,24 @@ export default function SLADashboardPage() {
         )}
 
         {error && (
-          <p className="text-sm text-red-600 p-4">Fehler: {error.message}</p>
+          <p className="text-sm text-red-600 p-4">{t('vaktscan.slaPage.error', { msg: error.message })}</p>
         )}
 
         {!isLoading && !error && filtered.length === 0 && (
           <EmptyState
             icon={activeTab === 'overdue' ? AlertTriangle : Clock}
-            title={activeTab === 'overdue' ? 'Keine überfälligen Findings' : 'Keine Findings in diesem Filter'}
+            title={activeTab === 'overdue' ? t('vaktscan.slaPage.emptyOverdueTitle') : t('vaktscan.slaPage.emptyFilterTitle')}
             description={
               activeTab === 'all'
-                ? 'Noch keine offenen Findings. Starte einen Scan, um SLA-Tracking zu aktivieren.'
+                ? t('vaktscan.slaPage.emptyAllDesc')
                 : activeTab === 'overdue'
-                  ? 'Alle offenen Findings befinden sich noch im SLA-Zeitfenster.'
-                  : 'Keine Findings haben mehr als 50% ihrer SLA-Zeit verbraucht.'
+                  ? t('vaktscan.slaPage.emptyOverdueDesc')
+                  : t('vaktscan.slaPage.emptyAtRiskDesc')
             }
             action={
               activeTab === 'all' ? (
                 <Button size="sm" onClick={() => { navigate('/vaktscan/assets'); }}>
-                  Assets anzeigen
+                  {t('vaktscan.slaPage.showAssets')}
                 </Button>
               ) : undefined
             }
@@ -153,13 +155,13 @@ export default function SLADashboardPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Asset</TableHead>
-                  <TableHead>Finding</TableHead>
-                  <TableHead>Severity</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Offen (Tage)</TableHead>
-                  <TableHead className="text-right">SLA (Tage)</TableHead>
-                  <TableHead>Fortschritt</TableHead>
+                  <TableHead>{t('vaktscan.slaPage.colAsset')}</TableHead>
+                  <TableHead>{t('vaktscan.slaPage.colFinding')}</TableHead>
+                  <TableHead>{t('vaktscan.slaPage.colSeverity')}</TableHead>
+                  <TableHead>{t('common.status')}</TableHead>
+                  <TableHead className="text-right">{t('vaktscan.slaPage.colOpenDays')}</TableHead>
+                  <TableHead className="text-right">{t('vaktscan.slaPage.colSlaDays')}</TableHead>
+                  <TableHead>{t('vaktscan.slaPage.colProgress')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

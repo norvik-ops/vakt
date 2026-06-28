@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ArrowLeft, CheckCircle2, XCircle } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { Button } from '../../../components/ui/button'
@@ -38,6 +39,7 @@ function PairRow({ pair }: { pair: FrameworkPairCoverage }) {
 }
 
 export default function MappingCoveragePage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { data, isLoading, isError } = useMappingCoverage()
 
@@ -68,11 +70,11 @@ export default function MappingCoveragePage() {
         {!isLoading && data && (
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-surface border border-border rounded-md">
-              <span className="text-xs text-secondary">Abgedeckt:</span>
+              <span className="text-xs text-secondary">{t('vaktcomply.mappingCoverage.covered')}</span>
               <Badge variant="success" className="text-xs">{mapped} / {total}</Badge>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 bg-surface border border-border rounded-md">
-              <span className="text-xs text-secondary">Coverage:</span>
+              <span className="text-xs text-secondary">{t('vaktcomply.mappingCoverage.coverage')}</span>
               <span className={`text-sm font-semibold ${pct >= 80 ? 'text-green-500' : pct >= 50 ? 'text-yellow-500' : 'text-red-400'}`}>
                 {pct.toFixed(1)}%
               </span>

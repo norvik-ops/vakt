@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { apiFetch } from '../../../api/client'
 import { ProGate } from '../../../shared/components/ProGate'
 import { Shield, ChevronRight, ChevronLeft, Printer, ExternalLink, CheckSquare, Square } from 'lucide-react'
@@ -145,11 +146,12 @@ interface StepHeaderProps {
 }
 
 function StepProgress({ current, total }: StepHeaderProps) {
+  const { t } = useTranslation()
   const pct = Math.round((current / total) * 100)
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-xs text-secondary">Schritt {current} von {total}</span>
+        <span className="text-xs text-secondary">{t('nis2Assistant.stepProgress', { current, total })}</span>
         <span className="text-xs text-secondary">{pct}%</span>
       </div>
       <div className="w-full bg-border rounded-full h-1.5">
@@ -198,20 +200,21 @@ interface Step1Props {
 }
 
 function Step1SectorSelection({ selectedSectorId, onSelect, onNext }: Step1Props) {
+  const { t } = useTranslation()
   return (
     <div>
-      <h2 className="text-base font-semibold text-primary mb-1">In welchem Sektor ist Ihr Unternehmen tätig?</h2>
+      <h2 className="text-base font-semibold text-primary mb-1">{t('nis2Assistant.step1Title')}</h2>
       <p className="text-[12px] text-secondary mb-5">
-        <TermTooltip term="NIS2" glossaryKey="NIS2">NIS2</TermTooltip> gilt nur für bestimmte Sektoren. Wählen Sie den zutreffenden Sektor aus.
+        <TermTooltip term="NIS2" glossaryKey="NIS2">NIS2</TermTooltip> {t('nis2Assistant.step1Desc')}
       </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Essential sectors */}
         <div>
           <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-2">
-            Wesentliche Einrichtungen <span className="normal-case">(Art. 3 Abs. 1)</span>
+            {t('nis2Assistant.essentialTitle')} <span className="normal-case">{t('nis2Assistant.essentialArt')}</span>
           </h3>
-          <p className="text-[11px] text-secondary mb-3">Höhere Anforderungen, strengere Aufsicht</p>
+          <p className="text-[11px] text-secondary mb-3">{t('nis2Assistant.essentialHint')}</p>
           <div className="space-y-1.5">
             {ESSENTIAL_SECTORS.map((s) => (
               <SectorButton
@@ -227,9 +230,9 @@ function Step1SectorSelection({ selectedSectorId, onSelect, onNext }: Step1Props
         {/* Important sectors */}
         <div>
           <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-2">
-            Wichtige Einrichtungen <span className="normal-case">(Art. 3 Abs. 2)</span>
+            {t('nis2Assistant.importantTitle')} <span className="normal-case">{t('nis2Assistant.importantArt')}</span>
           </h3>
-          <p className="text-[11px] text-secondary mb-3">Grundlegende Anforderungen, anlassbezogene Aufsicht</p>
+          <p className="text-[11px] text-secondary mb-3">{t('nis2Assistant.importantHint')}</p>
           <div className="space-y-1.5">
             {IMPORTANT_SECTORS.map((s) => (
               <SectorButton
@@ -254,7 +257,7 @@ function Step1SectorSelection({ selectedSectorId, onSelect, onNext }: Step1Props
               }`}>
                 {selectedSectorId === 'none' && <div className="w-1.5 h-1.5 rounded-full bg-brand" />}
               </div>
-              Keiner der oben genannten Sektoren
+              {t('nis2Assistant.noneOption')}
             </button>
           </div>
         </div>
@@ -262,7 +265,7 @@ function Step1SectorSelection({ selectedSectorId, onSelect, onNext }: Step1Props
 
       <div className="mt-6 flex justify-end">
         <Button onClick={onNext} disabled={!selectedSectorId}>
-          Weiter
+          {t('nis2Assistant.btnNext')}
           <ChevronRight className="w-4 h-4 ml-1" />
         </Button>
       </div>
@@ -283,45 +286,46 @@ interface Step2Props {
 }
 
 function Step2SizeClass({ sector, employees, revenue, onEmployeesChange, onRevenueChange, onNext, onBack }: Step2Props) {
+  const { t } = useTranslation()
   const canProceed = employees !== '' && revenue !== ''
 
   return (
     <div>
-      <h2 className="text-base font-semibold text-primary mb-1">Wie groß ist Ihr Unternehmen?</h2>
+      <h2 className="text-base font-semibold text-primary mb-1">{t('nis2Assistant.step2Title')}</h2>
       <p className="text-[12px] text-secondary mb-5">
-        NIS2-Pflichten hängen von der Unternehmensgröße ab. Geben Sie Ihre aktuellen Kennzahlen ein.
+        {t('nis2Assistant.step2Desc')}
       </p>
 
       {sector?.alwaysInScope && (
         <div className="mb-5 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-[12px] text-amber-400">
-          <strong>Hinweis:</strong> Ihr Sektor (<span className="font-medium">{sector.label}</span>) ist unabhängig von der Unternehmensgröße NIS2-pflichtig. Die Größenangaben helfen dennoch bei der Einstufung.
+          {t('nis2Assistant.alwaysInScopeHint', { sector: sector.label })}
         </div>
       )}
 
       <div className="p-3 bg-surface border border-border rounded-lg text-[12px] text-secondary mb-5">
-        Für Energie, Wasser, Gesundheit, Digitale Infrastruktur und öffentliche Verwaltung gelten die Schwellenwerte nicht — diese Sektoren sind unabhängig von der Größe betroffen.
+        {t('nis2Assistant.sizeThresholdNote')}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-md">
         <div className="space-y-1.5">
-          <Label htmlFor="employees" className="text-[13px]">Mitarbeiteranzahl</Label>
+          <Label htmlFor="employees" className="text-[13px]">{t('nis2Assistant.employeesLabel')}</Label>
           <Input
             id="employees"
             type="number"
             min="0"
-            placeholder="z.B. 120"
+            placeholder={t('nis2Assistant.employeesPlaceholder')}
             value={employees}
             onChange={(e) => { onEmployeesChange(e.target.value); }}
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="revenue" className="text-[13px]">Jahresumsatz (Mio. €)</Label>
+          <Label htmlFor="revenue" className="text-[13px]">{t('nis2Assistant.revenueLabel')}</Label>
           <Input
             id="revenue"
             type="number"
             min="0"
             step="0.1"
-            placeholder="z.B. 25"
+            placeholder={t('nis2Assistant.revenuePlaceholder')}
             value={revenue}
             onChange={(e) => { onRevenueChange(e.target.value); }}
           />
@@ -329,15 +333,15 @@ function Step2SizeClass({ sector, employees, revenue, onEmployeesChange, onReven
       </div>
 
       <div className="mt-5 space-y-2 text-[12px] text-secondary">
-        <p className="font-medium text-primary text-[13px]">Schwellenwerte im Überblick:</p>
+        <p className="font-medium text-primary text-[13px]">{t('nis2Assistant.thresholdsTitle')}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div className="p-2.5 bg-surface border border-border rounded-lg">
-            <p className="font-semibold text-primary mb-0.5">Wesentliche Einrichtung</p>
-            <p>≥ 250 Mitarbeiter <em>oder</em> ≥ 50 Mio. € Umsatz</p>
+            <p className="font-semibold text-primary mb-0.5">{t('nis2Assistant.essentialThresholdTitle')}</p>
+            <p>{t('nis2Assistant.essentialThresholdText')}</p>
           </div>
           <div className="p-2.5 bg-surface border border-border rounded-lg">
-            <p className="font-semibold text-primary mb-0.5">Wichtige Einrichtung</p>
-            <p>≥ 50 Mitarbeiter <em>oder</em> ≥ 10 Mio. € Umsatz</p>
+            <p className="font-semibold text-primary mb-0.5">{t('nis2Assistant.importantThresholdTitle')}</p>
+            <p>{t('nis2Assistant.importantThresholdText')}</p>
           </div>
         </div>
       </div>
@@ -345,10 +349,10 @@ function Step2SizeClass({ sector, employees, revenue, onEmployeesChange, onReven
       <div className="mt-6 flex items-center justify-between">
         <Button variant="outline" onClick={onBack}>
           <ChevronLeft className="w-4 h-4 mr-1" />
-          Zurück
+          {t('nis2Assistant.btnBack')}
         </Button>
         <Button onClick={onNext} disabled={!canProceed}>
-          Weiter
+          {t('nis2Assistant.btnNext')}
           <ChevronRight className="w-4 h-4 ml-1" />
         </Button>
       </div>
@@ -366,26 +370,24 @@ interface Step3Props {
 }
 
 function Step3Result({ classification, sector, onNext, onBack }: Step3Props) {
+  const { t } = useTranslation()
   const isApplicable = classification !== 'not-applicable'
 
   const config = {
     essential: {
-      badge: <Badge variant="destructive" className="text-sm px-3 py-1">Wesentliche Einrichtung nach NIS2</Badge>,
-      title: 'Ihr Unternehmen ist voraussichtlich eine wesentliche Einrichtung.',
-      description:
-        'Als wesentliche Einrichtung unterliegen Sie den strengsten NIS2-Anforderungen. Sie sind der direkten Aufsicht durch das BSI ausgesetzt und müssen erhöhte Sicherheitsmaßnahmen nachweisen.',
+      badge: <Badge variant="destructive" className="text-sm px-3 py-1">{t('nis2Assistant.essentialBadge')}</Badge>,
+      title: t('nis2Assistant.essentialResultTitle'),
+      description: t('nis2Assistant.essentialResultDesc'),
     },
     important: {
-      badge: <Badge variant="warning" className="text-sm px-3 py-1">Wichtige Einrichtung nach NIS2</Badge>,
-      title: 'Ihr Unternehmen ist voraussichtlich eine wichtige Einrichtung.',
-      description:
-        'Als wichtige Einrichtung müssen Sie die NIS2-Sicherheitsanforderungen umsetzen. Die Aufsicht erfolgt anlassbezogen; bei Vorfällen kann das BSI aktiv werden.',
+      badge: <Badge variant="warning" className="text-sm px-3 py-1">{t('nis2Assistant.importantBadge')}</Badge>,
+      title: t('nis2Assistant.importantResultTitle'),
+      description: t('nis2Assistant.importantResultDesc'),
     },
     'not-applicable': {
-      badge: <Badge variant="success" className="text-sm px-3 py-1">Voraussichtlich nicht NIS2-pflichtig</Badge>,
-      title: 'Ihr Unternehmen ist nach aktuellem Stand nicht NIS2-pflichtig.',
-      description:
-        'Sie unterschreiten die Größenschwellen oder gehören keinem betroffenen Sektor an. Eine freiwillige Registrierung beim BSI bleibt jedoch möglich und kann bei Kundenanforderungen sinnvoll sein.',
+      badge: <Badge variant="success" className="text-sm px-3 py-1">{t('nis2Assistant.notApplicableBadge')}</Badge>,
+      title: t('nis2Assistant.notApplicableResultTitle'),
+      description: t('nis2Assistant.notApplicableResultDesc'),
     },
   } as const
 
@@ -393,7 +395,7 @@ function Step3Result({ classification, sector, onNext, onBack }: Step3Props) {
 
   return (
     <div>
-      <h2 className="text-base font-semibold text-primary mb-5">Ihr Ergebnis</h2>
+      <h2 className="text-base font-semibold text-primary mb-5">{t('nis2Assistant.step3Title')}</h2>
 
       <div className="flex flex-col items-start gap-3 mb-5">
         {badge}
@@ -403,32 +405,31 @@ function Step3Result({ classification, sector, onNext, onBack }: Step3Props) {
 
       {sector && (
         <div className="mb-5 p-3 bg-surface border border-border rounded-lg text-[12px] text-secondary">
-          <span className="font-medium text-primary">Gewählter Sektor:</span> {sector.label}
+          <span className="font-medium text-primary">{t('nis2Assistant.selectedSector')}</span> {sector.label}
         </div>
       )}
 
       <div className={`p-4 rounded-lg border text-[13px] ${isApplicable ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-surface border-border text-secondary'}`}>
-        <p className="font-semibold mb-1">Registrierungsstatus</p>
+        <p className="font-semibold mb-1">{t('nis2Assistant.registrationTitle')}</p>
         <p>
-          Die BSI-Registrierung war bis zum <strong>17. März 2026</strong> Pflicht (BSIG § 33).
-          Prüfen Sie, ob Ihr Unternehmen bereits registriert ist.{' '}
-          {isApplicable && 'Falls nicht, holen Sie die Registrierung unverzüglich nach.'}
+          {t('nis2Assistant.registrationText')}{' '}
+          {isApplicable && t('nis2Assistant.registrationOverdue')}
         </p>
       </div>
 
       <div className="mt-6 flex items-center justify-between">
         <Button variant="outline" onClick={onBack}>
           <ChevronLeft className="w-4 h-4 mr-1" />
-          Zurück
+          {t('nis2Assistant.btnBack')}
         </Button>
         {isApplicable ? (
           <Button onClick={onNext}>
-            Pflichten-Checkliste anzeigen
+            {t('nis2Assistant.btnShowChecklist')}
             <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         ) : (
           <Button variant="outline" onClick={onNext}>
-            Trotzdem Checkliste ansehen
+            {t('nis2Assistant.btnShowChecklistOptional')}
             <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         )}
@@ -447,6 +448,7 @@ interface Step4Props {
 }
 
 function Step4Checklist({ classification, checkedItems, onToggle, onBack }: Step4Props) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const totalItems = CHECKLIST.reduce((sum, s) => sum + s.items.length, 0)
   const checkedCount = checkedItems.size
@@ -454,23 +456,23 @@ function Step4Checklist({ classification, checkedItems, onToggle, onBack }: Step
 
   const classificationLabel =
     classification === 'essential'
-      ? 'Wesentliche Einrichtung'
+      ? t('nis2Assistant.classEssential')
       : classification === 'important'
-        ? 'Wichtige Einrichtung'
-        : 'Referenz (nicht NIS2-pflichtig)'
+        ? t('nis2Assistant.classImportant')
+        : t('nis2Assistant.classNotApplicable')
 
   return (
     <div>
       <div className="flex items-start justify-between mb-5">
         <div>
-          <h2 className="text-base font-semibold text-primary mb-1">Pflichten-Checkliste</h2>
+          <h2 className="text-base font-semibold text-primary mb-1">{t('nis2Assistant.step4Title')}</h2>
           <p className="text-[12px] text-secondary">
-            Einstufung: <span className="font-medium text-primary">{classificationLabel}</span>
+            {t('nis2Assistant.classificationLabel')} <span className="font-medium text-primary">{classificationLabel}</span>
           </p>
         </div>
         <div className="text-right">
           <p className="text-[22px] font-bold text-primary leading-none">{checkedCount}<span className="text-[14px] text-secondary font-normal">/{totalItems}</span></p>
-          <p className="text-[11px] text-secondary">abgehakt</p>
+          <p className="text-[11px] text-secondary">{t('nis2Assistant.checkedOf')}</p>
         </div>
       </div>
 
@@ -482,12 +484,12 @@ function Step4Checklist({ classification, checkedItems, onToggle, onBack }: Step
             style={{ width: `${pct}%` }}
           />
         </div>
-        <p className="text-[11px] text-secondary mt-1">{pct}% erledigt</p>
+        <p className="text-[11px] text-secondary mt-1">{t('nis2Assistant.progressDone', { pct })}</p>
       </div>
 
       {classification === 'not-applicable' && (
         <div className="mb-4 p-3 bg-surface border border-border rounded-lg text-[12px] text-secondary">
-          Diese Checkliste dient nur zur Orientierung — nach aktuellem Stand sind Sie nicht NIS2-pflichtig.
+          {t('nis2Assistant.notApplicableNote')}
         </div>
       )}
 
@@ -530,13 +532,13 @@ function Step4Checklist({ classification, checkedItems, onToggle, onBack }: Step
       </div>
 
       <p className="mt-4 text-[11px] text-secondary italic">
-        Diese Checkliste ist nicht speicherbar und dient nur zur Orientierung. Für verbindliche Rechtsberatung wenden Sie sich an einen Fachanwalt oder IT-Sicherheitsberater.
+        {t('nis2Assistant.checklistDisclaimer')}
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-3 justify-between">
         <Button variant="outline" onClick={onBack}>
           <ChevronLeft className="w-4 h-4 mr-1" />
-          Zurück
+          {t('nis2Assistant.btnBack')}
         </Button>
         <div className="flex gap-2">
           <Button
@@ -544,10 +546,10 @@ function Step4Checklist({ classification, checkedItems, onToggle, onBack }: Step
             onClick={() => { window.print(); }}
           >
             <Printer className="w-4 h-4 mr-1.5" />
-            Als PDF exportieren
+            {t('nis2Assistant.btnPrint')}
           </Button>
           <Button onClick={() => { navigate('/vaktcomply'); }}>
-            In Vakt Comply öffnen
+            {t('nis2Assistant.btnOpenComply')}
             <ExternalLink className="w-4 h-4 ml-1.5" />
           </Button>
         </div>
@@ -559,6 +561,7 @@ function Step4Checklist({ classification, checkedItems, onToggle, onBack }: Step
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function NIS2AssistantPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
 
   const { error: licenseError } = useQuery({
@@ -644,12 +647,12 @@ export default function NIS2AssistantPage() {
       `}</style>
 
       <PageHeader
-        title="NIS2-Registrierungsassistent"
-        description="Prüfen Sie in wenigen Schritten, ob Ihr Unternehmen unter die NIS2-Richtlinie fällt."
+        title={t('nis2Assistant.pageTitle')}
+        description={t('nis2Assistant.pageDescription')}
         actions={
           <Button variant="outline" size="sm" onClick={() => { navigate('/vaktcomply'); }}>
             <Shield className="w-3.5 h-3.5 mr-1" />
-            Zurück zu Vakt Comply
+            {t('nis2Assistant.backToComply')}
           </Button>
         }
       />
@@ -660,7 +663,7 @@ export default function NIS2AssistantPage() {
             <CardHeader>
               <CardTitle className="text-[15px] flex items-center gap-2">
                 <Shield className="w-4 h-4 text-brand" />
-                BSI NIS2-Betroffenheitsprüfung
+                {t('nis2Assistant.cardTitle')}
               </CardTitle>
             </CardHeader>
             <CardContent>

@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ArrowLeft, ScanLine, Trash2, Link2 } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -31,21 +32,15 @@ const severityClass = findingSeverityClass
 const assetTypeLabels: Record<Asset['type'], string> = {
   web_app: 'Web App',
   server: 'Server',
-  database: 'Datenbank',
+  database: 'Database',
   container: 'Container',
   repo: 'Repository',
-}
-
-const criticalityLabels: Record<Asset['criticality'], string> = {
-  low:      'Niedrig',
-  medium:   'Mittel',
-  high:     'Hoch',
-  critical: 'Kritisch',
 }
 
 export default function AssetDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { formatDate } = useFormatDate()
   const [scanTriggered, setScanTriggered] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -92,7 +87,7 @@ export default function AssetDetailPage() {
     return (
       <div className="p-6">
         <ErrorState
-          title="Asset nicht gefunden"
+          title={t('vaktscan.assetDetail.notFound')}
           message={error?.message}
           onRetry={() => { navigate('/vaktscan/assets') }}
         />
@@ -116,7 +111,7 @@ export default function AssetDetailPage() {
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => { navigate('/vaktscan/assets'); }}>
               <ArrowLeft className="w-4 h-4 mr-1" />
-              Zurück
+              {t('common.back')}
             </Button>
             <Button onClick={() => { void handleScan() }} disabled={triggerScan.isPending}>
               {triggerScan.isPending ? (
@@ -124,7 +119,7 @@ export default function AssetDetailPage() {
               ) : (
                 <ScanLine className="w-4 h-4 mr-1" />
               )}
-              Scan starten
+              {t('vaktscan.assetDetail.startScan')}
             </Button>
             <Button
               variant="outline"
@@ -132,7 +127,7 @@ export default function AssetDetailPage() {
               onClick={() => { setDeleteOpen(true); }}
             >
               <Trash2 className="w-4 h-4 mr-1" />
-              Löschen
+              {t('common.delete')}
             </Button>
           </div>
         }
@@ -151,19 +146,19 @@ export default function AssetDetailPage() {
 
       {triggerScan.isError && (
         <div className="px-6 pt-4">
-          <p className="text-sm text-red-600">Scan fehlgeschlagen: {triggerScan.error.message}</p>
+          <p className="text-sm text-red-600">{t('vaktscan.assetDetail.scanFailed', { msg: triggerScan.error.message })}</p>
         </div>
       )}
       {scanTriggered && (
         <div className="px-6 pt-4">
-          <p className="text-sm text-green-600">Scan wurde erfolgreich gestartet.</p>
+          <p className="text-sm text-green-600">{t('vaktscan.assetDetail.scanStarted')}</p>
         </div>
       )}
 
       <div className="flex-1 p-6">
         <Tabs defaultValue="info">
           <TabsList>
-            <TabsTrigger value="info">Info</TabsTrigger>
+            <TabsTrigger value="info">{t('vaktscan.assetDetail.tabInfo')}</TabsTrigger>
             <TabsTrigger value="findings">
               Findings {findings.length > 0 ? `(${findings.length.toString()})` : ''}
             </TabsTrigger>
@@ -172,34 +167,34 @@ export default function AssetDetailPage() {
           <TabsContent value="info" className="mt-4">
             <Card>
               <CardHeader>
-                <CardTitle>Asset-Details</CardTitle>
+                <CardTitle>{t('vaktscan.assetDetail.assetDetails')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
                   <div>
-                    <dt className="text-secondary font-medium">Typ</dt>
+                    <dt className="text-secondary font-medium">{t('common.type')}</dt>
                     <dd className="mt-1 text-primary">{assetTypeLabels[asset.type]}</dd>
                   </div>
                   <div>
-                    <dt className="text-secondary font-medium">Kritikalität</dt>
+                    <dt className="text-secondary font-medium">{t('vaktscan.assetDetail.criticality')}</dt>
                     <dd className="mt-1">
                       <Badge className={criticalityClass[asset.criticality]}>
-                        {criticalityLabels[asset.criticality]}
+                        {t('vaktscan.severity.' + asset.criticality)}
                       </Badge>
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-secondary font-medium">Ziel</dt>
+                    <dt className="text-secondary font-medium">{t('vaktscan.assetDetail.target')}</dt>
                     <dd className="mt-1 font-mono text-xs text-primary">{asset.target}</dd>
                   </div>
                   <div>
-                    <dt className="text-secondary font-medium">Erstellt</dt>
+                    <dt className="text-secondary font-medium">{t('vaktscan.assetDetail.created')}</dt>
                     <dd className="mt-1 text-primary">
                       {formatDate(asset.created_at)}
                     </dd>
                   </div>
                   <div className="col-span-2">
-                    <dt className="text-secondary font-medium">Tags</dt>
+                    <dt className="text-secondary font-medium">{t('vaktscan.assetDetail.tags')}</dt>
                     <dd className="mt-1 flex flex-wrap gap-1">
                       {asset.tags.length > 0
                         ? asset.tags.map((tag) => (
@@ -207,12 +202,12 @@ export default function AssetDetailPage() {
                               {tag}
                             </Badge>
                           ))
-                        : <span className="text-secondary">Keine</span>}
+                        : <span className="text-secondary">{t('common.none')}</span>}
                     </dd>
                   </div>
                   {asset.protection_need_id && (
                     <div className="col-span-2">
-                      <dt className="text-secondary font-medium">Schutzbedarfsfeststellung</dt>
+                      <dt className="text-secondary font-medium">{t('vaktscan.assetDetail.protectionNeed')}</dt>
                       <dd className="mt-1">
                         <button
                           type="button"
@@ -220,7 +215,7 @@ export default function AssetDetailPage() {
                           onClick={() => { navigate('/vaktcomply/protection-needs'); }}
                         >
                           <Link2 className="w-3.5 h-3.5" />
-                          Verknüpfte Schutzbedarfsfeststellung anzeigen
+                          {t('vaktscan.assetDetail.viewProtectionNeed')}
                         </button>
                       </dd>
                     </div>
@@ -232,15 +227,15 @@ export default function AssetDetailPage() {
 
           <TabsContent value="findings" className="mt-4">
             {findings.length === 0 ? (
-              <p className="text-sm text-secondary py-8 text-center">Keine Findings für dieses Asset.</p>
+              <p className="text-sm text-secondary py-8 text-center">{t('vaktscan.assetDetail.noFindings')}</p>
             ) : (
               <div className="rounded-md border border-border bg-surface overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Titel</TableHead>
-                      <TableHead>Schweregrad</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>{t('vaktscan.assetDetail.colTitle')}</TableHead>
+                      <TableHead>{t('vaktscan.assetDetail.colSeverity')}</TableHead>
+                      <TableHead>{t('common.status')}</TableHead>
                       <TableHead>CVE</TableHead>
                       <TableHead>CVSS</TableHead>
                     </TableRow>

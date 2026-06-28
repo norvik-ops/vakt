@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Download, FileText, CheckCircle, XCircle, Shield } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
@@ -15,6 +16,7 @@ function formatDate(iso: string | undefined) {
 }
 
 export default function TrainingReportPage() {
+  const { t } = useTranslation()
   const now = new Date()
   const defaultFrom = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())
     .toISOString()
@@ -30,8 +32,8 @@ export default function TrainingReportPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Trainings-Evidence-Report"
-        description="Audit-ready Trainingsmatrix für ISO 27001 / BSI IT-Grundschutz-Prüfungen."
+        title={t('vaktaware.trainingReport.title')}
+        description={t('vaktaware.trainingReport.description')}
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => { downloadTrainingMatrix('csv', from, to) }}>
@@ -49,7 +51,7 @@ export default function TrainingReportPage() {
       <div className="flex-1 p-6 space-y-6">
         {/* Period filter */}
         <div className="flex items-center gap-4 text-sm">
-          <span className="text-secondary font-medium">Zeitraum:</span>
+          <span className="text-secondary font-medium">{t('vaktaware.trainingReport.period')}</span>
           <div className="flex items-center gap-2">
             <input
               type="date"
@@ -57,7 +59,7 @@ export default function TrainingReportPage() {
               onChange={(e) => { setFrom(e.target.value) }}
               className="border border-border rounded px-2 py-1 text-sm"
             />
-            <span className="text-secondary">bis</span>
+            <span className="text-secondary">{t('vaktaware.trainingReport.to')}</span>
             <input
               type="date"
               value={to}
@@ -77,25 +79,25 @@ export default function TrainingReportPage() {
                 <Card>
                   <CardContent className="pt-4">
                     <p className="text-2xl font-bold">{report.total_stats.total_campaigns}</p>
-                    <p className="text-xs text-secondary mt-1">Kampagnen</p>
+                    <p className="text-xs text-secondary mt-1">{t('vaktaware.trainingReport.statCampaigns')}</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-4">
                     <p className="text-2xl font-bold">{report.total_stats.total_participants}</p>
-                    <p className="text-xs text-secondary mt-1">Teilnehmer</p>
+                    <p className="text-xs text-secondary mt-1">{t('vaktaware.trainingReport.statParticipants')}</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-4">
                     <p className="text-2xl font-bold">{report.total_stats.avg_click_rate.toFixed(1)}%</p>
-                    <p className="text-xs text-secondary mt-1">Ø Klickrate</p>
+                    <p className="text-xs text-secondary mt-1">{t('vaktaware.trainingReport.statAvgClickRate')}</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-4">
                     <p className="text-2xl font-bold">{report.total_stats.total_trainings_completed}</p>
-                    <p className="text-xs text-secondary mt-1">Trainings abgeschlossen</p>
+                    <p className="text-xs text-secondary mt-1">{t('vaktaware.trainingReport.statTrainingsCompleted')}</p>
                   </CardContent>
                 </Card>
               </div>
@@ -112,7 +114,7 @@ export default function TrainingReportPage() {
                       variant={orp3.fulfilled_count === orp3.total_count ? 'default' : 'secondary'}
                       className="ml-auto"
                     >
-                      {orp3.fulfilled_count}/{orp3.total_count} Anforderungen erfüllt
+                      {t('vaktaware.trainingReport.requirementsFulfilled', { fulfilled: orp3.fulfilled_count, total: orp3.total_count })}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -142,17 +144,17 @@ export default function TrainingReportPage() {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
                     <FileText className="w-4 h-4" />
-                    Kampagnen-Übersicht (anonymisiert)
+                    {t('vaktaware.trainingReport.campaignsOverview')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Kampagne</TableHead>
-                        <TableHead>Abgeschlossen</TableHead>
-                        <TableHead className="text-right">Teilnehmer</TableHead>
-                        <TableHead className="text-right">Klickrate</TableHead>
+                        <TableHead>{t('vaktaware.trainingReport.colCampaign')}</TableHead>
+                        <TableHead>{t('vaktaware.trainingReport.colCompleted')}</TableHead>
+                        <TableHead className="text-right">{t('vaktaware.trainingReport.colParticipants')}</TableHead>
+                        <TableHead className="text-right">{t('vaktaware.trainingReport.colClickRate')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -172,7 +174,7 @@ export default function TrainingReportPage() {
 
             {report && report.campaigns.length === 0 && (
               <div className="text-center py-16 text-secondary text-sm">
-                Keine abgeschlossenen Kampagnen im gewählten Zeitraum.
+                {t('vaktaware.trainingReport.noCampaigns')}
               </div>
             )}
           </>

@@ -10,14 +10,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-
 	"github.com/matharnica/vakt/internal/db"
 )
 
-// --- Supplier Register (NIS2 Art. 21 / DORA Art. 28) ---
-
-// supplierFields holds the shared columns of every Supplier-returning sqlc Row.
-// All Row-Types (Create/Get/List/Update) haben identische Shape.
 type supplierFields struct {
 	ID, OrgID, Name                        string
 	ContactName, ContactEmail, ServiceType pgtype.Text

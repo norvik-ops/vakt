@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { GripVertical, Plus } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
@@ -75,6 +76,7 @@ interface QuestionRowProps {
 }
 
 function QuestionRow({ question, onDragStart, onDragOver, onDrop }: QuestionRowProps) {
+  const { t } = useTranslation()
   return (
     <Card
       className="mb-2 cursor-grab active:cursor-grabbing"
@@ -96,7 +98,7 @@ function QuestionRow({ question, onDragStart, onDragOver, onDrop }: QuestionRowP
           {TYPE_LABELS[question.question_type]}
         </Badge>
         {question.required && (
-          <span className="text-xs text-muted-foreground">Pflichtfeld</span>
+          <span className="text-xs text-muted-foreground">{t('vaktcomply.questionnaire.required')}</span>
         )}
         {question.control_id && (
           <span className="text-xs text-muted-foreground" title={`Control: ${question.control_id}`}>
@@ -117,6 +119,7 @@ interface AddQuestionDialogProps {
 }
 
 function AddQuestionDialog({ questionnaireId, open, onOpenChange }: AddQuestionDialogProps) {
+  const { t } = useTranslation()
   const addQuestion = useAddQuestion(questionnaireId)
   const [questionText, setQuestionText] = useState('')
   const [questionType, setQuestionType] = useState<QuestionType>('yes_no')
@@ -148,20 +151,20 @@ function AddQuestionDialog({ questionnaireId, open, onOpenChange }: AddQuestionD
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Frage hinzufügen</DialogTitle>
+          <DialogTitle>{t('vaktcomply.questionnaire.addQuestion')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
-            <Label htmlFor="question-text">Fragetext</Label>
+            <Label htmlFor="question-text">{t('vaktcomply.questionnaire.labelQuestionText')}</Label>
             <Input
               id="question-text"
               value={questionText}
               onChange={(e) => { setQuestionText(e.target.value) }}
-              placeholder="Fragetext eingeben..."
+              placeholder={t('vaktcomply.questionnaire.placeholderQuestionText')}
             />
           </div>
           <div>
-            <Label htmlFor="question-type">Fragetyp</Label>
+            <Label htmlFor="question-type">{t('vaktcomply.questionnaire.labelQuestionType')}</Label>
             <Select
               value={questionType}
               onValueChange={(v) => { setQuestionType(v as QuestionType) }}
@@ -180,7 +183,7 @@ function AddQuestionDialog({ questionnaireId, open, onOpenChange }: AddQuestionD
           </div>
           {questionType === 'multiple_choice' && (
             <div>
-              <Label htmlFor="options">Antwortoptionen (eine pro Zeile)</Label>
+              <Label htmlFor="options">{t('vaktcomply.questionnaire.labelOptions')}</Label>
               <textarea
                 id="options"
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -194,13 +197,13 @@ function AddQuestionDialog({ questionnaireId, open, onOpenChange }: AddQuestionD
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => { onOpenChange(false) }}>
-            Abbrechen
+            {t('common.cancel')}
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={!questionText.trim() || addQuestion.isPending}
           >
-            Hinzufügen
+            {t('vaktcomply.questionnaire.add')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -211,6 +214,7 @@ function AddQuestionDialog({ questionnaireId, open, onOpenChange }: AddQuestionD
 // ─── QuestionnairePage ───────────────────────────────────────────────────────
 
 export default function QuestionnairePage() {
+  const { t } = useTranslation()
   const { id = '' } = useParams<{ id: string }>()
   const { data: questionnaire, isLoading } = useQuestionnaire(id)
   const reorderQuestions = useReorderQuestions(id)
@@ -238,11 +242,11 @@ export default function QuestionnairePage() {
   }
 
   if (isLoading) {
-    return <div className="p-6 text-muted-foreground">Lade Fragebogen...</div>
+    return <div className="p-6 text-muted-foreground">{t('vaktcomply.questionnaire.loading')}</div>
   }
 
   if (!questionnaire) {
-    return <div className="p-6 text-muted-foreground">Fragebogen nicht gefunden.</div>
+    return <div className="p-6 text-muted-foreground">{t('vaktcomply.questionnaire.notFound')}</div>
   }
 
   return (
@@ -254,18 +258,18 @@ export default function QuestionnairePage() {
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {questions.length} {questions.length === 1 ? 'Frage' : 'Fragen'}
+          {t('vaktcomply.questionnaire.questionCount', { count: questions.length })}
         </p>
         <Button onClick={() => { setDialogOpen(true) }} size="sm">
           <Plus className="mr-1 h-4 w-4" />
-          Frage hinzufügen
+          {t('vaktcomply.questionnaire.addQuestion')}
         </Button>
       </div>
 
       <div>
         {questions.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground text-sm">
-            Noch keine Fragen vorhanden. Klicken Sie auf „Frage hinzufügen".
+            {t('vaktcomply.questionnaire.emptyState')}
           </div>
         ) : (
           questions.map((q) => (

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Key, Plus, RotateCcw, Trash2, AlertTriangle } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -42,22 +43,6 @@ const ROTATION_STATUS_CLASS: Record<RotationStatus, string> = {
   none: 'bg-secondary text-secondary-foreground',
 }
 
-const ROTATION_STATUS_LABELS: Record<RotationStatus, string> = {
-  ok: 'Aktuell',
-  due_soon: 'Bald fällig',
-  overdue: 'Überfällig',
-  none: 'Kein Intervall',
-}
-
-const KEY_TYPE_LABELS: Record<CryptoKeyType, string> = {
-  symmetric: 'Symmetrisch',
-  asymmetric: 'Asymmetrisch',
-  certificate: 'Zertifikat',
-  hmac: 'HMAC',
-  signing: 'Signatur',
-  other: 'Sonstige',
-}
-
 function emptyForm(): CreateCryptoKeyInput {
   return {
     name: '',
@@ -80,6 +65,7 @@ function RotateDialog({
   keyItem: CryptoKey
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const rotate = useRotateCryptoKey(keyItem.id)
   const [rotatedAt, setRotatedAt] = useState(new Date().toISOString().slice(0, 10))
   const [notes, setNotes] = useState('')
@@ -89,7 +75,7 @@ function RotateDialog({
       { rotated_at: rotatedAt, rotation_interval_days: keyItem.rotation_interval_days ?? undefined, notes },
       {
         onSuccess: () => {
-          toast(`${keyItem.name} wurde erfolgreich rotiert.`)
+          toast(`${keyItem.name} ${t('vaktcomply.cryptoKeys.rotatedSuccess')}`)
           onClose()
         },
         onError: (err) => {
@@ -103,22 +89,22 @@ function RotateDialog({
     <Dialog open onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Schlüssel rotieren: {keyItem.name}</DialogTitle>
+          <DialogTitle>{t('vaktcomply.cryptoKeys.rotateDialogTitle')}: {keyItem.name}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">
-            <Label>Rotations-Datum</Label>
+            <Label>{t('vaktcomply.cryptoKeys.rotationDate')}</Label>
             <Input type="date" value={rotatedAt} onChange={(e) => { setRotatedAt(e.target.value); }} />
           </div>
           <div className="space-y-1">
-            <Label>Notizen (optional)</Label>
+            <Label>{t('vaktcomply.cryptoKeys.notes')}</Label>
             <Textarea rows={2} value={notes} onChange={(e) => { setNotes(e.target.value); }} />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Abbrechen</Button>
+          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
           <Button onClick={handleRotate} disabled={rotate.isPending}>
-            {rotate.isPending ? 'Rotiere …' : 'Rotation bestätigen'}
+            {rotate.isPending ? t('vaktcomply.cryptoKeys.rotating') : t('vaktcomply.cryptoKeys.confirmRotation')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -127,6 +113,7 @@ function RotateDialog({
 }
 
 export default function CryptoKeysPage() {
+  const { t } = useTranslation()
   const { data: keys, isLoading } = useCryptoKeys()
   const createKey = useCreateCryptoKey()
   const deleteKey = useDeleteCryptoKey()
@@ -135,6 +122,22 @@ export default function CryptoKeysPage() {
   const [rotateTarget, setRotateTarget] = useState<CryptoKey | null>(null)
   const [form, setForm] = useState<CreateCryptoKeyInput>(emptyForm())
 
+  const ROTATION_STATUS_LABELS: Record<RotationStatus, string> = {
+    ok: t('vaktcomply.cryptoKeys.statusOk'),
+    due_soon: t('vaktcomply.cryptoKeys.statusDueSoon'),
+    overdue: t('vaktcomply.cryptoKeys.statusOverdue'),
+    none: t('vaktcomply.cryptoKeys.statusNone'),
+  }
+
+  const KEY_TYPE_LABELS: Record<CryptoKeyType, string> = {
+    symmetric: t('vaktcomply.cryptoKeys.typeSymmetric'),
+    asymmetric: t('vaktcomply.cryptoKeys.typeAsymmetric'),
+    certificate: t('vaktcomply.cryptoKeys.typeCertificate'),
+    hmac: t('vaktcomply.cryptoKeys.typeHmac'),
+    signing: t('vaktcomply.cryptoKeys.typeSigning'),
+    other: t('vaktcomply.cryptoKeys.typeOther'),
+  }
+
   function set<K extends keyof CreateCryptoKeyInput>(k: K, v: CreateCryptoKeyInput[K]) {
     setForm((f) => ({ ...f, [k]: v }))
   }
@@ -142,7 +145,7 @@ export default function CryptoKeysPage() {
   function handleCreate() {
     createKey.mutate(form, {
       onSuccess: () => {
-        toast('Schlüssel angelegt')
+        toast(t('vaktcomply.cryptoKeys.keyCreated'))
         setCreateOpen(false)
         setForm(emptyForm())
       },
@@ -153,9 +156,9 @@ export default function CryptoKeysPage() {
   }
 
   function handleDelete(k: CryptoKey) {
-    if (!confirm(`Schlüssel "${k.name}" wirklich löschen?`)) return
+    if (!confirm(t('vaktcomply.cryptoKeys.deleteConfirm', { name: k.name }))) return
     deleteKey.mutate(k.id, {
-      onSuccess: () => { toast('Schlüssel gelöscht') },
+      onSuccess: () => { toast(t('vaktcomply.cryptoKeys.keyDeleted')) },
       onError: (err) => { toast(err.message, 'error') },
     })
   }
@@ -166,12 +169,12 @@ export default function CryptoKeysPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Kryptographie-Schlüssel-Register"
-        description="ISO 27001 A.8.24 — Dokumentation kryptographischer Schlüssel, Algorithmen und Rotations-Nachweise."
+        title={t('vaktcomply.cryptoKeys.title')}
+        description={t('vaktcomply.cryptoKeys.description')}
         actions={
           <Button onClick={() => { setCreateOpen(true); }} data-testid="add-key-btn">
             <Plus className="w-4 h-4 mr-1" />
-            Schlüssel anlegen
+            {t('vaktcomply.cryptoKeys.addKey')}
           </Button>
         }
       />
@@ -184,12 +187,16 @@ export default function CryptoKeysPage() {
               <span>
                 {weakCount > 0 && (
                   <span className="text-amber-400 font-medium mr-2">
-                    {weakCount} schwache{weakCount === 1 ? 'r' : ''} Algorithmus — Migration empfohlen.
+                    {weakCount} {weakCount === 1
+                      ? t('vaktcomply.cryptoKeys.weakAlgorithmWarning_one')
+                      : t('vaktcomply.cryptoKeys.weakAlgorithmWarning_other')}
                   </span>
                 )}
                 {overdueCount > 0 && (
                   <span className="text-red-400 font-medium">
-                    {overdueCount} Rotation{overdueCount === 1 ? '' : 'en'} überfällig.
+                    {overdueCount} {overdueCount === 1
+                      ? t('vaktcomply.cryptoKeys.overdueWarning_one')
+                      : t('vaktcomply.cryptoKeys.overdueWarning_other')}
                   </span>
                 )}
               </span>
@@ -206,12 +213,12 @@ export default function CryptoKeysPage() {
         {!isLoading && (!keys || keys.length === 0) && (
           <EmptyState
             icon={Key}
-            title="Keine Schlüssel eingetragen"
-            description="Fügen Sie kryptographische Schlüssel, Zertifikate und Algorithmen hinzu, um ISO 27001 A.8.24 nachzuweisen."
+            title={t('vaktcomply.cryptoKeys.emptyTitle')}
+            description={t('vaktcomply.cryptoKeys.emptyDescription')}
             action={
               <Button size="sm" onClick={() => { setCreateOpen(true); }}>
                 <Plus className="w-4 h-4 mr-1" />
-                Ersten Schlüssel anlegen
+                {t('vaktcomply.cryptoKeys.addFirstKey')}
               </Button>
             }
           />
@@ -222,13 +229,13 @@ export default function CryptoKeysPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Typ</TableHead>
-                  <TableHead>Algorithmus</TableHead>
-                  <TableHead>Verwendungszweck</TableHead>
-                  <TableHead>Letzte Rotation</TableHead>
-                  <TableHead>Nächste Rotation</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t('common.name')}</TableHead>
+                  <TableHead>{t('vaktcomply.cryptoKeys.colType')}</TableHead>
+                  <TableHead>{t('vaktcomply.cryptoKeys.colAlgorithm')}</TableHead>
+                  <TableHead>{t('vaktcomply.cryptoKeys.colPurpose')}</TableHead>
+                  <TableHead>{t('vaktcomply.cryptoKeys.colLastRotation')}</TableHead>
+                  <TableHead>{t('vaktcomply.cryptoKeys.colNextRotation')}</TableHead>
+                  <TableHead>{t('common.status')}</TableHead>
                   <TableHead className="w-20" />
                 </TableRow>
               </TableHeader>
@@ -238,7 +245,7 @@ export default function CryptoKeysPage() {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-1.5">
                         {k.is_weak_algorithm && (
-                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" aria-label="Schwacher Algorithmus" />
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" aria-label={t('vaktcomply.cryptoKeys.weakAlgorithmLabel')} />
                         )}
                         {k.name}
                       </div>
@@ -267,7 +274,7 @@ export default function CryptoKeysPage() {
                           variant="ghost"
                           className="h-7 w-7"
                           onClick={() => { setRotateTarget(k); }}
-                          title="Rotation dokumentieren"
+                          title={t('vaktcomply.cryptoKeys.rotationDocumentTitle')}
                           data-testid={`rotate-btn-${k.id}`}
                         >
                           <RotateCcw className="w-3.5 h-3.5" />
@@ -295,16 +302,16 @@ export default function CryptoKeysPage() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Kryptographischen Schlüssel anlegen</DialogTitle>
+            <DialogTitle>{t('vaktcomply.cryptoKeys.createDialogTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
             <div className="space-y-1">
-              <Label>Name *</Label>
-              <Input value={form.name} onChange={(e) => { set('name', e.target.value); }} placeholder="z.B. DB-Verschlüsselungs-Key" />
+              <Label>{t('vaktcomply.cryptoKeys.fieldName')}</Label>
+              <Input value={form.name} onChange={(e) => { set('name', e.target.value); }} placeholder={t('vaktcomply.cryptoKeys.placeholderName')} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>Typ *</Label>
+                <Label>{t('vaktcomply.cryptoKeys.fieldType')}</Label>
                 <Select value={form.key_type} onValueChange={(v) => { set('key_type', v as CryptoKeyType); }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -315,61 +322,61 @@ export default function CryptoKeysPage() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label>Algorithmus *</Label>
-                <Input value={form.algorithm} onChange={(e) => { set('algorithm', e.target.value); }} placeholder="z.B. AES-256-GCM" />
+                <Label>{t('vaktcomply.cryptoKeys.fieldAlgorithm')}</Label>
+                <Input value={form.algorithm} onChange={(e) => { set('algorithm', e.target.value); }} placeholder={t('vaktcomply.cryptoKeys.placeholderAlgorithm')} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>Schlüssellänge (Bit)</Label>
+                <Label>{t('vaktcomply.cryptoKeys.fieldKeyLength')}</Label>
                 <Input
                   type="number"
                   value={form.key_length ?? ''}
                   onChange={(e) => { set('key_length', e.target.value ? Number(e.target.value) : undefined); }}
-                  placeholder="z.B. 256"
+                  placeholder={t('vaktcomply.cryptoKeys.placeholderKeyLength')}
                 />
               </div>
               <div className="space-y-1">
-                <Label>Rotations-Intervall (Tage)</Label>
+                <Label>{t('vaktcomply.cryptoKeys.fieldRotationInterval')}</Label>
                 <Input
                   type="number"
                   value={form.rotation_interval_days ?? ''}
                   onChange={(e) => { set('rotation_interval_days', e.target.value ? Number(e.target.value) : undefined); }}
-                  placeholder="z.B. 365"
+                  placeholder={t('vaktcomply.cryptoKeys.placeholderRotationInterval')}
                 />
               </div>
             </div>
             <div className="space-y-1">
-              <Label>Verwendungszweck *</Label>
-              <Input value={form.purpose} onChange={(e) => { set('purpose', e.target.value); }} placeholder="z.B. TLS-Termination" />
+              <Label>{t('vaktcomply.cryptoKeys.fieldPurpose')}</Label>
+              <Input value={form.purpose} onChange={(e) => { set('purpose', e.target.value); }} placeholder={t('vaktcomply.cryptoKeys.placeholderPurpose')} />
             </div>
             <div className="space-y-1">
-              <Label>Speicherort</Label>
-              <Input value={form.location ?? ''} onChange={(e) => { set('location', e.target.value); }} placeholder="z.B. AWS KMS, on-prem HSM" />
+              <Label>{t('vaktcomply.cryptoKeys.fieldLocation')}</Label>
+              <Input value={form.location ?? ''} onChange={(e) => { set('location', e.target.value); }} placeholder={t('vaktcomply.cryptoKeys.placeholderLocation')} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>Letzte Rotation</Label>
+                <Label>{t('vaktcomply.cryptoKeys.fieldLastRotation')}</Label>
                 <Input type="date" value={form.last_rotation_date ?? ''} onChange={(e) => { set('last_rotation_date', e.target.value); }} />
               </div>
               <div className="space-y-1">
-                <Label>Ablaufdatum (Zertifikat)</Label>
+                <Label>{t('vaktcomply.cryptoKeys.fieldExpiry')}</Label>
                 <Input type="date" value={form.expiry_date ?? ''} onChange={(e) => { set('expiry_date', e.target.value); }} />
               </div>
             </div>
             <div className="space-y-1">
-              <Label>Notizen</Label>
+              <Label>{t('vaktcomply.cryptoKeys.fieldNotes')}</Label>
               <Textarea rows={2} value={form.notes ?? ''} onChange={(e) => { set('notes', e.target.value); }} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setCreateOpen(false); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setCreateOpen(false); }}>{t('common.cancel')}</Button>
             <Button
               onClick={handleCreate}
               disabled={createKey.isPending || !form.name || !form.algorithm || !form.purpose}
               data-testid="create-key-submit"
             >
-              {createKey.isPending ? 'Anlegen …' : 'Schlüssel anlegen'}
+              {createKey.isPending ? t('vaktcomply.cryptoKeys.creating') : t('vaktcomply.cryptoKeys.addKey')}
             </Button>
           </DialogFooter>
         </DialogContent>

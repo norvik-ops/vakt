@@ -516,7 +516,7 @@ export default function RisksPage() {
             icon={ShieldAlert}
             title="Noch keine Risiken erfasst"
             description="Erfasse dein erstes Risiko und verknüpfe es mit Controls — das ist der Kern deines ISMS"
-            action={<Button onClick={openDialog}><Plus className="w-4 h-4 mr-1" />Risiko erfassen</Button>}
+            action={<Button onClick={openDialog}><Plus className="w-4 h-4 mr-1" />{t('vaktcomply.risksPage.addRisk')}</Button>}
           />
         )}
         {!isLoading && !isError && risks && risks.length > 0 && view === 'heatmap' && (
@@ -592,7 +592,7 @@ export default function RisksPage() {
       <Dialog open={bulkStatusDialogOpen} onOpenChange={setBulkStatusDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Status setzen</DialogTitle>
+            <DialogTitle>{t('vaktcomply.risksPage.bulkStatusTitle')}</DialogTitle>
           </DialogHeader>
           <div className="py-3 space-y-3">
             <p className="text-sm text-secondary">
@@ -611,7 +611,7 @@ export default function RisksPage() {
             </Select>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setBulkStatusDialogOpen(false); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setBulkStatusDialogOpen(false); }}>{t('common.cancel')}</Button>
             <Button onClick={() => { void handleBulkStatusApply() }} disabled={isApplyingBulk}>
               {isApplyingBulk ? 'Wird gespeichert…' : 'Anwenden'}
             </Button>

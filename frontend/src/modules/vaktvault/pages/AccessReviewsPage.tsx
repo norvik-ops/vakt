@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, ShieldCheck, AlertTriangle, Eye } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
@@ -46,6 +47,7 @@ function ReviewRow({
 }
 
 export default function AccessReviewsPage() {
+  const { t } = useTranslation()
   const qc = useQueryClient()
   const [selectedReview, setSelectedReview] = useState<AccessReview | null>(null)
   const [decisions, setDecisions] = useState<Record<string, 'keep' | 'revoke'>>({})
@@ -171,7 +173,7 @@ export default function AccessReviewsPage() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setSelectedReview(null); setDecisions({}) }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setSelectedReview(null); setDecisions({}) }}>{t('common.cancel')}</Button>
             <Button onClick={handleComplete} disabled={completeMutation.isPending}>
               {completeMutation.isPending ? 'Wird abgeschlossen…' : 'Review abschließen'}
             </Button>

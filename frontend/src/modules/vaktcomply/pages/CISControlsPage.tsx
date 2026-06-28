@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, ChevronDown, Download, Shield } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
@@ -111,6 +112,7 @@ function ControlGroupCard({
   controls: Control[]
   frameworkId: string
 }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
 
@@ -155,7 +157,7 @@ function ControlGroupCard({
               <TableRow>
                 <TableHead className="w-28">ID</TableHead>
                 <TableHead>Safeguard</TableHead>
-                <TableHead className="w-36">Status</TableHead>
+                <TableHead className="w-36">{t('common.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -15,7 +15,7 @@ const securityTXT = `Contact: mailto:security@norvikops.de
 Expires: 2027-05-24T00:00:00.000Z
 Policy: https://github.com/norvik-ops/vatk/blob/main/SECURITY.md
 Preferred-Languages: de, en
-Canonical: https://sec.norvikops.de/.well-known/security.txt
+Canonical: https://vakt.norvikops.de/.well-known/security.txt
 `
 
 // HandleSecurityTXT serves the static security.txt file at

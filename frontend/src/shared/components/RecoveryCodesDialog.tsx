@@ -8,6 +8,7 @@ import {
 } from '../../components/ui/dialog'
 import { Button } from '../../components/ui/button'
 import { useFormatDate } from '../hooks/useFormatDate'
+import { useTranslation } from 'react-i18next'
 
 interface RecoveryCodesDialogProps {
   open: boolean
@@ -21,15 +22,16 @@ interface RecoveryCodesDialogProps {
  */
 export function RecoveryCodesDialog({ open, codes, onClose }: RecoveryCodesDialogProps) {
   const { formatDateTime } = useFormatDate()
+  const { t } = useTranslation()
   function downloadCodes() {
     const content = [
-      'Vakt — Wiederherstellungscodes',
+      t('recoveryCodes.downloadHeader'),
       '================================',
-      'Jeder Code kann nur einmal verwendet werden.',
+      t('recoveryCodes.downloadNote'),
       '',
       ...codes,
       '',
-      `Generiert am: ${formatDateTime(new Date())}`,
+      `${t('recoveryCodes.downloadGeneratedAt')}: ${formatDateTime(new Date())}`,
     ].join('\n')
 
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
@@ -45,14 +47,12 @@ export function RecoveryCodesDialog({ open, codes, onClose }: RecoveryCodesDialo
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Wiederherstellungscodes</DialogTitle>
+          <DialogTitle>{t('accountSettingsPage.recoveryCodesTitle')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <p className="text-sm text-amber-400 bg-amber-950/30 border border-amber-800/40 rounded p-3">
-            <strong>Wichtig:</strong> Speichere diese Codes an einem sicheren Ort.
-            Jeder Code kann nur <em>einmal</em> verwendet werden — wenn du keinen
-            Zugriff auf deine Authenticator-App hast, kannst du damit einloggen.
+            {t('recoveryCodes.warning')}
           </p>
 
           <div className="p-4 rounded bg-muted font-mono text-sm grid grid-cols-2 gap-2">
@@ -65,13 +65,13 @@ export function RecoveryCodesDialog({ open, codes, onClose }: RecoveryCodesDialo
 
           <Button variant="outline" className="w-full" onClick={downloadCodes}>
             <Download className="mr-2 h-4 w-4" />
-            Codes als .txt herunterladen
+            {t('recoveryCodes.downloadBtn')}
           </Button>
         </div>
 
         <DialogFooter>
           <Button className="w-full" onClick={onClose}>
-            Ich habe meine Codes gesichert
+            {t('recoveryCodes.confirmed')}
           </Button>
         </DialogFooter>
       </DialogContent>

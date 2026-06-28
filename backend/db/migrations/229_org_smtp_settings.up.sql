@@ -1,0 +1,7 @@
+ALTER TABLE organizations
+  ADD COLUMN IF NOT EXISTS smtp_host     TEXT,
+  ADD COLUMN IF NOT EXISTS smtp_port     TEXT,
+  ADD COLUMN IF NOT EXISTS smtp_user     TEXT,
+  ADD COLUMN IF NOT EXISTS smtp_pass_enc BYTEA,
+  ADD COLUMN IF NOT EXISTS smtp_from     TEXT,
+  ADD COLUMN IF NOT EXISTS smtp_tls      BOOLEAN NOT NULL DEFAULT true;

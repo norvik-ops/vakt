@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { FileSearch, Plus, Pencil, Trash2, ShieldCheck, Download, ClipboardCheck } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { Button } from '../../../components/ui/button'
@@ -21,12 +22,6 @@ import { useDPIAs, useCreateDPIA, useUpdateDPIA, useApproveDPIA, useDeleteDPIA, 
 import { useVVT } from '../hooks/useVVT'
 import type { DPIA, CreateDPIAInput, UpdateDPIAInput } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
-
-const STATUS_LABELS: Record<DPIA['status'], string> = {
-  draft: 'Entwurf',
-  in_review: 'In Prüfung',
-  approved: 'Freigegeben',
-}
 
 const STATUS_CLASS: Record<DPIA['status'], string> = {
   draft: 'bg-secondary text-secondary-foreground',
@@ -82,25 +77,27 @@ function DPIACard({
   onDelete: (id: string) => void
   onApprove: (id: string) => void
 }) {
+  const { t } = useTranslation()
   const { formatDate } = useFormatDate()
   const date = formatDate(dpia.created_at, {
     year: 'numeric', month: 'short', day: 'numeric',
   })
+  const getDPIAStatusLabel = (s: DPIA['status']) => t(`vaktprivacy.dpiaPage.status${s.charAt(0).toUpperCase() + s.slice(1).replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`, { defaultValue: s })
   return (
     <Card>
       <CardContent className="pt-5 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <p className="font-medium text-sm">{dpia.title}</p>
-          <Badge className={STATUS_CLASS[dpia.status]}>{STATUS_LABELS[dpia.status]}</Badge>
+          <Badge className={STATUS_CLASS[dpia.status]}>{getDPIAStatusLabel(dpia.status)}</Badge>
         </div>
         {dpia.description && (
           <p className="text-xs text-muted-foreground line-clamp-2">{dpia.description}</p>
         )}
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           {dpia.dpo_consultation && (
-            <span className="text-cyan-400">DSB konsultiert</span>
+            <span className="text-cyan-400">{t('vaktprivacy.dpiaPage.cardDPOConsulted')}</span>
           )}
-          <span>Erstellt {date}</span>
+          <span>{t('vaktprivacy.dpiaPage.cardCreated')} {date}</span>
         </div>
         <div className="flex items-center justify-between pt-1">
           {dpia.status !== 'approved' ? (
@@ -111,20 +108,20 @@ function DPIACard({
               onClick={() => { onApprove(dpia.id); }}
             >
               <ShieldCheck className="w-3.5 h-3.5 mr-1" />
-              Freigeben
+              {t('vaktprivacy.dpiaPage.cardApprove')}
             </Button>
           ) : (
             <span />
           )}
           <div className="flex gap-1">
-            <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Bearbeiten" onClick={() => { onEdit(dpia); }}>
+            <Button size="icon" variant="ghost" className="h-7 w-7" aria-label={t('vaktprivacy.dpiaPage.ariaEdit')} onClick={() => { onEdit(dpia); }}>
               <Pencil className="w-3.5 h-3.5" />
             </Button>
             <Button
               size="icon"
               variant="ghost"
               className="h-7 w-7 text-destructive hover:text-destructive"
-              aria-label="Löschen"
+              aria-label={t('vaktprivacy.dpiaPage.ariaDelete')}
               onClick={() => { onDelete(dpia.id); }}
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -153,10 +150,11 @@ function DPIAForm({
 }) {
   const set = (patch: Partial<DPIAFormState>) => { onChange({ ...form, ...patch }); }
 
+  const { t } = useTranslation()
   return (
     <div className="space-y-4 py-2">
       <div className="space-y-1.5">
-        <Label>Titel <span className="text-red-400 text-xs">*</span></Label>
+        <Label>{t('vaktprivacy.dpiaPage.formLabelTitle')} <span className="text-red-400 text-xs">*</span></Label>
         <Input
           placeholder="z.B. DSFA für KI-gestützte Videoüberwachung"
           value={form.title}
@@ -166,13 +164,13 @@ function DPIAForm({
       </div>
       {showVvtSelector && vvtEntries && vvtEntries.length > 0 && (
         <div className="space-y-1.5">
-          <Label>Verknüpfter VVT-Eintrag (optional)</Label>
+          <Label>{t('vaktprivacy.dpiaPage.formLabelVVT')}</Label>
           <select
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={form.vvt_entry_id ?? ''}
             onChange={(e) => { set({ vvt_entry_id: e.target.value || undefined }); }}
           >
-            <option value="">— Keiner —</option>
+            <option value="">{t('vaktprivacy.dpiaPage.formNoVVT')}</option>
             {vvtEntries.map((v) => (
               <option key={v.id} value={v.id}>{v.name}</option>
             ))}
@@ -180,7 +178,7 @@ function DPIAForm({
         </div>
       )}
       <div className="space-y-1.5">
-        <Label>Beschreibung</Label>
+        <Label>{t('vaktprivacy.dpiaPage.formLabelDesc')}</Label>
         <Textarea
           placeholder="Allgemeine Beschreibung der Verarbeitung …"
           rows={2}
@@ -189,7 +187,7 @@ function DPIAForm({
         />
       </div>
       <div className="space-y-1.5">
-        <Label>Erforderlichkeit & Verhältnismäßigkeit</Label>
+        <Label>{t('vaktprivacy.dpiaPage.formLabelNecessity')}</Label>
         <Textarea
           placeholder="Warum ist diese Verarbeitung erforderlich und verhältnismäßig?"
           rows={2}
@@ -198,7 +196,7 @@ function DPIAForm({
         />
       </div>
       <div className="space-y-1.5">
-        <Label>Risikobewertung</Label>
+        <Label>{t('vaktprivacy.dpiaPage.formLabelRisk')}</Label>
         <Textarea
           placeholder="Identifizierte Risiken für die Rechte und Freiheiten der Betroffenen …"
           rows={3}
@@ -207,7 +205,7 @@ function DPIAForm({
         />
       </div>
       <div className="space-y-1.5">
-        <Label>Abhilfemaßnahmen</Label>
+        <Label>{t('vaktprivacy.dpiaPage.formLabelMitigation')}</Label>
         <Textarea
           placeholder="Technische und organisatorische Maßnahmen zur Risikominderung …"
           rows={2}
@@ -216,7 +214,7 @@ function DPIAForm({
         />
       </div>
       <div className="space-y-1.5">
-        <Label>Restrisiko</Label>
+        <Label>{t('vaktprivacy.dpiaPage.formLabelResidual')}</Label>
         <Textarea
           placeholder="Verbleibendes Restrisiko nach Maßnahmen …"
           rows={2}
@@ -232,13 +230,14 @@ function DPIAForm({
           onChange={(e) => { set({ dpo_consultation: e.target.checked }); }}
           className="w-4 h-4"
         />
-        <Label htmlFor="dpia-dpo">Datenschutzbeauftragter wurde konsultiert</Label>
+        <Label htmlFor="dpia-dpo">{t('vaktprivacy.dpiaPage.formLabelDPO')}</Label>
       </div>
     </div>
   )
 }
 
 export default function DPIAPage() {
+  const { t } = useTranslation()
   const [dialogMode, setDialogMode] = useState<'create' | 'edit' | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState<DPIAFormState>(emptyForm())
@@ -308,7 +307,7 @@ export default function DPIAPage() {
       createDPIA.mutate(payload, {
         onSuccess: () => {
           setDialogMode(null)
-          toast(`DSFA erstellt: "${form.title}"`, 'success')
+          toast(t('vaktprivacy.dpiaPage.toastCreated', { title: form.title }), 'success')
         },
       })
     } else if (dialogMode === 'edit' && editId) {
@@ -331,26 +330,29 @@ export default function DPIAPage() {
     <ProGate error={isError ? error : null}>
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Datenschutz-Folgenabschätzung (DSFA)"
-        description="Art. 35 DSGVO — Risikobeurteilung für riskante Verarbeitungstätigkeiten."
+        title={t('vaktprivacy.dpiaPage.title')}
+        description={t('vaktprivacy.dpiaPage.description')}
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => { void handleExport() }} disabled={!dpias || dpias.length === 0}>
               <Download className="w-4 h-4 mr-1" />
-              Als PDF exportieren
+              {t('vaktprivacy.dpiaPage.exportPDF')}
             </Button>
             <Button onClick={openCreate}>
               <Plus className="w-4 h-4 mr-1" />
-              DSFA erstellen
+              {t('vaktprivacy.dpiaPage.createDSFA')}
             </Button>
           </div>
         }
       />
       <ProGate error={exportError}>{null}</ProGate>
 
-      <InfoBanner icon={ClipboardCheck} title="Datenschutz-Folgenabschätzung (Art. 35 DSGVO)">
-        <p>Eine <TermTooltip term="DSFA" explanation="Datenschutz-Folgenabschätzung (DPIA) — Art. 35 DSGVO: Pflichtprüfung vor Verarbeitungen mit hohem Risiko für betroffene Personen. Bewertet Notwendigkeit, Verhältnismäßigkeit und Restrisiken.">DSFA</TermTooltip> ist <strong>verpflichtend</strong> bei Verarbeitungen mit voraussichtlich hohem Risiko — z.B. Profiling, Biometrie, Videoüberwachung oder großangelegte Verarbeitung besonderer Datenkategorien (Art. 9 DSGVO).</p>
-        <p className="mt-1">Die DSFA sollte vor dem Start der Verarbeitung durchgeführt und bei wesentlichen Änderungen wiederholt werden. Der Datenschutzbeauftragte ist einzubeziehen.</p>
+      <InfoBanner icon={ClipboardCheck} title={t('vaktprivacy.dpiaPage.infoBannerTitle')}>
+        <p>
+          <TermTooltip term="DSFA" explanation={t('vaktprivacy.dpiaPage.bannerTooltipDSFA')}>DSFA</TermTooltip>
+          {t('vaktprivacy.dpiaPage.bannerDesc1')}
+        </p>
+        <p className="mt-1">{t('vaktprivacy.dpiaPage.bannerDesc2')}</p>
       </InfoBanner>
 
       <div className="flex-1 p-6">
@@ -362,19 +364,19 @@ export default function DPIAPage() {
 
         {isError && (
           <div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">
-            Fehler beim Laden der Datenschutz-Folgenabschätzungen.
+            {t('vaktprivacy.dpiaPage.errorLoading')}
           </div>
         )}
 
         {!isLoading && !isError && dpias?.length === 0 && (
           <EmptyState
             icon={FileSearch}
-            title="Noch keine Datenschutz-Folgenabschätzungen"
-            description="DSFAs sind nach Art. 35 DSGVO verpflichtend bei hochriskanten Verarbeitungen (z.B. Profiling, Biometrie, Videoüberwachung). Erstelle die erste DSFA, um die Pflicht zu erfüllen."
+            title={t('vaktprivacy.dpiaPage.emptyTitle')}
+            description={t('vaktprivacy.dpiaPage.emptyDesc')}
             action={
               <Button onClick={openCreate}>
                 <Plus className="w-4 h-4 mr-1" />
-                DSFA erstellen
+                {t('vaktprivacy.dpiaPage.createDSFA')}
               </Button>
             }
           />
@@ -398,14 +400,14 @@ export default function DPIAPage() {
       <AlertDialog open={deleteId !== null} onOpenChange={(open) => { if (!open) setDeleteId(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>DSFA löschen?</AlertDialogTitle>
+            <AlertDialogTitle>{t('vaktprivacy.dpiaPage.deleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Diese Aktion kann nicht rückgängig gemacht werden.
+              {t('vaktprivacy.dpiaPage.deleteDesc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { setDeleteId(null); }}>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Löschen</AlertDialogAction>
+            <AlertDialogCancel onClick={() => { setDeleteId(null); }}>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{t('common.delete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -414,7 +416,7 @@ export default function DPIAPage() {
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {dialogMode === 'create' ? 'DSFA erstellen' : 'DSFA bearbeiten'}
+              {dialogMode === 'create' ? t('vaktprivacy.dpiaPage.createDSFA') : t('vaktprivacy.dpiaPage.editDSFA')}
             </DialogTitle>
           </DialogHeader>
           <DPIAForm
@@ -427,10 +429,10 @@ export default function DPIAPage() {
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => { setDialogMode(null); }}>
-              Abbrechen
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleSubmit} disabled={isPending}>
-              {isPending ? 'Speichern …' : dialogMode === 'create' ? 'DSFA erstellen' : 'Speichern'}
+              {isPending ? t('vaktprivacy.dpiaPage.savingPending') : dialogMode === 'create' ? t('vaktprivacy.dpiaPage.createDSFA') : t('vaktprivacy.dpiaPage.saveButton')}
             </Button>
           </DialogFooter>
         </DialogContent>

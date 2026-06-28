@@ -40,13 +40,13 @@ func Require(feature string) echo.MiddlewareFunc {
 				if lic != nil && lic.Expired {
 					return c.JSON(http.StatusPaymentRequired, map[string]string{
 						"error":   "license_expired",
-						"message": "Your Vakt Pro license has expired. Renew at https://sec.norvikops.de to re-enable write access. Your data is still readable.",
+						"message": "Your Vakt Pro license has expired. Renew at https://vakt.norvikops.de to re-enable write access. Your data is still readable.",
 						"feature": feature,
 					})
 				}
 				return c.JSON(http.StatusPaymentRequired, map[string]string{
 					"error":   "feature_not_available",
-					"message": "This feature requires Vakt Pro. Visit https://sec.norvikops.de for details.",
+					"message": "This feature requires Vakt Pro. Visit https://vakt.norvikops.de for details.",
 					"feature": feature,
 				})
 			}

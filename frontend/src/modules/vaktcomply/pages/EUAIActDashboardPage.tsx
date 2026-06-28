@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { Bot, Download, AlertTriangle, CheckCircle, FileText } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
@@ -38,6 +39,7 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 export default function EUAIActDashboardPage() {
+  const { t } = useTranslation()
   const { data: dashboard, isLoading, isError, error } = useQuery<EUAIActDashboard>({
     queryKey: ['vaktcomply', 'eu-ai-act', 'dashboard'],
     queryFn: () => apiFetch<EUAIActDashboard>('/vaktcomply/eu-ai-act/dashboard'),
@@ -201,7 +203,7 @@ export default function EUAIActDashboardPage() {
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="border-b border-border">
-                          <th className="text-left py-2 pr-3 text-muted-foreground">Artikel</th>
+                          <th className="text-left py-2 pr-3 text-muted-foreground">{t('vaktcomply.euAiActDashboard.colArticle')}</th>
                           <th className="text-left py-2 pr-3 text-muted-foreground">EU AI Act Anforderung</th>
                           <th className="text-left py-2 pr-3 text-muted-foreground">ISO 27001</th>
                           <th className="text-left py-2 text-muted-foreground">ISO Titel</th>

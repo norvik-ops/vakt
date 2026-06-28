@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ShieldCheck, ShieldOff, ArrowRightLeft, CheckCircle2, Link2, Unlink, Plus, Save } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -80,6 +81,7 @@ function residualColor(likelihood: number, impact: number): string {
 // ---------------------------------------------------------------------------
 
 function LinkControlDialog({ riskId, open, onClose }: { riskId: string; open: boolean; onClose: () => void }) {
+  const { t } = useTranslation()
   const [selectedFramework, setSelectedFramework] = useState('')
   const [search, setSearch] = useState('')
   const [linkError, setLinkError] = useState<string | null>(null)
@@ -117,11 +119,11 @@ function LinkControlDialog({ riskId, open, onClose }: { riskId: string; open: bo
     <Dialog open={open} onOpenChange={(o) => { if (!o) { handleClose(); } }}>
       <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Control verknüpfen</DialogTitle>
+          <DialogTitle>{t('vaktcomply.riskTreatmentPanel.linkControlTitle')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 flex-1 overflow-hidden flex flex-col">
           <div className="space-y-1.5">
-            <Label>Framework</Label>
+            <Label>{t('vaktcomply.riskTreatmentPanel.framework')}</Label>
             <select
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={selectedFramework}
@@ -164,7 +166,7 @@ function LinkControlDialog({ riskId, open, onClose }: { riskId: string; open: bo
           {linkError && (
             <p className="text-sm text-destructive text-center">{linkError}</p>
           )}
-          <Button variant="outline" onClick={handleClose}>Schließen</Button>
+          <Button variant="outline" onClick={handleClose}>{t('common.close')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -193,6 +195,7 @@ function buildInitialForm(risk: Risk): UpdateRiskTreatmentInput {
 }
 
 const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
+  const { t } = useTranslation()
   const updateTreatment = useUpdateRiskTreatment(riskId)
   const { data: linkedControls } = useRiskControls(riskId)
   const unlink = useUnlinkRiskControl(riskId)
@@ -250,7 +253,7 @@ const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Behandlungsplan</Label>
+            <Label>{t('vaktcomply.riskTreatmentPanel.treatmentPlan')}</Label>
             <Textarea
               rows={4}
               placeholder="Konkrete Maßnahmen, Verantwortlichkeiten und Zeitplan …"
@@ -261,7 +264,7 @@ const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Verantwortlicher</Label>
+              <Label>{t('vaktcomply.riskTreatmentPanel.owner')}</Label>
               <Input
                 placeholder="z.B. Max Mustermann"
                 value={form.treatment_owner ?? ''}
@@ -269,7 +272,7 @@ const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Zieldatum</Label>
+              <Label>{t('vaktcomply.riskTreatmentPanel.dueDate')}</Label>
               <Input
                 type="date"
                 value={form.treatment_due_date ?? ''}
@@ -279,7 +282,7 @@ const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Behandlungsstatus</Label>
+            <Label>{t('vaktcomply.riskTreatmentPanel.treatmentStatus')}</Label>
             <Select
               value={form.treatment_status ?? 'pending'}
               onValueChange={(v) => { set('treatment_status', v as TreatmentStatus); }}
@@ -367,7 +370,7 @@ const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
             <CardTitle className="text-sm">Verknüpfte Controls</CardTitle>
             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setLinkDialogOpen(true); }}>
               <Plus className="w-3.5 h-3.5 mr-1" />
-              Control verknüpfen
+              {t('vaktcomply.riskTreatmentPanel.linkControlTitle')}
             </Button>
           </div>
         </CardHeader>

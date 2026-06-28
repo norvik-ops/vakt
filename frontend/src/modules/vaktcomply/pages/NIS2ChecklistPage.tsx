@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Badge } from '../../../components/ui/badge'
 import { ExternalLink, Sparkles } from 'lucide-react'
@@ -124,18 +125,19 @@ function moduleBadgeClass(module: string): string {
 }
 
 export default function NIS2ChecklistPage() {
+  const { t } = useTranslation()
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="NIS2-Anforderungen (Art. 21 Abs. 2)"
-        description="Ubersicht der 10 Cybersicherheitsmaßnahmen nach NIS2-Richtlinie (EU) 2022/2555 Artikel 21 Absatz 2. Klicke auf ein Modul um den Status zu prufen."
+        title={t('nis2Checklist.title')}
+        description={t('nis2Checklist.description')}
         actions={
           <Link
             to="/vaktcomply/nis2-assistant"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-brand text-white text-sm font-medium hover:bg-brand/90 transition-colors"
           >
             <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
-            NIS2-Assistent öffnen
+            {t('nis2Checklist.openAssistant')}
           </Link>
         }
       />
@@ -166,7 +168,7 @@ export default function NIS2ChecklistPage() {
                 to={req.path}
                 className="flex items-center gap-1 text-xs text-brand hover:underline"
               >
-                Offnen
+                {t('nis2Checklist.openModule')}
                 <ExternalLink className="w-3 h-3" />
               </Link>
               <p className="text-[11px] text-secondary text-right leading-snug max-w-[200px]">

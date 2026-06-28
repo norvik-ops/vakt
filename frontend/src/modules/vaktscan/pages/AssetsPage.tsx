@@ -115,7 +115,7 @@ function ASSET_COLUMNS(t: (key: string) => string, formatDate: (v: string) => st
     },
     {
       key: 'classification',
-      label: 'Klassifizierung',
+      label: t('vaktscan.assetsPage.colClassification'),
       mobileHide: true,
       render: (row) => row.classification
         ? <ClassificationBadge level={row.classification} />
@@ -199,11 +199,11 @@ export default function AssetsPage() {
     try {
       await createAsset.mutateAsync({ ...form, tags })
       setOpen(false)
-      toast('Erfolgreich erstellt', 'success')
+      toast(t('vaktscan.assetsPage.created'), 'success')
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to create asset'
       setFormError(msg)
-      toast(`Fehler: ${msg}`, 'error')
+      toast(`${t('common.error')}: ${msg}`, 'error')
     }
   }
 
@@ -258,12 +258,12 @@ export default function AssetsPage() {
         {!isLoading && !isError && assets && assets.length === 0 && (
           <EmptyState
             icon={Server}
-            title="Noch kein Asset angelegt"
-            description="Leg deinen ersten Server, Web-App oder Container an — dann startest du deinen ersten Scan"
+            title={t('vaktscan.assetsPage.emptyTitle')}
+            description={t('vaktscan.assetsPage.emptyDesc')}
             action={
               <Button onClick={handleOpen}>
                 <Plus className="w-4 h-4 mr-1" />
-                Asset anlegen
+                {t('vaktscan.assetsPage.addAsset')}
               </Button>
             }
           />
@@ -355,10 +355,10 @@ export default function AssetsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="web_app">Web App</SelectItem>
-                    <SelectItem value="server">Server</SelectItem>
-                    <SelectItem value="database">Database</SelectItem>
-                    <SelectItem value="container">Container</SelectItem>
-                    <SelectItem value="repo">Repository</SelectItem>
+                    <SelectItem value="server">{t('vaktscan.assetsPage.typeServer')}</SelectItem>
+                    <SelectItem value="database">{t('vaktscan.assetsPage.typeDatabase')}</SelectItem>
+                    <SelectItem value="container">{t('vaktscan.assetsPage.typeContainer')}</SelectItem>
+                    <SelectItem value="repo">{t('vaktscan.assetsPage.typeRepo')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -386,16 +386,16 @@ export default function AssetsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
+                    <SelectItem value="low">{t('vaktscan.severity.low')}</SelectItem>
+                    <SelectItem value="medium">{t('vaktscan.severity.medium')}</SelectItem>
+                    <SelectItem value="high">{t('vaktscan.severity.high')}</SelectItem>
+                    <SelectItem value="critical">{t('vaktscan.severity.critical')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="asset-classification">Informationsklassifizierung</Label>
+                <Label htmlFor="asset-classification">{t('vaktscan.assetsPage.labelClassification')}</Label>
                 <Select
                   value={form.classification ?? 'internal'}
                   onValueChange={(val) => { setForm({ ...form, classification: val as ClassificationLevel }); }}
@@ -404,10 +404,10 @@ export default function AssetsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="public">Öffentlich</SelectItem>
-                    <SelectItem value="internal">Intern</SelectItem>
-                    <SelectItem value="confidential">Vertraulich</SelectItem>
-                    <SelectItem value="restricted">Streng Vertraulich</SelectItem>
+                    <SelectItem value="public">{t('vaktscan.classification.public')}</SelectItem>
+                    <SelectItem value="internal">{t('vaktscan.classification.internal')}</SelectItem>
+                    <SelectItem value="confidential">{t('vaktscan.classification.confidential')}</SelectItem>
+                    <SelectItem value="restricted">{t('vaktscan.classification.restricted')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

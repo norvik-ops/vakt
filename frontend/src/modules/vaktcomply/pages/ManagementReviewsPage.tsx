@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Elastic-2.0
 
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, ChevronDown, ChevronUp, CheckCircle2, Clock } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -55,6 +56,7 @@ const TYPE_CLASS: Record<ManagementReview['review_type'], string> = {
 // ─── Review Detail ─────────────────────────────────────────────────────────────
 
 function ReviewDetail({ review }: { review: ManagementReview }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [inputsOpen, setInputsOpen] = useState(false)
   const [outputsOpen, setOutputsOpen] = useState(false)
@@ -80,8 +82,8 @@ function ReviewDetail({ review }: { review: ManagementReview }) {
 
   function handleApprove() {
     approve.mutate(undefined, {
-      onSuccess: () => toast('Management Review genehmigt', 'success'),
-      onError: (e) => toast(`Fehler: ${e.message}`, 'error'),
+      onSuccess: () => toast(t('vaktcomply.managementReviews.toastApproved'), 'success'),
+      onError: (e) => toast(t('vaktcomply.managementReviews.toastError', { message: e.message }), 'error'),
     })
   }
 
@@ -89,9 +91,9 @@ function ReviewDetail({ review }: { review: ManagementReview }) {
     updateInputs.mutate(inputsForm, {
       onSuccess: () => {
         setInputsOpen(false)
-        toast('Eingaben gespeichert', 'success')
+        toast(t('vaktcomply.managementReviews.toastInputsSaved'), 'success')
       },
-      onError: (e) => toast(`Fehler: ${e.message}`, 'error'),
+      onError: (e) => toast(t('vaktcomply.managementReviews.toastError', { message: e.message }), 'error'),
     })
   }
 
@@ -99,15 +101,24 @@ function ReviewDetail({ review }: { review: ManagementReview }) {
     updateOutputs.mutate(outputsForm, {
       onSuccess: () => {
         setOutputsOpen(false)
-        toast('Ergebnisse gespeichert', 'success')
+        toast(t('vaktcomply.managementReviews.toastOutputsSaved'), 'success')
       },
-      onError: (e) => toast(`Fehler: ${e.message}`, 'error'),
+      onError: (e) => toast(t('vaktcomply.managementReviews.toastError', { message: e.message }), 'error'),
     })
   }
 
   function handleExportPDF() {
-    toast('PDF-Export kommt bald — Diese Funktion ist noch in Entwicklung.', 'info')
+    toast(t('vaktcomply.managementReviews.pdfComingSoon'), 'info')
   }
+
+  const inputFields: [keyof UpdateManagementReviewInputsInput, string][] = [
+    ['audit_findings_summary', t('vaktcomply.managementReviews.inputAuditFindings')],
+    ['incident_summary', t('vaktcomply.managementReviews.inputIncidentSummary')],
+    ['risk_status_summary', t('vaktcomply.managementReviews.inputRiskStatus')],
+    ['previous_actions_status', t('vaktcomply.managementReviews.inputPreviousActions')],
+    ['context_changes', t('vaktcomply.managementReviews.inputContextChanges')],
+    ['customer_feedback', t('vaktcomply.managementReviews.inputCustomerFeedback')],
+  ]
 
   return (
     <Card className="mb-3">
@@ -116,14 +127,18 @@ function ReviewDetail({ review }: { review: ManagementReview }) {
           <div className="flex items-center gap-2">
             <CardTitle className="text-base">{review.review_date}</CardTitle>
             <Badge className={TYPE_CLASS[review.review_type]}>
-              {review.review_type === 'annual' ? 'Jährlich' : 'Außerordentlich'}
+              {review.review_type === 'annual'
+                ? t('vaktcomply.managementReviews.typeAnnual')
+                : t('vaktcomply.managementReviews.typeExtraordinary')}
             </Badge>
             <Badge className={STATUS_CLASS[review.status]}>
-              {review.status === 'approved' ? 'Genehmigt' : 'Entwurf'}
+              {review.status === 'approved'
+                ? t('vaktcomply.managementReviews.statusApproved')
+                : t('vaktcomply.managementReviews.statusDraft')}
             </Badge>
             {review.participant_ids.length > 0 && (
               <span className="text-xs text-muted-foreground">
-                {review.participant_ids.length} Teilnehmer
+                {t('vaktcomply.managementReviews.participants', { count: review.participant_ids.length })}
               </span>
             )}
           </div>
@@ -131,11 +146,11 @@ function ReviewDetail({ review }: { review: ManagementReview }) {
             {review.status === 'draft' && (
               <Button size="sm" variant="outline" onClick={handleApprove} disabled={approve.isPending}>
                 <CheckCircle2 className="w-3 h-3 mr-1" />
-                Genehmigen
+                {t('vaktcomply.managementReviews.approve')}
               </Button>
             )}
             <Button size="sm" variant="ghost" onClick={handleExportPDF}>
-              PDF exportieren
+              {t('vaktcomply.managementReviews.exportPdf')}
             </Button>
             <button
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
@@ -152,34 +167,34 @@ function ReviewDetail({ review }: { review: ManagementReview }) {
           {/* Inputs Section */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-medium">Eingaben</h4>
+              <h4 className="text-sm font-medium">{t('vaktcomply.managementReviews.sectionInputs')}</h4>
               <Button size="sm" variant="outline" onClick={() => { setInputsOpen(true); }}>
-                Bearbeiten
+                {t('vaktcomply.managementReviews.edit')}
               </Button>
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
-                <span className="text-muted-foreground">Audit-Findings:</span>
+                <span className="text-muted-foreground">{t('vaktcomply.managementReviews.inputAuditFindings')}:</span>
                 <p className="mt-0.5">{review.audit_findings_summary || '—'}</p>
               </div>
               <div>
-                <span className="text-muted-foreground">Vorfallzusammenfassung:</span>
+                <span className="text-muted-foreground">{t('vaktcomply.managementReviews.inputIncidentSummary')}:</span>
                 <p className="mt-0.5">{review.incident_summary || '—'}</p>
               </div>
               <div>
-                <span className="text-muted-foreground">Risikostatus:</span>
+                <span className="text-muted-foreground">{t('vaktcomply.managementReviews.inputRiskStatus')}:</span>
                 <p className="mt-0.5">{review.risk_status_summary || '—'}</p>
               </div>
               <div>
-                <span className="text-muted-foreground">Status vorheriger Maßnahmen:</span>
+                <span className="text-muted-foreground">{t('vaktcomply.managementReviews.inputPreviousActions')}:</span>
                 <p className="mt-0.5">{review.previous_actions_status || '—'}</p>
               </div>
               <div>
-                <span className="text-muted-foreground">Kontextänderungen:</span>
+                <span className="text-muted-foreground">{t('vaktcomply.managementReviews.inputContextChanges')}:</span>
                 <p className="mt-0.5">{review.context_changes || '—'}</p>
               </div>
               <div>
-                <span className="text-muted-foreground">Kundenfeedback:</span>
+                <span className="text-muted-foreground">{t('vaktcomply.managementReviews.inputCustomerFeedback')}:</span>
                 <p className="mt-0.5">{review.customer_feedback || '—'}</p>
               </div>
             </div>
@@ -188,31 +203,31 @@ function ReviewDetail({ review }: { review: ManagementReview }) {
           {/* Outputs Section */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-medium">Ergebnisse</h4>
+              <h4 className="text-sm font-medium">{t('vaktcomply.managementReviews.sectionOutputs')}</h4>
               <Button size="sm" variant="outline" onClick={() => { setOutputsOpen(true); }}>
-                Bearbeiten
+                {t('vaktcomply.managementReviews.edit')}
               </Button>
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
-                <span className="text-muted-foreground">Verbesserungsentscheidungen:</span>
+                <span className="text-muted-foreground">{t('vaktcomply.managementReviews.outputImprovementDecisions')}:</span>
                 <p className="mt-0.5">
                   {review.improvement_decisions.length > 0
-                    ? `${review.improvement_decisions.length} Entscheidung(en)`
+                    ? t('vaktcomply.managementReviews.outputDecisionsCount', { count: review.improvement_decisions.length })
                     : '—'}
                 </p>
               </div>
               <div>
-                <span className="text-muted-foreground">Ressourcenentscheidungen:</span>
+                <span className="text-muted-foreground">{t('vaktcomply.managementReviews.outputResourceDecisions')}:</span>
                 <p className="mt-0.5">{review.resource_decisions || '—'}</p>
               </div>
               <div>
-                <span className="text-muted-foreground">ISMS-Änderungen:</span>
+                <span className="text-muted-foreground">{t('vaktcomply.managementReviews.outputIsmsChanges')}:</span>
                 <p className="mt-0.5">{review.isms_changes || '—'}</p>
               </div>
               {review.next_review_date && (
                 <div>
-                  <span className="text-muted-foreground">Nächstes Review:</span>
+                  <span className="text-muted-foreground">{t('vaktcomply.managementReviews.outputNextReview')}:</span>
                   <p className="mt-0.5">{review.next_review_date}</p>
                 </div>
               )}
@@ -225,19 +240,10 @@ function ReviewDetail({ review }: { review: ManagementReview }) {
       <Dialog open={inputsOpen} onOpenChange={setInputsOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Eingaben bearbeiten</DialogTitle>
+            <DialogTitle>{t('vaktcomply.managementReviews.inputsDialogTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            {(
-              [
-                ['audit_findings_summary', 'Audit-Findings'],
-                ['incident_summary', 'Vorfallzusammenfassung'],
-                ['risk_status_summary', 'Risikostatus'],
-                ['previous_actions_status', 'Status vorheriger Maßnahmen'],
-                ['context_changes', 'Kontextänderungen'],
-                ['customer_feedback', 'Kundenfeedback'],
-              ] as [keyof UpdateManagementReviewInputsInput, string][]
-            ).map(([field, label]) => (
+            {inputFields.map(([field, label]) => (
               <div key={field}>
                 <Label>{label}</Label>
                 <Input
@@ -248,8 +254,12 @@ function ReviewDetail({ review }: { review: ManagementReview }) {
             ))}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setInputsOpen(false); }}>Abbrechen</Button>
-            <Button onClick={handleSaveInputs} disabled={updateInputs.isPending}>Speichern</Button>
+            <Button variant="outline" onClick={() => { setInputsOpen(false); }}>
+              {t('vaktcomply.managementReviews.cancel')}
+            </Button>
+            <Button onClick={handleSaveInputs} disabled={updateInputs.isPending}>
+              {t('vaktcomply.managementReviews.save')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -258,25 +268,25 @@ function ReviewDetail({ review }: { review: ManagementReview }) {
       <Dialog open={outputsOpen} onOpenChange={setOutputsOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Ergebnisse bearbeiten</DialogTitle>
+            <DialogTitle>{t('vaktcomply.managementReviews.outputsDialogTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Ressourcenentscheidungen</Label>
+              <Label>{t('vaktcomply.managementReviews.outputResourceDecisions')}</Label>
               <Input
                 value={outputsForm.resource_decisions}
                 onChange={(e) => { setOutputsForm((f) => ({ ...f, resource_decisions: e.target.value })); }}
               />
             </div>
             <div>
-              <Label>ISMS-Änderungen</Label>
+              <Label>{t('vaktcomply.managementReviews.outputIsmsChanges')}</Label>
               <Input
                 value={outputsForm.isms_changes}
                 onChange={(e) => { setOutputsForm((f) => ({ ...f, isms_changes: e.target.value })); }}
               />
             </div>
             <div>
-              <Label>Nächstes Review (Datum)</Label>
+              <Label>{t('vaktcomply.managementReviews.outputNextReview')}</Label>
               <Input
                 type="date"
                 value={outputsForm.next_review_date ?? ''}
@@ -285,8 +295,12 @@ function ReviewDetail({ review }: { review: ManagementReview }) {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setOutputsOpen(false); }}>Abbrechen</Button>
-            <Button onClick={handleSaveOutputs} disabled={updateOutputs.isPending}>Speichern</Button>
+            <Button variant="outline" onClick={() => { setOutputsOpen(false); }}>
+              {t('vaktcomply.managementReviews.cancel')}
+            </Button>
+            <Button onClick={handleSaveOutputs} disabled={updateOutputs.isPending}>
+              {t('vaktcomply.managementReviews.save')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -297,6 +311,7 @@ function ReviewDetail({ review }: { review: ManagementReview }) {
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function ManagementReviewsPage() {
+  const { t } = useTranslation()
   const { data: reviews, isLoading } = useManagementReviews()
   const createReview = useCreateManagementReview()
 
@@ -311,9 +326,9 @@ export default function ManagementReviewsPage() {
       onSuccess: () => {
         setCreateOpen(false)
         setCreateForm({ review_date: new Date().toISOString().split('T')[0], review_type: 'annual' })
-        toast('Management Review erstellt', 'success')
+        toast(t('vaktcomply.managementReviews.toastCreated'), 'success')
       },
-      onError: (e) => toast(`Fehler: ${e.message}`, 'error'),
+      onError: (e) => toast(t('vaktcomply.managementReviews.toastError', { message: e.message }), 'error'),
     })
   }
 
@@ -328,12 +343,12 @@ export default function ManagementReviewsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Management Reviews"
-        description="ISO 27001 Cl. 9.3 — Regelmäßige Leitungsbewertung des ISMS"
+        title={t('vaktcomply.managementReviews.pageTitle')}
+        description={t('vaktcomply.managementReviews.pageDescription')}
         actions={
           <Button onClick={() => { setCreateOpen(true); }}>
             <Plus className="w-4 h-4 mr-1" />
-            Neues Review starten
+            {t('vaktcomply.managementReviews.newReview')}
           </Button>
         }
       />
@@ -341,12 +356,12 @@ export default function ManagementReviewsPage() {
       {(!reviews || reviews.length === 0) ? (
         <EmptyState
           icon={Clock}
-          title="Noch keine Management Reviews"
-          description="Starten Sie das erste jährliche Management Review für Ihre ISMS-Dokumentation."
+          title={t('vaktcomply.managementReviews.emptyTitle')}
+          description={t('vaktcomply.managementReviews.emptyDescription')}
           action={
             <Button onClick={() => { setCreateOpen(true); }}>
               <Plus className="w-4 h-4 mr-1" />
-              Neues Review starten
+              {t('vaktcomply.managementReviews.newReview')}
             </Button>
           }
         />
@@ -362,11 +377,11 @@ export default function ManagementReviewsPage() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Neues Management Review starten</DialogTitle>
+            <DialogTitle>{t('vaktcomply.managementReviews.createDialogTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="review_date">Datum des Reviews</Label>
+              <Label htmlFor="review_date">{t('vaktcomply.managementReviews.labelDate')}</Label>
               <Input
                 id="review_date"
                 type="date"
@@ -375,7 +390,7 @@ export default function ManagementReviewsPage() {
               />
             </div>
             <div>
-              <Label htmlFor="review_type">Art des Reviews</Label>
+              <Label htmlFor="review_type">{t('vaktcomply.managementReviews.labelType')}</Label>
               <Select
                 value={createForm.review_type}
                 onValueChange={(v) => {
@@ -386,18 +401,18 @@ export default function ManagementReviewsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="annual">Jährlich (geplant)</SelectItem>
-                  <SelectItem value="extraordinary">Außerordentlich</SelectItem>
+                  <SelectItem value="annual">{t('vaktcomply.managementReviews.typeAnnualPlanned')}</SelectItem>
+                  <SelectItem value="extraordinary">{t('vaktcomply.managementReviews.typeExtraordinaryOption')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setCreateOpen(false); }}>
-              Abbrechen
+              {t('vaktcomply.managementReviews.cancel')}
             </Button>
             <Button onClick={handleCreate} disabled={createReview.isPending || !createForm.review_date}>
-              Review starten
+              {t('vaktcomply.managementReviews.startReview')}
             </Button>
           </DialogFooter>
         </DialogContent>

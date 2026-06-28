@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Trash2, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -14,7 +15,6 @@ import {
   useSaveISMSScope,
   useApproveISMSScope,
 } from '../hooks/useISMSScope'
-import { TermTooltip } from '../../../shared/components/TermTooltip'
 import type { ISMSScopeExclusion, CreateISMSScopeInput } from '../types'
 
 const STATUS_CLASS: Record<'draft' | 'approved', string> = {
@@ -28,6 +28,7 @@ const STATUS_LABEL: Record<'draft' | 'approved', string> = {
 }
 
 export default function ISMSScopePage() {
+  const { t } = useTranslation()
   const { data: current, isLoading } = useISMSScope()
   const { data: versions = [] } = useISMSScopeVersions()
   const saveMutation = useSaveISMSScope()
@@ -111,14 +112,14 @@ export default function ISMSScopePage() {
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label>Ausschlüsse</Label>
+              <Label>{t('vaktcomply.ismsScopePage.exclusionsLabel')}</Label>
               <Button type="button" variant="outline" size="sm" onClick={addExclusion}>
                 <Plus className="mr-1 h-4 w-4" />
-                Ausschluss hinzufügen
+                {t('vaktcomply.ismsScopePage.addExclusion')}
               </Button>
             </div>
             {exclusions.length === 0 && (
-              <p className="text-sm text-muted-foreground">Keine Ausschlüsse definiert.</p>
+              <p className="text-sm text-muted-foreground">{t('vaktcomply.ismsScopePage.noExclusions')}</p>
             )}
             {exclusions.map((ex, idx) => (
               <div key={idx} className="flex gap-2 items-start">
@@ -236,7 +237,7 @@ export default function ISMSScopePage() {
       )}
 
       {!current && !isLoading && (
-        <p className="text-sm text-muted-foreground">Kein <TermTooltip term="ISMS" glossaryKey="ISMS">ISMS</TermTooltip>-Scope vorhanden. Erstellen Sie den ersten Entwurf.</p>
+        <p className="text-sm text-muted-foreground">{t('vaktcomply.ismsScopePage.noScope')}</p>
       )}
     </div>
   )

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, ArrowRightLeft, CheckCircle2, Clock } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
@@ -37,7 +38,16 @@ const STATUS_BADGE: Record<string, { label: string; variant: 'outline' | 'warnin
 }
 
 function MoverEventRow({ event, onStatusUpdate }: { event: MoverEvent; onStatusUpdate: (id: string, status: string) => void }) {
+  const { t } = useTranslation()
   const badge = STATUS_BADGE[event.status] ?? { label: event.status, variant: 'outline' as const }
+  const statusLabels: Record<string, string> = {
+    pending: t('vakthr.mover.statusPending'),
+    in_progress: t('vakthr.mover.statusInProgress'),
+    completed: t('vakthr.mover.statusCompleted'),
+    overdue: t('vakthr.mover.statusOverdue'),
+    cancelled: t('vakthr.mover.statusCancelled'),
+  }
+  const displayLabel = statusLabels[event.status] ?? badge.label
   const fromLabel = [event.from_job_title, event.from_department].filter(Boolean).join(' / ') || '–'
   const toLabel = [event.to_job_title, event.to_department].filter(Boolean).join(' / ')
   return (
@@ -50,21 +60,21 @@ function MoverEventRow({ event, onStatusUpdate }: { event: MoverEvent; onStatusU
             {fromLabel} → {toLabel}
           </p>
           <p className="text-xs text-secondary">
-            Wirksam: {new Date(event.effective_date).toLocaleDateString('de-DE')} · Fällig: {new Date(event.due_date).toLocaleDateString('de-DE')}
+            {t('vakthr.mover.effective', { date: new Date(event.effective_date).toLocaleDateString('de-DE') })} · {t('vakthr.mover.due', { date: new Date(event.due_date).toLocaleDateString('de-DE') })}
           </p>
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <Badge variant={badge.variant} className="text-xs">{badge.label}</Badge>
+        <Badge variant={badge.variant} className="text-xs">{displayLabel}</Badge>
         {event.status === 'pending' && (
           <Button size="sm" variant="outline" onClick={() => { onStatusUpdate(event.id, 'in_progress'); }}>
-            Starten
+            {t('vakthr.mover.startButton')}
           </Button>
         )}
         {event.status === 'in_progress' && (
           <Button size="sm" variant="outline" onClick={() => { onStatusUpdate(event.id, 'completed'); }}>
             <CheckCircle2 className="w-3 h-3 mr-1" />
-            Abschließen
+            {t('vakthr.mover.completeButton')}
           </Button>
         )}
       </div>
@@ -73,6 +83,7 @@ function MoverEventRow({ event, onStatusUpdate }: { event: MoverEvent; onStatusU
 }
 
 export default function MoverEventsPage() {
+  const { t } = useTranslation()
   const qc = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
 
@@ -120,12 +131,12 @@ export default function MoverEventsPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Rollenwechsel (JML Mover)"
-        description="Revoke-Grant-Verify-Checkliste für interne Rollenwechsel — verhindert Access Creep."
+        title={t('vakthr.mover.title')}
+        description={t('vakthr.mover.description')}
         actions={
           <Button size="sm" onClick={() => { setShowCreate(true); }}>
             <Plus className="w-4 h-4 mr-1" />
-            Rollenwechsel erfassen
+            {t('vakthr.mover.addButton')}
           </Button>
         }
       />
@@ -136,8 +147,8 @@ export default function MoverEventsPage() {
         ) : !events || events.length === 0 ? (
           <EmptyState
             icon={ArrowRightLeft}
-            title="Keine Rollenwechsel erfasst"
-            description="Erfasse Rollenwechsel, um sicherzustellen dass alte Berechtigungen entzogen und neue korrekt vergeben werden."
+            title={t('vakthr.mover.emptyTitle')}
+            description={t('vakthr.mover.emptyDesc')}
           />
         ) : (
           <div className="space-y-6">
@@ -145,7 +156,7 @@ export default function MoverEventsPage() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-xs font-medium text-secondary uppercase tracking-wide">
                   <Clock className="w-3 h-3" />
-                  Offen ({active.length})
+                  {t('vakthr.mover.groupOpen', { count: active.length })}
                 </div>
                 {active.map((ev) => (
                   <MoverEventRow
@@ -160,7 +171,7 @@ export default function MoverEventsPage() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-xs font-medium text-secondary uppercase tracking-wide">
                   <CheckCircle2 className="w-3 h-3" />
-                  Abgeschlossen ({done.length})
+                  {t('vakthr.mover.groupDone', { count: done.length })}
                 </div>
                 {done.map((ev) => (
                   <MoverEventRow
@@ -178,14 +189,14 @@ export default function MoverEventsPage() {
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rollenwechsel erfassen</DialogTitle>
+            <DialogTitle>{t('vakthr.mover.dialogTitle')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="employee_id">Mitarbeiter</Label>
+              <Label htmlFor="employee_id">{t('vakthr.checklistRunPage.employee')}</Label>
               {employees.length > 0 ? (
                 <Select name="employee_id" required>
-                  <SelectTrigger><SelectValue placeholder="Mitarbeiter auswählen…" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('vakthr.mover.selectEmployee')} /></SelectTrigger>
                   <SelectContent>
                     {employees.map((emp) => (
                       <SelectItem key={emp.id} value={emp.id}>
@@ -200,32 +211,32 @@ export default function MoverEventsPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="from_job_title">Bisherige Stelle</Label>
+                <Label htmlFor="from_job_title">{t('vakthr.mover.fromJob')}</Label>
                 <Input id="from_job_title" name="from_job_title" placeholder="Junior Developer" />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="from_department">Bisherige Abteilung</Label>
+                <Label htmlFor="from_department">{t('vakthr.mover.fromDept')}</Label>
                 <Input id="from_department" name="from_department" placeholder="Engineering" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="to_job_title">Neue Stelle *</Label>
+                <Label htmlFor="to_job_title">{t('vakthr.mover.toJob')} *</Label>
                 <Input id="to_job_title" name="to_job_title" required placeholder="Senior Developer" />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="to_department">Neue Abteilung *</Label>
+                <Label htmlFor="to_department">{t('vakthr.mover.toDept')} *</Label>
                 <Input id="to_department" name="to_department" required placeholder="Platform" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="effective_date">Wirksamkeitsdatum *</Label>
+              <Label htmlFor="effective_date">{t('vakthr.mover.effectiveDate')} *</Label>
               <Input id="effective_date" name="effective_date" type="date" required />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => { setShowCreate(false); }}>Abbrechen</Button>
+              <Button type="button" variant="outline" onClick={() => { setShowCreate(false); }}>{t('common.cancel')}</Button>
               <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending ? 'Speichern…' : 'Erfassen'}
+                {createMutation.isPending ? t('common.saving') : t('vakthr.mover.submit')}
               </Button>
             </DialogFooter>
           </form>

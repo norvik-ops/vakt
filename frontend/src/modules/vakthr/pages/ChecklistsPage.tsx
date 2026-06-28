@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Trash2, ClipboardList, ChevronDown, ChevronRight } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Spinner } from '../../../components/Spinner'
@@ -28,10 +29,11 @@ import { useChecklists, useCreateChecklist, useDeleteChecklist } from '../hooks/
 import type { Checklist, ChecklistItem, CreateChecklistInput } from '../types'
 
 function TypeBadge({ type }: { type: Checklist['type'] }) {
+  const { t } = useTranslation()
   return type === 'onboarding' ? (
-    <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">Onboarding</Badge>
+    <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">{t('vakthr.checklistsPage.typeOnboarding')}</Badge>
   ) : (
-    <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">Offboarding</Badge>
+    <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">{t('vakthr.checklistsPage.typeOffboarding')}</Badge>
   )
 }
 
@@ -110,6 +112,7 @@ function ChecklistCard({ checklist, onDelete }: { checklist: Checklist; onDelete
 }
 
 export default function ChecklistsPage() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { data: checklists = [], isLoading } = useChecklists()
   const createChecklist = useCreateChecklist()
@@ -226,8 +229,8 @@ export default function ChecklistsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="onboarding">Onboarding</SelectItem>
-                  <SelectItem value="offboarding">Offboarding</SelectItem>
+                  <SelectItem value="onboarding">{t('vakthr.checklistsPage.typeOnboarding')}</SelectItem>
+                  <SelectItem value="offboarding">{t('vakthr.checklistsPage.typeOffboarding')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -243,7 +246,7 @@ export default function ChecklistsPage() {
 
             {/* Items */}
             <div className="space-y-2">
-              <Label>Schritte</Label>
+              <Label>{t('vakthr.checklistsPage.labelSteps')}</Label>
               {form.items.length > 0 && (
                 <ul className="space-y-1 mb-2">
                   {form.items.map((item) => (

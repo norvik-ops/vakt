@@ -56,8 +56,7 @@ describe('AVVPage — loading state', () => {
   it('shows page title while loading', () => {
     vi.mocked(useAVVs).mockReturnValue({ data: [], isLoading: true, isError: false } as unknown as R<typeof useAVVs>)
     renderWithProviders(<AVVPage />)
-    // t() returns raw key when i18n not initialised
-    expect(screen.getByText('vaktprivacy.avvPage.title')).toBeInTheDocument()
+    expect(screen.getByText('Auftragsverarbeitungsverträge (AVV)')).toBeInTheDocument()
   })
 })
 
@@ -66,7 +65,7 @@ describe('AVVPage — loading state', () => {
 describe('AVVPage — empty state', () => {
   it('shows empty state when no AVVs exist', () => {
     renderWithProviders(<AVVPage />)
-    expect(screen.getByText('vaktprivacy.avvPage.noAVVs')).toBeInTheDocument()
+    expect(screen.getByText('Noch keine AVVs')).toBeInTheDocument()
   })
 })
 
@@ -88,20 +87,20 @@ describe('AVVPage — create mutation', () => {
     renderWithProviders(<AVVPage />)
 
     // Open dialog
-    fireEvent.click(screen.getAllByText('vaktprivacy.avvPage.createAVV')[0])
+    fireEvent.click(screen.getAllByText('AVV anlegen')[0])
     expect(screen.getByRole('dialog')).toBeInTheDocument()
 
-    fireEvent.change(screen.getByPlaceholderText('vaktprivacy.avvPage.placeholderProcessor'), {
+    fireEvent.change(screen.getByPlaceholderText('z.B. Amazon Web Services EMEA SARL'), {
       target: { value: 'Test Verarbeiter GmbH' },
     })
     // AVVForm uses Textarea for service_description
-    const serviceTA = screen.getByPlaceholderText('vaktprivacy.avvPage.placeholderService')
+    const serviceTA = screen.getByPlaceholderText('Welche Leistung erbringt der Auftragsverarbeiter?')
     fireEvent.change(serviceTA, {
       target: { value: 'E-Mail Marketing' },
     })
 
     // Dialog submit button is the last button with this text (header + empty-state + dialog)
-    const submitButtons = screen.getAllByText('vaktprivacy.avvPage.createAVV')
+    const submitButtons = screen.getAllByText('AVV anlegen')
     fireEvent.click(submitButtons[submitButtons.length - 1])
 
     await waitFor(() => {
@@ -118,11 +117,11 @@ describe('AVVPage — create mutation', () => {
   it('submit button is disabled when required fields are empty', () => {
     renderWithProviders(<AVVPage />)
     // Open dialog
-    fireEvent.click(screen.getAllByText('vaktprivacy.avvPage.createAVV')[0])
+    fireEvent.click(screen.getAllByText('AVV anlegen')[0])
     expect(screen.getByRole('dialog')).toBeInTheDocument()
 
     // Dialog submit button should be disabled (canSubmit = false when fields empty)
-    const submitBtns = screen.getAllByRole('button', { name: 'vaktprivacy.avvPage.createAVV' })
+    const submitBtns = screen.getAllByRole('button', { name: 'AVV anlegen' })
     const dialogSubmit = submitBtns[submitBtns.length - 1]
     expect(dialogSubmit).toBeDisabled()
     expect(mockCreate).not.toHaveBeenCalled()

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { UserPlus, Pencil, Trash2, Users, Play } from 'lucide-react'
@@ -43,6 +44,7 @@ import {
 import type { Employee, CreateEmployeeInput, UpdateEmployeeInput } from '../types'
 
 function ChecklistRunCell({ employee }: { employee: Employee }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { data: runs } = useChecklistRuns(employee.id)
   const { data: checklists } = useChecklists()
@@ -56,7 +58,7 @@ function ChecklistRunCell({ employee }: { employee: Employee }) {
     return (
       <Link to={`/vakthr/checklist-runs/${activeRun.id}`}>
         <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 cursor-pointer hover:bg-blue-500/30 transition-colors">
-          Laufen
+          {t('vakthr.checklistRun.active')}
         </Badge>
       </Link>
     )
@@ -78,21 +80,21 @@ function ChecklistRunCell({ employee }: { employee: Employee }) {
         onClick={() => { setPickOpen(true) }}
       >
         <Play className="w-3 h-3 mr-1" />
-        Checkliste starten
+        {t('vakthr.checklistRun.start')}
       </Button>
 
       <Dialog open={pickOpen} onOpenChange={setPickOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Checkliste auswählen</DialogTitle>
+            <DialogTitle>{t('vakthr.checklistRun.selectTitle')}</DialogTitle>
           </DialogHeader>
           <div className="py-3 space-y-3">
             <p className="text-sm text-secondary">
-              Checkliste für <strong className="text-primary">{employee.first_name} {employee.last_name}</strong> starten:
+              {t('vakthr.checklistRun.selectDesc', { name: `${employee.first_name} ${employee.last_name}` })}
             </p>
             <Select value={selectedChecklistId} onValueChange={setSelectedChecklistId}>
               <SelectTrigger>
-                <SelectValue placeholder="Checkliste wählen…" />
+                <SelectValue placeholder={t('vakthr.checklistRun.selectPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
                 {(checklists ?? []).map((c) => (
@@ -104,12 +106,12 @@ function ChecklistRunCell({ employee }: { employee: Employee }) {
             </Select>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setPickOpen(false) }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setPickOpen(false) }}>{t('common.cancel')}</Button>
             <Button
               onClick={() => { void handleStart() }}
               disabled={!selectedChecklistId || startRun.isPending}
             >
-              {startRun.isPending ? 'Wird gestartet…' : 'Starten'}
+              {startRun.isPending ? t('vakthr.checklistRun.starting') : t('vakthr.checklistRun.startButton')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -121,13 +123,14 @@ function ChecklistRunCell({ employee }: { employee: Employee }) {
 type StatusFilter = 'all' | 'active' | 'offboarding' | 'terminated'
 
 function StatusBadge({ status }: { status: Employee['status'] }) {
+  const { t } = useTranslation()
   if (status === 'active') {
-    return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Aktiv</Badge>
+    return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">{t('vakthr.status.active')}</Badge>
   }
   if (status === 'offboarding') {
-    return <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">Offboarding</Badge>
+    return <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">{t('vakthr.status.offboarding')}</Badge>
   }
-  return <Badge variant="secondary">Ausgeschieden</Badge>
+  return <Badge variant="secondary">{t('vakthr.status.terminated')}</Badge>
 }
 
 interface FormState {
@@ -171,6 +174,7 @@ function formFromEmployee(e: Employee): FormState {
 }
 
 export default function EmployeesPage() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const { data: employees = [], isLoading, pagination } = useEmployees(page)
@@ -180,7 +184,7 @@ export default function EmployeesPage() {
   const { errors: empErrors, validate: validateEmp, clearError: clearEmpError, clearAll: clearEmpErrors } = useFormValidation<Record<string, unknown>>({
     first_name: { required: true },
     last_name: { required: true },
-    email: { required: true, pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, patternMessage: 'Bitte eine gültige E-Mail-Adresse eingeben.' },
+    email: { required: true, pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, patternMessage: t('validation.email') },
   })
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -243,7 +247,7 @@ export default function EmployeesPage() {
         notes: form.notes || undefined,
       }
       await createEmployee.mutateAsync(input)
-      toast('Mitarbeiter hinzugefügt', 'success')
+      toast(t('vakthr.employees.addedToast'), 'success')
       setDialogOpen(false)
     }
   }
@@ -257,23 +261,22 @@ export default function EmployeesPage() {
   return (
     <div className="p-6 space-y-6">
       <PageHeader
-        title="Mitarbeiter"
-        description="Onboarding- und Offboarding-Verwaltung"
+        title={t('vakthr.employees.title')}
+        description={t('vakthr.employees.description')}
         actions={
           <Button onClick={openCreate} size="sm">
             <UserPlus className="w-4 h-4 mr-2" />
-            Mitarbeiter hinzufügen
+            {t('vakthr.employees.addEmployee')}
           </Button>
         }
       />
 
-      <InfoBanner icon={Users} title="So funktioniert Vakt HR">
+      <InfoBanner icon={Users} title={t('vakthr.employees.bannerTitle')}>
         <p>
-          Vakt HR verwaltet den Mitarbeiter-Lifecycle: <strong>Onboarding</strong>, <strong>Offboarding</strong> und <strong>Zugriffsrechte</strong>.
-          Lege Checklisten für jeden Schritt an und weise sie Mitarbeitern zu.
+          {t('vakthr.employees.bannerDesc1')}
         </p>
         <p className="mt-1">
-          Abgeschlossene Checklisten fließen automatisch als Evidenz in <strong>Vakt Comply</strong> ein.
+          {t('vakthr.employees.bannerDesc2')}
         </p>
       </InfoBanner>
 
@@ -286,7 +289,7 @@ export default function EmployeesPage() {
             size="sm"
             onClick={() => { setStatusFilter(s); }}
           >
-            {s === 'all' ? 'Alle' : s === 'active' ? 'Aktiv' : s === 'offboarding' ? 'Offboarding' : 'Ausgeschieden'}
+            {s === 'all' ? t('common.all') : s === 'active' ? t('vakthr.status.active') : s === 'offboarding' ? t('vakthr.status.offboarding') : t('vakthr.status.terminated')}
           </Button>
         ))}
       </div>
@@ -296,9 +299,9 @@ export default function EmployeesPage() {
       {!isLoading && filtered.length === 0 && (
         <EmptyState
           icon={Users}
-          title="Noch keine Mitarbeiter"
-          description="Verwalte Mitarbeiter-Lifecycle: Onboarding, Offboarding und Zugriffsrechte. Füge den ersten Mitarbeiter hinzu."
-          action={<Button size="sm" onClick={openCreate}><UserPlus className="w-4 h-4 mr-2" />Mitarbeiter hinzufügen</Button>}
+          title={t('vakthr.employees.emptyTitle')}
+          description={t('vakthr.employees.emptyDesc')}
+          action={<Button size="sm" onClick={openCreate}><UserPlus className="w-4 h-4 mr-2" />{t('vakthr.employees.addEmployee')}</Button>}
         />
       )}
 
@@ -309,13 +312,13 @@ export default function EmployeesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-secondary text-xs uppercase tracking-wide">
-                  <th className="text-left px-4 py-3 font-medium">Name</th>
-                  <th className="text-left px-4 py-3 font-medium">E-Mail</th>
-                  <th className="text-left px-4 py-3 font-medium">Abteilung</th>
-                  <th className="text-left px-4 py-3 font-medium">Rolle</th>
-                  <th className="text-left px-4 py-3 font-medium">Eintrittsdatum</th>
-                  <th className="text-left px-4 py-3 font-medium">Status</th>
-                  <th className="text-left px-4 py-3 font-medium">Checkliste</th>
+                  <th className="text-left px-4 py-3 font-medium">{t('common.name')}</th>
+                  <th className="text-left px-4 py-3 font-medium">{t('common.email')}</th>
+                  <th className="text-left px-4 py-3 font-medium">{t('vakthr.employees.colDept')}</th>
+                  <th className="text-left px-4 py-3 font-medium">{t('vakthr.employees.colRole')}</th>
+                  <th className="text-left px-4 py-3 font-medium">{t('vakthr.employees.colStartDate')}</th>
+                  <th className="text-left px-4 py-3 font-medium">{t('common.status')}</th>
+                  <th className="text-left px-4 py-3 font-medium">{t('vakthr.employees.colChecklist')}</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -370,14 +373,14 @@ export default function EmployeesPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {editTarget ? 'Mitarbeiter bearbeiten' : 'Mitarbeiter hinzufügen'}
+              {editTarget ? t('vakthr.employees.editTitle') : t('vakthr.employees.addEmployee')}
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>Vorname <span className="text-red-400 text-xs">*</span></Label>
+                <Label>{t('vakthr.employees.labelFirstName')} <span className="text-red-400 text-xs">*</span></Label>
                 <Input
                   value={form.first_name}
                   onChange={(e) => { handleField('first_name', e.target.value); }}
@@ -386,7 +389,7 @@ export default function EmployeesPage() {
                 <FieldError error={empErrors.first_name ?? null} />
               </div>
               <div className="space-y-1">
-                <Label>Nachname <span className="text-red-400 text-xs">*</span></Label>
+                <Label>{t('vakthr.employees.labelLastName')} <span className="text-red-400 text-xs">*</span></Label>
                 <Input
                   value={form.last_name}
                   onChange={(e) => { handleField('last_name', e.target.value); }}
@@ -398,7 +401,7 @@ export default function EmployeesPage() {
 
             {!editTarget && (
               <div className="space-y-1">
-                <Label>E-Mail <span className="text-red-400 text-xs">*</span></Label>
+                <Label>{t('common.email')} <span className="text-red-400 text-xs">*</span></Label>
                 <Input
                   type="email"
                   value={form.email}
@@ -411,7 +414,7 @@ export default function EmployeesPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>Abteilung</Label>
+                <Label>{t('vakthr.employees.labelDept')}</Label>
                 <Input
                   value={form.department}
                   onChange={(e) => { handleField('department', e.target.value); }}
@@ -419,7 +422,7 @@ export default function EmployeesPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label>Rolle / Funktion</Label>
+                <Label>{t('vakthr.employees.labelRole')}</Label>
                 <Input
                   value={form.role}
                   onChange={(e) => { handleField('role', e.target.value); }}
@@ -431,7 +434,7 @@ export default function EmployeesPage() {
             <div className="grid grid-cols-2 gap-3">
               {!editTarget && (
                 <div className="space-y-1">
-                  <Label>Eintrittsdatum</Label>
+                  <Label>{t('vakthr.employees.labelStartDate')}</Label>
                   <Input
                     type="date"
                     value={form.start_date}
@@ -442,7 +445,7 @@ export default function EmployeesPage() {
               {editTarget && (
                 <>
                   <div className="space-y-1">
-                    <Label>Austrittsdatum</Label>
+                    <Label>{t('vakthr.employees.labelEndDate')}</Label>
                     <Input
                       type="date"
                       value={form.end_date}
@@ -450,7 +453,7 @@ export default function EmployeesPage() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label>Status *</Label>
+                    <Label>{t('vakthr.employees.labelStatus')} *</Label>
                     <Select
                       value={form.status}
                       onValueChange={(v) => { handleField('status', v as FormState['status']); }}
@@ -459,9 +462,9 @@ export default function EmployeesPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="active">Aktiv</SelectItem>
-                        <SelectItem value="offboarding">Offboarding</SelectItem>
-                        <SelectItem value="terminated">Ausgeschieden</SelectItem>
+                        <SelectItem value="active">{t('vakthr.status.active')}</SelectItem>
+                        <SelectItem value="offboarding">{t('vakthr.status.offboarding')}</SelectItem>
+                        <SelectItem value="terminated">{t('vakthr.status.terminated')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -470,11 +473,11 @@ export default function EmployeesPage() {
             </div>
 
             <div className="space-y-1">
-              <Label>Notizen</Label>
+              <Label>{t('vakthr.employees.labelNotes')}</Label>
               <Textarea
                 value={form.notes}
                 onChange={(e) => { handleField('notes', e.target.value); }}
-                placeholder="Interne Notizen..."
+                placeholder={t('vakthr.employees.notesPlaceholder')}
                 rows={3}
               />
             </div>
@@ -482,10 +485,10 @@ export default function EmployeesPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => { setDialogOpen(false); }}>
-              Abbrechen
+              {t('common.cancel')}
             </Button>
             <Button onClick={() => void handleSubmit()} disabled={isPending}>
-              {isPending ? 'Speichern...' : editTarget ? 'Speichern' : 'Hinzufügen'}
+              {isPending ? t('common.saving') : editTarget ? t('common.save') : t('common.add')}
             </Button>
           </DialogFooter>
         </DialogContent>

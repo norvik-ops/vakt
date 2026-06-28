@@ -166,8 +166,8 @@ export default function GitScansPage() {
       />
 
       <InfoBanner icon={KeyRound} title={t('vault.gitScans.infoBannerTitle')}>
-        <p>Gib die URL eines öffentlichen oder privaten Repositories ein (HTTPS oder SSH). Vakt Vault sucht mit <strong>Gitleaks</strong> nach versehentlich eingecheckten Passwörtern, Tokens und API-Keys.</p>
-        <p className="mt-1">Für <strong>private Repositories</strong>: trage zuerst ein Personal Access Token (GitHub/GitLab/Bitbucket) unter <strong>Settings → Integrationen</strong> ein.</p>
+        <p>{t('vaktvault.gitScans.infoBannerDesc1')}</p>
+        <p className="mt-1">{t('vaktvault.gitScans.infoBannerDesc2')}</p>
       </InfoBanner>
 
       <div className="flex-1 p-6 space-y-3">
@@ -193,10 +193,10 @@ export default function GitScansPage() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Scan Repository</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('vault.gitScans.scanDialogTitle')}</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { handleTrigger(e) }}>
             <div className="py-4 space-y-1.5">
-              <Label htmlFor="repo-url">Repository URL</Label>
+              <Label htmlFor="repo-url">{t('vault.gitScans.scanRepoLabel')}</Label>
               <Input
                 id="repo-url"
                 placeholder="https://github.com/org/repo"
@@ -208,7 +208,7 @@ export default function GitScansPage() {
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => { setOpen(false); }}>{t('vault.gitScans.cancel')}</Button>
               <Button type="submit" disabled={triggerScan.isPending}>
-                {triggerScan.isPending ? 'Starting…' : t('vault.gitScans.scanStart')}
+                {triggerScan.isPending ? t('vault.gitScans.scanning') : t('vault.gitScans.scanStart')}
               </Button>
             </DialogFooter>
           </form>

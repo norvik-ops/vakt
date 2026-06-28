@@ -6968,6 +6968,197 @@ paths:
         '402':
           description: Feature not available on this plan
 
+  /admin/org/smtp:
+    get:
+      summary: Get SMTP configuration for this org
+      operationId: getOrgSMTPSettings
+      tags: [admin]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: SMTP settings (password not exposed)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  host: { type: string }
+                  port: { type: string }
+                  user: { type: string }
+                  from: { type: string }
+                  tls: { type: boolean }
+                  has_pass: { type: boolean }
+        '401':
+          description: Unauthorized
+    put:
+      summary: Update SMTP configuration for this org
+      operationId: updateOrgSMTPSettings
+      tags: [admin]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                host: { type: string }
+                port: { type: string }
+                user: { type: string }
+                pass: { type: string, description: "empty = keep existing" }
+                from: { type: string }
+                tls: { type: boolean }
+      responses:
+        '200':
+          description: Updated
+        '401':
+          description: Unauthorized
+
+  /admin/org/backup-config:
+    get:
+      summary: Get backup configuration for this org
+      operationId: getOrgBackupConfig
+      tags: [admin]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Backup config (secrets not exposed)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schedule: { type: string }
+                  retention_days: { type: integer }
+                  offsite_cmd: { type: string }
+                  notify_cmd: { type: string }
+                  has_passphrase: { type: boolean }
+                  has_notify_webhook: { type: boolean }
+        '401':
+          description: Unauthorized
+    put:
+      summary: Update backup configuration for this org
+      operationId: updateOrgBackupConfig
+      tags: [admin]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                schedule: { type: string }
+                retention_days: { type: integer }
+                passphrase: { type: string, description: "empty = keep existing" }
+                notify_webhook: { type: string, description: "empty = keep existing" }
+                offsite_cmd: { type: string }
+                notify_cmd: { type: string }
+      responses:
+        '200':
+          description: Updated
+        '401':
+          description: Unauthorized
+
+  /admin/org/ldap:
+    get:
+      summary: Get LDAP/AD configuration for this org
+      operationId: getOrgLDAPConfig
+      tags: [admin]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: LDAP config (bind password not exposed)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
+                  bind_dn: { type: string }
+                  base_dn: { type: string }
+                  user_filter: { type: string }
+                  group_filter: { type: string }
+                  tls: { type: boolean }
+                  has_bind_pass: { type: boolean }
+        '401':
+          description: Unauthorized
+    put:
+      summary: Update LDAP/AD configuration for this org
+      operationId: updateOrgLDAPConfig
+      tags: [admin]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url: { type: string }
+                bind_dn: { type: string }
+                bind_pass: { type: string, description: "empty = keep existing" }
+                base_dn: { type: string }
+                user_filter: { type: string }
+                group_filter: { type: string }
+                tls: { type: boolean }
+      responses:
+        '200':
+          description: Updated
+        '401':
+          description: Unauthorized
+
+  /admin/org/ldap/test:
+    post:
+      summary: Test LDAP connection and list users
+      operationId: testOrgLDAPConnection
+      tags: [admin]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Connection result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  users_found: { type: integer }
+                  error: { type: string }
+        '401':
+          description: Unauthorized
+        '502':
+          description: LDAP connection failed
+
+  /admin/org/ldap/sync:
+    post:
+      summary: Sync users from LDAP/AD into Vakt
+      operationId: syncOrgLDAP
+      tags: [admin]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  synced: { type: integer }
+                  users: { type: array, items: { type: object } }
+        '401':
+          description: Unauthorized
+        '502':
+          description: LDAP connection failed
+
   /admin/client-errors:
     get:
       summary: List recent frontend errors (Admin only)

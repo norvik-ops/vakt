@@ -332,7 +332,7 @@ func handleControlOwnerReminder(cfg *config.Config, pool *pgxpool.Pool) asynq.Ha
 
 		frontendURL := cfg.FrontendURL
 		if frontendURL == "" {
-			frontendURL = "https://sec.norvikops.de"
+			frontendURL = "https://vakt.norvikops.de"
 		}
 
 		sent := 0

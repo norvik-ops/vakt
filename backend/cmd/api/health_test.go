@@ -28,7 +28,7 @@ func testConfig() *config.Config {
 // sso_enabled und version — Pflichtfelder gemäß ADR-0017 + openapi.yaml.
 // S46-3: response now includes `components` — existing fields must not be removed.
 func TestHealthEndpoint(t *testing.T) {
-	e := setupEcho(context.Background(), testConfig())
+	e, _ := setupEcho(context.Background(), testConfig())
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -60,7 +60,7 @@ func TestHealthEndpointRequiredFields(t *testing.T) {
 	rec := httptest.NewRecorder()
 
 	// Call healthHandler directly to test the response structure.
-	e := setupEcho(context.Background(), cfg)
+	e, _ := setupEcho(context.Background(), cfg)
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
 

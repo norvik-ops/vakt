@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Fish, Plus, Workflow, ShieldCheck } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { InfoBanner } from '../../../shared/components/InfoBanner'
@@ -21,15 +22,9 @@ import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const statusVariant = campaignStatusVariant
 
-const STATUS_LABELS: Record<string, string> = {
-  draft: 'Entwurf',
-  scheduled: 'Geplant',
-  running: 'Läuft',
-  completed: 'Abgeschlossen',
-  cancelled: 'Abgebrochen',
-}
-
 export default function CampaignsPage() {
+  const { t } = useTranslation()
+  const statusLabel = (s: string) => t('vaktaware.campaignStatus.' + s, { defaultValue: s })
   const navigate = useNavigate()
   const { formatDate, formatDateTime } = useFormatDate()
   const { data: campaigns, isLoading, error: campaignsError } = useCampaigns()
@@ -81,17 +76,17 @@ export default function CampaignsPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Kampagnen"
-        description="Phishing-Simulationskampagnen verwalten."
+        title={t('vaktaware.campaignsPage.title')}
+        description={t('vaktaware.campaignsPage.description')}
         actions={
           <Button onClick={() => { setOpen(true); }}>
             <Plus className="w-4 h-4 mr-1" />
-            Neue Kampagne
+            {t('vaktaware.campaignsPage.newCampaign')}
           </Button>
         }
       />
 
-      <InfoBanner icon={Workflow} title="So startest du eine Phishing-Simulation">
+      <InfoBanner icon={Workflow} title={t('vaktaware.campaignsPage.infoBannerTitle')}>
         <p>Workflow in 3 Schritten: <strong>1. Vorlage</strong> anlegen (die Phishing-E-Mail) → <strong>2. Zielgruppe</strong> definieren (Empfänger-Liste) → <strong>3. Kampagne</strong> starten.</p>
         <p className="mt-1">Die Auswertung ist betriebsratskonform: Es werden nur anonymisierte Klickraten je Abteilung angezeigt, keine personenbezogenen Einzelergebnisse. SMTP-Zugangsdaten trägst du unter <strong>Settings → E-Mail</strong> ein.</p>
       </InfoBanner>
@@ -105,11 +100,11 @@ export default function CampaignsPage() {
           ) : !campaigns || campaigns.length === 0 ? (
             <EmptyState
               icon={Fish}
-              title="Keine Kampagnen"
-              description="Starte deine erste Phishing-Simulation."
+              title={t('vaktaware.campaignsPage.noCampaigns')}
+              description={t('vaktaware.campaignsPage.noCampaignsDesc')}
               action={
                 <Button onClick={() => { setOpen(true); }}>
-                  <Plus className="w-4 h-4 mr-1" />Kampagne erstellen
+                  <Plus className="w-4 h-4 mr-1" />{t('vaktaware.campaignsPage.createCampaign')}
                 </Button>
               }
             />
@@ -118,11 +113,11 @@ export default function CampaignsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Modus</TableHead>
-                    <TableHead>Geplant</TableHead>
-                    <TableHead>Erstellt</TableHead>
+                    <TableHead>{t('common.name')}</TableHead>
+                    <TableHead>{t('common.status')}</TableHead>
+                    <TableHead>{t('vaktaware.campaignsPage.colMode')}</TableHead>
+                    <TableHead>{t('vaktaware.campaignsPage.colScheduled')}</TableHead>
+                    <TableHead>{t('vaktaware.campaignsPage.colCreated')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -134,15 +129,15 @@ export default function CampaignsPage() {
                     >
                       <TableCell className="font-medium">{c.name}</TableCell>
                       <TableCell>
-                        <Badge variant={statusVariant[c.status]}>{STATUS_LABELS[c.status] ?? c.status}</Badge>
+                        <Badge variant={statusVariant[c.status]}>{statusLabel(c.status)}</Badge>
                       </TableCell>
                       <TableCell>
                         {c.betriebsrat_mode ? (
                           <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
-                            <ShieldCheck className="w-3 h-3" />BR-konform
+                            <ShieldCheck className="w-3 h-3" />{t('vaktaware.campaignsPage.brCompliant')}
                           </span>
                         ) : (
-                          <span className="text-xs text-amber-600">Volltracking</span>
+                          <span className="text-xs text-amber-600">{t('vaktaware.campaignsPage.fullTracking')}</span>
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-secondary">
@@ -162,17 +157,17 @@ export default function CampaignsPage() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Neue Kampagne</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('vaktaware.campaignsPage.dialogTitle')}</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { handleCreate(e) }}>
             <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto pr-1">
               <div className="space-y-1.5">
-                <Label htmlFor="camp-name">Kampagnenname</Label>
+                <Label htmlFor="camp-name">{t('vaktaware.campaignsPage.labelCampaignName')}</Label>
                 <Input id="camp-name" value={name} onChange={(e) => { setName(e.target.value); }} required />
               </div>
               <div className="space-y-1.5">
-                <Label>Vorlage</Label>
+                <Label>{t('vaktaware.campaignsPage.labelTemplate')}</Label>
                 <Select value={templateId} onValueChange={setTemplateId} required>
-                  <SelectTrigger><SelectValue placeholder="Vorlage wählen" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('vaktaware.campaignsPage.placeholderTemplate')} /></SelectTrigger>
                   <SelectContent>
                     {templates?.map((t) => (
                       <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
@@ -181,9 +176,9 @@ export default function CampaignsPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Zielgruppe</Label>
+                <Label>{t('vaktaware.campaignsPage.labelTargetGroup')}</Label>
                 <Select value={groupId} onValueChange={setGroupId} required>
-                  <SelectTrigger><SelectValue placeholder="Zielgruppe wählen" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('vaktaware.campaignsPage.placeholderTargetGroup')} /></SelectTrigger>
                   <SelectContent>
                     {groups?.map((g) => (
                       <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
@@ -193,7 +188,7 @@ export default function CampaignsPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="from-name">Absendername</Label>
+                  <Label htmlFor="from-name">{t('vaktaware.campaignsPage.labelFromName')}</Label>
                   <Input id="from-name" value={fromName} onChange={(e) => { setFromName(e.target.value); }} required />
                 </div>
                 <div className="space-y-1.5">
@@ -202,7 +197,7 @@ export default function CampaignsPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="subject">Subject</Label>
+                <Label htmlFor="subject">{t('vaktaware.campaignsPage.labelSubject')}</Label>
                 <Input id="subject" value={subject} onChange={(e) => { setSubject(e.target.value); }} required />
               </div>
               <div className="space-y-1.5">
@@ -223,10 +218,10 @@ export default function CampaignsPage() {
                   <div>
                     <Label htmlFor="betriebsrat-mode" className="flex items-center gap-1.5 cursor-pointer">
                       <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
-                      Betriebsratsmodus (empfohlen)
+                      {t('vaktaware.campaignsPage.betriebsratMode')}
                     </Label>
                     <p className="text-xs text-secondary mt-0.5">
-                      Nur anonymisierte Abteilungsklickraten werden gespeichert. Keine personenbezogenen Einzelergebnisse — DSGVO- und BR-konform.
+                      {t('vaktaware.campaignsPage.betriebsratModeDesc')}
                     </p>
                   </div>
                 </div>
@@ -240,22 +235,22 @@ export default function CampaignsPage() {
                       className="mt-0.5 h-4 w-4 rounded border-border accent-brand"
                     />
                     <div>
-                      <Label htmlFor="track-opens" className="cursor-pointer text-amber-600">Öffnungsrate tracken</Label>
+                      <Label htmlFor="track-opens" className="cursor-pointer text-amber-600">{t('vaktaware.campaignsPage.trackOpens')}</Label>
                       <p className="text-xs text-secondary mt-0.5">
-                        Achtung: Erfordert Betriebsratsvereinbarung. Tracking-Pixel werden in die E-Mail eingebettet.
+                        {t('vaktaware.campaignsPage.trackOpensDesc')}
                       </p>
                     </div>
                   </div>
                 )}
                 {!betriebsratMode && (
                   <p className="text-xs text-amber-600 pl-7">
-                    ⚠ Ohne Betriebsratsmodus werden personenbezogene Klickdaten gespeichert. Stelle sicher, dass eine Betriebsvereinbarung vorliegt.
+                    {t('vaktaware.campaignsPage.betriebsratWarning')}
                   </p>
                 )}
               </div>
             </div>
             <DialogFooter className="mt-2">
-              <Button type="button" variant="outline" onClick={() => { setOpen(false); resetForm() }}>Abbrechen</Button>
+              <Button type="button" variant="outline" onClick={() => { setOpen(false); resetForm() }}>{t('common.cancel')}</Button>
               <Button type="submit" disabled={createCampaign.isPending}>
                 {createCampaign.isPending ? 'Creating…' : 'Create Campaign'}
               </Button>

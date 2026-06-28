@@ -609,3 +609,25 @@ func RegisterAuditor(g *echo.Group, h *Handler) {
 	g.GET("/audits", h.ListAuditRecords)
 	g.GET("/export.zip", h.AuditorExportZIP)
 }
+
+func registerAccessReviewRoutes(g *echo.Group, h *Handler) {
+	ar := auth.RequireRole("Admin", "SecurityAnalyst")
+	admin := auth.RequireRole("Admin")
+	g.GET("/access-reviews", h.ListAccessReviewCampaigns, ar)
+	g.POST("/access-reviews", h.CreateAccessReviewCampaign, admin)
+	g.GET("/access-reviews/:id", h.GetAccessReviewCampaign, ar)
+	g.PUT("/access-reviews/:id", h.UpdateAccessReviewCampaign, admin)
+	g.DELETE("/access-reviews/:id", h.DeleteAccessReviewCampaign, admin)
+	g.GET("/access-reviews/:id/items", h.ListAccessReviewItems, ar)
+	g.POST("/access-reviews/:id/items", h.CreateAccessReviewItem, ar)
+	g.PUT("/access-reviews/:id/items/:itemId", h.UpdateAccessReviewItem, ar)
+}
+
+func registerExceptionRoutes(g *echo.Group, h *Handler) {
+	ar := auth.RequireRole("Admin", "SecurityAnalyst")
+	admin := auth.RequireRole("Admin")
+	g.GET("/exceptions", h.ListControlExceptions, ar)
+	g.POST("/controls/:controlId/exceptions", h.CreateControlException, ar)
+	g.PUT("/exceptions/:id", h.UpdateControlException, ar)
+	g.DELETE("/exceptions/:id", h.DeleteControlException, admin)
+}

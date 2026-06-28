@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { ShieldAlert, AlertTriangle, Clock, Building2, FlaskConical, FileDown } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -21,27 +22,32 @@ function readinessBgClass(pct: number): string {
   return 'bg-red-500/20 border-red-500/30'
 }
 
-function formatCountdown(deadlineAt: string): string {
-  const now = new Date()
-  const deadline = new Date(deadlineAt)
-  const diffMs = deadline.getTime() - now.getTime()
-  if (diffMs <= 0) return 'Überfällig'
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-  if (diffHours < 24) return `${diffHours.toString()}h verbleibend`
-  const diffDays = Math.floor(diffHours / 24)
-  return `${diffDays.toString()}d verbleibend`
+function useFormatCountdown() {
+  const { t } = useTranslation()
+  return (deadlineAt: string): string => {
+    const now = new Date()
+    const deadline = new Date(deadlineAt)
+    const diffMs = deadline.getTime() - now.getTime()
+    if (diffMs <= 0) return t('vaktcomply.doraDashboard.overdueLabel')
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    if (diffHours < 24) return t('vaktcomply.doraDashboard.hoursLeft', { hours: diffHours.toString() })
+    const diffDays = Math.floor(diffHours / 24)
+    return t('vaktcomply.doraDashboard.daysLeft', { days: diffDays.toString() })
+  }
 }
 
 export default function DORADashboardPage() {
+  const { t } = useTranslation()
   const { data: result, isLoading, isError, error } = useDORADashboard()
   const [pdfError, setPdfError] = useState<string | null>(null)
+  const formatCountdown = useFormatCountdown()
 
   async function handleDownloadPDF() {
     const res = await fetch('/api/v1/vaktcomply/dora/report-pdf', {
       credentials: 'include',
     })
     if (!res.ok) {
-      setPdfError('PDF-Export fehlgeschlagen. Bitte versuchen Sie es erneut.')
+      setPdfError(t('vaktcomply.doraDashboard.pdfError'))
       return
     }
     const blob = await res.blob()
@@ -64,15 +70,15 @@ export default function DORADashboardPage() {
   }
 
   if (isError) {
-    return <ProGate error={error}><div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg m-6">Fehler beim Laden des Dashboards.</div></ProGate>
+    return <ProGate error={error}><div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg m-6">{t('vaktcomply.doraDashboard.loadError')}</div></ProGate>
   }
 
   if (result?.notEnabled) {
     return (
       <div className="flex flex-col h-full">
         <PageHeader
-          title="DORA Dashboard"
-          description="Digital Operational Resilience Act — Bereitschaftsübersicht"
+          title={t('vaktcomply.doraDashboard.title')}
+          description={t('vaktcomply.doraDashboard.description')}
         />
         <div className="flex-1 p-6">
           <div
@@ -81,15 +87,15 @@ export default function DORADashboardPage() {
           >
             <AlertTriangle className="w-5 h-5 text-yellow-500 mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-medium text-primary">DORA ist noch nicht aktiviert</p>
+              <p className="text-sm font-medium text-primary">{t('vaktcomply.doraDashboard.notEnabledTitle')}</p>
               <p className="text-xs text-secondary mt-1">
-                Aktivieren Sie das DORA-Framework, um das Dashboard zu nutzen.
+                {t('vaktcomply.doraDashboard.notEnabledDescription')}
               </p>
               <Link
                 to="/vaktcomply/frameworks"
                 className="text-xs text-brand underline mt-2 inline-block"
               >
-                Zu den Frameworks →
+                {t('vaktcomply.doraDashboard.toFrameworks')}
               </Link>
             </div>
           </div>
@@ -101,20 +107,20 @@ export default function DORADashboardPage() {
   const dashboard = result?.data
   if (!dashboard) return (
     <div className="p-6 text-sm text-muted-foreground">
-      Keine Dashboard-Daten verfügbar.
+      {t('vaktcomply.doraDashboard.noData')}
     </div>
   )
 
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="DORA Dashboard"
-        description="Digital Operational Resilience Act — Bereitschaftsübersicht"
+        title={t('vaktcomply.doraDashboard.title')}
+        description={t('vaktcomply.doraDashboard.description')}
         actions={
           <div className="flex flex-col items-end gap-1">
             <Button variant="outline" size="sm" onClick={() => { setPdfError(null); void handleDownloadPDF() }}>
               <FileDown className="w-4 h-4 mr-2" />
-              PDF exportieren
+              {t('vaktcomply.doraDashboard.pdfExport')}
             </Button>
             {pdfError && <p className="text-xs text-red-500">{pdfError}</p>}
           </div>
@@ -130,7 +136,7 @@ export default function DORADashboardPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-secondary flex items-center gap-2">
                 <ShieldAlert className="w-4 h-4" />
-                Bereitschaftsgrad
+                {t('vaktcomply.doraDashboard.tileReadiness')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -147,10 +153,10 @@ export default function DORADashboardPage() {
                 )}
               >
                 {dashboard.readiness_pct >= 80
-                  ? 'Gut'
+                  ? t('vaktcomply.doraDashboard.tileReadinessGood')
                   : dashboard.readiness_pct >= 50
-                    ? 'Mittel'
-                    : 'Kritisch'}
+                    ? t('vaktcomply.doraDashboard.tileReadinessMedium')
+                    : t('vaktcomply.doraDashboard.tileReadinessCritical')}
               </div>
             </CardContent>
           </Card>
@@ -160,7 +166,7 @@ export default function DORADashboardPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-secondary flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4" />
-                Kritische Controls
+                {t('vaktcomply.doraDashboard.tileCriticalControls')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -171,7 +177,7 @@ export default function DORADashboardPage() {
                 variant={dashboard.open_critical_controls > 0 ? 'destructive' : 'success'}
                 className="mt-2 text-xs"
               >
-                {dashboard.open_critical_controls > 0 ? 'Offen' : 'Alle erfüllt'}
+                {dashboard.open_critical_controls > 0 ? t('vaktcomply.doraDashboard.open') : t('vaktcomply.doraDashboard.allFulfilled')}
               </Badge>
             </CardContent>
           </Card>
@@ -181,7 +187,7 @@ export default function DORADashboardPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-secondary flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                Nächste Meldepflicht
+                {t('vaktcomply.doraDashboard.tileNextDeadline')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -199,7 +205,7 @@ export default function DORADashboardPage() {
                 </div>
               ) : (
                 <div>
-                  <div className="text-sm text-green-500 font-medium">Keine offenen Fristen</div>
+                  <div className="text-sm text-green-500 font-medium">{t('vaktcomply.doraDashboard.noDeadlines')}</div>
                 </div>
               )}
             </CardContent>
@@ -210,13 +216,13 @@ export default function DORADashboardPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-secondary flex items-center gap-2">
                 <Building2 className="w-4 h-4" />
-                Abgelaufene Verträge
+                {t('vaktcomply.doraDashboard.tileExpiredSuppliers')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-primary">{dashboard.expired_suppliers}</div>
               <Link to="/vaktcomply/suppliers" className="text-xs text-brand underline mt-1 inline-block">
-                Zur Lieferantenliste →
+                {t('vaktcomply.doraDashboard.toSuppliers')}
               </Link>
             </CardContent>
           </Card>
@@ -226,7 +232,7 @@ export default function DORADashboardPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-secondary flex items-center gap-2">
                 <FlaskConical className="w-4 h-4" />
-                TLPT-Status
+                {t('vaktcomply.doraDashboard.tileTlpt')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -236,11 +242,11 @@ export default function DORADashboardPage() {
                   className="text-xs"
                   data-testid="tlpt-warning-badge"
                 >
-                  Kein TLPT in 3 Jahren
+                  {t('vaktcomply.doraDashboard.tlptOverdue')}
                 </Badge>
               ) : (
                 <Badge variant="success" className="text-xs" data-testid="tlpt-ok-badge">
-                  Aktuell
+                  {t('vaktcomply.doraDashboard.tlptOk')}
                 </Badge>
               )}
             </CardContent>
@@ -251,7 +257,7 @@ export default function DORADashboardPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-secondary flex items-center gap-2">
                 <Building2 className="w-4 h-4" />
-                IKT-Drittanbieter
+                {t('vaktcomply.doraDashboard.tileThirdParties')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -260,15 +266,15 @@ export default function DORADashboardPage() {
               </div>
               {dashboard.missing_exit_strategies > 0 ? (
                 <Badge variant="destructive" className="mt-2 text-xs">
-                  {dashboard.missing_exit_strategies} ohne Exit-Plan
+                  {t('vaktcomply.doraDashboard.missingExitPlan', { count: dashboard.missing_exit_strategies })}
                 </Badge>
               ) : dashboard.critical_third_parties > 0 ? (
                 <Badge variant="success" className="mt-2 text-xs">
-                  {dashboard.critical_third_parties} kritisch — Exit-Pläne OK
+                  {t('vaktcomply.doraDashboard.criticalWithExitPlan', { count: dashboard.critical_third_parties })}
                 </Badge>
               ) : null}
               <Link to="/vaktcomply/dora/third-parties" className="text-xs text-brand underline mt-1 inline-block">
-                Zum Register →
+                {t('vaktcomply.doraDashboard.toRegister')}
               </Link>
             </CardContent>
           </Card>

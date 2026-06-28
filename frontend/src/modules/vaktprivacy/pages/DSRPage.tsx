@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Users, Plus, Pencil, Trash2, AlertTriangle, Download, ShieldCheck, CheckCircle2 } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { Button } from '../../../components/ui/button'
@@ -18,25 +19,6 @@ import { useDSRs, useCreateDSR, useUpdateDSR, useDeleteDSR, useDSRSummary, useRe
 import { ComplianceTooltip } from '../../../shared/components/ComplianceTooltip'
 import type { DSR, DSRType, DSRStatus, CreateDSRInput, UpdateDSRInput, ResolveDSRInput } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
-
-const TYPE_LABELS: Record<DSRType, string> = {
-  access: 'Auskunft (Art. 15)',
-  erasure: 'Löschung (Art. 17)',
-  portability: 'Datenübertragbarkeit (Art. 20)',
-  objection: 'Widerspruch (Art. 21)',
-  rectification: 'Berichtigung (Art. 16)',
-  restriction: 'Einschränkung (Art. 18)',
-  no_profiling: 'Kein Profiling (Art. 22)',
-}
-
-const STATUS_LABELS: Record<DSRStatus, string> = {
-  open: 'Offen',
-  in_progress: 'In Bearbeitung',
-  completed: 'Abgeschlossen',
-  rejected: 'Abgelehnt',
-  extended: 'Verlängert',
-  overdue: 'Überfällig',
-}
 
 const STATUS_CLASS: Record<DSRStatus, string> = {
   open: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
@@ -98,10 +80,13 @@ function DSRCard({
   onErasure?: (id: string) => void
   onResolve: (d: DSR) => void
 }) {
+  const { t } = useTranslation()
   const { formatDate } = useFormatDate()
   const overdue = isOverdue(dsr.due_date) && dsr.status !== 'completed' && dsr.status !== 'rejected' && dsr.status !== 'extended'
   const days = daysUntil(dsr.due_date)
   const receivedDate = formatDate(dsr.received_at, { year: 'numeric', month: 'short', day: 'numeric' })
+  const getDSRTypeLabel = (type: DSRType) => t(`vaktprivacy.dsrPage.type${type.charAt(0).toUpperCase() + type.slice(1).replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`, { defaultValue: type })
+  const getDSRStatusLabel = (status: DSRStatus) => t(`vaktprivacy.dsrPage.status${status.charAt(0).toUpperCase() + status.slice(1).replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`, { defaultValue: status })
 
   return (
     <Card className={overdue || dsr.status === 'overdue' ? 'border-red-500/30' : ''}>
@@ -111,11 +96,11 @@ function DSRCard({
             <p className="font-medium text-sm truncate">{dsr.requester_name}</p>
             <p className="text-xs text-muted-foreground truncate">{dsr.requester_email}</p>
           </div>
-          <Badge className={STATUS_CLASS[dsr.status]}>{STATUS_LABELS[dsr.status]}</Badge>
+          <Badge className={STATUS_CLASS[dsr.status]}>{getDSRStatusLabel(dsr.status)}</Badge>
         </div>
 
         <div className="flex flex-wrap gap-1.5">
-          <Badge variant="outline" className="text-xs font-normal">{TYPE_LABELS[dsr.type]}</Badge>
+          <Badge variant="outline" className="text-xs font-normal">{getDSRTypeLabel(dsr.type)}</Badge>
           {dsr.channel && <Badge variant="outline" className="text-xs font-normal text-gray-400">{dsr.channel}</Badge>}
         </div>
 
@@ -124,19 +109,19 @@ function DSRCard({
         )}
 
         <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-          <span>Eingegangen: {receivedDate}</span>
+          <span>{t('vaktprivacy.dsrPage.cardReceived')} {receivedDate}</span>
           {dsr.due_date && (
             <span className={overdue ? 'text-red-400 font-medium' : days !== null && days <= 7 ? 'text-amber-500 font-medium' : ''}>
               {overdue ? (
-                <><AlertTriangle className="w-3 h-3 inline mr-0.5" />Frist abgelaufen</>
+                <><AlertTriangle className="w-3 h-3 inline mr-0.5" />{t('vaktprivacy.dsrPage.cardDeadlineExpired')}</>
               ) : days !== null ? (
-                <>Frist: {days > 0 ? `noch ${days}d` : 'heute'} ({formatDate(dsr.due_date)})</>
+                <>{t('vaktprivacy.dsrPage.cardDeadline')} {days > 0 ? t('vaktprivacy.dsrPage.cardDaysLeft', { days }) : t('vaktprivacy.dsrPage.cardToday')} ({formatDate(dsr.due_date)})</>
               ) : null}
             </span>
           )}
           {dsr.extension_due_at && dsr.status === 'extended' && (
             <span className="text-purple-400">
-              Verlängerung bis: {formatDate(dsr.extension_due_at)}
+              {t('vaktprivacy.dsrPage.cardExtension')} {formatDate(dsr.extension_due_at)}
             </span>
           )}
         </div>
@@ -154,7 +139,7 @@ function DSRCard({
               onClick={() => { onErasure(dsr.id); }}
             >
               <ShieldCheck className="w-3.5 h-3.5" />
-              Löschung
+              {t('vaktprivacy.dsrPage.buttonErasure')}
             </Button>
           )}
           {(dsr.status === 'open' || dsr.status === 'in_progress' || dsr.status === 'overdue') && (
@@ -165,17 +150,17 @@ function DSRCard({
               onClick={() => { onResolve(dsr); }}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              Abschließen
+              {t('vaktprivacy.dsrPage.buttonResolve')}
             </Button>
           )}
-          <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Bearbeiten" onClick={() => { onEdit(dsr); }}>
+          <Button size="icon" variant="ghost" className="h-7 w-7" aria-label={t('vaktprivacy.dsrPage.ariaEdit')} onClick={() => { onEdit(dsr); }}>
             <Pencil className="w-3.5 h-3.5" />
           </Button>
           <Button
             size="icon"
             variant="ghost"
             className="h-7 w-7 text-destructive hover:text-destructive"
-            aria-label="Löschen"
+            aria-label={t('vaktprivacy.dsrPage.ariaDelete')}
             onClick={() => { onDelete(dsr.id); }}
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -187,6 +172,7 @@ function DSRCard({
 }
 
 export default function DSRPage() {
+  const { t } = useTranslation()
   const [dialogMode, setDialogMode] = useState<'create' | 'edit' | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
   const [createForm, setCreateForm] = useState<CreateFormState>(emptyCreateForm())
@@ -289,13 +275,13 @@ export default function DSRPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Datenschutzanfragen (DSR)"
-        description="Art. 15–22 DSGVO — Verwaltung von Betroffenenrechten."
+        title={t('vaktprivacy.dsrPage.title')}
+        description={t('vaktprivacy.dsrPage.description')}
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={handlePDFExport}>
               <Download className="w-4 h-4 mr-1" />
-              Audit-PDF
+              {t('vaktprivacy.dsrPage.exportAuditPDF')}
             </Button>
             <Button variant="outline" onClick={() => {
               void fetch('/api/v1/vaktprivacy/dsr/export?format=csv', { credentials: 'include' })
@@ -316,14 +302,17 @@ export default function DSRPage() {
             </Button>
             <Button onClick={openCreate}>
               <Plus className="w-4 h-4 mr-1" />
-              DSR anlegen
+              {t('vaktprivacy.dsrPage.createDSR')}
             </Button>
           </div>
         }
       />
 
-      <InfoBanner icon={Users} title="Betroffenenrechte nach DSGVO (Art. 12)">
-        <p><TermTooltip term="DSR" explanation="Data Subject Request — Betroffenenanfrage nach Art. 15–22 DSGVO: Auskunft, Berichtigung, Löschung, Einschränkung, Widerspruch, Datenübertragbarkeit.">Datenschutzanfragen</TermTooltip> müssen innerhalb von <strong>30 Tagen</strong> beantwortet werden — bei komplexen Anfragen maximal 60 Tage mit Begründung (Art. 12 Abs. 3 DSGVO).</p>
+      <InfoBanner icon={Users} title={t('vaktprivacy.dsrPage.infoBannerTitle')}>
+        <p>
+          <TermTooltip term="DSR" explanation={t('vaktprivacy.dsrPage.bannerTooltipDSR')}>{t('vaktprivacy.dsrPage.bannerTooltipLabel')}</TermTooltip>
+          {t('vaktprivacy.dsrPage.bannerDesc1')}
+        </p>
       </InfoBanner>
 
       {/* Summary stats */}
@@ -331,19 +320,19 @@ export default function DSRPage() {
         <div className="px-6 py-3 grid grid-cols-4 gap-3">
           <div className="bg-white border rounded-lg p-3 text-center">
             <div className="text-xl font-bold">{summary.open_count}</div>
-            <div className="text-xs text-gray-500">Offen</div>
+            <div className="text-xs text-gray-500">{t('vaktprivacy.dsrPage.statOpen')}</div>
           </div>
           <div className={`border rounded-lg p-3 text-center ${summary.overdue_count > 0 ? 'bg-red-50 border-red-200' : 'bg-white'}`}>
             <div className={`text-xl font-bold ${summary.overdue_count > 0 ? 'text-red-600' : ''}`}>{summary.overdue_count}</div>
-            <div className="text-xs text-gray-500">Überfällig</div>
+            <div className="text-xs text-gray-500">{t('vaktprivacy.dsrPage.statOverdue')}</div>
           </div>
           <div className="bg-white border rounded-lg p-3 text-center">
             <div className="text-xl font-bold">{summary.fulfilled_last_12m}</div>
-            <div className="text-xs text-gray-500">Erfüllt (12M)</div>
+            <div className="text-xs text-gray-500">{t('vaktprivacy.dsrPage.statFulfilled12M')}</div>
           </div>
           <div className="bg-white border rounded-lg p-3 text-center">
             <div className="text-xl font-bold">{summary.on_time_rate_pct}%</div>
-            <div className="text-xs text-gray-500">Pünktlichkeit</div>
+            <div className="text-xs text-gray-500">{t('vaktprivacy.dsrPage.statOnTime')}</div>
           </div>
         </div>
       )}
@@ -357,19 +346,19 @@ export default function DSRPage() {
 
         {isError && (
           <div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">
-            Fehler beim Laden der Datenschutzanfragen.
+            {t('vaktprivacy.dsrPage.errorLoading')}
           </div>
         )}
 
         {!isLoading && !isError && dsrs?.length === 0 && (
           <EmptyState
             icon={Users}
-            title="Keine Datenschutzanfragen"
-            description="Dokumentieren Sie Betroffenenanfragen gemäß Art. 12-22 DSGVO und verfolgen Sie die 30-Tage-Frist."
+            title={t('vaktprivacy.dsrPage.emptyTitle')}
+            description={t('vaktprivacy.dsrPage.emptyDesc')}
             action={
               <Button onClick={openCreate}>
                 <Plus className="w-4 h-4 mr-1" />
-                DSR anlegen
+                {t('vaktprivacy.dsrPage.createDSR')}
               </Button>
             }
           />
@@ -382,10 +371,10 @@ export default function DSRPage() {
                 <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-semibold text-red-500">
-                    {overdueCount} Anfrage{overdueCount > 1 ? 'n' : ''} — 30-Tage-Frist abgelaufen
+                    {t(overdueCount > 1 ? 'vaktprivacy.dsrPage.overdueAlertPlural' : 'vaktprivacy.dsrPage.overdueAlert', { count: overdueCount })}
                   </p>
                   <p className="text-xs text-secondary mt-0.5">
-                    Anfragen müssen innerhalb von 30 Tagen beantwortet werden (Art. 12 DSGVO).
+                    {t('vaktprivacy.dsrPage.overdueHint')}
                   </p>
                 </div>
               </div>
@@ -393,7 +382,7 @@ export default function DSRPage() {
 
             {openDSRs.length > 0 && (
               <div className="space-y-3">
-                <h2 className="text-sm font-semibold text-secondary">Offene Anfragen ({openDSRs.length})</h2>
+                <h2 className="text-sm font-semibold text-secondary">{t('vaktprivacy.dsrPage.openSection', { count: openDSRs.length })}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {openDSRs.map((d) => (
                     <DSRCard key={d.id} dsr={d} onEdit={openEdit} onDelete={(id) => { setDeleteId(id); }} onErasure={handleErasureOpen} onResolve={openResolve} />
@@ -404,7 +393,7 @@ export default function DSRPage() {
 
             {closedDSRs.length > 0 && (
               <div className="space-y-3">
-                <h2 className="text-sm font-semibold text-muted-foreground">Abgeschlossene Anfragen</h2>
+                <h2 className="text-sm font-semibold text-muted-foreground">{t('vaktprivacy.dsrPage.closedSection')}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {closedDSRs.map((d) => (
                     <DSRCard key={d.id} dsr={d} onEdit={openEdit} onDelete={(id) => { setDeleteId(id); }} onErasure={handleErasureOpen} onResolve={openResolve} />
@@ -420,13 +409,13 @@ export default function DSRPage() {
       <Dialog open={erasureId !== null} onOpenChange={(open) => { if (!open) { setErasureId(null); } }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Löschung bestätigen (Art. 17 DSGVO)</DialogTitle>
+            <DialogTitle>{t('vaktprivacy.dsrPage.erasureDialogTitle')}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Bestätigen Sie, dass die Daten der betroffenen Person gelöscht wurden.
+            {t('vaktprivacy.dsrPage.erasureConfirmDesc')}
           </p>
           <div className="space-y-2">
-            <Label htmlFor="erasure-note">Nachweis / Notiz</Label>
+            <Label htmlFor="erasure-note">{t('vaktprivacy.dsrPage.erasureLabelNote')}</Label>
             <Textarea
               id="erasure-note"
               placeholder="z.B. Kundendatensätze in DB gelöscht, Backups werden nach 30 Tagen überschrieben."
@@ -436,10 +425,10 @@ export default function DSRPage() {
             />
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => { setErasureId(null); }}>Abbrechen</Button>
+            <Button variant="ghost" onClick={() => { setErasureId(null); }}>{t('common.cancel')}</Button>
             <Button onClick={handleErasureConfirm} className="bg-green-600 hover:bg-green-700 text-white">
               <ShieldCheck className="w-4 h-4 mr-1.5" />
-              Löschung bestätigen
+              {t('vaktprivacy.dsrPage.erasureConfirmBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -449,26 +438,26 @@ export default function DSRPage() {
       <Dialog open={resolveTarget !== null} onOpenChange={(open) => { if (!open) { setResolveTarget(null); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Anfrage abschließen — {resolveTarget?.requester_name}</DialogTitle>
+            <DialogTitle>{t('vaktprivacy.dsrPage.resolveDialogTitle')} — {resolveTarget?.requester_name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>Ergebnis *</Label>
+              <Label>{t('vaktprivacy.dsrPage.resolveLabelResult')}</Label>
               <Select
                 value={resolveForm.resolution_type}
                 onValueChange={(v) => { setResolveForm(f => ({ ...f, resolution_type: v as DSRStatus })); }}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="completed">Erfüllt</SelectItem>
-                  <SelectItem value="rejected">Abgelehnt (mit Begründung)</SelectItem>
-                  <SelectItem value="extended">Verlängert (+60 Tage, Art. 12 Abs. 3)</SelectItem>
+                  <SelectItem value="completed">{t('vaktprivacy.dsrPage.resolveCompleted')}</SelectItem>
+                  <SelectItem value="rejected">{t('vaktprivacy.dsrPage.resolveRejected')}</SelectItem>
+                  <SelectItem value="extended">{t('vaktprivacy.dsrPage.resolveExtended')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {resolveForm.resolution_type === 'extended' && (
               <div className="space-y-1.5">
-                <Label>Begründung der Verlängerung *</Label>
+                <Label>{t('vaktprivacy.dsrPage.resolveLabelExtensionReason')}</Label>
                 <Textarea
                   rows={2}
                   placeholder="Begründung (Pflicht bei Verlängerung nach Art. 12 Abs. 3 DSGVO)"
@@ -478,7 +467,7 @@ export default function DSRPage() {
               </div>
             )}
             <div className="space-y-1.5">
-              <Label>Notizen / Nachweis</Label>
+              <Label>{t('vaktprivacy.dsrPage.resolveLabelNotes')}</Label>
               <Textarea
                 rows={3}
                 placeholder="Maßnahmen, Kommentare …"
@@ -488,12 +477,12 @@ export default function DSRPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setResolveTarget(null); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setResolveTarget(null); }}>{t('common.cancel')}</Button>
             <Button
               onClick={handleResolve}
               disabled={resolveDSR.isPending || (resolveForm.resolution_type === 'extended' && !resolveForm.extension_reason?.trim())}
             >
-              {resolveDSR.isPending ? 'Speichern…' : 'Abschließen'}
+              {resolveDSR.isPending ? t('vaktprivacy.dsrPage.savingPending') : t('vaktprivacy.dsrPage.resolveBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -502,12 +491,12 @@ export default function DSRPage() {
       <AlertDialog open={deleteId !== null} onOpenChange={(open) => { if (!open) { setDeleteId(null); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Datenschutzanfrage löschen?</AlertDialogTitle>
-            <AlertDialogDescription>Diese Aktion kann nicht rückgängig gemacht werden.</AlertDialogDescription>
+            <AlertDialogTitle>{t('vaktprivacy.dsrPage.deleteTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('vaktprivacy.dsrPage.deleteDesc')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { setDeleteId(null); }}>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Löschen</AlertDialogAction>
+            <AlertDialogCancel onClick={() => { setDeleteId(null); }}>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{t('common.delete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -516,14 +505,14 @@ export default function DSRPage() {
       <Dialog open={dialogMode === 'create'} onOpenChange={(open) => { if (!open) { setDialogMode(null); } }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle><ComplianceTooltip term="dsr">Datenschutzanfrage anlegen</ComplianceTooltip></DialogTitle>
+            <DialogTitle><ComplianceTooltip term="dsr">{t('vaktprivacy.dsrPage.createDialogTitle')}</ComplianceTooltip></DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="p-3 rounded-lg bg-blue-500/10 text-blue-400 text-xs">
-              Die 30-Tage-Antwortfrist beginnt ab heute (Art. 12 DSGVO).
+              {t('vaktprivacy.dsrPage.createHint')}
             </div>
             <div className="space-y-1.5">
-              <Label>Name der anfragenden Person *</Label>
+              <Label>{t('vaktprivacy.dsrPage.labelRequesterName')}</Label>
               <Input
                 placeholder="z.B. Max Mustermann"
                 value={createForm.requester_name}
@@ -531,7 +520,7 @@ export default function DSRPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>E-Mail *</Label>
+              <Label>{t('vaktprivacy.dsrPage.labelEmail')}</Label>
               <Input
                 type="email"
                 placeholder="max@example.com"
@@ -541,21 +530,25 @@ export default function DSRPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Art der Anfrage *</Label>
+                <Label>{t('vaktprivacy.dsrPage.labelType')}</Label>
                 <Select
                   value={createForm.type}
                   onValueChange={(v) => { setCreateForm((f) => ({ ...f, type: v as DSRType })); }}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {(Object.entries(TYPE_LABELS) as [DSRType, string][]).map(([v, l]) => (
-                      <SelectItem key={v} value={v}>{l}</SelectItem>
-                    ))}
+                    <SelectItem value="access">{t('vaktprivacy.dsrPage.typeAccess')}</SelectItem>
+                    <SelectItem value="erasure">{t('vaktprivacy.dsrPage.typeErasure')}</SelectItem>
+                    <SelectItem value="portability">{t('vaktprivacy.dsrPage.typePortability')}</SelectItem>
+                    <SelectItem value="objection">{t('vaktprivacy.dsrPage.typeObjection')}</SelectItem>
+                    <SelectItem value="rectification">{t('vaktprivacy.dsrPage.typeRectification')}</SelectItem>
+                    <SelectItem value="restriction">{t('vaktprivacy.dsrPage.typeRestriction')}</SelectItem>
+                    <SelectItem value="no_profiling">{t('vaktprivacy.dsrPage.typeNoProfiling')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Eingangskanal</Label>
+                <Label>{t('vaktprivacy.dsrPage.labelChannel')}</Label>
                 <Input
                   placeholder="z.B. E-Mail, Portal"
                   value={createForm.channel}
@@ -564,7 +557,7 @@ export default function DSRPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Referenz-ID</Label>
+              <Label>{t('vaktprivacy.dsrPage.labelReferenceID')}</Label>
               <Input
                 placeholder="Ticket-Nr., Fallnummer …"
                 value={createForm.reference_id}
@@ -572,7 +565,7 @@ export default function DSRPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Beschreibung</Label>
+              <Label>{t('vaktprivacy.dsrPage.labelDescription')}</Label>
               <Textarea
                 placeholder="Inhalt der Anfrage …"
                 rows={3}
@@ -581,7 +574,7 @@ export default function DSRPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Interne Notizen</Label>
+              <Label>{t('vaktprivacy.dsrPage.labelInternalNotes')}</Label>
               <Textarea
                 placeholder="Interne Anmerkungen …"
                 rows={2}
@@ -591,9 +584,9 @@ export default function DSRPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setDialogMode(null); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setDialogMode(null); }}>{t('common.cancel')}</Button>
             <Button onClick={handleSubmit} disabled={!canSubmitCreate}>
-              {isPending ? 'Speichern …' : 'DSR anlegen'}
+              {isPending ? t('vaktprivacy.dsrPage.savingPending') : t('vaktprivacy.dsrPage.createDSR')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -603,25 +596,28 @@ export default function DSRPage() {
       <Dialog open={dialogMode === 'edit'} onOpenChange={(open) => { if (!open) { setDialogMode(null); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Status aktualisieren</DialogTitle>
+            <DialogTitle>{t('vaktprivacy.dsrPage.editDialogTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>Status *</Label>
+              <Label>{t('vaktprivacy.dsrPage.editLabelStatus')}</Label>
               <Select
                 value={editForm.status}
                 onValueChange={(v) => { setEditForm((f) => ({ ...f, status: v as DSRStatus })); }}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(Object.entries(STATUS_LABELS) as [DSRStatus, string][]).map(([v, l]) => (
-                    <SelectItem key={v} value={v}>{l}</SelectItem>
-                  ))}
+                  <SelectItem value="open">{t('vaktprivacy.dsrPage.statusOpen')}</SelectItem>
+                  <SelectItem value="in_progress">{t('vaktprivacy.dsrPage.statusInProgress')}</SelectItem>
+                  <SelectItem value="completed">{t('vaktprivacy.dsrPage.statusCompleted')}</SelectItem>
+                  <SelectItem value="rejected">{t('vaktprivacy.dsrPage.statusRejected')}</SelectItem>
+                  <SelectItem value="extended">{t('vaktprivacy.dsrPage.statusExtended')}</SelectItem>
+                  <SelectItem value="overdue">{t('vaktprivacy.dsrPage.statusOverdue')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Interne Notizen</Label>
+              <Label>{t('vaktprivacy.dsrPage.labelInternalNotes')}</Label>
               <Textarea
                 placeholder="Begründung, Maßnahmen, Kommentare …"
                 rows={3}
@@ -631,9 +627,9 @@ export default function DSRPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setDialogMode(null); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setDialogMode(null); }}>{t('common.cancel')}</Button>
             <Button onClick={handleSubmit} disabled={isPending}>
-              {isPending ? 'Speichern …' : 'Speichern'}
+              {isPending ? t('vaktprivacy.dsrPage.savingPending') : t('vaktprivacy.dsrPage.saveBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>

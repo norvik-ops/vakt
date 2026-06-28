@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { FileText, ChevronRight } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Spinner } from '../../../components/Spinner'
 import {
   Dialog,
@@ -44,13 +45,6 @@ function emptyVars(tpl: AVVTemplate, formatDate: (v: Date) => string): VarFormSt
   return state
 }
 
-const VAR_LABELS: Record<string, string> = {
-  auftraggeber: 'Auftraggeber (Verantwortlicher)',
-  auftragnehmer: 'Auftragnehmer (Auftragsverarbeiter)',
-  datum: 'Datum',
-  zweck: 'Zweck der Verarbeitung',
-}
-
 export function AVVTemplatePickerDialog({
   open,
   onOpenChange,
@@ -60,9 +54,12 @@ export function AVVTemplatePickerDialog({
   const [selected, setSelected] = useState<AVVTemplate | null>(null)
   const [vars, setVars] = useState<VarFormState>({ auftraggeber: '', auftragnehmer: '', datum: '', zweck: '' })
 
+  const { t } = useTranslation()
   const { data: templates, isLoading } = useAVVTemplates()
   const createFromTemplate = useCreateAVVFromTemplate()
   const { formatDate } = useFormatDate()
+
+  const getVarLabel = (v: string) => t(`vaktprivacy.avvTemplatePicker.var_${v}`, { defaultValue: v })
 
   function handleSelectTemplate(tpl: AVVTemplate) {
     setSelected(tpl)
@@ -105,7 +102,7 @@ export function AVVTemplatePickerDialog({
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {step === 'pick' ? 'Vorlage auswählen' : `Vorlage ausfüllen — ${selected?.title ?? ''}`}
+            {step === 'pick' ? t('vaktprivacy.avvTemplatePicker.pickTitle') : `${t('vaktprivacy.avvTemplatePicker.fillTitle')} — ${selected?.title ?? ''}`}
           </DialogTitle>
         </DialogHeader>
 
@@ -128,7 +125,7 @@ export function AVVTemplatePickerDialog({
                   <p className="font-medium text-sm">{tpl.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{tpl.description}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Platzhalter: {tpl.variables.join(', ')}
+                    {t('vaktprivacy.avvTemplatePicker.placeholders')}: {tpl.variables.join(', ')}
                   </p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5 group-hover:text-foreground transition-colors" />
@@ -141,9 +138,9 @@ export function AVVTemplatePickerDialog({
           <div className="space-y-4 py-2">
             {selected.variables.map((v) => (
               <div key={v} className="space-y-1.5">
-                <Label>{VAR_LABELS[v] ?? v}</Label>
+                <Label>{getVarLabel(v)}</Label>
                 <Input
-                  placeholder={VAR_LABELS[v] ?? v}
+                  placeholder={getVarLabel(v)}
                   value={vars[v] ?? ''}
                   onChange={(e) => { setVars((prev) => ({ ...prev, [v]: e.target.value })); }}
                 />
@@ -155,18 +152,18 @@ export function AVVTemplatePickerDialog({
         <DialogFooter className="gap-2">
           {step === 'fill' && (
             <Button variant="outline" onClick={handleBack}>
-              Zurück
+              {t('common.back')}
             </Button>
           )}
           <Button variant="outline" onClick={() => { handleClose(false); }}>
-            Abbrechen
+            {t('common.cancel')}
           </Button>
           {step === 'fill' && (
             <Button
               onClick={handleConfirm}
               disabled={!allVarsFilled || createFromTemplate.isPending}
             >
-              {createFromTemplate.isPending ? 'Erstellen …' : 'AVV erstellen'}
+              {createFromTemplate.isPending ? t('vaktprivacy.avvTemplatePicker.creating') : t('vaktprivacy.avvTemplatePicker.createAVV')}
             </Button>
           )}
         </DialogFooter>

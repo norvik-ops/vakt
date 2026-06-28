@@ -38,9 +38,8 @@ describe('GitScansPage — loading state', () => {
   it('shows page header but not empty state while loading', () => {
     vi.mocked(useGitScans).mockReturnValue({ data: [], isLoading: true } as any)
     renderWithProviders(<GitScansPage />)
-    // i18n is not initialised in tests — t() returns the raw key.
-    expect(screen.getByText('vault.gitScans.title')).toBeInTheDocument()
-    expect(screen.queryByText('vault.gitScans.noScans')).not.toBeInTheDocument()
+    expect(screen.getByText('Git Scans')).toBeInTheDocument()
+    expect(screen.queryByText('Keine Git-Scans')).not.toBeInTheDocument()
   })
 })
 
@@ -49,8 +48,8 @@ describe('GitScansPage — loading state', () => {
 describe('GitScansPage — empty state', () => {
   it('shows empty state when no scans exist', () => {
     renderWithProviders(<GitScansPage />)
-    expect(screen.getByText('vault.gitScans.noScans')).toBeInTheDocument()
-    expect(screen.getByText('vault.gitScans.noScansHint')).toBeInTheDocument()
+    expect(screen.getByText('Keine Git-Scans')).toBeInTheDocument()
+    expect(screen.getByText('Verbinden Sie Ihr erstes Repository.')).toBeInTheDocument()
   })
 })
 
@@ -72,8 +71,8 @@ describe('GitScansPage — create mutation', () => {
   it('opens dialog, fills URL, and calls mutate on form submit', () => {
     renderWithProviders(<GitScansPage />)
 
-    fireEvent.click(screen.getByText('vault.gitScans.newScan'))
-    expect(screen.getByText('Scan Repository')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Neuer Scan'))
+    expect(screen.getByText('Repository scannen')).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Repository URL'), {
       target: { value: 'https://github.com/acme/new-repo' },
@@ -92,7 +91,7 @@ describe('GitScansPage — create mutation', () => {
   it('shows "Starting…" on the submit button while mutation is pending', () => {
     vi.mocked(useTriggerGitScan).mockReturnValue({ mutate: vi.fn(), isPending: true } as any)
     renderWithProviders(<GitScansPage />)
-    fireEvent.click(screen.getByText('vault.gitScans.newScan'))
-    expect(screen.getByText('Starting…')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Neuer Scan'))
+    expect(screen.getByText('Startet…')).toBeInTheDocument()
   })
 })

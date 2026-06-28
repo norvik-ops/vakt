@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Bot, CheckCircle, AlertTriangle, ChevronRight } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export function AIClassificationWizard({ systemId, systemName, open, onClose }: Props) {
+  const { t } = useTranslation()
   const [state, setState] = useState<WizardState>({ phase: 'question', stepId: 'step_prohibited' })
   const [classifiedBy, setClassifiedBy] = useState('')
   const [answers, setAnswers] = useState<Record<string, boolean>>({})
@@ -81,7 +83,7 @@ export function AIClassificationWizard({ systemId, systemName, open, onClose }: 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Bot className="w-5 h-5 text-primary" />
-            Risikoklassifizierung — {systemName}
+            {t('vaktcomply.aiClassificationWizard.title', { name: systemName })}
           </DialogTitle>
         </DialogHeader>
 
@@ -96,7 +98,7 @@ export function AIClassificationWizard({ systemId, systemName, open, onClose }: 
         {state.phase === 'question' && currentStep && (
           <div className="space-y-4 py-2">
             <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-              Schritt {stepIndex + 1} von {WIZARD_STEPS.length}
+              {t('vaktcomply.aiClassificationWizard.step', { current: stepIndex + 1, total: WIZARD_STEPS.length })}
             </div>
             <p className="font-medium text-sm leading-relaxed">{currentStep.question}</p>
             <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground leading-relaxed">
@@ -110,14 +112,14 @@ export function AIClassificationWizard({ systemId, systemName, open, onClose }: 
                 onClick={() => { handleAnswer(false); }}
                 data-testid="wizard-no-btn"
               >
-                Nein
+                {t('vaktcomply.aiClassificationWizard.no')}
               </Button>
               <Button
                 className="flex-1"
                 onClick={() => { handleAnswer(true); }}
                 data-testid="wizard-yes-btn"
               >
-                Ja
+                {t('vaktcomply.aiClassificationWizard.yes')}
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
@@ -132,23 +134,23 @@ export function AIClassificationWizard({ systemId, systemName, open, onClose }: 
               ) : (
                 <CheckCircle className="w-5 h-5 text-green-400" />
               )}
-              <p className="font-semibold">Klassifizierungsergebnis</p>
+              <p className="font-semibold">{t('vaktcomply.aiClassificationWizard.classificationResult')}</p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Risikoklasse:</span>
+              <span className="text-sm text-muted-foreground">{t('vaktcomply.aiClassificationWizard.riskClass')}</span>
               <Badge className={RISK_CLASS_CSS[state.result.riskClass] ?? ''}>
                 {RISK_CLASS_LABELS[state.result.riskClass] ?? state.result.riskClass}
               </Badge>
             </div>
             <div className="bg-muted/50 rounded-lg p-3 text-xs leading-relaxed">
-              <p className="font-medium mb-1">Begründung</p>
+              <p className="font-medium mb-1">{t('vaktcomply.aiClassificationWizard.rationale')}</p>
               <p className="text-muted-foreground">{state.result.rationale}</p>
             </div>
-            <p className="text-xs text-primary/70">Rechtsgrundlage: {state.result.article}</p>
+            <p className="text-xs text-primary/70">{t('vaktcomply.aiClassificationWizard.legalBasis', { article: state.result.article })}</p>
             <div className="space-y-1.5">
-              <Label className="text-xs">Klassifiziert durch (optional)</Label>
+              <Label className="text-xs">{t('vaktcomply.aiClassificationWizard.classifiedByOptional')}</Label>
               <Input
-                placeholder="Name der verantwortlichen Person"
+                placeholder={t('vaktcomply.aiClassificationWizard.classifiedByPlaceholder')}
                 value={classifiedBy}
                 onChange={(e) => { setClassifiedBy(e.target.value); }}
                 data-testid="wizard-classified-by"
@@ -159,11 +161,11 @@ export function AIClassificationWizard({ systemId, systemName, open, onClose }: 
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>
-            Abbrechen
+            {t('common.cancel')}
           </Button>
           {state.phase === 'result' && (
             <Button onClick={handleSave} disabled={classify.isPending} data-testid="wizard-save-btn">
-              {classify.isPending ? 'Speichern …' : 'Klassifizierung speichern'}
+              {classify.isPending ? t('vaktcomply.aiDocumentation.saving') : t('vaktcomply.aiClassificationWizard.saveClassification')}
             </Button>
           )}
         </DialogFooter>

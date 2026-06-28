@@ -55,8 +55,8 @@ import { Skeleton } from '../../../components/ui/skeleton'
 import { ErrorState } from '../../../shared/components/ErrorState'
 import { exportAsRTF } from '../../../shared/utils/exportRtf'
 import { useMilestoneToast } from '../../../shared/components/MilestoneToast'
-import { ComplianceTooltip } from '../../../shared/components/ComplianceTooltip'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { useTranslation } from 'react-i18next'
 
 // ── DORA → ISO 27001 mapping info block ──────────────────────────────────────
 
@@ -146,6 +146,7 @@ function CopyButton({ text }: { text: string }) {
 }
 
 function AuditorLinksTab({ frameworkId }: { frameworkId: string }) {
+  const { t } = useTranslation()
   const [createOpen, setCreateOpen] = useState(false)
   const [label, setLabel] = useState('')
   const [expiresInDays, setExpiresInDays] = useState('30')
@@ -207,10 +208,10 @@ function AuditorLinksTab({ frameworkId }: { frameworkId: string }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Bezeichnung</TableHead>
-                <TableHead>Läuft ab</TableHead>
-                <TableHead>Zugriffe</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('vaktcomply.frameworkDetail.colLabel')}</TableHead>
+                <TableHead>{t('vaktcomply.frameworkDetail.colExpires')}</TableHead>
+                <TableHead>{t('vaktcomply.frameworkDetail.colAccesses')}</TableHead>
+                <TableHead>{t('common.status')}</TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>
@@ -224,11 +225,11 @@ function AuditorLinksTab({ frameworkId }: { frameworkId: string }) {
                   <TableCell>{link.access_count}</TableCell>
                   <TableCell>
                     {link.revoked_at ? (
-                      <Badge variant="destructive">Widerrufen</Badge>
+                      <Badge variant="destructive">{t('vaktcomply.frameworkDetail.statusRevoked')}</Badge>
                     ) : new Date(link.expires_at) < new Date() ? (
-                      <Badge variant="secondary">Abgelaufen</Badge>
+                      <Badge variant="secondary">{t('vaktcomply.frameworkDetail.statusExpired')}</Badge>
                     ) : (
-                      <Badge variant="success">Aktiv</Badge>
+                      <Badge variant="success">{t('common.statusLabels.active')}</Badge>
                     )}
                   </TableCell>
                   <TableCell>
@@ -272,7 +273,7 @@ function AuditorLinksTab({ frameworkId }: { frameworkId: string }) {
           ) : (
             <div className="py-4 space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="link-label">Bezeichnung</Label>
+                <Label htmlFor="link-label">{t('vaktcomply.frameworkDetail.colLabel')}</Label>
                 <Input
                   id="link-label"
                   placeholder="z.B. Externes Audit Q3 2026"
@@ -281,7 +282,7 @@ function AuditorLinksTab({ frameworkId }: { frameworkId: string }) {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="link-expires">Gültig für</Label>
+                <Label htmlFor="link-expires">{t('vaktcomply.frameworkDetail.validFor')}</Label>
                 <Select value={expiresInDays} onValueChange={setExpiresInDays}>
                   <SelectTrigger id="link-expires">
                     <SelectValue />
@@ -326,6 +327,7 @@ function NotApplicableDialog({
   open: boolean
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [reason, setReason] = useState(control.not_applicable_reason ?? '')
   const updateControl = useUpdateControl(frameworkId)
 
@@ -348,7 +350,7 @@ function NotApplicableDialog({
             {' '}{control.title}
           </p>
           <div className="space-y-1.5">
-            <Label htmlFor="na-reason">Begründung <span className="text-secondary">(für Auditor sichtbar)</span></Label>
+            <Label htmlFor="na-reason">{t('vaktcomply.controlDetailPage.naReason')} <span className="text-secondary">{t('vaktcomply.controlDetailPage.naReasonHint')}</span></Label>
             <textarea
               id="na-reason"
               rows={3}
@@ -360,9 +362,9 @@ function NotApplicableDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Abbrechen</Button>
+          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
           <Button onClick={handleConfirm} disabled={updateControl.isPending}>
-            {updateControl.isPending ? 'Wird gespeichert…' : 'Bestätigen'}
+            {updateControl.isPending ? t('common.saving') : t('common.confirm')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -555,9 +557,9 @@ function DomainSection({
                   onClick={(e) => { e.stopPropagation(); }}
                 />
               </TableHead>
-              <TableHead className="w-32">ID</TableHead>
-              <TableHead>Maßnahme</TableHead>
-              <TableHead className="w-48">Status</TableHead>
+              <TableHead className="w-32">{t('frameworkDetail.colId')}</TableHead>
+              <TableHead>{t('frameworkDetail.colMeasure')}</TableHead>
+              <TableHead className="w-48">{t('common.status')}</TableHead>
               <TableHead className="w-8"></TableHead>
             </TableRow>
           </TableHeader>
@@ -608,6 +610,7 @@ function ControlsTab({
   controls: Control[] | undefined
   controlsLoading: boolean
 }) {
+  const { t } = useTranslation()
   const updateControl = useUpdateControl(frameworkId)
   const bulkUpdateControls = useBulkUpdateControls()
   const [naDialog, setNaDialog] = useState<Control | null>(null)
@@ -710,7 +713,7 @@ function ControlsTab({
       <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Status setzen</DialogTitle>
+            <DialogTitle>{t('vaktcomply.risksPage.bulkStatusTitle')}</DialogTitle>
           </DialogHeader>
           <div className="py-3 space-y-3">
             <p className="text-sm text-secondary">
@@ -721,15 +724,15 @@ function ControlsTab({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="missing">Offen</SelectItem>
-                <SelectItem value="in_progress">In Bearbeitung</SelectItem>
-                <SelectItem value="implemented">Umgesetzt</SelectItem>
-                <SelectItem value="not_applicable">Nicht anwendbar</SelectItem>
+                <SelectItem value="missing">{t('vaktcomply.control.statusOpen')}</SelectItem>
+                <SelectItem value="in_progress">{t('vaktcomply.control.statusInProgress')}</SelectItem>
+                <SelectItem value="implemented">{t('vaktcomply.control.statusImplemented')}</SelectItem>
+                <SelectItem value="not_applicable">{t('vaktcomply.control.statusNotApplicable')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setStatusDialogOpen(false); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setStatusDialogOpen(false); }}>{t('common.cancel')}</Button>
             <Button onClick={() => { void handleBulkStatusApply() }} disabled={bulkUpdateControls.isPending}>
               {bulkUpdateControls.isPending ? 'Wird gespeichert…' : 'Anwenden'}
             </Button>
@@ -741,10 +744,10 @@ function ControlsTab({
         {/* Progress summary */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: 'Umgesetzt', value: covered, color: 'text-green-600' },
-            { label: 'In Bearbeitung', value: partial, color: 'text-yellow-600' },
-            { label: 'Offen', value: open, color: 'text-red-500' },
-            { label: 'Nicht anwendbar', value: notApplicable, color: 'text-secondary' },
+            { label: t('vaktcomply.control.statusImplemented'), value: covered, color: 'text-green-600' },
+            { label: t('vaktcomply.control.statusInProgress'), value: partial, color: 'text-yellow-600' },
+            { label: t('vaktcomply.control.statusOpen'), value: open, color: 'text-red-500' },
+            { label: t('vaktcomply.control.statusNotApplicable'), value: notApplicable, color: 'text-secondary' },
           ].map(({ label, value, color }) => (
             <div key={label} className="flex flex-col items-center py-3 px-4 bg-surface border border-border rounded-lg">
               <span className={cn('text-2xl font-bold', color)}>{value}</span>
@@ -756,7 +759,7 @@ function ControlsTab({
         {/* Progress bar */}
         <div className="space-y-1">
           <div className="flex justify-between text-xs text-secondary">
-            <span>{covered} von {total} <ComplianceTooltip term="control">Controls</ComplianceTooltip> umgesetzt</span>
+            <span>{t('vaktcomply.frameworkDetail.coveredOf', { covered, total })}</span>
             <span>{Math.round((covered / total) * 100)}%</span>
           </div>
           <div className="h-2 bg-surface2 rounded-full overflow-hidden">
@@ -823,6 +826,7 @@ export default function FrameworkDetailPage() {
   const { data: gaps, isLoading: gapsLoading } = useGapAnalysis(frameworkId)
   const { data: controls, isLoading: controlsLoading, isError: controlsError, refetch: refetchControls } = useFrameworkControls(frameworkId)
   const downloadPDF = useDownloadFrameworkPDF()
+  const { t } = useTranslation()
 
   useMilestoneToast(report?.readiness_score)
 
@@ -934,19 +938,19 @@ export default function FrameworkDetailPage() {
               <div className="flex gap-6 text-sm">
                 <div className="text-center">
                   <div className="text-xl font-semibold text-green-600">{report.covered}</div>
-                  <div className="text-secondary">Umgesetzt</div>
+                  <div className="text-secondary">{t('vaktcomply.control.statusImplemented')}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-xl font-semibold text-yellow-600">{report.partial}</div>
-                  <div className="text-secondary">Teilweise</div>
+                  <div className="text-secondary">{t('vaktcomply.frameworkDetail.statusPartial')}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-xl font-semibold text-red-600">{report.missing}</div>
-                  <div className="text-secondary">Offen</div>
+                  <div className="text-secondary">{t('vaktcomply.control.statusOpen')}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-xl font-semibold text-secondary">{report.total_controls}</div>
-                  <div className="text-secondary">Gesamt</div>
+                  <div className="text-secondary">{t('vaktcomply.frameworkDetail.total')}</div>
                 </div>
               </div>
             </>

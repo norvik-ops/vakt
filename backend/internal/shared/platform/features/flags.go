@@ -67,7 +67,7 @@ func Require(feature Feature) echo.MiddlewareFunc {
 			if !IsEnabled(c, feature) {
 				return c.JSON(http.StatusPaymentRequired, map[string]string{
 					"error":   "feature_not_available",
-					"message": "This feature requires Vakt Pro. Visit https://sec.norvikops.de for details.",
+					"message": "This feature requires Vakt Pro. Visit https://vakt.norvikops.de for details.",
 					"feature": feature,
 				})
 			}

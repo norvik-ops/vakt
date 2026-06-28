@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { History, Eye, X } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { Badge } from '../../../components/ui/badge'
@@ -26,6 +27,7 @@ function VersionDetailDialog({
   version: PolicyVersion | null
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const { formatDate } = useFormatDate()
   if (!version) return null
   return (
@@ -47,7 +49,7 @@ function VersionDetailDialog({
           </div>
           {version.version_note && (
             <div className="p-3 rounded-lg bg-accent text-sm">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Änderungsnotiz</p>
+              <p className="text-xs font-medium text-muted-foreground mb-1">{t('vaktcomply.policyVersionHistory.changeNote')}</p>
               <p>{version.version_note}</p>
             </div>
           )}

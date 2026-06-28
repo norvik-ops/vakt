@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Users, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
@@ -12,6 +13,7 @@ import { useTargetGroups, useCreateTargetGroup, useDeleteTargetGroup, useTargets
 import type { TargetGroup } from '../types'
 
 function TargetGroupRow({ group, onDelete }: { group: TargetGroup; onDelete: () => void }) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const { data: targets, isLoading } = useTargets(expanded ? group.id : '')
@@ -67,14 +69,14 @@ function TargetGroupRow({ group, onDelete }: { group: TargetGroup; onDelete: () 
               <Spinner size="sm" />
             </div>
           ) : !targets || targets.length === 0 ? (
-            <p className="text-sm text-secondary text-center py-4">No targets yet.</p>
+            <p className="text-sm text-secondary text-center py-4">{t('vaktaware.targetGroups.noTargets')}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>E-Mail</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Abteilung</TableHead>
+                  <TableHead>{t('common.name')}</TableHead>
+                  <TableHead>{t('vaktaware.targetGroups.colDepartment')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -93,7 +95,7 @@ function TargetGroupRow({ group, onDelete }: { group: TargetGroup; onDelete: () 
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Ziel hinzufügen</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('vaktaware.targetGroups.addTargetTitle')}</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { handleAdd(e) }}>
             <div className="py-4 space-y-3">
               <div className="space-y-1.5">
@@ -102,21 +104,21 @@ function TargetGroupRow({ group, onDelete }: { group: TargetGroup; onDelete: () 
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="target-fname">Vorname</Label>
+                  <Label htmlFor="target-fname">{t('vaktaware.targetGroups.labelFirstName')}</Label>
                   <Input id="target-fname" value={firstName} onChange={(e) => { setFirstName(e.target.value); }} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="target-lname">Nachname</Label>
+                  <Label htmlFor="target-lname">{t('vaktaware.targetGroups.labelLastName')}</Label>
                   <Input id="target-lname" value={lastName} onChange={(e) => { setLastName(e.target.value); }} />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="target-dept">Abteilung</Label>
+                <Label htmlFor="target-dept">{t('vaktaware.targetGroups.labelDepartment')}</Label>
                 <Input id="target-dept" value={department} onChange={(e) => { setDepartment(e.target.value); }} />
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => { setAddOpen(false); }}>Abbrechen</Button>
+              <Button type="button" variant="outline" onClick={() => { setAddOpen(false); }}>{t('common.cancel')}</Button>
               <Button type="submit" disabled={addTarget.isPending}>
                 {addTarget.isPending ? 'Adding…' : 'Add Target'}
               </Button>
@@ -129,6 +131,7 @@ function TargetGroupRow({ group, onDelete }: { group: TargetGroup; onDelete: () 
 }
 
 export default function TargetGroupsPage() {
+  const { t } = useTranslation()
   const { data: groups, isLoading } = useTargetGroups()
   const createGroup = useCreateTargetGroup()
   const deleteGroup = useDeleteTargetGroup()
@@ -151,8 +154,8 @@ export default function TargetGroupsPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Target Groups"
-        description="Zielgruppen für Phishing-Simulationen verwalten."
+        title={t('vaktaware.targetGroups.title')}
+        description={t('vaktaware.targetGroups.description')}
         tier="pro"
         actions={
           <Button onClick={() => { setOpen(true); }}>
@@ -169,8 +172,8 @@ export default function TargetGroupsPage() {
         ) : !groups || groups.length === 0 ? (
           <EmptyState
             icon={Users}
-            title="Noch keine Zielgruppen vorhanden"
-            description="Erstellen Sie eine Zielgruppe, um festzulegen, wer Phishing-Simulationen erhält."
+            title={t('vaktaware.targetGroups.noGroups')}
+            description={t('vaktaware.targetGroups.noGroupsDesc')}
             action={<Button onClick={() => { setOpen(true); }}><Plus className="w-4 h-4 mr-1" />New Group</Button>}
           />
         ) : (
@@ -186,7 +189,7 @@ export default function TargetGroupsPage() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Neue Zielgruppe</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('vaktaware.targetGroups.createDialogTitle')}</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { handleCreate(e) }}>
             <div className="py-4 space-y-3">
               <div className="space-y-1.5">
@@ -199,7 +202,7 @@ export default function TargetGroupsPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => { setOpen(false); }}>Abbrechen</Button>
+              <Button type="button" variant="outline" onClick={() => { setOpen(false); }}>{t('common.cancel')}</Button>
               <Button type="submit" disabled={createGroup.isPending}>
                 {createGroup.isPending ? 'Creating…' : 'Create Group'}
               </Button>
@@ -210,10 +213,10 @@ export default function TargetGroupsPage() {
 
       <Dialog open={!!deleteId} onOpenChange={(open) => { if (!open) { setDeleteId(null); } }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Zielgruppe löschen</DialogTitle></DialogHeader>
-          <p className="text-sm text-secondary py-2">This will permanently delete the group and all its targets.</p>
+          <DialogHeader><DialogTitle>{t('vaktaware.targetGroups.deleteDialogTitle')}</DialogTitle></DialogHeader>
+          <p className="text-sm text-secondary py-2">{t('vaktaware.targetGroups.deleteGroupDesc')}</p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setDeleteId(null); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setDeleteId(null); }}>{t('common.cancel')}</Button>
             <Button
               variant="destructive"
               onClick={() => { deleteGroup.mutate(deleteId!, { onSuccess: () => { setDeleteId(null); } }); }}

@@ -294,7 +294,7 @@ export default function IncidentsPage() {
             icon={Siren}
             title="Kein offener Vorfall"
             description="Das ist gut! Wenn etwas passiert, dokumentierst du Vorfälle hier — NIS2-konform"
-            action={<Button onClick={openDialog} variant="destructive" aria-haspopup="dialog"><Plus className="w-4 h-4 mr-1" />Vorfall anlegen</Button>}
+            action={<Button onClick={openDialog} variant="destructive" aria-haspopup="dialog"><Plus className="w-4 h-4 mr-1" />{t('vaktcomply.incidentsPage.createIncident')}</Button>}
           />
         )}
         {!isLoading && !isError && incidents && incidents.length > 0 && (

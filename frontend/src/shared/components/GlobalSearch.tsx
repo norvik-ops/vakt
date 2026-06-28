@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, type RefObject } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   Search, Shield, AlertTriangle, FileText, Siren, ClipboardCheck,
   Server, Bug, Users, Clock, Loader2, LayoutDashboard, ShieldAlert,
@@ -78,6 +79,7 @@ export function GlobalSearch() {
   const [activeIdx, setActiveIdx] = useState(-1)
 
   const navigate   = useNavigate()
+  const { t } = useTranslation()
   const inputRef   = useRef<HTMLInputElement>(null)
   const listRef    = useRef<HTMLUListElement>(null)
 
@@ -160,7 +162,7 @@ export function GlobalSearch() {
       <div
         ref={trapRef as RefObject<HTMLDivElement>}
         role="dialog"
-        aria-label="Suche"
+        aria-label={t('nav.search')}
         aria-modal="true"
         className="w-full max-w-lg bg-background dark:bg-card rounded-xl shadow-2xl border border-border overflow-hidden"
         onClick={e => { e.stopPropagation(); }}
@@ -174,8 +176,8 @@ export function GlobalSearch() {
             value={query}
             onChange={e => { setQuery(e.target.value); setActiveIdx(-1) }}
             onKeyDown={handleKeyDown}
-            placeholder="Suchen…"
-            aria-label="Globale Suche"
+            placeholder={t('globalSearch.placeholder')}
+            aria-label={t('globalSearch.ariaLabel')}
             aria-autocomplete="list"
             aria-controls="global-search-results"
             aria-activedescendant={activeIdx >= 0 ? `search-result-${String(activeIdx)}` : undefined}
@@ -184,28 +186,28 @@ export function GlobalSearch() {
             className="flex-1 bg-transparent text-sm outline-none text-primary placeholder:text-secondary"
           />
           {isFetching
-            ? <Loader2 className="w-3.5 h-3.5 text-secondary animate-spin shrink-0" aria-label="Wird gesucht" />
+            ? <Loader2 className="w-3.5 h-3.5 text-secondary animate-spin shrink-0" aria-label={t('states.loading')} />
             : null
           }
-          <kbd className="text-xs text-secondary border border-border rounded px-1 shrink-0" aria-label="Escape zum Schließen">Esc</kbd>
+          <kbd className="text-xs text-secondary border border-border rounded px-1 shrink-0" aria-label={t('globalSearch.escAria')}>Esc</kbd>
         </div>
 
         {/* Results / recent / empty states */}
         {showRecent && (
           <div className="px-4 pt-3 pb-1 text-xs text-secondary font-medium flex items-center gap-1">
             <Clock className="w-3 h-3" />
-            Zuletzt angesehen
+            {t('globalSearch.recentlyViewed')}
           </div>
         )}
 
         {debouncedQuery.length >= 2 && !isFetching && results.length > 0 && (
           <div className="px-4 pt-2.5 pb-1 text-xs text-secondary font-medium">
-            {results.length} Ergebnisse für „{debouncedQuery}"
+            {t('globalSearch.resultsFor', { count: results.length, query: debouncedQuery })}
           </div>
         )}
 
         {displayList.length > 0 && (
-          <ul ref={listRef} id="global-search-results" role="listbox" aria-label="Suchergebnisse" className="max-h-80 overflow-y-auto py-1.5">
+          <ul ref={listRef} id="global-search-results" role="listbox" aria-label={t('globalSearch.resultsAria')} className="max-h-80 overflow-y-auto py-1.5">
             {displayList.map((r, idx) => (
               <li key={r.id + r.entity_type} role="option" aria-selected={idx === activeIdx} id={`search-result-${String(idx)}`}>
                 <button
@@ -235,13 +237,13 @@ export function GlobalSearch() {
 
         {debouncedQuery.length >= 2 && !isFetching && results.length === 0 && (
           <div className="px-4 py-6 text-center text-sm text-secondary">
-            Keine Ergebnisse für „{debouncedQuery}"
+            {t('globalSearch.noResults', { query: debouncedQuery })}
           </div>
         )}
 
         {debouncedQuery.length < 2 && !showRecent && (
           <div className="px-4 pt-3 pb-1">
-            <p className="text-xs text-secondary font-medium mb-2">Schnellnavigation</p>
+            <p className="text-xs text-secondary font-medium mb-2">{t('globalSearch.quickNav')}</p>
             <div className="grid grid-cols-2 gap-1">
               {QUICK_NAV.map((item) => (
                 <button
@@ -259,8 +261,8 @@ export function GlobalSearch() {
 
         {/* Footer */}
         <div className="px-4 py-2 border-t border-border flex justify-between text-xs text-secondary">
-          <span>Cmd+K öffnen · Esc schließen</span>
-          <span>↑↓ navigieren · Enter auswählen</span>
+          <span>{t('globalSearch.footerLeft')}</span>
+          <span>{t('globalSearch.footerRight')}</span>
         </div>
       </div>
     </div>

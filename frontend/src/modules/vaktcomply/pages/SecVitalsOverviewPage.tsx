@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, Link } from 'react-router-dom'
 import { Spinner } from '../../../components/Spinner'
 import {
@@ -179,10 +180,11 @@ function DashboardOrderPopover({
   reset: () => void
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="absolute right-0 top-10 z-50 w-64 rounded-lg border border-border bg-white shadow-lg p-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-semibold text-gray-700">Widgets anpassen</span>
+        <span className="text-xs font-semibold text-gray-700">{t('vaktcomply.secVitals.customizeWidgets')}</span>
         <button
           onClick={reset}
           className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-600"
@@ -213,7 +215,7 @@ function DashboardOrderPopover({
           </li>
         ))}
       </ul>
-      <p className="text-[10px] text-gray-500 mt-2 text-center">Reihenfolge gespeichert</p>
+      <p className="text-[10px] text-gray-500 mt-2 text-center">{t('vaktcomply.secVitals.orderSaved')}</p>
       <button
         onClick={onClose}
         className="mt-2 w-full text-xs text-center text-gray-500 hover:text-gray-700"

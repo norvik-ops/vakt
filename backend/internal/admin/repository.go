@@ -423,3 +423,220 @@ func (r *Repository) OIDCEnabledExists(ctx context.Context) (bool, error) {
 	).Scan(&exists)
 	return exists, err
 }
+
+// OrgSMTPSettings holds the per-org SMTP configuration stored in the DB.
+// The password is never returned in plaintext; HasPass signals whether one is set.
+type OrgSMTPSettings struct {
+	Host    string `json:"host"`
+	Port    string `json:"port"`
+	User    string `json:"user"`
+	From    string `json:"from"`
+	TLS     bool   `json:"tls"`
+	HasPass bool   `json:"has_pass"` // true if an encrypted password is stored
+}
+
+// GetOrgSMTPSettings returns the per-org SMTP configuration.
+func (r *Repository) GetOrgSMTPSettings(ctx context.Context, orgID string) (*OrgSMTPSettings, error) {
+	var s OrgSMTPSettings
+	var host, port, user, from *string
+	var passEnc []byte
+	err := r.db.QueryRow(ctx,
+		`SELECT smtp_host, smtp_port, smtp_user, smtp_pass_enc, smtp_from, smtp_tls
+		 FROM organizations WHERE id = $1::uuid`,
+		orgID,
+	).Scan(&host, &port, &user, &passEnc, &from, &s.TLS)
+	if err != nil {
+		return nil, fmt.Errorf("get org smtp settings %s: %w", orgID, err)
+	}
+	if host != nil {
+		s.Host = *host
+	}
+	if port != nil {
+		s.Port = *port
+	}
+	if user != nil {
+		s.User = *user
+	}
+	if from != nil {
+		s.From = *from
+	}
+	s.HasPass = len(passEnc) > 0
+	return &s, nil
+}
+
+// SetOrgSMTPSettings updates the per-org SMTP configuration.
+// passEnc may be nil to leave the existing encrypted password unchanged.
+func (r *Repository) SetOrgSMTPSettings(ctx context.Context, orgID, host, port, user, from string, tls bool, passEnc []byte) error {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE organizations
+		SET smtp_host     = NULLIF($2, ''),
+		    smtp_port     = NULLIF($3, ''),
+		    smtp_user     = NULLIF($4, ''),
+		    smtp_from     = NULLIF($5, ''),
+		    smtp_tls      = $6,
+		    smtp_pass_enc = COALESCE($7, smtp_pass_enc),
+		    updated_at    = NOW()
+		WHERE id = $1::uuid`,
+		orgID, host, port, user, from, tls, passEnc,
+	)
+	if err != nil {
+		return fmt.Errorf("set org smtp settings %s: %w", orgID, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("org not found: %s", orgID)
+	}
+	return nil
+}
+
+// ─── Migration 230: Backup Configuration ─────────────────────────────────────
+
+// OrgBackupConfig holds the per-org backup configuration.
+// Encrypted fields (passphrase, notify webhook) are never returned in plaintext;
+// HasPassphrase and HasNotifyWebhook signal whether values are stored.
+type OrgBackupConfig struct {
+	Schedule         string `json:"schedule"`       // cron expr, "" = use env default
+	RetentionDays    int    `json:"retention_days"` // 0 = use env default
+	OffsiteCmd       string `json:"offsite_cmd"`
+	NotifyCmd        string `json:"notify_cmd"`
+	HasPassphrase    bool   `json:"has_passphrase"`
+	HasNotifyWebhook bool   `json:"has_notify_webhook"`
+}
+
+// GetOrgBackupConfig returns the per-org backup configuration.
+// The raw encrypted bytes for passphrase and notify webhook are returned
+// separately so callers can decrypt them when needed (e.g. the internal endpoint).
+func (r *Repository) GetOrgBackupConfig(ctx context.Context, orgID string) (*OrgBackupConfig, []byte, []byte, error) {
+	var s OrgBackupConfig
+	var schedule, offsiteCmd, notifyCmd *string
+	var retentionDays *int
+	var passphraseEnc, webhookEnc []byte
+	err := r.db.QueryRow(ctx, `
+		SELECT backup_schedule, backup_retention_days,
+		       backup_passphrase_enc, backup_notify_webhook_enc,
+		       backup_offsite_cmd, backup_notify_cmd
+		FROM organizations WHERE id = $1::uuid`,
+		orgID,
+	).Scan(&schedule, &retentionDays, &passphraseEnc, &webhookEnc, &offsiteCmd, &notifyCmd)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("get org backup config %s: %w", orgID, err)
+	}
+	if schedule != nil {
+		s.Schedule = *schedule
+	}
+	if retentionDays != nil {
+		s.RetentionDays = *retentionDays
+	}
+	if offsiteCmd != nil {
+		s.OffsiteCmd = *offsiteCmd
+	}
+	if notifyCmd != nil {
+		s.NotifyCmd = *notifyCmd
+	}
+	s.HasPassphrase = len(passphraseEnc) > 0
+	s.HasNotifyWebhook = len(webhookEnc) > 0
+	return &s, passphraseEnc, webhookEnc, nil
+}
+
+// SetOrgBackupConfig updates the per-org backup configuration.
+// passphraseEnc and webhookEnc may be nil to leave existing encrypted values unchanged (COALESCE).
+// An empty schedule or notifyCmd/offsiteCmd is stored as NULL (NULLIF).
+// retentionDays of 0 is stored as NULL (NULLIF), meaning "use env default".
+func (r *Repository) SetOrgBackupConfig(ctx context.Context, orgID, schedule string, retentionDays int, passphraseEnc, webhookEnc []byte, offsiteCmd, notifyCmd string) error {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE organizations
+		SET backup_schedule           = NULLIF($2, ''),
+		    backup_retention_days     = NULLIF($3, 0),
+		    backup_passphrase_enc     = COALESCE($4, backup_passphrase_enc),
+		    backup_notify_webhook_enc = COALESCE($5, backup_notify_webhook_enc),
+		    backup_offsite_cmd        = NULLIF($6, ''),
+		    backup_notify_cmd         = NULLIF($7, ''),
+		    updated_at                = NOW()
+		WHERE id = $1::uuid`,
+		orgID, schedule, retentionDays, passphraseEnc, webhookEnc, offsiteCmd, notifyCmd,
+	)
+	if err != nil {
+		return fmt.Errorf("set org backup config %s: %w", orgID, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("org not found: %s", orgID)
+	}
+	return nil
+}
+
+// ─── Migration 231: LDAP/AD Configuration ────────────────────────────────────
+
+// OrgLDAPConfig holds the per-org LDAP/AD configuration stored in the DB.
+// The bind password is never returned in plaintext; HasBindPass signals whether one is set.
+// Enabled is true when the minimum required fields (URL, BindDN, BaseDN) are all non-empty.
+type OrgLDAPConfig struct {
+	URL         string `json:"url"`
+	BindDN      string `json:"bind_dn"`
+	BaseDN      string `json:"base_dn"`
+	UserFilter  string `json:"user_filter"`
+	GroupFilter string `json:"group_filter"`
+	TLS         bool   `json:"tls"`
+	HasBindPass bool   `json:"has_bind_pass"`
+	Enabled     bool   `json:"enabled"`
+}
+
+// GetOrgLDAPConfig returns the per-org LDAP configuration.
+// The raw encrypted bind password bytes are returned separately so callers can
+// decrypt them when needed (e.g. test/sync endpoints).
+func (r *Repository) GetOrgLDAPConfig(ctx context.Context, orgID string) (*OrgLDAPConfig, []byte, error) {
+	var s OrgLDAPConfig
+	var url, bindDN, baseDN, userFilter, groupFilter *string
+	var bindPassEnc []byte
+	err := r.db.QueryRow(ctx, `
+		SELECT ldap_url, ldap_bind_dn, ldap_bind_pass_enc,
+		       ldap_base_dn, ldap_user_filter, ldap_group_filter, ldap_tls
+		FROM organizations WHERE id = $1::uuid`,
+		orgID,
+	).Scan(&url, &bindDN, &bindPassEnc, &baseDN, &userFilter, &groupFilter, &s.TLS)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get org ldap config %s: %w", orgID, err)
+	}
+	if url != nil {
+		s.URL = *url
+	}
+	if bindDN != nil {
+		s.BindDN = *bindDN
+	}
+	if baseDN != nil {
+		s.BaseDN = *baseDN
+	}
+	if userFilter != nil {
+		s.UserFilter = *userFilter
+	}
+	if groupFilter != nil {
+		s.GroupFilter = *groupFilter
+	}
+	s.HasBindPass = len(bindPassEnc) > 0
+	s.Enabled = s.URL != "" && s.BindDN != "" && s.BaseDN != ""
+	return &s, bindPassEnc, nil
+}
+
+// SetOrgLDAPConfig updates the per-org LDAP configuration.
+// bindPassEnc may be nil to leave the existing encrypted password unchanged (COALESCE).
+// Empty string fields are stored as NULL (NULLIF).
+func (r *Repository) SetOrgLDAPConfig(ctx context.Context, orgID, url, bindDN, baseDN, userFilter, groupFilter string, tls bool, bindPassEnc []byte) error {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE organizations
+		SET ldap_url           = NULLIF($2, ''),
+		    ldap_bind_dn       = NULLIF($3, ''),
+		    ldap_base_dn       = NULLIF($4, ''),
+		    ldap_user_filter   = NULLIF($5, ''),
+		    ldap_group_filter  = NULLIF($6, ''),
+		    ldap_tls           = $7,
+		    ldap_bind_pass_enc = COALESCE($8, ldap_bind_pass_enc),
+		    updated_at         = NOW()
+		WHERE id = $1::uuid`,
+		orgID, url, bindDN, baseDN, userFilter, groupFilter, tls, bindPassEnc,
+	)
+	if err != nil {
+		return fmt.Errorf("set org ldap config %s: %w", orgID, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("org not found: %s", orgID)
+	}
+	return nil
+}

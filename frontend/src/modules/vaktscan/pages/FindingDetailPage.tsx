@@ -22,6 +22,7 @@ import { useAIInsights, useDismissInsight } from '../../vaktcomply/hooks/useAIIn
 const severityClass = findingSeverityClass
 
 function EvidenceSuggestionBanner({ findingId }: { findingId: string }) {
+  const { t } = useTranslation()
   const { data } = useAIInsights()
   const dismiss = useDismissInsight()
   const suggestions = data?.items.filter(
@@ -43,7 +44,7 @@ function EvidenceSuggestionBanner({ findingId }: { findingId: string }) {
             onClick={() => { dismiss.mutate(insight.id); }}
             disabled={dismiss.isPending}
             className="shrink-0 text-muted-foreground hover:text-primary transition-colors"
-            aria-label="Hinweis verwerfen"
+            aria-label={t('vaktscan.findingDetail.dismissInsight')}
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -173,7 +174,7 @@ export default function FindingDetailPage() {
                 <p className="text-sm text-green-600">
                   {t('vaktscan.findingDetail.saved')} —{' '}
                   <Link to="/vaktcomply/evidence/auto" className="underline">
-                    Finding-Auflösung als Evidence in Vakt Comply gespeichert
+                    {t('vaktscan.findingDetail.resolvedEvidence')}
                   </Link>
                 </p>
               )}

@@ -67,17 +67,17 @@ describe('DSRPage — loading state', () => {
   it('shows page title while loading', () => {
     vi.mocked(useDSRs).mockReturnValue({ data: [], isLoading: true, isError: false } as unknown as R<typeof useDSRs>)
     renderWithProviders(<DSRPage />)
-    expect(screen.getByText('Datenschutzanfragen (DSR)')).toBeInTheDocument()
+    expect(screen.getByText('Betroffenenrechte (Art. 15\u201322 DSGVO)')).toBeInTheDocument()
   })
 })
 
 // ── empty state ───────────────────────────────────────────────────────────────
 
 describe('DSRPage — empty state', () => {
-  it('shows empty state and "DSR anlegen" button when no DSRs exist', () => {
+  it('shows empty state and "Anfrage erfassen" button when no DSRs exist', () => {
     renderWithProviders(<DSRPage />)
-    expect(screen.getByText('Keine Datenschutzanfragen')).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: /dsr anlegen/i }).length).toBeGreaterThan(0)
+    expect(screen.getByText('Noch keine Anfragen')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /Anfrage erfassen/i }).length).toBeGreaterThan(0)
   })
 })
 
@@ -101,7 +101,7 @@ describe('DSRPage — create mutation', () => {
     renderWithProviders(<DSRPage />)
 
     // Open the dialog using the header button
-    fireEvent.click(screen.getAllByRole('button', { name: /dsr anlegen/i })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: /Anfrage erfassen/i })[0])
     expect(screen.getByRole('dialog')).toBeInTheDocument()
 
     fireEvent.change(screen.getByPlaceholderText('z.B. Max Mustermann'), {
@@ -111,8 +111,8 @@ describe('DSRPage — create mutation', () => {
       target: { value: 'lisa@example.com' },
     })
 
-    // Submit via the dialog's own "DSR anlegen" button (last one = inside dialog footer)
-    const submitButtons = screen.getAllByRole('button', { name: /dsr anlegen/i })
+    // Submit via the dialog's own "Anfrage erfassen" button (last one = inside dialog footer)
+    const submitButtons = screen.getAllByRole('button', { name: /Anfrage erfassen/i })
     fireEvent.click(submitButtons[submitButtons.length - 1])
 
     await waitFor(() => {
@@ -128,10 +128,10 @@ describe('DSRPage — create mutation', () => {
 
   it('submit button is disabled when required fields are empty', () => {
     renderWithProviders(<DSRPage />)
-    fireEvent.click(screen.getAllByRole('button', { name: /dsr anlegen/i })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: /Anfrage erfassen/i })[0])
 
     // Dialog submit button should be disabled when fields empty (canSubmitCreate = false)
-    const submitButtons = screen.getAllByRole('button', { name: /dsr anlegen/i })
+    const submitButtons = screen.getAllByRole('button', { name: /Anfrage erfassen/i })
     const dialogSubmit = submitButtons[submitButtons.length - 1]
     expect(dialogSubmit).toBeDisabled()
     expect(mockCreate).not.toHaveBeenCalled()

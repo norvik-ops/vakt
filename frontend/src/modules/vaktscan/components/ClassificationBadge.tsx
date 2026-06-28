@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Badge } from '../../../components/ui/badge'
 import type { ClassificationLevel } from '../types'
 
@@ -22,9 +23,10 @@ export function ClassificationBadge({
   level: ClassificationLevel
   className?: string
 }) {
+  const { t } = useTranslation()
   return (
     <Badge className={`text-xs ${CLASSIFICATION_CLASS[level]} ${className}`}>
-      {CLASSIFICATION_LABELS[level]}
+      {t('vaktscan.classification.' + level, CLASSIFICATION_LABELS[level])}
     </Badge>
   )
 }

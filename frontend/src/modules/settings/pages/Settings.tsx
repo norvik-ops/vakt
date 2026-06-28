@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import {
   Building2, Layers, Bell, Trash2, Plus, Check, X,
   Webhook, Globe, Mail, Server, MapPin, Download, ShieldCheck, Shield, FileText, ExternalLink, Sparkles, Rocket, Key, Clock, ArrowUpCircle, RefreshCw, Zap, FileBarChart2, Radio,
-  Siren, UserCheck, Users, Palette, Sliders,
+  Siren, UserCheck, Users, Palette, Sliders, Network,
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -54,6 +54,103 @@ function useUpdateDigestEnabled() {
         body: JSON.stringify({ digest_enabled: enabled }),
       }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['retention'] }),
+  })
+}
+
+// ─── Backup config hooks ──────────────────────────────────────────────────────
+
+interface OrgBackupConfig {
+  schedule: string
+  retention_days: number
+  offsite_cmd: string
+  notify_cmd: string
+  has_passphrase: boolean
+  has_notify_webhook: boolean
+}
+
+function useOrgBackupConfig() {
+  return useQuery<OrgBackupConfig>({
+    queryKey: ['admin', 'org', 'backup-config'],
+    queryFn: () => apiFetch<OrgBackupConfig>('/admin/org/backup-config'),
+    retry: false,
+  })
+}
+
+function useUpdateOrgBackupConfig() {
+  const qc = useQueryClient()
+  return useMutation<undefined, Error, Partial<OrgBackupConfig> & { passphrase?: string; notify_webhook?: string }>({
+    mutationFn: (input) =>
+      apiFetch<undefined>('/admin/org/backup-config', { method: 'PUT', body: JSON.stringify(input) }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['admin', 'org', 'backup-config'] }),
+  })
+}
+
+// ─── SMTP hooks ──────────────────────────────────────────────────────────────
+
+interface OrgSMTPSettings {
+  host: string
+  port: string
+  user: string
+  from: string
+  tls: boolean
+  has_pass: boolean
+}
+
+function useOrgSMTPSettings() {
+  return useQuery<OrgSMTPSettings>({
+    queryKey: ['admin', 'org', 'smtp'],
+    queryFn: () => apiFetch<OrgSMTPSettings>('/admin/org/smtp'),
+    retry: false,
+  })
+}
+
+function useUpdateOrgSMTPSettings() {
+  const qc = useQueryClient()
+  return useMutation<undefined, Error, Partial<OrgSMTPSettings> & { pass?: string }>({
+    mutationFn: (input) =>
+      apiFetch<undefined>('/admin/org/smtp', { method: 'PUT', body: JSON.stringify(input) }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['admin', 'org', 'smtp'] }),
+  })
+}
+
+// ─── LDAP hooks ──────────────────────────────────────────────────────────────
+
+interface OrgLDAPConfig {
+  url: string
+  bind_dn: string
+  base_dn: string
+  user_filter: string
+  group_filter: string
+  tls: boolean
+  has_bind_pass: boolean
+}
+
+function useOrgLDAPConfig() {
+  return useQuery<OrgLDAPConfig>({
+    queryKey: ['admin', 'org', 'ldap'],
+    queryFn: () => apiFetch<OrgLDAPConfig>('/admin/org/ldap'),
+    retry: false,
+  })
+}
+
+function useUpdateOrgLDAPConfig() {
+  const qc = useQueryClient()
+  return useMutation<undefined, Error, Partial<OrgLDAPConfig> & { bind_pass?: string }>({
+    mutationFn: (input) =>
+      apiFetch<undefined>('/admin/org/ldap', { method: 'PUT', body: JSON.stringify(input) }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['admin', 'org', 'ldap'] }),
+  })
+}
+
+function useTestLDAPConnection() {
+  return useMutation<{ ok: boolean; users_found?: number; error?: string }>({
+    mutationFn: () => apiFetch('/admin/org/ldap/test', { method: 'POST' }),
+  })
+}
+
+function useSyncLDAP() {
+  return useMutation<{ synced: number }>({
+    mutationFn: () => apiFetch('/admin/org/ldap/sync', { method: 'POST' }),
   })
 }
 
@@ -143,12 +240,13 @@ function useDeleteChannel() {
 
 // ─── Module labels ────────────────────────────────────────────────────────────
 
-const MODULE_META: Record<string, { label: string; desc: string } | undefined> = {
-  vaktscan:   { label: 'Vakt Scan',     desc: 'Scanner-Orchestrierung & Schwachstellenmanagement' },
-  vaktcomply:  { label: 'Vakt Comply',   desc: 'Compliance Frameworks, Risiken & Governance' },
-  vaktvault:   { label: 'Vakt Vault',    desc: 'Secrets-Verwaltung & Git-Scanning' },
-  vaktaware:  { label: 'Vakt Aware',    desc: 'Phishing-Simulationen & Awareness-Training' },
-  vaktprivacy: { label: 'Vakt Privacy',  desc: 'DSGVO-Dokumentation (VVT, DSFA, AVV, Datenpannen)' },
+// MODULE_META desc keys map to settingsPage.moduleVakt*Desc in i18n
+const MODULE_META: Record<string, { label: string; descKey: string } | undefined> = {
+  vaktscan:    { label: 'Vakt Scan',    descKey: 'moduleVaktscanDesc' },
+  vaktcomply:  { label: 'Vakt Comply',  descKey: 'moduleVaktcomplyDesc' },
+  vaktvault:   { label: 'Vakt Vault',   descKey: 'moduleVaktvaultDesc' },
+  vaktaware:   { label: 'Vakt Aware',   descKey: 'moduleVaktawareDesc' },
+  vaktprivacy: { label: 'Vakt Privacy', descKey: 'moduleVaktprivacyDesc' },
 }
 
 // ─── License ─────────────────────────────────────────────────────────────────
@@ -250,7 +348,7 @@ function LicenseSection() {
           </Badge>
           {lic?.auto_renewal_enabled && (
             <Badge variant="outline" className="text-xs px-2 py-0.5 text-green-700 border-green-300 bg-green-50 dark:text-green-400 dark:border-green-800 dark:bg-green-950/30">
-              Auto-Renewal aktiv
+              {t('settingsPage.licenseAutoRenewal')}
             </Badge>
           )}
           {lic?.org_name && (
@@ -270,7 +368,7 @@ function LicenseSection() {
 
         {lic?.expires_at && (
           <p className="text-xs text-secondary">
-            Gültig bis {formatDate(lic.expires_at)}
+            {t('settingsPage.licenseValidUntil', { date: formatDate(lic.expires_at) })}
           </p>
         )}
 
@@ -292,21 +390,18 @@ function LicenseSection() {
           <div className="space-y-1.5">
             <p className="text-xs text-secondary">{t('settingsPage.proFeatures')}</p>
             <ul className="text-xs text-secondary space-y-0.5 list-none">
-              {[
-                'Rollen: Admin, Analyst, Viewer, Auditor',
-                'Granulare Modul-Berechtigungen pro Benutzer',
-                'TISAX, DORA, EU AI Act, CRA',
-                'KI-Berater, Audit-PDF Export, SSO, API-Zugang',
-              ].map((f) => (
-                <li key={f} className="flex items-center gap-1.5">
+              {([
+                'licenseProFeature1', 'licenseProFeature2', 'licenseProFeature3', 'licenseProFeature4',
+              ] as const).map((key) => (
+                <li key={key} className="flex items-center gap-1.5">
                   <span className="text-brand">›</span>
-                  {f}
+                  {t(`settingsPage.${key}`)}
                 </li>
               ))}
             </ul>
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand">
               <Clock className="w-3.5 h-3.5" />
-              Vakt Pro — demnächst verfügbar
+              {t('settingsPage.licenseProComingSoon')}
             </span>
           </div>
         )}
@@ -607,7 +702,7 @@ function ModulesSection() {
               <div key={m.name} className="flex items-center justify-between py-2 px-3 rounded-lg bg-surface2">
                 <div>
                   <div className="text-xs font-medium text-primary">{meta?.label ?? m.name}</div>
-                  {meta?.desc && <div className="text-[11px] text-secondary">{meta.desc}</div>}
+                  {meta?.descKey && <div className="text-[11px] text-secondary">{t(`settingsPage.${meta.descKey}`)}</div>}
                 </div>
                 {m.enabled
                   ? <Badge variant="success" className="text-[10px] shrink-0"><Check className="w-2.5 h-2.5 mr-1" />{t('settingsPage.moduleEnabled')}</Badge>
@@ -685,35 +780,76 @@ function DigestToggleSection() {
 
 function SmtpSection() {
   const { t } = useTranslation()
+  const { data, isLoading } = useOrgSMTPSettings()
+  const update = useUpdateOrgSMTPSettings()
+
+  const [host, setHost] = useState('')
+  const [port, setPort] = useState('587')
+  const [user, setUser] = useState('')
+  const [pass, setPass] = useState('')
+  const [from, setFrom] = useState('')
+  const [tls, setTls] = useState(true)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    if (data) {
+      setHost(data.host ?? '')
+      setPort(data.port ?? '587')
+      setUser(data.user ?? '')
+      setFrom(data.from ?? '')
+      setTls(data.tls ?? true)
+    }
+  }, [data])
+
+  function handleSave() {
+    update.mutate(
+      { host, port, user, pass: pass || undefined, from, tls },
+      { onSuccess: () => { setSaved(true); setPass(''); setTimeout(() => { setSaved(false); }, 2000) } },
+    )
+  }
+
+  if (isLoading) return (
+    <SectionCard title={t('settingsPage.smtpTitle')} icon={Mail}>
+      <Spinner />
+    </SectionCard>
+  )
+
   return (
     <SectionCard title={t('settingsPage.smtpTitle')} icon={Mail}>
       <div className="space-y-3">
-        <div className="space-y-1.5">
-          <Label className="text-xs">{t('settingsPage.smtpHostLabel')}</Label>
-          <Input
-            placeholder="smtp.example.com"
-            readOnly
-            className="bg-surface2 h-8 text-sm text-secondary"
-            value={t('settingsPage.smtpConfiguredViaEnv')}
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t('settingsPage.smtpHostLabel')}</Label>
+            <Input className="h-8 text-sm" placeholder="smtp.example.com" value={host} onChange={(e) => { setHost(e.target.value) }} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t('settingsPage.smtpPortLabel')}</Label>
+            <Input className="h-8 text-sm" placeholder="587" value={port} onChange={(e) => { setPort(e.target.value) }} />
+          </div>
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">{t('settingsPage.smtpPortLabel')}</Label>
-          <Input
-            placeholder="587"
-            readOnly
-            className="bg-surface2 h-8 text-sm text-secondary"
-            value={t('settingsPage.smtpConfiguredViaEnv')}
-          />
+          <Label className="text-xs">{t('settingsPage.smtpUserLabel')}</Label>
+          <Input className="h-8 text-sm" placeholder="user@example.com" value={user} onChange={(e) => { setUser(e.target.value) }} />
         </div>
-        <div className="rounded-lg bg-surface2 p-3 text-[11px] text-secondary space-y-1 leading-relaxed">
-          <p className="font-medium text-primary">{t('settingsPage.smtpEnvHint')}</p>
-          <code className="block font-mono">VAKT_SMTP_HOST=smtp.example.com</code>
-          <code className="block font-mono">VAKT_SMTP_PORT=587</code>
-          <code className="block font-mono">VAKT_SMTP_USER=user@example.com</code>
-          <code className="block font-mono">VAKT_SMTP_PASS=geheimespasswort</code>
-          <p className="pt-1">{t('settingsPage.smtpUsage')}</p>
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('settingsPage.smtpPassLabel')}</Label>
+          <Input className="h-8 text-sm" type="password" placeholder={data?.has_pass ? '••••••••' : t('settingsPage.smtpPassPlaceholder')} value={pass} onChange={(e) => { setPass(e.target.value) }} />
         </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('settingsPage.smtpFromLabel')}</Label>
+          <Input className="h-8 text-sm" placeholder="noreply@example.com" value={from} onChange={(e) => { setFrom(e.target.value) }} />
+        </div>
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">{t('settingsPage.smtpTlsLabel')}</Label>
+          <Switch checked={tls} onCheckedChange={(v) => { setTls(v) }} />
+        </div>
+        <div className="flex justify-end">
+          <Button size="sm" onClick={handleSave} disabled={update.isPending}>
+            {saved ? <><Check className="h-3.5 w-3.5 mr-1" />{t('common.saved')}</> : t('common.save')}
+          </Button>
+        </div>
+        {update.isError && <p className="text-xs text-destructive">{t('settingsPage.smtpSaveError')}</p>}
+        <p className="text-[11px] text-secondary">{t('settingsPage.smtpUsage')}</p>
       </div>
     </SectionCard>
   )
@@ -953,8 +1089,10 @@ function SIEMSection() {
     })
   }
 
+  const { t } = useTranslation()
+
   return (
-    <SectionCard title="SIEM-Integration" icon={Radio}>
+    <SectionCard title={t('settingsPage.siemTitle')} icon={Radio}>
       {isLoading && (
         <div className="flex items-center justify-center h-16">
           <Spinner size="sm" />
@@ -968,16 +1106,15 @@ function SIEMSection() {
           </div>
           <div>
             <p className="font-semibold text-primary text-sm mb-1">
-              Pro-Feature
+              {t('settingsPage.siemProTitle')}
               <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-semibold bg-brand/10 text-brand px-1.5 py-0.5 rounded">Pro</span>
             </p>
             <p className="text-secondary text-sm leading-relaxed mb-2">
-              Leite Audit-Log-Einträge automatisch an Splunk, Elasticsearch oder einen generischen Webhook weiter.
-              Verfügbar mit Vakt Pro.
+              {t('settingsPage.siemProDesc')}
             </p>
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand">
               <Clock className="w-3.5 h-3.5" />
-              Vakt Pro erforderlich
+              {t('settingsPage.siemProRequired')}
             </span>
           </div>
         </div>
@@ -988,21 +1125,21 @@ function SIEMSection() {
           {/* Enable toggle */}
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <p className="text-sm font-medium text-primary">SIEM-Weiterleitung aktivieren</p>
+              <p className="text-sm font-medium text-primary">{t('settingsPage.siemEnableTitle')}</p>
               <p className="text-[11px] text-secondary leading-relaxed">
-                Audit-Einträge werden alle 5 Minuten an das konfigurierte SIEM weitergeleitet.
+                {t('settingsPage.siemEnableDesc')}
               </p>
             </div>
             <Switch
               checked={enabled}
               onCheckedChange={setEnabled}
-              aria-label="SIEM aktivieren"
+              aria-label={t('settingsPage.siemAriaEnable')}
             />
           </div>
 
           {/* Adapter */}
           <div className="space-y-1.5">
-            <Label className="text-xs">Adapter</Label>
+            <Label className="text-xs">{t('settingsPage.siemAdapterLabel')}</Label>
             <Select value={adapter} onValueChange={(v) => { setAdapter(v as OrgSIEMConfig['adapter']); }}>
               <SelectTrigger className="h-8 text-sm">
                 <SelectValue />
@@ -1017,7 +1154,7 @@ function SIEMSection() {
 
           {/* Endpoint */}
           <div className="space-y-1.5">
-            <Label className="text-xs">Endpunkt-URL</Label>
+            <Label className="text-xs">{t('settingsPage.siemEndpointLabel')}</Label>
             <Input
               value={endpoint}
               onChange={(e) => { setEndpoint(e.target.value); }}
@@ -1035,18 +1172,18 @@ function SIEMSection() {
           {/* Token */}
           <div className="space-y-1.5">
             <Label className="text-xs">
-              {adapter === 'splunk_hec' ? 'HEC Token' : adapter === 'elastic' ? 'API Key' : 'Bearer Token (optional)'}
+              {adapter === 'splunk_hec' ? t('settingsPage.siemTokenLabel') : adapter === 'elastic' ? t('settingsPage.siemApiKeyLabel') : t('settingsPage.siemBearerLabel')}
             </Label>
             <Input
               type="password"
               value={token}
               onChange={(e) => { setToken(e.target.value); }}
-              placeholder={data?.token === '***' ? '••••••••  (gesetzt — leer lassen zum Beibehalten)' : '••••••••'}
+              placeholder={data?.token === '***' ? t('settingsPage.siemTokenPlaceholderSet') : t('settingsPage.siemTokenPlaceholder')}
               className="h-8 text-sm"
               autoComplete="new-password"
             />
             <p className="text-[11px] text-secondary">
-              Leer lassen, um den gespeicherten Token beizubehalten.
+              {t('settingsPage.siemTokenHint')}
             </p>
           </div>
 
@@ -1059,11 +1196,11 @@ function SIEMSection() {
               className="h-8 text-xs"
             >
               {saved ? (
-                <><Check className="w-3.5 h-3.5 mr-1" />Gespeichert</>
+                <><Check className="w-3.5 h-3.5 mr-1" />{t('settingsPage.siemSaved')}</>
               ) : update.isPending ? (
-                <><Spinner size="sm" />Speichern…</>
+                <><Spinner size="sm" />{t('settingsPage.siemSaving')}</>
               ) : (
-                'Speichern'
+                t('settingsPage.siemSave')
               )}
             </Button>
             <Button
@@ -1074,9 +1211,9 @@ function SIEMSection() {
               className="h-8 text-xs"
             >
               {test.isPending ? (
-                <><Spinner size="sm" />Testen…</>
+                <><Spinner size="sm" />{t('settingsPage.siemTesting')}</>
               ) : (
-                'Test-Event senden'
+                t('settingsPage.siemTestSend')
               )}
             </Button>
           </div>
@@ -1086,11 +1223,11 @@ function SIEMSection() {
           )}
           {testResult === 'ok' && (
             <p className="text-[11px] text-green-600 dark:text-green-400">
-              Test-Event erfolgreich gesendet.
+              {t('settingsPage.siemTestSuccess')}
             </p>
           )}
           {testResult === 'err' && (
-            <p className="text-[11px] text-red-500">Test fehlgeschlagen: {testError}</p>
+            <p className="text-[11px] text-red-500">{t('settingsPage.siemTestFailed', { error: testError })}</p>
           )}
         </div>
       )}
@@ -1134,6 +1271,7 @@ function useUpdateOrgAISettings() {
 }
 
 function AISettingsSection() {
+  const { t } = useTranslation()
   const { data: settings, isLoading } = useOrgAISettings()
   const { data: modelsData } = useOllamaModels()
   const { data: lic } = useQuery<LicenseInfo>({ queryKey: ['license'], queryFn: () => apiFetch<LicenseInfo>('/license') })
@@ -1163,23 +1301,23 @@ function AISettingsSection() {
   const isPro = lic?.features.includes('ai_advisor') ?? false
 
   return (
-    <SectionCard title="KI-Modell" icon={Sparkles}>
+    <SectionCard title={t('settingsPage.aiTitle')} icon={Sparkles}>
       {isLoading ? (
         <Spinner size="sm" />
       ) : (
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label className="text-xs">Modell</Label>
+            <Label className="text-xs">{t('settingsPage.aiModelLabel')}</Label>
             {ollamaModels.length > 0 ? (
               <Select
                 value={model === '' ? '__default__' : model}
                 onValueChange={(v) => { setModel(v === '__default__' ? '' : v); }}
               >
                 <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="System-Standard verwenden" />
+                  <SelectValue placeholder={t('settingsPage.aiModelSelectPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__default__">System-Standard</SelectItem>
+                  <SelectItem value="__default__">{t('settingsPage.aiModelSelectDefault')}</SelectItem>
                   {ollamaModels.map((m) => (
                     <SelectItem key={m} value={m}>{m}</SelectItem>
                   ))}
@@ -1189,18 +1327,18 @@ function AISettingsSection() {
               <Input
                 value={model}
                 onChange={(e) => { setModel(e.target.value); }}
-                placeholder="System-Standard (aus VAKT_AI_MODEL)"
+                placeholder={t('settingsPage.aiModelInputPlaceholder')}
                 className="h-8 text-sm"
               />
             )}
             <p className="text-[11px] text-secondary">
-              Leer = ENV-Wert <code className="font-mono">VAKT_AI_MODEL</code> wird verwendet.
+              {t('settingsPage.aiModelHint')}
             </p>
           </div>
 
           {isPro && (
             <div className="space-y-1.5">
-              <Label className="text-xs">Custom Endpunkt (BYOK) <Badge variant="secondary" className="text-[10px] ml-1">Pro</Badge></Label>
+              <Label className="text-xs">{t('settingsPage.aiEndpointLabel')} <Badge variant="secondary" className="text-[10px] ml-1">Pro</Badge></Label>
               <Input
                 value={baseURL}
                 onChange={(e) => { setBaseURL(e.target.value); }}
@@ -1208,8 +1346,7 @@ function AISettingsSection() {
                 className="h-8 text-sm"
               />
               <p className="text-[11px] text-secondary">
-                Bei Extern-Endpunkten trägt der Betreiber die DSGVO-Verantwortung
-                (Art. 28 AVV empfohlen).
+                {t('settingsPage.aiEndpointHint')}
               </p>
             </div>
           )}
@@ -1217,16 +1354,15 @@ function AISettingsSection() {
           {/* S52-4: AI Weekly Digest */}
           <div className="border-t border-border pt-4 flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <p className="text-sm font-medium text-primary">KI-Wochendigest</p>
+              <p className="text-sm font-medium text-primary">{t('settingsPage.aiDigestTitle')}</p>
               <p className="text-[11px] text-secondary leading-relaxed">
-                Montags per E-Mail: KI-generierte Zusammenfassung von offenen Risiken, veralteten Evidenzen
-                und Compliance-Lücken. Erfordert SMTP-Konfiguration.
+                {t('settingsPage.aiDigestDesc')}
               </p>
             </div>
             <Switch
               checked={weeklyDigest}
               onCheckedChange={setWeeklyDigest}
-              aria-label="KI-Wochendigest aktivieren"
+              aria-label={t('settingsPage.aiDigestAria')}
             />
           </div>
 
@@ -1237,11 +1373,11 @@ function AISettingsSection() {
             className="h-8 text-xs"
           >
             {saved ? (
-              <><Check className="w-3.5 h-3.5 mr-1" />Gespeichert</>
+              <><Check className="w-3.5 h-3.5 mr-1" />{t('settingsPage.aiSaved')}</>
             ) : update.isPending ? (
-              <><Spinner size="sm" />Speichern…</>
+              <><Spinner size="sm" />{t('settingsPage.aiSaving')}</>
             ) : (
-              'Speichern'
+              t('settingsPage.aiSave')
             )}
           </Button>
           {update.isError && (
@@ -1387,8 +1523,10 @@ function SAMLSetupSection() {
   const metadataURL = window.location.origin + '/api/v1/auth/saml/metadata'
   const initiateURL = window.location.origin + '/api/v1/auth/saml/initiate'
 
+  const { t } = useTranslation()
+
   return (
-    <SectionCard title="SAML 2.0 (Single Sign-On)" icon={Shield}>
+    <SectionCard title={t('settingsPage.samlTitle')} icon={Shield}>
       {error instanceof FeatureLockedError ? (
         <ProGate error={error}>{''}</ProGate>
       ) : isLoading ? (
@@ -1397,24 +1535,24 @@ function SAMLSetupSection() {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Switch checked={enabled} onCheckedChange={setEnabled} id="saml-enabled" />
-            <Label htmlFor="saml-enabled" className="text-xs">SAML aktiviert</Label>
+            <Label htmlFor="saml-enabled" className="text-xs">{t('settingsPage.samlEnabled')}</Label>
           </div>
 
           {/* SP Endpoint URLs (read-only) */}
           <div className="rounded-md bg-muted/40 p-3 space-y-2 text-xs">
-            <p className="font-medium text-secondary uppercase tracking-wider text-[10px]">SP-Endpunkte (in IdP eintragen)</p>
+            <p className="font-medium text-secondary uppercase tracking-wider text-[10px]">{t('settingsPage.samlSpEndpoints')}</p>
             <div className="space-y-1">
-              <Label className="text-[10px] text-secondary">Metadata URL</Label>
+              <Label className="text-[10px] text-secondary">{t('settingsPage.samlMetadataUrl')}</Label>
               <code className="block font-mono text-[11px] break-all">{metadataURL}</code>
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px] text-secondary">ACS URL / Single Sign-On URL</Label>
+              <Label className="text-[10px] text-secondary">{t('settingsPage.samlAcsUrl')}</Label>
               <code className="block font-mono text-[11px] break-all">{initiateURL.replace('/initiate', '/acs')}</code>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">SP Entity ID</Label>
+            <Label className="text-xs">{t('settingsPage.samlEntityId')}</Label>
             <Input
               value={entityID}
               onChange={(e) => { setEntityID(e.target.value); }}
@@ -1424,7 +1562,7 @@ function SAMLSetupSection() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">ACS URL</Label>
+            <Label className="text-xs">{t('settingsPage.samlAcsUrlLabel')}</Label>
             <Input
               value={acsURL}
               onChange={(e) => { setACSURL(e.target.value); }}
@@ -1434,7 +1572,7 @@ function SAMLSetupSection() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">IdP Metadata XML</Label>
+            <Label className="text-xs">{t('settingsPage.samlIdpMetadataLabel')}</Label>
             <div className="flex gap-2">
               <Input
                 value={idpMetaURL}
@@ -1449,7 +1587,7 @@ function SAMLSetupSection() {
                 disabled={!idpMetaURL || fetchMeta.isPending}
                 className="h-8 text-xs shrink-0"
               >
-                {fetchMeta.isPending ? <Spinner size="sm" /> : 'URL laden'}
+                {fetchMeta.isPending ? <Spinner size="sm" /> : t('settingsPage.samlFetchUrl')}
               </Button>
             </div>
             <textarea
@@ -1459,18 +1597,18 @@ function SAMLSetupSection() {
               className="w-full h-28 rounded-md border border-input bg-transparent px-3 py-2 text-xs font-mono resize-y focus:outline-none focus:ring-1 focus:ring-ring"
             />
             <p className="text-[11px] text-secondary">
-              Aus dem IdP herunterladen oder URL oben eintragen (AzureAD: Enterprise-App → SAML → Federation Metadata XML).
+              {t('settingsPage.samlIdpMetadataHint')}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <Switch checked={jitProvisioning} onCheckedChange={setJitProvisioning} id="saml-jit" />
-            <Label htmlFor="saml-jit" className="text-xs">Neue Nutzer bei SAML-Login automatisch anlegen (JIT-Provisioning)</Label>
+            <Label htmlFor="saml-jit" className="text-xs">{t('settingsPage.samlJit')}</Label>
           </div>
 
           {data?.cert_pem && (
             <div className="space-y-1.5">
-              <Label className="text-xs text-secondary">SP Zertifikat (öffentlich)</Label>
+              <Label className="text-xs text-secondary">{t('settingsPage.samlCertLabel')}</Label>
               <pre className="text-[10px] font-mono bg-muted/40 rounded p-2 max-h-24 overflow-auto">{data.cert_pem}</pre>
               <Button
                 variant="outline"
@@ -1479,7 +1617,7 @@ function SAMLSetupSection() {
                 disabled={regen.isPending}
                 className="h-7 text-xs"
               >
-                {regenDone ? <><Check className="w-3 h-3 mr-1" />Erneuert</> : 'Zertifikat erneuern'}
+                {regenDone ? <><Check className="w-3 h-3 mr-1" />{t('settingsPage.samlCertRenewed')}</> : t('settingsPage.samlCertRenew')}
               </Button>
             </div>
           )}
@@ -1491,11 +1629,11 @@ function SAMLSetupSection() {
             className="h-8 text-xs"
           >
             {saved ? (
-              <><Check className="w-3.5 h-3.5 mr-1" />Gespeichert</>
+              <><Check className="w-3.5 h-3.5 mr-1" />{t('settingsPage.samlSaved')}</>
             ) : update.isPending ? (
-              <><Spinner size="sm" />Speichern…</>
+              <><Spinner size="sm" />{t('settingsPage.samlSaving')}</>
             ) : (
-              'Speichern'
+              t('settingsPage.samlSave')
             )}
           </Button>
           {update.isError && <p className="text-xs text-destructive">{update.error.message}</p>}
@@ -1533,8 +1671,10 @@ function OIDCConfigSection() {
     )
   }
 
+  const { t } = useTranslation()
+
   return (
-    <SectionCard title="SSO / OIDC (Casdoor)" icon={Shield}>
+    <SectionCard title={t('settingsPage.oidcTitle')} icon={Shield}>
       {error instanceof FeatureLockedError ? (
         <ProGate error={error}>{''}</ProGate>
       ) : isLoading ? (
@@ -1542,16 +1682,16 @@ function OIDCConfigSection() {
       ) : (
         <div className="space-y-4">
           <p className="text-xs text-secondary">
-            OIDC-Konfiguration überschreibt die Env-Vars <code>CASDOOR_URL</code> / <code>CASDOOR_CLIENT_ID</code> / <code>CASDOOR_CLIENT_SECRET</code>.
+            {t('settingsPage.oidcHint')}
           </p>
 
           <div className="flex items-center gap-2">
             <Switch checked={enabled} onCheckedChange={setEnabled} id="oidc-enabled" />
-            <Label htmlFor="oidc-enabled" className="text-xs">OIDC aktiviert</Label>
+            <Label htmlFor="oidc-enabled" className="text-xs">{t('settingsPage.oidcEnabled')}</Label>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">Provider URL</Label>
+            <Label className="text-xs">{t('settingsPage.oidcProviderUrl')}</Label>
             <Input
               value={providerURL}
               onChange={(e) => { setProviderURL(e.target.value); }}
@@ -1561,7 +1701,7 @@ function OIDCConfigSection() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">Client ID</Label>
+            <Label className="text-xs">{t('settingsPage.oidcClientId')}</Label>
             <Input
               value={clientID}
               onChange={(e) => { setClientID(e.target.value); }}
@@ -1570,12 +1710,12 @@ function OIDCConfigSection() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">Client Secret</Label>
+            <Label className="text-xs">{t('settingsPage.oidcClientSecret')}</Label>
             <Input
               type="password"
               value={clientSecret}
               onChange={(e) => { setClientSecret(e.target.value); }}
-              placeholder={data?.configured ? '(unverändert — nur eingeben zum Ändern)' : ''}
+              placeholder={data?.configured ? t('settingsPage.oidcClientSecretPlaceholder') : ''}
               className="h-8 text-sm"
             />
           </div>
@@ -1587,7 +1727,7 @@ function OIDCConfigSection() {
               disabled={update.isPending || !providerURL || !clientID || (!data?.configured && !clientSecret)}
               className="h-8 text-xs"
             >
-              {saved ? <><Check className="w-3.5 h-3.5 mr-1" />Gespeichert</> : update.isPending ? <><Spinner size="sm" />Speichern…</> : 'Speichern'}
+              {saved ? <><Check className="w-3.5 h-3.5 mr-1" />{t('settingsPage.oidcSaved')}</> : update.isPending ? <><Spinner size="sm" />{t('settingsPage.oidcSaving')}</> : t('settingsPage.oidcSave')}
             </Button>
             {data?.configured && (
               <Button
@@ -1597,13 +1737,134 @@ function OIDCConfigSection() {
                 disabled={disable.isPending}
                 className="h-8 text-xs text-destructive hover:text-destructive"
               >
-                Deaktivieren
+                {t('settingsPage.oidcDisable')}
               </Button>
             )}
           </div>
           {update.isError && <p className="text-xs text-destructive">{update.error.message}</p>}
         </div>
       )}
+    </SectionCard>
+  )
+}
+
+// ─── LDAP / AD Section ───────────────────────────────────────────────────────
+
+function LDAPSection() {
+  const { t } = useTranslation()
+  const { data, isLoading } = useOrgLDAPConfig()
+  const update = useUpdateOrgLDAPConfig()
+  const testConn = useTestLDAPConnection()
+  const sync = useSyncLDAP()
+
+  const [url, setUrl] = useState('')
+  const [bindDn, setBindDn] = useState('')
+  const [bindPass, setBindPass] = useState('')
+  const [baseDn, setBaseDn] = useState('')
+  const [userFilter, setUserFilter] = useState('')
+  const [groupFilter, setGroupFilter] = useState('')
+  const [tls, setTls] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [testMsg, setTestMsg] = useState<string | null>(null)
+  const [syncMsg, setSyncMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (data) {
+      setUrl(data.url ?? '')
+      setBindDn(data.bind_dn ?? '')
+      setBaseDn(data.base_dn ?? '')
+      setUserFilter(data.user_filter ?? '')
+      setGroupFilter(data.group_filter ?? '')
+      setTls(data.tls ?? false)
+    }
+  }, [data])
+
+  const handleSave = () => {
+    update.mutate(
+      { url, bind_dn: bindDn, bind_pass: bindPass || undefined, base_dn: baseDn, user_filter: userFilter, group_filter: groupFilter, tls },
+      {
+        onSuccess: () => { setSaved(true); setBindPass(''); setTimeout(() => { setSaved(false) }, 2000) },
+        onError: () => { alert(t('settingsPage.ldapSaveError')) },
+      },
+    )
+  }
+
+  const handleTest = () => {
+    setTestMsg(null)
+    testConn.mutate(undefined, {
+      onSuccess: (res) => {
+        setTestMsg(res.ok
+          ? t('settingsPage.ldapTestOk', { count: res.users_found ?? 0 })
+          : t('settingsPage.ldapTestFail') + (res.error ? `: ${res.error}` : ''))
+      },
+      onError: (err) => { setTestMsg(t('settingsPage.ldapTestFail') + `: ${err.message}`) },
+    })
+  }
+
+  const handleSync = () => {
+    setSyncMsg(null)
+    sync.mutate(undefined, {
+      onSuccess: (res) => { setSyncMsg(t('settingsPage.ldapSyncOk', { count: res.synced })) },
+      onError: (err) => { setSyncMsg(t('settingsPage.ldapSyncFail') + `: ${err.message}`) },
+    })
+  }
+
+  if (isLoading) return null
+
+  return (
+    <SectionCard title={t('settingsPage.ldapTitle')} icon={Network}>
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">{t('settingsPage.ldapUrlLabel')}</label>
+            <Input value={url} onChange={(e) => { setUrl(e.target.value) }} placeholder={t('settingsPage.ldapUrlPlaceholder')} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">{t('settingsPage.ldapBindDnLabel')}</label>
+              <Input value={bindDn} onChange={(e) => { setBindDn(e.target.value) }} placeholder={t('settingsPage.ldapBindDnPlaceholder')} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                {t('settingsPage.ldapBindPassLabel')}
+                {data?.has_bind_pass && <span className="ml-1 text-green-600 text-xs">✓</span>}
+              </label>
+              <Input type="password" value={bindPass} onChange={(e) => { setBindPass(e.target.value) }} placeholder={t('settingsPage.ldapBindPassPlaceholder')} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">{t('settingsPage.ldapBaseDnLabel')}</label>
+            <Input value={baseDn} onChange={(e) => { setBaseDn(e.target.value) }} placeholder={t('settingsPage.ldapBaseDnPlaceholder')} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">{t('settingsPage.ldapUserFilterLabel')}</label>
+              <Input value={userFilter} onChange={(e) => { setUserFilter(e.target.value) }} placeholder={t('settingsPage.ldapUserFilterPlaceholder')} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">{t('settingsPage.ldapGroupFilterLabel')}</label>
+              <Input value={groupFilter} onChange={(e) => { setGroupFilter(e.target.value) }} placeholder={t('settingsPage.ldapGroupFilterPlaceholder')} />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={tls} onCheckedChange={setTls} id="ldap-tls" />
+            <label htmlFor="ldap-tls" className="text-sm cursor-pointer">{t('settingsPage.ldapTlsLabel')}</label>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button size="sm" onClick={handleSave} disabled={update.isPending}>
+            {saved ? t('common.saved') : t('common.save')}
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleTest} disabled={testConn.isPending}>
+            {t('settingsPage.ldapTestBtn')}
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleSync} disabled={sync.isPending}>
+            {t('settingsPage.ldapSyncBtn')}
+          </Button>
+        </div>
+        {testMsg && <p className="text-xs text-muted-foreground">{testMsg}</p>}
+        {syncMsg && <p className="text-xs text-muted-foreground">{syncMsg}</p>}
+      </div>
     </SectionCard>
   )
 }
@@ -1676,16 +1937,16 @@ function ServerSection() {
   return (
     <SectionCard title={t('settingsPage.serverTitle')} icon={Server}>
       <div className="space-y-1.5 text-xs text-secondary">
-        {[
-          ['API-Port', '8080 (Standard)'],
-          ['Datenbank', 'PostgreSQL 16'],
-          ['Queue', 'Redis / Valkey 7'],
-          ['Verschlüsselung', 'AES-256-GCM'],
-          ['Auth-Token', 'Paseto v4 (local)'],
-        ].map(([k, v]) => (
-          <div key={k} className="flex justify-between py-1.5 px-3 rounded-lg bg-surface2">
-            <span className="text-secondary">{k}</span>
-            <span className="text-primary font-medium">{v}</span>
+        {([
+          ['serverApiPort', 'serverApiPortVal'],
+          ['serverDatabase', 'serverDatabaseVal'],
+          ['serverQueue', 'serverQueueVal'],
+          ['serverEncryption', 'serverEncryptionVal'],
+          ['serverAuthToken', 'serverAuthTokenVal'],
+        ] as const).map(([kKey, vKey]) => (
+          <div key={kKey} className="flex justify-between py-1.5 px-3 rounded-lg bg-surface2">
+            <span className="text-secondary">{t(`settingsPage.${kKey}`)}</span>
+            <span className="text-primary font-medium">{t(`settingsPage.${vKey}`)}</span>
           </div>
         ))}
       </div>
@@ -1825,7 +2086,7 @@ function StagingSection() {
             {result === 'err' && (
               <p className="text-[11px] text-red-500">
                 {promote.error?.message
-                  ? `Fehler: ${promote.error.message}`
+                  ? t('settingsPage.stagingError2', { error: promote.error.message })
                   : t('settingsPage.stagingError')}
               </p>
             )}
@@ -1858,6 +2119,98 @@ function StagingSection() {
   )
 }
 
+// ─── Backup-Konfiguration (System-Tab) ───────────────────────────────────────
+
+function BackupSection() {
+  const { t } = useTranslation()
+  const { data, isLoading } = useOrgBackupConfig()
+  const update = useUpdateOrgBackupConfig()
+
+  const [schedule, setSchedule] = useState('0 2 * * *')
+  const [retentionDays, setRetentionDays] = useState('30')
+  const [passphrase, setPassphrase] = useState('')
+  const [notifyWebhook, setNotifyWebhook] = useState('')
+  const [offsiteCmd, setOffsiteCmd] = useState('')
+  const [notifyCmd, setNotifyCmd] = useState('')
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    if (data) {
+      setSchedule(data.schedule || '0 2 * * *')
+      setRetentionDays(String(data.retention_days || 30))
+      setOffsiteCmd(data.offsite_cmd || '')
+      setNotifyCmd(data.notify_cmd || '')
+    }
+  }, [data])
+
+  function handleSave() {
+    update.mutate(
+      {
+        schedule,
+        retention_days: parseInt(retentionDays, 10) || 30,
+        passphrase: passphrase || undefined,
+        notify_webhook: notifyWebhook || undefined,
+        offsite_cmd: offsiteCmd,
+        notify_cmd: notifyCmd,
+      },
+      {
+        onSuccess: () => {
+          setSaved(true)
+          setPassphrase('')
+          setNotifyWebhook('')
+          setTimeout(() => { setSaved(false) }, 2000)
+        },
+      },
+    )
+  }
+
+  if (isLoading) return (
+    <SectionCard title={t('settingsPage.backupTitle')} icon={Server}>
+      <Spinner />
+    </SectionCard>
+  )
+
+  return (
+    <SectionCard title={t('settingsPage.backupTitle')} icon={Server}>
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t('settingsPage.backupScheduleLabel')}</Label>
+            <Input className="h-8 text-sm font-mono" placeholder="0 2 * * *" value={schedule} onChange={(e) => { setSchedule(e.target.value) }} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t('settingsPage.backupRetentionLabel')}</Label>
+            <Input className="h-8 text-sm" type="number" min="1" placeholder="30" value={retentionDays} onChange={(e) => { setRetentionDays(e.target.value) }} />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('settingsPage.backupPassphraseLabel')}</Label>
+          <Input className="h-8 text-sm" type="password" placeholder={data?.has_passphrase ? '••••••••' : t('settingsPage.backupPassphrasePlaceholder')} value={passphrase} onChange={(e) => { setPassphrase(e.target.value) }} />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('settingsPage.backupNotifyWebhookLabel')}</Label>
+          <Input className="h-8 text-sm" placeholder={data?.has_notify_webhook ? '••••••••' : 'https://hooks.example.com/...'} value={notifyWebhook} onChange={(e) => { setNotifyWebhook(e.target.value) }} />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('settingsPage.backupOffsiteCmdLabel')}</Label>
+          <Input className="h-8 text-sm font-mono text-xs" placeholder='aws s3 cp "$ARCHIVE" s3://...' value={offsiteCmd} onChange={(e) => { setOffsiteCmd(e.target.value) }} />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('settingsPage.backupNotifyCmdLabel')}</Label>
+          <Input className="h-8 text-sm font-mono text-xs" placeholder='logger -t vakt "$MESSAGE"' value={notifyCmd} onChange={(e) => { setNotifyCmd(e.target.value) }} />
+        </div>
+        <p className="text-[11px] text-secondary">{t('settingsPage.backupScheduleHint')}</p>
+        <div className="flex justify-end">
+          <Button size="sm" onClick={handleSave} disabled={update.isPending}>
+            {saved ? <><Check className="h-3.5 w-3.5 mr-1" />{t('common.saved')}</> : t('common.save')}
+          </Button>
+        </div>
+        {update.isError && <p className="text-xs text-destructive">{t('settingsPage.backupSaveError')}</p>}
+      </div>
+    </SectionCard>
+  )
+}
+
 // ─── Link-only cards for sub-pages reached via Settings hub ─────────────────
 
 function LinkCard({
@@ -1883,21 +2236,15 @@ function LinkCard({
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
-const SETTINGS_TABS = [
-  { id: 'platform',      label: 'Plattform',         description: 'Organisation, Lizenzen & Module' },
-  { id: 'access',        label: 'Zugriff & SSO',     description: 'Team, Rollen, MFA & SSO-Login' },
-  { id: 'notifications', label: 'Benachrichtigungen',description: 'SMTP, Kanäle & Berichte' },
-  { id: 'integrations',  label: 'Integrationen',     description: 'Webhooks, API-Keys & SIEM' },
-  { id: 'privacy',       label: 'Daten & Privacy',   description: 'Datenexport, Audit & Aufbewahrung' },
-  { id: 'ai',            label: 'KI',                description: 'KI-Modell & Berater-Einstellungen' },
-  { id: 'public',        label: 'Trust Center',      description: 'Öffentliche Compliance-Seite' },
-  { id: 'system',        label: 'System',            description: 'Updates & Server-Status' },
+// Labels/descriptions for SETTINGS_TABS are resolved inside the component via t()
+const SETTINGS_TAB_IDS = [
+  'platform', 'access', 'notifications', 'integrations', 'privacy', 'ai', 'public', 'system',
 ] as const
 
-type TabId = typeof SETTINGS_TABS[number]['id']
+type TabId = typeof SETTINGS_TAB_IDS[number]
 
 function isTabId(s: string): s is TabId {
-  return SETTINGS_TABS.some((t) => t.id === s)
+  return SETTINGS_TAB_IDS.some((id) => id === s)
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -1933,8 +2280,8 @@ export default function Settings() {
         <div className="max-w-5xl">
           <Tabs value={tab} onValueChange={changeTab}>
             <TabsList className="flex flex-wrap mb-6 w-full justify-start">
-              {SETTINGS_TABS.map((t) => (
-                <TabsTrigger key={t.id} value={t.id} title={t.description}>{t.label}</TabsTrigger>
+              {SETTINGS_TAB_IDS.map((id) => (
+                <TabsTrigger key={id} value={id} title={t(`settingsPage.tab${id.charAt(0).toUpperCase()}${id.slice(1)}Desc`)}>{t(`settingsPage.tab${id.charAt(0).toUpperCase()}${id.slice(1)}`)}</TabsTrigger>
               ))}
             </TabsList>
 
@@ -1945,18 +2292,18 @@ export default function Settings() {
                 <SectorSection />
                 <LicenseSection />
                 <LinkCard
-                  title="Branding"
+                  title={t('settingsPage.brandingTitle')}
                   icon={Palette}
                   to="/settings/branding"
-                  description="Logo, Farben und Org-Identität für PDF-Berichte und Trust-Center anpassen."
-                  linkLabel="Branding bearbeiten"
+                  description={t('settingsPage.brandingDesc')}
+                  linkLabel={t('settingsPage.brandingLink')}
                 />
                 <LinkCard
-                  title="Score-Konfiguration"
+                  title={t('settingsPage.scoreConfigTitle')}
                   icon={Sliders}
                   to="/settings/score-config"
-                  description="Gewichtung der Compliance- und Risk-Scores für deine Organisation justieren."
-                  linkLabel="Score-Konfiguration öffnen"
+                  description={t('settingsPage.scoreConfigDesc')}
+                  linkLabel={t('settingsPage.scoreConfigLink')}
                 />
               </div>
             </TabsContent>
@@ -1964,42 +2311,43 @@ export default function Settings() {
             <TabsContent value="access">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 <LinkCard
-                  title="Team"
+                  title={t('settingsPage.teamLinkTitle')}
                   icon={Users}
                   to="/settings/team"
-                  description="Nutzer einladen, Rollen vergeben, MFA-Status überprüfen."
-                  linkLabel="Team verwalten"
+                  description={t('settingsPage.teamLinkDesc')}
+                  linkLabel={t('settingsPage.teamLinkLabel')}
                 />
                 <LinkCard
-                  title="Auditoren"
+                  title={t('settingsPage.auditorsTitle')}
                   icon={UserCheck}
                   to="/settings/auditors"
-                  description="Externe Auditoren mit zeitlich begrenztem Lese-Zugriff einladen."
-                  linkLabel="Auditoren verwalten"
+                  description={t('settingsPage.auditorsDesc')}
+                  linkLabel={t('settingsPage.auditorsLink')}
                 />
                 <SAMLSetupSection />
                 <OIDCConfigSection />
+                <LDAPSection />
               </div>
             </TabsContent>
 
             <TabsContent value="notifications">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 <SmtpSection />
                 <NotificationsSection />
                 <DigestToggleSection />
                 <LinkCard
-                  title="Alarm-Regeln"
+                  title={t('settingsPage.alertRulesTitle')}
                   icon={Siren}
                   to="/settings/alerting"
-                  description="Routing-Regeln für Slack/Teams/Webhook/E-Mail bei kritischen Ereignissen (neue Vorfälle, überfällige Kontrollen, etc.)."
-                  linkLabel="Regeln konfigurieren"
+                  description={t('settingsPage.alertRulesDesc')}
+                  linkLabel={t('settingsPage.alertRulesLink')}
                 />
                 <LinkCard
-                  title="Persönliche Benachrichtigungen"
+                  title={t('settingsPage.personalNotifTitle')}
                   icon={Bell}
                   to="/settings/notifications"
-                  description="Was du persönlich per E-Mail und In-App bekommst — Wochendigest, Findings, Vorfälle, Genehmigungen."
-                  linkLabel="Präferenzen öffnen"
+                  description={t('settingsPage.personalNotifDesc')}
+                  linkLabel={t('settingsPage.personalNotifLink')}
                 />
                 <LinkCard
                   title={t('settingsPage.scheduledReportsPlan')}
@@ -2036,11 +2384,11 @@ export default function Settings() {
                 <DataExportSection />
                 <AuditReportSection />
                 <LinkCard
-                  title="Aufbewahrung & Löschung"
+                  title={t('settingsPage.retentionTitle')}
                   icon={Trash2}
                   to="/settings/retention"
-                  description="Datenpflege-Regeln: wann automatisierte Berichte, Audit-Einträge und Findings gelöscht werden."
-                  linkLabel="Aufbewahrung konfigurieren"
+                  description={t('settingsPage.retentionDesc')}
+                  linkLabel={t('settingsPage.retentionLink')}
                 />
               </div>
             </TabsContent>
@@ -2064,9 +2412,10 @@ export default function Settings() {
             </TabsContent>
 
             <TabsContent value="system">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 <UpdateSection />
                 <ServerSection />
+                <BackupSection />
               </div>
               <div className="mt-5">
                 <StagingSection />

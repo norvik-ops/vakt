@@ -1,30 +1,28 @@
-// Copyright (c) 2026 NorvikOps. All rights reserved.
-// SPDX-License-Identifier: Elastic-2.0
-
 package vaktcomply
 
 import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	_ "embed"
 	"encoding/csv"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 	"io"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/bsi"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 	"github.com/matharnica/vakt/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/veriniceimport"
+	"github.com/rs/zerolog/log"
 )
 
-// --- Supplier Register ---
-
-// computeContractStatus returns "expired", "expiring_soon", or "active" based on contractEnd.
 func computeContractStatus(contractEnd *time.Time, now time.Time) string {
 	if contractEnd == nil {
 		return "active"
@@ -707,4 +705,488 @@ func (s *Service) GenerateAssessmentReportPDF(ctx context.Context, orgID, assess
 	assessments, _ := s.repo.GetAssessmentsForSupplier(ctx, orgID, asm.SupplierID)
 	status := computeStatus(*supplier, assessments, answers, time.Now().UTC())
 	return GenerateAssessmentReportPDFBytes(asm, supplier, answers, status)
+}
+
+type VVTControlLink struct {
+	ID        string    `json:"id"`
+	OrgID     string    `json:"org_id"`
+	VVTID     string    `json:"vvt_id"`
+	VVTName   string    `json:"vvt_name"`
+	ControlID string    `json:"control_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// LinkVVTToControlInput is the validated create payload.
+type LinkVVTToControlInput struct {
+	VVTID     string `json:"vvt_id" validate:"required"`
+	VVTName   string `json:"vvt_name" validate:"max=255"`
+	ControlID string `json:"control_id" validate:"required,uuid"`
+}
+
+// LinkVVTToControl creates an idempotent link (org-scoped). Verifies the control
+// belongs to the org before linking.
+func (s *Service) LinkVVTToControl(ctx context.Context, orgID string, in LinkVVTToControlInput) (*VVTControlLink, error) {
+	var owns bool
+	if err := s.db.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM ck_controls WHERE id=$1::uuid AND org_id=$2)`,
+		in.ControlID, orgID).Scan(&owns); err != nil {
+		return nil, fmt.Errorf("verify control: %w", err)
+	}
+	if !owns {
+		return nil, fmt.Errorf("control not found")
+	}
+	var l VVTControlLink
+	err := s.db.QueryRow(ctx, `
+		INSERT INTO ck_vvt_control_links (org_id, vvt_id, vvt_name, control_id)
+		VALUES ($1, $2, $3, $4::uuid)
+		ON CONFLICT (org_id, vvt_id, control_id) DO UPDATE SET vvt_name = EXCLUDED.vvt_name
+		RETURNING id::text, org_id::text, vvt_id, vvt_name, control_id::text, created_at`,
+		orgID, in.VVTID, in.VVTName, in.ControlID).
+		Scan(&l.ID, &l.OrgID, &l.VVTID, &l.VVTName, &l.ControlID, &l.CreatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("link vvt to control: %w", err)
+	}
+	return &l, nil
+}
+
+// UnlinkVVTFromControl removes a link by id (org-scoped).
+func (s *Service) UnlinkVVTFromControl(ctx context.Context, orgID, id string) error {
+	tag, err := s.db.Exec(ctx, `DELETE FROM ck_vvt_control_links WHERE id=$1::uuid AND org_id=$2`, id, orgID)
+	if err != nil {
+		return fmt.Errorf("unlink vvt: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("link not found")
+	}
+	return nil
+}
+
+// ListLinksForControl returns the VVT links attached to a control (reverse view).
+func (s *Service) ListLinksForControl(ctx context.Context, orgID, controlID string) ([]VVTControlLink, error) {
+	return s.queryVVTLinks(ctx,
+		`WHERE org_id=$1 AND control_id=$2::uuid ORDER BY created_at DESC`, orgID, controlID)
+}
+
+// ListLinksForVVT returns the controls linked to a VVT entry.
+func (s *Service) ListLinksForVVT(ctx context.Context, orgID, vvtID string) ([]VVTControlLink, error) {
+	return s.queryVVTLinks(ctx,
+		`WHERE org_id=$1 AND vvt_id=$2 ORDER BY created_at DESC`, orgID, vvtID)
+}
+
+func (s *Service) queryVVTLinks(ctx context.Context, where string, args ...any) ([]VVTControlLink, error) {
+	rows, err := s.db.Query(ctx,
+		`SELECT id::text, org_id::text, vvt_id, vvt_name, control_id::text, created_at
+		 FROM ck_vvt_control_links `+where, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list vvt links: %w", err)
+	}
+	defer rows.Close()
+	out := []VVTControlLink{}
+	for rows.Next() {
+		var l VVTControlLink
+		if err := rows.Scan(&l.ID, &l.OrgID, &l.VVTID, &l.VVTName, &l.ControlID, &l.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan vvt link: %w", err)
+		}
+		out = append(out, l)
+	}
+	return out, rows.Err()
+}
+
+//go:embed catalogs/threat-library.json
+var threatLibraryData []byte
+
+// ThreatCatalogItem is one generic threat/scenario in the embedded library.
+type ThreatCatalogItem struct {
+	ID                string   `json:"id"`
+	Title             string   `json:"title"`
+	Category          string   `json:"category"`
+	AssetTypes        []string `json:"asset_types"`
+	CIA               []string `json:"cia"`
+	Frameworks        []string `json:"frameworks"`
+	Scenario          string   `json:"scenario"`
+	SuggestedMeasure  string   `json:"suggested_measure"`
+	ControlLinks      []string `json:"control_links"`
+	DefaultLikelihood int      `json:"default_likelihood"`
+	DefaultImpact     int      `json:"default_impact"`
+}
+
+type threatLibraryRoot struct {
+	Version string              `json:"version"`
+	Edition string              `json:"edition"`
+	Threats []ThreatCatalogItem `json:"threats"`
+}
+
+var (
+	threatLibOnce  sync.Once
+	threatLibCache *threatLibraryRoot
+)
+
+func loadThreatLibrary() *threatLibraryRoot {
+	threatLibOnce.Do(func() {
+		var root threatLibraryRoot
+		if err := json.Unmarshal(threatLibraryData, &root); err != nil {
+			// Compiled in via go:embed — corrupt JSON means a broken build (fail fast).
+			panic(fmt.Sprintf("threat library: corrupt embedded JSON: %v", err))
+		}
+		log.Info().Str("version", root.Version).Int("threats", len(root.Threats)).Msg("threat library loaded")
+		threatLibCache = &root
+	})
+	return threatLibCache
+}
+
+// ThreatCatalogVersion returns the embedded library version (for link provenance).
+func ThreatCatalogVersion() string {
+	return loadThreatLibrary().Version
+}
+
+// ThreatCatalogFilter narrows the catalog by framework, asset type and/or CIA goal.
+type ThreatCatalogFilter struct {
+	Framework string // e.g. "ISO27001", "BSI", "NIS2", "DSGVO-TOM", "C5"
+	AssetType string // e.g. "server", "data", "identity"
+	CIA       string // "confidentiality" | "integrity" | "availability"
+}
+
+func sliceContainsFold(haystack []string, needle string) bool {
+	for _, h := range haystack {
+		if strings.EqualFold(h, needle) {
+			return true
+		}
+	}
+	return false
+}
+
+// ListThreatCatalog returns catalog items matching the filter (empty filter = all).
+func (s *Service) ListThreatCatalog(f ThreatCatalogFilter) []ThreatCatalogItem {
+	all := loadThreatLibrary().Threats
+	if f.Framework == "" && f.AssetType == "" && f.CIA == "" {
+		return all
+	}
+	out := make([]ThreatCatalogItem, 0, len(all))
+	for _, it := range all {
+		if f.Framework != "" && !sliceContainsFold(it.Frameworks, f.Framework) {
+			continue
+		}
+		if f.AssetType != "" && !sliceContainsFold(it.AssetTypes, f.AssetType) {
+			continue
+		}
+		if f.CIA != "" && !sliceContainsFold(it.CIA, f.CIA) {
+			continue
+		}
+		out = append(out, it)
+	}
+	return out
+}
+
+func findThreatCatalogItem(id string) (ThreatCatalogItem, bool) {
+	for _, it := range loadThreatLibrary().Threats {
+		if it.ID == id {
+			return it, true
+		}
+	}
+	return ThreatCatalogItem{}, false
+}
+
+// CreateRiskFromCatalogInput allows the caller to override catalog defaults.
+type CreateRiskFromCatalogInput struct {
+	CatalogID  string `json:"catalog_id" validate:"required"`
+	Likelihood int    `json:"likelihood" validate:"omitempty,min=1,max=5"`
+	Impact     int    `json:"impact" validate:"omitempty,min=1,max=5"`
+	Owner      string `json:"owner"`
+}
+
+// CreateRiskFromCatalog creates a pre-filled risk from a catalog item and records
+// the provenance in ck_threat_library_links.
+func (s *Service) CreateRiskFromCatalog(ctx context.Context, orgID string, in CreateRiskFromCatalogInput, userID string) (*Risk, error) {
+	item, ok := findThreatCatalogItem(in.CatalogID)
+	if !ok {
+		return nil, fmt.Errorf("unknown catalog item: %s", in.CatalogID)
+	}
+	likelihood := in.Likelihood
+	if likelihood == 0 {
+		likelihood = item.DefaultLikelihood
+	}
+	impact := in.Impact
+	if impact == 0 {
+		impact = item.DefaultImpact
+	}
+	desc := item.Scenario
+	if len(item.ControlLinks) > 0 {
+		desc += "\n\nVorgeschlagene Maßnahme: " + item.SuggestedMeasure +
+			"\nControl-Verknüpfung: " + strings.Join(item.ControlLinks, ", ")
+	} else {
+		desc += "\n\nVorgeschlagene Maßnahme: " + item.SuggestedMeasure
+	}
+	risk, err := s.Risk.CreateRisk(ctx, orgID, CreateRiskInput{
+		Title:          item.Title,
+		Description:    desc,
+		Category:       item.Category,
+		Likelihood:     likelihood,
+		Impact:         impact,
+		Owner:          in.Owner,
+		Treatment:      "mitigate",
+		TreatmentNotes: item.SuggestedMeasure,
+	})
+	if err != nil {
+		return nil, err
+	}
+	// Record provenance (best-effort — the risk already exists).
+	if _, linkErr := s.db.Exec(ctx, `
+		INSERT INTO ck_threat_library_links (org_id, risk_id, catalog_id, catalog_version)
+		VALUES ($1, $2, $3, $4)`,
+		orgID, risk.ID, item.ID, loadThreatLibrary().Version); linkErr != nil {
+		log.Warn().Err(linkErr).Str("org_id", orgID).Str("catalog_id", item.ID).Msg("threat library link insert")
+	}
+	return risk, nil
+}
+
+type ImportResult struct {
+	AssetsCreated   int    `json:"assets_created"`
+	ControlsCreated int    `json:"controls_created"`
+	RisksCreated    int    `json:"risks_created"`
+	Skipped         int    `json:"skipped"`
+	FrameworkID     string `json:"framework_id,omitempty"`
+}
+
+// PreviewVeriniceImport parses the .vna and returns a dry-run preview (no writes).
+func (s *Service) PreviewVeriniceImport(data []byte) (veriniceimport.Preview, error) {
+	objs, err := veriniceimport.ParseVNA(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		return veriniceimport.Preview{}, err
+	}
+	return veriniceimport.BuildPreview(objs), nil
+}
+
+// CommitVeriniceImport parses the .vna and creates the mapped Vakt entities.
+func (s *Service) CommitVeriniceImport(ctx context.Context, orgID, userID string, data []byte) (ImportResult, error) {
+	objs, err := veriniceimport.ParseVNA(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		return ImportResult{}, err
+	}
+	var res ImportResult
+
+	for _, o := range objs {
+		switch o.Category {
+		case "asset":
+			itype := mapAssetType(o.Type)
+			if _, err := s.BSI.CreateBSITargetObject(ctx, orgID, bsi.CreateBSITargetObjectInput{
+				Name:               truncateStr(o.Title, 200),
+				Type:               itype,
+				Description:        "Importiert aus verinice (.vna)",
+				Absicherungsniveau: "standard",
+			}); err != nil {
+				log.Warn().Err(err).Str("ext_id", o.ExtID).Msg("verinice import: asset")
+				res.Skipped++
+				continue
+			}
+			res.AssetsCreated++
+
+		case "risk":
+			if _, err := s.Risk.CreateRisk(ctx, orgID, CreateRiskInput{
+				Title:          truncateStr(o.Title, 255),
+				Description:    "Importiert aus verinice (.vna). Bitte Eintrittswahrscheinlichkeit und Auswirkung prüfen.",
+				Category:       "verinice-Import",
+				Likelihood:     3,
+				Impact:         3,
+				Treatment:      "mitigate",
+				TreatmentNotes: "",
+			}); err != nil {
+				log.Warn().Err(err).Str("ext_id", o.ExtID).Msg("verinice import: risk")
+				res.Skipped++
+				continue
+			}
+			res.RisksCreated++
+
+		case "control":
+			if res.FrameworkID == "" {
+				fwID, err := s.ensureVeriniceImportFramework(ctx, orgID)
+				if err != nil {
+					return res, fmt.Errorf("verinice import: framework: %w", err)
+				}
+				res.FrameworkID = fwID
+			}
+			if err := s.insertImportedControl(ctx, orgID, res.FrameworkID, o); err != nil {
+				log.Warn().Err(err).Str("ext_id", o.ExtID).Msg("verinice import: control")
+				res.Skipped++
+				continue
+			}
+			res.ControlsCreated++
+
+		default:
+			res.Skipped++
+		}
+	}
+	return res, nil
+}
+
+// ensureVeriniceImportFramework returns the id of the org's "verinice-Import"
+// framework, creating it on first use.
+func (s *Service) ensureVeriniceImportFramework(ctx context.Context, orgID string) (string, error) {
+	var id string
+	err := s.db.QueryRow(ctx,
+		`SELECT id::text FROM ck_frameworks WHERE org_id = $1 AND name = 'verinice-Import'`,
+		orgID).Scan(&id)
+	if err == nil && id != "" {
+		return id, nil
+	}
+	if insErr := s.db.QueryRow(ctx, `
+		INSERT INTO ck_frameworks (org_id, name)
+		VALUES ($1, 'verinice-Import')
+		RETURNING id::text`, orgID).Scan(&id); insErr != nil {
+		return "", insErr
+	}
+	return id, nil
+}
+
+func (s *Service) insertImportedControl(ctx context.Context, orgID, frameworkID string, o veriniceimport.ImportObject) error {
+	controlID := o.ExtID
+	if controlID == "" {
+		controlID = "VN-" + truncateStr(o.Title, 40)
+	}
+	_, err := s.db.Exec(ctx, `
+		INSERT INTO ck_controls (framework_id, org_id, control_id, title, description, domain)
+		VALUES ($1::uuid, $2::uuid, $3, $4, $5, 'verinice-Import')`,
+		frameworkID, orgID, controlID, truncateStr(o.Title, 255), "Importiert aus verinice (.vna)")
+	return err
+}
+
+// mapAssetType maps an SNCA asset-ish type to a Vakt target-object type.
+func mapAssetType(snca string) string {
+	switch {
+	case strings.Contains(snca, "network"):
+		return "network"
+	case strings.Contains(snca, "application"), strings.Contains(snca, "app"):
+		return "application"
+	case strings.Contains(snca, "room"), strings.Contains(snca, "raum"):
+		return "room"
+	case strings.Contains(snca, "process"), strings.Contains(snca, "prozess"):
+		return "process"
+	default:
+		return "it_system"
+	}
+}
+
+func truncateStr(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max]
+}
+
+func (s *Service) ListAISystems(ctx context.Context, orgID string, filters AISystemFilters) ([]AISystem, error) {
+	systems, err := s.repo.ListAISystems(ctx, orgID, filters)
+	if err != nil {
+		return nil, err
+	}
+	if systems == nil {
+		systems = []AISystem{}
+	}
+	return systems, nil
+}
+
+func (s *Service) GetAISystem(ctx context.Context, orgID, id string) (*AISystem, error) {
+	return s.repo.GetAISystem(ctx, orgID, id)
+}
+
+func (s *Service) CreateAISystem(ctx context.Context, orgID string, in CreateAISystemInput) (*AISystem, error) {
+	return s.repo.CreateAISystem(ctx, orgID, in)
+}
+
+func (s *Service) UpdateAISystem(ctx context.Context, orgID, id string, in UpdateAISystemInput) (*AISystem, error) {
+	return s.repo.UpdateAISystem(ctx, orgID, id, in)
+}
+
+func (s *Service) DeleteAISystem(ctx context.Context, orgID, id string) error {
+	return s.repo.DeleteAISystem(ctx, orgID, id)
+}
+
+// ClassifyAISystem saves a classification from the wizard and updates the AI system record.
+func (s *Service) ClassifyAISystem(ctx context.Context, orgID, systemID string, in ClassifyAISystemInput) error {
+	validClasses := map[string]bool{"minimal": true, "limited": true, "high": true, "unacceptable": true}
+	if !validClasses[in.RiskClass] {
+		return fmt.Errorf("risk_class: must be one of minimal, limited, high, unacceptable")
+	}
+	if _, err := s.repo.InsertAIClassification(ctx, orgID, systemID, in); err != nil {
+		return fmt.Errorf("insert ai classification: %w", err)
+	}
+	return s.repo.UpdateAISystemClassification(ctx, orgID, systemID, in)
+}
+
+// ListAIClassifications returns the classification history for an AI system.
+func (s *Service) ListAIClassifications(ctx context.Context, orgID, systemID string) ([]AIClassification, error) {
+	return s.repo.ListAIClassifications(ctx, orgID, systemID)
+}
+
+// SaveAIDocumentation creates a new documentation version for an AI system.
+func (s *Service) SaveAIDocumentation(ctx context.Context, orgID, systemID string, in UpsertAIDocumentationInput) (*AIDocumentation, error) {
+	return s.repo.UpsertAIDocumentation(ctx, orgID, systemID, in)
+}
+
+// GetLatestAIDocumentation returns the most recent documentation for an AI system.
+func (s *Service) GetLatestAIDocumentation(ctx context.Context, orgID, systemID string) (*AIDocumentation, error) {
+	doc, err := s.repo.GetLatestAIDocumentation(ctx, orgID, systemID)
+	if err != nil {
+		return nil, ErrNotFound
+	}
+	return doc, nil
+}
+
+// ListAIDocumentationVersions returns all saved versions.
+func (s *Service) ListAIDocumentationVersions(ctx context.Context, orgID, systemID string) ([]AIDocumentation, error) {
+	return s.repo.ListAIDocumentationVersions(ctx, orgID, systemID)
+}
+
+// ExportAIDocumentationPDF generates the PDF technical dossier for an AI system.
+func (s *Service) ExportAIDocumentationPDF(ctx context.Context, orgID, systemID string) ([]byte, string, error) {
+	system, err := s.repo.GetAISystem(ctx, orgID, systemID)
+	if err != nil {
+		return nil, "", ErrNotFound
+	}
+	doc, err := s.repo.GetLatestAIDocumentation(ctx, orgID, systemID)
+	if err != nil {
+		// Return PDF with empty documentation fields if none saved yet
+		doc = &AIDocumentation{AISystemID: systemID, Version: 0}
+	}
+	pdfBytes, err := GenerateAIDocumentationPDF(system, doc)
+	if err != nil {
+		return nil, "", fmt.Errorf("generate ai documentation pdf: %w", err)
+	}
+	filename := fmt.Sprintf("ai-dossier-%s-v%d.pdf", system.Name, doc.Version)
+	return pdfBytes, filename, nil
+}
+
+const euAIActHighRiskDeadline = "2026-08-02"
+
+// GetEUAIActDashboard builds the EU AI Act compliance dashboard for an organisation.
+func (s *Service) GetEUAIActDashboard(ctx context.Context, orgID string) (*EUAIActDashboard, error) {
+	total, byRisk, byStatus, withoutDocs, err := s.repo.GetEUAIActStats(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("get eu ai act dashboard: %w", err)
+	}
+	deadline, _ := time.Parse("2006-01-02", euAIActHighRiskDeadline)
+	daysLeft := int(time.Until(deadline).Hours() / 24)
+	if daysLeft < 0 {
+		daysLeft = 0
+	}
+	return &EUAIActDashboard{
+		TotalSystems:             total,
+		SystemsByRiskClass:       byRisk,
+		SystemsByStatus:          byStatus,
+		SystemsWithoutDocs:       withoutDocs,
+		HighRiskDeadline:         euAIActHighRiskDeadline,
+		HighRiskDeadlineDaysLeft: daysLeft,
+		ISO27001Mappings:         euAIActISOMappings,
+	}, nil
+}
+
+// ExportEUAIActReportPDF generates the full EU AI Act compliance report PDF.
+func (s *Service) ExportEUAIActReportPDF(ctx context.Context, orgID string) ([]byte, error) {
+	dashboard, err := s.GetEUAIActDashboard(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+	systems, err := s.repo.ListAISystems(ctx, orgID, AISystemFilters{})
+	if err != nil {
+		return nil, fmt.Errorf("list ai systems for pdf: %w", err)
+	}
+	return GenerateEUAIActReportPDF(dashboard, systems)
 }

@@ -125,7 +125,7 @@ func (h *Handler) GetServiceProviderConfig(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, map[string]any{
 		"schemas":          []string{schemaServiceProvider},
-		"documentationUri": "https://sec.norvikops.de/docs/scim",
+		"documentationUri": "https://vakt.norvikops.de/docs/scim",
 		"patch":            supported{Supported: true},
 		"bulk":             supported{Supported: false},
 		"filter":           filter{Supported: true, MaxResults: 200},

@@ -16,6 +16,7 @@ type Config struct {
 	RedisUrl       string
 	SecretKey      string
 	APIPort        string
+	InternalPort   string
 	ModulesEnabled string
 	AutoMigrate    bool
 	DemoSeed       bool
@@ -233,6 +234,7 @@ func Load() (*Config, error) {
 		RedisUrl:            getEnv("VAKT_REDIS_URL", ""),
 		SecretKey:           secretKey,
 		APIPort:             getEnv("VAKT_API_PORT", "8080"),
+		InternalPort:        getEnv("VAKT_INTERNAL_PORT", "8081"),
 		ModulesEnabled:      getEnv("VAKT_MODULES_ENABLED", "vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,vakthr"),
 		AutoMigrate:         getEnv("AUTO_MIGRATE", "false") == "true",
 		DemoSeed:            getEnv("VAKT_DEMO", "false") == "true",

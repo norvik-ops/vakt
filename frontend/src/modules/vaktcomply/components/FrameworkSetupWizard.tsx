@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { ShieldCheck, ListChecks, Rocket, CheckCircle2 } from 'lucide-react'
 import {
@@ -89,6 +90,7 @@ const DEFAULT_RECOMMENDED_CONTROLS = [
 ]
 
 export function FrameworkSetupWizard({ framework, onClose }: FrameworkSetupWizardProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [step, setStep] = useState<1 | 2 | 3>(1)
 
@@ -196,9 +198,9 @@ export function FrameworkSetupWizard({ framework, onClose }: FrameworkSetupWizar
 
               <p className="text-sm text-secondary leading-relaxed">
                 Bewerten Sie den Status jedes Controls:{' '}
-                <span className="text-primary font-medium">Implementiert</span>,{' '}
+                <span className="text-primary font-medium">{t('vaktcomply.frameworkSetupWizard.implemented')}</span>,{' '}
                 <span className="text-primary font-medium">In Bearbeitung</span> oder{' '}
-                <span className="text-primary font-medium">Nicht anwendbar</span>.
+                <span className="text-primary font-medium">{t('vaktcomply.frameworkSetupWizard.notApplicable')}</span>.
               </p>
             </div>
 
@@ -256,9 +258,8 @@ export function FrameworkSetupWizard({ framework, onClose }: FrameworkSetupWizar
               <div className="flex items-start gap-2.5 p-3 rounded-lg border border-brand/30 bg-brand/5">
                 <span className="text-base" aria-hidden="true">💡</span>
                 <p className="text-xs text-secondary leading-relaxed">
-                  <span className="text-primary font-medium">Tipp:</span> Beginnen Sie mit 5–10
-                  Controls pro Woche für nachhaltigen Fortschritt. Qualität vor Schnelligkeit —
-                  jede Bewertung wird als Audit-Nachweis gespeichert.
+                  <span className="text-primary font-medium">{t('vaktcomply.frameworkSetupWizard.tip')}</span>{' '}
+                  {t('vaktcomply.frameworkSetupWizard.tipText')}
                 </p>
               </div>
             </div>

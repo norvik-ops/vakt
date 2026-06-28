@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { CheckCircle2, XCircle, ShieldCheck } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -21,16 +22,18 @@ import {
 
 // ─── Status label helpers ─────────────────────────────────────────────────────
 
-const STATUS_LABEL: Record<string, string> = {
-  missing:        'Offen',
-  in_progress:    'In Bearbeitung',
-  implemented:    'Umgesetzt',
-  not_applicable: 'Nicht anwendbar',
-  covered:        'Abgedeckt',
-  partial:        'Teilweise',
+function useStatusLabel() {
+  const { t } = useTranslation()
+  const STATUS_LABEL: Record<string, string> = {
+    missing:        t('vaktcomply.approvalsPage.statusMissing'),
+    in_progress:    t('vaktcomply.approvalsPage.statusInProgress'),
+    implemented:    t('vaktcomply.approvalsPage.statusImplemented'),
+    not_applicable: t('vaktcomply.approvalsPage.statusNotApplicable'),
+    covered:        t('vaktcomply.approvalsPage.statusCovered'),
+    partial:        t('vaktcomply.approvalsPage.statusPartial'),
+  }
+  return (s: string) => STATUS_LABEL[s] ?? s
 }
-
-function statusLabel(s: string) { return STATUS_LABEL[s] ?? s }
 
 // ─── Review dialog ────────────────────────────────────────────────────────────
 
@@ -41,9 +44,11 @@ interface ReviewDialogProps {
 }
 
 function ReviewDialog({ approval, mode, onClose }: ReviewDialogProps) {
+  const { t } = useTranslation()
   const [comment, setComment] = useState('')
   const approve = useApproveApproval()
   const reject = useRejectApproval()
+  const statusLabel = useStatusLabel()
 
   if (!approval) return null
 
@@ -55,7 +60,7 @@ function ReviewDialog({ approval, mode, onClose }: ReviewDialogProps) {
       {
         onSuccess: () => {
           toast(
-            mode === 'approve' ? 'Genehmigt' : 'Abgelehnt',
+            mode === 'approve' ? t('vaktcomply.approvalsPage.approvedToast') : t('vaktcomply.approvalsPage.rejectedToast'),
             mode === 'approve' ? 'success' : 'error',
           )
           setComment('')
@@ -73,43 +78,43 @@ function ReviewDialog({ approval, mode, onClose }: ReviewDialogProps) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {mode === 'approve' ? 'Genehmigung erteilen' : 'Antrag ablehnen'}
+            {mode === 'approve' ? t('vaktcomply.approvalsPage.approveTitle') : t('vaktcomply.approvalsPage.rejectTitle')}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="text-sm text-secondary space-y-1">
             <p><span className="font-medium text-primary">Control:</span> {approval.control_ref} — {approval.control_title}</p>
-            <p><span className="font-medium text-primary">Beantragt von:</span> {approval.requester_name || approval.requester_email}</p>
+            <p><span className="font-medium text-primary">{t('vaktcomply.approvalsPage.requestedBy')}:</span> {approval.requester_name || approval.requester_email}</p>
             <p>
-              <span className="font-medium text-primary">Statusänderung:</span>{' '}
+              <span className="font-medium text-primary">{t('vaktcomply.approvalsPage.statusChange')}:</span>{' '}
               <span className="text-secondary">{statusLabel(approval.current_status)}</span>
               {' '}&rarr;{' '}
               <span className="text-primary font-medium">{statusLabel(approval.requested_status)}</span>
             </p>
             {approval.comment && (
-              <p><span className="font-medium text-primary">Begründung:</span> {approval.comment}</p>
+              <p><span className="font-medium text-primary">{t('vaktcomply.approvalsPage.reason')}:</span> {approval.comment}</p>
             )}
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Kommentar (optional)</Label>
+            <Label className="text-xs">{t('vaktcomply.approvalsPage.commentLabel')}</Label>
             <Textarea
               value={comment}
               onChange={(e) => { setComment(e.target.value); }}
-              placeholder={mode === 'approve' ? 'Genehmigt — keine weiteren Anmerkungen' : 'Grund für die Ablehnung…'}
+              placeholder={mode === 'approve' ? t('vaktcomply.approvalsPage.commentPlaceholderApprove') : t('vaktcomply.approvalsPage.commentPlaceholderReject')}
               rows={3}
             />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isPending}>Abbrechen</Button>
+          <Button variant="outline" onClick={onClose} disabled={isPending}>{t('common.cancel')}</Button>
           <Button
             variant={mode === 'approve' ? 'default' : 'destructive'}
             onClick={handleSubmit}
             disabled={isPending}
           >
             {isPending
-              ? 'Wird gespeichert…'
-              : mode === 'approve' ? 'Genehmigen' : 'Ablehnen'}
+              ? t('vaktcomply.approvalsPage.saving')
+              : mode === 'approve' ? t('vaktcomply.approvalsPage.approve') : t('vaktcomply.approvalsPage.reject')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -120,9 +125,11 @@ function ReviewDialog({ approval, mode, onClose }: ReviewDialogProps) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function ApprovalsPage() {
+  const { t } = useTranslation()
   const { user } = useAuthStore()
   const { formatDate } = useFormatDate()
   const isAdmin = user?.roles?.includes('Admin') ?? false
+  const statusLabel = useStatusLabel()
 
   const { data: approvals = [], isLoading } = usePendingApprovals()
   const [selected, setSelected] = useState<ApprovalWithDetails | null>(null)
@@ -133,8 +140,8 @@ export default function ApprovalsPage() {
       <div className="p-6">
         <EmptyState
           icon={ShieldCheck}
-          title="Keine Berechtigung"
-          description="Nur Administratoren können Genehmigungen verwalten."
+          title={t('vaktcomply.approvalsPage.noPermissionTitle')}
+          description={t('vaktcomply.approvalsPage.noPermissionDescription')}
         />
       </div>
     )
@@ -148,8 +155,8 @@ export default function ApprovalsPage() {
   return (
     <div className="p-6 space-y-6">
       <PageHeader
-        title="Genehmigungen"
-        description="Ausstehende Anträge zur Statusänderung von Controls"
+        title={t('vaktcomply.approvalsPage.title')}
+        description={t('vaktcomply.approvalsPage.description')}
       />
 
       {isLoading ? (
@@ -159,8 +166,8 @@ export default function ApprovalsPage() {
       ) : approvals.length === 0 ? (
         <EmptyState
           icon={CheckCircle2}
-          title="Keine offenen Anträge"
-          description="Es gibt aktuell keine ausstehenden Genehmigungsanträge."
+          title={t('vaktcomply.approvalsPage.noRequestsTitle')}
+          description={t('vaktcomply.approvalsPage.noRequestsDescription')}
         />
       ) : (
         <Card>
@@ -169,12 +176,12 @@ export default function ApprovalsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Control</TableHead>
-                <TableHead>Beantragt von</TableHead>
-                <TableHead>Aktueller Status</TableHead>
-                <TableHead>Beantragter Status</TableHead>
-                <TableHead>Begründung</TableHead>
-                <TableHead>Datum</TableHead>
-                <TableHead className="text-right">Aktionen</TableHead>
+                <TableHead>{t('vaktcomply.approvalsPage.colRequestedBy')}</TableHead>
+                <TableHead>{t('vaktcomply.approvalsPage.colCurrentStatus')}</TableHead>
+                <TableHead>{t('vaktcomply.approvalsPage.colRequestedStatus')}</TableHead>
+                <TableHead>{t('vaktcomply.approvalsPage.colReason')}</TableHead>
+                <TableHead>{t('vaktcomply.approvalsPage.colDate')}</TableHead>
+                <TableHead className="text-right">{t('common.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -218,7 +225,7 @@ export default function ApprovalsPage() {
                         onClick={() => { openReview(a, 'approve'); }}
                       >
                         <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                        Genehmigen
+                        {t('vaktcomply.approvalsPage.approve')}
                       </Button>
                       <Button
                         size="sm"
@@ -227,7 +234,7 @@ export default function ApprovalsPage() {
                         onClick={() => { openReview(a, 'reject'); }}
                       >
                         <XCircle className="w-3.5 h-3.5 mr-1" />
-                        Ablehnen
+                        {t('vaktcomply.approvalsPage.reject')}
                       </Button>
                     </div>
                   </TableCell>

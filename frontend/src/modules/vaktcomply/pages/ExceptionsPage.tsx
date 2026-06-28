@@ -90,25 +90,25 @@ export default function ExceptionsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Ausnahmegenehmigungen"
-        description="Formale Ausnahmen und Waivers für Compliance-Kontrollen"
+        title={t('vaktcomply.exceptions.title')}
+        description={t('vaktcomply.exceptions.description')}
       />
 
       {isLoading && (
-        <div className="flex items-center justify-center py-16 text-slate-400">Lade Ausnahmen…</div>
+        <div className="flex items-center justify-center py-16 text-slate-400">{t('vaktcomply.exceptions.loading')}</div>
       )}
       {error && (
-        <div className="text-red-400 text-sm">Fehler beim Laden der Ausnahmen.</div>
+        <div className="text-red-400 text-sm">{t('vaktcomply.exceptions.errorLoading')}</div>
       )}
 
       {!isLoading && !error && visibleExceptions.length === 0 && (
         <EmptyState
           icon={ShieldAlert}
-          title="Keine Ausnahmen"
-          description="Ausnahmen werden direkt am Control erstellt, wenn eine Anforderung formal nicht erfüllbar ist."
+          title={t('vaktcomply.exceptions.emptyTitle')}
+          description={t('vaktcomply.exceptions.emptyDescription')}
           action={
             <Button size="sm" variant="outline" onClick={() => { navigate('/vaktcomply/frameworks'); }}>
-              Controls anzeigen
+              {t('vaktcomply.exceptions.showControls')}
             </Button>
           }
         />
@@ -116,7 +116,7 @@ export default function ExceptionsPage() {
 
       {active.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Aktive Ausnahmen ({active.length})</h2>
+          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">{t('vaktcomply.exceptions.activeSection', { count: active.length })}</h2>
           {active.map(e => (
             <ExceptionCard
               key={e.id}
@@ -131,7 +131,7 @@ export default function ExceptionsPage() {
 
       {inactive.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Inaktive Ausnahmen ({inactive.length})</h2>
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">{t('vaktcomply.exceptions.inactiveSection', { count: inactive.length })}</h2>
           {inactive.map(e => (
             <ExceptionCard
               key={e.id}
@@ -151,12 +151,12 @@ export default function ExceptionsPage() {
             <DialogTitle>{t('vaktcomply.exceptions.deletePrompt')}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-400">
-            Soll die Ausnahme „{confirmDelete?.title}" gelöscht werden? Die Aktion kann innerhalb von 5 Sekunden rückgängig gemacht werden.
+            {t('vaktcomply.exceptions.deleteConfirmDescription', { title: confirmDelete?.title ?? '' })}
           </p>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => { setConfirmDelete(null); }}>Abbrechen</Button>
+            <Button variant="ghost" onClick={() => { setConfirmDelete(null); }}>{t('vaktcomply.exceptions.cancel')}</Button>
             <Button variant="destructive" onClick={handleConfirmDelete}>
-              Löschen
+              {t('vaktcomply.exceptions.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -176,6 +176,7 @@ function ExceptionCard({
   onNavigate: () => void
   onDelete: () => void
 }) {
+  const { t } = useTranslation()
   const { formatDate } = useFormatDate()
   return (
     <Card className="bg-slate-800/50 border-slate-700">
@@ -194,7 +195,7 @@ function ExceptionCard({
               onClick={onNavigate}
             >
               <ExternalLink className="w-3.5 h-3.5 mr-1" />
-              Kontrolle
+              {t('vaktcomply.exceptions.showControl')}
             </Button>
             {isAdmin && (
               <Button
@@ -210,13 +211,13 @@ function ExceptionCard({
         </div>
       </CardHeader>
       <CardContent className="text-xs text-slate-400 space-y-1">
-        <p><span className="text-slate-300">Begründung:</span> {e.reason}</p>
-        <p><span className="text-slate-300">Akzeptiertes Risiko:</span> {e.risk_accepted}</p>
-        {e.approved_by && <p><span className="text-slate-300">Genehmigt von:</span> {e.approved_by}</p>}
+        <p><span className="text-slate-300">{t('vaktcomply.exceptions.fieldReason')}:</span> {e.reason}</p>
+        <p><span className="text-slate-300">{t('vaktcomply.exceptions.fieldRiskAccepted')}:</span> {e.risk_accepted}</p>
+        {e.approved_by && <p><span className="text-slate-300">{t('vaktcomply.exceptions.fieldApprovedBy')}:</span> {e.approved_by}</p>}
         {e.expires_at && (
-          <p><span className="text-slate-300">Läuft ab:</span> {formatDate(e.expires_at)}</p>
+          <p><span className="text-slate-300">{t('vaktcomply.exceptions.fieldExpiresAt')}:</span> {formatDate(e.expires_at)}</p>
         )}
-        <p className="text-slate-500">Erstellt: {formatDate(e.created_at)}</p>
+        <p className="text-slate-500">{t('vaktcomply.exceptions.fieldCreatedAt')}: {formatDate(e.created_at)}</p>
       </CardContent>
     </Card>
   )

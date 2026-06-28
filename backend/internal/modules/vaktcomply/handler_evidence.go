@@ -17,11 +17,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// UploadEvidence handles POST /api/v1/vaktcomply/controls/:id/evidence/upload.
-// Deprecated: use POST /controls/:id/evidence-files (UploadEvidenceFile) instead,
-// which routes through EvidenceFileService with proper MIME validation and
-// a separate ck_evidence_files table. This legacy route is retained for
-// backwards compatibility and will be removed in a future release.
 func (h *Handler) UploadEvidence(c echo.Context) error {
 	c.Response().Header().Set("Deprecation", "true")
 	c.Response().Header().Set("Link", `</api/v1/vaktcomply/controls/{id}/evidence-files>; rel="successor-version"`)
@@ -366,6 +361,298 @@ func (h *Handler) DeleteEvidenceFile(c echo.Context) error {
 	if err := h.evidenceFiles.Delete(c.Request().Context(), orgID(c), fileID); err != nil {
 		log.Error().Err(err).Str("file_id", fileID).Msg("delete evidence file")
 		return errResp(c, http.StatusInternalServerError, "failed to delete evidence file", "CK_DELETE_FAILED")
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+func (h *Handler) ListBackupJobs(c echo.Context) error {
+	jobs, err := h.service.ListBackupJobs(c.Request().Context(), orgID(c))
+	if err != nil {
+		log.Error().Err(err).Msg("list backup jobs")
+		return errResp(c, http.StatusInternalServerError, "failed to list backup jobs", "CK_BACKUP_LIST_FAILED")
+	}
+	return c.JSON(http.StatusOK, jobs)
+}
+
+// GetBackupSummary handles GET /api/v1/vaktcomply/backup/summary
+func (h *Handler) GetBackupSummary(c echo.Context) error {
+	sum, err := h.service.GetBackupSummary(c.Request().Context(), orgID(c))
+	if err != nil {
+		log.Error().Err(err).Msg("backup summary")
+		return errResp(c, http.StatusInternalServerError, "failed to compute backup summary", "CK_BACKUP_SUMMARY_FAILED")
+	}
+	return c.JSON(http.StatusOK, sum)
+}
+
+// CreateBackupJob handles POST /api/v1/vaktcomply/backup/jobs
+func (h *Handler) CreateBackupJob(c echo.Context) error {
+	var in BackupJobInput
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+	if err := h.validate.Struct(in); err != nil {
+		return errResp(c, http.StatusUnprocessableEntity, err.Error(), "CK_VALIDATION_ERROR")
+	}
+	job, err := h.service.CreateBackupJob(c.Request().Context(), orgID(c), in)
+	if err != nil {
+		log.Error().Err(err).Msg("create backup job")
+		return errResp(c, http.StatusInternalServerError, "failed to create backup job", "CK_BACKUP_CREATE_FAILED")
+	}
+	return c.JSON(http.StatusCreated, job)
+}
+
+// UpdateBackupJob handles PUT /api/v1/vaktcomply/backup/jobs/:id
+func (h *Handler) UpdateBackupJob(c echo.Context) error {
+	var in BackupJobInput
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+	if err := h.validate.Struct(in); err != nil {
+		return errResp(c, http.StatusUnprocessableEntity, err.Error(), "CK_VALIDATION_ERROR")
+	}
+	job, err := h.service.UpdateBackupJob(c.Request().Context(), orgID(c), c.Param("id"), in)
+	if err != nil {
+		if err.Error() == "backup job not found" {
+			return errResp(c, http.StatusNotFound, "backup job not found", "CK_BACKUP_NOT_FOUND")
+		}
+		log.Error().Err(err).Msg("update backup job")
+		return errResp(c, http.StatusInternalServerError, "failed to update backup job", "CK_BACKUP_UPDATE_FAILED")
+	}
+	return c.JSON(http.StatusOK, job)
+}
+
+// DeleteBackupJob handles DELETE /api/v1/vaktcomply/backup/jobs/:id
+func (h *Handler) DeleteBackupJob(c echo.Context) error {
+	if err := h.service.DeleteBackupJob(c.Request().Context(), orgID(c), c.Param("id")); err != nil {
+		if err.Error() == "backup job not found" {
+			return errResp(c, http.StatusNotFound, "backup job not found", "CK_BACKUP_NOT_FOUND")
+		}
+		log.Error().Err(err).Msg("delete backup job")
+		return errResp(c, http.StatusInternalServerError, "failed to delete backup job", "CK_BACKUP_DELETE_FAILED")
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+// ListRestoreTests handles GET /api/v1/vaktcomply/backup/jobs/:id/restore-tests
+func (h *Handler) ListRestoreTests(c echo.Context) error {
+	tests, err := h.service.ListRestoreTests(c.Request().Context(), orgID(c), c.Param("id"))
+	if err != nil {
+		log.Error().Err(err).Msg("list restore tests")
+		return errResp(c, http.StatusInternalServerError, "failed to list restore tests", "CK_RESTORE_LIST_FAILED")
+	}
+	return c.JSON(http.StatusOK, tests)
+}
+
+// CreateRestoreTest handles POST /api/v1/vaktcomply/backup/jobs/:id/restore-tests
+func (h *Handler) CreateRestoreTest(c echo.Context) error {
+	var in RestoreTestInput
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+	if err := h.validate.Struct(in); err != nil {
+		return errResp(c, http.StatusUnprocessableEntity, err.Error(), "CK_VALIDATION_ERROR")
+	}
+	test, err := h.service.CreateRestoreTest(c.Request().Context(), orgID(c), c.Param("id"), in)
+	if err != nil {
+		if err.Error() == "backup job not found" {
+			return errResp(c, http.StatusNotFound, "backup job not found", "CK_BACKUP_NOT_FOUND")
+		}
+		log.Error().Err(err).Msg("create restore test")
+		return errResp(c, http.StatusInternalServerError, "failed to create restore test", "CK_RESTORE_CREATE_FAILED")
+	}
+	return c.JSON(http.StatusCreated, test)
+}
+
+func (h *Handler) ListControlVVTLinks(c echo.Context) error {
+	links, err := h.service.ListLinksForControl(c.Request().Context(), orgID(c), c.Param("id"))
+	if err != nil {
+		log.Error().Err(err).Msg("list control vvt links")
+		return errResp(c, http.StatusInternalServerError, "failed to list VVT links", "CK_VVT_LINKS_FAILED")
+	}
+	return c.JSON(http.StatusOK, links)
+}
+
+// ListVVTControlLinks handles GET /api/v1/vaktcomply/vvt-links?vvt_id=...
+func (h *Handler) ListVVTControlLinks(c echo.Context) error {
+	vvtID := c.QueryParam("vvt_id")
+	if vvtID == "" {
+		return errResp(c, http.StatusBadRequest, "vvt_id query param required", "CK_BAD_REQUEST")
+	}
+	links, err := h.service.ListLinksForVVT(c.Request().Context(), orgID(c), vvtID)
+	if err != nil {
+		log.Error().Err(err).Msg("list vvt control links")
+		return errResp(c, http.StatusInternalServerError, "failed to list control links", "CK_VVT_LINKS_FAILED")
+	}
+	return c.JSON(http.StatusOK, links)
+}
+
+// CreateVVTControlLink handles POST /api/v1/vaktcomply/vvt-links
+func (h *Handler) CreateVVTControlLink(c echo.Context) error {
+	var in LinkVVTToControlInput
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+	if err := h.validate.Struct(in); err != nil {
+		return errResp(c, http.StatusUnprocessableEntity, err.Error(), "CK_VALIDATION_ERROR")
+	}
+	link, err := h.service.LinkVVTToControl(c.Request().Context(), orgID(c), in)
+	if err != nil {
+		if err.Error() == "control not found" {
+			return errResp(c, http.StatusNotFound, "control not found", "CK_CONTROL_NOT_FOUND")
+		}
+		log.Error().Err(err).Msg("create vvt control link")
+		return errResp(c, http.StatusInternalServerError, "failed to link VVT", "CK_VVT_LINK_FAILED")
+	}
+	return c.JSON(http.StatusCreated, link)
+}
+
+// DeleteVVTControlLink handles DELETE /api/v1/vaktcomply/vvt-links/:id
+func (h *Handler) DeleteVVTControlLink(c echo.Context) error {
+	if err := h.service.UnlinkVVTFromControl(c.Request().Context(), orgID(c), c.Param("id")); err != nil {
+		if err.Error() == "link not found" {
+			return errResp(c, http.StatusNotFound, "link not found", "CK_VVT_LINK_NOT_FOUND")
+		}
+		log.Error().Err(err).Msg("delete vvt control link")
+		return errResp(c, http.StatusInternalServerError, "failed to remove link", "CK_VVT_UNLINK_FAILED")
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+var urlEntityType = map[string]string{
+	"controls":  "control",
+	"risks":     "risk",
+	"incidents": "incident",
+	"policies":  "policy",
+	"audits":    "audit",
+}
+
+// listTasksFor returns an Echo handler that lists collab tasks for the given entity type.
+func (h *Handler) listTasksFor(entityType string) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		entityID := c.Param("id")
+		if entityID == "" {
+			return errResp(c, http.StatusBadRequest, "entity id is required", "CK_BAD_REQUEST")
+		}
+		tasks, err := h.service.ListTasks(c.Request().Context(), orgID(c), entityType, entityID)
+		if err != nil {
+			log.Error().Err(err).Str("entity_type", entityType).Str("entity_id", entityID).Msg("list collab tasks")
+			return errResp(c, http.StatusInternalServerError, "failed to list tasks", "CK_INTERNAL")
+		}
+		return c.JSON(http.StatusOK, tasks)
+	}
+}
+
+// createTaskFor returns an Echo handler that creates a collab task for the given entity type.
+func (h *Handler) createTaskFor(entityType string) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		entityID := c.Param("id")
+		if entityID == "" {
+			return errResp(c, http.StatusBadRequest, "entity id is required", "CK_BAD_REQUEST")
+		}
+		var in CreateTaskInput
+		if err := c.Bind(&in); err != nil {
+			return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+		}
+		if err := h.validate.Struct(in); err != nil {
+			return c.JSON(http.StatusUnprocessableEntity, map[string]string{
+				"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR",
+			})
+		}
+		task, err := h.service.CreateTask(c.Request().Context(), orgID(c), entityType, entityID, in)
+		if err != nil {
+			log.Error().Err(err).Str("entity_type", entityType).Str("entity_id", entityID).Msg("create collab task")
+			return errResp(c, http.StatusInternalServerError, "failed to create task", "CK_INTERNAL")
+		}
+		return c.JSON(http.StatusCreated, task)
+	}
+}
+
+// UpdateCollabTask handles PATCH /vaktcomply/collab-tasks/:tid.
+func (h *Handler) UpdateCollabTask(c echo.Context) error {
+	taskID := c.Param("tid")
+	if taskID == "" {
+		return errResp(c, http.StatusBadRequest, "task id is required", "CK_BAD_REQUEST")
+	}
+	var in UpdateTaskInput
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+	}
+	if err := h.validate.Struct(in); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
+			"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR",
+		})
+	}
+	task, err := h.service.UpdateTask(c.Request().Context(), orgID(c), taskID, in)
+	if err != nil {
+		log.Error().Err(err).Str("task_id", taskID).Msg("update collab task")
+		return errResp(c, http.StatusInternalServerError, "failed to update task", "CK_INTERNAL")
+	}
+	return c.JSON(http.StatusOK, task)
+}
+
+// DeleteCollabTask handles DELETE /vaktcomply/collab-tasks/:tid.
+func (h *Handler) DeleteCollabTask(c echo.Context) error {
+	taskID := c.Param("tid")
+	if taskID == "" {
+		return errResp(c, http.StatusBadRequest, "task id is required", "CK_BAD_REQUEST")
+	}
+	if err := h.service.DeleteTask(c.Request().Context(), orgID(c), taskID); err != nil {
+		log.Error().Err(err).Str("task_id", taskID).Msg("delete collab task")
+		return errResp(c, http.StatusInternalServerError, "failed to delete task", "CK_INTERNAL")
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+// listCommentsFor returns an Echo handler that lists comments for the given entity type.
+func (h *Handler) listCommentsFor(entityType string) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		entityID := c.Param("id")
+		if entityID == "" {
+			return errResp(c, http.StatusBadRequest, "entity id is required", "CK_BAD_REQUEST")
+		}
+		comments, err := h.service.ListComments(c.Request().Context(), orgID(c), entityType, entityID)
+		if err != nil {
+			log.Error().Err(err).Str("entity_type", entityType).Str("entity_id", entityID).Msg("list comments")
+			return errResp(c, http.StatusInternalServerError, "failed to list comments", "CK_INTERNAL")
+		}
+		return c.JSON(http.StatusOK, comments)
+	}
+}
+
+// createCommentFor returns an Echo handler that creates a comment for the given entity type.
+func (h *Handler) createCommentFor(entityType string) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		entityID := c.Param("id")
+		if entityID == "" {
+			return errResp(c, http.StatusBadRequest, "entity id is required", "CK_BAD_REQUEST")
+		}
+		var in CreateCommentInput
+		if err := c.Bind(&in); err != nil {
+			return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
+		}
+		if err := h.validate.Struct(in); err != nil {
+			return c.JSON(http.StatusUnprocessableEntity, map[string]string{
+				"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR",
+			})
+		}
+		comment, err := h.service.CreateComment(c.Request().Context(), orgID(c), entityType, entityID, in)
+		if err != nil {
+			log.Error().Err(err).Str("entity_type", entityType).Str("entity_id", entityID).Msg("create comment")
+			return errResp(c, http.StatusInternalServerError, "failed to create comment", "CK_INTERNAL")
+		}
+		return c.JSON(http.StatusCreated, comment)
+	}
+}
+
+// DeleteComment handles DELETE /vaktcomply/comments/:cid.
+func (h *Handler) DeleteCollabComment(c echo.Context) error {
+	commentID := c.Param("cid")
+	if commentID == "" {
+		return errResp(c, http.StatusBadRequest, "comment id is required", "CK_BAD_REQUEST")
+	}
+	if err := h.service.DeleteComment(c.Request().Context(), orgID(c), commentID); err != nil {
+		log.Error().Err(err).Str("comment_id", commentID).Msg("delete comment")
+		return errResp(c, http.StatusInternalServerError, "failed to delete comment", "CK_INTERNAL")
 	}
 	return c.NoContent(http.StatusNoContent)
 }

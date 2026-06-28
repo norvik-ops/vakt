@@ -91,6 +91,8 @@ VAKT_FORCE_SECURE_COOKIES=true            # Produktion hinter HTTPS-Proxy
 | Variable | Pflicht | Standard | Beschreibung |
 |----------|---------|----------|--------------|
 | `VAKT_API_PORT` | — | `8080` | Port, auf dem der API-Server innerhalb des Containers lauscht. |
+| `VAKT_INTERNAL_PORT` | — | `8081` | Interner Port für `/api/v1/internal/*`-Routen (z. B. Backup-Config). Niemals über den Reverse-Proxy exponieren — Docker-interner Zugriff (z. B. `backup-cron.sh`) via `VAKT_INTERNAL_API_URL`. |
+| `VAKT_INTERNAL_API_URL` | — | `http://vakt-api:8081` | URL des internen API-Ports. Nur in `backup-cron.sh` relevant — überschreiben wenn das Skript außerhalb des Docker-Netzwerks läuft (z. B. Host-Cron). |
 | `APP_VERSION` | — | `0.1.0` | Versionsnummer. Wird im `/health`-Endpunkt zurückgegeben. |
 | `VAKT_MODULES_ENABLED` | — | alle | Kommagetrennte Liste aktiver Module. Mögliche Werte: `vaktscan`, `vaktcomply`, `vaktvault`, `vaktaware`, `vaktprivacy`, `vakthr`. |
 | `AUTO_MIGRATE` | — | `false` | Wenn `true`, führt der API-Container beim Start automatisch ausstehende Datenbankmigrationen aus. |

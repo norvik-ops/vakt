@@ -277,7 +277,7 @@ export default function ProjectDetailPage() {
                 </div>
               )}
               {health.issues.length === 0 && (
-                <span className="text-sm text-green-600 font-medium">All secrets healthy</span>
+                <span className="text-sm text-green-600 font-medium">{t('vaktvault.projectDetail.allSecretsHealthy')}</span>
               )}
             </CardContent>
           </Card>

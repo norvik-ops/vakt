@@ -1,7 +1,7 @@
 import { BrainCircuit, X, AlertTriangle, Info, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
 import { useAIInsights, useDismissInsight } from '../hooks/useAIInsights'
+import { AIDisclaimer } from '../../../shared/components/AIDisclaimer'
 import type { AIInsight } from '../types'
 
 function urgencyIcon(urgency: AIInsight['urgency']) {
@@ -21,7 +21,6 @@ export function AIInsightsFeed() {
   const { data, isLoading } = useAIInsights()
   const dismiss = useDismissInsight()
   const navigate = useNavigate()
-  const { t } = useTranslation()
 
   const items = data?.items ?? []
 
@@ -33,11 +32,9 @@ export function AIInsightsFeed() {
       <div className="flex items-center gap-2">
         <BrainCircuit className="w-4 h-4 text-brand shrink-0" />
         <h2 className="text-sm font-semibold text-primary">KI-Insights</h2>
-        <span className="text-xs text-secondary/70 bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">
-          {t('ai.disclaimer')}
-        </span>
         <span className="ml-auto text-xs text-secondary">{items.length} Hinweise</span>
       </div>
+      <AIDisclaimer />
 
       <ul className="space-y-2">
         {items.map((item) => {

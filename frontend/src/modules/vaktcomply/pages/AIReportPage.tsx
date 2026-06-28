@@ -5,6 +5,7 @@ import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { ProGate } from '../../../shared/components/ProGate'
+import { AIDisclaimer } from '../../../shared/components/AIDisclaimer'
 import { FeatureLockedError } from '../../../api/client'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
@@ -148,7 +149,7 @@ VAKT_AI_MODEL=mistral-small-latest`}</pre>
         {available === true && (
           <>
             <div>
-              <p className="text-sm text-secondary mb-3">Berichtstyp auswählen:</p>
+              <p className="text-sm text-secondary mb-3">{t('vaktcomply.aiReportPage.selectType')}</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {REPORT_TYPES.map((rt) => (
                   <button
@@ -262,9 +263,9 @@ VAKT_AI_MODEL=mistral-small-latest`}</pre>
                   <pre className="text-sm text-primary leading-relaxed whitespace-pre-wrap font-sans">
                     {report}
                   </pre>
-                  <p className="mt-3 text-xs text-secondary/70 bg-amber-500/10 border border-amber-500/20 rounded px-2 py-1 inline-block">
-                    {t('ai.disclaimer')}
-                  </p>
+                  <div className="mt-3">
+                    <AIDisclaimer />
+                  </div>
                 </CardContent>
               </Card>
             )}

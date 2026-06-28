@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, BookOpen, Plus, LayoutTemplate, Sparkles, ChevronsUpDown, ChevronUp, ChevronDown, Printer } from 'lucide-react'
+import { BookOpen, Plus, LayoutTemplate, Sparkles, ChevronsUpDown, ChevronUp, ChevronDown, Printer } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -13,6 +13,7 @@ import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { AIDisclaimer } from '../../../shared/components/AIDisclaimer'
 import { ExportButton } from '../../../shared/components/ExportButton'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Pagination } from '../../../shared/components/Pagination'
@@ -441,10 +442,7 @@ export default function PoliciesPage() {
             </div>
           ) : (
             <div className="space-y-4 py-2">
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-medium">
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                {t('ai.draftDisclaimer')}
-              </div>
+              <AIDisclaimer variant="draft" />
               <p className="text-sm text-muted-foreground">
                 {t('vaktcomply.policiesPage.aiDraftGenerated')}
               </p>

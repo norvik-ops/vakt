@@ -125,7 +125,7 @@ function ProtectionNeedCard({
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    title="Asset verknüpfen"
+                    title={t('protectionNeeds.linkAsset')}
                     onClick={onLinkAsset}
                   >
                     <Link2 className="w-3.5 h-3.5" />
@@ -183,7 +183,7 @@ function ProtectionNeedCard({
         {item.vb_asset_id && (
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Link2 className="w-3 h-3 text-blue-400" />
-            <span className="text-blue-400">Asset verknüpft</span>
+            <span className="text-blue-400">{t('protectionNeeds.assetLinked')}</span>
           </p>
         )}
         {finalized && (
@@ -315,11 +315,11 @@ export default function ProtectionNeedsPage() {
       <Dialog open={linkDialogPnaId != null} onOpenChange={(o) => { if (!o) setLinkDialogPnaId(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Asset verknüpfen</DialogTitle>
+            <DialogTitle>{t('protectionNeeds.linkAsset')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2 max-h-64 overflow-y-auto">
             {assetList.length === 0 && (
-              <p className="text-sm text-muted-foreground">Keine Assets gefunden.</p>
+              <p className="text-sm text-muted-foreground">{t('protectionNeeds.noAssetsFound')}</p>
             )}
             {assetList.map((a) => (
               <button
@@ -341,7 +341,7 @@ export default function ProtectionNeedsPage() {
             ))}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setLinkDialogPnaId(null); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setLinkDialogPnaId(null); }}>{t('common.cancel')}</Button>
             {linkDialogPnaId && items.find((i) => i.id === linkDialogPnaId)?.vb_asset_id && (
               <Button
                 variant="destructive"
@@ -352,7 +352,7 @@ export default function ProtectionNeedsPage() {
                   )
                 }}
               >
-                Verknüpfung aufheben
+                {t('protectionNeeds.unlinkAsset')}
               </Button>
             )}
           </DialogFooter>

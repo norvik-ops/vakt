@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { FileText, FileSearch, Handshake, AlertTriangle, ChevronRight, Clock, Users, Sparkles } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { useVVT } from '../hooks/useVVT'
@@ -45,6 +46,7 @@ function StatCard({ icon: Icon, label, value, sub, onClick, accent = 'default' }
 }
 
 export default function SecPrivacyOverviewPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { data: vvt } = useVVT()
   const { data: dpias } = useDPIAs()
@@ -71,7 +73,7 @@ export default function SecPrivacyOverviewPage() {
     <div className="flex flex-col h-full">
       <PageHeader
         title="Vakt Privacy"
-        description="DSGVO-Dokumentation: Verarbeitungen, DSFAs, Verträge und Datenpannen."
+        description={t('vaktprivacy.overviewPage.description')}
       />
 
       <div className="flex-1 p-6 space-y-8">
@@ -84,10 +86,10 @@ export default function SecPrivacyOverviewPage() {
             <Clock className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-semibold text-red-500">
-                {urgentBreaches.length} Datenpanne{urgentBreaches.length > 1 ? 'n' : ''} — 72h-Meldepflicht läuft
+                {t(urgentBreaches.length > 1 ? 'vaktprivacy.overviewPage.urgentBreachAlertPlural' : 'vaktprivacy.overviewPage.urgentBreachAlert', { count: urgentBreaches.length })}
               </p>
               <p className="text-xs text-secondary mt-0.5">
-                Datenpannen müssen innerhalb von 72h nach Bekanntwerden an die Aufsichtsbehörde gemeldet werden (Art. 33 DSGVO).
+                {t('vaktprivacy.overviewPage.urgentBreachDesc')}
               </p>
             </div>
           </button>
@@ -97,41 +99,41 @@ export default function SecPrivacyOverviewPage() {
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           <StatCard
             icon={FileText}
-            label="Verarbeitungen (VVT)"
+            label={t('vaktprivacy.overviewPage.statVVT')}
             value={activeVVT.length}
-            sub="aktive Einträge"
+            sub={t('vaktprivacy.overviewPage.statVVTSub')}
             onClick={() => { navigate('/vaktprivacy/vvt'); }}
             accent={activeVVT.length > 0 ? 'green' : 'default'}
           />
           <StatCard
             icon={FileSearch}
-            label="Datenschutz-Folgenabschätzungen"
+            label={t('vaktprivacy.overviewPage.statDPIA')}
             value={dpias?.length ?? 0}
-            sub={activeDPIAs.length > 0 ? `${String(activeDPIAs.length)} in Bearbeitung` : 'alle abgeschlossen'}
+            sub={activeDPIAs.length > 0 ? `${String(activeDPIAs.length)} ${t('vaktprivacy.overviewPage.statDPIASubPending')}` : t('vaktprivacy.overviewPage.statDPIASubDone')}
             onClick={() => { navigate('/vaktprivacy/dpia'); }}
             accent={activeDPIAs.length > 0 ? 'yellow' : 'default'}
           />
           <StatCard
             icon={Handshake}
-            label="AV-Verträge (AVV)"
+            label={t('vaktprivacy.overviewPage.statAVV')}
             value={activeAVVs.length}
-            sub={expiredAVVs.length > 0 ? `${String(expiredAVVs.length)} abgelaufen` : 'alle gültig'}
+            sub={expiredAVVs.length > 0 ? `${String(expiredAVVs.length)} ${t('vaktprivacy.overviewPage.statAVVSubExpired')}` : t('vaktprivacy.overviewPage.statAVVSubValid')}
             onClick={() => { navigate('/vaktprivacy/avv'); }}
             accent={expiredAVVs.length > 0 ? 'red' : 'default'}
           />
           <StatCard
             icon={AlertTriangle}
-            label="Datenpannen"
+            label={t('vaktprivacy.overviewPage.statBreach')}
             value={openBreaches.length}
-            sub={urgentBreaches.length > 0 ? `${urgentBreaches.length} innerhalb 72h` : 'keine aktiven'}
+            sub={urgentBreaches.length > 0 ? `${urgentBreaches.length} ${t('vaktprivacy.overviewPage.statBreachSubUrgent')}` : t('vaktprivacy.overviewPage.statBreachSubNone')}
             onClick={() => { navigate('/vaktprivacy/breach'); }}
             accent={urgentBreaches.length > 0 ? 'red' : openBreaches.length > 0 ? 'yellow' : 'green'}
           />
           <StatCard
             icon={Users}
-            label="Datenschutzanfragen (DSR)"
+            label={t('vaktprivacy.overviewPage.statDSR')}
             value={openDSRs.length}
-            sub={overdueDSRs.length > 0 ? `${overdueDSRs.length} überfällig` : 'keine überfälligen'}
+            sub={overdueDSRs.length > 0 ? `${overdueDSRs.length} ${t('vaktprivacy.overviewPage.statDSRSubOverdue')}` : t('vaktprivacy.overviewPage.statDSRSubNone')}
             onClick={() => { navigate('/vaktprivacy/dsr'); }}
             accent={overdueDSRs.length > 0 ? 'red' : openDSRs.length > 0 ? 'yellow' : 'green'}
           />
@@ -140,42 +142,42 @@ export default function SecPrivacyOverviewPage() {
         {/* Module Cards */}
         <div>
           <h2 className="text-sm font-semibold text-secondary uppercase tracking-wider mb-3">
-            Bereiche
+            {t('vaktprivacy.overviewPage.sectionAreas')}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
               {
                 icon: FileText,
-                title: 'Verzeichnis von Verarbeitungstätigkeiten (VVT)',
-                desc: 'Art. 30 DSGVO — Alle Datenverarbeitungen Ihrer Organisation dokumentieren.',
+                title: t('vaktprivacy.overviewPage.moduleVVTTitle'),
+                desc: t('vaktprivacy.overviewPage.moduleVVTDesc'),
                 path: '/vaktprivacy/vvt',
                 pro: false,
               },
               {
                 icon: FileSearch,
-                title: 'Datenschutz-Folgenabschätzung (DSFA)',
-                desc: 'Art. 35 DSGVO — Risikoanalyse für hochriskante Verarbeitungen.',
+                title: t('vaktprivacy.overviewPage.moduleDSFATitle'),
+                desc: t('vaktprivacy.overviewPage.moduleDSFADesc'),
                 path: '/vaktprivacy/dpia',
                 pro: true,
               },
               {
                 icon: Handshake,
-                title: 'Auftragsverarbeiter-Verträge (AVV)',
-                desc: 'Art. 28 DSGVO — Verträge mit Dienstleistern verwalten und Ablaufdaten überwachen.',
+                title: t('vaktprivacy.overviewPage.moduleAVVTitle'),
+                desc: t('vaktprivacy.overviewPage.moduleAVVDesc'),
                 path: '/vaktprivacy/avv',
                 pro: false,
               },
               {
                 icon: AlertTriangle,
-                title: 'Datenpannen-Register',
-                desc: 'Art. 33/34 DSGVO — Datenpannen dokumentieren und die 72h-Meldepflicht einhalten.',
+                title: t('vaktprivacy.overviewPage.moduleBreachTitle'),
+                desc: t('vaktprivacy.overviewPage.moduleBreachDesc'),
                 path: '/vaktprivacy/breach',
                 pro: false,
               },
               {
                 icon: Users,
-                title: 'Datenschutzanfragen (DSR)',
-                desc: 'Art. 15–21 DSGVO — Betroffenenrechte verwalten und die 30-Tage-Frist einhalten.',
+                title: t('vaktprivacy.overviewPage.moduleDSRTitle'),
+                desc: t('vaktprivacy.overviewPage.moduleDSRDesc'),
                 path: '/vaktprivacy/dsr',
                 pro: false,
               },

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { PackageX, RefreshCw } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -31,11 +32,11 @@ const eolVariant: Record<
   unknown: 'secondary',
 }
 
-/** Human-readable label for an EOL status value. */
-const eolLabel: Record<ComponentSummary['eol_status'], string> = {
-  supported: 'Unterstützt',
-  eol: 'End-of-Life',
-  unknown: 'Unbekannt',
+/** i18n key lookup for an EOL status value. */
+const eolStatusKey: Record<ComponentSummary['eol_status'], string> = {
+  supported: 'vaktscan.eolPage.statusSupported',
+  eol: 'vaktscan.eolPage.statusEol',
+  unknown: 'vaktscan.eolPage.statusUnknown',
 }
 
 /**
@@ -48,6 +49,7 @@ const eolLabel: Record<ComponentSummary['eol_status'], string> = {
  */
 export default function EOLDashboardPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   // Trigger SBOM is asset-scoped; we expose a global refresh here that re-fetches
   // the EOL dashboard query. For per-asset triggering, use the asset detail page.
@@ -67,10 +69,10 @@ export default function EOLDashboardPage() {
   const unknownCount = all.filter((c) => c.eol_status === 'unknown').length
 
   const tabs: { key: FilterTab; label: string; count: number }[] = [
-    { key: 'all', label: 'Alle', count: all.length },
-    { key: 'eol', label: 'End-of-Life', count: eolCount },
-    { key: 'supported', label: 'Unterstützt', count: supportedCount },
-    { key: 'unknown', label: 'Unbekannt', count: unknownCount },
+    { key: 'all', label: t('vaktscan.eolPage.tabAll'), count: all.length },
+    { key: 'eol', label: t('vaktscan.eolPage.statusEol'), count: eolCount },
+    { key: 'supported', label: t('vaktscan.eolPage.statusSupported'), count: supportedCount },
+    { key: 'unknown', label: t('vaktscan.eolPage.statusUnknown'), count: unknownCount },
   ]
 
   if (isLoading) {
@@ -78,7 +80,7 @@ export default function EOLDashboardPage() {
       <div className="flex flex-col h-full">
         <PageHeader
           title="EOL-Dashboard"
-          description="Software-Komponenten nach End-of-Life-Status (CRA-Readiness)."
+          description={t('vaktscan.eolPage.description')}
         />
         <div className="flex justify-center py-16">
           <Spinner size="md" />
@@ -92,16 +94,16 @@ export default function EOLDashboardPage() {
       <div className="flex flex-col h-full">
         <PageHeader
           title="EOL-Dashboard"
-          description="Software-Komponenten nach End-of-Life-Status (CRA-Readiness)."
+          description={t('vaktscan.eolPage.description')}
           actions={
             <Button
               variant="outline"
               size="sm"
-              onClick={() => void refetch()}
+              onClick={() => { void refetch(); }}
               disabled={isLoading}
             >
               <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              EOL-Scan aktualisieren
+              {t('vaktscan.eolPage.refresh')}
             </Button>
           }
         />
@@ -136,22 +138,22 @@ export default function EOLDashboardPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 p-4">Fehler: {(error).message}</p>
+            <p className="text-sm text-red-600 p-4">{t('vaktscan.eolPage.error', { msg: (error).message })}</p>
           )}
 
           {!error && filtered.length === 0 && (
             <EmptyState
               icon={PackageX}
-              title="Keine Komponenten gefunden"
+              title={t('vaktscan.eolPage.emptyTitle')}
               description={
                 activeTab === 'all'
-                  ? 'Noch keine SBOM-Scans durchgeführt. Starte einen SBOM-Scan auf der Asset-Detailseite.'
-                  : 'Keine Komponenten in diesem Filter.'
+                  ? t('vaktscan.eolPage.emptyDescAll')
+                  : t('vaktscan.eolPage.emptyDescFilter')
               }
               action={
                 activeTab === 'all' ? (
                   <Button size="sm" onClick={() => { navigate('/vaktscan/assets'); }}>
-                    Assets konfigurieren
+                    {t('vaktscan.eolPage.configureAssets')}
                   </Button>
                 ) : undefined
               }
@@ -163,12 +165,12 @@ export default function EOLDashboardPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Version</TableHead>
+                    <TableHead>{t('common.name')}</TableHead>
+                    <TableHead>{t('vaktscan.eolPage.colVersion')}</TableHead>
                     <TableHead>PURL</TableHead>
-                    <TableHead>EOL-Status</TableHead>
-                    <TableHead>EOL-Datum</TableHead>
-                    <TableHead>Asset-ID</TableHead>
+                    <TableHead>{t('vaktscan.eolPage.colEolStatus')}</TableHead>
+                    <TableHead>{t('vaktscan.eolPage.colEolDate')}</TableHead>
+                    <TableHead>{t('vaktscan.eolPage.colAssetId')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -183,7 +185,7 @@ export default function EOLDashboardPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={eolVariant[comp.eol_status]}>
-                          {eolLabel[comp.eol_status]}
+                          {t(eolStatusKey[comp.eol_status])}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm tabular-nums text-secondary">

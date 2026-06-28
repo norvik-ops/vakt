@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Flag, ShieldAlert, ShieldCheck, Copy, RefreshCw, Info } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
@@ -24,6 +25,7 @@ function StatCard({ label, value, icon: Icon, accent }: { label: string; value: 
 }
 
 export default function PhishReportsPage() {
+  const { t } = useTranslation()
   const { data: reports, isLoading } = usePhishReports()
   const { data: stats } = usePhishReportStats()
   const { formatDateTime } = useFormatDate()
@@ -52,22 +54,22 @@ export default function PhishReportsPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Phish-Berichte"
-        description="Gemeldete Phishing-E-Mails aus dem Outlook- und Gmail-Add-in."
+        title={t('vaktaware.phishReports.title')}
+        description={t('vaktaware.phishReports.description')}
       />
 
       <div className="flex-1 p-6 space-y-6 overflow-auto">
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4">
-          <StatCard label="Gesamt gemeldet" value={stats?.total ?? 0} icon={Flag} />
+          <StatCard label={t('vaktaware.phishReports.statTotal')} value={stats?.total ?? 0} icon={Flag} />
           <StatCard
-            label="Simulation erkannt"
+            label={t('vaktaware.phishReports.statSimulations')}
             value={stats?.simulations ?? 0}
             icon={ShieldCheck}
             accent="bg-green-100 dark:bg-green-900/30 text-green-600"
           />
           <StatCard
-            label="Echte Bedrohungen"
+            label={t('vaktaware.phishReports.statRealThreats')}
             value={stats?.real_threats ?? 0}
             icon={ShieldAlert}
             accent="bg-red-100 dark:bg-red-900/30 text-red-600"
@@ -76,7 +78,7 @@ export default function PhishReportsPage() {
 
         {/* Table */}
         <div>
-          <h2 className="text-sm font-semibold mb-3">Gemeldete Mails</h2>
+          <h2 className="text-sm font-semibold mb-3">{t('vaktaware.phishReports.reportedMails')}</h2>
           {isLoading ? (
             <div className="flex justify-center py-16">
               <Spinner size="md" />
@@ -84,19 +86,19 @@ export default function PhishReportsPage() {
           ) : !reports || reports.length === 0 ? (
             <EmptyState
               icon={Flag}
-              title="Noch keine Meldungen"
-              description="Sobald Mitarbeiter verdächtige E-Mails über das Add-in melden, erscheinen sie hier."
+              title={t('vaktaware.phishReports.noReports')}
+              description={t('vaktaware.phishReports.noReportsDesc')}
             />
           ) : (
             <div className="rounded-md border border-border bg-surface overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Melder</TableHead>
-                    <TableHead>Betreff</TableHead>
-                    <TableHead>Absender</TableHead>
-                    <TableHead>Typ</TableHead>
-                    <TableHead>Gemeldet am</TableHead>
+                    <TableHead>{t('vaktaware.phishReports.colReporter')}</TableHead>
+                    <TableHead>{t('vaktaware.phishReports.colSubject')}</TableHead>
+                    <TableHead>{t('vaktaware.phishReports.colSender')}</TableHead>
+                    <TableHead>{t('vaktaware.phishReports.colType')}</TableHead>
+                    <TableHead>{t('vaktaware.phishReports.colReportedAt')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -111,9 +113,9 @@ export default function PhishReportsPage() {
                       </TableCell>
                       <TableCell>
                         {r.is_simulation ? (
-                          <Badge variant="success" className="text-xs">Simulation</Badge>
+                          <Badge variant="success" className="text-xs">{t('vaktaware.phishReports.typeSimulation')}</Badge>
                         ) : (
-                          <Badge variant="destructive" className="text-xs">Echte Bedrohung</Badge>
+                          <Badge variant="destructive" className="text-xs">{t('vaktaware.phishReports.typeRealThreat')}</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-secondary">
@@ -132,17 +134,15 @@ export default function PhishReportsPage() {
           <div className="flex items-start gap-3">
             <Info className="w-4 h-4 mt-0.5 text-brand shrink-0" />
             <div>
-              <h2 className="text-sm font-semibold">Phish-Button konfigurieren</h2>
+              <h2 className="text-sm font-semibold">{t('vaktaware.phishReports.configTitle')}</h2>
               <p className="text-xs text-secondary mt-1">
-                Installiere das Vakt-Add-in in Outlook oder Gmail und trage deinen Org-Token ein.
-                Wenn ein Mitarbeiter auf "Als Phishing melden" klickt, sendet das Add-in einen Webhook
-                an <code className="bg-bg rounded px-1 text-[11px]">/api/v1/vaktaware/phish-report</code> mit diesem Token.
+                {t('vaktaware.phishReports.configDesc')}
               </p>
             </div>
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs font-medium text-secondary uppercase tracking-wide">Dein Org-Token</p>
+            <p className="text-xs font-medium text-secondary uppercase tracking-wide">{t('vaktaware.phishReports.orgToken')}</p>
             {activeToken ? (
               <div className="flex items-center gap-2">
                 <code className="flex-1 bg-bg rounded-md border border-border px-3 py-2 text-xs font-mono break-all select-all">
@@ -154,12 +154,12 @@ export default function PhishReportsPage() {
                   onClick={() => { handleCopy(activeToken); }}
                 >
                   <Copy className="w-3.5 h-3.5 mr-1" />
-                  {copied ? 'Kopiert!' : 'Kopieren'}
+                  {copied ? t('vaktaware.phishReports.copied') : t('vaktaware.phishReports.copy')}
                 </Button>
               </div>
             ) : (
               <p className="text-xs text-secondary italic">
-                Klicke auf "Token generieren" um einen neuen Token zu erstellen.
+                {t('vaktaware.phishReports.tokenPlaceholder')}
               </p>
             )}
           </div>
@@ -171,21 +171,21 @@ export default function PhishReportsPage() {
             disabled={regenerate.isPending}
           >
             <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${regenerate.isPending ? 'animate-spin' : ''}`} />
-            {activeToken ? 'Token neu generieren' : 'Token generieren'}
+            {activeToken ? t('vaktaware.phishReports.regenerateToken') : t('vaktaware.phishReports.generateToken')}
           </Button>
 
           {activeToken && (
             <p className="text-xs text-amber-600">
-              Hinweis: Durch Neu-Generieren wird der alte Token ungültig. Aktualisiere das Add-in entsprechend.
+              {t('vaktaware.phishReports.tokenWarning')}
             </p>
           )}
 
           <div className="border-t border-border pt-4 space-y-2">
-            <p className="text-xs font-medium">Webhook-Endpunkt</p>
+            <p className="text-xs font-medium">{t('vaktaware.phishReports.webhookEndpoint')}</p>
             <code className="block bg-bg rounded-md border border-border px-3 py-2 text-xs font-mono">
               POST /api/v1/vaktaware/phish-report
             </code>
-            <p className="text-xs font-medium mt-2">Payload-Beispiel</p>
+            <p className="text-xs font-medium mt-2">{t('vaktaware.phishReports.payloadExample')}</p>
             <pre className="bg-bg rounded-md border border-border px-3 py-2 text-xs font-mono overflow-x-auto">{`{
   "org_token": "<dein-token>",
   "reporter_email": "max.mustermann@firma.de",

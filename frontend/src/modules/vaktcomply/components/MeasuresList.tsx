@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Lock, Trash2, Plus, ChevronDown, ChevronRight } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -95,6 +96,7 @@ function AddMeasureForm({
   controlId: string
   onCancel: () => void
 }) {
+  const { t } = useTranslation()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [difficulty, setDifficulty] = useState<CreateMeasureInput['difficulty']>('medium')
@@ -122,7 +124,7 @@ function AddMeasureForm({
       className="border border-border rounded-lg p-4 space-y-3 bg-surface2"
     >
       <div className="space-y-1.5">
-        <Label htmlFor="measure-title">Titel</Label>
+        <Label htmlFor="measure-title">{t('vaktcomply.measuresList.title')}</Label>
         <Input
           id="measure-title"
           value={title}
@@ -135,7 +137,7 @@ function AddMeasureForm({
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="measure-desc">Beschreibung</Label>
+        <Label htmlFor="measure-desc">{t('common.description')}</Label>
         <textarea
           id="measure-desc"
           rows={3}
@@ -147,7 +149,7 @@ function AddMeasureForm({
         />
       </div>
       <div className="space-y-1.5">
-        <Label>Schwierigkeitsgrad</Label>
+        <Label>{t('vaktcomply.measuresList.difficulty')}</Label>
         <Select
           value={difficulty}
           onValueChange={(v) => { setDifficulty(v as CreateMeasureInput['difficulty']); }}
@@ -156,9 +158,9 @@ function AddMeasureForm({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="easy">Einfach</SelectItem>
-            <SelectItem value="medium">Mittel</SelectItem>
-            <SelectItem value="hard">Komplex</SelectItem>
+            <SelectItem value="easy">{t('vaktcomply.measuresList.difficultyEasy')}</SelectItem>
+            <SelectItem value="medium">{t('vaktcomply.measuresList.difficultyMedium')}</SelectItem>
+            <SelectItem value="hard">{t('vaktcomply.measuresList.difficultyComplex')}</SelectItem>
           </SelectContent>
         </Select>
       </div>

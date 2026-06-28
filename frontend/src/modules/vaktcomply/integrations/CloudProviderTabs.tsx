@@ -187,7 +187,7 @@ export function AWSTab() {
           </p>
         </div>
         <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Region</label>
+          <label className="block text-xs font-medium text-secondary mb-1">{t('vaktcomply.cloudProviderTabs.region')}</label>
           <select
             value={region}
             onChange={(e) => { setRegion(e.target.value); }}
@@ -652,14 +652,14 @@ export function IONOSTab() {
         {authMode === 'credentials' ? (
           <>
             <div>
-              <label className="block text-xs font-medium text-secondary mb-1">Benutzername</label>
+              <label className="block text-xs font-medium text-secondary mb-1">{t('vaktcomply.cloudProviderTabs.username')}</label>
               <input type="text" value={username} onChange={(e) => { setUsername(e.target.value); }}
                 placeholder="IONOS-Benutzername"
                 className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
                 required />
             </div>
             <div>
-              <label className="block text-xs font-medium text-secondary mb-1">Passwort</label>
+              <label className="block text-xs font-medium text-secondary mb-1">{t('vaktcomply.cloudProviderTabs.password')}</label>
               <input type="password" value={password} onChange={(e) => { setPassword(e.target.value); }}
                 placeholder={cfg?.is_configured && cfg.password === '****' ? '****' : 'Passwort eingeben'}
                 className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
@@ -786,14 +786,14 @@ export function WazuhTab() {
             required />
         </div>
         <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Benutzername</label>
+          <label className="block text-xs font-medium text-secondary mb-1">{t('vaktcomply.cloudProviderTabs.username')}</label>
           <input type="text" value={username} onChange={(e) => { setUsername(e.target.value); }}
             placeholder="wazuh-readonly"
             className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
             required />
         </div>
         <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Passwort</label>
+          <label className="block text-xs font-medium text-secondary mb-1">{t('vaktcomply.cloudProviderTabs.password')}</label>
           <input type="password" value={password} onChange={(e) => { setPassword(e.target.value); }}
             placeholder={cfg?.is_configured && cfg.password === '****' ? '****' : 'Passwort eingeben'}
             className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"

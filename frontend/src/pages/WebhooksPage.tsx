@@ -140,7 +140,7 @@ function WebhookDialog({ open, onClose, initial }: WebhookDialogProps) {
               id="wh-name"
               value={name}
               onChange={(e) => { setName(e.target.value); }}
-              placeholder="z.B. Security-Slack"
+              placeholder={t('webhooks.namePlaceholder')}
             />
           </div>
 
@@ -168,7 +168,7 @@ function WebhookDialog({ open, onClose, initial }: WebhookDialogProps) {
                   type={showSecret ? 'text' : 'password'}
                   value={secret}
                   onChange={(e) => { setSecret(e.target.value); }}
-                  placeholder={isEdit ? '(unverändert)' : 'HMAC-Signatur-Secret'}
+                  placeholder={isEdit ? t('webhooks.secretUnchanged') : t('webhooks.secretPlaceholder')}
                   className="pr-9"
                 />
                 <button

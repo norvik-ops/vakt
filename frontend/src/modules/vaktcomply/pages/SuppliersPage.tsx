@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Building2, Plus, Pencil, Trash2, Download, Upload } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
@@ -28,19 +29,11 @@ const CRITICALITY_CLASS: Record<Supplier['criticality'], string> = {
   important: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
   critical: 'bg-red-500/20 text-red-400 border-red-500/30',
 }
-const CRITICALITY_LABELS: Record<Supplier['criticality'], string> = {
-  standard: 'Standard', important: 'Wichtig', critical: 'Kritisch',
-}
 
 const CONTRACT_STATUS_CLASS: Record<string, string> = {
   active: 'bg-green-500/20 text-green-400 border-green-500/30',
   expiring_soon: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
   expired: 'bg-red-500/20 text-red-400 border-red-500/30',
-}
-const CONTRACT_STATUS_LABELS: Record<string, string> = {
-  active: 'Aktiv',
-  expiring_soon: 'Läuft ab',
-  expired: 'Abgelaufen',
 }
 
 const ASSESSMENT_STATUS_CLASS: Record<string, string> = {
@@ -48,32 +41,39 @@ const ASSESSMENT_STATUS_CLASS: Record<string, string> = {
   pending: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
   completed: 'bg-green-500/20 text-green-400 border-green-500/30',
 }
-const ASSESSMENT_STATUS_LABELS: Record<string, string> = {
-  none: 'Nicht bewertet',
-  pending: 'Ausstehend',
-  completed: 'Abgeschlossen',
-}
 
 function ContractStatusBadge({ status }: { status?: string }) {
+  const { t } = useTranslation()
   if (!status) return null
+  const labels: Record<string, string> = {
+    active: t('suppliers.contract_active'),
+    expiring_soon: t('suppliers.contract_expiring_soon'),
+    expired: t('suppliers.contract_expired'),
+  }
   return (
     <Badge
       className={CONTRACT_STATUS_CLASS[status] ?? 'bg-secondary text-secondary-foreground'}
       data-testid="contract-status-badge"
     >
-      {CONTRACT_STATUS_LABELS[status] ?? status}
+      {labels[status] ?? status}
     </Badge>
   )
 }
 
 function AssessmentStatusBadge({ status }: { status?: string }) {
+  const { t } = useTranslation()
   if (!status) return null
+  const labels: Record<string, string> = {
+    none: t('suppliers.assessment_none'),
+    pending: t('suppliers.assessment_pending'),
+    completed: t('suppliers.assessment_completed'),
+  }
   return (
     <Badge
       className={ASSESSMENT_STATUS_CLASS[status] ?? 'bg-secondary text-secondary-foreground'}
       data-testid="assessment-status-badge"
     >
-      {ASSESSMENT_STATUS_LABELS[status] ?? status}
+      {labels[status] ?? status}
     </Badge>
   )
 }
@@ -115,10 +115,15 @@ function supplierToForm(s: Supplier): CreateSupplierInput {
 }
 
 function SupplierStatusBadge({ supplierId }: { supplierId: string }) {
+  const { t } = useTranslation()
   const { data: status } = useSupplierStatus(supplierId)
   if (!status) return null
   const variant = statusToVariant(status.status)
-  const labels = { green: 'Grün', yellow: 'Gelb', red: 'Rot' }
+  const labels: Record<string, string> = {
+    green: t('suppliers.status_green'),
+    yellow: t('suppliers.status_yellow'),
+    red: t('suppliers.status_red'),
+  }
   return (
     <Badge
       variant={variant}
@@ -138,14 +143,20 @@ function SupplierStatusBadge({ supplierId }: { supplierId: string }) {
 }
 
 function SupplierCard({ supplier, onEdit, onDelete }: { supplier: Supplier; onEdit: () => void; onDelete: () => void }) {
+  const { t } = useTranslation()
   const { formatDate } = useFormatDate()
+  const criticalityLabels: Record<Supplier['criticality'], string> = {
+    standard: t('suppliers.criticality_standard'),
+    important: t('suppliers.criticality_important'),
+    critical: t('suppliers.criticality_critical'),
+  }
   return (
     <Card>
       <CardContent className="pt-5 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <p className="font-medium text-sm">{supplier.name}</p>
           <div className="flex items-center gap-1.5 shrink-0">
-            <Badge className={CRITICALITY_CLASS[supplier.criticality]}>{CRITICALITY_LABELS[supplier.criticality]}</Badge>
+            <Badge className={CRITICALITY_CLASS[supplier.criticality]}>{criticalityLabels[supplier.criticality]}</Badge>
             <ContractStatusBadge status={supplier.contract_status} />
             <AssessmentStatusBadge status={supplier.assessment_status} />
             <SupplierStatusBadge supplierId={supplier.id} />
@@ -162,8 +173,8 @@ function SupplierCard({ supplier, onEdit, onDelete }: { supplier: Supplier; onEd
           {supplier.data_location && <Badge variant="outline" className="text-xs">{supplier.data_location}</Badge>}
         </div>
         <div className="text-xs text-muted-foreground space-y-0.5">
-          {supplier.contact_name && <p>Kontakt: {supplier.contact_name}{supplier.contact_email ? ` · ${supplier.contact_email}` : ''}</p>}
-          {supplier.contract_end && <p>Vertragsende: {formatDate(supplier.contract_end)}</p>}
+          {supplier.contact_name && <p>{t('suppliers.contactPrefix')}{supplier.contact_name}{supplier.contact_email ? ` · ${supplier.contact_email}` : ''}</p>}
+          {supplier.contract_end && <p>{t('suppliers.contractEndPrefix')}{formatDate(supplier.contract_end)}</p>}
         </div>
       </CardContent>
     </Card>
@@ -171,6 +182,7 @@ function SupplierCard({ supplier, onEdit, onDelete }: { supplier: Supplier; onEd
 }
 
 export default function SuppliersPage() {
+  const { t } = useTranslation()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState<CreateSupplierInput>(emptyForm())
@@ -190,7 +202,7 @@ export default function SuppliersPage() {
   const importCSV = useImportSuppliersCSV()
   const { errors: supErrors, validate: validateSup, clearError: clearSupError, clearAll: clearSupErrors } = useFormValidation<Record<string, unknown>>({
     name: { required: true, maxLength: 200 },
-    contact_email: { pattern: /^$|^[^\s@]+@[^\s@]+\.[^\s@]+$/, patternMessage: 'Bitte eine gültige E-Mail-Adresse eingeben.' },
+    contact_email: { pattern: /^$|^[^\s@]+@[^\s@]+\.[^\s@]+$/, patternMessage: t('validation.email') },
   })
 
   function openCreate() {
@@ -210,7 +222,7 @@ export default function SuppliersPage() {
   }
 
   function handleDelete(id: string) {
-    if (confirm('Lieferanten wirklich löschen?')) {
+    if (confirm(t('suppliers.deleteConfirm'))) {
       deleteSupplier.mutate(id)
     }
   }
@@ -232,7 +244,7 @@ export default function SuppliersPage() {
       createSupplier.mutate(payload, {
         onSuccess: () => {
           setDialogOpen(false)
-          toast(`Lieferant hinzugefügt: ${form.name} wurde zur Lieferantenliste hinzugefügt.`, 'success')
+          toast(t('suppliers.toastAdded', { name: form.name }), 'success')
         },
       })
     }
@@ -243,7 +255,7 @@ export default function SuppliersPage() {
       credentials: 'include',
     })
     if (!res.ok) {
-      toast('CSV-Export fehlgeschlagen. Bitte versuchen Sie es erneut.', 'error')
+      toast(t('suppliers.toastExportFailed'), 'error')
       return
     }
     const blob = await res.blob()
@@ -268,10 +280,10 @@ export default function SuppliersPage() {
     formData.append('file', file)
     importCSV.mutate(formData, {
       onSuccess: (result) => {
-        toast(`Import abgeschlossen: ${result.imported} importiert, ${result.skipped} übersprungen.`, 'success')
+        toast(t('suppliers.toastImportDone', { imported: result.imported, skipped: result.skipped }), 'success')
       },
       onError: (err) => {
-        toast(`Import fehlgeschlagen: ${err.message}`, 'error')
+        toast(t('suppliers.toastImportFailed', { message: err.message }), 'error')
       },
     })
     // Reset file input so same file can be re-uploaded
@@ -284,17 +296,17 @@ export default function SuppliersPage() {
     <ProGate error={isError ? error : null}>
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Lieferanten-Register"
-        description="Drittanbieter und Dienstleister verwalten — NIS2 Art. 21 / DORA Art. 28."
+        title={t('suppliers.title')}
+        description={t('suppliers.description')}
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => { void handleExportCSV(); }}>
               <Download className="w-4 h-4 mr-1" />
-              CSV exportieren
+              {t('suppliers.csvExport')}
             </Button>
             <Button variant="outline" onClick={handleImportCSVClick} disabled={importCSV.isPending} data-testid="import-csv-button">
               <Upload className="w-4 h-4 mr-1" />
-              {importCSV.isPending ? 'Importieren …' : 'CSV importieren'}
+              {importCSV.isPending ? t('suppliers.importing') : t('suppliers.csvImport')}
             </Button>
             <input
               ref={fileInputRef}
@@ -306,7 +318,7 @@ export default function SuppliersPage() {
             />
             <Button onClick={openCreate}>
               <Plus className="w-4 h-4 mr-1" />
-              Lieferant hinzufügen
+              {t('suppliers.addSupplier')}
             </Button>
           </div>
         }
@@ -315,38 +327,38 @@ export default function SuppliersPage() {
       {/* Filter toolbar */}
       <div className="px-6 pt-2 pb-0 flex flex-wrap gap-3 items-center" data-testid="filter-toolbar">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Kritikalität:</span>
+          <span className="text-xs text-muted-foreground">{t('suppliers.filterCriticality')}</span>
           <Select
             value={filterCriticality || '_all_'}
             onValueChange={(v) => { setFilterCriticality(v === '_all_' ? '' : v); }}
             data-testid="criticality-filter"
           >
             <SelectTrigger className="h-8 w-36 text-xs">
-              <SelectValue placeholder="Alle" />
+              <SelectValue placeholder={t('common.all')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="_all_">Alle</SelectItem>
-              <SelectItem value="standard">Standard</SelectItem>
-              <SelectItem value="important">Wichtig</SelectItem>
-              <SelectItem value="critical">Kritisch</SelectItem>
+              <SelectItem value="_all_">{t('common.all')}</SelectItem>
+              <SelectItem value="standard">{t('suppliers.criticality_standard')}</SelectItem>
+              <SelectItem value="important">{t('suppliers.criticality_important')}</SelectItem>
+              <SelectItem value="critical">{t('suppliers.criticality_critical')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Bewertungsstatus:</span>
+          <span className="text-xs text-muted-foreground">{t('suppliers.filterAssessment')}</span>
           <Select
             value={filterAssessmentStatus || '_all_'}
             onValueChange={(v) => { setFilterAssessmentStatus(v === '_all_' ? '' : v); }}
             data-testid="assessment-status-filter"
           >
             <SelectTrigger className="h-8 w-44 text-xs">
-              <SelectValue placeholder="Alle" />
+              <SelectValue placeholder={t('common.all')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="_all_">Alle</SelectItem>
-              <SelectItem value="none">Nicht bewertet</SelectItem>
-              <SelectItem value="pending">Ausstehend</SelectItem>
-              <SelectItem value="completed">Abgeschlossen</SelectItem>
+              <SelectItem value="_all_">{t('common.all')}</SelectItem>
+              <SelectItem value="none">{t('suppliers.assessment_none')}</SelectItem>
+              <SelectItem value="pending">{t('suppliers.assessment_pending')}</SelectItem>
+              <SelectItem value="completed">{t('suppliers.assessment_completed')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -357,7 +369,7 @@ export default function SuppliersPage() {
             className="h-8 text-xs"
             onClick={() => { setFilterCriticality(''); setFilterAssessmentStatus('') }}
           >
-            Filter zurücksetzen
+            {t('suppliers.resetFilters')}
           </Button>
         )}
       </div>
@@ -365,14 +377,14 @@ export default function SuppliersPage() {
       <div className="flex-1 p-6">
         {isLoading && <SkeletonCardGrid count={6} />}
         {isError && (
-          <div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">Fehler beim Laden des Lieferanten-Registers.</div>
+          <div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">{t('suppliers.loadError')}</div>
         )}
         {!isLoading && !isError && suppliers?.length === 0 && (
           <EmptyState
             icon={Building2}
-            title="Noch keine Lieferanten"
-            description="Dokumentiere Drittanbieter und Dienstleister. Die Lieferantenverwaltung hilft dir, Abhängigkeiten und Risiken im Blick zu behalten."
-            action={<Button onClick={openCreate}><Plus className="w-4 h-4 mr-1" />Lieferant hinzufügen</Button>}
+            title={t('suppliers.emptyTitle')}
+            description={t('suppliers.emptyDesc')}
+            action={<Button onClick={openCreate}><Plus className="w-4 h-4 mr-1" />{t('suppliers.addSupplier')}</Button>}
           />
         )}
         {!isLoading && !isError && suppliers && suppliers.length > 0 && (
@@ -387,39 +399,39 @@ export default function SuppliersPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editId ? 'Lieferant bearbeiten' : 'Lieferant hinzufügen'}</DialogTitle>
+            <DialogTitle>{editId ? t('suppliers.editTitle') : t('suppliers.addSupplier')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>Name <span className="text-red-400 text-xs">*</span></Label>
-              <Input placeholder="z.B. Cloudflare Inc." value={form.name}
+              <Label>{t('common.name')} <span className="text-red-400 text-xs">*</span></Label>
+              <Input placeholder={t('suppliers.namePlaceholder')} value={form.name}
                 onChange={(e) => { setForm((f) => ({ ...f, name: e.target.value })); clearSupError('name') }} />
               <FieldError error={supErrors.name ?? null} />
             </div>
             <div className="space-y-1.5">
-              <Label>Dienstleistungstyp</Label>
-              <Input placeholder="z.B. CDN, Cloud-Speicher, IT-Security" value={form.service_type ?? ''}
+              <Label>{t('suppliers.serviceType')}</Label>
+              <Input placeholder={t('suppliers.serviceTypePlaceholder')} value={form.service_type ?? ''}
                 onChange={(e) => { setForm((f) => ({ ...f, service_type: e.target.value })); }} />
             </div>
             <div className="space-y-1.5">
-              <Label>Kritikalität</Label>
+              <Label>{t('suppliers.criticalityLabel')}</Label>
               <Select value={form.criticality ?? 'standard'} onValueChange={(v) => { setForm((f) => ({ ...f, criticality: v as Supplier['criticality'] })); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="standard">Standard</SelectItem>
-                  <SelectItem value="important">Wichtig</SelectItem>
-                  <SelectItem value="critical">Kritisch</SelectItem>
+                  <SelectItem value="standard">{t('suppliers.criticality_standard')}</SelectItem>
+                  <SelectItem value="important">{t('suppliers.criticality_important')}</SelectItem>
+                  <SelectItem value="critical">{t('suppliers.criticality_critical')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Bewertungsstatus</Label>
+              <Label>{t('suppliers.assessmentLabel')}</Label>
               <Select value={form.assessment_status ?? 'none'} onValueChange={(v) => { setForm((f) => ({ ...f, assessment_status: v as 'none' | 'pending' | 'completed' })); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Nicht bewertet</SelectItem>
-                  <SelectItem value="pending">Ausstehend</SelectItem>
-                  <SelectItem value="completed">Abgeschlossen</SelectItem>
+                  <SelectItem value="none">{t('suppliers.assessment_none')}</SelectItem>
+                  <SelectItem value="pending">{t('suppliers.assessment_pending')}</SelectItem>
+                  <SelectItem value="completed">{t('suppliers.assessment_completed')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -437,31 +449,31 @@ export default function SuppliersPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Ansprechpartner</Label>
+                <Label>{t('suppliers.contactName')}</Label>
                 <Input placeholder="Name" value={form.contact_name ?? ''}
                   onChange={(e) => { setForm((f) => ({ ...f, contact_name: e.target.value })); }} />
               </div>
               <div className="space-y-1.5">
-                <Label>E-Mail</Label>
-                <Input placeholder="E-Mail" type="email" value={form.contact_email ?? ''}
+                <Label>{t('common.email')}</Label>
+                <Input placeholder={t('common.email')} type="email" value={form.contact_email ?? ''}
                   onChange={(e) => { setForm((f) => ({ ...f, contact_email: e.target.value })); clearSupError('contact_email') }} />
                 <FieldError error={supErrors.contact_email ?? null} />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Vertragsende</Label>
+              <Label>{t('suppliers.contractEnd')}</Label>
               <Input type="date" value={form.contract_end ?? ''}
                 onChange={(e) => { setForm((f) => ({ ...f, contract_end: e.target.value })); }} />
             </div>
             <div className="space-y-1.5">
-              <Label>Notizen</Label>
-              <Textarea rows={3} placeholder="Weitere Informationen" value={form.notes ?? ''}
+              <Label>{t('suppliers.notes')}</Label>
+              <Textarea rows={3} placeholder={t('suppliers.notesPlaceholder')} value={form.notes ?? ''}
                 onChange={(e) => { setForm((f) => ({ ...f, notes: e.target.value })); }} />
             </div>
             <div className="space-y-1.5">
-              <Label>Datenspeicherort (DORA)</Label>
+              <Label>{t('suppliers.dataLocation')}</Label>
               <Select value={form.data_location ?? ''} onValueChange={(v) => { setForm((f) => ({ ...f, data_location: v })); }}>
-                <SelectTrigger><SelectValue placeholder="Auswählen …" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('suppliers.selectPlaceholder')} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="EU">EU</SelectItem>
                   <SelectItem value="NonEU">NonEU</SelectItem>
@@ -470,20 +482,20 @@ export default function SuppliersPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Unterdienstleister (kommagetrennt)</Label>
-              <Textarea rows={2} placeholder="Komma-separiert eingeben" value={subSuppliersRaw}
+              <Label>{t('suppliers.subcontractors')}</Label>
+              <Textarea rows={2} placeholder={t('suppliers.subcontractorsPlaceholder')} value={subSuppliersRaw}
                 onChange={(e) => { setSubSuppliersRaw(e.target.value); }} />
             </div>
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <input type="checkbox" checked={form.exit_strategy_exists ?? false}
                 onChange={(e) => { setForm((f) => ({ ...f, exit_strategy_exists: e.target.checked })); }} />
-              Exit-Strategie vorhanden (DORA)
+              {t('suppliers.exitStrategy')}
             </label>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setDialogOpen(false); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setDialogOpen(false); }}>{t('common.cancel')}</Button>
             <Button onClick={handleSubmit} disabled={isPending}>
-              {isPending ? 'Speichern …' : editId ? 'Speichern' : 'Hinzufügen'}
+              {isPending ? t('suppliers.saving') : editId ? t('common.save') : t('suppliers.addSupplier')}
             </Button>
           </DialogFooter>
         </DialogContent>

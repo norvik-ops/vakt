@@ -14,18 +14,22 @@ import { useAuditRecord, useUpdateAuditRecord } from '../hooks/useAudits'
 import { useCreateCAPA } from '../hooks/useCAPAs'
 import type { AuditRecord, UpdateAuditRecordInput } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
-
-const STATUS_LABELS: Record<AuditRecord['status'], string> = {
-  planned: 'Geplant', in_progress: 'Laufend', completed: 'Abgeschlossen',
-}
+import { useTranslation } from 'react-i18next'
 
 export default function AuditDetailPage() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { formatDate } = useFormatDate()
   const { data: record, isLoading, isError } = useAuditRecord(id ?? '')
   const update = useUpdateAuditRecord(id ?? '')
   const createCAPA = useCreateCAPA()
+
+  const STATUS_LABELS: Record<AuditRecord['status'], string> = {
+    planned: t('vaktcomply.auditDetail.statusPlanned'),
+    in_progress: t('vaktcomply.auditDetail.statusInProgress'),
+    completed: t('vaktcomply.auditDetail.statusCompleted'),
+  }
 
   const [form, setForm] = useState<UpdateAuditRecordInput | null>(null)
   const [dirty, setDirty] = useState(false)
@@ -70,27 +74,27 @@ export default function AuditDetailPage() {
     </div>
   )
   if (isError || !record) return (
-    <div className="p-6 text-sm text-red-400">Audit nicht gefunden.</div>
+    <div className="p-6 text-sm text-red-400">{t('vaktcomply.auditDetail.notFound')}</div>
   )
 
   return (
     <div className="flex flex-col h-full">
       <PageHeader
         title={record.title}
-        description={record.scope || 'Auditdetails'}
+        description={record.scope || t('vaktcomply.auditDetail.defaultDescription')}
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => { navigate('/vaktcomply/audits'); }}>
               <ArrowLeft className="w-4 h-4 mr-1" />
-              Zurück
+              {t('vaktcomply.auditDetail.back')}
             </Button>
             <Button variant="outline" onClick={() => { setCAPADialogOpen(true); }}>
               <ClipboardCheck className="w-4 h-4 mr-1" />
-              CAPA erstellen
+              {t('vaktcomply.auditDetail.createCAPA')}
             </Button>
             <Button onClick={handleSave} disabled={!dirty || update.isPending}>
               <Save className="w-4 h-4 mr-1" />
-              {update.isPending ? 'Speichern …' : 'Speichern'}
+              {update.isPending ? t('vaktcomply.auditDetail.saving') : t('vaktcomply.auditDetail.save')}
             </Button>
           </div>
         }
@@ -100,23 +104,23 @@ export default function AuditDetailPage() {
         <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
             <Card>
-              <CardHeader><CardTitle className="text-sm">Auditdaten</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{t('vaktcomply.auditDetail.cardAuditData')}</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label>Titel</Label>
+                  <Label>{t('vaktcomply.auditDetail.labelTitle')}</Label>
                   <Input value={form.title} onChange={(e) => { set('title', e.target.value); }} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Prüfumfang</Label>
-                  <Input value={form.scope ?? ''} placeholder="z.B. A.9 Zugangskontrolle" onChange={(e) => { set('scope', e.target.value); }} />
+                  <Label>{t('vaktcomply.auditDetail.labelScope')}</Label>
+                  <Input value={form.scope ?? ''} placeholder={t('vaktcomply.auditDetail.placeholderScope')} onChange={(e) => { set('scope', e.target.value); }} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Auditor</Label>
+                    <Label>{t('vaktcomply.auditDetail.labelAuditor')}</Label>
                     <Input value={form.auditor ?? ''} onChange={(e) => { set('auditor', e.target.value); }} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Prüfdatum</Label>
+                    <Label>{t('vaktcomply.auditDetail.labelAuditDate')}</Label>
                     <Input type="date" value={form.audit_date} onChange={(e) => { set('audit_date', e.target.value); }} />
                   </div>
                 </div>
@@ -124,15 +128,15 @@ export default function AuditDetailPage() {
             </Card>
 
             <Card>
-              <CardHeader><CardTitle className="text-sm">Ergebnisse</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{t('vaktcomply.auditDetail.cardResults')}</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label>Feststellungen</Label>
-                  <Textarea rows={4} value={form.findings ?? ''} placeholder="Abweichungen und Beobachtungen …" onChange={(e) => { set('findings', e.target.value); }} />
+                  <Label>{t('vaktcomply.auditDetail.labelFindings')}</Label>
+                  <Textarea rows={4} value={form.findings ?? ''} placeholder={t('vaktcomply.auditDetail.placeholderFindings')} onChange={(e) => { set('findings', e.target.value); }} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Empfehlungen</Label>
-                  <Textarea rows={3} value={form.recommendations ?? ''} placeholder="Empfohlene Maßnahmen …" onChange={(e) => { set('recommendations', e.target.value); }} />
+                  <Label>{t('vaktcomply.auditDetail.labelRecommendations')}</Label>
+                  <Textarea rows={3} value={form.recommendations ?? ''} placeholder={t('vaktcomply.auditDetail.placeholderRecommendations')} onChange={(e) => { set('recommendations', e.target.value); }} />
                 </div>
               </CardContent>
             </Card>
@@ -140,7 +144,7 @@ export default function AuditDetailPage() {
 
           <div className="space-y-4">
             <Card>
-              <CardHeader><CardTitle className="text-sm">Status</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{t('vaktcomply.auditDetail.cardStatus')}</CardTitle></CardHeader>
               <CardContent>
                 <Select value={form.status} onValueChange={(v) => { set('status', v as AuditRecord['status']); }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -155,8 +159,8 @@ export default function AuditDetailPage() {
 
             <Card>
               <CardContent className="pt-4 space-y-1 text-xs text-muted-foreground">
-                <p>Erstellt: {formatDate(record.created_at)}</p>
-                <p>Geändert: {formatDate(record.updated_at)}</p>
+                <p>{t('vaktcomply.auditDetail.created')}: {formatDate(record.created_at)}</p>
+                <p>{t('vaktcomply.auditDetail.changed')}: {formatDate(record.updated_at)}</p>
               </CardContent>
             </Card>
           </div>
@@ -167,19 +171,19 @@ export default function AuditDetailPage() {
       <Dialog open={capaDialogOpen} onOpenChange={(v) => { if (!v) { setCAPADialogOpen(false); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>CAPA aus Audit erstellen</DialogTitle>
+            <DialogTitle>{t('vaktcomply.auditDetail.capaDialogTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <Label>Titel der Korrekturmaßnahme *</Label>
-              <Input value={capaTitle} onChange={(e) => { setCAPATitle(e.target.value); }} placeholder="Kurzbeschreibung der Maßnahme" />
+              <Label>{t('vaktcomply.auditDetail.capaLabelTitle')}</Label>
+              <Input value={capaTitle} onChange={(e) => { setCAPATitle(e.target.value); }} placeholder={t('vaktcomply.auditDetail.capaPlaceholder')} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setCAPADialogOpen(false); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setCAPADialogOpen(false); }}>{t('common.cancel')}</Button>
             <Button onClick={handleCreateCAPA} disabled={!capaTitle.trim() || createCAPA.isPending}>
               <Plus className="w-4 h-4 mr-1" />
-              {createCAPA.isPending ? 'Erstellen …' : 'CAPA erstellen'}
+              {createCAPA.isPending ? t('vaktcomply.auditDetail.capaCreating') : t('vaktcomply.auditDetail.capaCreate')}
             </Button>
           </DialogFooter>
         </DialogContent>

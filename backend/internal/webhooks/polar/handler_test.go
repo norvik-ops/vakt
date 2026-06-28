@@ -512,7 +512,7 @@ func TestIssueKey_IssuedKeyHasExpiry(t *testing.T) {
 }
 
 // TestProFeaturesTiering locks the Pro feature set to the public pricing page
-// (sec.norvikops.de): TISAX, DORA, ISO 42001, and multi_framework are not offered
+// (vakt.norvikops.de): TISAX, DORA, ISO 42001, and multi_framework are not offered
 // publicly and must never ship with a Polar-issued Pro key.
 func TestProFeaturesTiering(t *testing.T) {
 	has := func(f string) bool {

@@ -35,14 +35,14 @@ import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 type Role = 'admin' | 'editor' | 'viewer'
 
-function roleBadge(role: Role) {
+function roleBadge(role: Role, t: (key: string) => string) {
   switch (role) {
     case 'admin':
-      return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-0">Admin</Badge>
+      return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-0">{t('settings.team.roleAdmin')}</Badge>
     case 'editor':
-      return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-0">Editor</Badge>
+      return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-0">{t('settings.team.roleEditor')}</Badge>
     case 'viewer':
-      return <Badge variant="secondary">Viewer</Badge>
+      return <Badge variant="secondary">{t('settings.team.roleViewer')}</Badge>
   }
 }
 
@@ -81,7 +81,7 @@ function InviteDialog({ open, onClose }: InviteDialogProps) {
         handleClose()
         toast(t('teamSettingsPage.invitationSent'), 'success')
       },
-      onError: (err) => toast(`Fehler: ${err.message}`, 'error'),
+      onError: (err) => toast(`${t('common.error')}: ${err.message}`, 'error'),
     })
   }
 
@@ -164,7 +164,7 @@ function CreateUserDialog({ open, onClose }: CreateUserDialogProps) {
         handleClose()
         toast(t('teamSettingsPage.userCreated'), 'success')
       },
-      onError: (err) => toast(`Fehler: ${err.message}`, 'error'),
+      onError: (err) => toast(`${t('common.error')}: ${err.message}`, 'error'),
     })
   }
 
@@ -282,7 +282,7 @@ function MembersTable({ members, currentUserID }: { members: TeamMember[]; curre
   function handleRoleChange(member: TeamMember, newRole: Role) {
     updateRole.mutate({ id: member.id, role: newRole }, {
       onSuccess: () => toast(t('teamSettingsPage.roleSaved'), 'success'),
-      onError: (err) => toast(`Fehler: ${err.message}`, 'error'),
+      onError: (err) => toast(`${t('common.error')}: ${err.message}`, 'error'),
     })
   }
 
@@ -293,8 +293,8 @@ function MembersTable({ members, currentUserID }: { members: TeamMember[]; curre
   function confirmRemove() {
     if (removeTarget) {
       removeUser.mutate(removeTarget.id, {
-        onSuccess: () => toast('Gelöscht', 'success'),
-        onError: (err) => toast(`Fehler: ${err.message}`, 'error'),
+        onSuccess: () => toast(t('teamSettingsPage.deleted'), 'success'),
+        onError: (err) => toast(`${t('common.error')}: ${err.message}`, 'error'),
       })
     }
     setRemoveTarget(null)
@@ -340,7 +340,7 @@ function MembersTable({ members, currentUserID }: { members: TeamMember[]; curre
                 <TableCell className="text-secondary text-sm">{member.email}</TableCell>
                 <TableCell>
                   {isSelf || isLastAdmin ? (
-                    roleBadge(member.role)
+                    roleBadge(member.role, t)
                   ) : (
                     <Select
                       value={member.role}
@@ -351,9 +351,9 @@ function MembersTable({ members, currentUserID }: { members: TeamMember[]; curre
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="editor">Editor</SelectItem>
-                        <SelectItem value="viewer">Viewer</SelectItem>
+                        <SelectItem value="admin">{t('settings.team.roleAdmin')}</SelectItem>
+                        <SelectItem value="editor">{t('settings.team.roleEditor')}</SelectItem>
+                        <SelectItem value="viewer">{t('settings.team.roleViewer')}</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
@@ -427,7 +427,7 @@ function InvitationsTable({ invitations }: { invitations: TeamInvitation[] }) {
     if (revokeTarget) {
       revoke.mutate(revokeTarget.id, {
         onSuccess: () => toast(t('teamSettingsPage.revokeDialogTitle'), 'success'),
-        onError: (err) => toast(`Fehler: ${err.message}`, 'error'),
+        onError: (err) => toast(`${t('common.error')}: ${err.message}`, 'error'),
       })
     }
     setRevokeTarget(null)
@@ -455,7 +455,7 @@ function InvitationsTable({ invitations }: { invitations: TeamInvitation[] }) {
             {pending.map((inv) => (
               <TableRow key={inv.id}>
                 <TableCell className="font-medium text-sm">{inv.email}</TableCell>
-                <TableCell>{roleBadge(inv.role)}</TableCell>
+                <TableCell>{roleBadge(inv.role, t)}</TableCell>
                 <TableCell className="text-secondary text-sm">{inv.invited_by || '—'}</TableCell>
                 <TableCell className="text-secondary text-sm">
                   {daysUntil(inv.expires_at)} {t('teamSettingsPage.days')}

@@ -80,6 +80,15 @@ var contractCases = []contractCase{
 	// S105-3: SAML config — no auth → 401 (Pro-gated, but auth runs first)
 	{name: "admin_saml_config_get", method: http.MethodGet,
 		realPath: "/api/v1/admin/org/saml-config", specPath: "/api/v1/admin/org/saml-config"},
+	// Migration 229: SMTP config — no auth → 401
+	{name: "admin_smtp_get", method: http.MethodGet,
+		realPath: "/api/v1/admin/org/smtp", specPath: "/api/v1/admin/org/smtp"},
+	// Migration 230: Backup config — no auth → 401
+	{name: "admin_backup_config_get", method: http.MethodGet,
+		realPath: "/api/v1/admin/org/backup-config", specPath: "/api/v1/admin/org/backup-config"},
+	// Migration 231: LDAP config — no auth → 401
+	{name: "admin_ldap_config_get", method: http.MethodGet,
+		realPath: "/api/v1/admin/org/ldap", specPath: "/api/v1/admin/org/ldap"},
 }
 
 // TestOpenAPIContract spins up the same Echo instance the production binary
@@ -106,7 +115,7 @@ func TestOpenAPIContract(t *testing.T) {
 		t.Fatalf("build router: %v", err)
 	}
 
-	e := setupEcho(context.Background(), testConfig())
+	e, _ := setupEcho(context.Background(), testConfig())
 
 	for _, tc := range contractCases {
 		tc := tc
@@ -184,7 +193,7 @@ func TestOpenAPIReverseContract(t *testing.T) {
 	}
 
 	// Build the set of all registered Echo routes: "METHOD /path".
-	e := setupEcho(context.Background(), testConfig())
+	e, _ := setupEcho(context.Background(), testConfig())
 	echoRoutes := make(map[string]bool)
 	for _, r := range e.Routes() {
 		echoRoutes[r.Method+" "+r.Path] = true

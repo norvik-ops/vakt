@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 import {
   Dialog,
   DialogContent,
@@ -31,11 +33,12 @@ const SHORTCUTS = [
 ]
 
 export function KeyboardShortcutsModal({ open, onClose }: Props) {
+  const { t } = useTranslation()
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Tastaturkürzel</DialogTitle>
+          <DialogTitle>{t('keyboardShortcuts.title')}</DialogTitle>
         </DialogHeader>
 
         <div className="mt-2 space-y-5">
@@ -74,7 +77,7 @@ export function KeyboardShortcutsModal({ open, onClose }: Props) {
             onClick={onClose}
             className="text-sm text-secondary hover:text-primary transition-colors"
           >
-            Schließen
+            {t('common.close')}
           </button>
         </div>
       </DialogContent>

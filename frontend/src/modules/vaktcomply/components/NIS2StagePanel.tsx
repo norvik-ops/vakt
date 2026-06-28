@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { CheckCircle2, Clock, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
@@ -40,6 +41,7 @@ function DeadlineItem({
   deadline?: string | null
   isCompleted: boolean
 }) {
+  const { t } = useTranslation()
   const hours = hoursLeft(deadline)
   const overdue = hours !== null && hours < 0
   const urgent = hours !== null && hours >= 0 && hours < 2
@@ -59,12 +61,12 @@ function DeadlineItem({
         </div>
       </div>
       {isCompleted
-        ? <Badge className="text-xs bg-green-500/20 text-green-400 border-green-500/30">Eingereicht</Badge>
+        ? <Badge className="text-xs bg-green-500/20 text-green-400 border-green-500/30">{t('vaktcomply.nis2StagePanel.submitted')}</Badge>
         : overdue
-          ? <Badge className="text-xs bg-red-500/20 text-red-400 border-red-500/30">Überfällig</Badge>
+          ? <Badge className="text-xs bg-red-500/20 text-red-400 border-red-500/30">{t('vaktcomply.nis2StagePanel.overdue')}</Badge>
           : urgent
-            ? <Badge className="text-xs bg-amber-500/20 text-amber-400 border-amber-500/30">Dringend</Badge>
-            : <Badge variant="outline" className="text-xs">Offen</Badge>
+            ? <Badge className="text-xs bg-amber-500/20 text-amber-400 border-amber-500/30">{t('vaktcomply.nis2StagePanel.urgent')}</Badge>
+            : <Badge variant="outline" className="text-xs">{t('vaktcomply.nis2StagePanel.open')}</Badge>
       }
     </div>
   )
@@ -81,6 +83,7 @@ function StageForm({
   stage: Stage
   onSuccess: () => void
 }) {
+  const { t } = useTranslation()
   const submit = useNIS2SubmitStage(incidentId)
   const [form, setForm] = useState<NIS2ReportInput>({
     affected_services: '',
@@ -164,7 +167,7 @@ function StageForm({
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Wirksamkeitsnachweis</Label>
+            <Label className="text-xs">{t('vaktcomply.nis2StagePanel.effectivenessEvidence')}</Label>
             <Textarea
               rows={2}
               value={form.effectiveness_evidence}

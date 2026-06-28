@@ -8,6 +8,7 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Badge } from '../../../components/ui/badge'
 import { useControlReviews, useRecordControlReview } from '../hooks/useControlReviews'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { useTranslation } from 'react-i18next'
 
 interface ControlReviewPanelProps {
   controlId: string
@@ -42,6 +43,7 @@ export function ControlReviewPanel({
   reviewIntervalDays,
   lastReviewedBy,
 }: ControlReviewPanelProps) {
+  const { t } = useTranslation()
   const { formatDate: fmtDate } = useFormatDate()
   function formatDate(iso?: string): string {
     if (!iso) return '–'
@@ -101,7 +103,7 @@ export function ControlReviewPanel({
                 Aktuell
               </Badge>
             ) : (
-              <Badge variant="secondary">Noch nicht überprüft</Badge>
+              <Badge variant="secondary">{t('vaktcomply.controlReviewPanel.notYetReviewed')}</Badge>
             )}
           </div>
           <span className="text-xs text-muted-foreground">{intervalLabel(reviewIntervalDays)}</span>
@@ -109,11 +111,11 @@ export function ControlReviewPanel({
 
         {/* Review metadata */}
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <span>Zuletzt überprüft</span>
+          <span>{t('vaktcomply.controlReviewPanel.lastReviewed')}</span>
           <span className="text-foreground font-medium">{formatDate(lastReviewedAt)}</span>
           {lastReviewedAt && lastReviewedBy && (
             <>
-              <span>Prüfer</span>
+              <span>{t('vaktcomply.controlReviewPanel.reviewer')}</span>
               <span className="text-foreground font-medium">{lastReviewedBy}</span>
             </>
           )}
@@ -138,7 +140,7 @@ export function ControlReviewPanel({
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="cr-note" className="text-xs">Prüfnotiz</Label>
+              <Label htmlFor="cr-note" className="text-xs">{t('vaktcomply.controlReviewPanel.reviewNote')}</Label>
               <Textarea
                 id="cr-note"
                 value={reviewNote}

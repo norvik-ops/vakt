@@ -8,6 +8,7 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { useTranslation } from 'react-i18next'
 import { apiFetch } from '../../../api/client'
 import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
 import { TermTooltip } from '../../../shared/components/TermTooltip'
@@ -46,14 +47,6 @@ interface AuditProgramSummary {
   major_nc_count: number
 }
 
-const AUDIT_TYPE_LABELS: Record<string, string> = {
-  internal: 'Intern',
-  external: 'Extern',
-  certification: 'Zertifizierung',
-  supplier: 'Lieferantenaudit',
-  follow_up: 'Nachaudit',
-}
-
 const STATUS_COLORS: Record<string, string> = {
   planned: 'bg-blue-100 text-blue-800',
   in_progress: 'bg-amber-100 text-amber-800',
@@ -69,13 +62,6 @@ const SEVERITY_COLORS: Record<string, string> = {
   minor_nc: 'bg-orange-100 text-orange-700',
   observation: 'bg-yellow-100 text-yellow-700',
   opportunity: 'bg-blue-100 text-blue-700',
-}
-
-const SEVERITY_LABELS: Record<string, string> = {
-  major_nc: 'Hauptabweichung',
-  minor_nc: 'Nebenabweichung',
-  observation: 'Beobachtung',
-  opportunity: 'Verbesserungsmöglichkeit',
 }
 
 function useAuditSummary() {
@@ -160,6 +146,7 @@ interface FindingForm {
 }
 
 export default function AuditProgramPage() {
+  const { t } = useTranslation()
   const { data: summary } = useAuditSummary()
   const { data: audits = [], isLoading } = useAuditProgram()
   const createMut = useCreateAudit()
@@ -175,6 +162,21 @@ export default function AuditProgramPage() {
   const [expandedAudit, setExpandedAudit] = useState<string | null>(null)
 
   const { data: findings = [] } = useAuditFindings(expandedAudit)
+
+  const AUDIT_TYPE_LABELS: Record<string, string> = {
+    internal: t('vaktcomply.auditProgram.typeInternal'),
+    external: t('vaktcomply.auditProgram.typeExternal'),
+    certification: t('vaktcomply.auditProgram.typeCertification'),
+    supplier: t('vaktcomply.auditProgram.typeSupplier'),
+    follow_up: t('vaktcomply.auditProgram.typeFollowUp'),
+  }
+
+  const SEVERITY_LABELS: Record<string, string> = {
+    major_nc: t('vaktcomply.auditProgram.severityMajorNC'),
+    minor_nc: t('vaktcomply.auditProgram.severityMinorNC'),
+    observation: t('vaktcomply.auditProgram.severityObservation'),
+    opportunity: t('vaktcomply.auditProgram.severityOpportunity'),
+  }
 
   function handleCreateAudit() {
     createMut.mutate(auditForm, { onSuccess: () => { setCreateOpen(false); } })
@@ -205,12 +207,12 @@ export default function AuditProgramPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Audit-Programm</h1>
-          <p className="text-gray-500 text-sm mt-1"><TermTooltip term="ISO 27001" glossaryKey="ISO27001">ISO 27001</TermTooltip> Klausel 9.2 — Interne Audits planen und dokumentieren</p>
+          <h1 className="text-2xl font-bold">{t('vaktcomply.auditProgram.title')}</h1>
+          <p className="text-gray-500 text-sm mt-1"><TermTooltip term="ISO 27001" glossaryKey="ISO27001">ISO 27001</TermTooltip> {t('vaktcomply.auditProgram.description')}</p>
         </div>
         <Button size="sm" onClick={() => { setCreateOpen(true); }}>
           <Plus className="h-4 w-4 mr-1.5" />
-          Audit anlegen
+          {t('vaktcomply.auditProgram.createBtn')}
         </Button>
       </div>
 
@@ -218,11 +220,11 @@ export default function AuditProgramPage() {
       {summary && (
         <div className="grid grid-cols-5 gap-3">
           {[
-            { label: 'Audits gesamt', value: summary.total_audits },
-            { label: 'Abgeschlossen', value: summary.completed_audits, cls: 'text-green-700' },
-            { label: 'Offene Findings', value: summary.open_findings, cls: summary.open_findings > 0 ? 'text-amber-700' : '' },
-            { label: 'Hauptabweichungen', value: summary.major_nc_count, cls: summary.major_nc_count > 0 ? 'text-red-600' : '' },
-            { label: 'Planperioden', value: summary.total_plans },
+            { label: t('vaktcomply.auditProgram.summaryTotal'), value: summary.total_audits },
+            { label: t('vaktcomply.auditProgram.summaryCompleted'), value: summary.completed_audits, cls: 'text-green-700' },
+            { label: t('vaktcomply.auditProgram.summaryOpenFindings'), value: summary.open_findings, cls: summary.open_findings > 0 ? 'text-amber-700' : '' },
+            { label: t('vaktcomply.auditProgram.summaryMajorNC'), value: summary.major_nc_count, cls: summary.major_nc_count > 0 ? 'text-red-600' : '' },
+            { label: t('vaktcomply.auditProgram.summaryPlanPeriods'), value: summary.total_plans },
           ].map(({ label, value, cls = '' }) => (
             <div key={label} className="bg-white border rounded-lg p-3 text-center">
               <div className={`text-xl font-bold ${cls}`}>{value}</div>
@@ -235,9 +237,9 @@ export default function AuditProgramPage() {
       {audits.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
-          title="Keine Audits"
-          description="Planen Sie interne Audits gemäß ISO 27001 Klausel 9.2."
-          action={<Button onClick={() => { setCreateOpen(true); }}><Plus className="h-4 w-4 mr-1.5" />Audit anlegen</Button>}
+          title={t('vaktcomply.auditProgram.emptyTitle')}
+          description={t('vaktcomply.auditProgram.emptyDesc')}
+          action={<Button onClick={() => { setCreateOpen(true); }}><Plus className="h-4 w-4 mr-1.5" />{t('vaktcomply.auditProgram.createBtn')}</Button>}
         />
       ) : (
         <div className="space-y-3">
@@ -269,21 +271,21 @@ export default function AuditProgramPage() {
                       <>
                         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setFindingTarget(audit); }}>
                           <AlertTriangle className="h-3.5 w-3.5 mr-1" />
-                          Finding
+                          {t('vaktcomply.auditProgram.findingBtn')}
                         </Button>
                         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => {
                           setCompleteTarget(audit)
                           setCompleteForm({ summary: '', overall_rating: 'satisfactory', completed_date: new Date().toISOString().slice(0, 10) })
                         }}>
                           <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                          Abschließen
+                          {t('vaktcomply.auditProgram.completeBtn')}
                         </Button>
                       </>
                     )}
                     {audit.status === 'completed' && (
                       <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { handleExportReport(audit.id); }}>
                         <Download className="h-3.5 w-3.5 mr-1" />
-                        Bericht
+                        {t('vaktcomply.auditProgram.reportBtn')}
                       </Button>
                     )}
                   </div>
@@ -295,10 +297,10 @@ export default function AuditProgramPage() {
                     <p className="text-sm text-gray-600 mb-3">{audit.summary}</p>
                   )}
                   {findings.length === 0 ? (
-                    <p className="text-xs text-gray-400 italic">Keine Findings</p>
+                    <p className="text-xs text-gray-400 italic">{t('vaktcomply.auditProgram.noFindings')}</p>
                   ) : (
                     <div className="space-y-2">
-                      <p className="text-xs font-medium text-gray-500">Findings ({findings.length})</p>
+                      <p className="text-xs font-medium text-gray-500">{t('vaktcomply.auditProgram.findingsCount')} ({findings.length})</p>
                       {findings.map((f) => (
                         <div key={f.id} className="flex items-start gap-2 p-2 bg-gray-50 rounded text-sm">
                           <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${SEVERITY_COLORS[f.severity] ?? 'bg-gray-100'}`}>
@@ -306,7 +308,7 @@ export default function AuditProgramPage() {
                           </span>
                           <div>
                             <p className="font-medium text-xs">{f.title}</p>
-                            {f.capa_id && <p className="text-xs text-blue-500 mt-0.5">CAPA angelegt</p>}
+                            {f.capa_id && <p className="text-xs text-blue-500 mt-0.5">{t('vaktcomply.auditProgram.capaCreated')}</p>}
                           </div>
                         </div>
                       ))}
@@ -322,15 +324,15 @@ export default function AuditProgramPage() {
       {/* Create Audit Dialog */}
       <Dialog open={createOpen} onOpenChange={(open) => { if (!open) setCreateOpen(false); }}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Audit anlegen</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('vaktcomply.auditProgram.createDialogTitle')}</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>Titel *</Label>
-              <Input placeholder="z.B. Internes ISO 27001 Audit 2026" value={auditForm.title} onChange={(e) => { setAuditForm(f => ({ ...f, title: e.target.value })); }} />
+              <Label>{t('vaktcomply.auditProgram.labelTitle')}</Label>
+              <Input placeholder={t('vaktcomply.auditProgram.placeholderTitle')} value={auditForm.title} onChange={(e) => { setAuditForm(f => ({ ...f, title: e.target.value })); }} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Audit-Typ</Label>
+                <Label>{t('vaktcomply.auditProgram.labelAuditType')}</Label>
                 <Select value={auditForm.audit_type} onValueChange={(v) => { setAuditForm(f => ({ ...f, audit_type: v })); }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -339,19 +341,19 @@ export default function AuditProgramPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Geplantes Datum</Label>
+                <Label>{t('vaktcomply.auditProgram.labelScheduledDate')}</Label>
                 <Input type="date" value={auditForm.scheduled_date} onChange={(e) => { setAuditForm(f => ({ ...f, scheduled_date: e.target.value })); }} />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Leitender Auditor</Label>
-              <Input placeholder="Name" value={auditForm.lead_auditor} onChange={(e) => { setAuditForm(f => ({ ...f, lead_auditor: e.target.value })); }} />
+              <Label>{t('vaktcomply.auditProgram.labelLeadAuditor')}</Label>
+              <Input placeholder={t('vaktcomply.auditProgram.placeholderAuditor')} value={auditForm.lead_auditor} onChange={(e) => { setAuditForm(f => ({ ...f, lead_auditor: e.target.value })); }} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setCreateOpen(false); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setCreateOpen(false); }}>{t('common.cancel')}</Button>
             <Button onClick={handleCreateAudit} disabled={!auditForm.title.trim() || createMut.isPending}>
-              {createMut.isPending ? 'Speichern…' : 'Anlegen'}
+              {createMut.isPending ? t('vaktcomply.auditProgram.savingBtn') : t('vaktcomply.auditProgram.createSubmitBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -360,33 +362,33 @@ export default function AuditProgramPage() {
       {/* Complete Audit Dialog */}
       <Dialog open={completeTarget !== null} onOpenChange={(open) => { if (!open) setCompleteTarget(null); }}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Audit abschließen</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('vaktcomply.auditProgram.completeDialogTitle')}</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>Abschlussdatum</Label>
+              <Label>{t('vaktcomply.auditProgram.labelCompletedDate')}</Label>
               <Input type="date" value={completeForm.completed_date} onChange={(e) => { setCompleteForm(f => ({ ...f, completed_date: e.target.value })); }} />
             </div>
             <div className="space-y-1.5">
-              <Label>Gesamtbewertung</Label>
+              <Label>{t('vaktcomply.auditProgram.labelOverallRating')}</Label>
               <Select value={completeForm.overall_rating} onValueChange={(v) => { setCompleteForm(f => ({ ...f, overall_rating: v })); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="satisfactory">Zufriedenstellend</SelectItem>
-                  <SelectItem value="minor_issues">Kleinere Abweichungen</SelectItem>
-                  <SelectItem value="major_issues">Wesentliche Abweichungen</SelectItem>
-                  <SelectItem value="critical">Kritisch</SelectItem>
+                  <SelectItem value="satisfactory">{t('vaktcomply.auditProgram.ratingSatisfactory')}</SelectItem>
+                  <SelectItem value="minor_issues">{t('vaktcomply.auditProgram.ratingMinorIssues')}</SelectItem>
+                  <SelectItem value="major_issues">{t('vaktcomply.auditProgram.ratingMajorIssues')}</SelectItem>
+                  <SelectItem value="critical">{t('vaktcomply.auditProgram.ratingCritical')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Zusammenfassung</Label>
-              <Textarea rows={3} placeholder="Kurze Zusammenfassung der Audit-Ergebnisse …" value={completeForm.summary} onChange={(e) => { setCompleteForm(f => ({ ...f, summary: e.target.value })); }} />
+              <Label>{t('vaktcomply.auditProgram.labelSummary')}</Label>
+              <Textarea rows={3} placeholder={t('vaktcomply.auditProgram.placeholderSummary')} value={completeForm.summary} onChange={(e) => { setCompleteForm(f => ({ ...f, summary: e.target.value })); }} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setCompleteTarget(null); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setCompleteTarget(null); }}>{t('common.cancel')}</Button>
             <Button onClick={handleComplete} disabled={completeMut.isPending}>
-              {completeMut.isPending ? 'Speichern…' : 'Abschließen'}
+              {completeMut.isPending ? t('vaktcomply.auditProgram.savingBtn') : t('vaktcomply.auditProgram.completeSubmitBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -396,18 +398,18 @@ export default function AuditProgramPage() {
       <Dialog open={findingTarget !== null} onOpenChange={(open) => { if (!open) setFindingTarget(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Finding hinzufügen</DialogTitle>
+            <DialogTitle>{t('vaktcomply.auditProgram.findingDialogTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="p-3 rounded-lg bg-amber-50 text-amber-700 text-xs">
-              Hauptabweichungen (Major NC) und Nebenabweichungen (Minor NC) lösen automatisch eine CAPA aus.
+              {t('vaktcomply.auditProgram.findingHint')}
             </div>
             <div className="space-y-1.5">
-              <Label>Titel *</Label>
-              <Input placeholder="Kurze Beschreibung des Findings" value={findingForm.title} onChange={(e) => { setFindingForm(f => ({ ...f, title: e.target.value })); }} />
+              <Label>{t('vaktcomply.auditProgram.labelFindingTitle')}</Label>
+              <Input placeholder={t('vaktcomply.auditProgram.placeholderFindingTitle')} value={findingForm.title} onChange={(e) => { setFindingForm(f => ({ ...f, title: e.target.value })); }} />
             </div>
             <div className="space-y-1.5">
-              <Label>Schweregrad</Label>
+              <Label>{t('vaktcomply.auditProgram.labelSeverity')}</Label>
               <Select value={findingForm.severity} onValueChange={(v) => { setFindingForm(f => ({ ...f, severity: v })); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -416,14 +418,14 @@ export default function AuditProgramPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Beschreibung</Label>
-              <Textarea rows={3} placeholder="Details zum Finding …" value={findingForm.description} onChange={(e) => { setFindingForm(f => ({ ...f, description: e.target.value })); }} />
+              <Label>{t('vaktcomply.auditProgram.labelFindingDesc')}</Label>
+              <Textarea rows={3} placeholder={t('vaktcomply.auditProgram.placeholderFindingDesc')} value={findingForm.description} onChange={(e) => { setFindingForm(f => ({ ...f, description: e.target.value })); }} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setFindingTarget(null); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setFindingTarget(null); }}>{t('common.cancel')}</Button>
             <Button onClick={handleCreateFinding} disabled={!findingForm.title.trim() || createFindingMut.isPending}>
-              {createFindingMut.isPending ? 'Speichern…' : 'Finding anlegen'}
+              {createFindingMut.isPending ? t('vaktcomply.auditProgram.savingBtn') : t('vaktcomply.auditProgram.findingSubmitBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Activity, Plus, Play, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -230,13 +231,14 @@ function ConfigEditor({
   config: Record<string, string>
   onChange: (config: Record<string, string>) => void
 }) {
+  const { t } = useTranslation()
   if (!checkType) return null
   const hints = CONFIG_HINTS[checkType] ?? []
   if (hints.length === 0) return null
 
   return (
     <div className="space-y-1.5">
-      <Label>Konfiguration</Label>
+      <Label>{t('vaktcomply.ccmPage.configLabel')}</Label>
       {hints.map((hint) => (
         <div key={hint.key} className="flex gap-2 items-center">
           <span className="text-xs text-muted-foreground w-20 shrink-0">{hint.key}</span>

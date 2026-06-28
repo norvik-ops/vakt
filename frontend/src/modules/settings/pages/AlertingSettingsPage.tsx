@@ -207,16 +207,16 @@ function QuickSetupSection() {
       <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border">
         <Zap className="w-4 h-4 text-brand" />
         <h2 className="text-sm font-semibold text-primary">{t('settings.alerting.quickSetup')}</h2>
-        <span className="text-xs text-secondary">Slack und Teams in einem Schritt verbinden</span>
+        <span className="text-xs text-secondary">{t('settings.alerting.quickSetupHint')}</span>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5">
         {!hasSlack && (
           <QuickSetupCard
             logo={<SlackLogo />}
             title="Slack"
-            description="Erhalten Sie Alerts direkt in Ihrem Slack-Kanal."
+            description={t('settings.alerting.slackDescription')}
             placeholder="https://hooks.slack.com/services/…"
-            guideText="Anleitung: Incoming Webhook in Slack erstellen"
+            guideText={t('settings.alerting.slackGuide')}
             guideUrl="https://api.slack.com/messaging/webhooks"
             channelType="slack"
             defaultName="Slack"
@@ -226,9 +226,9 @@ function QuickSetupSection() {
           <QuickSetupCard
             logo={<TeamsLogo />}
             title="Microsoft Teams"
-            description="Erhalten Sie Alerts direkt in Ihrem Teams-Kanal."
+            description={t('settings.alerting.teamsDescription')}
             placeholder="https://outlook.office.com/webhook/…"
-            guideText="Anleitung: Teams → Kanal → Connectors → Incoming Webhook"
+            guideText={t('settings.alerting.teamsGuide')}
             guideUrl="https://learn.microsoft.com/de-de/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook"
             channelType="teams"
             defaultName="Microsoft Teams"
@@ -278,7 +278,7 @@ function AddChannelDialog({ open, onClose }: { open: boolean; onClose: () => voi
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label>Name</Label>
+            <Label>{t('settings.alerting.addDialog.labelName')}</Label>
             <Input
               placeholder="z.B. Security-Team Slack"
               value={name}
@@ -286,7 +286,7 @@ function AddChannelDialog({ open, onClose }: { open: boolean; onClose: () => voi
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Typ</Label>
+            <Label>{t('settings.alerting.addDialog.labelType')}</Label>
             <Select value={type} onValueChange={(v) => { setType(v as AlertChannel['type']); }}>
               <SelectTrigger>
                 <SelectValue />
@@ -300,7 +300,7 @@ function AddChannelDialog({ open, onClose }: { open: boolean; onClose: () => voi
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>{type === 'email' ? 'E-Mail-Adresse' : 'Webhook-URL'}</Label>
+            <Label>{type === 'email' ? t('settings.alerting.addDialog.labelEmail') : t('settings.alerting.addDialog.labelUrl')}</Label>
             <Input
               placeholder={
                 type === 'slack'
@@ -316,7 +316,7 @@ function AddChannelDialog({ open, onClose }: { open: boolean; onClose: () => voi
             />
           </div>
           <div className="space-y-2">
-            <Label>Ereignisse</Label>
+            <Label>{t('settings.alerting.addDialog.labelEvents')}</Label>
             <div className="space-y-1.5">
               {ALERT_EVENTS.map(({ value, label }) => (
                 <label
@@ -335,7 +335,7 @@ function AddChannelDialog({ open, onClose }: { open: boolean; onClose: () => voi
               ))}
             </div>
             {events.length === 0 && (
-              <p className="text-[11px] text-secondary">Mindestens ein Ereignis auswählen.</p>
+              <p className="text-[11px] text-secondary">{t('settings.alerting.addDialog.minEvent')}</p>
             )}
           </div>
         </div>
@@ -392,10 +392,10 @@ function ChannelDeliveryHistory({ channelId }: { channelId: string }) {
             <table className="w-full text-[11px]">
               <thead>
                 <tr className="text-secondary border-b border-border">
-                  <th className="text-left font-medium py-1 pr-3">Datum</th>
-                  <th className="text-left font-medium py-1 pr-3">Event-Typ</th>
-                  <th className="text-left font-medium py-1 pr-3">Status</th>
-                  <th className="text-left font-medium py-1">HTTP</th>
+                  <th className="text-left font-medium py-1 pr-3">{t('settings.alerting.colDate')}</th>
+                  <th className="text-left font-medium py-1 pr-3">{t('settings.alerting.colEvent')}</th>
+                  <th className="text-left font-medium py-1 pr-3">{t('settings.alerting.colStatus')}</th>
+                  <th className="text-left font-medium py-1">{t('settings.alerting.colHttp')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -461,19 +461,19 @@ function ChannelsSection() {
         </div>
       )}
       {isError && (
-        <p className="px-5 py-4 text-xs text-secondary">Kanäle konnten nicht geladen werden.</p>
+        <p className="px-5 py-4 text-xs text-secondary">{t('settings.alerting.loadError')}</p>
       )}
       {!isLoading && !isError && channels.length === 0 && (
-        <p className="px-5 py-4 text-xs text-secondary">Noch keine Kanäle eingerichtet.</p>
+        <p className="px-5 py-4 text-xs text-secondary">{t('settings.alerting.noChannels')}</p>
       )}
       {!isLoading && !isError && channels.length > 0 && (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Typ</TableHead>
-              <TableHead>Ereignisse</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t('settings.alerting.colName')}</TableHead>
+              <TableHead>{t('settings.alerting.colType')}</TableHead>
+              <TableHead>{t('settings.alerting.colEvents')}</TableHead>
+              <TableHead>{t('settings.alerting.colStatus')}</TableHead>
               <TableHead className="w-[120px]" />
             </TableRow>
           </TableHeader>
@@ -504,7 +504,7 @@ function ChannelsSection() {
                         ch.enabled ? 'bg-indigo-600' : 'bg-zinc-600',
                         toggleChannel.isPending && 'opacity-50 cursor-not-allowed',
                       )}
-                      title={ch.enabled ? 'Deaktivieren' : 'Aktivieren'}
+                      title={ch.enabled ? t('settings.alerting.disableTitle') : t('settings.alerting.enableTitle')}
                     >
                       <span
                         className={cn(
@@ -524,7 +524,7 @@ function ChannelsSection() {
                       <button
                         onClick={() => { handleTest(ch.id); }}
                         disabled={testingId === ch.id}
-                        title="Testbenachrichtigung senden"
+                        title={t('settings.alerting.testNotification')}
                         className="p-1.5 rounded text-secondary hover:text-brand hover:bg-brand/10 transition-colors disabled:opacity-50"
                       >
                         {testingId === ch.id
@@ -535,7 +535,7 @@ function ChannelsSection() {
                       <button
                         onClick={() => { deleteChannel.mutate(ch.id); }}
                         disabled={deleteChannel.isPending}
-                        title="Kanal löschen"
+                        title={t('settings.alerting.deleteChannel')}
                         className="p-1.5 rounded text-secondary hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -580,7 +580,7 @@ function DeliveryHistorySection() {
           }
           <h2 className="text-sm font-semibold text-primary">{t('settings.alerting.deliveryLog')}</h2>
           {!expanded && entries.length > 0 && (
-            <span className="text-[11px] text-secondary">({entries.length} Einträge)</span>
+            <span className="text-[11px] text-secondary">({entries.length} {t('settings.alerting.deliveries')})</span>
           )}
         </div>
       </button>
@@ -599,10 +599,10 @@ function DeliveryHistorySection() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Ereignis</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>HTTP</TableHead>
-                  <TableHead>Zeitpunkt</TableHead>
+                  <TableHead>{t('settings.alerting.colEventLog')}</TableHead>
+                  <TableHead>{t('settings.alerting.colStatus')}</TableHead>
+                  <TableHead>{t('settings.alerting.colHttp')}</TableHead>
+                  <TableHead>{t('settings.alerting.colTimestamp')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

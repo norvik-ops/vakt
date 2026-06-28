@@ -383,10 +383,10 @@ export default function AISystemsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="under_review">In Prüfung</SelectItem>
-                    <SelectItem value="approved">Genehmigt</SelectItem>
-                    <SelectItem value="prohibited">Verboten</SelectItem>
-                    <SelectItem value="decommissioned">Außer Betrieb</SelectItem>
+                    <SelectItem value="under_review">{t('vaktcomply.aiSystems.statusOptions.under_review')}</SelectItem>
+                    <SelectItem value="approved">{t('vaktcomply.aiSystems.statusOptions.approved')}</SelectItem>
+                    <SelectItem value="prohibited">{t('vaktcomply.aiSystems.statusOptions.prohibited')}</SelectItem>
+                    <SelectItem value="decommissioned">{t('vaktcomply.aiSystems.statusOptions.decommissioned')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -411,7 +411,7 @@ export default function AISystemsPage() {
               </div>
             )}
             <div className="space-y-1.5">
-              <Label>Im Betrieb seit</Label>
+              <Label>{t('vaktcomply.aiSystems.fields.inProductionSince')}</Label>
               <Input
                 type="date"
                 value={(form as UpdateAISystemInput).in_production_since ?? ''}
@@ -444,13 +444,13 @@ export default function AISystemsPage() {
       <AlertDialog open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>KI-System löschen?</AlertDialogTitle>
+            <AlertDialogTitle>{t('vaktcomply.aiSystems.deleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Dieser Vorgang kann nicht rückgängig gemacht werden.
+              {t('vaktcomply.aiSystems.deleteDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
               onClick={confirmDelete}

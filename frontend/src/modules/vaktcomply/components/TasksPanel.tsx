@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Trash2, CheckCircle2, Clock, Circle, AlertCircle } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -49,6 +50,7 @@ function AddTaskForm({
   entityId: string
   onCancel: () => void
 }) {
+  const { t } = useTranslation()
   const [title, setTitle] = useState('')
   const [assigneeEmail, setAssigneeEmail] = useState('')
   const [dueDate, setDueDate] = useState('')
@@ -81,7 +83,7 @@ function AddTaskForm({
       className="border border-border rounded-lg p-4 space-y-3 bg-surface2"
     >
       <div className="space-y-1.5">
-        <Label htmlFor="task-title">Titel *</Label>
+        <Label htmlFor="task-title">{t('vaktcomply.tasksPanel.labelTitle')} *</Label>
         <Input
           id="task-title"
           value={title}
@@ -95,7 +97,7 @@ function AddTaskForm({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label htmlFor="task-assignee">Verantwortlich (E-Mail)</Label>
+          <Label htmlFor="task-assignee">{t('vaktcomply.tasksPanel.labelAssignee')}</Label>
           <Input
             id="task-assignee"
             type="email"
@@ -106,7 +108,7 @@ function AddTaskForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="task-due">Fälligkeitsdatum</Label>
+          <Label htmlFor="task-due">{t('vaktcomply.tasksPanel.dueDate')}</Label>
           <Input
             id="task-due"
             type="date"
@@ -117,7 +119,7 @@ function AddTaskForm({
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label>Priorität</Label>
+        <Label>{t('vaktcomply.tasksPanel.priority')}</Label>
         <Select
           value={priority}
           onValueChange={(v) => { setPriority(v as TaskPriority); }}
@@ -126,10 +128,10 @@ function AddTaskForm({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="low">Niedrig</SelectItem>
-            <SelectItem value="medium">Mittel</SelectItem>
-            <SelectItem value="high">Hoch</SelectItem>
-            <SelectItem value="critical">Kritisch</SelectItem>
+            <SelectItem value="low">{t('vaktcomply.tasksPanel.priorityLow')}</SelectItem>
+            <SelectItem value="medium">{t('vaktcomply.tasksPanel.priorityMedium')}</SelectItem>
+            <SelectItem value="high">{t('vaktcomply.tasksPanel.priorityHigh')}</SelectItem>
+            <SelectItem value="critical">{t('vaktcomply.tasksPanel.priorityCritical')}</SelectItem>
           </SelectContent>
         </Select>
       </div>

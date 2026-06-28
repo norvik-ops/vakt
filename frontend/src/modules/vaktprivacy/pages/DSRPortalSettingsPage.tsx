@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Spinner } from '../../../components/Spinner'
 import { apiFetch } from '../../../api/client'
 
@@ -35,6 +36,7 @@ async function updateSettings(input: DSRPortalSettings): Promise<void> {
 // ---------------------------------------------------------------------------
 
 export default function DSRPortalSettingsPage() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   const { data, isLoading, isError } = useQuery({
@@ -86,7 +88,7 @@ export default function DSRPortalSettingsPage() {
     return (
       <div className="p-6">
         <p className="text-red-600 text-sm">
-          Portal-Einstellungen konnten nicht geladen werden.
+          {t('vaktprivacy.dsrPortalPage.errorLoading')}
         </p>
       </div>
     )
@@ -96,23 +98,22 @@ export default function DSRPortalSettingsPage() {
     <div className="max-w-2xl mx-auto p-6 space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-gray-900">
-          DSR Self-Service Portal
+          {t('vaktprivacy.dsrPortalPage.title')}
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Ermöglichen Sie Betroffenen, Datenschutzanfragen (Art. 15–21 DSGVO) direkt
-          über einen öffentlichen Link einzureichen — ohne Login.
+          {t('vaktprivacy.dsrPortalPage.description')}
         </p>
       </div>
 
       {/* Enable toggle */}
       <div className="bg-white rounded-xl shadow p-5 space-y-4">
-        <h2 className="text-base font-medium text-gray-800">Portal-Status</h2>
+        <h2 className="text-base font-medium text-gray-800">{t('vaktprivacy.dsrPortalPage.sectionStatus')}</h2>
 
         <label className="flex items-center justify-between cursor-pointer">
           <div>
-            <span className="text-sm font-medium text-gray-700">Portal aktivieren</span>
+            <span className="text-sm font-medium text-gray-700">{t('vaktprivacy.dsrPortalPage.toggleLabel')}</span>
             <p className="text-xs text-gray-500 mt-0.5">
-              Wenn aktiviert, können Betroffene über den öffentlichen Link Anfragen stellen.
+              {t('vaktprivacy.dsrPortalPage.toggleDesc')}
             </p>
           </div>
           <button
@@ -135,11 +136,11 @@ export default function DSRPortalSettingsPage() {
 
       {/* Portal configuration */}
       <div className="bg-white rounded-xl shadow p-5 space-y-4">
-        <h2 className="text-base font-medium text-gray-800">Portal-Konfiguration</h2>
+        <h2 className="text-base font-medium text-gray-800">{t('vaktprivacy.dsrPortalPage.sectionConfig')}</h2>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Portal-Slug
+            {t('vaktprivacy.dsrPortalPage.labelSlug')}
           </label>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-500 shrink-0">/dsr/</span>
@@ -152,13 +153,13 @@ export default function DSRPortalSettingsPage() {
             />
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            Nur Kleinbuchstaben, Ziffern und Bindestriche. Muss eindeutig sein.
+            {t('vaktprivacy.dsrPortalPage.slugHint')}
           </p>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            DSB / DPO E-Mail
+            {t('vaktprivacy.dsrPortalPage.labelDPOEmail')}
           </label>
           <input
             type="email"
@@ -168,13 +169,13 @@ export default function DSRPortalSettingsPage() {
             placeholder="datenschutz@beispiel.de"
           />
           <p className="text-xs text-gray-500 mt-1">
-            Diese Adresse wird für interne Benachrichtigungen bei neuen DSR-Einreichungen genutzt.
+            {t('vaktprivacy.dsrPortalPage.dpoEmailHint')}
           </p>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Einleitungstext
+            {t('vaktprivacy.dsrPortalPage.labelIntro')}
           </label>
           <textarea
             value={intro}
@@ -184,7 +185,7 @@ export default function DSRPortalSettingsPage() {
             placeholder="Willkommen auf unserem Datenschutz-Portal. Hier können Sie Ihre Rechte nach DSGVO wahrnehmen…"
           />
           <p className="text-xs text-gray-500 mt-1">
-            Wird oben auf dem öffentlichen Portal angezeigt.
+            {t('vaktprivacy.dsrPortalPage.introHint')}
           </p>
         </div>
       </div>
@@ -192,7 +193,7 @@ export default function DSRPortalSettingsPage() {
       {/* Portal URL preview */}
       {portalUrl && (
         <div className="bg-blue-50 rounded-xl p-4 space-y-2">
-          <h3 className="text-sm font-medium text-blue-800">Öffentliche Portal-URL</h3>
+          <h3 className="text-sm font-medium text-blue-800">{t('vaktprivacy.dsrPortalPage.sectionURL')}</h3>
           <div className="flex items-center gap-2">
             <code className="flex-1 text-xs text-blue-900 bg-blue-100 rounded px-2 py-1 break-all">
               {portalUrl}
@@ -201,12 +202,12 @@ export default function DSRPortalSettingsPage() {
               onClick={() => void navigator.clipboard.writeText(portalUrl)}
               className="shrink-0 text-xs text-blue-700 hover:text-blue-900 px-2 py-1 border border-blue-300 rounded"
             >
-              Kopieren
+              {t('vaktprivacy.dsrPortalPage.copyButton')}
             </button>
           </div>
           {!enabled && (
             <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">
-              Das Portal ist derzeit deaktiviert. Aktivieren Sie es oben, damit der Link öffentlich zugänglich ist.
+              {t('vaktprivacy.dsrPortalPage.disabledHint')}
             </p>
           )}
         </div>
@@ -215,14 +216,14 @@ export default function DSRPortalSettingsPage() {
       {/* Save button */}
       <div className="flex items-center justify-end gap-3">
         {saved && (
-          <span className="text-sm text-green-600 font-medium">Einstellungen gespeichert</span>
+          <span className="text-sm text-green-600 font-medium">{t('vaktprivacy.dsrPortalPage.savedMessage')}</span>
         )}
         <button
           onClick={() => { mutation.mutate(); }}
           disabled={mutation.isPending}
           className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40"
         >
-          {mutation.isPending ? 'Wird gespeichert…' : 'Einstellungen speichern'}
+          {mutation.isPending ? t('vaktprivacy.dsrPortalPage.saving') : t('vaktprivacy.dsrPortalPage.saveButton')}
         </button>
       </div>
     </div>

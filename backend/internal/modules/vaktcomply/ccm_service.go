@@ -1,13 +1,11 @@
 package vaktcomply
 
-import "context"
+import (
+	"context"
 
-// CCM (Continuous Control Monitoring) business logic lives in the reporting
-// sub-package (S103-3). The parent Service keeps these thin delegations so
-// existing callers — the HTTP handlers (ccm_handler.go) and the worker
-// entrypoint (handleCCMRunDue) — continue to call them on *vaktcomply.Service.
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/reporting"
+)
 
-// ListCCMChecks returns all CCM checks for the given organisation.
 func (s *Service) ListCCMChecks(ctx context.Context, orgID string) ([]CCMCheck, error) {
 	return s.Reporting.ListCCMChecks(ctx, orgID)
 }
@@ -41,3 +39,14 @@ func (s *Service) ListCCMResults(ctx context.Context, orgID, checkID string) ([]
 func (s *Service) RunDueCCMChecks(ctx context.Context) error {
 	return s.Reporting.RunDueCCMChecks(ctx)
 }
+
+type (
+	// CCMCheck represents an automated compliance control check definition.
+	CCMCheck = reporting.CCMCheck
+	// CreateCCMCheckInput holds validated input for creating a CCM check.
+	CreateCCMCheckInput = reporting.CreateCCMCheckInput
+	// ToggleCCMCheckInput holds the enabled flag for toggling a CCM check.
+	ToggleCCMCheckInput = reporting.ToggleCCMCheckInput
+	// CCMResult represents the result of a single CCM check execution.
+	CCMResult = reporting.CCMResult
+)

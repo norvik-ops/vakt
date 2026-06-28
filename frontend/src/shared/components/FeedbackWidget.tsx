@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { MessageSquarePlus, X, Star, Send, CheckCircle } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 type State = 'closed' | 'open' | 'success'
 
@@ -15,6 +16,7 @@ export function FeedbackWidget() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const location = useLocation()
+  const { t } = useTranslation()
 
   function reset() {
     setRating(0)
@@ -31,8 +33,8 @@ export function FeedbackWidget() {
   }
 
   async function submit() {
-    if (rating === 0) { setError('Bitte eine Bewertung vergeben.'); return }
-    if (!message.trim()) { setError('Bitte kurzes Feedback eingeben.'); return }
+    if (rating === 0) { setError(t('feedback.errorNoRating')); return }
+    if (!message.trim()) { setError(t('feedback.errorNoMessage')); return }
     setSubmitting(true)
     setError(null)
     try {
@@ -45,18 +47,18 @@ export function FeedbackWidget() {
       setState('success')
       reset()
     } catch {
-      setError('Feedback konnte nicht gesendet werden. Bitte erneut versuchen.')
+      setError(t('feedback.errorSend'))
     } finally {
       setSubmitting(false)
     }
   }
 
   const labels: Record<number, string> = {
-    1: 'Nicht hilfreich',
-    2: 'Ausbaufähig',
-    3: 'In Ordnung',
-    4: 'Gut',
-    5: 'Ausgezeichnet',
+    1: t('feedback.star1'),
+    2: t('feedback.star2'),
+    3: t('feedback.star3'),
+    4: t('feedback.star4'),
+    5: t('feedback.star5'),
   }
 
   return (
@@ -65,11 +67,11 @@ export function FeedbackWidget() {
       {state === 'closed' && (
         <button
           onClick={() => { setState('open'); }}
-          aria-label="Feedback geben"
+          aria-label={t('feedback.trigger')}
           className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-brand text-white text-sm font-medium px-4 py-2.5 rounded-full shadow-lg hover:bg-brand/90 transition-all duration-200 hover:scale-105"
         >
           <MessageSquarePlus className="w-4 h-4" />
-          Feedback geben
+          {t('feedback.trigger')}
         </button>
       )}
 
@@ -77,9 +79,9 @@ export function FeedbackWidget() {
       {state === 'success' && (
         <div className="fixed bottom-6 right-6 z-50 bg-surface border border-border rounded-xl shadow-xl p-5 w-80 flex flex-col items-center gap-3 text-center">
           <CheckCircle className="w-10 h-10 text-green-400" />
-          <p className="font-semibold text-primary">Danke für Ihr Feedback!</p>
-          <p className="text-sm text-secondary">Ihr Feedback hilft uns, Vakt besser zu machen.</p>
-          <Button size="sm" variant="outline" onClick={() => { setState('closed'); }}>Schließen</Button>
+          <p className="font-semibold text-primary">{t('feedback.thankYou')}</p>
+          <p className="text-sm text-secondary">{t('feedback.thankYouDesc')}</p>
+          <Button size="sm" variant="outline" onClick={() => { setState('closed'); }}>{t('common.close')}</Button>
         </div>
       )}
 
@@ -89,10 +91,10 @@ export function FeedbackWidget() {
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <div>
-              <p className="text-sm font-semibold text-primary">Wie gefällt Ihnen Vakt?</p>
-              <p className="text-xs text-secondary mt-0.5">Demo-Feedback · anonym möglich</p>
+              <p className="text-sm font-semibold text-primary">{t('feedback.question')}</p>
+              <p className="text-xs text-secondary mt-0.5">{t('feedback.subtitle')}</p>
             </div>
-            <button onClick={close} aria-label="Schließen" className="text-secondary hover:text-primary transition-colors p-1 rounded">
+            <button onClick={close} aria-label={t('common.close')} className="text-secondary hover:text-primary transition-colors p-1 rounded">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -107,7 +109,7 @@ export function FeedbackWidget() {
                     onClick={() => { setRating(star); }}
                     onMouseEnter={() => { setHover(star); }}
                     onMouseLeave={() => { setHover(0); }}
-                    aria-label={`${String(star)} Stern${star !== 1 ? 'e' : ''}`}
+                    aria-label={t('feedback.starAria', { count: star })}
                     className="transition-transform hover:scale-110"
                   >
                     <Star
@@ -130,7 +132,7 @@ export function FeedbackWidget() {
               <textarea
                 value={message}
                 onChange={(e) => { setMessage(e.target.value); }}
-                placeholder="Was hat Ihnen gefallen? Was fehlt noch?"
+                placeholder={t('feedback.messagePlaceholder')}
                 rows={3}
                 className="w-full text-sm rounded-lg border border-border bg-bg px-3 py-2 text-primary placeholder:text-secondary resize-none focus:outline-none focus:ring-1 focus:ring-brand/50"
               />
@@ -141,13 +143,13 @@ export function FeedbackWidget() {
               <input
                 value={name}
                 onChange={(e) => { setName(e.target.value); }}
-                placeholder="Name (optional)"
+                placeholder={t('feedback.namePlaceholder')}
                 className="text-xs rounded-lg border border-border bg-bg px-3 py-2 text-primary placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-brand/50"
               />
               <input
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); }}
-                placeholder="E-Mail (optional)"
+                placeholder={t('feedback.emailPlaceholder')}
                 type="email"
                 className="text-xs rounded-lg border border-border bg-bg px-3 py-2 text-primary placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-brand/50"
               />
@@ -164,7 +166,7 @@ export function FeedbackWidget() {
               size="sm"
             >
               <Send className="w-3.5 h-3.5" />
-              {submitting ? 'Wird gesendet…' : 'Feedback senden'}
+              {submitting ? t('feedback.sending') : t('feedback.submit')}
             </Button>
           </div>
         </div>

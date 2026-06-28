@@ -5,5 +5,5 @@
 Contact: mailto:security@norvikops.de
 Expires: 2027-06-20T00:00:00.000Z
 Preferred-Languages: de, en
-Canonical: https://sec.norvikops.de/.well-known/security.txt
+Canonical: https://vakt.norvikops.de/.well-known/security.txt
 Policy: https://github.com/norvik-ops/vatk/blob/main/SECURITY.md

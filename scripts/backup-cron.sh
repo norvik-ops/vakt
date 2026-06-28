@@ -14,6 +14,8 @@ set -euo pipefail
 #                                e.g. 'aws s3 cp "$ARCHIVE" s3://my-bucket/ && aws s3 cp "$SIG" s3://my-bucket/'
 #   VAKT_BACKUP_NOTIFY_WEBHOOK   POST a JSON {text} here on failure (your own endpoint)
 #   VAKT_BACKUP_NOTIFY_CMD       generic failure hook; runs with $MESSAGE set
+#   VAKT_INTERNAL_API_URL        URL of the vakt-api internal port  (default http://vakt-api:8081)
+#                                Override when backup-cron runs outside the Docker network.
 #
 # Subcommands:
 #   (default)  run the full cycle: backup → verify → off-site → prune
@@ -22,6 +24,32 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_DIR="${VAKT_BACKUP_DIR:-/backups/vakt}"
 RETENTION_DAYS="${VAKT_BACKUP_RETENTION_DAYS:-30}"
+
+# Load config overrides from the Vakt API (if available). Env vars take
+# precedence only when explicitly set; API values fill unset slots.
+# ponytail: best-effort curl, never blocks the backup cycle
+_load_api_config() {
+	local api_url="${VAKT_INTERNAL_API_URL:-http://vakt-api:8081}"
+	local secret="${VAKT_SECRET_KEY:-}"
+	[ -z "$secret" ] && return 0
+	local resp
+	resp=$(curl -fsS -m 5 \
+		-H "Authorization: Bearer ${secret}" \
+		"${api_url}/api/v1/internal/backup-config" 2>/dev/null) || return 0
+
+	_api_val() { printf '%s' "$resp" | grep -o "\"$1\":\"[^\"]*\"" | cut -d'"' -f4; }
+	_api_int() { printf '%s' "$resp" | grep -o "\"$1\":[0-9]*" | cut -d':' -f2; }
+
+	local v
+	v=$(_api_val "schedule");        [ -n "$v" ] && export VAKT_BACKUP_SCHEDULE="${VAKT_BACKUP_SCHEDULE:-$v}"
+	v=$(_api_int "retention_days");  [ -n "$v" ] && [ "$v" -gt 0 ] && RETENTION_DAYS="${v}"
+	v=$(_api_val "passphrase");      [ -n "$v" ] && export VAKT_BACKUP_PASSPHRASE="${VAKT_BACKUP_PASSPHRASE:-$v}"
+	v=$(_api_val "notify_webhook");  [ -n "$v" ] && export VAKT_BACKUP_NOTIFY_WEBHOOK="${VAKT_BACKUP_NOTIFY_WEBHOOK:-$v}"
+	v=$(_api_val "offsite_cmd");     [ -n "$v" ] && export VAKT_BACKUP_OFFSITE_CMD="${VAKT_BACKUP_OFFSITE_CMD:-$v}"
+	v=$(_api_val "notify_cmd");      [ -n "$v" ] && export VAKT_BACKUP_NOTIFY_CMD="${VAKT_BACKUP_NOTIFY_CMD:-$v}"
+	echo "→ [backup-cron] config loaded from API"
+}
+_load_api_config
 
 notify_failure() {
 	local message="$1"

@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Play, Square, BarChart2, FileDown } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
@@ -10,14 +11,6 @@ import { campaignStatusVariant } from '../../../lib/statusMapping'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const statusVariant = campaignStatusVariant
-
-const STATUS_LABELS: Record<string, string> = {
-  draft: 'Entwurf',
-  scheduled: 'Geplant',
-  running: 'Läuft',
-  completed: 'Abgeschlossen',
-  cancelled: 'Abgebrochen',
-}
 
 function StatCard({ label, value, pct }: { label: string; value: number; pct?: number }) {
   return (
@@ -32,6 +25,8 @@ function StatCard({ label, value, pct }: { label: string; value: number; pct?: n
 }
 
 export default function CampaignDetailPage() {
+  const { t } = useTranslation()
+  const statusLabel = (s: string) => t('vaktaware.campaignStatus.' + s, { defaultValue: s })
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { formatDate, formatDateTime } = useFormatDate()
@@ -93,23 +88,23 @@ export default function CampaignDetailPage() {
       <div className="flex-1 p-6 space-y-6">
         <Card>
           <CardHeader className="flex flex-row items-center gap-3 pb-3">
-            <CardTitle>Details</CardTitle>
-            <Badge variant={statusVariant[campaign.status]}>{STATUS_LABELS[campaign.status] ?? campaign.status}</Badge>
+            <CardTitle>{t('vaktaware.campaignDetail.detailsTitle')}</CardTitle>
+            <Badge variant={statusVariant[campaign.status]}>{statusLabel(campaign.status)}</Badge>
           </CardHeader>
           <CardContent>
             <dl className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
               <div>
-                <dt className="text-secondary">Absender</dt>
+                <dt className="text-secondary">{t('vaktaware.campaignDetail.sender')}</dt>
                 <dd className="mt-0.5 text-primary">{campaign.from_name} &lt;{campaign.from_email}&gt;</dd>
               </div>
               <div>
-                <dt className="text-secondary">Geplant</dt>
+                <dt className="text-secondary">{t('vaktaware.campaignDetail.scheduled')}</dt>
                 <dd className="mt-0.5 text-primary">
-                  {campaign.scheduled_at ? formatDateTime(campaign.scheduled_at) : 'Nicht geplant'}
+                  {campaign.scheduled_at ? formatDateTime(campaign.scheduled_at) : t('vaktaware.campaignDetail.notScheduled')}
                 </dd>
               </div>
               <div>
-                <dt className="text-secondary">Erstellt</dt>
+                <dt className="text-secondary">{t('vaktaware.campaignDetail.created')}</dt>
                 <dd className="mt-0.5 text-primary">{formatDate(campaign.created_at)}</dd>
               </div>
             </dl>
@@ -121,16 +116,16 @@ export default function CampaignDetailPage() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <BarChart2 className="w-4 h-4 text-secondary" />
-                <CardTitle>Kampagnen-Statistik</CardTitle>
+                <CardTitle>{t('vaktaware.campaignDetail.statsTitle')}</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                <StatCard label="Ziele" value={stats.total_targets} />
-                <StatCard label="Versandt" value={stats.emails_sent} />
-                <StatCard label="Geöffnet" value={Math.round(stats.open_rate * stats.emails_sent)} pct={stats.open_rate} />
-                <StatCard label="Geklickt" value={Math.round(stats.click_rate * stats.emails_sent)} pct={stats.click_rate} />
-                <StatCard label="Eingegeben" value={Math.round(stats.submission_rate * stats.emails_sent)} pct={stats.submission_rate} />
+                <StatCard label={t('vaktaware.campaignDetail.statTargets')} value={stats.total_targets} />
+                <StatCard label={t('vaktaware.campaignDetail.statSent')} value={stats.emails_sent} />
+                <StatCard label={t('vaktaware.campaignDetail.statOpened')} value={Math.round(stats.open_rate * stats.emails_sent)} pct={stats.open_rate} />
+                <StatCard label={t('vaktaware.campaignDetail.statClicked')} value={Math.round(stats.click_rate * stats.emails_sent)} pct={stats.click_rate} />
+                <StatCard label={t('vaktaware.campaignDetail.statSubmitted')} value={Math.round(stats.submission_rate * stats.emails_sent)} pct={stats.submission_rate} />
               </div>
             </CardContent>
           </Card>

@@ -79,7 +79,7 @@ function AssignDialog({ evidence, onClose }: AssignDialogProps) {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-sm font-semibold">
-            Kontrolle zuordnen
+            {t('vaktcomply.evidenceAuto.assignDialogTitle')}
           </DialogTitle>
         </DialogHeader>
 
@@ -96,7 +96,7 @@ function AssignDialog({ evidence, onClose }: AssignDialogProps) {
               onValueChange={(v) => { setFrameworkId(v); setControlId('') }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Framework wählen…" />
+                <SelectValue placeholder={t('vaktcomply.evidenceAuto.selectFramework')} />
               </SelectTrigger>
               <SelectContent>
                 {frameworks.map((fw) => (
@@ -113,7 +113,7 @@ function AssignDialog({ evidence, onClose }: AssignDialogProps) {
               <label className="text-xs text-muted-foreground">{t('vaktcomply.evidenceAuto.control')}</label>
               <Select value={controlId} onValueChange={setControlId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Kontrolle wählen…" />
+                  <SelectValue placeholder={t('vaktcomply.evidenceAuto.selectControl')} />
                 </SelectTrigger>
                 <SelectContent>
                   {controlList.map((ctrl) => (
@@ -128,20 +128,20 @@ function AssignDialog({ evidence, onClose }: AssignDialogProps) {
 
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" size="sm" onClick={onClose}>
-              Abbrechen
+              {t('vaktcomply.evidenceAuto.cancel')}
             </Button>
             <Button
               size="sm"
               disabled={!controlId || assign.isPending}
               onClick={handleAssign}
             >
-              {assign.isPending ? 'Wird zugeordnet…' : 'Zuordnen'}
+              {assign.isPending ? t('vaktcomply.evidenceAuto.assigning') : t('vaktcomply.evidenceAuto.assign')}
             </Button>
           </div>
 
           {assign.isError && (
             <p className="text-xs text-destructive">
-              Fehler: {assign.error.message}
+              {t('vaktcomply.evidenceAuto.assignError')}: {assign.error.message}
             </p>
           )}
         </div>
@@ -153,6 +153,7 @@ function AssignDialog({ evidence, onClose }: AssignDialogProps) {
 // --- Main Page ---
 
 export default function EvidenceAutoPage() {
+  const { t } = useTranslation()
   const { data: items = [], isLoading } = useAutoEvidence()
   const [assigning, setAssigning] = useState<AutoEvidence | null>(null)
   const { formatDate: fmtDate } = useFormatDate()
@@ -164,22 +165,21 @@ export default function EvidenceAutoPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
       <PageHeader
-        title="Automatisch gesammelte Evidence"
-        description="Automatisch gesammelte Nachweise aus GitHub, Trainings und Scanner-Ergebnissen — bereit zum Zuordnen"
+        title={t('vaktcomply.evidenceAuto.title')}
+        description={t('vaktcomply.evidenceAuto.description')}
       />
 
       {isLoading && (
-        <p className="text-sm text-muted-foreground">Lade Evidence…</p>
+        <p className="text-sm text-muted-foreground">{t('vaktcomply.evidenceAuto.loading')}</p>
       )}
 
       {!isLoading && items.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center space-y-2">
             <CheckCircle2 className="w-10 h-10 mx-auto text-green-500" />
-            <p className="font-medium">Kein ausstehender Evidence</p>
+            <p className="font-medium">{t('vaktcomply.evidenceAuto.emptyTitle')}</p>
             <p className="text-sm text-muted-foreground">
-              Alle automatisch gesammelten Evidence-Einträge wurden bereits
-              Kontrollen zugeordnet.
+              {t('vaktcomply.evidenceAuto.emptyDescription')}
             </p>
           </CardContent>
         </Card>
@@ -210,11 +210,11 @@ export default function EvidenceAutoPage() {
                     )}
                     {ev.suggested_control_hint && (
                       <p className="text-[11px] text-blue-400">
-                        Vorschlag: {ev.suggested_control_hint}
+                        {t('vaktcomply.evidenceAuto.suggestion')}: {ev.suggested_control_hint}
                       </p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      Gesammelt: {formatDate(ev.auto_collected_at ?? ev.created_at)}
+                      {t('vaktcomply.evidenceAuto.collected')}: {formatDate(ev.auto_collected_at ?? ev.created_at)}
                     </p>
                   </div>
 
@@ -225,7 +225,7 @@ export default function EvidenceAutoPage() {
                     onClick={() => { setAssigning(ev); }}
                   >
                     <Inbox className="w-3 h-3" />
-                    Kontrolle zuordnen
+                    {t('vaktcomply.evidenceAuto.assignControl')}
                   </Button>
                 </div>
               ))}

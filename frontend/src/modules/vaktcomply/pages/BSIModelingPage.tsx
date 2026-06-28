@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Elastic-2.0
 
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Network, Plus, Layers, Trash2 } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -64,12 +65,6 @@ const PRIORITY_CLASS: Record<string, string> = {
   R3: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
 }
 
-const PRIORITY_LABELS: Record<string, string> = {
-  R1: 'R1 — Muss',
-  R2: 'R2 — Soll',
-  R3: 'R3 — Kann',
-}
-
 type CheckStatus = 'yes' | 'partial' | 'no' | 'not_applicable'
 
 const STATUS_CLASS: Record<CheckStatus | 'pending', string> = {
@@ -119,15 +114,16 @@ function MatrixTab({
   onAdd: () => void
   onBulkAdd: () => void
 }) {
+  const { t } = useTranslation()
   const actionButtons = (
     <div className="flex gap-2 justify-end">
       <Button size="sm" variant="outline" onClick={onBulkAdd}>
         <Layers className="w-4 h-4 mr-1" />
-        Mehrere Bausteine
+        {t('bsiModeling.bulkAssign')}
       </Button>
       <Button size="sm" onClick={onAdd}>
         <Plus className="w-4 h-4 mr-1" />
-        Baustein zuweisen
+        {t('bsiModeling.assignModule')}
       </Button>
     </div>
   )
@@ -138,8 +134,8 @@ function MatrixTab({
         {actionButtons}
         <EmptyState
           icon={Network}
-          title="Keine Modellierungseinträge"
-          description="Weisen Sie Bausteine Ihren IT-Assets zu, um die BSI-Grundschutz-Modellierung zu starten."
+          title={t('bsiModeling.emptyTitle')}
+          description={t('bsiModeling.emptyDesc')}
         />
       </div>
     )
@@ -152,11 +148,11 @@ function MatrixTab({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Asset</TableHead>
-              <TableHead>Baustein / Control</TableHead>
-              <TableHead>Priorität</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Interview-Notizen</TableHead>
+              <TableHead>{t('bsiModeling.colAsset')}</TableHead>
+              <TableHead>{t('bsiModeling.colModule')}</TableHead>
+              <TableHead>{t('bsiModeling.colPriority')}</TableHead>
+              <TableHead>{t('common.status')}</TableHead>
+              <TableHead>{t('bsiModeling.colNotes')}</TableHead>
               <TableHead className="w-12" />
             </TableRow>
           </TableHeader>
@@ -164,7 +160,7 @@ function MatrixTab({
             {entries.map((e) => (
               <TableRow key={e.id}>
                 <TableCell className="font-medium text-sm">
-                  {e.asset_name || <span className="text-muted-foreground italic">Unbekannt</span>}
+                  {e.asset_name || <span className="text-muted-foreground italic">{t('bsiModeling.unknown')}</span>}
                 </TableCell>
                 <TableCell>
                   <div>
@@ -213,6 +209,7 @@ function MatrixTab({
 // ─── By-Asset Tab ─────────────────────────────────────────────────────────────
 
 function ByAssetTab({ entries }: { entries: BSIModelingEntry[] }) {
+  const { t } = useTranslation()
   const [selectedAsset, setSelectedAsset] = useState<string>('')
 
   // Collect unique assets
@@ -227,10 +224,10 @@ function ByAssetTab({ entries }: { entries: BSIModelingEntry[] }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Label className="shrink-0 text-sm">Asset auswählen:</Label>
+        <Label className="shrink-0 text-sm">{t('bsiModeling.selectAsset')}</Label>
         <Select value={selectedAsset} onValueChange={setSelectedAsset}>
           <SelectTrigger className="w-64">
-            <SelectValue placeholder="Asset wählen …" />
+            <SelectValue placeholder={t('bsiModeling.selectAssetPlaceholder')} />
           </SelectTrigger>
           <SelectContent>
             {assets.map(([id, name]) => (
@@ -241,7 +238,7 @@ function ByAssetTab({ entries }: { entries: BSIModelingEntry[] }) {
       </div>
 
       {selectedAsset && filtered.length === 0 && (
-        <p className="text-sm text-secondary">Keine Bausteine für dieses Asset zugewiesen.</p>
+        <p className="text-sm text-secondary">{t('bsiModeling.noModulesForAsset')}</p>
       )}
 
       {filtered.length > 0 && (
@@ -249,10 +246,10 @@ function ByAssetTab({ entries }: { entries: BSIModelingEntry[] }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Baustein / Control</TableHead>
-                <TableHead>Priorität</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Begründung</TableHead>
+                <TableHead>{t('bsiModeling.colModule')}</TableHead>
+                <TableHead>{t('bsiModeling.colPriority')}</TableHead>
+                <TableHead>{t('common.status')}</TableHead>
+                <TableHead>{t('bsiModeling.colJustification')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -264,7 +261,7 @@ function ByAssetTab({ entries }: { entries: BSIModelingEntry[] }) {
                   </TableCell>
                   <TableCell>
                     <Badge className={`text-xs border ${PRIORITY_CLASS[e.priority] ?? ''}`}>
-                      {PRIORITY_LABELS[e.priority]}
+                      {t(`bsiModeling.priority${e.priority}`)}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -290,10 +287,11 @@ function ByAssetTab({ entries }: { entries: BSIModelingEntry[] }) {
 // ─── Stats Tab ────────────────────────────────────────────────────────────────
 
 function StatsTab() {
+  const { t } = useTranslation()
   const { data: stats, isLoading } = useBSIModelingStats()
 
   if (isLoading) return <Spinner />
-  if (!stats) return <p className="text-sm text-secondary">Keine Statistiken verfügbar.</p>
+  if (!stats) return <p className="text-sm text-secondary">{t('bsiModeling.noStats')}</p>
 
   const pct = (n: number) => stats.total > 0 ? Math.round((n / stats.total) * 100) : 0
 
@@ -302,7 +300,7 @@ function StatsTab() {
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <Card>
           <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-xs text-secondary">Gesamt</CardTitle>
+            <CardTitle className="text-xs text-secondary">{t('bsiModeling.statTotal')}</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <p className="text-2xl font-bold">{stats.total}</p>
@@ -310,7 +308,7 @@ function StatsTab() {
         </Card>
         <Card>
           <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-xs text-green-400">Erfüllt</CardTitle>
+            <CardTitle className="text-xs text-green-400">{t('bsiModeling.statFulfilled')}</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <p className="text-2xl font-bold text-green-400">{stats.count_yes}</p>
@@ -318,7 +316,7 @@ function StatsTab() {
         </Card>
         <Card>
           <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-xs text-amber-400">Teilweise</CardTitle>
+            <CardTitle className="text-xs text-amber-400">{t('bsiModeling.statPartial')}</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <p className="text-2xl font-bold text-amber-400">{stats.count_partial}</p>
@@ -326,7 +324,7 @@ function StatsTab() {
         </Card>
         <Card>
           <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-xs text-red-400">Offen</CardTitle>
+            <CardTitle className="text-xs text-red-400">{t('bsiModeling.statOpen')}</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <p className="text-2xl font-bold text-red-400">{stats.count_no}</p>
@@ -334,7 +332,7 @@ function StatsTab() {
         </Card>
         <Card>
           <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-xs text-secondary">N/A</CardTitle>
+            <CardTitle className="text-xs text-secondary">{t('bsiModeling.statNA')}</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <p className="text-2xl font-bold">{stats.count_na}</p>
@@ -342,7 +340,7 @@ function StatsTab() {
         </Card>
         <Card>
           <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-xs text-slate-400">Ausstehend</CardTitle>
+            <CardTitle className="text-xs text-slate-400">{t('bsiModeling.statPending')}</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <p className="text-2xl font-bold text-slate-400">{stats.count_pending}</p>
@@ -353,26 +351,26 @@ function StatsTab() {
       {stats.total > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Fortschritt</CardTitle>
+            <CardTitle className="text-sm">{t('bsiModeling.statProgress')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
               <div className="flex justify-between text-xs text-secondary mb-1">
-                <span>Erfüllt</span>
+                <span>{t('bsiModeling.statFulfilled')}</span>
                 <span>{pct(stats.count_yes)}%</span>
               </div>
               <Progress value={pct(stats.count_yes)} className="h-2" />
             </div>
             <div>
               <div className="flex justify-between text-xs text-secondary mb-1">
-                <span>Teilweise</span>
+                <span>{t('bsiModeling.statPartial')}</span>
                 <span>{pct(stats.count_partial)}%</span>
               </div>
               <Progress value={pct(stats.count_partial)} className="h-2" />
             </div>
             <div>
               <div className="flex justify-between text-xs text-secondary mb-1">
-                <span>Offen</span>
+                <span>{t('bsiModeling.statOpen')}</span>
                 <span>{pct(stats.count_no)}%</span>
               </div>
               <Progress value={pct(stats.count_no)} className="h-2" />
@@ -387,12 +385,16 @@ function StatsTab() {
 // ─── Bulk Assign Dialog ───────────────────────────────────────────────────────
 
 const ASSET_TYPES = ['server', 'workstation', 'network', 'application', 'database'] as const
-const ASSET_TYPE_LABELS: Record<string, string> = {
-  server: 'Server', workstation: 'Workstation', network: 'Netzwerk',
-  application: 'Anwendung', database: 'Datenbank',
-}
 
 function BulkAssignDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation()
+  const assetTypeLabels: Record<string, string> = {
+    server: t('bsiModeling.assetTypeServer'),
+    workstation: t('bsiModeling.assetTypeWorkstation'),
+    network: t('bsiModeling.assetTypeNetwork'),
+    application: t('bsiModeling.assetTypeApplication'),
+    database: t('bsiModeling.assetTypeDatabase'),
+  }
   const qc = useQueryClient()
   const [assetId, setAssetId] = useState('')
   const [assetType, setAssetType] = useState('server')
@@ -434,7 +436,7 @@ function BulkAssignDialog({ open, onClose }: { open: boolean; onClose: () => voi
         await create.mutateAsync({ asset_id: assetId.trim(), control_id, priority })
         setProgress((p) => ({ ...p, done: p.done + 1 }))
       } catch (e) {
-        errs.push(`${control_id}: ${e instanceof Error ? e.message : 'Fehler'}`)
+        errs.push(`${control_id}: ${e instanceof Error ? e.message : t('bsiModeling.errorGeneric')}`)
       }
     }
     setIsSubmitting(false)
@@ -450,31 +452,31 @@ function BulkAssignDialog({ open, onClose }: { open: boolean; onClose: () => voi
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Mehrere Bausteine zuweisen</DialogTitle>
+          <DialogTitle>{t('bsiModeling.bulkDialogTitle')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div className="space-y-1.5">
-            <Label>Asset-ID <span className="text-destructive">*</span></Label>
+            <Label>{t('bsiModeling.assetId')} <span className="text-destructive">*</span></Label>
             <Input
               value={assetId}
               onChange={(e) => { setAssetId(e.target.value) }}
-              placeholder="UUID des Assets"
+              placeholder={t('bsiModeling.assetIdPlaceholder')}
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Asset-Typ (für Vorschläge)</Label>
+            <Label>{t('bsiModeling.assetTypeLabel')}</Label>
             <Select value={assetType} onValueChange={setAssetType}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {ASSET_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>{ASSET_TYPE_LABELS[t]}</SelectItem>
+                {ASSET_TYPES.map((type) => (
+                  <SelectItem key={type} value={type}>{assetTypeLabels[type]}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           {suggestions.length > 0 && (
             <div className="space-y-1.5">
-              <Label>Empfohlene Bausteine</Label>
+              <Label>{t('bsiModeling.recommendedModules')}</Label>
               <div className="space-y-2 p-3 rounded-lg border border-border bg-surface2">
                 {suggestions.map((id) => (
                   <label key={id} className="flex items-center gap-2 cursor-pointer select-none">
@@ -491,35 +493,35 @@ function BulkAssignDialog({ open, onClose }: { open: boolean; onClose: () => voi
             </div>
           )}
           <div className="space-y-1.5">
-            <Label>Weitere Baustein-ID</Label>
+            <Label>{t('bsiModeling.additionalModuleId')}</Label>
             <div className="flex gap-2">
               <Input
                 value={customInput}
                 onChange={(e) => { setCustomInput(e.target.value) }}
-                placeholder="z.B. OPS.1.1.3"
+                placeholder={t('bsiModeling.moduleIdPlaceholder')}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustom() } }}
               />
               <Button type="button" variant="outline" size="sm" onClick={addCustom} disabled={!customInput.trim()}>
-                Hinzufügen
+                {t('common.add')}
               </Button>
             </div>
             {selectedIds.size > 0 && (
-              <p className="text-xs text-secondary">{selectedIds.size} Baustein{selectedIds.size !== 1 ? 'e' : ''} ausgewählt</p>
+              <p className="text-xs text-secondary">{t('bsiModeling.modulesSelected', { count: selectedIds.size })}</p>
             )}
           </div>
           <div className="space-y-1.5">
-            <Label>Priorität (für alle)</Label>
+            <Label>{t('bsiModeling.priorityForAll')}</Label>
             <Select value={priority} onValueChange={(v) => { setPriority(v as 'R1' | 'R2' | 'R3') }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="R1">R1 — Muss</SelectItem>
-                <SelectItem value="R2">R2 — Soll</SelectItem>
-                <SelectItem value="R3">R3 — Kann</SelectItem>
+                <SelectItem value="R1">{t('bsiModeling.priorityR1')}</SelectItem>
+                <SelectItem value="R2">{t('bsiModeling.priorityR2')}</SelectItem>
+                <SelectItem value="R3">{t('bsiModeling.priorityR3')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           {isSubmitting && progress.total > 0 && (
-            <p className="text-sm text-secondary">{progress.done} / {progress.total} zugewiesen …</p>
+            <p className="text-sm text-secondary">{t('bsiModeling.assignProgress', { done: progress.done, total: progress.total })}</p>
           )}
           {errors.length > 0 && (
             <div className="text-xs text-destructive space-y-0.5 p-2 rounded border border-destructive/30 bg-destructive/5">
@@ -528,14 +530,14 @@ function BulkAssignDialog({ open, onClose }: { open: boolean; onClose: () => voi
           )}
         </div>
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={onClose}>Abbrechen</Button>
+          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
           <Button
             onClick={() => { void handleSubmit() }}
             disabled={!assetId.trim() || selectedIds.size === 0 || isSubmitting}
           >
             {isSubmitting
               ? `${progress.done + 1}/${progress.total} …`
-              : `${selectedIds.size > 0 ? String(selectedIds.size) + ' ' : ''}Zuweisen`}
+              : `${selectedIds.size > 0 ? String(selectedIds.size) + ' ' : ''}${t('bsiModeling.assignBtn')}`}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -552,6 +554,7 @@ function CreateDialog({
   open: boolean
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [form, setForm] = useState<CreateBSIModelingInput>(emptyForm())
   const create = useCreateBSIModeling()
 
@@ -564,46 +567,46 @@ function CreateDialog({
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Baustein zuweisen</DialogTitle>
+          <DialogTitle>{t('bsiModeling.createDialogTitle')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="space-y-1.5">
-            <Label htmlFor="bm-asset-id">Asset-ID <span className="text-destructive">*</span></Label>
+            <Label htmlFor="bm-asset-id">{t('bsiModeling.assetId')} <span className="text-destructive">*</span></Label>
             <Input
               id="bm-asset-id"
               value={form.asset_id}
               onChange={(e) => { setForm((f) => ({ ...f, asset_id: e.target.value })) }}
-              placeholder="UUID des Assets"
+              placeholder={t('bsiModeling.assetIdPlaceholder')}
               required
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="bm-control-id">Control-ID <span className="text-destructive">*</span></Label>
+            <Label htmlFor="bm-control-id">{t('bsiModeling.controlId')} <span className="text-destructive">*</span></Label>
             <Input
               id="bm-control-id"
               value={form.control_id}
               onChange={(e) => { setForm((f) => ({ ...f, control_id: e.target.value })) }}
-              placeholder="UUID des Controls"
+              placeholder={t('bsiModeling.controlIdPlaceholder')}
               required
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Priorität</Label>
+              <Label>{t('bsiModeling.colPriority')}</Label>
               <Select
                 value={form.priority}
                 onValueChange={(v) => { setForm((f) => ({ ...f, priority: v as 'R1' | 'R2' | 'R3' })) }}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="R1">R1 — Muss</SelectItem>
-                  <SelectItem value="R2">R2 — Soll</SelectItem>
-                  <SelectItem value="R3">R3 — Kann</SelectItem>
+                  <SelectItem value="R1">{t('bsiModeling.priorityR1')}</SelectItem>
+                  <SelectItem value="R2">{t('bsiModeling.priorityR2')}</SelectItem>
+                  <SelectItem value="R3">{t('bsiModeling.priorityR3')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Check-Status</Label>
+              <Label>{t('bsiModeling.checkStatus')}</Label>
               <Select
                 value={form.check_status ?? ''}
                 onValueChange={(v) => {
@@ -613,13 +616,13 @@ function CreateDialog({
                   }))
                 }}
               >
-                <SelectTrigger><SelectValue placeholder="Ausstehend" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('bsiModeling.statPending')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Ausstehend</SelectItem>
-                  <SelectItem value="yes">Erfüllt</SelectItem>
-                  <SelectItem value="partial">Teilweise</SelectItem>
-                  <SelectItem value="no">Offen</SelectItem>
-                  <SelectItem value="not_applicable">N/A</SelectItem>
+                  <SelectItem value="">{t('bsiModeling.statPending')}</SelectItem>
+                  <SelectItem value="yes">{t('bsiModeling.statFulfilled')}</SelectItem>
+                  <SelectItem value="partial">{t('bsiModeling.statPartial')}</SelectItem>
+                  <SelectItem value="no">{t('bsiModeling.statOpen')}</SelectItem>
+                  <SelectItem value="not_applicable">{t('bsiModeling.statNA')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -628,9 +631,9 @@ function CreateDialog({
             <p className="text-xs text-destructive">{create.error.message}</p>
           )}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Abbrechen</Button>
+            <Button type="button" variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
             <Button type="submit" disabled={create.isPending}>
-              {create.isPending ? 'Speichern …' : 'Zuweisen'}
+              {create.isPending ? t('bsiModeling.saving') : t('bsiModeling.assignBtn')}
             </Button>
           </DialogFooter>
         </form>
@@ -642,6 +645,7 @@ function CreateDialog({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function BSIModelingPage() {
+  const { t } = useTranslation()
   const [showCreate, setShowCreate] = useState(false)
   const [showBulk, setShowBulk] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -661,8 +665,8 @@ export default function BSIModelingPage() {
     <ProGate error={isError ? error : null}>
     <div className="flex flex-col h-full">
       <PageHeader
-        title="BSI-Grundschutz-Modellierung"
-        description="Baustein-Zuweisung und IT-Grundschutz-Check pro Asset (Phase 3 & 4)"
+        title={t('bsiModeling.title')}
+        description={t('bsiModeling.description')}
       />
 
       <div className="p-6 space-y-6">
@@ -671,9 +675,9 @@ export default function BSIModelingPage() {
         ) : (
           <Tabs defaultValue="matrix">
             <TabsList>
-              <TabsTrigger value="matrix">Matrix</TabsTrigger>
-              <TabsTrigger value="by-asset">Nach Asset</TabsTrigger>
-              <TabsTrigger value="stats">Statistiken</TabsTrigger>
+              <TabsTrigger value="matrix">{t('bsiModeling.tabMatrix')}</TabsTrigger>
+              <TabsTrigger value="by-asset">{t('bsiModeling.tabByAsset')}</TabsTrigger>
+              <TabsTrigger value="stats">{t('bsiModeling.tabStats')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="matrix" className="mt-4">
@@ -702,14 +706,14 @@ export default function BSIModelingPage() {
       <AlertDialog open={deleteId !== null} onOpenChange={open => { if (!open) setDeleteId(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Eintrag löschen?</AlertDialogTitle>
+            <AlertDialogTitle>{t('bsiModeling.deleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Diese Aktion kann nicht rückgängig gemacht werden.
+              {t('bsiModeling.deleteDesc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Löschen</AlertDialogAction>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>{t('common.delete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -33,7 +33,7 @@ describe('ProGate', () => {
     )
 
     expect(screen.queryByText('Should not render')).not.toBeInTheDocument()
-    expect(screen.getByText('errors.pro.title')).toBeInTheDocument()
+    expect(screen.getByText('Vakt Pro')).toBeInTheDocument()
     // CTA link must be present
     const link = screen.getByRole('link')
     expect(link).toHaveAttribute('href', expect.stringContaining('polar.sh'))
@@ -49,7 +49,7 @@ describe('ProGate', () => {
     )
 
     expect(screen.queryByText('Children')).not.toBeInTheDocument()
-    expect(screen.getByText('errors.pro.title')).toBeInTheDocument()
+    expect(screen.getByText('Vakt Pro')).toBeInTheDocument()
   })
 
   it('shows ErrorState when error is a generic server error', () => {

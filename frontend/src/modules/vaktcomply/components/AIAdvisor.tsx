@@ -93,7 +93,7 @@ export function AIAdvisor({ aiAvailable, providerHost, model }: Props) {
     const code = (error as Error & { code?: string }).code
     if (code === 'AI_RATE_LIMITED') return t('ai.stream.rateLimited')
     if (code === 'AI_QUOTA_EXCEEDED') return t('ai.stream.quotaExceeded')
-    if (code === 'AI_CE_MONTHLY_LIMIT') return 'KI-Monatslimit (25 Anfragen) erreicht. Upgrade auf Pro für unbegrenzte Anfragen.'
+    if (code === 'AI_CE_MONTHLY_LIMIT') return t('ai.ceLimitReached')
     return null
   })()
 
@@ -103,7 +103,7 @@ export function AIAdvisor({ aiAvailable, providerHost, model }: Props) {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-brand shrink-0" />
-          <h2 className="text-sm font-semibold text-primary">KI-Compliance-Berater</h2>
+          <h2 className="text-sm font-semibold text-primary">{t('ai.title')}</h2>
         </div>
         <div className="flex items-center gap-2">
           <CEAICounter />
@@ -114,9 +114,9 @@ export function AIAdvisor({ aiAvailable, providerHost, model }: Props) {
       {/* Not configured */}
       {!aiAvailable && (
         <p className="text-xs text-secondary italic">
-          KI nicht konfiguriert —{' '}
+          {t('ai.notConfigured')}{' '}
           <Link to="/settings?tab=ai" className="text-brand underline hover:text-brand/80 not-italic">
-            KI einrichten
+            {t('ai.configure')}
           </Link>
         </p>
       )}
@@ -127,7 +127,7 @@ export function AIAdvisor({ aiAvailable, providerHost, model }: Props) {
           onClick={() => void startAdvice()}
           className="w-full text-sm font-medium text-brand border border-brand/40 rounded-lg py-2 px-4 hover:bg-brand/10 transition-colors"
         >
-          Empfehlungen laden
+          {t('ai.loadRecommendations')}
         </button>
       )}
 
@@ -154,14 +154,14 @@ export function AIAdvisor({ aiAvailable, providerHost, model }: Props) {
                 onClick={() => void startAdvice()}
                 className="text-xs text-secondary hover:text-brand transition-colors"
               >
-                Neu laden
+                {t('ai.reload')}
               </button>
             )}
             {!isStreaming && <TokenCostIndicator durationMs={durationMs} />}
           </div>
           {sources.length > 0 && (
             <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/50">
-              <span className="text-xs text-secondary self-center">Quellen:</span>
+              <span className="text-xs text-secondary self-center">{t('ai.sources')}</span>
               {sources.map((src) => (
                 <button
                   key={src.label}

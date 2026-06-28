@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ShieldCheck, Plus, Trash2, ScanLine, AlertTriangle, Check, X } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -38,17 +39,19 @@ function daysUntil(dateStr?: string | null): number | null {
 }
 
 function ExpiryCell({ notAfter }: { notAfter?: string | null }) {
+  const { t } = useTranslation()
   const { formatDate } = useFormatDate()
   const days = daysUntil(notAfter)
   if (!notAfter) return <span className="text-secondary">—</span>
   const label = formatDate(notAfter)
   if (days === null) return <span className="text-secondary">{label}</span>
-  if (days < 0) return <span className="text-red-400">{label} (abgelaufen)</span>
+  if (days < 0) return <span className="text-red-400">{label} {t('vaktscan.certPage.expired')}</span>
   if (days <= 30) return <span className="text-amber-400">{label} ({days}d)</span>
   return <span className="text-primary">{label}</span>
 }
 
 export default function CertificatesPage() {
+  const { t } = useTranslation()
   const [addOpen, setAddOpen] = useState(false)
   const [domain, setDomain] = useState('')
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -85,12 +88,12 @@ export default function CertificatesPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="TLS-Zertifikate"
-        description="Überwachung von TLS-Zertifikaten — Ablaufdaten, Aussteller und SANs im Blick."
+        title={t('vaktscan.certPage.title')}
+        description={t('vaktscan.certPage.description')}
         actions={
           <Button onClick={() => { setAddOpen(true); }}>
             <Plus className="w-4 h-4 mr-1" />
-            Zertifikat hinzufügen
+            {t('vaktscan.certPage.addCertificate')}
           </Button>
         }
       />
@@ -103,18 +106,18 @@ export default function CertificatesPage() {
         )}
         {isError && (
           <p className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">
-            Zertifikate konnten nicht geladen werden.
+            {t('vaktscan.certPage.loadError')}
           </p>
         )}
         {!isLoading && !isError && certs.length === 0 && (
           <EmptyState
             icon={ShieldCheck}
-            title="Keine Zertifikate"
-            description="Füge Domains hinzu, um deren TLS-Zertifikate zu überwachen."
+            title={t('vaktscan.certPage.empty')}
+            description={t('vaktscan.certPage.emptyDesc')}
             action={
               <Button onClick={() => { setAddOpen(true); }}>
                 <Plus className="w-4 h-4 mr-1" />
-                Zertifikat hinzufügen
+                {t('vaktscan.certPage.addCertificate')}
               </Button>
             }
           />
@@ -124,11 +127,11 @@ export default function CertificatesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Domain</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Ablauf</TableHead>
-                  <TableHead>Aussteller</TableHead>
-                  <TableHead>Zuletzt geprüft</TableHead>
+                  <TableHead>{t('vaktscan.certPage.colDomain')}</TableHead>
+                  <TableHead>{t('common.status')}</TableHead>
+                  <TableHead>{t('vaktscan.certPage.colExpiry')}</TableHead>
+                  <TableHead>{t('vaktscan.certPage.colIssuer')}</TableHead>
+                  <TableHead>{t('vaktscan.certPage.colLastChecked')}</TableHead>
                   <TableHead className="w-24" />
                 </TableRow>
               </TableHeader>
@@ -159,7 +162,7 @@ export default function CertificatesPage() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          title="Jetzt scannen"
+                          title={t('vaktscan.certPage.scanNow')}
                           disabled={scanningId === cert.id}
                           onClick={() => { void handleScan(cert.id) }}
                         >
@@ -172,7 +175,7 @@ export default function CertificatesPage() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-red-400 hover:text-red-300"
-                          title="Löschen"
+                          title={t('common.delete')}
                           onClick={() => { setDeleteId(cert.id); }}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -191,7 +194,7 @@ export default function CertificatesPage() {
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Zertifikat hinzufügen</DialogTitle>
+            <DialogTitle>{t('vaktscan.certPage.addDialogTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
@@ -203,17 +206,17 @@ export default function CertificatesPage() {
                 onKeyDown={(e) => { if (e.key === 'Enter') { handleAdd(); } }}
               />
               <p className="text-xs text-muted-foreground">
-                Domain ohne https:// — Port optional, z.B. example.com oder smtp.example.com:465
+                {t('vaktscan.certPage.domainHint')}
               </p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setAddOpen(false); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setAddOpen(false); }}>{t('common.cancel')}</Button>
             <Button
               onClick={handleAdd}
               disabled={!domain.trim() || createCert.isPending}
             >
-              {createCert.isPending ? 'Wird gespeichert…' : 'Hinzufügen'}
+              {createCert.isPending ? t('common.saving') : t('common.add')}
             </Button>
           </DialogFooter>
         </DialogContent>

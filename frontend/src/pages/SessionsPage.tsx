@@ -121,7 +121,7 @@ export default function SessionsPage() {
         <div className="grid grid-cols-[auto_1fr_1fr_1fr_auto] gap-x-4 px-4 py-2.5 border-b border-border bg-muted/30">
           <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">·</span>
           <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">{t('settings.sessionsPage.colDevice')}</span>
-          <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">Zuletzt aktiv</span>
+          <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">{t('settings.sessionsPage.colLastActive')}</span>
           <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">{t('settings.sessionsPage.colExpiry')}</span>
           <span className="text-[11px] font-semibold text-secondary uppercase tracking-wide">{t('settings.sessionsPage.colActions')}</span>
         </div>
@@ -155,9 +155,9 @@ export default function SessionsPage() {
           >
             <div className="flex items-center">
               {session.is_current ? (
-                <span title="Diese Session" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-brand/10 text-brand">
+                <span title={t('settings.sessionsPage.currentSession')} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-brand/10 text-brand">
                   <CheckCircle2 className="w-3 h-3" />
-                  Diese hier
+                  {t('settings.sessionsPage.currentBadge')}
                 </span>
               ) : (
                 <span className="text-[10px] text-secondary">·</span>
@@ -180,7 +180,7 @@ export default function SessionsPage() {
               size="sm"
               className="text-destructive hover:text-destructive hover:bg-destructive/10"
               disabled={revoke.isPending || session.is_current}
-              title={session.is_current ? 'Diese Session abzumelden geht über Logout — nicht hier' : undefined}
+              title={session.is_current ? t('settings.sessionsPage.currentSessionHint') : undefined}
               onClick={() => { setRevokeTargetId(session.id); }}
             >
               <Trash2 className="w-4 h-4" />
@@ -194,13 +194,13 @@ export default function SessionsPage() {
       <AlertDialog open={revokeTargetId !== null} onOpenChange={(open) => { if (!open) setRevokeTargetId(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Session widerrufen?</AlertDialogTitle>
+            <AlertDialogTitle>{t('settings.sessionsPage.revokeDialogTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Diese Session wird sofort ungültig. Sie müssen sich auf diesem Gerät erneut anmelden.
+              {t('settings.sessionsPage.revokeDialogDesc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -208,7 +208,7 @@ export default function SessionsPage() {
                 setRevokeTargetId(null)
               }}
             >
-              Widerrufen
+              {t('settings.sessionsPage.revokeSession')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -225,10 +225,10 @@ export default function SessionsPage() {
           >
             <AlertTriangle className="mr-2 h-4 w-4" />
             {panicRunning
-              ? 'Beende alle Sessions…'
+              ? t('settings.sessionsPage.revokingAll')
               : panicConfirm
-                ? 'Sicher? Klick zum Bestätigen — auch diese hier wird beendet'
-                : 'Panic: Alle Sessions abmelden (inkl. dieser)'}
+                ? t('settings.sessionsPage.panicConfirm')
+                : t('settings.sessionsPage.panicButton')}
           </Button>
           <Button
             variant="destructive"
@@ -236,7 +236,7 @@ export default function SessionsPage() {
             onClick={() => { revokeOthers.mutate(); }}
           >
             <LogOut className="mr-2 h-4 w-4" />
-            {revokeOthers.isPending ? t('settings.sessionsPage.revokingAll') : 'Andere abmelden'}
+            {revokeOthers.isPending ? t('settings.sessionsPage.revokingAll') : t('settings.sessionsPage.revokeOthers')}
           </Button>
         </div>
       )}

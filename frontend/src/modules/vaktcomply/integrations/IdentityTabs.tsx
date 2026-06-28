@@ -368,7 +368,7 @@ export function KeycloakTab() {
             required />
         </div>
         <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Realm</label>
+          <label className="block text-xs font-medium text-secondary mb-1">{t('vaktcomply.identityTabs.realm')}</label>
           <input type="text" value={realm} onChange={(e) => { setRealm(e.target.value); }}
             placeholder="master"
             className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
@@ -518,7 +518,7 @@ export function LDAPTab() {
               required />
           </div>
           <div>
-            <label className="block text-xs font-medium text-secondary mb-1">Port</label>
+            <label className="block text-xs font-medium text-secondary mb-1">{t('vaktcomply.identityTabs.port')}</label>
             <input type="number" value={port} onChange={(e) => { setPort(e.target.value); }}
               placeholder="389"
               className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary focus:outline-none focus:ring-2 focus:ring-brand/30"

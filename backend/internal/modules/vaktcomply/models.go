@@ -1,16 +1,15 @@
-// Package vaktcomply provides domain models for compliance automation (NIS2, ISO 27001, BSI-Grundschutz).
 package vaktcomply
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/audit"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/bsi"
 )
 
-// --- Risk Assessment (FR-CK12) ---
-
-// --- Incident Register (FR-CK13) ---
-
-// Incident represents a security or operational incident.
 type Incident struct {
 	ID              string     `json:"id"`
 	OrgID           string     `json:"org_id"`
@@ -1013,4 +1012,183 @@ type ClassificationResult struct {
 	Obligation string `json:"obligation"` // "probably" | "none" | "unclear"
 	Authority  string `json:"authority"`  // "BSI" | "BaFin+BSI" | "LDA" | ""
 	Reason     string `json:"reason"`
+}
+
+type AccessReviewCampaign struct {
+	ID            string     `json:"id"`
+	OrgID         string     `json:"org_id"`
+	Title         string     `json:"title"`
+	Description   string     `json:"description,omitempty"`
+	Status        string     `json:"status"`
+	ReviewerEmail string     `json:"reviewer_email"`
+	Scope         string     `json:"scope,omitempty"`
+	DueDate       *time.Time `json:"due_date,omitempty"`
+	CompletedAt   *time.Time `json:"completed_at,omitempty"`
+	CreatedBy     string     `json:"created_by,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+}
+
+// AccessReviewItem represents a single access attestation entry within a campaign.
+type AccessReviewItem struct {
+	ID              string     `json:"id"`
+	CampaignID      string     `json:"campaign_id"`
+	OrgID           string     `json:"org_id"`
+	UserEmail       string     `json:"user_email"`
+	AccessLevel     string     `json:"access_level"`
+	Decision        string     `json:"decision"`
+	ReviewerComment string     `json:"reviewer_comment,omitempty"`
+	DecidedAt       *time.Time `json:"decided_at,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
+}
+
+// CreateAccessReviewCampaignInput holds validated input for creating a campaign.
+type CreateAccessReviewCampaignInput struct {
+	Title         string  `json:"title"          validate:"required,max=255"`
+	Description   string  `json:"description"    validate:"max=2000"`
+	ReviewerEmail string  `json:"reviewer_email" validate:"required,email"`
+	Scope         string  `json:"scope"          validate:"max=500"`
+	DueDate       *string `json:"due_date"`
+}
+
+// UpdateAccessReviewCampaignInput holds validated input for updating a campaign.
+type UpdateAccessReviewCampaignInput struct {
+	Title         string  `json:"title"`
+	Description   string  `json:"description"`
+	ReviewerEmail string  `json:"reviewer_email"`
+	Scope         string  `json:"scope"`
+	DueDate       *string `json:"due_date"`
+	Status        string  `json:"status" validate:"omitempty,oneof=draft active completed cancelled"`
+}
+
+// CreateAccessReviewItemInput holds validated input for creating a review item.
+type CreateAccessReviewItemInput struct {
+	CampaignID  string `json:"campaign_id"  validate:"required,uuid"`
+	UserEmail   string `json:"user_email"   validate:"required,email"`
+	AccessLevel string `json:"access_level" validate:"required,max=100"`
+}
+
+// UpdateAccessReviewItemInput holds validated input for updating a review item decision.
+type UpdateAccessReviewItemInput struct {
+	Decision        string `json:"decision"         validate:"omitempty,oneof=approved revoked pending"`
+	ReviewerComment string `json:"reviewer_comment" validate:"max=2000"`
+}
+
+type BackupJob struct {
+	ID                string     `json:"id"`
+	OrgID             string     `json:"org_id"`
+	Name              string     `json:"name"`
+	Source            string     `json:"source"`
+	Destination       string     `json:"destination"`
+	Frequency         string     `json:"frequency"` // hourly|daily|weekly|monthly
+	Encrypted         bool       `json:"encrypted"`
+	LastSuccessAt     *time.Time `json:"last_success_at"`
+	LastStatus        string     `json:"last_status"` // unknown|success|failed
+	RestoreMaxAgeDays int        `json:"restore_max_age_days"`
+	Notes             string     `json:"notes"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
+
+	// Derived, not stored:
+	LastRestoreTestAt *time.Time `json:"last_restore_test_at,omitempty"`
+	// Staleness status: on_track | at_risk | overdue
+	BackupStatus  string `json:"backup_status"`
+	RestoreStatus string `json:"restore_status"`
+}
+
+// BackupRestoreTest documents a restore-test run for a backup job.
+type BackupRestoreTest struct {
+	ID             string    `json:"id"`
+	OrgID          string    `json:"org_id"`
+	JobID          string    `json:"job_id"`
+	TestedAt       string    `json:"tested_at"` // YYYY-MM-DD
+	Result         string    `json:"result"`    // success|partial|failed
+	RTOTargetHours int       `json:"rto_target_hours"`
+	RTOActualHours int       `json:"rto_actual_hours"`
+	Tester         string    `json:"tester"`
+	Notes          string    `json:"notes"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+// CreateBackupJobInput / UpdateBackupJobInput hold validated create/update data.
+type BackupJobInput struct {
+	Name              string `json:"name" validate:"required,max=200"`
+	Source            string `json:"source" validate:"max=500"`
+	Destination       string `json:"destination" validate:"max=500"`
+	Frequency         string `json:"frequency" validate:"required,oneof=hourly daily weekly monthly"`
+	Encrypted         bool   `json:"encrypted"`
+	RestoreMaxAgeDays int    `json:"restore_max_age_days" validate:"min=1,max=3650"`
+	Notes             string `json:"notes" validate:"max=2000"`
+	LastStatus        string `json:"last_status" validate:"omitempty,oneof=unknown success failed"`
+	LastSuccessAt     string `json:"last_success_at"` // RFC3339, optional
+}
+
+// RestoreTestInput holds validated restore-test data.
+type RestoreTestInput struct {
+	TestedAt       string `json:"tested_at" validate:"required"` // YYYY-MM-DD
+	Result         string `json:"result" validate:"required,oneof=success partial failed"`
+	RTOTargetHours int    `json:"rto_target_hours" validate:"min=0,max=8760"`
+	RTOActualHours int    `json:"rto_actual_hours" validate:"min=0,max=8760"`
+	Tester         string `json:"tester" validate:"max=200"`
+	Notes          string `json:"notes" validate:"max=2000"`
+}
+
+// BackupSummary aggregates backup-evidence health for the dashboard.
+type BackupSummary struct {
+	TotalJobs       int `json:"total_jobs"`
+	OverdueBackups  int `json:"overdue_backups"`
+	OverdueRestores int `json:"overdue_restores"`
+	TestedJobs      int `json:"tested_jobs"`
+}
+
+// ── Audit Milestones ──────────────────────────────────────────────────────────
+
+type AuditMilestone struct {
+	ID            string    `json:"id"`
+	OrgID         string    `json:"org_id"`
+	FrameworkID   *string   `json:"framework_id,omitempty"`
+	Title         string    `json:"title"`
+	Description   string    `json:"description,omitempty"`
+	MilestoneDate string    `json:"milestone_date"` // DATE — stored as YYYY-MM-DD string
+	MilestoneType string    `json:"milestone_type"`
+	Status        string    `json:"status"`
+	CreatedBy     *string   `json:"created_by,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	// DaysRemaining is computed server-side for convenience.
+	DaysRemaining *int `json:"days_remaining,omitempty"`
+}
+
+// CreateMilestoneInput holds validated input for creating an audit milestone.
+type CreateMilestoneInput struct {
+	FrameworkID   string `json:"framework_id"    validate:"omitempty,uuid"`
+	Title         string `json:"title"           validate:"required,max=255"`
+	Description   string `json:"description"     validate:"max=2000"`
+	MilestoneDate string `json:"milestone_date"  validate:"required"`
+	MilestoneType string `json:"milestone_type"  validate:"required,oneof=internal_audit external_audit certification_target review_deadline training_deadline custom"`
+}
+
+// UpdateMilestoneInput holds validated input for updating an audit milestone.
+type UpdateMilestoneInput struct {
+	Title         *string `json:"title"           validate:"omitempty,max=255"`
+	Description   *string `json:"description"     validate:"omitempty,max=2000"`
+	MilestoneDate *string `json:"milestone_date"`
+	MilestoneType *string `json:"milestone_type"  validate:"omitempty,oneof=internal_audit external_audit certification_target review_deadline training_deadline custom"`
+	Status        *string `json:"status"          validate:"omitempty,oneof=upcoming completed missed cancelled"`
+}
+
+var (
+	ErrAlreadySubmitted     = errors.New("already submitted")
+	ErrNotConfigured        = errors.New("nicht konfiguriert")
+	ErrInvalidMaturityScore = errors.New("maturity_score must be between 0 and 3")
+	ErrInvalidProtection    = errors.New("invalid protection_level")
+	ErrInvalidAssessment    = errors.New("invalid assessment_level")
+	ErrInvalidOptions       = errors.New("multiple_choice question requires non-empty options")
+)
+
+// isNotFound returns true for any "resource does not exist" error — either the
+// service-layer ErrNotFound sentinel or a raw pgx.ErrNoRows from the repository.
+func isNotFound(err error) bool {
+	return errors.Is(err, ErrNotFound) || errors.Is(err, bsi.ErrNotFound) ||
+		errors.Is(err, audit.ErrNotFound) || errors.Is(err, pgx.ErrNoRows)
 }

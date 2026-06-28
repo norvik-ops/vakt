@@ -164,8 +164,8 @@ function BCPTestList({ plan }: { plan: BCPPlan }) {
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="tabletop">Tabletop</SelectItem>
-                  <SelectItem value="walkthrough">Walkthrough</SelectItem>
+                  <SelectItem value="tabletop">{t('bcp.tabletop')}</SelectItem>
+                  <SelectItem value="walkthrough">{t('bcp.walkthrough')}</SelectItem>
                   <SelectItem value="fulltest">{t('bcp.fulltest')}</SelectItem>
                 </SelectContent>
               </Select>

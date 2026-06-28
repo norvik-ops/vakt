@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { ShieldCheck, AlertCircle, CheckCircle2, PenSquare } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
@@ -57,10 +58,10 @@ interface PrivacyDesignInput {
   assessment_result: string
 }
 
-const RESULT_BADGE: Record<string, { label: string; variant: 'success' | 'warning' | 'outline' }> = {
-  compliant:    { label: 'Konform', variant: 'success' },
-  partially:    { label: 'Teilweise', variant: 'warning' },
-  not_assessed: { label: 'Nicht bewertet', variant: 'outline' },
+const RESULT_BADGE_VARIANT: Record<string, 'success' | 'warning' | 'outline'> = {
+  compliant:    'success',
+  partially:    'warning',
+  not_assessed: 'outline',
 }
 
 const defaultInput: PrivacyDesignInput = {
@@ -76,6 +77,7 @@ const defaultInput: PrivacyDesignInput = {
 }
 
 export default function PrivacyDesignPage() {
+  const { t } = useTranslation()
   const qc = useQueryClient()
   const [selectedActivity, setSelectedActivity] = useState<VVTEntry | null>(null)
   const [form, setForm] = useState<PrivacyDesignInput>(defaultInput)
@@ -140,9 +142,9 @@ export default function PrivacyDesignPage() {
     <ProGate error={isError ? error : null}>
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold">Privacy by Design (Art. 25 DSGVO)</h1>
+        <h1 className="text-xl font-semibold">{t('vaktprivacy.privacyDesignPage.title')}</h1>
         <p className="text-sm text-secondary mt-1">
-          Dokumentieren Sie technische und organisatorische Maßnahmen nach Art. 25 Abs. 1 (by Design) und Abs. 2 (by Default) für jede Verarbeitungstätigkeit.
+          {t('vaktprivacy.privacyDesignPage.description')}
         </p>
       </div>
 
@@ -150,25 +152,25 @@ export default function PrivacyDesignPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="pt-4">
-              <p className="text-xs text-secondary">Gesamt</p>
+              <p className="text-xs text-secondary">{t('vaktprivacy.privacyDesignPage.statTotal')}</p>
               <p className="text-2xl font-bold">{summary.total_activities}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4">
-              <p className="text-xs text-secondary">Konform</p>
+              <p className="text-xs text-secondary">{t('vaktprivacy.privacyDesignPage.statCompliant')}</p>
               <p className="text-2xl font-bold text-green-400">{summary.compliant}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4">
-              <p className="text-xs text-secondary">Ausstehend</p>
+              <p className="text-xs text-secondary">{t('vaktprivacy.privacyDesignPage.statPending')}</p>
               <p className="text-2xl font-bold text-warning">{summary.pending_count}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4">
-              <p className="text-xs text-secondary">Konformität</p>
+              <p className="text-xs text-secondary">{t('vaktprivacy.privacyDesignPage.statCompliance')}</p>
               <p className="text-2xl font-bold">{summary.pct_compliant.toFixed(0)}%</p>
             </CardContent>
           </Card>
@@ -180,8 +182,8 @@ export default function PrivacyDesignPage() {
       {!isLoading && !vvtEntries?.length && (
         <EmptyState
           icon={ShieldCheck}
-          title="Keine Verarbeitungstätigkeiten"
-          description="Legen Sie zuerst Verarbeitungstätigkeiten in der VVT an."
+          title={t('vaktprivacy.privacyDesignPage.emptyTitle')}
+          description={t('vaktprivacy.privacyDesignPage.emptyDesc')}
         />
       )}
 
@@ -195,7 +197,7 @@ export default function PrivacyDesignPage() {
       <Dialog open={!!selectedActivity} onOpenChange={open => { if (!open) setSelectedActivity(null) }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Art. 25 Bewertung – {selectedActivity?.name}</DialogTitle>
+            <DialogTitle>{t('vaktprivacy.privacyDesignPage.dialogTitle')} – {selectedActivity?.name}</DialogTitle>
           </DialogHeader>
           <form
             className="space-y-4 mt-2"
@@ -205,7 +207,7 @@ export default function PrivacyDesignPage() {
             }}
           >
             <div>
-              <Label>Technische Maßnahmen (Art. 25 Abs. 1)</Label>
+              <Label>{t('vaktprivacy.privacyDesignPage.labelMeasures')}</Label>
               <Textarea
                 rows={3}
                 value={form.design_measures}
@@ -215,10 +217,10 @@ export default function PrivacyDesignPage() {
             </div>
 
             <div className="space-y-2">
-              <p className="text-sm font-medium">Art. 25 Abs. 1 – Privacy by Design</p>
+              <p className="text-sm font-medium">{t('vaktprivacy.privacyDesignPage.sectionDesign')}</p>
               {([
-                ['design_at_conception', 'Datenschutz bereits bei Konzeption berücksichtigt'],
-                ['risk_considered', 'Risiken für Betroffenenrechte einbezogen'],
+                ['design_at_conception', t('vaktprivacy.privacyDesignPage.checkAtConception')],
+                ['risk_considered', t('vaktprivacy.privacyDesignPage.checkRiskConsidered')],
               ] as [keyof PrivacyDesignInput, string][]).map(([field, label]) => (
                 <label key={field} className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
@@ -232,12 +234,12 @@ export default function PrivacyDesignPage() {
             </div>
 
             <div className="space-y-2">
-              <p className="text-sm font-medium">Art. 25 Abs. 2 – Privacy by Default</p>
+              <p className="text-sm font-medium">{t('vaktprivacy.privacyDesignPage.sectionDefault')}</p>
               {([
-                ['data_minimization', 'Datensparsamkeit (nur notwendige Daten)'],
-                ['purpose_limitation', 'Zweckbindung sichergestellt'],
-                ['storage_limitation', 'Speicherbegrenzung implementiert'],
-                ['access_limitation', 'Zugriffsbeschränkung auf das Notwendige'],
+                ['data_minimization', t('vaktprivacy.privacyDesignPage.checkDataMinimization')],
+                ['purpose_limitation', t('vaktprivacy.privacyDesignPage.checkPurposeLimitation')],
+                ['storage_limitation', t('vaktprivacy.privacyDesignPage.checkStorageLimitation')],
+                ['access_limitation', t('vaktprivacy.privacyDesignPage.checkAccessLimitation')],
               ] as [keyof PrivacyDesignInput, string][]).map(([field, label]) => (
                 <label key={field} className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
@@ -251,7 +253,7 @@ export default function PrivacyDesignPage() {
             </div>
 
             <div>
-              <Label>Standardeinstellungen (Hinweis)</Label>
+              <Label>{t('vaktprivacy.privacyDesignPage.labelDefaultNote')}</Label>
               <Textarea
                 rows={2}
                 value={form.default_settings_note}
@@ -261,7 +263,7 @@ export default function PrivacyDesignPage() {
             </div>
 
             <div>
-              <Label>Gesamtbewertung</Label>
+              <Label>{t('vaktprivacy.privacyDesignPage.labelOverallResult')}</Label>
               <Select
                 value={form.assessment_result}
                 onValueChange={v => { setForm(f => ({ ...f, assessment_result: v })); }}
@@ -270,17 +272,17 @@ export default function PrivacyDesignPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="compliant">Konform</SelectItem>
-                  <SelectItem value="partially">Teilweise konform</SelectItem>
-                  <SelectItem value="not_assessed">Nicht bewertet</SelectItem>
+                  <SelectItem value="compliant">{t('vaktprivacy.privacyDesignPage.resultCompliant')}</SelectItem>
+                  <SelectItem value="partially">{t('vaktprivacy.privacyDesignPage.resultPartially')}</SelectItem>
+                  <SelectItem value="not_assessed">{t('vaktprivacy.privacyDesignPage.resultNotAssessed')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => { setSelectedActivity(null); }}>Abbrechen</Button>
+              <Button type="button" variant="outline" onClick={() => { setSelectedActivity(null); }}>{t('common.cancel')}</Button>
               <Button type="submit" disabled={upsertMutation.isPending}>
-                {upsertMutation.isPending ? 'Speichern…' : 'Speichern'}
+                {upsertMutation.isPending ? t('common.saving') : t('common.save')}
               </Button>
             </DialogFooter>
           </form>
@@ -308,6 +310,7 @@ function ActivityAssessmentTable({
 }
 
 function ActivityRow({ activity, onEdit }: { activity: VVTEntry; onEdit: (a: VVTEntry) => void }) {
+  const { t } = useTranslation()
   const { data: assessment } = useQuery<PrivacyDesignAssessment | null>({
     queryKey: ['vaktprivacy', 'privacy-design', activity.id],
     queryFn: async () => {
@@ -319,9 +322,11 @@ function ActivityRow({ activity, onEdit }: { activity: VVTEntry; onEdit: (a: VVT
     },
   })
 
-  const resultInfo = assessment
-    ? RESULT_BADGE[assessment.assessment_result] ?? RESULT_BADGE.not_assessed
-    : null
+  const getResultLabel = (r: string) => {
+    const key = `vaktprivacy.privacyDesignPage.badge${r.charAt(0).toUpperCase() + r.slice(1).replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`
+    return t(key, { defaultValue: r })
+  }
+  const badgeVariant = assessment ? (RESULT_BADGE_VARIANT[assessment.assessment_result] ?? 'outline') : 'outline'
 
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-surface border border-border rounded-lg gap-3">
@@ -336,10 +341,10 @@ function ActivityRow({ activity, onEdit }: { activity: VVTEntry; onEdit: (a: VVT
         <p className="text-sm font-medium truncate">{activity.name}</p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        {resultInfo ? (
-          <Badge variant={resultInfo.variant} className="text-xs">{resultInfo.label}</Badge>
+        {assessment ? (
+          <Badge variant={badgeVariant} className="text-xs">{getResultLabel(assessment.assessment_result)}</Badge>
         ) : (
-          <Badge variant="outline" className="text-xs">Keine Bewertung</Badge>
+          <Badge variant="outline" className="text-xs">{t('vaktprivacy.privacyDesignPage.badgeNoAssessment')}</Badge>
         )}
         <Button size="sm" variant="ghost" onClick={() => { onEdit(activity); }}>
           <PenSquare className="w-3 h-3" />

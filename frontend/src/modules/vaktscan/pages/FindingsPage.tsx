@@ -402,7 +402,7 @@ export default function FindingsPage() {
           <>
             <Button variant="outline" size="sm" onClick={() => { setCsvImportOpen(true); }}>
               <Upload className="w-4 h-4 mr-1" />
-              CSV importieren
+              {t('vaktscan.findingsPage.csvImport')}
             </Button>
             <Button variant="outline" size="sm" onClick={() => { setImportOpen(true); }}>
               <Upload className="w-4 h-4 mr-1" />
@@ -467,9 +467,9 @@ export default function FindingsPage() {
           <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
             <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold text-amber-400">Scanner nicht eingerichtet</p>
+              <p className="text-[13px] font-semibold text-amber-400">{t('vaktscan.findingsPage.noScannerTitle')}</p>
               <p className="text-[11px] text-secondary mt-0.5">
-                Trivy und Nuclei sind im Docker-Image gebündelt — prüfe ob die Instanz korrekt gestartet wurde. OpenVAS ist optional via <code className="text-[10px]">VAKT_OPENVAS_URL</code>.
+                {t('vaktscan.findingsPage.noScannerDesc')}
               </p>
             </div>
             <a
@@ -478,7 +478,7 @@ export default function FindingsPage() {
               rel="noopener noreferrer"
               className="shrink-0 text-[11px] font-medium text-amber-400 hover:text-amber-300 transition-colors whitespace-nowrap"
             >
-              Setup-Guide →
+              {t('vaktscan.findingsPage.noScannerSetupGuide')} →
             </a>
           </div>
         )}
@@ -519,8 +519,8 @@ export default function FindingsPage() {
                   color: severityClass[f.severity],
                 }}
                 meta={[
-                  { label: 'Status', value: f.status.replace(/_/g, ' ') },
-                  { label: 'Erstellt', value: formatDate(f.created_at) },
+                  { label: t('common.status'), value: f.status.replace(/_/g, ' ') },
+                  { label: t('vaktscan.findingsPage.colCreated'), value: formatDate(f.created_at) },
                   ...(f.cve_id ? [{ label: 'CVE', value: f.cve_id }] : []),
                   ...(f.cvss_score != null ? [{ label: 'CVSS', value: f.cvss_score.toFixed(1) }] : []),
                 ]}
@@ -531,7 +531,7 @@ export default function FindingsPage() {
           {/* Desktop table — hidden on mobile */}
           <div className="hidden md:block rounded-md border border-border bg-surface overflow-x-auto">
             {/* WCAG 1.3.1: aria-label names the table for screen readers */}
-            <Table aria-label="Sicherheitsbefunde"
+            <Table aria-label={t('vaktscan.findingsPage.tableAriaLabel')}
               role="grid"
             >
               <TableHeader>
@@ -575,7 +575,7 @@ export default function FindingsPage() {
                   <TableHead>{t('vaktscan.findingsPage.colAsset')}</TableHead>
                   <TableHead>CVE / CVSS</TableHead>
                   <SortableHeader
-                    label="Erstellt"
+                    label={t('vaktscan.findingsPage.colCreated')}
                     sortKey="created_at"
                     currentSortKey={sortKey}
                     currentDir={sortDir}
@@ -614,7 +614,7 @@ export default function FindingsPage() {
                         type="checkbox"
                         checked={selected.has(f.id)}
                         onChange={() => { toggleSelect(f.id); }}
-                        aria-label={`Befund "${f.title}" auswählen`}
+                        aria-label={t('vaktscan.findingsPage.selectFinding', { title: f.title })}
                         className="rounded"
                       />
                     </TableCell>
@@ -625,7 +625,7 @@ export default function FindingsPage() {
                       <span className="truncate block">{f.title}</span>
                       {f.sla_due_at && new Date(f.sla_due_at) < new Date() && (
                         <Badge className="mt-0.5 text-[10px] py-0 bg-red-500/20 text-red-400 border-red-500/30">
-                          SLA überfällig
+                          {t('vaktscan.findingsPage.slaOverdue')}
                         </Badge>
                       )}
                     </TableCell>
@@ -650,7 +650,7 @@ export default function FindingsPage() {
                     <TableCell onClick={(e) => { e.stopPropagation(); }}>
                       <button
                         onClick={() => { handleDeleteFinding(f); }}
-                        aria-label={`Befund "${f.title}" löschen`}
+                        aria-label={t('vaktscan.findingsPage.deleteFinding', { title: f.title })}
                         className="p-1 rounded text-secondary hover:text-red-400 hover:bg-red-500/10 transition-colors"
                       >
                         <X className="w-3.5 h-3.5" />

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Zap, Plus, Trash2, Power } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
@@ -18,12 +19,9 @@ import {
 } from '../hooks/useEnrollmentRules'
 import { useCampaigns } from '../hooks/useCampaigns'
 
-const TRIGGER_LABELS: Record<string, string> = {
-  new_employee: 'Neuer Mitarbeiter',
-  phishing_click: 'Phishing-Klick',
-}
-
 export default function EnrollmentRulesPage() {
+  const { t } = useTranslation()
+  const triggerLabel = (s: string) => t('vaktaware.enrollmentRules.trigger_' + s, { defaultValue: s })
   const { data: rules, isLoading } = useEnrollmentRules()
   const { data: campaignsData } = useCampaigns()
   const campaigns = Array.isArray(campaignsData) ? campaignsData : (campaignsData as unknown as { data?: unknown[] })?.data ?? []
@@ -63,12 +61,12 @@ export default function EnrollmentRulesPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Auto-Enrollment-Regeln"
-        description="Automatisch Mitarbeiter für Kampagnen enrollen — bei Neuanstellung oder Phishing-Klick."
+        title={t('vaktaware.enrollmentRules.title')}
+        description={t('vaktaware.enrollmentRules.description')}
         actions={
           <Button onClick={() => { setOpen(true) }}>
             <Plus className="w-4 h-4 mr-1" />
-            Neue Regel
+            {t('vaktaware.enrollmentRules.newRule')}
           </Button>
         }
       />
@@ -79,11 +77,11 @@ export default function EnrollmentRulesPage() {
         ) : !rules || rules.length === 0 ? (
           <EmptyState
             icon={Zap}
-            title="Keine Enrollment-Regeln"
-            description="Erstelle Regeln, um Mitarbeiter automatisch für Phishing-Simulationen zu enrollen."
+            title={t('vaktaware.enrollmentRules.noRules')}
+            description={t('vaktaware.enrollmentRules.noRulesDesc')}
             action={
               <Button onClick={() => { setOpen(true) }}>
-                <Plus className="w-4 h-4 mr-1" />Regel erstellen
+                <Plus className="w-4 h-4 mr-1" />{t('vaktaware.enrollmentRules.createRule')}
               </Button>
             }
           />
@@ -91,10 +89,10 @@ export default function EnrollmentRulesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Trigger</TableHead>
-                <TableHead>Ziel-Kampagne</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('common.name')}</TableHead>
+                <TableHead>{t('vaktaware.enrollmentRules.colTrigger')}</TableHead>
+                <TableHead>{t('vaktaware.enrollmentRules.colTargetCampaign')}</TableHead>
+                <TableHead>{t('common.status')}</TableHead>
                 <TableHead className="w-24" />
               </TableRow>
             </TableHeader>
@@ -105,14 +103,14 @@ export default function EnrollmentRulesPage() {
                   <TableRow key={rule.id}>
                     <TableCell className="font-medium">{rule.name}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{TRIGGER_LABELS[rule.trigger_type] ?? rule.trigger_type}</Badge>
+                      <Badge variant="outline">{triggerLabel(rule.trigger_type)}</Badge>
                     </TableCell>
                     <TableCell className="text-sm text-secondary">
                       {campaign?.name ?? rule.target_campaign_id ?? '—'}
                     </TableCell>
                     <TableCell>
                       <Badge variant={rule.is_active ? 'default' : 'secondary'}>
-                        {rule.is_active ? 'Aktiv' : 'Inaktiv'}
+                        {rule.is_active ? t('vaktaware.enrollmentRules.active') : t('vaktaware.enrollmentRules.inactive')}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -121,7 +119,7 @@ export default function EnrollmentRulesPage() {
                           variant="ghost"
                           size="sm"
                           className="h-7 w-7 p-0"
-                          title={rule.is_active ? 'Deaktivieren' : 'Aktivieren'}
+                          title={rule.is_active ? t('vaktaware.enrollmentRules.deactivate') : t('vaktaware.enrollmentRules.activate')}
                           onClick={() => { updateRule.mutate({ id: rule.id, isActive: !rule.is_active }) }}
                         >
                           <Power className="w-4 h-4" />
@@ -147,35 +145,35 @@ export default function EnrollmentRulesPage() {
       {/* Create dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Neue Enrollment-Regel</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('vaktaware.enrollmentRules.createDialogTitle')}</DialogTitle></DialogHeader>
           <form onSubmit={handleCreate}>
             <div className="py-4 space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="rule-name">Regelname</Label>
+                <Label htmlFor="rule-name">{t('vaktaware.enrollmentRules.labelRuleName')}</Label>
                 <Input
                   id="rule-name"
                   value={name}
                   onChange={(e) => { setName(e.target.value) }}
-                  placeholder="z.B. Onboarding Phishing"
+                  placeholder={t('vaktaware.enrollmentRules.placeholderRuleName')}
                   required
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Trigger</Label>
+                <Label>{t('vaktaware.enrollmentRules.labelTrigger')}</Label>
                 <Select value={triggerType} onValueChange={(v) => { setTriggerType(v as typeof triggerType) }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="new_employee">Neuer Mitarbeiter</SelectItem>
-                    <SelectItem value="phishing_click">Phishing-Klick</SelectItem>
+                    <SelectItem value="new_employee">{t('vaktaware.enrollmentRules.triggerNewEmployee')}</SelectItem>
+                    <SelectItem value="phishing_click">{t('vaktaware.enrollmentRules.triggerPhishingClick')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Ziel-Kampagne (optional)</Label>
+                <Label>{t('vaktaware.enrollmentRules.labelTargetCampaignOptional')}</Label>
                 <Select value={campaignId} onValueChange={setCampaignId}>
-                  <SelectTrigger><SelectValue placeholder="Kampagne auswählen…" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('vaktaware.enrollmentRules.placeholderCampaign')} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Keine</SelectItem>
+                    <SelectItem value="">{t('vaktaware.enrollmentRules.none')}</SelectItem>
                     {(campaigns as { id: string; name: string }[]).map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
@@ -184,9 +182,9 @@ export default function EnrollmentRulesPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => { setOpen(false); resetForm() }}>Abbrechen</Button>
+              <Button type="button" variant="outline" onClick={() => { setOpen(false); resetForm() }}>{t('common.cancel')}</Button>
               <Button type="submit" disabled={createRule.isPending}>
-                {createRule.isPending ? 'Wird erstellt…' : 'Regel erstellen'}
+                {createRule.isPending ? t('vaktaware.enrollmentRules.creating') : t('vaktaware.enrollmentRules.createRule')}
               </Button>
             </DialogFooter>
           </form>
@@ -196,16 +194,16 @@ export default function EnrollmentRulesPage() {
       {/* Delete confirm dialog */}
       <Dialog open={!!deleteId} onOpenChange={(o) => { if (!o) setDeleteId(null) }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Regel löschen</DialogTitle></DialogHeader>
-          <p className="text-sm text-secondary py-2">Die Enrollment-Regel wird unwiderruflich gelöscht. Bereits enrollte Teilnehmer sind nicht betroffen.</p>
+          <DialogHeader><DialogTitle>{t('vaktaware.enrollmentRules.deleteDialogTitle')}</DialogTitle></DialogHeader>
+          <p className="text-sm text-secondary py-2">{t('vaktaware.enrollmentRules.deleteDialogDesc')}</p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setDeleteId(null) }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setDeleteId(null) }}>{t('common.cancel')}</Button>
             <Button
               variant="destructive"
               onClick={() => { if (deleteId) deleteRule.mutate(deleteId, { onSuccess: () => { setDeleteId(null) } }) }}
               disabled={deleteRule.isPending}
             >
-              {deleteRule.isPending ? 'Wird gelöscht…' : 'Löschen'}
+              {deleteRule.isPending ? t('vaktaware.enrollmentRules.deleting') : t('common.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,4 +1,5 @@
 import { useParams, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CheckSquare, Square, ChevronRight, AlertCircle, FileCheck } from 'lucide-react'
 import { apiFetch } from '../../../api/client'
@@ -8,6 +9,7 @@ import type { ChecklistRun, Checklist, Employee } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 export default function ChecklistRunPage() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
   const { formatDate } = useFormatDate()
@@ -77,7 +79,7 @@ export default function ChecklistRunPage() {
     return (
       <div className="p-6 flex items-center gap-2 text-red-400 text-sm">
         <AlertCircle className="w-4 h-4" />
-        Checkliste konnte nicht geladen werden.
+        {t('vakthr.checklistRunPage.loadError')}
       </div>
     )
   }
@@ -100,7 +102,7 @@ export default function ChecklistRunPage() {
       <nav className="flex items-center gap-1 text-[11px] text-secondary" aria-label="Breadcrumb">
         <Link to="/vakthr/employees" className="hover:text-primary transition-colors">HR</Link>
         <ChevronRight className="w-3 h-3" aria-hidden="true" />
-        <Link to="/vakthr/employees" className="hover:text-primary transition-colors">Mitarbeiter</Link>
+        <Link to="/vakthr/employees" className="hover:text-primary transition-colors">{t('vakthr.employees.title')}</Link>
         <ChevronRight className="w-3 h-3" aria-hidden="true" />
         {isLoading ? (
           <Skeleton className="h-3 w-24" />
@@ -121,12 +123,12 @@ export default function ChecklistRunPage() {
           <Skeleton className="h-7 w-64 mb-1" />
         ) : (
           <h1 className="text-[20px] font-bold text-primary">
-            Checkliste ausführen: {checklist?.name}
+            {t('vakthr.checklistRunPage.executeTitle', { name: checklist?.name ?? '…' })}
           </h1>
         )}
         {!isLoading && employee && (
           <p className="text-[13px] text-secondary mt-0.5">
-            Mitarbeiter: {employeeName}
+            {t('vakthr.checklistRunPage.employee')}: {employeeName}
           </p>
         )}
       </div>
@@ -137,23 +139,23 @@ export default function ChecklistRunPage() {
           <div className="flex items-center gap-3 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3">
             <CheckSquare className="w-5 h-5 text-green-400 shrink-0" aria-hidden="true" />
             <div>
-              <p className="text-[13px] font-semibold text-green-400">Checkliste abgeschlossen</p>
+              <p className="text-[13px] font-semibold text-green-400">{t('vakthr.checklistRunPage.completed')}</p>
               {run.completed_at && (
-                <p className="text-[11px] text-secondary">am {formatDate(run.completed_at, { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+                <p className="text-[11px] text-secondary">{t('vakthr.checklistRunPage.completedAt', { date: formatDate(run.completed_at, { day: '2-digit', month: '2-digit', year: 'numeric' }) })}</p>
               )}
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3">
             <FileCheck className="w-5 h-5 text-blue-400 shrink-0" aria-hidden="true" />
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold text-blue-400">Evidence an Vakt Comply übermittelt</p>
-              <p className="text-[11px] text-secondary">Checklisten-Abschluss als Compliance-Nachweis gespeichert</p>
+              <p className="text-[13px] font-semibold text-blue-400">{t('vakthr.checklistRunPage.evidenceTitle')}</p>
+              <p className="text-[11px] text-secondary">{t('vakthr.checklistRunPage.evidenceDesc')}</p>
             </div>
             <Link
               to="/vaktcomply/evidence/auto"
               className="shrink-0 text-[11px] font-medium text-blue-400 hover:text-blue-300 transition-colors"
             >
-              In Comply ansehen →
+              {t('vakthr.checklistRunPage.viewInComply')}
             </Link>
           </div>
         </>
@@ -163,7 +165,7 @@ export default function ChecklistRunPage() {
       {!isLoading && totalItems > 0 && (
         <div>
           <div className="flex items-center justify-between mb-1.5 text-[12px]">
-            <span className="text-secondary">{completedCount} von {totalItems} Schritten erledigt</span>
+            <span className="text-secondary">{t('vakthr.checklistRunPage.progress', { done: completedCount, total: totalItems })}</span>
             <span className="font-semibold text-primary">{progressPct}%</span>
           </div>
           <div
@@ -172,7 +174,7 @@ export default function ChecklistRunPage() {
             aria-valuenow={progressPct}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-label={`Fortschritt: ${String(progressPct)}%`}
+            aria-label={t('vakthr.checklistRunPage.progressLabel', { pct: progressPct })}
           >
             <div
               className={`h-full rounded-full transition-all duration-300 ${progressPct === 100 ? 'bg-green-500' : 'bg-brand'}`}
@@ -217,7 +219,7 @@ export default function ChecklistRunPage() {
                   <span className="text-[10px] text-secondary mr-2 font-medium">#{idx + 1}</span>
                   {item.label}
                   {item.required && (
-                    <span className="text-red-400 ml-1" aria-label="Pflichtfeld">*</span>
+                    <span className="text-red-400 ml-1" aria-label={t('vakthr.checklistRunPage.required')}>*</span>
                   )}
                 </span>
               </button>
@@ -229,7 +231,7 @@ export default function ChecklistRunPage() {
       {/* Required hint */}
       {!isLoading && checklist?.items.some((i) => i.required) && run?.status !== 'completed' && (
         <p className="text-[11px] text-secondary">
-          <span className="text-red-400">*</span> Pflichtfelder müssen abgehakt werden, bevor die Checkliste abgeschlossen werden kann.
+          <span className="text-red-400">*</span> {t('vakthr.checklistRunPage.requiredHint')}
         </p>
       )}
 
@@ -240,7 +242,7 @@ export default function ChecklistRunPage() {
             onClick={completeRun}
             disabled={!allRequiredChecked || updateRun.isPending}
           >
-            {updateRun.isPending ? 'Wird gespeichert…' : 'Abschließen'}
+            {updateRun.isPending ? t('common.saving') : t('vakthr.checklistRunPage.complete')}
           </Button>
         </div>
       )}

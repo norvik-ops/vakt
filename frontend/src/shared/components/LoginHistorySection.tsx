@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { History, Check, X, ShieldAlert } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { apiFetch } from '../../api/client'
 import { useFormatDate } from '../hooks/useFormatDate'
@@ -40,6 +41,7 @@ function uaShort(ua: string): string {
 }
 
 export function LoginHistorySection() {
+  const { t } = useTranslation()
   const { formatDateTime } = useFormatDate()
   const { data, isLoading } = useQuery<LoginEntry[]>({
     queryKey: ['account', 'login-history'],
@@ -51,16 +53,16 @@ export function LoginHistorySection() {
     <section className="rounded-xl border border-border bg-surface p-5 space-y-3">
       <div className="flex items-center gap-2">
         <History className="w-4 h-4 text-brand shrink-0" />
-        <h2 className="text-sm font-semibold text-primary">Login-Historie</h2>
-        <span className="text-xs text-secondary ml-auto">letzte 50 Versuche · 90 Tage Aufbewahrung</span>
+        <h2 className="text-sm font-semibold text-primary">{t('loginHistory.title')}</h2>
+        <span className="text-xs text-secondary ml-auto">{t('loginHistory.subtitle')}</span>
       </div>
 
       {isLoading && (
-        <p className="text-xs text-secondary">Lade…</p>
+        <p className="text-xs text-secondary">{t('states.loading')}</p>
       )}
 
       {data && data.length === 0 && (
-        <p className="text-xs text-secondary">Noch keine Einträge.</p>
+        <p className="text-xs text-secondary">{t('loginHistory.noEntries')}</p>
       )}
 
       {data && data.length > 0 && (
@@ -68,11 +70,11 @@ export function LoginHistorySection() {
           <table className="w-full text-xs">
             <thead className="text-left text-secondary border-b border-border">
               <tr>
-                <th className="py-2 pr-3 font-medium">Zeitpunkt</th>
-                <th className="py-2 pr-3 font-medium">Quelle</th>
-                <th className="py-2 pr-3 font-medium">Browser</th>
-                <th className="py-2 pr-3 font-medium">IP</th>
-                <th className="py-2 font-medium">Ergebnis</th>
+                <th className="py-2 pr-3 font-medium">{t('loginHistory.colTimestamp')}</th>
+                <th className="py-2 pr-3 font-medium">{t('loginHistory.colSource')}</th>
+                <th className="py-2 pr-3 font-medium">{t('loginHistory.colBrowser')}</th>
+                <th className="py-2 pr-3 font-medium">{t('loginHistory.colIp')}</th>
+                <th className="py-2 font-medium">{t('loginHistory.colResult')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -93,7 +95,7 @@ export function LoginHistorySection() {
                         </span>
                       ) : e.result === 'mfa_failed' ? (
                         <span className="inline-flex items-center gap-1 text-severity-medium">
-                          <ShieldAlert className="w-3 h-3" /> MFA fehlgeschlagen
+                          <ShieldAlert className="w-3 h-3" /> {t('loginHistory.mfaFailed')}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-severity-critical">
@@ -110,7 +112,7 @@ export function LoginHistorySection() {
       )}
 
       <p className="text-[11px] text-muted">
-        Wenn du einen Login-Versuch nicht zuordnen kannst: sofort Passwort wechseln und MFA aktivieren.
+        {t('loginHistory.suspiciousHint')}
       </p>
     </section>
   )

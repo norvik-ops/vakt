@@ -289,7 +289,7 @@ For MSPs deploying Vakt per customer, see [`docs/wiki/msp-onboarding.md`](docs/w
 
 | | |
 |---|---|
-| Product Site | [sec.norvikops.de](https://sec.norvikops.de) |
+| Product Site | [vakt.norvikops.de](https://vakt.norvikops.de) |
 | CHANGELOG | [CHANGELOG.md](CHANGELOG.md) |
 | Security | [SECURITY.md](SECURITY.md) |
 | Getting Started | [docs/guides/getting-started.md](docs/guides/getting-started.md) |

@@ -92,7 +92,7 @@ export default function DSGVOTOMPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card data-testid="kpi-total">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-secondary">Gesamt <TermTooltip term="TOMs" explanation="Technische und organisatorische Maßnahmen (Art. 32 DSGVO) — Sicherheitsvorkehrungen zum Schutz personenbezogener Daten: Verschlüsselung, Zugangskontrolle, Backups, Pseudonymisierung u.a.">TOMs</TermTooltip></CardTitle>
+              <CardTitle className="text-sm font-medium text-secondary">{t('vaktcomply.dsgvoTom.total')} <TermTooltip term="TOMs" explanation="Technische und organisatorische Maßnahmen (Art. 32 DSGVO) — Sicherheitsvorkehrungen zum Schutz personenbezogener Daten: Verschlüsselung, Zugangskontrolle, Backups, Pseudonymisierung u.a.">TOMs</TermTooltip></CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-primary">{totalCount}</div>

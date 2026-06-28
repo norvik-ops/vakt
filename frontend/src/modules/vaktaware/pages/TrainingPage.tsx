@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { GraduationCap, ChevronDown, ChevronUp, UserPlus, Download, Shield } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Badge } from '../../../components/ui/badge'
@@ -8,17 +9,9 @@ import { EmptyState } from '../../../shared/components/EmptyState'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
 import { Label } from '../../../components/ui/label'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/ui/table'
-import { Link } from 'react-router-dom'
 import { useTrainingModules, useAssignments, useAssignModule } from '../hooks/useTraining'
 import type { TrainingModule } from '../types'
 import { assignmentStatusVariant } from '../../../lib/statusMapping'
-
-const ASSIGNMENT_STATUS_LABELS: Record<string, string> = {
-  assigned: 'Zugewiesen',
-  in_progress: 'In Bearbeitung',
-  completed: 'Abgeschlossen',
-  failed: 'Nicht bestanden',
-}
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 async function downloadCertificate(assignmentId: string) {
@@ -37,12 +30,14 @@ async function downloadCertificate(assignmentId: string) {
 
 
 function ModuleRow({ module }: { module: TrainingModule }) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const [assignOpen, setAssignOpen] = useState(false)
   const [emails, setEmails] = useState('')
   const { data: assignments, isLoading } = useAssignments(expanded ? module.id : '')
   const assignModule = useAssignModule(module.id)
   const { formatDate } = useFormatDate()
+  const getAssignmentStatusLabel = (s: string) => t(`vaktaware.assignmentStatus.${s}`, { defaultValue: s })
 
   function handleAssign(e: React.FormEvent) {
     e.preventDefault()
@@ -87,17 +82,17 @@ function ModuleRow({ module }: { module: TrainingModule }) {
               <Spinner size="sm" />
             </div>
           ) : !assignments || assignments.length === 0 ? (
-            <p className="text-sm text-secondary text-center py-4">Noch keine Zuweisungen vorhanden.</p>
+            <p className="text-sm text-secondary text-center py-4">{t('vaktaware.training.noAssignments')}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Benutzer</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Punktzahl</TableHead>
-                  <TableHead>Zugewiesen</TableHead>
-                  <TableHead>Abgeschlossen</TableHead>
-                  <TableHead>Zertifikat</TableHead>
+                  <TableHead>{t('vaktaware.training.colUser')}</TableHead>
+                  <TableHead>{t('common.status')}</TableHead>
+                  <TableHead>{t('vaktaware.training.colScore')}</TableHead>
+                  <TableHead>{t('vaktaware.training.colAssigned')}</TableHead>
+                  <TableHead>{t('vaktaware.training.colCompleted')}</TableHead>
+                  <TableHead>{t('vaktaware.training.colCertificate')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -105,7 +100,7 @@ function ModuleRow({ module }: { module: TrainingModule }) {
                   <TableRow key={a.id}>
                     <TableCell className="font-mono text-xs">{a.user_email}</TableCell>
                     <TableCell>
-                      <Badge variant={assignmentStatusVariant[a.status]}>{ASSIGNMENT_STATUS_LABELS[a.status] ?? a.status}</Badge>
+                      <Badge variant={assignmentStatusVariant[a.status]}>{getAssignmentStatusLabel(a.status)}</Badge>
                     </TableCell>
                     <TableCell className="text-sm">
                       {a.score != null ? `${a.score}%` : '—'}
@@ -123,7 +118,7 @@ function ModuleRow({ module }: { module: TrainingModule }) {
                           size="sm"
                           className="gap-1"
                           onClick={() => { void downloadCertificate(a.id) }}
-                          title="Zertifikat herunterladen"
+                          title={t('vaktaware.training.downloadCertificate')}
                         >
                           <Download className="w-3.5 h-3.5" />
                           PDF
@@ -140,10 +135,10 @@ function ModuleRow({ module }: { module: TrainingModule }) {
 
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Training zuweisen: {module.title}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('vaktaware.training.assignDialogTitle', { module: module.title })}</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { handleAssign(e) }}>
             <div className="py-4 space-y-1.5">
-              <Label htmlFor="assign-emails">Benutzer-E-Mails</Label>
+              <Label htmlFor="assign-emails">{t('vaktaware.training.labelUserEmails')}</Label>
               <textarea
                 id="assign-emails"
                 rows={4}
@@ -155,7 +150,7 @@ function ModuleRow({ module }: { module: TrainingModule }) {
               <p className="text-xs text-secondary">One email per line, or comma/semicolon separated.</p>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => { setAssignOpen(false); }}>Abbrechen</Button>
+              <Button type="button" variant="outline" onClick={() => { setAssignOpen(false); }}>{t('common.cancel')}</Button>
               <Button type="submit" disabled={assignModule.isPending}>
                 {assignModule.isPending ? 'Assigning…' : 'Assign'}
               </Button>
@@ -168,23 +163,20 @@ function ModuleRow({ module }: { module: TrainingModule }) {
 }
 
 export default function TrainingPage() {
+  const { t } = useTranslation()
   const { data: modules, isLoading } = useTrainingModules()
 
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Sicherheitstraining"
-        description="Sicherheitstrainings für Benutzer zuweisen und verwalten."
+        title={t('vaktaware.training.title')}
+        description={t('vaktaware.training.description')}
       />
 
       <div className="flex-1 p-6 space-y-3">
         <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 p-3 text-sm text-blue-800 dark:text-blue-200">
           <Shield className="w-4 h-4 mt-0.5 shrink-0" />
-          <span>
-            Absolvierte Trainings werden automatisch als Evidence in{' '}
-            <Link to="/vaktcomply/evidence/auto" className="underline font-medium">Vakt Comply</Link>{' '}
-            gespeichert.
-          </span>
+          <span>{t('vaktaware.training.evidenceBanner')}</span>
         </div>
         {isLoading ? (
           <div className="flex justify-center py-16">
@@ -193,8 +185,8 @@ export default function TrainingPage() {
         ) : !modules || modules.length === 0 ? (
           <EmptyState
             icon={GraduationCap}
-            title="Noch keine Trainingsmodule vorhanden"
-            description="Trainingsmodule werden von Ihrem Plattform-Administrator konfiguriert."
+            title={t('vaktaware.training.noModules')}
+            description={t('vaktaware.training.noModulesDesc')}
           />
         ) : (
           modules.map((m) => <ModuleRow key={m.id} module={m} />)

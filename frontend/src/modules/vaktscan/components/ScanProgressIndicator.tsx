@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Loader2, CheckCircle2, AlertTriangle } from 'lucide-react'
 
 // Sprint 22 / S22-7: Live-Progress-Indikator für einen laufenden Scan.
@@ -28,6 +29,7 @@ function readCsrfToken(): string | null {
 }
 
 export function ScanProgressIndicator({ scanId, onTerminal }: Props) {
+  const { t } = useTranslation()
   const [event, setEvent] = useState<ProgressEvent | null>(null)
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -110,7 +112,7 @@ export function ScanProgressIndicator({ scanId, onTerminal }: Props) {
     return (
       <div className="flex items-center gap-2 text-xs text-red-600">
         <AlertTriangle className="w-3 h-3" />
-        <span>Live-Progress nicht verfügbar: {error}</span>
+        <span>{t('vaktscan.scanProgress.unavailable', { msg: error })}</span>
       </div>
     )
   }
@@ -119,19 +121,19 @@ export function ScanProgressIndicator({ scanId, onTerminal }: Props) {
     return (
       <div className="flex items-center gap-2 text-xs text-secondary">
         <Loader2 className="w-3 h-3 animate-spin" />
-        <span>Verbinde mit Scan-Stream…</span>
+        <span>{t('vaktscan.scanProgress.connecting')}</span>
       </div>
     )
   }
 
   const isTerminal = event.phase === 'finished' || event.phase === 'failed' || done
   const phaseLabel: Record<string, string> = {
-    started: 'Gestartet',
-    fetching: 'Daten holen',
-    scanning: 'Scan läuft',
-    parsing: 'Ergebnis verarbeiten',
-    finished: 'Abgeschlossen',
-    failed: 'Fehlgeschlagen',
+    started: t('vaktscan.scanProgress.phaseStarted'),
+    fetching: t('vaktscan.scanProgress.phaseFetching'),
+    scanning: t('vaktscan.scanProgress.phaseScanning'),
+    parsing: t('vaktscan.scanProgress.phaseParsing'),
+    finished: t('vaktscan.scanProgress.phaseFinished'),
+    failed: t('vaktscan.scanProgress.phaseFailed'),
   }
   const isFail = event.phase === 'failed'
   const Icon = isTerminal ? (isFail ? AlertTriangle : CheckCircle2) : Loader2

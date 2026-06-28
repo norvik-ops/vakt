@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ArrowLeft, ChevronDown, Download } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { useQuery } from '@tanstack/react-query'
@@ -33,18 +34,6 @@ import { maturityLabel, maturityColor } from '../utils/tisax'
 type ProtectionLevel = 'normal' | 'high' | 'very_high'
 type AssessmentLevel = 'AL1' | 'AL2' | 'AL3'
 
-const PROTECTION_LEVEL_LABELS: Record<ProtectionLevel, string> = {
-  normal: 'Normal',
-  high: 'Hoch',
-  very_high: 'Sehr hoch',
-}
-
-const ASSESSMENT_LEVEL_LABELS: Record<AssessmentLevel, string> = {
-  AL1: 'AL1 — Standort',
-  AL2: 'AL2 — Standard',
-  AL3: 'AL3 — Vollassessment',
-}
-
 // ── Domain section ────────────────────────────────────────────────────────────
 
 function DomainSection({
@@ -56,6 +45,7 @@ function DomainSection({
   controls: Control[]
   frameworkId: string
 }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(true)
   const navigate = useNavigate()
 
@@ -69,7 +59,7 @@ function DomainSection({
         <div className="flex items-center gap-3">
           <ChevronDown className={cn('w-4 h-4 text-secondary transition-transform', !open && '-rotate-90')} />
           <span className="text-sm font-medium">{domain}</span>
-          <span className="text-xs text-secondary">({controls.length} Maßnahmen)</span>
+          <span className="text-xs text-secondary">{t('vaktcomply.tisax.measures', { count: controls.length })}</span>
         </div>
       </button>
 
@@ -77,9 +67,9 @@ function DomainSection({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-32">ID</TableHead>
-              <TableHead>Maßnahme</TableHead>
-              <TableHead className="w-40">Reifegrad</TableHead>
+              <TableHead className="w-32">{t('vaktcomply.tisax.colId')}</TableHead>
+              <TableHead>{t('vaktcomply.tisax.colMeasure')}</TableHead>
+              <TableHead className="w-40">{t('vaktcomply.tisax.colMaturity')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -110,12 +100,25 @@ function DomainSection({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function TISAXPage() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const frameworkId = id ?? ''
 
   const [protectionLevel, setProtectionLevel] = useState<ProtectionLevel>('normal')
   const [assessmentLevel, setAssessmentLevel] = useState<AssessmentLevel>('AL2')
+
+  const PROTECTION_LEVEL_LABELS: Record<ProtectionLevel, string> = {
+    normal: t('vaktcomply.tisax.protectionNormal'),
+    high: t('vaktcomply.tisax.protectionHigh'),
+    very_high: t('vaktcomply.tisax.protectionVeryHigh'),
+  }
+
+  const ASSESSMENT_LEVEL_LABELS: Record<AssessmentLevel, string> = {
+    AL1: t('vaktcomply.tisax.assessmentAL1'),
+    AL2: t('vaktcomply.tisax.assessmentAL2'),
+    AL3: t('vaktcomply.tisax.assessmentAL3'),
+  }
 
   function handleExportReport() {
     const url = `/api/v1/vaktcomply/frameworks/${frameworkId}/tisax-report-pdf?protection_level=${protectionLevel}&assessment_level=${assessmentLevel}`
@@ -162,8 +165,8 @@ export default function TISAXPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="TISAX-Ansicht"
-        description="VDA ISA Fragenkatalog mit Reifegradskala — gefiltert nach Schutzbedarfsstufe."
+        title={t('vaktcomply.tisax.title')}
+        description={t('vaktcomply.tisax.description')}
         actions={
           <div className="flex items-center gap-2">
             <Select value={assessmentLevel} onValueChange={(v) => { setAssessmentLevel(v as AssessmentLevel); }}>
@@ -178,14 +181,14 @@ export default function TISAXPage() {
             </Select>
             <Button variant="secondary" size="sm" onClick={handleExportReport}>
               <Download className="w-4 h-4 mr-1" />
-              Bereitschaftsbericht exportieren
+              {t('vaktcomply.tisax.exportBtn')}
             </Button>
             <Button variant="secondary" size="sm" onClick={() => { navigate('/vaktcomply/tisax-mapping'); }}>
-              ISO Abgleich
+              {t('vaktcomply.tisax.isoMapping')}
             </Button>
             <Button variant="outline" size="sm" onClick={() => { navigate(`/vaktcomply/frameworks/${frameworkId}`); }}>
               <ArrowLeft className="w-4 h-4 mr-1" />
-              Zurück zum Framework
+              {t('vaktcomply.tisax.backToFramework')}
             </Button>
           </div>
         }
@@ -214,10 +217,10 @@ export default function TISAXPage() {
                   <Spinner size="md" />
                 </div>
               ) : isError ? (
-                <ProGate error={error}><div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">Fehler beim Laden der Controls.</div></ProGate>
+                <ProGate error={error}><div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">{t('vaktcomply.tisax.loadError')}</div></ProGate>
               ) : !controls || controls.length === 0 ? (
                 <p className="text-sm text-secondary py-8 text-center">
-                  Keine Controls für diese Schutzbedarfsstufe gefunden.
+                  {t('vaktcomply.tisax.noControls')}
                 </p>
               ) : (
                 <div className="space-y-4 mt-4">

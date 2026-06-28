@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Upload } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import {
@@ -30,6 +31,7 @@ export function ImportFindingsDialog({
   onOpenChange,
   onSuccess,
 }: ImportFindingsDialogProps) {
+  const { t } = useTranslation()
   const [assetId, setAssetId] = useState('')
   const [format, setFormat] = useState<ImportFormat>('sarif')
   const [file, setFile] = useState<File | null>(null)
@@ -109,13 +111,13 @@ export function ImportFindingsDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Findings importieren</DialogTitle>
+          <DialogTitle>{t('vaktscan.importDialog.title')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           {/* Asset selector */}
           <div className="space-y-1">
-            <label className="text-sm font-medium text-primary">Asset</label>
+            <label className="text-sm font-medium text-primary">{t('vaktscan.importDialog.assetLabel')}</label>
             <Select value={assetId} onValueChange={setAssetId}>
               <SelectTrigger>
                 <SelectValue placeholder="Asset auswahlen..." />
@@ -132,7 +134,7 @@ export function ImportFindingsDialog({
 
           {/* Format selector */}
           <div className="space-y-1">
-            <label className="text-sm font-medium text-primary">Format</label>
+            <label className="text-sm font-medium text-primary">{t('vaktscan.importDialog.formatLabel')}</label>
             <Select value={format} onValueChange={(v) => { setFormat(v as ImportFormat); }}>
               <SelectTrigger>
                 <SelectValue />
@@ -152,7 +154,7 @@ export function ImportFindingsDialog({
 
           {/* File upload */}
           <div className="space-y-1">
-            <label className="text-sm font-medium text-primary">Datei</label>
+            <label className="text-sm font-medium text-primary">{t('vaktscan.importDialog.fileLabel')}</label>
             <div className="flex items-center gap-2">
               <input
                 ref={fileInputRef}

@@ -512,10 +512,10 @@ export default function AccessReviewsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="draft">Entwurf</SelectItem>
-                    <SelectItem value="active">Aktiv</SelectItem>
-                    <SelectItem value="completed">Abgeschlossen</SelectItem>
-                    <SelectItem value="cancelled">Abgebrochen</SelectItem>
+                    <SelectItem value="draft">{t('common.statusLabels.draft')}</SelectItem>
+                    <SelectItem value="active">{t('common.statusLabels.active')}</SelectItem>
+                    <SelectItem value="completed">{t('common.statusLabels.completed')}</SelectItem>
+                    <SelectItem value="cancelled">{t('common.statusLabels.cancelled')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -524,7 +524,7 @@ export default function AccessReviewsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => { setDialogOpen(false); }}>
-              Abbrechen
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={handleSubmit}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   CalendarDays, Plus, ChevronLeft, ChevronRight, CheckCircle2, Trash2,
 } from 'lucide-react'
@@ -23,27 +24,18 @@ import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 // ---- constants ----
 
-const TYPE_LABEL: Record<MilestoneType, string> = {
-  internal_audit:        'Internes Audit',
-  external_audit:        'Externes Audit',
-  certification_target:  'Zertifizierungsziel',
-  review_deadline:       'Review-Frist',
-  training_deadline:     'Schulungsfrist',
-  custom:                'Benutzerdefiniert',
-}
-
-const STATUS_LABEL: Record<MilestoneStatus, string> = {
-  upcoming:   'Bevorstehend',
-  completed:  'Abgeschlossen',
-  missed:     'Verpasst',
-  cancelled:  'Abgebrochen',
-}
-
 const STATUS_CLASS: Record<MilestoneStatus, string> = {
   upcoming:  'bg-blue-500/20 text-blue-400 border-blue-500/30',
   completed: 'bg-green-500/20 text-green-400 border-green-500/30',
   missed:    'bg-red-500/20 text-red-400 border-red-500/30',
   cancelled: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
+}
+
+const GANTT_STATUS_COLORS: Record<MilestoneStatus, string> = {
+  completed: '#22c55e',
+  upcoming:  '#3b82f6',
+  missed:    '#ef4444',
+  cancelled: '#94a3b8',
 }
 
 function countdownColor(days: number | null | undefined): string {
@@ -54,22 +46,7 @@ function countdownColor(days: number | null | undefined): string {
   return 'text-green-400'
 }
 
-function formatDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  const months = [
-    'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
-    'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
-  ]
-  return `${d}. ${months[m - 1]} ${y}`
-}
-
 type FilterTab = 'all' | MilestoneStatus
-
-const TABS: { key: FilterTab; label: string }[] = [
-  { key: 'all',       label: 'Alle' },
-  { key: 'upcoming',  label: 'Bevorstehend' },
-  { key: 'completed', label: 'Abgeschlossen' },
-]
 
 // ---- Countdown Card ----
 
@@ -80,8 +57,20 @@ function CountdownCard({
   m: AuditMilestone
   onComplete: () => void
 }) {
+  const { t } = useTranslation()
+  const { formatDate } = useFormatDate()
   const days = m.days_remaining
   const color = countdownColor(days)
+
+  const TYPE_LABEL: Record<MilestoneType, string> = {
+    internal_audit:       t('certificationTimeline.type_internal_audit'),
+    external_audit:       t('certificationTimeline.type_external_audit'),
+    certification_target: t('certificationTimeline.type_certification_target'),
+    review_deadline:      t('certificationTimeline.type_review_deadline'),
+    training_deadline:    t('certificationTimeline.type_training_deadline'),
+    custom:               t('certificationTimeline.type_custom'),
+  }
+
   return (
     <div className="rounded-lg border border-border bg-surface p-4 flex flex-col gap-2">
       <div className="flex items-start justify-between gap-2">
@@ -93,10 +82,10 @@ function CountdownCard({
         </Badge>
       </div>
       <p className="text-[12px] text-secondary leading-tight">
-        {days == null ? '' : days < 0 ? 'Überfällig seit' : 'In'}
+        {days == null ? '' : days < 0 ? t('certificationTimeline.overdueSince') : t('certificationTimeline.inDays')}
         {' '}
         <span className={`font-semibold ${color}`}>
-          {days == null ? '' : `${Math.abs(days)} Tagen`}
+          {days == null ? '' : t('certificationTimeline.daysRemaining', { days: Math.abs(days) })}
         </span>
       </p>
       <p className="text-[13px] font-semibold text-primary truncate">{m.title}</p>
@@ -104,7 +93,7 @@ function CountdownCard({
       {m.status === 'upcoming' && (
         <Button size="sm" variant="outline" className="mt-auto text-[11px]" onClick={onComplete}>
           <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-          Als erledigt markieren
+          {t('certificationTimeline.markDone')}
         </Button>
       )}
     </div>
@@ -114,14 +103,29 @@ function CountdownCard({
 // ---- Mini Calendar ----
 
 function MiniCalendar({ milestones }: { milestones: AuditMilestone[] }) {
+  const { t } = useTranslation()
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth()) // 0-indexed
 
-  const monthNames = [
-    'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
-    'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
-  ]
+  const STATUS_LABEL: Record<MilestoneStatus, string> = {
+    upcoming:  t('certificationTimeline.status_upcoming'),
+    completed: t('certificationTimeline.status_completed'),
+    missed:    t('certificationTimeline.status_missed'),
+    cancelled: t('certificationTimeline.status_cancelled'),
+  }
+
+  // Use locale-aware month names via Intl
+  const monthNames = Array.from({ length: 12 }, (_, i) =>
+    new Intl.DateTimeFormat(undefined, { month: 'long' }).format(new Date(2000, i, 1))
+  )
+
+  // Day headers — locale short weekday names starting Monday
+  const dayHeaders = Array.from({ length: 7 }, (_, i) => {
+    // 0=Mon … 6=Sun: compute day offset from Monday (Jan 6 2025 = Mon)
+    const d = new Date(2025, 0, 6 + i)
+    return new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(d)
+  })
 
   const firstDay = new Date(year, month, 1).getDay() // 0=Sun
   // Adjust for Monday-first grid (ISO week)
@@ -165,9 +169,9 @@ function MiniCalendar({ milestones }: { milestones: AuditMilestone[] }) {
         </div>
       </div>
 
-      {/* Day headers — Mo Di Mi Do Fr Sa So */}
+      {/* Day headers */}
       <div className="grid grid-cols-7 mb-1">
-        {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map(d => (
+        {dayHeaders.map(d => (
           <span key={d} className="text-center text-[10px] font-semibold text-secondary py-1">{d}</span>
         ))}
       </div>
@@ -234,16 +238,24 @@ function MiniCalendar({ milestones }: { milestones: AuditMilestone[] }) {
 
 // ---- Gantt Chart ----
 
-const GANTT_STATUS_COLORS: Record<MilestoneStatus, string> = {
-  completed: '#22c55e',
-  upcoming:  '#3b82f6',
-  missed:    '#ef4444',
-  cancelled: '#94a3b8',
-}
-
 function GanttChart({ milestones }: { milestones: AuditMilestone[] }) {
+  const { t } = useTranslation()
   const { formatDate: fmtDate } = useFormatDate()
   if (milestones.length === 0) return null
+
+  const STATUS_LABEL: Record<MilestoneStatus, string> = {
+    upcoming:  t('certificationTimeline.status_upcoming'),
+    completed: t('certificationTimeline.status_completed'),
+    missed:    t('certificationTimeline.status_missed'),
+    cancelled: t('certificationTimeline.status_cancelled'),
+  }
+
+  const legendEntries: [string, MilestoneStatus][] = [
+    [GANTT_STATUS_COLORS.completed, 'completed'],
+    [GANTT_STATUS_COLORS.upcoming,  'upcoming'],
+    [GANTT_STATUS_COLORS.missed,    'missed'],
+    [GANTT_STATUS_COLORS.cancelled, 'cancelled'],
+  ]
 
   const now = new Date()
   const sorted = [...milestones].sort(
@@ -266,7 +278,7 @@ function GanttChart({ milestones }: { milestones: AuditMilestone[] }) {
 
   return (
     <div className="rounded-lg border border-border bg-surface p-4 overflow-x-auto">
-      <h3 className="text-[13px] font-semibold text-primary mb-3">Audit-Zeitplan (Gantt)</h3>
+      <h3 className="text-[13px] font-semibold text-primary mb-3">{t('certificationTimeline.ganttTitle')}</h3>
       <svg width="100%" height={svgH} className="min-w-[600px]">
         {/* Grid lines + month labels */}
         {Array.from({ length: 5 }, (_, i) => {
@@ -300,7 +312,7 @@ function GanttChart({ milestones }: { milestones: AuditMilestone[] }) {
           x={`${todayPct}%`} y={headerH - 4}
           fontSize="9" fill="#4f46e5" textAnchor="middle"
         >
-          Heute
+          {t('certificationTimeline.today')}
         </text>
 
         {/* Milestone bars */}
@@ -341,15 +353,10 @@ function GanttChart({ milestones }: { milestones: AuditMilestone[] }) {
 
       {/* Legend */}
       <div className="flex flex-wrap gap-4 mt-3 text-[11px] text-secondary">
-        {([
-          ['#22c55e', 'Abgeschlossen'],
-          ['#3b82f6', 'Bevorstehend'],
-          ['#ef4444', 'Verpasst'],
-          ['#94a3b8', 'Abgebrochen'],
-        ] as const).map(([c, l]) => (
-          <div key={l} className="flex items-center gap-1">
+        {legendEntries.map(([c, s]) => (
+          <div key={s} className="flex items-center gap-1">
             <div className="w-3 h-2 rounded" style={{ backgroundColor: c }} />
-            <span>{l}</span>
+            <span>{STATUS_LABEL[s]}</span>
           </div>
         ))}
       </div>
@@ -374,9 +381,19 @@ function AddMilestoneDialog({
   open: boolean
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [form, setForm] = useState<CreateMilestoneInput>(EMPTY_FORM)
   const { data: frameworks } = useFrameworks()
   const create = useCreateMilestone()
+
+  const TYPE_LABEL: Record<MilestoneType, string> = {
+    internal_audit:       t('certificationTimeline.type_internal_audit'),
+    external_audit:       t('certificationTimeline.type_external_audit'),
+    certification_target: t('certificationTimeline.type_certification_target'),
+    review_deadline:      t('certificationTimeline.type_review_deadline'),
+    training_deadline:    t('certificationTimeline.type_training_deadline'),
+    custom:               t('certificationTimeline.type_custom'),
+  }
 
   function handleSubmit() {
     const payload: CreateMilestoneInput = {
@@ -395,12 +412,12 @@ function AddMilestoneDialog({
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Meilenstein hinzufügen</DialogTitle>
+          <DialogTitle>{t('certificationTimeline.dialogTitle')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="space-y-1">
-            <Label htmlFor="ms-title">Titel *</Label>
+            <Label htmlFor="ms-title">{t('certificationTimeline.labelTitle')}</Label>
             <Input
               id="ms-title"
               value={form.title}
@@ -410,7 +427,7 @@ function AddMilestoneDialog({
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="ms-type">Typ *</Label>
+            <Label htmlFor="ms-type">{t('certificationTimeline.labelType')}</Label>
             <Select
               value={form.milestone_type}
               onValueChange={v => { setForm(f => ({ ...f, milestone_type: v as MilestoneType })); }}
@@ -419,15 +436,15 @@ function AddMilestoneDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(Object.keys(TYPE_LABEL) as MilestoneType[]).map(t => (
-                  <SelectItem key={t} value={t}>{TYPE_LABEL[t]}</SelectItem>
+                {(Object.keys(TYPE_LABEL) as MilestoneType[]).map(k => (
+                  <SelectItem key={k} value={k}>{TYPE_LABEL[k]}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="ms-date">Datum *</Label>
+            <Label htmlFor="ms-date">{t('certificationTimeline.labelDate')}</Label>
             <Input
               id="ms-date"
               type="date"
@@ -437,27 +454,27 @@ function AddMilestoneDialog({
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="ms-desc">Beschreibung</Label>
+            <Label htmlFor="ms-desc">{t('certificationTimeline.labelDescription')}</Label>
             <Textarea
               id="ms-desc"
               rows={3}
               value={form.description}
               onChange={e => { setForm(f => ({ ...f, description: e.target.value })); }}
-              placeholder="Optionale Beschreibung oder Notizen"
+              placeholder={t('certificationTimeline.descPlaceholder')}
             />
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="ms-fw">Framework (optional)</Label>
+            <Label htmlFor="ms-fw">{t('certificationTimeline.labelFramework')}</Label>
             <Select
               value={form.framework_id ?? ''}
               onValueChange={v => { setForm(f => ({ ...f, framework_id: v === '__none__' ? '' : v })); }}
             >
               <SelectTrigger id="ms-fw">
-                <SelectValue placeholder="Kein Framework" />
+                <SelectValue placeholder={t('certificationTimeline.frameworkNone')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">Kein Framework</SelectItem>
+                <SelectItem value="__none__">{t('certificationTimeline.frameworkNone')}</SelectItem>
                 {frameworks?.map(fw => (
                   <SelectItem key={fw.id} value={fw.id}>{fw.name}</SelectItem>
                 ))}
@@ -468,13 +485,13 @@ function AddMilestoneDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={create.isPending}>
-            Abbrechen
+            {t('common.cancel')}
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={!form.title || !form.milestone_date || create.isPending}
           >
-            {create.isPending ? 'Speichern…' : 'Hinzufügen'}
+            {create.isPending ? t('certificationTimeline.saving') : t('certificationTimeline.addMilestone')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -493,12 +510,30 @@ function MilestoneRow({
   onComplete: () => void
   onDelete: () => void
 }) {
+  const { t } = useTranslation()
+  const { formatDate } = useFormatDate()
+
+  const TYPE_LABEL: Record<MilestoneType, string> = {
+    internal_audit:       t('certificationTimeline.type_internal_audit'),
+    external_audit:       t('certificationTimeline.type_external_audit'),
+    certification_target: t('certificationTimeline.type_certification_target'),
+    review_deadline:      t('certificationTimeline.type_review_deadline'),
+    training_deadline:    t('certificationTimeline.type_training_deadline'),
+    custom:               t('certificationTimeline.type_custom'),
+  }
+  const STATUS_LABEL: Record<MilestoneStatus, string> = {
+    upcoming:  t('certificationTimeline.status_upcoming'),
+    completed: t('certificationTimeline.status_completed'),
+    missed:    t('certificationTimeline.status_missed'),
+    cancelled: t('certificationTimeline.status_cancelled'),
+  }
+
   const days = m.days_remaining
   const daysStr =
     days == null ? '—' :
-    days === 0   ? 'Heute' :
-    days < 0     ? `${Math.abs(days)} Tage überfällig` :
-    `${days} Tage`
+    days === 0   ? t('certificationTimeline.today') :
+    days < 0     ? t('certificationTimeline.daysOverdue', { days: Math.abs(days) }) :
+    t('certificationTimeline.daysRemaining', { days })
   const daysColor = countdownColor(days)
 
   return (
@@ -519,7 +554,7 @@ function MilestoneRow({
           {m.status === 'upcoming' && (
             <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={onComplete}>
               <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-              Erledigt
+              {t('certificationTimeline.done')}
             </Button>
           )}
           <Button
@@ -539,8 +574,22 @@ function MilestoneRow({
 // ---- Main Page ----
 
 export default function CertificationTimelinePage() {
+  const { t } = useTranslation()
   const [tab, setTab] = useState<FilterTab>('all')
   const [addOpen, setAddOpen] = useState(false)
+
+  const STATUS_LABEL: Record<MilestoneStatus, string> = {
+    upcoming:  t('certificationTimeline.status_upcoming'),
+    completed: t('certificationTimeline.status_completed'),
+    missed:    t('certificationTimeline.status_missed'),
+    cancelled: t('certificationTimeline.status_cancelled'),
+  }
+
+  const TABS: { key: FilterTab; label: string }[] = [
+    { key: 'all',       label: t('certificationTimeline.tab_all') },
+    { key: 'upcoming',  label: t('certificationTimeline.tab_upcoming') },
+    { key: 'completed', label: t('certificationTimeline.tab_completed') },
+  ]
 
   const { data: all, isLoading } = useMilestones()
   const deleteMilestone = useDeleteMilestone()
@@ -559,12 +608,12 @@ export default function CertificationTimelinePage() {
   return (
     <div className="flex flex-col gap-6 p-6 max-w-6xl mx-auto">
       <PageHeader
-        title="Zertifizierungs-Timeline"
-        description="Audits, Zertifizierungsziele und Fristen im Überblick"
+        title={t('certificationTimeline.title')}
+        description={t('certificationTimeline.description')}
         actions={
           <Button onClick={() => { setAddOpen(true); }} size="sm">
             <Plus className="w-4 h-4 mr-1.5" />
-            Meilenstein hinzufügen
+            {t('certificationTimeline.addMilestone')}
           </Button>
         }
       />
@@ -573,7 +622,7 @@ export default function CertificationTimelinePage() {
       {upcoming.length > 0 && (
         <section>
           <h2 className="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-3">
-            Nächste Meilensteine
+            {t('certificationTimeline.nextMilestones')}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {upcoming.map(m => (
@@ -587,7 +636,7 @@ export default function CertificationTimelinePage() {
       {milestones.length > 0 && (
         <section>
           <h2 className="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-3">
-            Zeitplan-Übersicht
+            {t('certificationTimeline.timelineOverview')}
           </h2>
           <GanttChart milestones={milestones} />
         </section>
@@ -596,34 +645,34 @@ export default function CertificationTimelinePage() {
       {/* Middle: Table */}
       <section className="rounded-lg border border-border bg-surface">
         <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-border">
-          <h2 className="text-[13px] font-semibold text-primary">Alle Meilensteine</h2>
+          <h2 className="text-[13px] font-semibold text-primary">{t('certificationTimeline.allMilestones')}</h2>
           <div className="flex gap-1">
-            {TABS.map(t => (
+            {TABS.map(tabItem => (
               <button
-                key={t.key}
-                onClick={() => { setTab(t.key); }}
+                key={tabItem.key}
+                onClick={() => { setTab(tabItem.key); }}
                 className={`px-3 py-1 rounded text-[11px] font-medium transition-colors ${
-                  tab === t.key
+                  tab === tabItem.key
                     ? 'bg-brand text-white'
                     : 'text-secondary hover:text-primary hover:bg-border/60'
                 }`}
               >
-                {t.label}
+                {tabItem.label}
               </button>
             ))}
           </div>
         </div>
 
         {isLoading ? (
-          <div className="p-8 text-center text-secondary text-[13px]">Laden…</div>
+          <div className="p-8 text-center text-secondary text-[13px]">{t('certificationTimeline.loading')}</div>
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={CalendarDays}
-            title="Keine Meilensteine"
+            title={t('certificationTimeline.emptyTitle')}
             description={
               tab === 'all'
-                ? 'Fügen Sie Ihren ersten Meilenstein hinzu.'
-                : `Keine ${STATUS_LABEL[tab]} Meilensteine vorhanden.`
+                ? t('certificationTimeline.emptyDesc')
+                : t('certificationTimeline.emptyStatusDesc', { status: STATUS_LABEL[tab] })
             }
           />
         ) : (
@@ -631,12 +680,12 @@ export default function CertificationTimelinePage() {
             <table className="w-full">
               <thead>
                 <tr className="text-left border-b border-border">
-                  <th className="py-2 px-3 text-[11px] font-semibold text-secondary uppercase tracking-wider">Datum</th>
-                  <th className="py-2 px-3 text-[11px] font-semibold text-secondary uppercase tracking-wider">Titel</th>
-                  <th className="py-2 px-3 text-[11px] font-semibold text-secondary uppercase tracking-wider">Typ</th>
-                  <th className="py-2 px-3 text-[11px] font-semibold text-secondary uppercase tracking-wider">Status</th>
-                  <th className="py-2 px-3 text-[11px] font-semibold text-secondary uppercase tracking-wider">Tage verbleibend</th>
-                  <th className="py-2 px-3 text-[11px] font-semibold text-secondary uppercase tracking-wider">Aktionen</th>
+                  <th className="py-2 px-3 text-[11px] font-semibold text-secondary uppercase tracking-wider">{t('certificationTimeline.colDate')}</th>
+                  <th className="py-2 px-3 text-[11px] font-semibold text-secondary uppercase tracking-wider">{t('certificationTimeline.colTitle')}</th>
+                  <th className="py-2 px-3 text-[11px] font-semibold text-secondary uppercase tracking-wider">{t('certificationTimeline.colType')}</th>
+                  <th className="py-2 px-3 text-[11px] font-semibold text-secondary uppercase tracking-wider">{t('certificationTimeline.colStatus')}</th>
+                  <th className="py-2 px-3 text-[11px] font-semibold text-secondary uppercase tracking-wider">{t('certificationTimeline.colDaysRemaining')}</th>
+                  <th className="py-2 px-3 text-[11px] font-semibold text-secondary uppercase tracking-wider">{t('certificationTimeline.colActions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -656,7 +705,7 @@ export default function CertificationTimelinePage() {
       {/* Bottom: Calendar */}
       <section>
         <h2 className="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-3">
-          Kalenderansicht
+          {t('certificationTimeline.calendarView')}
         </h2>
         <MiniCalendar milestones={milestones} />
       </section>

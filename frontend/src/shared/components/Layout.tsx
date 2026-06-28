@@ -380,7 +380,7 @@ export default function Layout() {
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between text-sm shrink-0">
           <span className="text-amber-800">
             ⚠ {t('backup.staleWarning')} —{' '}
-            <Link to="/settings?tab=system" className="underline font-medium hover:text-amber-900">
+            <Link to="/settings#system" className="underline font-medium hover:text-amber-900">
               {t('backup.staleAction')}
             </Link>
           </span>

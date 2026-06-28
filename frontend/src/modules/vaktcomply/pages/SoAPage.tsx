@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '../../../components/ui/table'
+import { useTranslation } from 'react-i18next'
 import { apiFetch } from '../../../api/client'
 import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
 import { ExportButton } from '../../../shared/components/ExportButton'
@@ -38,27 +39,12 @@ interface SoADedicatedSummary {
   approved_version: number
 }
 
-const IMPL_STATUS_LABELS: Record<string, string> = {
-  not_started: 'Nicht begonnen',
-  in_progress: 'In Bearbeitung',
-  implemented: 'Umgesetzt',
-  not_applicable: 'Nicht anwendbar',
-  partial: 'Teilweise',
-}
-
 const IMPL_STATUS_COLORS: Record<string, string> = {
   implemented: 'bg-green-100 text-green-800',
   in_progress: 'bg-blue-100 text-blue-800',
   not_started: 'bg-gray-100 text-gray-700',
   not_applicable: 'bg-gray-50 text-gray-400',
   partial: 'bg-yellow-100 text-yellow-800',
-}
-
-const GROUP_LABELS: Record<string, string> = {
-  '5': 'A.5 Organisatorische Maßnahmen',
-  '6': 'A.6 Personenbezogene Maßnahmen',
-  '7': 'A.7 Physische Maßnahmen',
-  '8': 'A.8 Technologische Maßnahmen',
 }
 
 function useSoADedicated() {
@@ -125,6 +111,7 @@ interface EditForm {
 }
 
 export default function SoAPage() {
+  const { t } = useTranslation()
   const { data: entries, isLoading, isError } = useSoADedicated()
   const { data: summary } = useSoASummary()
   const initMut = useInitSoA()
@@ -141,6 +128,21 @@ export default function SoAPage() {
     owner: '',
     evidence_note: '',
   })
+
+  const IMPL_STATUS_LABELS: Record<string, string> = {
+    not_started: t('vaktcomply.soaPage.implNotStarted'),
+    in_progress: t('vaktcomply.soaPage.implInProgress'),
+    implemented: t('vaktcomply.soaPage.implImplemented'),
+    not_applicable: t('vaktcomply.soaPage.implNotApplicable'),
+    partial: t('vaktcomply.soaPage.implPartial'),
+  }
+
+  const GROUP_LABELS: Record<string, string> = {
+    '5': t('vaktcomply.soaPage.groupA5'),
+    '6': t('vaktcomply.soaPage.groupA6'),
+    '7': t('vaktcomply.soaPage.groupA7'),
+    '8': t('vaktcomply.soaPage.groupA8'),
+  }
 
   const notInitialized = isError || (entries && entries.length === 0)
 
@@ -183,16 +185,16 @@ export default function SoAPage() {
       <div className="p-8 space-y-6">
         <div>
           <h1 className="text-2xl font-bold"><TermTooltip term="SoA" explanation="Statement of Applicability — ISO 27001:2022 Klausel 6.1.3: dokumentierte Aussage über die Anwendbarkeit aller 93 Maßnahmen aus Anhang A, inkl. Begründung für Ausschlüsse.">Statement of Applicability</TermTooltip></h1>
-          <p className="text-gray-500 text-sm mt-1">ISO 27001:2022 Anhang A — Anwendbarkeit aller 93 Maßnahmen (Klausel 6.1.3)</p>
+          <p className="text-gray-500 text-sm mt-1">ISO 27001:2022 {t('vaktcomply.soaPage.subtitle')}</p>
         </div>
         <div className="flex flex-col items-center justify-center bg-gray-50 border rounded-xl p-12 gap-4">
           <ShieldCheck className="h-12 w-12 text-gray-300" />
-          <h2 className="text-lg font-semibold text-gray-700">SoA noch nicht initialisiert</h2>
+          <h2 className="text-lg font-semibold text-gray-700">{t('vaktcomply.soaPage.notInitTitle')}</h2>
           <p className="text-sm text-gray-500 text-center max-w-sm">
-            Erstellt eine SoA-Version mit allen 93 ISO 27001:2022 Anhang A-Maßnahmen als Ausgangsbasis.
+            {t('vaktcomply.soaPage.notInitDesc')}
           </p>
           <Button onClick={() => { initMut.mutate(); }} disabled={initMut.isPending}>
-            {initMut.isPending ? 'Wird erstellt…' : 'SoA initialisieren'}
+            {initMut.isPending ? t('vaktcomply.soaPage.initializingBtn') : t('vaktcomply.soaPage.initializeBtn')}
           </Button>
         </div>
       </div>
@@ -205,7 +207,7 @@ export default function SoAPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold"><TermTooltip term="SoA" explanation="Statement of Applicability — ISO 27001:2022 Klausel 6.1.3: dokumentierte Aussage über die Anwendbarkeit aller 93 Maßnahmen aus Anhang A, inkl. Begründung für Ausschlüsse.">Statement of Applicability</TermTooltip></h1>
-          <p className="text-gray-500 text-sm mt-1">ISO 27001:2022 Anhang A — Klausel 6.1.3</p>
+          <p className="text-gray-500 text-sm mt-1">ISO 27001:2022 {t('vaktcomply.soaPage.subtitleShort')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => { handleExport('csv'); }}>
@@ -234,10 +236,10 @@ export default function SoAPage() {
               onClick={() => { approveMut.mutate(); }}
               disabled={approveMut.isPending || (summary?.without_exclusion_reason ?? 0) > 0}
               className="bg-green-600 hover:bg-green-700 text-white"
-              title={(summary?.without_exclusion_reason ?? 0) > 0 ? 'Zuerst alle Ausschlüsse begründen' : undefined}
+              title={(summary?.without_exclusion_reason ?? 0) > 0 ? t('vaktcomply.soaPage.approveBlockedTitle') : undefined}
             >
               <CheckCircle2 className="h-4 w-4 mr-1.5" />
-              {approveMut.isPending ? 'Wird genehmigt…' : 'Version genehmigen'}
+              {approveMut.isPending ? t('vaktcomply.soaPage.approvingBtn') : t('vaktcomply.soaPage.approveBtn')}
             </Button>
           )}
         </div>
@@ -255,13 +257,13 @@ export default function SoAPage() {
             : <RefreshCw className="h-4 w-4 shrink-0" />}
           <span>
             {summary.version_status === 'approved'
-              ? `Version ${summary.approved_version} genehmigt`
-              : `Entwurf Version ${summary.draft_version} — noch nicht genehmigt`}
+              ? t('vaktcomply.soaPage.versionApproved', { version: summary.approved_version })
+              : t('vaktcomply.soaPage.versionDraft', { version: summary.draft_version })}
           </span>
           {(summary?.without_exclusion_reason ?? 0) > 0 && (
             <span className="ml-auto flex items-center gap-1 text-amber-700">
               <AlertTriangle className="h-4 w-4" />
-              {summary.without_exclusion_reason} Ausschlüsse ohne Begründung
+              {t('vaktcomply.soaPage.exclusionsWithoutReason', { count: summary.without_exclusion_reason })}
             </span>
           )}
         </div>
@@ -271,19 +273,19 @@ export default function SoAPage() {
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-white border rounded-lg p-4">
           <div className="text-2xl font-bold">{summary?.total ?? 93}</div>
-          <div className="text-xs text-gray-500 mt-0.5">Kontrollen gesamt</div>
+          <div className="text-xs text-gray-500 mt-0.5">{t('vaktcomply.soaPage.statTotal')}</div>
         </div>
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="text-2xl font-bold text-green-700">{summary?.applicable ?? 0}</div>
-          <div className="text-xs text-green-600 mt-0.5">Anwendbar</div>
+          <div className="text-xs text-green-600 mt-0.5">{t('vaktcomply.soaPage.statApplicable')}</div>
         </div>
         <div className="bg-gray-50 border rounded-lg p-4">
           <div className="text-2xl font-bold text-gray-500">{summary?.excluded ?? 0}</div>
-          <div className="text-xs text-gray-500 mt-0.5">Ausgeschlossen</div>
+          <div className="text-xs text-gray-500 mt-0.5">{t('vaktcomply.soaPage.statExcluded')}</div>
         </div>
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
           <div className="text-2xl font-bold text-amber-700">{summary?.without_exclusion_reason ?? 0}</div>
-          <div className="text-xs text-amber-600 mt-0.5">Ohne Begründung</div>
+          <div className="text-xs text-amber-600 mt-0.5">{t('vaktcomply.soaPage.statWithoutReason')}</div>
         </div>
       </div>
 
@@ -309,17 +311,17 @@ export default function SoAPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-20">Ref.</TableHead>
-              <TableHead>Maßnahme</TableHead>
-              <TableHead className="w-32">Status</TableHead>
-              <TableHead className="w-24 text-center">Anwendbar</TableHead>
+              <TableHead className="w-20">{t('vaktcomply.soaPage.colRef')}</TableHead>
+              <TableHead>{t('vaktcomply.soaPage.colMeasure')}</TableHead>
+              <TableHead className="w-32">{t('vaktcomply.soaPage.colStatus')}</TableHead>
+              <TableHead className="w-24 text-center">{t('vaktcomply.soaPage.colApplicable')}</TableHead>
               <TableHead className="w-16"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {grouped.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-gray-400 py-8">Keine Einträge</TableCell>
+                <TableCell colSpan={5} className="text-center text-gray-400 py-8">{t('vaktcomply.soaPage.noEntries')}</TableCell>
               </TableRow>
             )}
             {grouped.map(e => (
@@ -367,7 +369,7 @@ export default function SoAPage() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>Anwendbar</Label>
+              <Label>{t('vaktcomply.soaPage.editLabelApplicable')}</Label>
               <Select
                 value={editForm.applicable ? 'yes' : 'no'}
                 onValueChange={(v) => { setEditForm(f => ({ ...f, applicable: v === 'yes' })); }}
@@ -376,24 +378,24 @@ export default function SoAPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="yes">Ja — anwendbar</SelectItem>
-                  <SelectItem value="no">Nein — nicht anwendbar</SelectItem>
+                  <SelectItem value="yes">{t('vaktcomply.soaPage.editApplicableYes')}</SelectItem>
+                  <SelectItem value="no">{t('vaktcomply.soaPage.editApplicableNo')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {editForm.applicable ? (
               <>
                 <div className="space-y-1.5">
-                  <Label>Begründung der Aufnahme</Label>
+                  <Label>{t('vaktcomply.soaPage.editLabelJustificationIncluded')}</Label>
                   <Textarea
                     rows={2}
-                    placeholder="Warum ist diese Maßnahme anwendbar?"
+                    placeholder={t('vaktcomply.soaPage.editPlaceholderJustificationIncluded')}
                     value={editForm.justification_included}
                     onChange={(e) => { setEditForm(f => ({ ...f, justification_included: e.target.value })); }}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Umsetzungsstatus</Label>
+                  <Label>{t('vaktcomply.soaPage.editLabelImplStatus')}</Label>
                   <Select
                     value={editForm.implementation_status}
                     onValueChange={(v) => { setEditForm(f => ({ ...f, implementation_status: v })); }}
@@ -407,18 +409,18 @@ export default function SoAPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Verantwortliche Person</Label>
+                  <Label>{t('vaktcomply.soaPage.editLabelOwner')}</Label>
                   <Input
-                    placeholder="Name oder Team"
+                    placeholder={t('vaktcomply.soaPage.editPlaceholderOwner')}
                     value={editForm.owner}
                     onChange={(e) => { setEditForm(f => ({ ...f, owner: e.target.value })); }}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Nachweisnotiz</Label>
+                  <Label>{t('vaktcomply.soaPage.editLabelEvidenceNote')}</Label>
                   <Textarea
                     rows={2}
-                    placeholder="Verweis auf Dokumentation, Policy, o.ä."
+                    placeholder={t('vaktcomply.soaPage.editPlaceholderEvidenceNote')}
                     value={editForm.evidence_note}
                     onChange={(e) => { setEditForm(f => ({ ...f, evidence_note: e.target.value })); }}
                   />
@@ -426,10 +428,10 @@ export default function SoAPage() {
               </>
             ) : (
               <div className="space-y-1.5">
-                <Label>Begründung des Ausschlusses *</Label>
+                <Label>{t('vaktcomply.soaPage.editLabelJustificationExcluded')}</Label>
                 <Textarea
                   rows={3}
-                  placeholder="Warum ist diese Maßnahme nicht anwendbar? (Pflichtfeld für Genehmigung)"
+                  placeholder={t('vaktcomply.soaPage.editPlaceholderJustificationExcluded')}
                   value={editForm.justification_excluded}
                   onChange={(e) => { setEditForm(f => ({ ...f, justification_excluded: e.target.value })); }}
                 />
@@ -437,9 +439,9 @@ export default function SoAPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setEditEntry(null); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setEditEntry(null); }}>{t('common.cancel')}</Button>
             <Button onClick={handleSaveEdit} disabled={updateMut.isPending}>
-              {updateMut.isPending ? 'Speichern…' : 'Speichern'}
+              {updateMut.isPending ? t('vaktcomply.soaPage.savingBtn') : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Trash2, Plus, CheckCircle2, AlertTriangle, BookOpen } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
@@ -108,7 +109,7 @@ function daysUntil(dateStr: string): number {
 
 function DueBadge({ date }: { date: string }) {
   const days = daysUntil(date)
-  if (days < 0) return <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">Überfällig</Badge>
+  if (days < 0) return <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">{'Überfällig'}</Badge>
   if (days <= 7) return <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-xs">in {days}d</Badge>
   if (days <= 14) return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-xs">in {days}d</Badge>
   return <Badge variant="outline" className="text-xs">in {days}d</Badge>
@@ -153,6 +154,8 @@ export default function DeletionRemindersPage() {
     )
   }
 
+  const { t } = useTranslation()
+
   if (isLoading) return <div className="p-8"><SkeletonTable rows={5} cols={4} /></div>
 
   return (
@@ -160,17 +163,17 @@ export default function DeletionRemindersPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Löscherinnerungen</h1>
-          <p className="text-gray-500 text-sm mt-1">Art. 5 Abs. 1 lit. e + Art. 30 Abs. 1 lit. f DSGVO — Datenlöschung nach Fristen</p>
+          <h1 className="text-2xl font-bold">{t('vaktprivacy.deletionRemindersPage.title')}</h1>
+          <p className="text-gray-500 text-sm mt-1">{t('vaktprivacy.deletionRemindersPage.description')}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => { setShowTemplates(true); }}>
             <BookOpen className="h-4 w-4 mr-1.5" />
-            DACH-Templates
+            {t('vaktprivacy.deletionRemindersPage.dachTemplates')}
           </Button>
           <Button size="sm" onClick={() => { setCreateOpen(true); }}>
             <Plus className="h-4 w-4 mr-1.5" />
-            Erinnerung anlegen
+            {t('vaktprivacy.deletionRemindersPage.createReminder')}
           </Button>
         </div>
       </div>
@@ -180,19 +183,19 @@ export default function DeletionRemindersPage() {
         <div className="grid grid-cols-4 gap-3">
           <div className="bg-white border rounded-lg p-3 text-center">
             <div className="text-xl font-bold">{summary.total_activities}</div>
-            <div className="text-xs text-gray-500">VVT-Einträge</div>
+            <div className="text-xs text-gray-500">{t('vaktprivacy.deletionRemindersPage.statVVT')}</div>
           </div>
           <div className={`border rounded-lg p-3 text-center ${summary.missing_retention_count > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white'}`}>
             <div className={`text-xl font-bold ${summary.missing_retention_count > 0 ? 'text-amber-700' : ''}`}>{summary.missing_retention_count}</div>
-            <div className="text-xs text-gray-500">Ohne Löschfrist</div>
+            <div className="text-xs text-gray-500">{t('vaktprivacy.deletionRemindersPage.statMissingRetention')}</div>
           </div>
           <div className={`border rounded-lg p-3 text-center ${overdue.length > 0 ? 'bg-red-50 border-red-200' : 'bg-white'}`}>
             <div className={`text-xl font-bold ${overdue.length > 0 ? 'text-red-600' : ''}`}>{overdue.length + dueSoon.length}</div>
-            <div className="text-xs text-gray-500">Fällig (14 Tage)</div>
+            <div className="text-xs text-gray-500">{t('vaktprivacy.deletionRemindersPage.statDue14Days')}</div>
           </div>
           <div className="bg-white border rounded-lg p-3 text-center">
             <div className="text-xl font-bold text-green-600">{done.length}</div>
-            <div className="text-xs text-gray-500">Erledigt</div>
+            <div className="text-xs text-gray-500">{t('vaktprivacy.deletionRemindersPage.statDone')}</div>
           </div>
         </div>
       )}
@@ -203,12 +206,12 @@ export default function DeletionRemindersPage() {
           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold text-amber-800">
-              {overdue.length > 0 && `${overdue.length} Löschung${overdue.length > 1 ? 'en' : ''} überfällig`}
+              {overdue.length > 0 && t(overdue.length > 1 ? 'vaktprivacy.deletionRemindersPage.overdueAlertPlural' : 'vaktprivacy.deletionRemindersPage.overdueAlert', { count: overdue.length })}
               {overdue.length > 0 && dueSoon.length > 0 && ', '}
-              {dueSoon.length > 0 && `${dueSoon.length} fällig in den nächsten 14 Tagen`}
+              {dueSoon.length > 0 && t('vaktprivacy.deletionRemindersPage.dueSoonAlert', { count: dueSoon.length })}
             </p>
             <p className="text-xs text-amber-600 mt-0.5">
-              Prüfen Sie die Löschpflichten gemäß Art. 5 Abs. 1 lit. e DSGVO.
+              {t('vaktprivacy.deletionRemindersPage.overdueHint')}
             </p>
           </div>
         </div>
@@ -217,15 +220,15 @@ export default function DeletionRemindersPage() {
       {reminders.length === 0 ? (
         <EmptyState
           icon={Trash2}
-          title="Keine Löscherinnerungen"
-          description="Legen Sie Erinnerungen für geplante Datenlöschungen an."
-          action={<Button onClick={() => { setCreateOpen(true); }}><Plus className="h-4 w-4 mr-1.5" />Erinnerung anlegen</Button>}
+          title={t('vaktprivacy.deletionRemindersPage.emptyTitle')}
+          description={t('vaktprivacy.deletionRemindersPage.emptyDesc')}
+          action={<Button onClick={() => { setCreateOpen(true); }}><Plus className="h-4 w-4 mr-1.5" />{t('vaktprivacy.deletionRemindersPage.createReminder')}</Button>}
         />
       ) : (
         <div className="space-y-6">
           {open.length > 0 && (
             <div className="space-y-3">
-              <h2 className="text-sm font-semibold text-gray-700">Offene Erinnerungen ({open.length})</h2>
+              <h2 className="text-sm font-semibold text-gray-700">{t('vaktprivacy.deletionRemindersPage.openSection', { count: open.length })}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {open.map((r) => (
                   <Card key={r.id} className={daysUntil(r.deletion_due_date) < 0 ? 'border-red-300' : daysUntil(r.deletion_due_date) <= 14 ? 'border-amber-300' : ''}>
@@ -237,7 +240,7 @@ export default function DeletionRemindersPage() {
                       {r.data_category && (
                         <Badge variant="outline" className="text-xs">{r.data_category}</Badge>
                       )}
-                      <p className="text-xs text-gray-400">Fällig: {r.deletion_due_date}</p>
+                      <p className="text-xs text-gray-400">{t('vaktprivacy.deletionRemindersPage.badgeDue')} {r.deletion_due_date}</p>
                       <div className="flex justify-end pt-1">
                         <Button
                           size="sm"
@@ -246,7 +249,7 @@ export default function DeletionRemindersPage() {
                           onClick={() => { setCompleteTarget(r); setCompleteNotes(''); }}
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          Erledigt
+                          {t('vaktprivacy.deletionRemindersPage.buttonDone')}
                         </Button>
                       </div>
                     </CardContent>
@@ -258,14 +261,14 @@ export default function DeletionRemindersPage() {
 
           {done.length > 0 && (
             <div className="space-y-3">
-              <h2 className="text-sm font-semibold text-gray-400">Erledigte Erinnerungen ({done.length})</h2>
+              <h2 className="text-sm font-semibold text-gray-400">{t('vaktprivacy.deletionRemindersPage.doneSection', { count: done.length })}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {done.map((r) => (
                   <Card key={r.id} className="opacity-60">
                     <CardContent className="pt-4 space-y-1.5">
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm font-medium line-clamp-1">{r.description}</p>
-                        <Badge className="bg-green-100 text-green-700 text-xs shrink-0">Erledigt</Badge>
+                        <Badge className="bg-green-100 text-green-700 text-xs shrink-0">{t('vaktprivacy.deletionRemindersPage.badgeDone')}</Badge>
                       </div>
                       {r.data_category && <p className="text-xs text-gray-400">{r.data_category}</p>}
                       {r.completion_notes && <p className="text-xs text-gray-400 italic line-clamp-1">{r.completion_notes}</p>}
@@ -281,10 +284,10 @@ export default function DeletionRemindersPage() {
       {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={(open) => { if (!open) setCreateOpen(false); }}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Löscherinnerung anlegen</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('vaktprivacy.deletionRemindersPage.createDialogTitle')}</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>Beschreibung *</Label>
+              <Label>{t('vaktprivacy.deletionRemindersPage.labelDescription')}</Label>
               <Textarea
                 rows={2}
                 placeholder="z.B. Kundendaten nach Vertragsende löschen"
@@ -293,7 +296,7 @@ export default function DeletionRemindersPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Datenkategorie</Label>
+              <Label>{t('vaktprivacy.deletionRemindersPage.labelDataCategory')}</Label>
               <Input
                 placeholder="z.B. Kundenstammdaten, Bewerbungsunterlagen"
                 value={createForm.data_category}
@@ -301,7 +304,7 @@ export default function DeletionRemindersPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Lösch-Datum *</Label>
+              <Label>{t('vaktprivacy.deletionRemindersPage.labelDueDate')}</Label>
               <Input
                 type="date"
                 value={createForm.deletion_due_date}
@@ -310,12 +313,12 @@ export default function DeletionRemindersPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setCreateOpen(false); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setCreateOpen(false); }}>{t('common.cancel')}</Button>
             <Button
               onClick={handleCreate}
               disabled={!createForm.description.trim() || !createForm.deletion_due_date || createMut.isPending}
             >
-              {createMut.isPending ? 'Speichern…' : 'Anlegen'}
+              {createMut.isPending ? t('vaktprivacy.deletionRemindersPage.savingPending') : t('vaktprivacy.deletionRemindersPage.create')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -324,10 +327,10 @@ export default function DeletionRemindersPage() {
       {/* Complete Dialog */}
       <Dialog open={completeTarget !== null} onOpenChange={(open) => { if (!open) setCompleteTarget(null); }}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Löschung bestätigen</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('vaktprivacy.deletionRemindersPage.completeDialogTitle')}</DialogTitle></DialogHeader>
           <p className="text-sm text-gray-500">{completeTarget?.description}</p>
           <div className="space-y-2 py-2">
-            <Label>Nachweis / Notiz</Label>
+            <Label>{t('vaktprivacy.deletionRemindersPage.labelProof')}</Label>
             <Textarea
               rows={3}
               placeholder="z.B. Datensätze aus DB gelöscht, Backups überschrieben nach 30 Tagen."
@@ -336,10 +339,10 @@ export default function DeletionRemindersPage() {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setCompleteTarget(null); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setCompleteTarget(null); }}>{t('common.cancel')}</Button>
             <Button onClick={handleComplete} disabled={completeMut.isPending} className="bg-green-600 hover:bg-green-700 text-white">
               <CheckCircle2 className="w-4 h-4 mr-1.5" />
-              {completeMut.isPending ? 'Speichern…' : 'Löschung bestätigen'}
+              {completeMut.isPending ? t('vaktprivacy.deletionRemindersPage.savingPending') : t('vaktprivacy.deletionRemindersPage.confirmDeletion')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -349,24 +352,24 @@ export default function DeletionRemindersPage() {
       <Dialog open={showTemplates} onOpenChange={(open) => { if (!open) setShowTemplates(false); }}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>DACH-Löschfristen-Templates</DialogTitle>
+            <DialogTitle>{t('vaktprivacy.deletionRemindersPage.templatesDialogTitle')}</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-500">Gesetzliche Aufbewahrungsfristen für DACH-Unternehmen. Klicken Sie auf ein Template, um eine Erinnerung anzulegen.</p>
+          <p className="text-sm text-gray-500">{t('vaktprivacy.deletionRemindersPage.templatesDesc')}</p>
           <div className="space-y-2 py-2">
             {templates.length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-4">Keine Templates verfügbar.</p>
+              <p className="text-sm text-gray-400 text-center py-4">{t('vaktprivacy.deletionRemindersPage.noTemplates')}</p>
             )}
-            {templates.map((t) => (
+            {templates.map((tpl) => (
               <div
-                key={t.id}
+                key={tpl.id}
                 className="flex items-center justify-between gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
                 onClick={() => {
-                  const months = t.retention_period_months ?? 12
+                  const months = tpl.retention_period_months ?? 12
                   const dueDate = new Date()
                   dueDate.setMonth(dueDate.getMonth() + months)
                   setCreateForm({
-                    description: `${t.data_category} — Löschfrist nach ${months} Monaten`,
-                    data_category: t.data_category,
+                    description: `${tpl.data_category} — Löschfrist nach ${months} Monaten`,
+                    data_category: tpl.data_category,
                     deletion_due_date: dueDate.toISOString().slice(0, 10),
                   })
                   setShowTemplates(false)
@@ -374,19 +377,19 @@ export default function DeletionRemindersPage() {
                 }}
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-medium">{t.data_category}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{t.legal_basis || t.notes}</p>
+                  <p className="text-sm font-medium">{tpl.data_category}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{tpl.legal_basis || tpl.notes}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  {t.retention_period_months && (
-                    <Badge variant="outline" className="text-xs">{t.retention_period_months} Monate</Badge>
+                  {tpl.retention_period_months && (
+                    <Badge variant="outline" className="text-xs">{tpl.retention_period_months} {t('vaktprivacy.deletionRemindersPage.months')}</Badge>
                   )}
                 </div>
               </div>
             ))}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowTemplates(false); }}>Schließen</Button>
+            <Button variant="outline" onClick={() => { setShowTemplates(false); }}>{t('vaktprivacy.deletionRemindersPage.close')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronRight, CheckCircle2, Circle, ArrowRight } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Badge } from '../../../components/ui/badge'
-import { TermTooltip } from '../../../shared/components/TermTooltip'
 
 // ─── Data ──────────────────────────────────────────────────────────────────────
 
@@ -154,6 +154,7 @@ function CategoryCard({ cat, expanded, onToggle }: {
   expanded: boolean
   onToggle: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="rounded-lg border border-border bg-surface overflow-hidden">
       {/* Header */}
@@ -166,7 +167,7 @@ function CategoryCard({ cat, expanded, onToggle }: {
             {cat.category}
           </Badge>
           <span className="text-sm font-semibold text-primary">{cat.title}</span>
-          <span className="text-xs text-secondary">({cat.bausteins.length} Bausteine)</span>
+          <span className="text-xs text-secondary">{t('bsiGrundschutz.categoryBausteine', { count: cat.bausteins.length })}</span>
         </div>
         {expanded
           ? <ChevronDown className="w-4 h-4 text-secondary shrink-0" />
@@ -216,47 +217,21 @@ interface Phase {
   linkLabel?: string
 }
 
-const BSI_PHASES: Phase[] = [
-  {
-    number: 1,
-    label: 'Strukturanalyse',
-    description: 'IT-Assets erfassen',
-    done: true,
-  },
-  {
-    number: 2,
-    label: 'Schutzbedarfsfeststellung',
-    description: 'C/I/A-Bewertung je Asset',
-    done: true,
-    linkTo: '/vaktcomply/protection-needs',
-    linkLabel: 'Öffnen',
-  },
-  {
-    number: 3,
-    label: 'Modellierung',
-    description: 'Bausteine Assets zuweisen',
-    done: false,
-    linkTo: '/vaktcomply/bsi-modeling',
-    linkLabel: 'Starten',
-  },
-  {
-    number: 4,
-    label: 'IT-Grundschutz-Check',
-    description: 'Anforderungen prüfen',
-    done: false,
-    linkTo: '/vaktcomply/bsi/target-objects',
-    linkLabel: 'Starten',
-  },
-]
-
 function PhaseProgressCard() {
+  const { t } = useTranslation()
+  const phases: Phase[] = [
+    { number: 1, label: t('bsiGrundschutz.phase1Label'), description: t('bsiGrundschutz.phase1Desc'), done: true },
+    { number: 2, label: t('bsiGrundschutz.phase2Label'), description: t('bsiGrundschutz.phase2Desc'), done: true, linkTo: '/vaktcomply/protection-needs', linkLabel: t('bsiGrundschutz.phase2Link') },
+    { number: 3, label: t('bsiGrundschutz.phase3Label'), description: t('bsiGrundschutz.phase3Desc'), done: false, linkTo: '/vaktcomply/bsi-modeling', linkLabel: t('bsiGrundschutz.phase3Link') },
+    { number: 4, label: t('bsiGrundschutz.phase4Label'), description: t('bsiGrundschutz.phase4Desc'), done: false, linkTo: '/vaktcomply/bsi/target-objects', linkLabel: t('bsiGrundschutz.phase4Link') },
+  ]
   return (
     <div className="rounded-lg border border-border bg-surface p-4">
       <p className="text-xs font-semibold text-secondary uppercase tracking-wide mb-3">
-        BSI-Vorgehensweise — 4 Phasen
+        {t('bsiGrundschutz.phaseTitle')}
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {BSI_PHASES.map((phase) => (
+        {phases.map((phase) => (
           <div
             key={phase.number}
             className={`rounded-md border p-3 flex flex-col gap-1.5 ${
@@ -268,7 +243,7 @@ function PhaseProgressCard() {
                 ? <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
                 : <Circle className="w-4 h-4 text-secondary shrink-0" />
               }
-              <span className="text-[11px] font-semibold text-secondary">Phase {phase.number}</span>
+              <span className="text-[11px] font-semibold text-secondary">{t('bsiGrundschutz.phaseLabel', { number: phase.number })}</span>
             </div>
             <p className="text-[13px] font-medium text-primary leading-tight">{phase.label}</p>
             <p className="text-[11px] text-secondary">{phase.description}</p>
@@ -291,6 +266,7 @@ function PhaseProgressCard() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function BSIGrundschutzPage() {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState<Record<string, boolean>>(
     Object.fromEntries(BAUSTEINE.map((c) => [c.category, true])),
   )
@@ -304,8 +280,8 @@ export default function BSIGrundschutzPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="BSI IT-Grundschutz"
-        description="Mapping der Grundschutz-Bausteine auf Vakt-Module"
+        title={t('bsiGrundschutz.title')}
+        description={t('bsiGrundschutz.description')}
       />
 
       <div className="p-6 space-y-4">
@@ -318,18 +294,16 @@ export default function BSIGrundschutzPage() {
             BSI IT-Grundschutz-Kompendium
           </Badge>
           <Badge className="bg-surface2 text-muted border-transparent text-xs">
-            {totalBausteins} Bausteine abgedeckt
+            {t('bsiGrundschutz.bausteinCovered', { count: totalBausteins })}
           </Badge>
           <Badge className="bg-surface2 text-muted border-transparent text-xs">
-            {BAUSTEINE.length} Kategorien
+            {t('bsiGrundschutz.categoryCount', { count: BAUSTEINE.length })}
           </Badge>
         </div>
 
         {/* Intro */}
         <p className="text-sm text-secondary leading-relaxed">
-          Das <TermTooltip term="BSI IT-Grundschutz" glossaryKey="BSI200">BSI IT-Grundschutz</TermTooltip>-Kompendium definiert Bausteine für die systematische Absicherung
-          von IT-Systemen. Diese Übersicht zeigt, welche Vakt-Module die jeweiligen
-          Anforderungen unterstützen.
+          {t('bsiGrundschutz.intro')}
         </p>
 
         {/* Category cards */}

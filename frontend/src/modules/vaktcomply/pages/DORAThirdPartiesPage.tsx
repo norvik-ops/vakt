@@ -44,6 +44,7 @@ import type {
   DORAThirdPartyCriticality,
   CreateDORAThirdPartyInput,
 } from '../types'
+import { useTranslation } from 'react-i18next'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -81,6 +82,7 @@ function ThirdPartyDialog({
   onSave: (input: CreateDORAThirdPartyInput) => void
   saving: boolean
 }) {
+  const { t } = useTranslation()
   const [form, setForm] = useState<CreateDORAThirdPartyInput>(
     initial
       ? {
@@ -108,22 +110,22 @@ function ThirdPartyDialog({
     <Dialog open={open} onOpenChange={(v) => { if (!v) { onClose(); } }}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{initial ? 'Drittanbieter bearbeiten' : 'Drittanbieter hinzufügen'}</DialogTitle>
+          <DialogTitle>{initial ? t('vaktcomply.doraThirdParties.dialogEditTitle') : t('vaktcomply.doraThirdParties.dialogAddTitle')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 space-y-1">
-              <Label>Name *</Label>
+              <Label>{t('vaktcomply.doraThirdParties.labelName')}</Label>
               <Input
                 value={form.name}
                 onChange={(e) => { set('name', e.target.value); }}
-                placeholder="z.B. AWS Frankfurt, Microsoft Azure"
+                placeholder={t('vaktcomply.doraThirdParties.placeholderName')}
               />
             </div>
 
             <div className="space-y-1">
-              <Label>Dienstleistungstyp *</Label>
+              <Label>{t('vaktcomply.doraThirdParties.labelServiceType')}</Label>
               <Select value={form.service_type} onValueChange={(v) => { set('service_type', v as typeof form.service_type); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -133,7 +135,7 @@ function ThirdPartyDialog({
             </div>
 
             <div className="space-y-1">
-              <Label>Kritikalität *</Label>
+              <Label>{t('vaktcomply.doraThirdParties.labelCriticality')}</Label>
               <Select value={form.criticality} onValueChange={(v) => { set('criticality', v as typeof form.criticality); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -143,28 +145,28 @@ function ThirdPartyDialog({
             </div>
 
             <div className="space-y-1">
-              <Label>Vertragsbeginn</Label>
+              <Label>{t('vaktcomply.doraThirdParties.labelContractStart')}</Label>
               <Input type="date" value={form.contract_start ?? ''} onChange={(e) => { set('contract_start', e.target.value || null); }} />
             </div>
 
             <div className="space-y-1">
-              <Label>Vertragsende</Label>
+              <Label>{t('vaktcomply.doraThirdParties.labelContractEnd')}</Label>
               <Input type="date" value={form.contract_end ?? ''} onChange={(e) => { set('contract_end', e.target.value || null); }} />
             </div>
 
             <div className="space-y-1">
-              <Label>SLA RTO (Stunden)</Label>
+              <Label>{t('vaktcomply.doraThirdParties.labelSlaRto')}</Label>
               <Input
                 type="number"
                 min={0}
                 value={form.sla_rto_hours ?? ''}
                 onChange={(e) => { set('sla_rto_hours', e.target.value ? Number(e.target.value) : null); }}
-                placeholder="z.B. 4"
+                placeholder={t('vaktcomply.doraThirdParties.placeholderSlaRto')}
               />
             </div>
 
             <div className="space-y-1">
-              <Label>SLA Verfügbarkeit (%)</Label>
+              <Label>{t('vaktcomply.doraThirdParties.labelSlaAvailability')}</Label>
               <Input
                 type="number"
                 min={0}
@@ -172,12 +174,12 @@ function ThirdPartyDialog({
                 step={0.01}
                 value={form.sla_availability ?? ''}
                 onChange={(e) => { set('sla_availability', e.target.value ? Number(e.target.value) : null); }}
-                placeholder="z.B. 99.9"
+                placeholder={t('vaktcomply.doraThirdParties.placeholderSlaAvailability')}
               />
             </div>
 
             <div className="space-y-1">
-              <Label>Datenspeicherort *</Label>
+              <Label>{t('vaktcomply.doraThirdParties.labelDataLocation')}</Label>
               <Select value={form.data_location} onValueChange={(v) => { set('data_location', v as typeof form.data_location); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -194,16 +196,16 @@ function ThirdPartyDialog({
                 onChange={(e) => { set('has_subcontractors', e.target.checked); }}
                 className="h-4 w-4"
               />
-              <Label htmlFor="has_sub">Hat Unterauftragnehmer</Label>
+              <Label htmlFor="has_sub">{t('vaktcomply.doraThirdParties.labelHasSubcontractors')}</Label>
             </div>
 
             {form.has_subcontractors && (
               <div className="col-span-2 space-y-1">
-                <Label>Unterauftragnehmer (Namen)</Label>
+                <Label>{t('vaktcomply.doraThirdParties.labelSubcontractorNames')}</Label>
                 <Input
                   value={form.subcontractor_names ?? ''}
                   onChange={(e) => { set('subcontractor_names', e.target.value); }}
-                  placeholder="z.B. Rackspace, Cloudflare"
+                  placeholder={t('vaktcomply.doraThirdParties.placeholderSubcontractorNames')}
                 />
               </div>
             )}
@@ -216,38 +218,38 @@ function ThirdPartyDialog({
                 onChange={(e) => { set('exit_strategy', e.target.checked); }}
                 className="h-4 w-4"
               />
-              <Label htmlFor="exit_strat">Ausstiegsstrategie vorhanden</Label>
+              <Label htmlFor="exit_strat">{t('vaktcomply.doraThirdParties.labelExitStrategy')}</Label>
             </div>
 
             {form.exit_strategy && (
               <div className="col-span-2 space-y-1">
-                <Label>Ausstiegsnotizen</Label>
+                <Label>{t('vaktcomply.doraThirdParties.labelExitNotes')}</Label>
                 <Textarea
                   value={form.exit_notes ?? ''}
                   onChange={(e) => { set('exit_notes', e.target.value); }}
                   rows={2}
-                  placeholder="Beschreibe den Exit-Plan..."
+                  placeholder={t('vaktcomply.doraThirdParties.placeholderExitNotes')}
                 />
               </div>
             )}
 
             <div className="col-span-2 space-y-1">
-              <Label>Notizen</Label>
+              <Label>{t('vaktcomply.doraThirdParties.labelNotes')}</Label>
               <Textarea
                 value={form.notes ?? ''}
                 onChange={(e) => { set('notes', e.target.value); }}
                 rows={3}
-                placeholder="Interne Notizen zu diesem Drittanbieter..."
+                placeholder={t('vaktcomply.doraThirdParties.placeholderNotes')}
               />
             </div>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>Abbrechen</Button>
+          <Button variant="outline" onClick={onClose} disabled={saving}>{t('vaktcomply.doraThirdParties.btnCancel')}</Button>
           <Button onClick={() => { onSave(form); }} disabled={saving || !form.name}>
             {saving ? <Spinner size="sm" className="mr-2" /> : null}
-            {initial ? 'Speichern' : 'Hinzufügen'}
+            {initial ? t('vaktcomply.doraThirdParties.btnSave') : t('vaktcomply.doraThirdParties.btnAdd')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -266,6 +268,7 @@ function ThirdPartyRow({
   onEdit: () => void
   onDelete: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="flex items-start justify-between px-4 py-3 hover:bg-surface2 border-b border-border last:border-0">
       <div className="flex items-start gap-3 min-w-0">
@@ -281,7 +284,7 @@ function ThirdPartyRow({
           </div>
           <div className="flex items-center gap-3 mt-1 text-xs text-secondary flex-wrap">
             {tp.contract_end && (
-              <span>Vertragsende: {tp.contract_end}</span>
+              <span>{t('vaktcomply.doraThirdParties.contractEnd')}: {tp.contract_end}</span>
             )}
             {tp.sla_rto_hours != null && (
               <span>RTO: {tp.sla_rto_hours}h</span>
@@ -291,21 +294,21 @@ function ThirdPartyRow({
             )}
             {tp.exit_strategy ? (
               <span className="flex items-center gap-1 text-green-600">
-                <CheckCircle className="w-3 h-3" /> Exit-Plan vorhanden
+                <CheckCircle className="w-3 h-3" /> {t('vaktcomply.doraThirdParties.exitPlanOk')}
               </span>
             ) : tp.criticality === 'kritisch' ? (
               <span className="flex items-center gap-1 text-amber-600">
-                <AlertTriangle className="w-3 h-3" /> Kein Exit-Plan (kritisch!)
+                <AlertTriangle className="w-3 h-3" /> {t('vaktcomply.doraThirdParties.exitPlanMissing')}
               </span>
             ) : null}
           </div>
         </div>
       </div>
       <div className="flex items-center gap-1 shrink-0 ml-2">
-        <Button variant="ghost" size="sm" onClick={onEdit} title="Bearbeiten">
+        <Button variant="ghost" size="sm" onClick={onEdit} title={t('vaktcomply.doraThirdParties.titleEdit')}>
           <Pencil className="w-4 h-4" />
         </Button>
-        <Button variant="ghost" size="sm" onClick={onDelete} title="Löschen" className="text-destructive hover:text-destructive">
+        <Button variant="ghost" size="sm" onClick={onDelete} title={t('vaktcomply.doraThirdParties.titleDelete')} className="text-destructive hover:text-destructive">
           <Trash2 className="w-4 h-4" />
         </Button>
       </div>
@@ -316,6 +319,7 @@ function ThirdPartyRow({
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DORAThirdPartiesPage() {
+  const { t } = useTranslation()
   const [criticality, setCriticality] = useState<string>('')
   const { data: list, isLoading, isError, error } = useDORAThirdParties(criticality || undefined)
   const createMut = useCreateDORAThirdParty()
@@ -339,19 +343,19 @@ export default function DORAThirdPartiesPage() {
     }
   }
 
-  const kritisch = list?.filter((t) => t.criticality === 'kritisch').length ?? 0
-  const noExit = list?.filter((t) => t.criticality === 'kritisch' && !t.exit_strategy).length ?? 0
+  const kritisch = list?.filter((tp) => tp.criticality === 'kritisch').length ?? 0
+  const noExit = list?.filter((tp) => tp.criticality === 'kritisch' && !tp.exit_strategy).length ?? 0
 
   return (
     <ProGate error={isError ? error : null}>
       <div className="flex flex-col h-full">
         <PageHeader
-          title="IKT-Drittanbieter-Register"
-          description="Art. 28–44 DORA — Kritische IKT-Dienstleister, SLAs und Ausstiegsstrategien."
+          title={t('vaktcomply.doraThirdParties.pageTitle')}
+          description={t('vaktcomply.doraThirdParties.pageDescription')}
           actions={
             <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true) }}>
               <Plus className="w-4 h-4 mr-1" />
-              Drittanbieter hinzufügen
+              {t('vaktcomply.doraThirdParties.addProvider')}
             </Button>
           }
         />
@@ -360,11 +364,11 @@ export default function DORAThirdPartiesPage() {
           {/* Summary badges */}
           {list && list.length > 0 && (
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-sm text-secondary">{list.length} Einträge</span>
-              {kritisch > 0 && <Badge variant="destructive">{kritisch} kritisch</Badge>}
+              <span className="text-sm text-secondary">{t('vaktcomply.doraThirdParties.entries', { count: list.length })}</span>
+              {kritisch > 0 && <Badge variant="destructive">{kritisch} {t('vaktcomply.doraThirdParties.critical')}</Badge>}
               {noExit > 0 && (
                 <Badge variant="warning" className="flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> {noExit} kritisch ohne Exit-Plan
+                  <AlertTriangle className="w-3 h-3" /> {noExit} {t('vaktcomply.doraThirdParties.criticalNoExit')}
                 </Badge>
               )}
             </div>
@@ -372,13 +376,13 @@ export default function DORAThirdPartiesPage() {
 
           {/* Filter */}
           <div className="flex items-center gap-2">
-            <Label className="text-sm shrink-0">Filter:</Label>
+            <Label className="text-sm shrink-0">{t('vaktcomply.doraThirdParties.filterLabel')}</Label>
             <Select value={criticality || 'all'} onValueChange={(v) => { setCriticality(v === 'all' ? '' : v); }}>
               <SelectTrigger className="w-40">
-                <SelectValue placeholder="Alle" />
+                <SelectValue placeholder={t('vaktcomply.doraThirdParties.filterAll')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Alle</SelectItem>
+                <SelectItem value="all">{t('vaktcomply.doraThirdParties.filterAll')}</SelectItem>
                 {CRITICALITIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -391,12 +395,12 @@ export default function DORAThirdPartiesPage() {
           ) : !list || list.length === 0 ? (
             <EmptyState
               icon={Building2}
-              title="Keine Drittanbieter eingetragen"
-              description="Füge IKT-Drittanbieter hinzu, um DORA Art. 28–44 zu dokumentieren."
+              title={t('vaktcomply.doraThirdParties.emptyTitle')}
+              description={t('vaktcomply.doraThirdParties.emptyDescription')}
               action={
                 <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true) }}>
                   <Plus className="w-4 h-4 mr-1" />
-                  Drittanbieter hinzufügen
+                  {t('vaktcomply.doraThirdParties.addProvider')}
                 </Button>
               }
             />
@@ -426,13 +430,13 @@ export default function DORAThirdPartiesPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => { if (!v) { setDeleteTarget(null); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Drittanbieter löschen?</AlertDialogTitle>
+            <AlertDialogTitle>{t('vaktcomply.doraThirdParties.deleteDialogTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              „{deleteTarget?.name}" wird dauerhaft aus dem Register entfernt.
+              {t('vaktcomply.doraThirdParties.deleteDialogDescription', { name: deleteTarget?.name ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogCancel>{t('vaktcomply.doraThirdParties.deleteBtnCancel')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90"
               onClick={() => {
@@ -441,7 +445,7 @@ export default function DORAThirdPartiesPage() {
                 }
               }}
             >
-              Löschen
+              {t('vaktcomply.doraThirdParties.deleteBtnConfirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

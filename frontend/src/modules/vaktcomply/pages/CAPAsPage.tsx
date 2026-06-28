@@ -1,10 +1,10 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   ClipboardCheck, Plus, ChevronDown, ChevronUp, Trash2, AlertTriangle, CheckSquare,
 } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
-import { TermTooltip } from '../../../shared/components/TermTooltip'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { Pagination } from '../../../shared/components/Pagination'
 import { BulkActionBar } from '../../../shared/components/BulkActionBar'
@@ -28,12 +28,6 @@ import {
 
 // ---- S61-3: NC classification badge helpers ----
 
-const NC_CLASS_LABEL: Record<NonNullable<CAPA['nc_classification']>, string> = {
-  major_nc:    'Major NC',
-  minor_nc:    'Minor NC',
-  observation: 'Beobachtung',
-  ofi:         'Verbesserungspotenzial',
-}
 const NC_CLASS_COLOR: Record<NonNullable<CAPA['nc_classification']>, string> = {
   major_nc:    'bg-red-500/20 text-red-400 border-red-500/30',
   minor_nc:    'bg-orange-500/20 text-orange-400 border-orange-500/30',
@@ -49,9 +43,6 @@ const PRIORITY_CLASS: Record<CAPA['priority'], string> = {
   medium:   'bg-amber-500/20 text-amber-400 border-amber-500/30',
   low:      'bg-slate-500/20 text-slate-400 border-slate-500/30',
 }
-const PRIORITY_LABEL: Record<CAPA['priority'], string> = {
-  critical: 'Kritisch', high: 'Hoch', medium: 'Mittel', low: 'Niedrig',
-}
 const STATUS_CLASS: Record<CAPA['status'], string> = {
   open:          'bg-red-500/20 text-red-400 border-red-500/30',
   in_progress:   'bg-amber-500/20 text-amber-400 border-amber-500/30',
@@ -59,34 +50,10 @@ const STATUS_CLASS: Record<CAPA['status'], string> = {
   verified:      'bg-green-500/20 text-green-400 border-green-500/30',
   closed:        'bg-secondary text-secondary-foreground',
 }
-const STATUS_LABEL: Record<CAPA['status'], string> = {
-  open:          'Offen',
-  in_progress:   'In Bearbeitung',
-  implemented:   'Umgesetzt',
-  verified:      'Verifiziert',
-  closed:        'Geschlossen',
-}
-const SOURCE_LABEL: Record<CAPA['source_type'], string> = {
-  audit:    'Audit', incident: 'Vorfall', risk: 'Risiko', manual: 'Manuell',
-}
 
 const STATUS_FLOW: CAPA['status'][] = ['open', 'in_progress', 'implemented', 'verified', 'closed']
-const NEXT_STATUS_LABEL: Partial<Record<CAPA['status'], string>> = {
-  open:        'Als "In Bearbeitung" markieren',
-  in_progress: 'Als "Umgesetzt" markieren',
-  implemented: 'Als "Verifiziert" markieren',
-  verified:    'Als geschlossen markieren',
-}
 
 type FilterTab = 'all' | CAPA['status']
-const TABS: { key: FilterTab; label: string }[] = [
-  { key: 'all',         label: 'Alle' },
-  { key: 'open',        label: 'Offen' },
-  { key: 'in_progress', label: 'In Bearbeitung' },
-  { key: 'implemented', label: 'Umgesetzt' },
-  { key: 'verified',    label: 'Verifiziert' },
-  { key: 'closed',      label: 'Geschlossen' },
-]
 
 // ---- create dialog ----
 
@@ -98,6 +65,7 @@ interface CreateDialogProps {
 }
 
 function CreateDialog({ open, onClose, prefillSourceType, prefillSourceId }: CreateDialogProps) {
+  const { t } = useTranslation()
   const [form, setForm] = useState<CreateCAPAInput>({
     source_type: prefillSourceType ?? 'manual',
     source_id:   prefillSourceId ?? '',
@@ -118,7 +86,7 @@ function CreateDialog({ open, onClose, prefillSourceType, prefillSourceId }: Cre
       onSuccess: () => {
         setForm({ source_type: 'manual', title: '', description: '', assignee_email: '', priority: 'medium' })
         clearCapaErrors()
-        toast('Korrekturmaßnahme erstellt', 'success')
+        toast(t('capas.toastCreated'), 'success')
         onClose()
       },
     })
@@ -128,59 +96,59 @@ function CreateDialog({ open, onClose, prefillSourceType, prefillSourceId }: Cre
     <Dialog open={open} onOpenChange={(v) => { if (!v) { clearCapaErrors(); onClose() } }}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Neue Korrekturmaßnahme</DialogTitle>
+          <DialogTitle>{t('capas.createDialogTitle')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label>Titel <span className="text-red-400 text-xs">*</span></Label>
-            <Input value={form.title} onChange={(e) => { setForm((f) => ({ ...f, title: e.target.value })); clearCapaError('title') }} placeholder="Kurzbeschreibung der Maßnahme" />
+            <Label>{t('capas.labelTitle')} <span className="text-red-400 text-xs">*</span></Label>
+            <Input value={form.title} onChange={(e) => { setForm((f) => ({ ...f, title: e.target.value })); clearCapaError('title') }} placeholder={t('capas.titlePlaceholder')} />
             <FieldError error={capaErrors.title ?? null} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Quelltyp</Label>
+              <Label>{t('capas.labelSource')}</Label>
               <Select value={form.source_type} onValueChange={(v) => { setForm((f) => ({ ...f, source_type: v as CAPA['source_type'] })); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="audit">Audit</SelectItem>
-                  <SelectItem value="incident">Vorfall</SelectItem>
-                  <SelectItem value="risk">Risiko</SelectItem>
-                  <SelectItem value="manual">Manuell</SelectItem>
+                  <SelectItem value="audit">{t('capas.source_audit')}</SelectItem>
+                  <SelectItem value="incident">{t('capas.source_incident')}</SelectItem>
+                  <SelectItem value="risk">{t('capas.source_risk')}</SelectItem>
+                  <SelectItem value="manual">{t('capas.source_manual')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Priorität</Label>
+              <Label>{t('capas.labelPriority')}</Label>
               <Select value={form.priority ?? 'medium'} onValueChange={(v) => { setForm((f) => ({ ...f, priority: v as CAPA['priority'] })); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">Niedrig</SelectItem>
-                  <SelectItem value="medium">Mittel</SelectItem>
-                  <SelectItem value="high">Hoch</SelectItem>
-                  <SelectItem value="critical">Kritisch</SelectItem>
+                  <SelectItem value="low">{t('capas.priority_low')}</SelectItem>
+                  <SelectItem value="medium">{t('capas.priority_medium')}</SelectItem>
+                  <SelectItem value="high">{t('capas.priority_high')}</SelectItem>
+                  <SelectItem value="critical">{t('capas.priority_critical')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label>Beschreibung</Label>
-            <Textarea rows={3} value={form.description ?? ''} onChange={(e) => { setForm((f) => ({ ...f, description: e.target.value })); }} placeholder="Optionale Beschreibung …" />
+            <Label>{t('common.description')}</Label>
+            <Textarea rows={3} value={form.description ?? ''} onChange={(e) => { setForm((f) => ({ ...f, description: e.target.value })); }} placeholder={t('capas.descPlaceholder')} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Verantwortlicher (E-Mail)</Label>
+              <Label>{t('capas.labelOwner')}</Label>
               <Input type="email" value={form.assignee_email ?? ''} onChange={(e) => { setForm((f) => ({ ...f, assignee_email: e.target.value })); }} placeholder="max@example.com" />
             </div>
             <div className="space-y-1.5">
-              <Label>Fälligkeitsdatum</Label>
+              <Label>{t('capas.labelDueDate')}</Label>
               <Input type="date" value={form.due_date ?? ''} onChange={(e) => { setForm((f) => ({ ...f, due_date: e.target.value || null })); }} />
             </div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => { clearCapaErrors(); onClose() }}>Abbrechen</Button>
+          <Button variant="outline" onClick={() => { clearCapaErrors(); onClose() }}>{t('common.cancel')}</Button>
           <Button onClick={handleSubmit} disabled={create.isPending}>
-            {create.isPending ? 'Erstellen …' : 'Erstellen'}
+            {create.isPending ? t('capas.creating') : t('common.create')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -191,6 +159,7 @@ function CreateDialog({ open, onClose, prefillSourceType, prefillSourceId }: Cre
 // ---- inline detail panel ----
 
 function CAPADetail({ capa, onClose }: { capa: CAPA; onClose: () => void }) {
+  const { t } = useTranslation()
   const update = useUpdateCAPA()
   const updateNCFields = useUpdateCAPANCFields(capa.id)
   const completeEffectiveness = useCompleteEffectivenessCheck(capa.id)
@@ -206,6 +175,13 @@ function CAPADetail({ capa, onClose }: { capa: CAPA; onClose: () => void }) {
 
   const nextStatusIdx = STATUS_FLOW.indexOf(capa.status) + 1
   const nextStatus = nextStatusIdx < STATUS_FLOW.length ? STATUS_FLOW[nextStatusIdx] : null
+
+  const NEXT_STATUS_LABEL: Partial<Record<CAPA['status'], string>> = {
+    open:        t('capas.advance_open'),
+    in_progress: t('capas.advance_in_progress'),
+    implemented: t('capas.advance_implemented'),
+    verified:    t('capas.advance_verified'),
+  }
 
   function save(patch: UpdateCAPAInput) {
     update.mutate({ id: capa.id, input: patch })
@@ -231,92 +207,92 @@ function CAPADetail({ capa, onClose }: { capa: CAPA; onClose: () => void }) {
       effectiveness_check_date: effectivenessCheckDate || undefined,
       effectiveness_evidence: '',
     }, {
-      onSuccess: () => { toast('NC-Felder gespeichert', 'success') },
+      onSuccess: () => { toast(t('capas.toastNcSaved'), 'success') },
     })
   }
 
   function confirmEffectiveness(confirmed: boolean) {
     completeEffectiveness.mutate({ confirmed, evidence_note: effectivenessEvidenceNote }, {
-      onSuccess: () => { toast(confirmed ? 'Wirksamkeit bestätigt' : 'Wirksamkeit nicht bestätigt', 'success') },
+      onSuccess: () => { toast(confirmed ? t('capas.toastEffectiveConfirmed') : t('capas.toastEffectiveNotConfirmed'), 'success') },
     })
   }
 
   return (
     <div className="border-t border-border bg-muted/20 px-5 py-4 space-y-4">
       <div className="space-y-1.5">
-        <Label className="text-xs">Ursachenanalyse</Label>
-        <Textarea rows={3} value={rootCause} onChange={(e) => { setRootCause(e.target.value); }} placeholder="Beschreiben Sie die Grundursache …" />
+        <Label className="text-xs">{t('capas.rootCause')}</Label>
+        <Textarea rows={3} value={rootCause} onChange={(e) => { setRootCause(e.target.value); }} placeholder={t('capas.rootCausePlaceholder')} />
       </div>
       <div className="space-y-1.5">
-        <Label className="text-xs">Maßnahmenplan</Label>
-        <Textarea rows={4} value={actionPlan} onChange={(e) => { setActionPlan(e.target.value); }} placeholder="Beschreiben Sie die geplanten Schritte …" />
+        <Label className="text-xs">{t('capas.actionPlan')}</Label>
+        <Textarea rows={4} value={actionPlan} onChange={(e) => { setActionPlan(e.target.value); }} placeholder={t('capas.actionPlanPlaceholder')} />
       </div>
       {capa.status === 'implemented' && (
         <div className="space-y-1.5">
-          <Label className="text-xs">Verifikationsnotiz</Label>
-          <Textarea rows={2} value={verificationNote} onChange={(e) => { setVerificationNote(e.target.value); }} placeholder="Wie wurde die Umsetzung verifiziert?" />
+          <Label className="text-xs">{t('capas.verificationNote')}</Label>
+          <Textarea rows={2} value={verificationNote} onChange={(e) => { setVerificationNote(e.target.value); }} placeholder={t('capas.verificationPlaceholder')} />
         </div>
       )}
       <div className="flex items-center gap-2">
-        <Button size="sm" variant="outline" onClick={saveText} disabled={update.isPending}>Speichern</Button>
+        <Button size="sm" variant="outline" onClick={saveText} disabled={update.isPending}>{t('common.save')}</Button>
         {nextStatus && (
           <Button size="sm" onClick={advanceStatus} disabled={update.isPending}>
             {NEXT_STATUS_LABEL[capa.status]}
           </Button>
         )}
-        <Button size="sm" variant="ghost" onClick={onClose} className="ml-auto">Schließen</Button>
+        <Button size="sm" variant="ghost" onClick={onClose} className="ml-auto">{t('common.close')}</Button>
       </div>
 
       {/* S61-3: NC root-cause + effectiveness section */}
       <div className="border-t border-border pt-3 space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide"><TermTooltip term="NC" explanation="Nonconformity — Abweichung vom geforderten Soll-Zustand (ISO 19011). Major NC: Anforderung nicht erfüllt. Minor NC: Einzelabweichung, die das ISMS nicht grundlegend gefährdet.">NC</TermTooltip>-Klassifizierung &amp; Wirksamkeit</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('capas.ncSection')}</p>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">NC-Klassifizierung</Label>
+            <Label className="text-xs">{t('capas.ncClass')}</Label>
             <Select value={ncClassification ?? ''} onValueChange={(v) => { setNcClassification((v as CAPANCFields['nc_classification']) || undefined); }}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Nicht klassifiziert" /></SelectTrigger>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t('capas.notClassified')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Nicht klassifiziert</SelectItem>
-                <SelectItem value="major_nc">Major NC</SelectItem>
-                <SelectItem value="minor_nc">Minor NC</SelectItem>
-                <SelectItem value="observation">Beobachtung</SelectItem>
-                <SelectItem value="ofi">Verbesserungspotenzial</SelectItem>
+                <SelectItem value="">{t('capas.notClassified')}</SelectItem>
+                <SelectItem value="major_nc">{t('capas.ncClass_major')}</SelectItem>
+                <SelectItem value="minor_nc">{t('capas.ncClass_minor')}</SelectItem>
+                <SelectItem value="observation">{t('capas.ncClass_observation')}</SelectItem>
+                <SelectItem value="ofi">{t('capas.ncClass_ofi')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Wirksamkeitsprüfung bis</Label>
+            <Label className="text-xs">{t('capas.effectivenessDeadline')}</Label>
             <Input type="date" className="h-8 text-xs" value={effectivenessCheckDate} onChange={(e) => { setEffectivenessCheckDate(e.target.value); }} />
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Sofortmaßnahme (Containment)</Label>
-          <Textarea rows={2} className="text-xs" value={immediateContainment} onChange={(e) => { setImmediateContainment(e.target.value); }} placeholder="Welche Sofortmaßnahme wurde ergriffen?" />
+          <Label className="text-xs">{t('capas.immediateAction')}</Label>
+          <Textarea rows={2} className="text-xs" value={immediateContainment} onChange={(e) => { setImmediateContainment(e.target.value); }} placeholder={t('capas.immediateActionPlaceholder')} />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Ähnliche NCs bewertet</Label>
-          <Textarea rows={2} className="text-xs" value={similarNcsNotes} onChange={(e) => { setSimilarNcsNotes(e.target.value); }} placeholder="Wurden ähnliche Nichtkonformitäten geprüft?" />
+          <Label className="text-xs">{t('capas.similarNcs')}</Label>
+          <Textarea rows={2} className="text-xs" value={similarNcsNotes} onChange={(e) => { setSimilarNcsNotes(e.target.value); }} placeholder={t('capas.similarNcsPlaceholder')} />
         </div>
-        <Button size="sm" variant="outline" onClick={saveNCFields} disabled={updateNCFields.isPending}>NC-Felder speichern</Button>
+        <Button size="sm" variant="outline" onClick={saveNCFields} disabled={updateNCFields.isPending}>{t('capas.saveNcFields')}</Button>
 
         {capa.effectiveness_check_date && capa.effectiveness_confirmed == null && (
           <div className="space-y-2 border border-border rounded p-3">
-            <p className="text-xs font-medium">Wirksamkeitsprüfung durchführen</p>
+            <p className="text-xs font-medium">{t('capas.effectivenessCheck')}</p>
             <div className="space-y-1.5">
-              <Label className="text-xs">Nachweis / Notiz</Label>
-              <Textarea rows={2} className="text-xs" value={effectivenessEvidenceNote} onChange={(e) => { setEffectivenessEvidenceNote(e.target.value); }} placeholder="Nachweis für die Wirksamkeit …" />
+              <Label className="text-xs">{t('capas.evidenceNote')}</Label>
+              <Textarea rows={2} className="text-xs" value={effectivenessEvidenceNote} onChange={(e) => { setEffectivenessEvidenceNote(e.target.value); }} placeholder={t('capas.evidencePlaceholder')} />
             </div>
             <div className="flex gap-2">
-              <Button size="sm" onClick={() => { confirmEffectiveness(true); }} disabled={completeEffectiveness.isPending}>Wirksam bestätigen</Button>
-              <Button size="sm" variant="outline" onClick={() => { confirmEffectiveness(false); }} disabled={completeEffectiveness.isPending}>Nicht wirksam</Button>
+              <Button size="sm" onClick={() => { confirmEffectiveness(true); }} disabled={completeEffectiveness.isPending}>{t('capas.confirmEffective')}</Button>
+              <Button size="sm" variant="outline" onClick={() => { confirmEffectiveness(false); }} disabled={completeEffectiveness.isPending}>{t('capas.notEffective')}</Button>
             </div>
           </div>
         )}
         {capa.effectiveness_confirmed === true && (
-          <p className="text-xs text-green-400">Wirksamkeit bestätigt</p>
+          <p className="text-xs text-green-400">{t('capas.effectivenessConfirmed')}</p>
         )}
         {capa.effectiveness_confirmed === false && (
-          <p className="text-xs text-red-400">Wirksamkeit nicht bestätigt — neue Maßnahmen erforderlich</p>
+          <p className="text-xs text-red-400">{t('capas.effectivenessNotConfirmed')}</p>
         )}
       </div>
     </div>
@@ -334,13 +310,40 @@ function CAPACard({
   selected: boolean
   onToggleSelect: (id: string) => void
 }) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const del = useDeleteCAPA()
   const { formatDate } = useFormatDate()
 
+  const SOURCE_LABEL: Record<CAPA['source_type'], string> = {
+    audit:    t('capas.source_audit'),
+    incident: t('capas.source_incident'),
+    risk:     t('capas.source_risk'),
+    manual:   t('capas.source_manual'),
+  }
+  const PRIORITY_LABEL: Record<CAPA['priority'], string> = {
+    critical: t('capas.priority_critical'),
+    high:     t('capas.priority_high'),
+    medium:   t('capas.priority_medium'),
+    low:      t('capas.priority_low'),
+  }
+  const STATUS_LABEL: Record<CAPA['status'], string> = {
+    open:        t('capas.status_open'),
+    in_progress: t('capas.status_in_progress'),
+    implemented: t('capas.status_implemented'),
+    verified:    t('capas.status_verified'),
+    closed:      t('capas.status_closed'),
+  }
+  const NC_CLASS_LABEL: Record<NonNullable<CAPA['nc_classification']>, string> = {
+    major_nc:    t('capas.ncClass_major'),
+    minor_nc:    t('capas.ncClass_minor'),
+    observation: t('capas.ncClass_observation'),
+    ofi:         t('capas.ncClass_ofi'),
+  }
+
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation()
-    if (confirm('Korrekturmaßnahme wirklich löschen?')) del.mutate(capa.id)
+    if (confirm(t('capas.deleteConfirm'))) del.mutate(capa.id)
   }
 
   return (
@@ -353,7 +356,7 @@ function CAPACard({
             type="checkbox"
             checked={selected}
             onChange={() => { onToggleSelect(capa.id); }}
-            aria-label={`CAPA "${capa.title}" auswählen`}
+            aria-label={t('capas.cardAriaLabel', { title: capa.title })}
             className="rounded"
           />
         </div>
@@ -377,7 +380,7 @@ function CAPACard({
             {capa.due_date && !['closed', 'verified'].includes(capa.status) && new Date(capa.due_date) < new Date() && (
               <Badge variant="destructive" className="text-xs gap-1">
                 <AlertTriangle className="w-3 h-3" />
-                Überfällig
+                {t('capas.overdue')}
               </Badge>
             )}
           </div>
@@ -390,13 +393,13 @@ function CAPACard({
                   ? 'text-red-400 font-medium'
                   : ''
               }>
-                Fällig: {formatDate(capa.due_date)}
+                {t('capas.duePrefix')}{formatDate(capa.due_date)}
               </span>
             )}
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={handleDelete} aria-label="CAPA löschen">
+          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={handleDelete} aria-label={t('capas.deleteAria')}>
             <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
           </Button>
           {expanded
@@ -418,6 +421,14 @@ function CAPACard({
 // ---- status stepper ----
 
 function StatusStepper({ status }: { status: CAPA['status'] }) {
+  const { t } = useTranslation()
+  const STATUS_LABEL: Record<CAPA['status'], string> = {
+    open:        t('capas.status_open'),
+    in_progress: t('capas.status_in_progress'),
+    implemented: t('capas.status_implemented'),
+    verified:    t('capas.status_verified'),
+    closed:      t('capas.status_closed'),
+  }
   const idx = STATUS_FLOW.indexOf(status)
   return (
     <div className="flex items-center gap-0 mb-4">
@@ -438,10 +449,20 @@ function StatusStepper({ status }: { status: CAPA['status'] }) {
 // ---- main page ----
 
 export default function CAPAsPage() {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const [createOpen, setCreateOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  const TABS: { key: FilterTab; label: string }[] = [
+    { key: 'all',         label: t('common.all') },
+    { key: 'open',        label: t('capas.status_open') },
+    { key: 'in_progress', label: t('capas.status_in_progress') },
+    { key: 'implemented', label: t('capas.status_implemented') },
+    { key: 'verified',    label: t('capas.status_verified') },
+    { key: 'closed',      label: t('capas.status_closed') },
+  ]
 
   const { data: capas, isLoading, pagination } = useCAPAs(activeTab === 'all' ? undefined : activeTab, page)
   const bulkUpdateCAPAs = useBulkUpdateCAPAs()
@@ -465,28 +486,28 @@ export default function CAPAsPage() {
     try {
       await bulkUpdateCAPAs.mutateAsync({ ids: Array.from(selected), status })
       setSelected(new Set())
-      toast('Status aktualisiert', 'success')
+      toast(t('capas.toastStatusUpdated'), 'success')
     } catch {
-      toast('Bulk-Update fehlgeschlagen', 'error')
+      toast(t('capas.toastBulkFailed'), 'error')
     }
   }
 
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Korrekturmaßnahmen (CAPA)"
-        description="Korrektur- und Vorbeugemaßnahmen — ISO 27001 PDCA-Regelkreis"
+        title={t('capas.title')}
+        description={t('capas.description')}
         actions={
           <div className="flex items-center gap-3">
             {overdueCAPAs.length > 0 && (
               <span className="flex items-center gap-1 text-sm text-red-400 font-medium">
                 <AlertTriangle className="w-4 h-4" />
-                {overdueCAPAs.length} überfällig
+                {t('capas.overdueCount', { count: overdueCAPAs.length })}
               </span>
             )}
             <Button onClick={() => { setCreateOpen(true); }}>
               <Plus className="w-4 h-4 mr-1" />
-              Neue Korrekturmaßnahme
+              {t('capas.createBtn')}
             </Button>
           </div>
         }
@@ -520,12 +541,12 @@ export default function CAPAsPage() {
         ) : !capas || capas.length === 0 ? (
           <EmptyState
             icon={ClipboardCheck}
-            title="Keine Korrekturmaßnahmen"
-            description="Erstellen Sie eine CAPA aus einem Audit-Befund, einem Vorfall oder manuell."
+            title={t('capas.emptyTitle')}
+            description={t('capas.emptyDesc')}
             action={
               <Button onClick={() => { setCreateOpen(true); }}>
                 <Plus className="w-4 h-4 mr-1" />
-                Neue Korrekturmaßnahme
+                {t('capas.createBtn')}
               </Button>
             }
           />
@@ -555,18 +576,18 @@ export default function CAPAsPage() {
         onClearSelection={() => { setSelected(new Set()); }}
         actions={[
           {
-            label: 'Abschließen',
+            label: t('capas.bulkClose'),
             icon: CheckSquare,
             onClick: () => { void handleBulkStatusChange('closed') },
             disabled: bulkUpdateCAPAs.isPending,
           },
           {
-            label: 'In Bearbeitung',
+            label: t('capas.bulkInProgress'),
             onClick: () => { void handleBulkStatusChange('in_progress') },
             disabled: bulkUpdateCAPAs.isPending,
           },
           {
-            label: 'Abbrechen',
+            label: t('common.cancel'),
             variant: 'destructive' as const,
             onClick: () => { void handleBulkStatusChange('open') },
             disabled: bulkUpdateCAPAs.isPending,

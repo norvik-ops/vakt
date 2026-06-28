@@ -271,7 +271,7 @@ export default function AuditLogPage() {
       <div className="flex-1 px-6 pb-6 overflow-auto">
         {isError ? (
           <ErrorState
-            message="Audit-Log konnte nicht geladen werden."
+            message={t('auditLog.loadError')}
             onRetry={() => void refetch()}
           />
         ) : (

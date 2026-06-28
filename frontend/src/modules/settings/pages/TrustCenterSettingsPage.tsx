@@ -177,22 +177,23 @@ function GeneralSection({
   settings: TrustCenterSettings
   onChange: (s: TrustCenterSettings) => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-4">
       <Toggle
         id="tc-enabled"
         checked={settings.enabled}
         onChange={(v) => { onChange({ ...settings, enabled: v }); }}
-        label="Trust Center öffentlich aktivieren"
-        description="Aktiviert die öffentliche Trust Center-Seite unter /trust/<slug>"
+        label={t('settings.trustCenter.enableLabel')}
+        description={t('settings.trustCenter.enableDescription')}
       />
       <div className="space-y-1.5">
-        <Label htmlFor="tc-description">Beschreibung</Label>
+        <Label htmlFor="tc-description">{t('settings.trustCenter.descriptionLabel')}</Label>
         <textarea
           id="tc-description"
           rows={3}
           maxLength={300}
-          placeholder="Kurze Beschreibung deines Sicherheitsprogramms..."
+          placeholder={t('settings.trustCenter.descriptionPlaceholder')}
           value={settings.description}
           onChange={(e) => { onChange({ ...settings, description: e.target.value }); }}
           className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
@@ -200,7 +201,7 @@ function GeneralSection({
         <p className="text-xs text-muted-foreground text-right">{settings.description.length}/300</p>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="tc-contact">Kontakt-E-Mail</Label>
+        <Label htmlFor="tc-contact">{t('settings.trustCenter.contactLabel')}</Label>
         <Input
           id="tc-contact"
           type="email"
@@ -210,7 +211,7 @@ function GeneralSection({
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="tc-logo">Logo-URL</Label>
+        <Label htmlFor="tc-logo">{t('settings.trustCenter.logoLabel')}</Label>
         <Input
           id="tc-logo"
           type="url"
@@ -218,7 +219,7 @@ function GeneralSection({
           value={settings.logo_url}
           onChange={(e) => { onChange({ ...settings, logo_url: e.target.value }); }}
         />
-        <p className="text-xs text-muted-foreground">Erscheint im Header der Trust Center-Seite.</p>
+        <p className="text-xs text-muted-foreground">{t('settings.trustCenter.logoHint')}</p>
       </div>
     </div>
   )
@@ -231,28 +232,29 @@ function VisibilitySection({
   settings: TrustCenterSettings
   onChange: (s: TrustCenterSettings) => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-4">
       <Toggle
         id="show-frameworks"
         checked={settings.show_frameworks}
         onChange={(v) => { onChange({ ...settings, show_frameworks: v }); }}
-        label="Compliance-Frameworks anzeigen"
-        description="Zeigt den Compliance-Status deiner Frameworks öffentlich."
+        label={t('settings.trustCenter.showFrameworks')}
+        description={t('settings.trustCenter.showFrameworksHint')}
       />
       <Toggle
         id="show-certs"
         checked={settings.show_certs}
         onChange={(v) => { onChange({ ...settings, show_certs: v }); }}
-        label="Zertifikate anzeigen"
-        description="Zeigt die hinterlegten Zertifikate und Auditbestätigungen."
+        label={t('settings.trustCenter.showCerts')}
+        description={t('settings.trustCenter.showCertsHint')}
       />
       <Toggle
         id="show-policies"
         checked={settings.show_policies}
         onChange={(v) => { onChange({ ...settings, show_policies: v }); }}
-        label="Policies anzeigen"
-        description="Zeigt veröffentlichte Richtlinien für Kunden und Partner."
+        label={t('settings.trustCenter.showPolicies')}
+        description={t('settings.trustCenter.showPoliciesHint')}
       />
     </div>
   )
@@ -265,9 +267,10 @@ function SubprocessorsSection({
   settings: TrustCenterSettings
   onChange: (s: TrustCenterSettings) => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-2">
-      <Label htmlFor="tc-subprocessors">Unterauftragnehmer (Markdown/Text)</Label>
+      <Label htmlFor="tc-subprocessors">{t('settings.trustCenter.subprocessorsLabel')}</Label>
       <textarea
         id="tc-subprocessors"
         rows={8}
@@ -277,7 +280,7 @@ function SubprocessorsSection({
         className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
       />
       <p className="text-xs text-muted-foreground">
-        Wird auf der öffentlichen Trust Center-Seite im Tab "Unterauftragnehmer" angezeigt, sofern befüllt.
+        {t('settings.trustCenter.subprocessorsHint')}
       </p>
     </div>
   )
@@ -358,7 +361,7 @@ function CertificatesSection() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="cert-issuer">Aussteller</Label>
+              <Label htmlFor="cert-issuer">{t('settings.trustCenter.certIssuerLabel')}</Label>
               <Input
                 id="cert-issuer"
                 placeholder="TÜV SÜD"
@@ -367,7 +370,7 @@ function CertificatesSection() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="cert-issued">Ausgestellt am</Label>
+              <Label htmlFor="cert-issued">{t('settings.trustCenter.certIssuedLabel')}</Label>
               <Input
                 id="cert-issued"
                 type="date"
@@ -376,7 +379,7 @@ function CertificatesSection() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="cert-expires">Gültig bis</Label>
+              <Label htmlFor="cert-expires">{t('settings.trustCenter.certExpiresLabel')}</Label>
               <Input
                 id="cert-expires"
                 type="date"
@@ -481,7 +484,7 @@ function PoliciesSection() {
         )
       })}
       <p className="text-xs text-muted-foreground pt-1">
-        Aktiviere den Haken neben einer Richtlinie, um sie im Trust Center öffentlich anzuzeigen.
+        {t('settings.trustCenter.policyHint')}
       </p>
     </div>
   )
@@ -530,7 +533,7 @@ export default function TrustCenterSettingsPage() {
   if (isError) {
     return (
       <div className="p-6">
-        <p className="text-sm text-destructive">Trust Center-Einstellungen konnten nicht geladen werden.</p>
+        <p className="text-sm text-destructive">{t('settings.trustCenter.loadError')}</p>
       </div>
     )
   }

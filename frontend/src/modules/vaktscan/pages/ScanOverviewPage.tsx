@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   Bug, ShieldAlert, Clock, BarChart2, PackageX, Lock,
   Server, ChevronRight, CheckCircle2, AlertTriangle,
@@ -46,6 +47,7 @@ function StatCard({ icon: Icon, label, value, sub, onClick, accent = 'default' }
 }
 
 export default function ScanOverviewPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { data: assets } = useAssets(1, 200)
   const { data: findings } = useFindings({ status: 'open' }, 1, 200)
@@ -65,7 +67,7 @@ export default function ScanOverviewPage() {
     <div className="flex flex-col h-full">
       <PageHeader
         title="Vakt Scan"
-        description="Assets überwachen, Scanner orchestrieren und Sicherheitsbefunde verwalten."
+        description={t('vaktscan.overviewPage.description')}
       />
 
       <div className="flex-1 p-6 space-y-8">
@@ -78,10 +80,10 @@ export default function ScanOverviewPage() {
             <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
-                Kein Scanner eingerichtet
+                {t('vaktscan.overviewPage.noScannerTitle')}
               </p>
               <p className="text-xs text-secondary mt-0.5">
-                Trivy, Nuclei und OpenVAS sind nicht konfiguriert. Scanner-Zugangsdaten in Einstellungen → Scanner eintragen.
+                {t('vaktscan.overviewPage.noScannerDesc')}
               </p>
             </div>
           </button>
@@ -90,7 +92,7 @@ export default function ScanOverviewPage() {
         {scannerConfigured === true && (
           <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span>Scanner konfiguriert und betriebsbereit.</span>
+            <span>{t('vaktscan.overviewPage.scannerReady')}</span>
           </div>
         )}
 
@@ -98,33 +100,33 @@ export default function ScanOverviewPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             icon={Server}
-            label="Assets gesamt"
+            label={t('vaktscan.overviewPage.statAssets')}
             value={allAssets.length}
-            sub={allAssets.length > 0 ? `${String(criticalAssets.length)} kritisch` : 'noch keine erfasst'}
+            sub={allAssets.length > 0 ? t('vaktscan.overviewPage.statAssetsCriticalSub', { count: criticalAssets.length }) : t('vaktscan.overviewPage.statAssetsNoSub')}
             onClick={() => { navigate('/vaktscan/assets'); }}
             accent={allAssets.length > 0 ? 'green' : 'default'}
           />
           <StatCard
             icon={ShieldAlert}
-            label="Kritische Assets"
+            label={t('vaktscan.overviewPage.statCriticalAssets')}
             value={criticalAssets.length}
-            sub="Kritikalität: critical"
+            sub={t('vaktscan.overviewPage.statCriticalAssetsSub')}
             onClick={() => { navigate('/vaktscan/assets'); }}
             accent={criticalAssets.length > 0 ? 'red' : 'green'}
           />
           <StatCard
             icon={Bug}
-            label="Kritische Findings"
+            label={t('vaktscan.overviewPage.statCriticalFindings')}
             value={criticalFindings.length}
-            sub="offen, Severity: critical"
+            sub={t('vaktscan.overviewPage.statCriticalFindingsSub')}
             onClick={() => { navigate('/vaktscan/findings'); }}
             accent={criticalFindings.length > 0 ? 'red' : 'green'}
           />
           <StatCard
             icon={AlertTriangle}
-            label="Offene Findings"
+            label={t('vaktscan.overviewPage.statOpenFindings')}
             value={openFindings.length}
-            sub={criticalFindings.length > 0 ? `${String(criticalFindings.length)} kritisch` : 'keine kritischen'}
+            sub={criticalFindings.length > 0 ? t('vaktscan.overviewPage.statOpenFindingsCritical', { count: criticalFindings.length }) : t('vaktscan.overviewPage.statOpenFindingsNoCritical')}
             onClick={() => { navigate('/vaktscan/findings'); }}
             accent={criticalFindings.length > 0 ? 'red' : openFindings.length > 0 ? 'yellow' : 'green'}
           />
@@ -133,44 +135,44 @@ export default function ScanOverviewPage() {
         {/* Bereiche */}
         <div>
           <h2 className="text-sm font-semibold text-secondary uppercase tracking-wider mb-3">
-            Bereiche
+            {t('vaktscan.overviewPage.sections')}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {[
               {
                 icon: Server,
                 title: 'Assets',
-                desc: 'Server, Web-Apps, Container und Repositories erfassen und verwalten.',
+                desc: t('vaktscan.overviewPage.areaAssetsDesc'),
                 path: '/vaktscan/assets',
               },
               {
                 icon: Bug,
                 title: 'Findings',
-                desc: 'Scanner-Ergebnisse priorisieren, zuweisen und nachverfolgen.',
+                desc: t('vaktscan.overviewPage.areaFindingsDesc'),
                 path: '/vaktscan/findings',
               },
               {
                 icon: Clock,
                 title: 'SLA-Dashboard',
-                desc: 'Einhaltung der Behebungsfristen pro Severity im Überblick.',
+                desc: t('vaktscan.overviewPage.areaSlaDesc'),
                 path: '/vaktscan/sla',
               },
               {
                 icon: BarChart2,
-                title: 'Berichte',
-                desc: 'Scan-Berichte exportieren und Verlaufstrends analysieren.',
+                title: t('vaktscan.overviewPage.areaReports'),
+                desc: t('vaktscan.overviewPage.areaReportsDesc'),
                 path: '/vaktscan/reports',
               },
               {
                 icon: PackageX,
                 title: 'EOL-Dashboard',
-                desc: 'End-of-Life-Software und abgelaufene Abhängigkeiten überwachen.',
+                desc: t('vaktscan.overviewPage.areaEolDesc'),
                 path: '/vaktscan/eol',
               },
               {
                 icon: Lock,
-                title: 'TLS-Zertifikate',
-                desc: 'Ablaufende Zertifikate erkennen und rechtzeitig erneuern.',
+                title: t('vaktscan.overviewPage.areaCerts'),
+                desc: t('vaktscan.overviewPage.areaCertsDesc'),
                 path: '/vaktscan/certificates',
               },
             ].map(({ icon: Icon, title, desc, path }) => (

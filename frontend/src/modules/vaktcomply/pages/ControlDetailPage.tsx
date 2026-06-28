@@ -86,19 +86,24 @@ interface ChangeLogEntry {
   changed_at: string
 }
 
-function fieldLabel(field: string): string {
-  const map: Record<string, string> = {
-    status: 'Status',
-    not_applicable: 'Nicht anwendbar',
-    not_applicable_reason: 'Begründung',
-    manual_status: 'Manueller Status',
-    maturity_score: 'Reifegrad',
-    review_interval_days: 'Prüfungsintervall',
+function useFieldLabel() {
+  const { t } = useTranslation()
+  return (field: string): string => {
+    const map: Record<string, string> = {
+      status: t('common.status'),
+      not_applicable: t('vaktcomply.controlDetailPage.fieldNotApplicable'),
+      not_applicable_reason: t('vaktcomply.controlDetailPage.fieldNotApplicableReason'),
+      manual_status: t('vaktcomply.controlDetailPage.fieldManualStatus'),
+      maturity_score: t('vaktcomply.controlDetailPage.fieldMaturityScore'),
+      review_interval_days: t('vaktcomply.controlDetailPage.fieldReviewInterval'),
+    }
+    return map[field] ?? field
   }
-  return map[field] ?? field
 }
 
 function ChangeLogTab({ controlId }: { controlId: string }) {
+  const { t } = useTranslation()
+  const fieldLabel = useFieldLabel()
   const { formatDateTime } = useFormatDate()
   const { data: changes } = useQuery<ChangeLogEntry[]>({
     queryKey: ['control-changelog', controlId],
@@ -123,15 +128,15 @@ function ChangeLogTab({ controlId }: { controlId: string }) {
           <div>
             <p className="text-primary">
               <span className="font-medium">{entry.user_email ?? 'System'}</span>
-              {' hat '}
+              {' '}{t('vaktcomply.controlDetailPage.changeLogBy')}{' '}
               <span className="text-secondary">{fieldLabel(entry.field)}</span>
-              {' geändert'}
+              {t('vaktcomply.controlDetailPage.changeLogField') ? ` ${t('vaktcomply.controlDetailPage.changeLogField')}` : ''}
             </p>
             <p className="text-xs text-secondary mt-0.5">
               {entry.old_value != null ? (
                 <><span className="line-through">{entry.old_value}</span>{' → '}</>
               ) : (
-                'Gesetzt auf '
+                t('vaktcomply.controlDetailPage.changeLogSetTo')
               )}
               <span className="font-medium text-primary">{entry.new_value}</span>
             </p>
@@ -140,7 +145,7 @@ function ChangeLogTab({ controlId }: { controlId: string }) {
         </div>
       ))}
       {(!changes || changes.length === 0) && (
-        <p className="text-sm text-secondary py-4 text-center">Noch keine Änderungen aufgezeichnet</p>
+        <p className="text-sm text-secondary py-4 text-center">{t('vaktcomply.controlDetailPage.changeLogEmpty')}</p>
       )}
     </div>
   )
@@ -148,11 +153,14 @@ function ChangeLogTab({ controlId }: { controlId: string }) {
 
 // ── Evidence history dialog ──────────────────────────────────────────────────
 
-const STATUS_LABEL_MAP: Record<string, string> = {
-  pending_review: 'Ausstehende Prüfung',
-  approved: 'Genehmigt',
-  rejected: 'Abgelehnt',
-  expired: 'Abgelaufen',
+function useStatusLabelMap() {
+  const { t } = useTranslation()
+  return {
+    pending_review: t('vaktcomply.controlDetailPage.evidenceStatusPending'),
+    approved: t('vaktcomply.controlDetailPage.evidenceStatusApproved'),
+    rejected: t('vaktcomply.controlDetailPage.evidenceStatusRejected'),
+    expired: t('vaktcomply.controlDetailPage.evidenceStatusExpired'),
+  }
 }
 
 function EvidenceHistoryDialog({
@@ -166,13 +174,15 @@ function EvidenceHistoryDialog({
   open: boolean
   onClose: () => void
 }) {
+  const { t } = useTranslation()
+  const STATUS_LABEL_MAP = useStatusLabelMap()
   const { data: history, isLoading } = useEvidenceHistory(evidenceId)
   const { formatDateTime } = useFormatDate()
 
   function describeEntry(entry: EvidenceHistoryEntry): string {
     if (entry.change_note) return entry.change_note
-    if (entry.status) return `Status gesetzt: ${STATUS_LABEL_MAP[entry.status] ?? entry.status}`
-    return 'Aktualisiert'
+    if (entry.status) return t('vaktcomply.controlDetailPage.evidenceHistoryStatusSet', { status: STATUS_LABEL_MAP[entry.status] ?? entry.status })
+    return t('vaktcomply.controlDetailPage.evidenceHistoryUpdated')
   }
 
   return (
@@ -181,7 +191,7 @@ function EvidenceHistoryDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="w-4 h-4 text-secondary" aria-hidden="true" />
-            Verlauf — {evidenceTitle}
+            {t('vaktcomply.controlDetailPage.evidenceHistoryTitle', { title: evidenceTitle })}
           </DialogTitle>
         </DialogHeader>
         <div className="py-2 space-y-3 max-h-96 overflow-y-auto">
@@ -191,7 +201,7 @@ function EvidenceHistoryDialog({
             </div>
           )}
           {!isLoading && (!history || history.length === 0) && (
-            <p className="text-sm text-secondary py-4 text-center">Kein Verlauf vorhanden</p>
+            <p className="text-sm text-secondary py-4 text-center">{t('vaktcomply.controlDetailPage.evidenceHistoryEmpty')}</p>
           )}
           {!isLoading && history && history.length > 0 && history.map((entry) => (
             <div key={entry.id} className="flex gap-3 text-sm">
@@ -211,7 +221,7 @@ function EvidenceHistoryDialog({
           ))}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Schließen</Button>
+          <Button variant="outline" onClick={onClose}>{t('vaktcomply.controlDetailPage.evidenceHistoryClose')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -281,6 +291,7 @@ function NotApplicableDialog({
 // ── S52-2: Gap-Explain Panel ─────────────────────────────────────────────────
 
 function GapExplainPanel({ controlId, controlTitle }: { controlId: string; controlTitle: string }) {
+  const { t } = useTranslation()
   const { text, isStreaming, error, start, stop } = useAIStream()
 
   const handleExplain = () => {
@@ -295,7 +306,7 @@ function GapExplainPanel({ controlId, controlTitle }: { controlId: string; contr
       <CardHeader>
         <CardTitle className="text-sm flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-brand" />
-          KI-Erklärung
+          {t('vaktcomply.controlDetailPage.aiExplainTitle')}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -304,7 +315,7 @@ function GapExplainPanel({ controlId, controlTitle }: { controlId: string; contr
             onClick={handleExplain}
             className="text-sm text-brand border border-brand/40 rounded-lg py-1.5 px-3 hover:bg-brand/10 transition-colors"
           >
-            AI erklären — warum ist dieser Control offen?
+            {t('vaktcomply.controlDetailPage.aiExplainButton')}
           </button>
         )}
         {(isStreaming || text) && !error && (
@@ -315,18 +326,18 @@ function GapExplainPanel({ controlId, controlTitle }: { controlId: string; contr
             </p>
             {isStreaming ? (
               <button onClick={stop} className="inline-flex items-center gap-1 text-xs text-secondary border border-border rounded px-2 py-1 hover:bg-surface/80">
-                <Square className="w-3 h-3" /> Stopp
+                <Square className="w-3 h-3" /> {t('vaktcomply.controlDetailPage.aiExplainStop')}
               </button>
             ) : (
               <button onClick={handleExplain} className="text-xs text-secondary hover:text-brand transition-colors">
-                Neu laden
+                {t('vaktcomply.controlDetailPage.aiExplainReload')}
               </button>
             )}
           </div>
         )}
         {isStreaming && !text && (
           <div className="flex items-center gap-2 text-xs text-secondary">
-            <Loader2 className="w-3 h-3 animate-spin" /> Analyse läuft…
+            <Loader2 className="w-3 h-3 animate-spin" /> {t('vaktcomply.controlDetailPage.aiExplainRunning')}
           </div>
         )}
         {error && !isStreaming && (
@@ -469,7 +480,7 @@ export default function ControlDetailPage() {
       {
         onSuccess: () => {
           setOwnerEditing(false)
-          toast('Verantwortlicher gespeichert', 'success')
+          toast(t('vaktcomply.controlDetailPage.ownerSaved'), 'success')
         },
         onError: (err) => toast(handleApiError(err), 'error'),
       },
@@ -492,7 +503,7 @@ export default function ControlDetailPage() {
     createException.mutate(
       { ...exForm, expires_at: exForm.expires_at || null },
       {
-        onSuccess: () => { resetExForm(); toast('Ausnahme gespeichert', 'success') },
+        onSuccess: () => { resetExForm(); toast(t('vaktcomply.controlDetailPage.exceptionSaved'), 'success') },
         onError: (err) => toast(handleApiError(err), 'error'),
       },
     )
@@ -688,7 +699,7 @@ export default function ControlDetailPage() {
       <div className="flex-1 p-6 space-y-6">
         {controlError && (
           <ErrorState
-            message="Control konnte nicht geladen werden."
+            message={t('vaktcomply.controlDetailPage.loadError')}
             onRetry={() => void refetchControl()}
           />
         )}
@@ -718,8 +729,8 @@ export default function ControlDetailPage() {
                 <div data-testid="maturity-radio-group" className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs text-secondary mr-1">
                     <TermTooltip
-                      term="Reifegrad"
-                      explanation="Bewertung 0–5 nach CMMI: 0 = nicht vorhanden, 1 = ad-hoc, 3 = definiert, 5 = optimiert"
+                      term={t('vaktcomply.controlDetailPage.tooltipMaturityTerm')}
+                      explanation={t('vaktcomply.controlDetailPage.tooltipMaturityExplanation')}
                     />
                   </span>
                   {([0, 1, 2, 3] as const).map((score) => (
@@ -744,8 +755,8 @@ export default function ControlDetailPage() {
                 <div className="flex flex-col items-end gap-1">
                   <span className="text-xs text-secondary">
                     <TermTooltip
-                      term="Status"
-                      explanation="Implementierungsstand dieser Kontrolle: Geplant / In Umsetzung / Implementiert / Nicht zutreffend"
+                      term={t('vaktcomply.controlDetailPage.tooltipStatusTerm')}
+                      explanation={t('vaktcomply.controlDetailPage.tooltipStatusExplanation')}
                     />
                   </span>
                 <Select
@@ -788,13 +799,13 @@ export default function ControlDetailPage() {
 
             {/* Owner inline edit */}
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-secondary font-medium w-28 shrink-0">Verantwortlicher</span>
+              <span className="text-secondary font-medium w-28 shrink-0">{t('vaktcomply.controlDetailPage.ownerLabel')}</span>
               {ownerEditing ? (
                 <div className="flex items-center gap-2 flex-1">
                   <Input
                     value={ownerDraft}
                     onChange={(e) => { setOwnerDraft(e.target.value); }}
-                    placeholder="E-Mail oder Name"
+                    placeholder={t('vaktcomply.controlDetailPage.ownerPlaceholder')}
                     className="h-7 text-sm flex-1"
                     autoFocus
                   />
@@ -804,7 +815,7 @@ export default function ControlDetailPage() {
                     onClick={handleOwnerSave}
                     disabled={updateControl.isPending}
                   >
-                    Speichern
+                    {t('vaktcomply.controlDetailPage.ownerSave')}
                   </Button>
                   <Button
                     size="sm"
@@ -824,7 +835,7 @@ export default function ControlDetailPage() {
                     type="button"
                     onClick={handleOwnerEditStart}
                     className="text-secondary hover:text-primary transition-colors"
-                    title="Verantwortlichen bearbeiten"
+                    title={t('vaktcomply.controlDetailPage.ownerLabel')}
                   >
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
@@ -835,7 +846,7 @@ export default function ControlDetailPage() {
             {/* Due date */}
             <div className="flex items-center gap-3 py-2 border-t border-border">
               <CalendarDays className="w-4 h-4 text-secondary shrink-0" aria-hidden="true" />
-              <span className="text-[12px] text-secondary w-28 shrink-0">Fälligkeitsdatum</span>
+              <span className="text-[12px] text-secondary w-28 shrink-0">{t('vaktcomply.controlDetailPage.dueDateLabel')}</span>
               <div className="flex items-center gap-2 flex-1">
                 <input
                   type="date"
@@ -849,7 +860,11 @@ export default function ControlDetailPage() {
                   if (s === 'none') return null
                   return (
                     <span className={`text-[11px] font-medium ${statusColors[s]}`}>
-                      {s === 'overdue' ? '● Überfällig' : s === 'soon' ? '● Fällig bald' : '● Fällig'}
+                      {s === 'overdue'
+                        ? t('vaktcomply.controlDetailPage.dueDateOverdue')
+                        : s === 'soon'
+                        ? t('vaktcomply.controlDetailPage.dueDateSoon')
+                        : t('vaktcomply.controlDetailPage.dueDateOk')}
                     </span>
                   )
                 })()}
@@ -997,18 +1012,18 @@ export default function ControlDetailPage() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm flex items-center gap-2">
                 <ShieldAlert className="w-4 h-4" />
-                Ausnahmen / Ausnahmegenehmigungen
+                {t('vaktcomply.controlDetailPage.exceptionsTitle')}
               </CardTitle>
               <Button size="sm" variant="outline" onClick={() => { setExceptionOpen(true); }}>
                 <Plus className="w-3.5 h-3.5 mr-1" />
-                Neue Ausnahme
+                {t('vaktcomply.controlDetailPage.exceptionsAddBtn')}
               </Button>
             </div>
           </CardHeader>
           <CardContent className="p-0">
             {!exceptions || exceptions.length === 0 ? (
               <div className="py-8 text-center text-sm text-secondary">
-                Keine Ausnahmen für diesen Control
+                {t('vaktcomply.controlDetailPage.exceptionsEmpty')}
               </div>
             ) : (
               <div className="divide-y divide-border">
@@ -1025,14 +1040,18 @@ export default function ControlDetailPage() {
                           }
                           className="text-xs"
                         >
-                          {ex.status === 'active' ? 'Aktiv' : ex.status === 'expired' ? 'Abgelaufen' : 'Widerrufen'}
+                          {ex.status === 'active'
+                            ? t('vaktcomply.controlDetailPage.exceptionStatusActive')
+                            : ex.status === 'expired'
+                            ? t('vaktcomply.controlDetailPage.exceptionStatusExpired')
+                            : t('vaktcomply.controlDetailPage.exceptionStatusRevoked')}
                         </Badge>
                       </div>
                       {isAdmin && (
                         <button
                           type="button"
                           className="text-secondary hover:text-destructive transition-colors shrink-0"
-                          title="Ausnahme löschen"
+                          title={t('vaktcomply.controlDetailPage.exceptionDeleteTitle')}
                           onClick={() => { deleteException.mutate({ id: ex.id, controlId: controlId }); }}
                         >
                           <Trash2 className="w-4 h-4" />
@@ -1042,10 +1061,10 @@ export default function ControlDetailPage() {
                     <p className="text-xs text-secondary">{ex.reason}</p>
                     <div className="flex flex-wrap gap-4 text-xs text-secondary">
                       {ex.approved_by && (
-                        <span>Genehmigt von: <span className="text-primary">{ex.approved_by}</span></span>
+                        <span>{t('vaktcomply.controlDetailPage.exceptionApprovedBy')} <span className="text-primary">{ex.approved_by}</span></span>
                       )}
                       {ex.expires_at && (
-                        <span>Gültig bis: <span className="text-primary">{formatDate(ex.expires_at)}</span></span>
+                        <span>{t('vaktcomply.controlDetailPage.exceptionValidUntil')} <span className="text-primary">{formatDate(ex.expires_at)}</span></span>
                       )}
                     </div>
                   </div>
@@ -1130,7 +1149,7 @@ export default function ControlDetailPage() {
                             variant="ghost"
                             size="sm"
                             className="text-secondary hover:text-primary"
-                            title="Verlauf anzeigen"
+                            title={t('vaktcomply.controlDetailPage.evidenceHistoryBtnTitle')}
                             onClick={() => { openHistory(ev.id, ev.title); }}
                           >
                             <History className="w-3.5 h-3.5" aria-hidden="true" />
@@ -1172,7 +1191,7 @@ export default function ControlDetailPage() {
           <CardHeader>
             <CardTitle className="text-sm flex items-center gap-2">
               <History className="w-4 h-4" aria-hidden="true" />
-              Änderungen
+              {t('vaktcomply.controlDetailPage.changeLogTitle')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1400,37 +1419,37 @@ export default function ControlDetailPage() {
       <Dialog open={exceptionOpen} onOpenChange={(v) => { if (!v) resetExForm() }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Neue Ausnahme anlegen</DialogTitle>
+            <DialogTitle>{t('vaktcomply.controlDetailPage.exceptionDialogTitle')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={(e) => { handleExceptionSubmit(e) }}>
             <div className="py-4 space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="ex-title">Titel <span className="text-red-500">*</span></Label>
+                <Label htmlFor="ex-title">{t('vaktcomply.controlDetailPage.exceptionLabelTitle')} <span className="text-red-500">*</span></Label>
                 <Input
                   id="ex-title"
                   value={exForm.title}
                   onChange={(e) => { setExForm((f) => ({ ...f, title: e.target.value })); }}
-                  placeholder="Kurze Beschreibung der Ausnahme"
+                  placeholder={t('vaktcomply.controlDetailPage.exceptionLabelTitle')}
                   required
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="ex-reason">Begründung <span className="text-red-500">*</span></Label>
+                <Label htmlFor="ex-reason">{t('vaktcomply.controlDetailPage.exceptionLabelReason')} <span className="text-red-500">*</span></Label>
                 <textarea
                   id="ex-reason"
                   rows={3}
                   className="w-full rounded-md border border-border bg-surface2 text-primary px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
                   value={exForm.reason}
                   onChange={(e) => { setExForm((f) => ({ ...f, reason: e.target.value })); }}
-                  placeholder="Warum wird diese Ausnahme beantragt?"
+                  placeholder={t('vaktcomply.controlDetailPage.exceptionPlaceholderReason')}
                   required
                 />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="ex-risk">
                   <TermTooltip
-                    term="Akzeptiertes Risiko"
-                    explanation="Formale Risikoakzeptanz: Das verbleibende Risiko nach Maßnahmen wird bewusst in Kauf genommen"
+                    term={t('vaktcomply.controlDetailPage.exceptionTooltipRisk')}
+                    explanation={t('vaktcomply.controlDetailPage.exceptionTooltipRiskExplanation')}
                   />{' '}
                   <span className="text-red-500">*</span>
                 </Label>
@@ -1440,21 +1459,21 @@ export default function ControlDetailPage() {
                   className="w-full rounded-md border border-border bg-surface2 text-primary px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
                   value={exForm.risk_accepted}
                   onChange={(e) => { setExForm((f) => ({ ...f, risk_accepted: e.target.value })); }}
-                  placeholder="Welches Risiko wird bewusst akzeptiert?"
+                  placeholder={t('vaktcomply.controlDetailPage.exceptionPlaceholderRisk')}
                   required
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="ex-approved-by">Genehmigt von</Label>
+                <Label htmlFor="ex-approved-by">{t('vaktcomply.controlDetailPage.exceptionLabelApprovedBy')}</Label>
                 <Input
                   id="ex-approved-by"
                   value={exForm.approved_by ?? ''}
                   onChange={(e) => { setExForm((f) => ({ ...f, approved_by: e.target.value })); }}
-                  placeholder="E-Mail oder Name des Genehmigenden"
+                  placeholder={t('vaktcomply.controlDetailPage.exceptionPlaceholderApprovedBy')}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="ex-expires-at">Gültig bis</Label>
+                <Label htmlFor="ex-expires-at">{t('vaktcomply.controlDetailPage.exceptionLabelValidUntil')}</Label>
                 <Input
                   id="ex-expires-at"
                   type="date"
@@ -1465,7 +1484,7 @@ export default function ControlDetailPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={resetExForm}>Abbrechen</Button>
+              <Button type="button" variant="outline" onClick={resetExForm}>{t('common.cancel')}</Button>
               <Button
                 type="submit"
                 disabled={
@@ -1475,7 +1494,7 @@ export default function ControlDetailPage() {
                   !exForm.risk_accepted.trim()
                 }
               >
-                {createException.isPending ? 'Wird gespeichert…' : 'Ausnahme speichern'}
+                {createException.isPending ? t('vaktcomply.controlDetailPage.exceptionSaving') : t('vaktcomply.controlDetailPage.exceptionSave')}
               </Button>
             </DialogFooter>
           </form>

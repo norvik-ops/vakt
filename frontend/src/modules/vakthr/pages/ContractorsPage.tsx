@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, UserCog, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
@@ -20,7 +21,15 @@ const STATUS_BADGE: Record<string, { label: string; variant: 'outline' | 'warnin
 }
 
 function ContractorRow({ contractor }: { contractor: Contractor }) {
+  const { t } = useTranslation()
   const badge = STATUS_BADGE[contractor.status] ?? { label: contractor.status, variant: 'outline' as const }
+  const statusLabels: Record<string, string> = {
+    active: t('vakthr.status.active'),
+    expiring_soon: t('vakthr.contractors.statusExpiring'),
+    offboarding: t('vakthr.status.offboarding'),
+    terminated: t('vakthr.contractors.statusTerminated'),
+  }
+  const displayLabel = statusLabels[contractor.status] ?? badge.label
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-surface border border-border rounded-lg gap-3">
       <div className="flex items-center gap-3 min-w-0">
@@ -49,16 +58,17 @@ function ContractorRow({ contractor }: { contractor: Contractor }) {
         )}
         {!contractor.nda_signed && (
           <Badge variant="warning" className="text-xs gap-1">
-            <AlertTriangle className="w-3 h-3" /> NDA fehlt
+            <AlertTriangle className="w-3 h-3" /> {t('vakthr.contractors.ndaMissing')}
           </Badge>
         )}
-        <Badge variant={badge.variant} className="text-xs">{badge.label}</Badge>
+        <Badge variant={badge.variant} className="text-xs">{displayLabel}</Badge>
       </div>
     </div>
   )
 }
 
 export default function ContractorsPage() {
+  const { t } = useTranslation()
   const qc = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState<CreateContractorInput>({
@@ -88,11 +98,11 @@ export default function ContractorsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Auftragnehmer & Freelancer"
-        description="Vertragslaufzeiten, Zugangsbereiche und NDA/AVV-Status externer Mitarbeiter"
+        title={t('vakthr.contractors.title')}
+        description={t('vakthr.contractors.description')}
         actions={
           <Button onClick={() => { setShowCreate(true); }}>
-            <Plus className="w-4 h-4 mr-2" /> Auftragnehmer anlegen
+            <Plus className="w-4 h-4 mr-2" /> {t('vakthr.contractors.create')}
           </Button>
         }
       />
@@ -102,35 +112,35 @@ export default function ContractorsPage() {
       {!isLoading && !contractors?.length && (
         <EmptyState
           icon={UserCog}
-          title="Noch keine Auftragnehmer"
-          description="Legen Sie externe Auftragnehmer und Freelancer an, um deren Vertragslaufzeiten zu überwachen."
+          title={t('vakthr.contractors.emptyTitle')}
+          description={t('vakthr.contractors.emptyDesc')}
         />
       )}
 
       {expiring.length > 0 && (
         <section>
-          <h2 className="text-sm font-semibold text-warning mb-2">Läuft bald ab ({expiring.length})</h2>
+          <h2 className="text-sm font-semibold text-warning mb-2">{t('vakthr.contractors.sectionExpiring', { count: expiring.length })}</h2>
           <div className="space-y-2">{expiring.map(c => <ContractorRow key={c.id} contractor={c} />)}</div>
         </section>
       )}
 
       {offboarding.length > 0 && (
         <section>
-          <h2 className="text-sm font-semibold text-destructive mb-2">Offboarding ({offboarding.length})</h2>
+          <h2 className="text-sm font-semibold text-destructive mb-2">{t('vakthr.contractors.sectionOffboarding', { count: offboarding.length })}</h2>
           <div className="space-y-2">{offboarding.map(c => <ContractorRow key={c.id} contractor={c} />)}</div>
         </section>
       )}
 
       {active.length > 0 && (
         <section>
-          <h2 className="text-sm font-semibold mb-2">Aktiv ({active.length})</h2>
+          <h2 className="text-sm font-semibold mb-2">{t('vakthr.contractors.sectionActive', { count: active.length })}</h2>
           <div className="space-y-2">{active.map(c => <ContractorRow key={c.id} contractor={c} />)}</div>
         </section>
       )}
 
       {terminated.length > 0 && (
         <section>
-          <h2 className="text-sm font-semibold text-secondary mb-2">Beendet ({terminated.length})</h2>
+          <h2 className="text-sm font-semibold text-secondary mb-2">{t('vakthr.contractors.sectionTerminated', { count: terminated.length })}</h2>
           <div className="space-y-2">{terminated.map(c => <ContractorRow key={c.id} contractor={c} />)}</div>
         </section>
       )}
@@ -138,7 +148,7 @@ export default function ContractorsPage() {
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Auftragnehmer anlegen</DialogTitle>
+            <DialogTitle>{t('vakthr.contractors.create')}</DialogTitle>
           </DialogHeader>
           <form
             className="space-y-4 mt-2"
@@ -149,53 +159,53 @@ export default function ContractorsPage() {
           >
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Vorname *</Label>
+                <Label>{t('vakthr.employees.labelFirstName')} *</Label>
                 <Input value={form.first_name} onChange={e => { setForm(f => ({ ...f, first_name: e.target.value })); }} required />
               </div>
               <div>
-                <Label>Nachname *</Label>
+                <Label>{t('vakthr.employees.labelLastName')} *</Label>
                 <Input value={form.last_name} onChange={e => { setForm(f => ({ ...f, last_name: e.target.value })); }} required />
               </div>
             </div>
             <div>
-              <Label>E-Mail</Label>
+              <Label>{t('common.email')}</Label>
               <Input type="email" value={form.email ?? ''} onChange={e => { setForm(f => ({ ...f, email: e.target.value })); }} />
             </div>
             <div>
-              <Label>Unternehmen</Label>
+              <Label>{t('vakthr.contractors.company')}</Label>
               <Input value={form.company ?? ''} onChange={e => { setForm(f => ({ ...f, company: e.target.value })); }} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Vertragsbeginn *</Label>
+                <Label>{t('vakthr.contractors.contractStart')} *</Label>
                 <Input type="date" value={form.contract_start} onChange={e => { setForm(f => ({ ...f, contract_start: e.target.value })); }} required />
               </div>
               <div>
-                <Label>Vertragsende *</Label>
+                <Label>{t('vakthr.contractors.contractEnd')} *</Label>
                 <Input type="date" value={form.contract_end} onChange={e => { setForm(f => ({ ...f, contract_end: e.target.value })); }} required />
               </div>
             </div>
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <input type="checkbox" checked={form.nda_signed ?? false} onChange={e => { setForm(f => ({ ...f, nda_signed: e.target.checked })); }} />
-                NDA unterzeichnet
+                {t('vakthr.contractors.ndaSigned')}
               </label>
               <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <input type="checkbox" checked={form.avv_signed ?? false} onChange={e => { setForm(f => ({ ...f, avv_signed: e.target.checked })); }} />
-                AVV unterzeichnet
+                {t('vakthr.contractors.avvSigned')}
               </label>
             </div>
             {createMutation.isError && (
               <p className="text-xs text-red-400 mt-1">
                 {createMutation.error instanceof Error
                   ? createMutation.error.message
-                  : 'Anlegen fehlgeschlagen'}
+                  : t('vakthr.contractors.createFailed')}
               </p>
             )}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => { setShowCreate(false); }}>Abbrechen</Button>
+              <Button type="button" variant="outline" onClick={() => { setShowCreate(false); }}>{t('common.cancel')}</Button>
               <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending ? 'Speichern…' : 'Anlegen'}
+                {createMutation.isPending ? t('common.saving') : t('vakthr.contractors.submit')}
               </Button>
             </DialogFooter>
           </form>

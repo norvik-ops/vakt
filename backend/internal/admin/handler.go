@@ -5,8 +5,10 @@ package admin
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/csv"
 	"encoding/hex"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -15,9 +17,11 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
+	sharedcrypto "github.com/matharnica/vakt/internal/shared/crypto"
 	"github.com/matharnica/vakt/internal/shared/logsafe"
 	"github.com/matharnica/vakt/internal/shared/notify"
 	"github.com/matharnica/vakt/internal/shared/platform/features"
+	platformldap "github.com/matharnica/vakt/internal/shared/platform/ldap"
 )
 
 // Handler holds HTTP handler methods for admin endpoints.
@@ -763,4 +767,420 @@ func (h *Handler) FetchSAMLMetadata(c echo.Context) error {
 		})
 	}
 	return c.JSON(http.StatusOK, map[string]string{"metadata": xml})
+}
+
+// GetOrgSMTPSettings handles GET /api/v1/admin/org/smtp.
+// Returns the per-org SMTP configuration. The password is never exposed in plaintext;
+// HasPass signals whether an encrypted password is currently stored.
+func (h *Handler) GetOrgSMTPSettings(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	s, err := h.service.repo.GetOrgSMTPSettings(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("get org smtp settings failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to retrieve SMTP settings",
+			"code":  "ADMIN_SMTP_SETTINGS_ERROR",
+		})
+	}
+	return c.JSON(http.StatusOK, s)
+}
+
+// UpdateOrgSMTPSettingsInput is the request body for PUT /api/v1/admin/org/smtp.
+type UpdateOrgSMTPSettingsInput struct {
+	Host string `json:"host"`
+	Port string `json:"port"`
+	User string `json:"user"`
+	Pass string `json:"pass"` // empty = keep existing password
+	From string `json:"from"`
+	TLS  bool   `json:"tls"`
+}
+
+// UpdateOrgSMTPSettings handles PUT /api/v1/admin/org/smtp.
+// If Pass is non-empty it is encrypted with the master key and stored.
+// If Pass is empty the existing encrypted password is kept unchanged.
+func (h *Handler) UpdateOrgSMTPSettings(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	var in UpdateOrgSMTPSettingsInput
+	if err := c.Bind(&in); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid input",
+			"code":  "ADMIN_BAD_REQUEST",
+		})
+	}
+
+	var passEnc []byte
+	if in.Pass != "" {
+		if len(h.service.masterKey) == 0 {
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "master key not configured",
+				"code":  "ADMIN_NO_MASTER_KEY",
+			})
+		}
+		var encErr error
+		passEnc, encErr = sharedcrypto.Encrypt(h.service.masterKey, []byte(in.Pass))
+		if encErr != nil {
+			log.Error().Err(encErr).Str("org_id", orgID).Msg("smtp password encryption failed")
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "failed to encrypt SMTP password",
+				"code":  "ADMIN_SMTP_ENCRYPT_ERROR",
+			})
+		}
+	}
+
+	if err := h.service.repo.SetOrgSMTPSettings(c.Request().Context(), orgID, in.Host, in.Port, in.User, in.From, in.TLS, passEnc); err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("update org smtp settings failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to update SMTP settings",
+			"code":  "ADMIN_SMTP_SETTINGS_UPDATE_ERROR",
+		})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// ─── Backup Configuration (Migration 230) ────────────────────────────────────
+
+// GetOrgBackupConfig handles GET /api/v1/admin/org/backup-config.
+// Returns the per-org backup configuration. Encrypted secrets are never exposed;
+// HasPassphrase and HasNotifyWebhook signal whether values are stored.
+func (h *Handler) GetOrgBackupConfig(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	cfg, _, _, err := h.service.repo.GetOrgBackupConfig(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("get org backup config failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to retrieve backup configuration",
+			"code":  "ADMIN_BACKUP_CONFIG_ERROR",
+		})
+	}
+	return c.JSON(http.StatusOK, cfg)
+}
+
+// UpdateOrgBackupConfigInput is the request body for PUT /api/v1/admin/org/backup-config.
+type UpdateOrgBackupConfigInput struct {
+	Schedule      string `json:"schedule"`       // cron expression; "" = use env default
+	RetentionDays int    `json:"retention_days"` // 0 = use env default
+	Passphrase    string `json:"passphrase"`     // empty = keep existing
+	NotifyWebhook string `json:"notify_webhook"` // empty = keep existing
+	OffsiteCmd    string `json:"offsite_cmd"`
+	NotifyCmd     string `json:"notify_cmd"`
+}
+
+// UpdateOrgBackupConfig handles PUT /api/v1/admin/org/backup-config.
+// Non-empty Passphrase and NotifyWebhook are encrypted with the master key.
+// Empty values leave existing encrypted data unchanged.
+func (h *Handler) UpdateOrgBackupConfig(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	var in UpdateOrgBackupConfigInput
+	if err := c.Bind(&in); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid input",
+			"code":  "ADMIN_BAD_REQUEST",
+		})
+	}
+
+	encrypt := func(plaintext string) ([]byte, error) {
+		if len(h.service.masterKey) == 0 {
+			return nil, fmt.Errorf("master key not configured")
+		}
+		return sharedcrypto.Encrypt(h.service.masterKey, []byte(plaintext))
+	}
+
+	var passphraseEnc []byte
+	if in.Passphrase != "" {
+		var encErr error
+		passphraseEnc, encErr = encrypt(in.Passphrase)
+		if encErr != nil {
+			log.Error().Err(encErr).Str("org_id", orgID).Msg("backup passphrase encryption failed")
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "failed to encrypt backup passphrase",
+				"code":  "ADMIN_BACKUP_ENCRYPT_ERROR",
+			})
+		}
+	}
+
+	var webhookEnc []byte
+	if in.NotifyWebhook != "" {
+		var encErr error
+		webhookEnc, encErr = encrypt(in.NotifyWebhook)
+		if encErr != nil {
+			log.Error().Err(encErr).Str("org_id", orgID).Msg("backup notify webhook encryption failed")
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "failed to encrypt backup notify webhook",
+				"code":  "ADMIN_BACKUP_ENCRYPT_ERROR",
+			})
+		}
+	}
+
+	if err := h.service.repo.SetOrgBackupConfig(
+		c.Request().Context(), orgID,
+		in.Schedule, in.RetentionDays,
+		passphraseEnc, webhookEnc,
+		in.OffsiteCmd, in.NotifyCmd,
+	); err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("update org backup config failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to update backup configuration",
+			"code":  "ADMIN_BACKUP_CONFIG_UPDATE_ERROR",
+		})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// InternalBackupConfigResponse is the plaintext response for the backup script endpoint.
+type InternalBackupConfigResponse struct {
+	Schedule      string `json:"schedule"`
+	RetentionDays int    `json:"retention_days"`
+	Passphrase    string `json:"passphrase"`     // decrypted plaintext
+	NotifyWebhook string `json:"notify_webhook"` // decrypted plaintext
+	OffsiteCmd    string `json:"offsite_cmd"`
+	NotifyCmd     string `json:"notify_cmd"`
+}
+
+// GetInternalBackupConfig handles GET /api/v1/internal/backup-config.
+// Auth: "Authorization: Bearer <VAKT_SECRET_KEY>" (hex-encoded master key).
+// Returns plaintext backup configuration so the backup script can use it directly.
+// This endpoint has no JWT middleware — it uses the master key as the Bearer token.
+func (h *Handler) GetInternalBackupConfig(c echo.Context) error {
+	// Validate Bearer token against hex-encoded master key.
+	authHeader := c.Request().Header.Get("Authorization")
+	const prefix = "Bearer "
+	if len(authHeader) <= len(prefix) || authHeader[:len(prefix)] != prefix {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "unauthorized",
+			"code":  "UNAUTHORIZED",
+		})
+	}
+	token := authHeader[len(prefix):]
+	expected := hex.EncodeToString(h.service.masterKey)
+	if len(h.service.masterKey) == 0 || subtle.ConstantTimeCompare([]byte(token), []byte(expected)) != 1 {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "unauthorized",
+			"code":  "UNAUTHORIZED",
+		})
+	}
+
+	ctx := c.Request().Context()
+
+	// Single-tenant: query the first org.
+	var orgID string
+	if err := h.service.db.QueryRow(ctx, `SELECT id::text FROM organizations LIMIT 1`).Scan(&orgID); err != nil {
+		log.Error().Err(err).Msg("internal backup config: no org found")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "no organization found",
+			"code":  "INTERNAL_BACKUP_NO_ORG",
+		})
+	}
+
+	cfg, passphraseEnc, webhookEnc, err := h.service.repo.GetOrgBackupConfig(ctx, orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("internal backup config: get config failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to retrieve backup configuration",
+			"code":  "INTERNAL_BACKUP_CONFIG_ERROR",
+		})
+	}
+
+	resp := InternalBackupConfigResponse{
+		Schedule:      cfg.Schedule,
+		RetentionDays: cfg.RetentionDays,
+		OffsiteCmd:    cfg.OffsiteCmd,
+		NotifyCmd:     cfg.NotifyCmd,
+	}
+
+	if len(passphraseEnc) > 0 {
+		plain, decErr := sharedcrypto.Decrypt(h.service.masterKey, passphraseEnc)
+		if decErr != nil {
+			log.Error().Err(decErr).Str("org_id", orgID).Msg("internal backup config: passphrase decrypt failed")
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "failed to decrypt backup passphrase",
+				"code":  "INTERNAL_BACKUP_DECRYPT_ERROR",
+			})
+		}
+		resp.Passphrase = string(plain)
+	}
+
+	if len(webhookEnc) > 0 {
+		plain, decErr := sharedcrypto.Decrypt(h.service.masterKey, webhookEnc)
+		if decErr != nil {
+			log.Error().Err(decErr).Str("org_id", orgID).Msg("internal backup config: notify webhook decrypt failed")
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "failed to decrypt backup notify webhook",
+				"code":  "INTERNAL_BACKUP_DECRYPT_ERROR",
+			})
+		}
+		resp.NotifyWebhook = string(plain)
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
+// ─── Migration 231: LDAP/AD Configuration ────────────────────────────────────
+
+// GetOrgLDAPConfig handles GET /api/v1/admin/org/ldap.
+// Returns the per-org LDAP configuration. The bind password is never exposed
+// in plaintext; HasBindPass signals whether an encrypted password is stored.
+func (h *Handler) GetOrgLDAPConfig(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	cfg, _, err := h.service.repo.GetOrgLDAPConfig(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("get org ldap config failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to retrieve LDAP configuration",
+			"code":  "ADMIN_LDAP_CONFIG_ERROR",
+		})
+	}
+	return c.JSON(http.StatusOK, cfg)
+}
+
+// UpdateOrgLDAPConfigInput is the request body for PUT /api/v1/admin/org/ldap.
+type UpdateOrgLDAPConfigInput struct {
+	URL         string `json:"url"`
+	BindDN      string `json:"bind_dn"`
+	BindPass    string `json:"bind_pass"` // empty = keep existing password
+	BaseDN      string `json:"base_dn"`
+	UserFilter  string `json:"user_filter"`
+	GroupFilter string `json:"group_filter"`
+	TLS         bool   `json:"tls"`
+}
+
+// UpdateOrgLDAPConfig handles PUT /api/v1/admin/org/ldap.
+// If BindPass is non-empty it is encrypted with the master key and stored.
+// If BindPass is empty the existing encrypted password is kept unchanged.
+func (h *Handler) UpdateOrgLDAPConfig(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	var in UpdateOrgLDAPConfigInput
+	if err := c.Bind(&in); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid input",
+			"code":  "ADMIN_BAD_REQUEST",
+		})
+	}
+
+	var bindPassEnc []byte
+	if in.BindPass != "" {
+		if len(h.service.masterKey) == 0 {
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "master key not configured",
+				"code":  "ADMIN_NO_MASTER_KEY",
+			})
+		}
+		var encErr error
+		bindPassEnc, encErr = sharedcrypto.Encrypt(h.service.masterKey, []byte(in.BindPass))
+		if encErr != nil {
+			log.Error().Err(encErr).Str("org_id", orgID).Msg("ldap bind password encryption failed")
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "failed to encrypt LDAP bind password",
+				"code":  "ADMIN_LDAP_ENCRYPT_ERROR",
+			})
+		}
+	}
+
+	if err := h.service.repo.SetOrgLDAPConfig(
+		c.Request().Context(), orgID,
+		in.URL, in.BindDN, in.BaseDN, in.UserFilter, in.GroupFilter,
+		in.TLS, bindPassEnc,
+	); err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("update org ldap config failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to update LDAP configuration",
+			"code":  "ADMIN_LDAP_CONFIG_UPDATE_ERROR",
+		})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// buildLDAPSyncer retrieves the org's LDAP config from the DB, decrypts the
+// bind password, and returns a ready-to-use Syncer. Returns a descriptive
+// HTTP error response via c.JSON on failure (callers must return immediately).
+func (h *Handler) buildLDAPSyncer(c echo.Context, orgID string) (*platformldap.Syncer, error) {
+	cfg, bindPassEnc, err := h.service.repo.GetOrgLDAPConfig(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("ldap test: get config failed")
+		_ = c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to retrieve LDAP configuration",
+			"code":  "ADMIN_LDAP_CONFIG_ERROR",
+		})
+		return nil, err
+	}
+
+	var bindPass string
+	if len(bindPassEnc) > 0 {
+		if len(h.service.masterKey) == 0 {
+			_ = c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "master key not configured",
+				"code":  "ADMIN_NO_MASTER_KEY",
+			})
+			return nil, fmt.Errorf("master key not configured")
+		}
+		plain, decErr := sharedcrypto.Decrypt(h.service.masterKey, bindPassEnc)
+		if decErr != nil {
+			log.Error().Err(decErr).Str("org_id", orgID).Msg("ldap test: bind password decrypt failed")
+			_ = c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "failed to decrypt LDAP bind password",
+				"code":  "ADMIN_LDAP_DECRYPT_ERROR",
+			})
+			return nil, decErr
+		}
+		bindPass = string(plain)
+	}
+
+	ldapCfg := platformldap.Config{
+		URL:         cfg.URL,
+		BindDN:      cfg.BindDN,
+		BindPass:    bindPass,
+		BaseDN:      cfg.BaseDN,
+		UserFilter:  cfg.UserFilter,
+		GroupFilter: cfg.GroupFilter,
+		TLS:         cfg.TLS,
+	}
+	return platformldap.NewSyncer(ldapCfg), nil
+}
+
+// TestOrgLDAPConnection handles POST /api/v1/admin/org/ldap/test.
+// Connects to the configured LDAP server, lists users, and returns the count.
+func (h *Handler) TestOrgLDAPConnection(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+
+	syncer, err := h.buildLDAPSyncer(c, orgID)
+	if err != nil {
+		return nil // response already written by buildLDAPSyncer
+	}
+
+	users, err := syncer.ListUsers(c.Request().Context())
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("ldap test: list users failed")
+		return c.JSON(http.StatusBadGateway, map[string]any{
+			"ok":    false,
+			"error": err.Error(),
+			"code":  "ADMIN_LDAP_TEST_FAILED",
+		})
+	}
+	return c.JSON(http.StatusOK, map[string]any{
+		"ok":          true,
+		"users_found": len(users),
+	})
+}
+
+// SyncOrgLDAP handles POST /api/v1/admin/org/ldap/sync.
+// Connects to the configured LDAP server, retrieves all users, and returns them.
+func (h *Handler) SyncOrgLDAP(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+
+	syncer, err := h.buildLDAPSyncer(c, orgID)
+	if err != nil {
+		return nil // response already written by buildLDAPSyncer
+	}
+
+	users, err := syncer.ListUsers(c.Request().Context())
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("ldap sync: list users failed")
+		return c.JSON(http.StatusBadGateway, map[string]any{
+			"error": err.Error(),
+			"code":  "ADMIN_LDAP_SYNC_FAILED",
+		})
+	}
+	return c.JSON(http.StatusOK, map[string]any{
+		"synced": len(users),
+		"users":  users,
+	})
 }

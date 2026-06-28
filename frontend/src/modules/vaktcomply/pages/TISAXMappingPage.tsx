@@ -19,21 +19,23 @@ import { useTISAXISOMapping } from '../hooks/useTISAXMapping'
 import type { MappingResult } from '../types'
 
 function CoveredBadge({ covered }: { covered: boolean }) {
+  const { t } = useTranslation()
   if (covered) {
     return (
       <Badge variant="success" className="text-xs">
-        Abgedeckt
+        {t('vaktcomply.tisaxMapping.coveredBadge')}
       </Badge>
     )
   }
   return (
     <Badge variant="destructive" className="text-xs">
-      Lücke
+      {t('vaktcomply.tisaxMapping.gapBadge')}
     </Badge>
   )
 }
 
 function MappingRow({ result }: { result: MappingResult }) {
+  const { t } = useTranslation()
   return (
     <TableRow>
       <TableCell>
@@ -49,7 +51,7 @@ function MappingRow({ result }: { result: MappingResult }) {
             <span className="text-sm">{result.iso_control_title}</span>
           </div>
         ) : (
-          <span className="text-xs text-secondary italic">Kein Mapping vorhanden</span>
+          <span className="text-xs text-secondary italic">{t('vaktcomply.tisaxMapping.noMapping')}</span>
         )}
       </TableCell>
       <TableCell>
@@ -75,18 +77,18 @@ export default function TISAXMappingPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="TISAX ↔ ISO 27001 Abgleich"
-        description="Zeigt für jede TISAX-Maßnahme die entsprechende ISO 27001-Kontrolle und ob sie bereits abgedeckt ist."
+        title={t('vaktcomply.tisaxMapping.title')}
+        description={t('vaktcomply.tisaxMapping.description')}
         actions={
           <Button variant="outline" size="sm" onClick={() => { navigate(-1); }}>
             <ArrowLeft className="w-4 h-4 mr-1" />
-            Zurück
+            {t('vaktcomply.tisaxMapping.back')}
           </Button>
         }
       />
 
       <div className="flex-1 p-6 space-y-6">
-        {isError && <ProGate error={error}><div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">Fehler beim Laden des Mappings.</div></ProGate>}
+        {isError && <ProGate error={error}><div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">{t('vaktcomply.tisaxMapping.loadError')}</div></ProGate>}
         {/* Summary row */}
         {!isLoading && !isError && results && results.length > 0 && (
           <div className="flex items-center gap-4 flex-wrap">
@@ -104,7 +106,7 @@ export default function TISAXMappingPage() {
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 bg-surface border border-border rounded-md">
               <span className="text-xs text-secondary">
-                Gesamt: <span className="font-medium text-primary">{totalCount}</span>
+                {t('vaktcomply.tisaxMapping.total', { count: totalCount })}
               </span>
             </div>
           </div>
@@ -131,7 +133,7 @@ export default function TISAXMappingPage() {
             className="text-sm cursor-pointer select-none"
             onClick={() => { setGapsOnly((v) => !v); }}
           >
-            Nur Lücken anzeigen
+            {t('vaktcomply.tisaxMapping.gapsOnlyLabel')}
           </label>
         </div>
 
@@ -143,23 +145,20 @@ export default function TISAXMappingPage() {
         ) : !results || results.length === 0 ? (
           <div className="flex items-center gap-3 p-4 bg-surface border border-border rounded-lg text-sm text-secondary">
             <span className="text-lg">ℹ</span>
-            <span>
-              ISO 27001 noch nicht aktiviert oder keine TISAX-Maßnahmen vorhanden. Aktiviere beide
-              Frameworks, um den Abgleich zu starten.
-            </span>
+            <span>{t('vaktcomply.tisaxMapping.noData')}</span>
           </div>
         ) : filtered.length === 0 ? (
           <p className="text-sm text-secondary py-8 text-center">
-            Alle TISAX-Maßnahmen sind durch ISO 27001 abgedeckt.
+            {t('vaktcomply.tisaxMapping.allCovered')}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-1/3">TISAX Control</TableHead>
-                  <TableHead className="w-1/3">ISO 27001 Control</TableHead>
-                  <TableHead className="w-32">Abgedeckt</TableHead>
+                  <TableHead className="w-1/3">{t('vaktcomply.tisaxMapping.colTISAX')}</TableHead>
+                  <TableHead className="w-1/3">{t('vaktcomply.tisaxMapping.colISO')}</TableHead>
+                  <TableHead className="w-32">{t('vaktcomply.tisaxMapping.colCovered')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import {
   Shield,
@@ -119,6 +120,7 @@ function deltaBadge(delta: number | null) {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function HistoryTable({ runs }: { runs: AssessmentRun[] }) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState<string | null>(null)
   const { formatDate } = useFormatDate()
 
@@ -147,12 +149,12 @@ function HistoryTable({ runs }: { runs: AssessmentRun[] }) {
                   <span className="text-sm text-gray-500">{formatDate(run.created_at)}</span>
                   {run.completed_at && (
                     <span className="inline-flex items-center gap-1 text-xs text-green-600">
-                      <CheckCircle2 className="w-3 h-3" /> Abgeschlossen
+                      <CheckCircle2 className="w-3 h-3" /> {t('nis2Reassessment.completed')}
                     </span>
                   )}
                   {!run.completed_at && (
                     <span className="inline-flex items-center gap-1 text-xs text-amber-600">
-                      <Clock className="w-3 h-3" /> In Bearbeitung
+                      <Clock className="w-3 h-3" /> {t('nis2Reassessment.inProgress')}
                     </span>
                   )}
                 </div>
@@ -182,9 +184,9 @@ function HistoryTable({ runs }: { runs: AssessmentRun[] }) {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left">
-                        <th className="pb-2 pr-4 font-medium text-gray-600">Bereich</th>
-                        <th className="pb-2 pr-4 font-medium text-gray-600 text-right">Score</th>
-                        <th className="pb-2 font-medium text-gray-600 text-right">Δ vs. Vorherig</th>
+                        <th className="pb-2 pr-4 font-medium text-gray-600">{t('nis2Reassessment.colArea')}</th>
+                        <th className="pb-2 pr-4 font-medium text-gray-600 text-right">{t('nis2Reassessment.colScore')}</th>
+                        <th className="pb-2 font-medium text-gray-600 text-right">{t('nis2Reassessment.colDelta')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -216,7 +218,7 @@ function HistoryTable({ runs }: { runs: AssessmentRun[] }) {
 
                 {run.top_gaps && run.top_gaps.length > 0 && (
                   <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <p className="text-xs font-semibold text-amber-800 mb-2">Top-Lücken</p>
+                    <p className="text-xs font-semibold text-amber-800 mb-2">{t('nis2Reassessment.topGaps')}</p>
                     <ul className="space-y-1">
                       {run.top_gaps.map((gap) => (
                         <li key={gap.area} className="flex justify-between text-xs text-amber-700">
@@ -245,6 +247,7 @@ interface WizardProps {
 }
 
 function ReassessmentWizard({ runId, onComplete, onCancel }: WizardProps) {
+  const { t } = useTranslation()
   const [questions, setQuestions] = useState<Question[]>([])
   const [stepIdx, setStepIdx] = useState(0)
   const [comment, setComment] = useState('')
@@ -287,7 +290,7 @@ function ReassessmentWizard({ runId, onComplete, onCancel }: WizardProps) {
 
   if (loading || questions.length === 0) {
     return (
-      <div className="py-12 text-center text-gray-500 text-sm">Fragen werden geladen…</div>
+      <div className="py-12 text-center text-gray-500 text-sm">{t('nis2Reassessment.loadingQuestions')}</div>
     )
   }
 
@@ -299,8 +302,8 @@ function ReassessmentWizard({ runId, onComplete, onCancel }: WizardProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-        <span>Frage {stepIdx + 1} von {total}</span>
-        <span>{progressPct}% beantwortet</span>
+        <span>{t('nis2Reassessment.questionProgress', { current: stepIdx + 1, total })}</span>
+        <span>{t('nis2Reassessment.answeredPct', { pct: progressPct })}</span>
       </div>
       <div className="w-full bg-gray-200 rounded-full h-1.5">
         <div
@@ -320,7 +323,7 @@ function ReassessmentWizard({ runId, onComplete, onCancel }: WizardProps) {
           {VALUE_LABELS.map((label, value) => (
             <button
               key={value}
-              onClick={() => void submitAnswer(value)}
+              onClick={() => { void submitAnswer(value); }}
               disabled={submitting}
               className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors flex items-center justify-between disabled:opacity-50"
             >
@@ -333,7 +336,7 @@ function ReassessmentWizard({ runId, onComplete, onCancel }: WizardProps) {
         </div>
 
         <textarea
-          placeholder="Kommentar (optional)"
+          placeholder={t('nis2Reassessment.commentPlaceholder')}
           value={comment}
           onChange={(e) => { setComment(e.target.value); }}
           className="w-full mt-2 text-sm border border-gray-200 rounded-md px-3 py-2"
@@ -347,13 +350,13 @@ function ReassessmentWizard({ runId, onComplete, onCancel }: WizardProps) {
           disabled={stepIdx === 0}
           className="text-sm text-gray-600 disabled:text-gray-300 inline-flex items-center gap-1"
         >
-          <ChevronLeft className="w-4 h-4" /> Zurück
+          <ChevronLeft className="w-4 h-4" /> {t('nis2Reassessment.btnBack')}
         </button>
         <button
           onClick={onCancel}
           className="text-sm text-gray-500 hover:text-gray-700"
         >
-          Abbrechen
+          {t('nis2Reassessment.btnCancel')}
         </button>
       </div>
     </div>
@@ -363,6 +366,7 @@ function ReassessmentWizard({ runId, onComplete, onCancel }: WizardProps) {
 // ─── Hauptseite ───────────────────────────────────────────────────────────────
 
 export default function NIS2ReassessmentPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { formatDate } = useFormatDate()
@@ -403,8 +407,8 @@ export default function NIS2ReassessmentPage() {
     return (
       <div className="p-6">
         <PageHeader
-          title="NIS2-Re-Assessment History"
-          description="Verfolgen Sie die Entwicklung Ihrer NIS2-Compliance über mehrere Bewertungen."
+          title={t('nis2Reassessment.pageTitle')}
+          description={t('nis2Reassessment.pageDescriptionShort')}
         />
         <ProGate error={historyError}>
           <div />
@@ -430,7 +434,7 @@ export default function NIS2ReassessmentPage() {
       <div className="max-w-2xl mx-auto px-6 py-8">
         <div className="flex items-center gap-3 mb-6">
           <Shield className="w-5 h-5 text-indigo-600" />
-          <h1 className="text-lg font-semibold text-gray-900">NIS2-Re-Assessment</h1>
+          <h1 className="text-lg font-semibold text-gray-900">{t('nis2Reassessment.wizardTitle')}</h1>
           <Badge variant="secondary">Run #{(latestRun?.run_number ?? 0) + 1}</Badge>
         </div>
         <ReassessmentWizard
@@ -445,8 +449,8 @@ export default function NIS2ReassessmentPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
       <PageHeader
-        title="NIS2-Re-Assessment History"
-        description="Verfolgen Sie die Entwicklung Ihrer NIS2-Compliance über mehrere Bewertungen. Alle 90 Tage empfehlen wir eine neue Bewertung."
+        title={t('nis2Reassessment.pageTitle')}
+        description={t('nis2Reassessment.pageDescription')}
         actions={
           <Button
             onClick={() => {
@@ -458,7 +462,7 @@ export default function NIS2ReassessmentPage() {
             className="gap-2"
           >
             <RefreshCw className={`w-4 h-4 ${startMutation.isPending ? 'animate-spin' : ''}`} />
-            Neu bewerten
+            {t('nis2Reassessment.btnReassess')}
           </Button>
         }
       />
@@ -468,9 +472,7 @@ export default function NIS2ReassessmentPage() {
         <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
           <Clock className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
           <p className="text-sm text-amber-800">
-            Die nächste Bewertung ist frühestens am{' '}
-            <strong>{formatDate(cooldownExpires.toISOString())}</strong> möglich.
-            Zwischen zwei Re-Assessments müssen mindestens {COOLDOWN_DAYS} Tage liegen.
+            {t('nis2Reassessment.cooldownMsg', { date: formatDate(cooldownExpires.toISOString()), days: COOLDOWN_DAYS })}
           </p>
         </div>
       )}
@@ -488,9 +490,9 @@ export default function NIS2ReassessmentPage() {
         <Card>
           <CardContent className="py-12 text-center space-y-3">
             <Shield className="w-10 h-10 text-gray-300 mx-auto" />
-            <p className="text-sm font-medium text-gray-600">Noch keine Re-Assessments</p>
+            <p className="text-sm font-medium text-gray-600">{t('nis2Reassessment.emptyTitle')}</p>
             <p className="text-xs text-gray-500">
-              Starten Sie Ihr erstes Re-Assessment, um Ihre NIS2-Compliance zu messen.
+              {t('nis2Reassessment.emptyDesc')}
             </p>
             <Button
               size="sm"
@@ -499,7 +501,7 @@ export default function NIS2ReassessmentPage() {
               className="gap-2"
             >
               <RefreshCw className={`w-4 h-4 ${startMutation.isPending ? 'animate-spin' : ''}`} />
-              Erstes Assessment starten
+              {t('nis2Reassessment.btnStartFirst')}
             </Button>
           </CardContent>
         </Card>
@@ -513,13 +515,13 @@ export default function NIS2ReassessmentPage() {
               <div className={`text-4xl font-bold ${scoreColor(latestRun.overall_score)}`}>
                 {latestRun.overall_score}
               </div>
-              <div className="text-xs text-gray-500 mt-1">Letzter Gesamt-Score</div>
+              <div className="text-xs text-gray-500 mt-1">{t('nis2Reassessment.lastScore')}</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="py-4 text-center">
               <div className="text-4xl font-bold text-gray-800">{runs.length}</div>
-              <div className="text-xs text-gray-500 mt-1">Assessments gesamt</div>
+              <div className="text-xs text-gray-500 mt-1">{t('nis2Reassessment.totalAssessments')}</div>
             </CardContent>
           </Card>
           {runs.length >= 2 && runs[0].overall_score !== undefined && runs[1].overall_score !== undefined && (
@@ -527,9 +529,9 @@ export default function NIS2ReassessmentPage() {
               <CardContent className="py-4 text-center">
                 <div className="flex items-center justify-center gap-1 mt-1">
                   {deltaBadge(runs[0].overall_score - runs[1].overall_score)}
-                  <span className="text-xs text-gray-500 ml-1">vs. vorheriger Run</span>
+                  <span className="text-xs text-gray-500 ml-1">{t('nis2Reassessment.vsPrevRun')}</span>
                 </div>
-                <div className="text-xs text-gray-500 mt-1">Score-Entwicklung</div>
+                <div className="text-xs text-gray-500 mt-1">{t('nis2Reassessment.scoreTrend')}</div>
               </CardContent>
             </Card>
           )}
@@ -539,7 +541,7 @@ export default function NIS2ReassessmentPage() {
       {/* History-Liste */}
       {runs.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-gray-700">Alle Bewertungen</h2>
+          <h2 className="text-sm font-semibold text-gray-700">{t('nis2Reassessment.allAssessments')}</h2>
           <HistoryTable runs={runs} />
         </div>
       )}
@@ -550,7 +552,7 @@ export default function NIS2ReassessmentPage() {
           onClick={() => { navigate('/nis2-check'); }}
           className="text-xs text-gray-500 hover:text-gray-600 underline"
         >
-          Zum öffentlichen NIS2-Wizard →
+          {t('nis2Reassessment.publicWizardLink')}
         </button>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { FileText, Download, History, ChevronLeft } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
@@ -44,6 +45,7 @@ const SECTIONS: Array<{ key: keyof UpsertAIDocumentationInput; label: string; ar
 
 export default function AIDocumentationPage() {
   const { id } = useParams<{ id: string }>()
+  const { t } = useTranslation()
   const { formatDate } = useFormatDate()
   const { data: system } = useAISystem(id ?? '')
   const { data: latestDoc, isLoading: docLoading } = useAIDocumentation(id ?? '')
@@ -102,7 +104,7 @@ export default function AIDocumentationPage() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      setPdfError('PDF-Export fehlgeschlagen.')
+      setPdfError(t('vaktcomply.aiDocumentation.pdfExportFailed'))
     }
   }
 
@@ -129,7 +131,7 @@ export default function AIDocumentationPage() {
               {pdfError && <p className="text-xs text-red-500">{pdfError}</p>}
             </div>
             <Button onClick={() => { handleSave('final'); }} disabled={saveDoc.isPending} data-testid="finalize-doc-btn">
-              Als final speichern
+              {t('vaktcomply.aiDocumentation.saveAsFinal')}
             </Button>
           </div>
         }
@@ -139,20 +141,20 @@ export default function AIDocumentationPage() {
         {/* Back link */}
         <Link to="../ai-systems" className="text-sm text-muted-foreground hover:text-primary flex items-center gap-1 mb-4">
           <ChevronLeft className="w-3.5 h-3.5" />
-          Zurück zum Inventar
+          {t('vaktcomply.aiDocumentation.backToInventory')}
         </Link>
 
         {/* Version history panel */}
         {showVersions && versions && versions.length > 0 && (
           <div className="mb-4 p-4 bg-muted/30 rounded-lg border border-border">
-            <p className="text-sm font-medium mb-2">Versionshistorie</p>
+            <p className="text-sm font-medium mb-2">{t('vaktcomply.aiDocumentation.versionHistory')}</p>
             <div className="space-y-1">
               {versions.map((v) => (
                 <div key={v.id} className="flex items-center gap-3 text-xs text-muted-foreground">
                   <span className="font-mono">v{v.version}</span>
                   <Badge variant="outline" className="text-xs">{v.status}</Badge>
                   <span>{formatDate(v.created_at)}</span>
-                  {v.authored_by && <span>von {v.authored_by}</span>}
+                  {v.authored_by && <span>{t('vaktcomply.aiDocumentation.versionBy', { author: v.authored_by })}</span>}
                 </div>
               ))}
             </div>
@@ -173,7 +175,7 @@ export default function AIDocumentationPage() {
                 </div>
                 <Textarea
                   rows={sec.rows}
-                  placeholder={`${sec.label} ausfüllen …`}
+                  placeholder={t('vaktcomply.aiDocumentation.fieldPlaceholder', { label: sec.label })}
                   value={(form[sec.key] as string) ?? ''}
                   onChange={(e) => { setField(sec.key, e.target.value); }}
                   data-testid={`doc-field-${sec.key}`}
@@ -184,16 +186,16 @@ export default function AIDocumentationPage() {
             {/* Metadata row */}
             <div className="grid grid-cols-2 gap-4 pt-2">
               <div className="space-y-1.5">
-                <Label>Verfasst von</Label>
+                <Label>{t('vaktcomply.aiDocumentation.authoredBy')}</Label>
                 <Input
-                  placeholder="Name der verantwortlichen Person"
+                  placeholder={t('vaktcomply.aiDocumentation.authorPlaceholder')}
                   value={form.authored_by ?? ''}
                   onChange={(e) => { setField('authored_by', e.target.value); }}
                   data-testid="doc-field-authored_by"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Status</Label>
+                <Label>{t('common.status')}</Label>
                 <Select
                   value={form.status ?? 'draft'}
                   onValueChange={(v) => { setForm((f) => ({ ...f, status: v as 'draft' | 'final' })); }}
@@ -202,8 +204,8 @@ export default function AIDocumentationPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="draft">Entwurf</SelectItem>
-                    <SelectItem value="final">Final</SelectItem>
+                    <SelectItem value="draft">{t('common.statusLabels.draft')}</SelectItem>
+                    <SelectItem value="final">{t('vaktcomply.aiDocumentation.statusFinal')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -216,19 +218,19 @@ export default function AIDocumentationPage() {
                 disabled={saveDoc.isPending}
                 data-testid="save-draft-btn"
               >
-                Als Entwurf speichern
+                {t('vaktcomply.aiDocumentation.saveAsDraft')}
               </Button>
               <Button
                 onClick={() => { handleSave('final'); }}
                 disabled={saveDoc.isPending}
                 data-testid="save-final-btn"
               >
-                {saveDoc.isPending ? 'Speichern …' : 'Als final speichern'}
+                {saveDoc.isPending ? t('vaktcomply.aiDocumentation.saving') : t('vaktcomply.aiDocumentation.saveAsFinal')}
               </Button>
               {saved && (
                 <span className="text-sm text-green-400 flex items-center gap-1">
                   <FileText className="w-4 h-4" />
-                  Gespeichert
+                  {t('vaktcomply.aiDocumentation.saved')}
                 </span>
               )}
             </div>

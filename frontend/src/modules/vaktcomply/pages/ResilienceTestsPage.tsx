@@ -38,11 +38,11 @@ import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 // ─── Type helpers ─────────────────────────────────────────────────────────────
 
-const TYPE_LABELS: Record<ResilienceTest['type'], string> = {
+const TYPE_LABEL_KEYS: Record<ResilienceTest['type'], string> = {
   tlpt: 'TLPT',
-  pentest: 'Pentest',
-  scenario_based: 'Szenariobasiert',
-  vulnerability_assessment: 'Vulnerability Assessment',
+  pentest: 'vaktcomply.resilienceTests.kind.pentest',
+  scenario_based: 'vaktcomply.resilienceTests.kind.scenario',
+  vulnerability_assessment: 'vaktcomply.resilienceTests.typeLabels.vulnerabilityAssessment',
 }
 
 const TYPE_CLASS: Record<ResilienceTest['type'], string> = {
@@ -52,11 +52,11 @@ const TYPE_CLASS: Record<ResilienceTest['type'], string> = {
   vulnerability_assessment: 'bg-secondary text-secondary-foreground',
 }
 
-const REMEDIATION_LABELS: Record<ResilienceTest['remediation_status'], string> = {
-  open: 'Offen',
-  in_progress: 'In Bearbeitung',
-  completed: 'Abgeschlossen',
-  accepted: 'Akzeptiert',
+const REMEDIATION_LABEL_KEYS: Record<ResilienceTest['remediation_status'], string> = {
+  open: 'vaktcomply.resilienceTests.status.open',
+  in_progress: 'vaktcomply.resilienceTests.status.in_progress',
+  completed: 'vaktcomply.resilienceTests.status.completed',
+  accepted: 'vaktcomply.resilienceTests.status.accepted',
 }
 
 const REMEDIATION_CLASS: Record<ResilienceTest['remediation_status'], string> = {
@@ -103,21 +103,24 @@ function ResilienceTestRow({
   onDelete: () => void
   onLinkEvidence: () => void
 }) {
+  const { t } = useTranslation()
   const { formatDate } = useFormatDate()
+  const typeKey = TYPE_LABEL_KEYS[test.type]
+  const typeLabel = typeKey.startsWith('vaktcomply') ? t(typeKey) : typeKey
   return (
     <Card>
       <CardContent className="pt-5 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div className="space-y-1 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge className={TYPE_CLASS[test.type]}>{TYPE_LABELS[test.type]}</Badge>
+              <Badge className={TYPE_CLASS[test.type]}>{typeLabel}</Badge>
               {test.overdue_warning && (
                 <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-xs">
-                  Überfällig
+                  {t('vaktcomply.resilienceTests.overdue')}
                 </Badge>
               )}
               <Badge className={REMEDIATION_CLASS[test.remediation_status]}>
-                {REMEDIATION_LABELS[test.remediation_status]}
+                {t(REMEDIATION_LABEL_KEYS[test.remediation_status])}
               </Badge>
             </div>
             <p className="text-sm font-medium">
@@ -125,7 +128,7 @@ function ResilienceTestRow({
               {test.provider ? ` · ${test.provider}` : ''}
             </p>
             {test.scope && (
-              <p className="text-xs text-muted-foreground">Scope: {test.scope}</p>
+              <p className="text-xs text-muted-foreground">{t('vaktcomply.resilienceTests.scope')}: {test.scope}</p>
             )}
             {test.summary && (
               <p className="text-xs text-muted-foreground line-clamp-2">{test.summary}</p>
@@ -133,15 +136,15 @@ function ResilienceTestRow({
             {test.attachment_url && (
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <Paperclip className="w-3 h-3" />
-                Anhang vorhanden
+                {t('vaktcomply.resilienceTests.attachmentPresent')}
               </p>
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit} title="Bearbeiten">
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit} title={t('vaktcomply.resilienceTests.editTitle')}>
               <Pencil className="w-3.5 h-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onLinkEvidence} title="Als DORA-Evidenz verknüpfen">
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onLinkEvidence} title={t('vaktcomply.resilienceTests.linkEvidenceTitle')}>
               <Link2 className="w-3.5 h-3.5" />
             </Button>
             <Button
@@ -149,7 +152,7 @@ function ResilienceTestRow({
               size="icon"
               className="h-7 w-7 text-red-400 hover:text-red-300"
               onClick={onDelete}
-              title="Löschen"
+              title={t('vaktcomply.resilienceTests.deleteTitle')}
             >
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
@@ -186,14 +189,14 @@ export default function ResilienceTestsPage() {
     setDialogOpen(true)
   }
 
-  function openEdit(t: ResilienceTest) {
-    setEditId(t.id)
-    setForm(testToForm(t))
+  function openEdit(test: ResilienceTest) {
+    setEditId(test.id)
+    setForm(testToForm(test))
     setDialogOpen(true)
   }
 
   function handleDelete(id: string) {
-    if (confirm('Resilience-Test wirklich löschen?')) {
+    if (confirm(t('vaktcomply.resilienceTests.deleteConfirm'))) {
       deleteTest.mutate(id)
     }
   }
@@ -234,19 +237,18 @@ export default function ResilienceTestsPage() {
         >
           <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5" />
           <span>
-            Kein TLPT in den letzten 3 Jahren durchgeführt. DORA Art. 26 verlangt alle 3
-            Jahre einen TLPT.
+            {t('vaktcomply.resilienceTests.overdueWarning')}
           </span>
         </div>
       )}
 
       <PageHeader
-        title="Resilience-Tests"
-        description="DORA Art. 24-27 — TLPT, Pentests und szenariobasierte Tests dokumentieren."
+        title={t('vaktcomply.resilienceTests.pageTitle')}
+        description={t('vaktcomply.resilienceTests.pageDescription')}
         actions={
           <Button onClick={openCreate}>
             <Plus className="w-4 h-4 mr-1" />
-            Neuer Test
+            {t('vaktcomply.resilienceTests.newTest')}
           </Button>
         }
       />
@@ -259,31 +261,31 @@ export default function ResilienceTestsPage() {
         )}
         {isError && (
           <div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">
-            Fehler beim Laden der Resilience-Tests.
+            {t('vaktcomply.resilienceTests.loadError')}
           </div>
         )}
         {!isLoading && !isError && tests.length === 0 && (
           <EmptyState
             icon={ShieldAlert}
-            title="Keine Resilience-Tests erfasst"
-            description="Dokumentieren Sie TLPT, Pentests und szenariobasierte Tests für DORA Art. 24-27."
+            title={t('vaktcomply.resilienceTests.emptyTitle')}
+            description={t('vaktcomply.resilienceTests.emptyDescription')}
             action={
               <Button onClick={openCreate}>
                 <Plus className="w-4 h-4 mr-1" />
-                Neuer Test
+                {t('vaktcomply.resilienceTests.newTest')}
               </Button>
             }
           />
         )}
         {!isLoading && !isError && tests.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {tests.map((t) => (
+            {tests.map((test) => (
               <ResilienceTestRow
-                key={t.id}
-                test={t}
-                onEdit={() => { openEdit(t); }}
-                onDelete={() => { handleDelete(t.id); }}
-                onLinkEvidence={() => { setLinkTestId(t.id); setLinkControlId('') }}
+                key={test.id}
+                test={test}
+                onEdit={() => { openEdit(test); }}
+                onDelete={() => { handleDelete(test.id); }}
+                onLinkEvidence={() => { setLinkTestId(test.id); setLinkControlId('') }}
               />
             ))}
           </div>
@@ -294,24 +296,25 @@ export default function ResilienceTestsPage() {
       <Dialog open={!!linkTestId} onOpenChange={(v) => { if (!v) { setLinkTestId(null); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Als DORA-Evidenz verknüpfen</DialogTitle>
+            <DialogTitle>{t('vaktcomply.resilienceTests.linkEvidenceDialogTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <p className="text-sm text-muted-foreground">
-              Verknüpfe diesen Resilienztest als Evidenz mit einem DORA-Control (z.B. Art. 26).
-              Die Control-ID findest du in der Kontrolldetailseite.
+              {t('vaktcomply.resilienceTests.linkEvidenceDesc')}
             </p>
             <div className="space-y-1.5">
-              <Label>Control-ID *</Label>
+              <Label>{t('vaktcomply.resilienceTests.controlIdLabel')}</Label>
               <Input
-                placeholder="UUID des Controls (z.B. DORA-3.2)"
+                placeholder={t('vaktcomply.resilienceTests.controlIdPlaceholder')}
                 value={linkControlId}
                 onChange={(e) => { setLinkControlId(e.target.value); }}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setLinkTestId(null); }}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setLinkTestId(null); }}>
+              {t('vaktcomply.resilienceTests.cancel')}
+            </Button>
             <Button
               disabled={!linkControlId || linkEvidence.isPending}
               onClick={() => {
@@ -320,7 +323,7 @@ export default function ResilienceTestsPage() {
                 })
               }}
             >
-              {linkEvidence.isPending ? 'Verknüpfen …' : 'Als Evidenz speichern'}
+              {linkEvidence.isPending ? t('vaktcomply.resilienceTests.linking') : t('vaktcomply.resilienceTests.saveAsEvidence')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -329,31 +332,33 @@ export default function ResilienceTestsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editId ? 'Test bearbeiten' : 'Neuer Test'}</DialogTitle>
+            <DialogTitle>
+              {editId ? t('vaktcomply.resilienceTests.dialogTitleEdit') : t('vaktcomply.resilienceTests.dialogTitleNew')}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>Typ *</Label>
+              <Label>{t('vaktcomply.resilienceTests.typeLabelRequired')}</Label>
               <Select
                 value={form.type}
                 onValueChange={(v) => { setForm((f) => ({ ...f, type: v })); }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Testtyp auswählen …" />
+                  <SelectValue placeholder={t('vaktcomply.resilienceTests.typePlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="tlpt">TLPT</SelectItem>
                   <SelectItem value="pentest">{t('vaktcomply.resilienceTests.kind.pentest')}</SelectItem>
                   <SelectItem value="scenario_based">{t('vaktcomply.resilienceTests.kind.scenario')}</SelectItem>
                   <SelectItem value="vulnerability_assessment">
-                    Vulnerability Assessment
+                    {t('vaktcomply.resilienceTests.typeLabels.vulnerabilityAssessment')}
                   </SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-1.5">
-              <Label>Testdatum *</Label>
+              <Label>{t('vaktcomply.resilienceTests.dateLabelRequired')}</Label>
               <Input
                 type="date"
                 value={form.test_date ?? ''}
@@ -362,18 +367,18 @@ export default function ResilienceTestsPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Scope / Geltungsbereich</Label>
+              <Label>{t('vaktcomply.resilienceTests.scopeLabel')}</Label>
               <Input
-                placeholder="z.B. Core-Banking-Systeme"
+                placeholder={t('vaktcomply.resilienceTests.scopePlaceholder')}
                 value={form.scope ?? ''}
                 onChange={(e) => { setForm((f) => ({ ...f, scope: e.target.value })); }}
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label>Dienstleister / Provider</Label>
+              <Label>{t('vaktcomply.resilienceTests.providerLabel')}</Label>
               <Input
-                placeholder="z.B. CyberProof GmbH"
+                placeholder={t('vaktcomply.resilienceTests.providerPlaceholder')}
                 value={form.provider ?? ''}
                 onChange={(e) => { setForm((f) => ({ ...f, provider: e.target.value })); }}
               />
@@ -390,7 +395,7 @@ export default function ResilienceTestsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="open">{t('vaktcomply.resilienceTests.status.open')}</SelectItem>
-                  <SelectItem value="in_progress">In Bearbeitung</SelectItem>
+                  <SelectItem value="in_progress">{t('vaktcomply.resilienceTests.status.in_progress')}</SelectItem>
                   <SelectItem value="completed">{t('vaktcomply.resilienceTests.status.completed')}</SelectItem>
                   <SelectItem value="accepted">{t('vaktcomply.resilienceTests.status.accepted')}</SelectItem>
                 </SelectContent>
@@ -398,10 +403,10 @@ export default function ResilienceTestsPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Zusammenfassung / Ergebnis</Label>
+              <Label>{t('vaktcomply.resilienceTests.summaryLabel')}</Label>
               <Textarea
                 rows={4}
-                placeholder="Ergebnisse, Befunde, Empfehlungen …"
+                placeholder={t('vaktcomply.resilienceTests.summaryPlaceholder')}
                 value={form.summary ?? ''}
                 onChange={(e) => { setForm((f) => ({ ...f, summary: e.target.value })); }}
               />
@@ -409,20 +414,24 @@ export default function ResilienceTestsPage() {
 
             {editId && (
               <div className="space-y-1.5">
-                <Label>Anhang hochladen (max. 20 MB)</Label>
+                <Label>{t('vaktcomply.resilienceTests.attachmentLabel')}</Label>
                 <Input type="file" onChange={handleFileUpload} />
               </div>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setDialogOpen(false); }}>
-              Abbrechen
+              {t('vaktcomply.resilienceTests.cancel')}
             </Button>
             <Button
               onClick={handleSubmit}
               disabled={!form.type || !form.test_date || isPending}
             >
-              {isPending ? 'Speichern …' : editId ? 'Speichern' : 'Hinzufügen'}
+              {isPending
+                ? t('vaktcomply.resilienceTests.saving')
+                : editId
+                  ? t('vaktcomply.resilienceTests.save')
+                  : t('vaktcomply.resilienceTests.add')}
             </Button>
           </DialogFooter>
         </DialogContent>
