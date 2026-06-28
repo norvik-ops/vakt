@@ -181,7 +181,7 @@ function EvidenceHistoryDialog({
 
   function describeEntry(entry: EvidenceHistoryEntry): string {
     if (entry.change_note) return entry.change_note
-    if (entry.status) return t('vaktcomply.controlDetailPage.evidenceHistoryStatusSet', { status: STATUS_LABEL_MAP[entry.status] ?? entry.status })
+    if (entry.status) return t('vaktcomply.controlDetailPage.evidenceHistoryStatusSet', { status: STATUS_LABEL_MAP[entry.status as keyof typeof STATUS_LABEL_MAP] ?? entry.status })
     return t('vaktcomply.controlDetailPage.evidenceHistoryUpdated')
   }
 
@@ -212,7 +212,7 @@ function EvidenceHistoryDialog({
                 <p className="text-primary font-medium">{describeEntry(entry)}</p>
                 {entry.status && (
                   <p className="text-xs text-secondary mt-0.5">
-                    Status: <span className="font-medium text-primary">{STATUS_LABEL_MAP[entry.status] ?? entry.status}</span>
+                    Status: <span className="font-medium text-primary">{STATUS_LABEL_MAP[entry.status as keyof typeof STATUS_LABEL_MAP] ?? entry.status}</span>
                   </p>
                 )}
                 <p className="text-xs text-secondary mt-0.5">{formatDateTime(entry.changed_at)}</p>

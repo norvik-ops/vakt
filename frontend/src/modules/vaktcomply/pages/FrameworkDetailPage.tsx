@@ -515,6 +515,7 @@ function DomainSection({
   onToggleDomain: (ids: string[], checked: boolean) => void
 }) {
   const [open, setOpen] = useState(true)
+  const { t } = useTranslation()
 
   const rootControls = domainControls.filter((c) => !hasParent(c, domainControls))
   const allIds = domainControls.map((c) => c.id)
