@@ -80,7 +80,7 @@ describe('CampaignsPage — empty state', () => {
   it('shows empty state when no campaigns exist', () => {
     renderWithProviders(<CampaignsPage />)
     expect(screen.getByText('Keine Kampagnen')).toBeInTheDocument()
-    expect(screen.getByText('Starte deine erste Phishing-Simulation.')).toBeInTheDocument()
+    expect(screen.getByText('Starten Sie Ihre erste Phishing-Simulation.')).toBeInTheDocument()
   })
 })
 
