@@ -75,7 +75,8 @@ _run_offsite() {
 	case "$dtype" in
 	nextcloud)
 		local base="${BACKUP_DEST_URL%/}"
-		local rpath="${BACKUP_DEST_REMOTE_PATH%/}/$(basename "$archive")"
+		local rpath
+		rpath="${BACKUP_DEST_REMOTE_PATH%/}/$(basename "$archive")"
 		curl -fsS -m 300 --upload-file "$archive" \
 			-u "${BACKUP_DEST_USER}:${BACKUP_DEST_PASS}" \
 			"${base}${rpath}"
