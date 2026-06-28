@@ -923,13 +923,22 @@ func (h *Handler) UpdateOrgBackupConfig(c echo.Context) error {
 			"code":  "ADMIN_BACKUP_CONFIG_UPDATE_ERROR",
 		})
 	}
-	// ponytail: shell-cmd audit log — offsite_cmd/notify_cmd execute in the backup
-	// container as the operator. Logged so changes are observable in structured logs.
+	// Audit log: shell commands execute in the backup container as operator.
+	// Log hash+presence only — never the content (may contain credentials).
 	if in.OffsiteCmd != "" || in.NotifyCmd != "" {
+		h256 := func(s string) string {
+			if s == "" {
+				return ""
+			}
+			sum := sha256.Sum256([]byte(s))
+			return hex.EncodeToString(sum[:8]) // first 8 bytes sufficient for change-detection
+		}
 		log.Warn().
 			Str("org_id", orgID).
-			Str("offsite_cmd", in.OffsiteCmd).
-			Str("notify_cmd", in.NotifyCmd).
+			Bool("offsite_cmd_set", in.OffsiteCmd != "").
+			Bool("notify_cmd_set", in.NotifyCmd != "").
+			Str("offsite_cmd_sha256_prefix", h256(in.OffsiteCmd)).
+			Str("notify_cmd_sha256_prefix", h256(in.NotifyCmd)).
 			Msg("backup shell commands updated by admin — review if unexpected")
 	}
 	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
