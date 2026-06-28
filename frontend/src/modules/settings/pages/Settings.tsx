@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import {
   Building2, Layers, Bell, Trash2, Plus, Check, X,
   Webhook, Globe, Mail, Server, MapPin, Download, ShieldCheck, Shield, FileText, ExternalLink, Sparkles, Rocket, Key, Clock, ArrowUpCircle, RefreshCw, Zap, FileBarChart2, Radio,
-  Siren, UserCheck, Users, Palette, Sliders, Network,
+  Siren, UserCheck, Users, Palette, Sliders, Network, HardDrive,
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -151,6 +151,41 @@ function useTestLDAPConnection() {
 function useSyncLDAP() {
   return useMutation<{ synced: number }>({
     mutationFn: () => apiFetch('/admin/org/ldap/sync', { method: 'POST' }),
+  })
+}
+
+// ─── Backup destination hooks ─────────────────────────────────────────────────
+
+interface OrgBackupDest {
+  type: string // "none"|"nextcloud"|"s3"|"sftp"|"custom"
+  url: string
+  user: string
+  remote_path: string
+  has_pass: boolean
+  endpoint: string
+  bucket: string
+  prefix: string
+  access_key: string
+  has_secret_key: boolean
+  host: string
+  port: number
+  cmd: string
+}
+
+function useOrgBackupDest() {
+  return useQuery<OrgBackupDest>({
+    queryKey: ['admin', 'org', 'backup-dest'],
+    queryFn: () => apiFetch<OrgBackupDest>('/admin/org/backup-dest'),
+    retry: false,
+  })
+}
+
+function useUpdateOrgBackupDest() {
+  const qc = useQueryClient()
+  return useMutation<undefined, Error, Partial<OrgBackupDest> & { pass?: string; secret_key?: string }>({
+    mutationFn: (input) =>
+      apiFetch<undefined>('/admin/org/backup-dest', { method: 'PUT', body: JSON.stringify(input) }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['admin', 'org', 'backup-dest'] }),
   })
 }
 
@@ -2119,6 +2154,204 @@ function StagingSection() {
   )
 }
 
+// ─── Guided Backup Destination (System-Tab) ──────────────────────────────────
+
+const BACKUP_DEST_TYPES = ['none', 'nextcloud', 's3', 'sftp', 'custom'] as const
+
+function BackupDestSection() {
+  const { t } = useTranslation()
+  const { data, isLoading } = useOrgBackupDest()
+  const update = useUpdateOrgBackupDest()
+
+  const [type, setType] = useState('none')
+  // nextcloud / sftp shared
+  const [url, setUrl] = useState('')
+  const [user, setUser] = useState('')
+  const [pass, setPass] = useState('')
+  const [remotePath, setRemotePath] = useState('')
+  // s3
+  const [endpoint, setEndpoint] = useState('')
+  const [bucket, setBucket] = useState('')
+  const [prefix, setPrefix] = useState('')
+  const [accessKey, setAccessKey] = useState('')
+  const [secretKey, setSecretKey] = useState('')
+  // sftp
+  const [host, setHost] = useState('')
+  const [port, setPort] = useState('22')
+  // custom
+  const [cmd, setCmd] = useState('')
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    if (!data) return
+    setType(data.type || 'none')
+    setUrl(data.url || '')
+    setUser(data.user || '')
+    setRemotePath(data.remote_path || '')
+    setEndpoint(data.endpoint || '')
+    setBucket(data.bucket || '')
+    setPrefix(data.prefix || '')
+    setAccessKey(data.access_key || '')
+    setHost(data.host || '')
+    setPort(data.port ? String(data.port) : '22')
+    setCmd(data.cmd || '')
+  }, [data])
+
+  function handleSave() {
+    update.mutate(
+      {
+        type,
+        url,
+        user,
+        pass: pass || undefined,
+        remote_path: remotePath,
+        endpoint,
+        bucket,
+        prefix,
+        access_key: accessKey,
+        secret_key: secretKey || undefined,
+        host,
+        port: parseInt(port, 10) || 22,
+        cmd,
+      },
+      {
+        onSuccess: () => {
+          setSaved(true)
+          setPass('')
+          setSecretKey('')
+          setTimeout(() => { setSaved(false) }, 2000)
+        },
+      },
+    )
+  }
+
+  if (isLoading) return (
+    <SectionCard title={t('settingsPage.backupDestTitle')} icon={HardDrive}>
+      <Spinner />
+    </SectionCard>
+  )
+
+  return (
+    <SectionCard title={t('settingsPage.backupDestTitle')} icon={HardDrive}>
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('settingsPage.backupDestTypeLabel')}</Label>
+          <select
+            className="w-full h-8 rounded-md border border-input bg-background px-3 text-sm"
+            value={type}
+            onChange={(e) => { setType(e.target.value) }}
+          >
+            {BACKUP_DEST_TYPES.map((dt) => (
+              <option key={dt} value={dt}>{t(`settingsPage.backupDestType_${dt}`)}</option>
+            ))}
+          </select>
+        </div>
+
+        {type === 'nextcloud' && (
+          <>
+            <div className="space-y-1.5">
+              <Label className="text-xs">{t('settingsPage.backupDestUrlLabel')}</Label>
+              <Input className="h-8 text-sm" placeholder="https://cloud.example.com/remote.php/dav/files/user/" value={url} onChange={(e) => { setUrl(e.target.value) }} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t('settingsPage.backupDestUserLabel')}</Label>
+                <Input className="h-8 text-sm" placeholder="user" value={user} onChange={(e) => { setUser(e.target.value) }} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t('settingsPage.backupDestPassLabel')}</Label>
+                <Input className="h-8 text-sm" type="password" placeholder={data?.has_pass ? '••••••••' : t('settingsPage.backupDestPassPlaceholder')} value={pass} onChange={(e) => { setPass(e.target.value) }} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">{t('settingsPage.backupDestRemotePathLabel')}</Label>
+              <Input className="h-8 text-sm font-mono text-xs" placeholder="/vakt-backups/" value={remotePath} onChange={(e) => { setRemotePath(e.target.value) }} />
+            </div>
+          </>
+        )}
+
+        {type === 's3' && (
+          <>
+            <div className="space-y-1.5">
+              <Label className="text-xs">{t('settingsPage.backupDestEndpointLabel')}</Label>
+              <Input className="h-8 text-sm" placeholder="https://s3.eu-central-1.amazonaws.com" value={endpoint} onChange={(e) => { setEndpoint(e.target.value) }} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t('settingsPage.backupDestBucketLabel')}</Label>
+                <Input className="h-8 text-sm" placeholder="my-backup-bucket" value={bucket} onChange={(e) => { setBucket(e.target.value) }} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t('settingsPage.backupDestPrefixLabel')}</Label>
+                <Input className="h-8 text-sm font-mono text-xs" placeholder="vakt/" value={prefix} onChange={(e) => { setPrefix(e.target.value) }} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t('settingsPage.backupDestAccessKeyLabel')}</Label>
+                <Input className="h-8 text-sm font-mono text-xs" placeholder="AKIAIOSFODNN7EXAMPLE" value={accessKey} onChange={(e) => { setAccessKey(e.target.value) }} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t('settingsPage.backupDestSecretKeyLabel')}</Label>
+                <Input className="h-8 text-sm" type="password" placeholder={data?.has_secret_key ? '••••••••' : t('settingsPage.backupDestSecretKeyPlaceholder')} value={secretKey} onChange={(e) => { setSecretKey(e.target.value) }} />
+              </div>
+            </div>
+          </>
+        )}
+
+        {type === 'sftp' && (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t('settingsPage.backupDestHostLabel')}</Label>
+                <Input className="h-8 text-sm" placeholder="backup.example.com" value={host} onChange={(e) => { setHost(e.target.value) }} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t('settingsPage.backupDestPortLabel')}</Label>
+                <Input className="h-8 text-sm" type="number" placeholder="22" value={port} onChange={(e) => { setPort(e.target.value) }} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t('settingsPage.backupDestUserLabel')}</Label>
+                <Input className="h-8 text-sm" placeholder="backup-user" value={user} onChange={(e) => { setUser(e.target.value) }} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t('settingsPage.backupDestPassLabel')}</Label>
+                <Input className="h-8 text-sm" type="password" placeholder={data?.has_pass ? '••••••••' : t('settingsPage.backupDestPassPlaceholder')} value={pass} onChange={(e) => { setPass(e.target.value) }} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">{t('settingsPage.backupDestRemotePathLabel')}</Label>
+              <Input className="h-8 text-sm font-mono text-xs" placeholder="/home/backup-user/vakt-backups/" value={remotePath} onChange={(e) => { setRemotePath(e.target.value) }} />
+            </div>
+          </>
+        )}
+
+        {type === 'custom' && (
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t('settingsPage.backupDestCmdLabel')}</Label>
+            <textarea
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono resize-none"
+              rows={3}
+              placeholder='rclone copy "$ARCHIVE" myremote:bucket/vakt/'
+              value={cmd}
+              onChange={(e) => { setCmd(e.target.value) }}
+            />
+            <p className="text-[11px] text-secondary">{t('settingsPage.backupDestCmdHint')}</p>
+          </div>
+        )}
+
+        <div className="flex justify-end">
+          <Button size="sm" onClick={handleSave} disabled={update.isPending}>
+            {saved ? t('settingsPage.saved') : update.isPending ? t('settingsPage.saving') : t('settingsPage.save')}
+          </Button>
+        </div>
+      </div>
+    </SectionCard>
+  )
+}
+
 // ─── Backup-Konfiguration (System-Tab) ───────────────────────────────────────
 
 function BackupSection() {
@@ -2416,6 +2649,9 @@ export default function Settings() {
                 <UpdateSection />
                 <ServerSection />
                 <BackupSection />
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
+                <BackupDestSection />
               </div>
               <div className="mt-5">
                 <StagingSection />

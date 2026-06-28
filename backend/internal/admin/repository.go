@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"database/sql"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -637,6 +638,74 @@ func (r *Repository) SetOrgLDAPConfig(ctx context.Context, orgID, url, bindDN, b
 	}
 	if tag.RowsAffected() == 0 {
 		return fmt.Errorf("org not found: %s", orgID)
+	}
+	return nil
+}
+
+// ─── Migration 232: Guided Backup Destination ─────────────────────────────────
+
+// BackupDestConfig is the JSON payload stored encrypted in backup_dest_config_enc.
+// Sensitive string fields (Pass, SecretKey) are plaintext inside the encrypted blob.
+type BackupDestConfig struct {
+	// nextcloud / webdav
+	URL        string `json:"url,omitempty"`
+	User       string `json:"user,omitempty"`
+	Pass       string `json:"pass,omitempty"`
+	RemotePath string `json:"remote_path,omitempty"`
+	// s3
+	Endpoint  string `json:"endpoint,omitempty"`
+	Bucket    string `json:"bucket,omitempty"`
+	Prefix    string `json:"prefix,omitempty"`
+	AccessKey string `json:"access_key,omitempty"`
+	SecretKey string `json:"secret_key,omitempty"`
+	// sftp
+	Host string `json:"host,omitempty"`
+	Port int    `json:"port,omitempty"`
+	// custom (raw command, backward compat with offsite_cmd)
+	Cmd string `json:"cmd,omitempty"`
+}
+
+// OrgBackupDest is the API-facing struct (no plaintext secrets).
+type OrgBackupDest struct {
+	Type         string `json:"type"` // "none"|"nextcloud"|"s3"|"sftp"|"custom"
+	URL          string `json:"url"`
+	User         string `json:"user"`
+	RemotePath   string `json:"remote_path"`
+	HasPass      bool   `json:"has_pass"`
+	Endpoint     string `json:"endpoint"`
+	Bucket       string `json:"bucket"`
+	Prefix       string `json:"prefix"`
+	AccessKey    string `json:"access_key"`
+	HasSecretKey bool   `json:"has_secret_key"`
+	Host         string `json:"host"`
+	Port         int    `json:"port"`
+	Cmd          string `json:"cmd"` // only for custom type
+}
+
+// GetOrgBackupDest returns the backup destination config and raw encrypted blob.
+func (r *Repository) GetOrgBackupDest(ctx context.Context, orgID string) (*OrgBackupDest, []byte, error) {
+	var destType sql.NullString
+	var configEnc []byte
+	err := r.db.QueryRow(ctx, `
+		SELECT backup_dest_type, backup_dest_config_enc
+		FROM organizations WHERE id = $1`, orgID).
+		Scan(&destType, &configEnc)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get org backup dest %s: %w", orgID, err)
+	}
+	out := &OrgBackupDest{Type: destType.String}
+	return out, configEnc, nil
+}
+
+// SetOrgBackupDest stores the encrypted backup destination config.
+func (r *Repository) SetOrgBackupDest(ctx context.Context, orgID, destType string, configEnc []byte) error {
+	_, err := r.db.Exec(ctx, `
+		UPDATE organizations
+		SET backup_dest_type       = NULLIF($2, ''),
+		    backup_dest_config_enc = COALESCE($3, backup_dest_config_enc)
+		WHERE id = $1`, orgID, destType, configEnc)
+	if err != nil {
+		return fmt.Errorf("set org backup dest %s: %w", orgID, err)
 	}
 	return nil
 }

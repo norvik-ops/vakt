@@ -7064,6 +7064,68 @@ paths:
         '401':
           description: Unauthorized
 
+  /admin/org/backup-dest:
+    get:
+      summary: Get guided backup destination for this org
+      operationId: getOrgBackupDest
+      tags: [admin]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Backup destination (secrets not exposed)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type: { type: string, enum: [none, nextcloud, s3, sftp, custom] }
+                  url: { type: string }
+                  user: { type: string }
+                  remote_path: { type: string }
+                  has_pass: { type: boolean }
+                  endpoint: { type: string }
+                  bucket: { type: string }
+                  prefix: { type: string }
+                  access_key: { type: string }
+                  has_secret_key: { type: boolean }
+                  host: { type: string }
+                  port: { type: integer }
+                  cmd: { type: string }
+        '401':
+          description: Unauthorized
+    put:
+      summary: Update guided backup destination for this org
+      operationId: updateOrgBackupDest
+      tags: [admin]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type: { type: string, enum: [none, nextcloud, s3, sftp, custom] }
+                url: { type: string }
+                user: { type: string }
+                pass: { type: string, description: "empty = keep existing" }
+                remote_path: { type: string }
+                endpoint: { type: string }
+                bucket: { type: string }
+                prefix: { type: string }
+                access_key: { type: string }
+                secret_key: { type: string, description: "empty = keep existing" }
+                host: { type: string }
+                port: { type: integer }
+                cmd: { type: string }
+      responses:
+        '200':
+          description: Updated
+        '401':
+          description: Unauthorized
+
   /admin/org/ldap:
     get:
       summary: Get LDAP/AD configuration for this org

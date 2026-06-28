@@ -8,6 +8,7 @@ import (
 	"crypto/subtle"
 	"encoding/csv"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -952,6 +953,20 @@ type InternalBackupConfigResponse struct {
 	NotifyWebhook string `json:"notify_webhook"` // decrypted plaintext
 	OffsiteCmd    string `json:"offsite_cmd"`
 	NotifyCmd     string `json:"notify_cmd"`
+	// Guided backup destination (migration 232)
+	BackupDestType       string `json:"backup_dest_type"`
+	BackupDestURL        string `json:"backup_dest_url"`
+	BackupDestUser       string `json:"backup_dest_user"`
+	BackupDestPass       string `json:"backup_dest_pass"`
+	BackupDestRemotePath string `json:"backup_dest_remote_path"`
+	BackupDestEndpoint   string `json:"backup_dest_endpoint"`
+	BackupDestBucket     string `json:"backup_dest_bucket"`
+	BackupDestPrefix     string `json:"backup_dest_prefix"`
+	BackupDestAccessKey  string `json:"backup_dest_access_key"`
+	BackupDestSecretKey  string `json:"backup_dest_secret_key"`
+	BackupDestHost       string `json:"backup_dest_host"`
+	BackupDestPort       int    `json:"backup_dest_port"`
+	BackupDestCmd        string `json:"backup_dest_cmd"`
 }
 
 // GetInternalBackupConfig handles GET /api/v1/internal/backup-config.
@@ -1027,6 +1042,31 @@ func (h *Handler) GetInternalBackupConfig(c echo.Context) error {
 			})
 		}
 		resp.NotifyWebhook = string(plain)
+	}
+
+	// Load backup dest config
+	dest, destConfigEnc, err := h.service.repo.GetOrgBackupDest(ctx, orgID)
+	if err == nil && len(destConfigEnc) > 0 {
+		if plain, decErr := sharedcrypto.Decrypt(h.service.masterKey, destConfigEnc); decErr == nil {
+			var destCfg BackupDestConfig
+			if json.Unmarshal(plain, &destCfg) == nil {
+				resp.BackupDestType = dest.Type
+				resp.BackupDestURL = destCfg.URL
+				resp.BackupDestUser = destCfg.User
+				resp.BackupDestPass = destCfg.Pass
+				resp.BackupDestRemotePath = destCfg.RemotePath
+				resp.BackupDestEndpoint = destCfg.Endpoint
+				resp.BackupDestBucket = destCfg.Bucket
+				resp.BackupDestPrefix = destCfg.Prefix
+				resp.BackupDestAccessKey = destCfg.AccessKey
+				resp.BackupDestSecretKey = destCfg.SecretKey
+				resp.BackupDestHost = destCfg.Host
+				resp.BackupDestPort = destCfg.Port
+				resp.BackupDestCmd = destCfg.Cmd
+			}
+		}
+	} else if dest != nil {
+		resp.BackupDestType = dest.Type
 	}
 
 	return c.JSON(http.StatusOK, resp)
@@ -1201,4 +1241,136 @@ func (h *Handler) SyncOrgLDAP(c echo.Context) error {
 		"synced": len(users),
 		"users":  users,
 	})
+}
+
+// ─── Migration 232: Guided Backup Destination ─────────────────────────────────
+
+// GetOrgBackupDest handles GET /api/v1/admin/org/backup-dest.
+func (h *Handler) GetOrgBackupDest(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	dest, configEnc, err := h.service.repo.GetOrgBackupDest(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("get org backup dest failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to retrieve backup destination",
+			"code":  "ADMIN_BACKUP_DEST_ERROR",
+		})
+	}
+	// Decrypt config to populate non-secret fields + has_* booleans.
+	if len(configEnc) > 0 && len(h.service.masterKey) > 0 {
+		plain, err := sharedcrypto.Decrypt(h.service.masterKey, configEnc)
+		if err == nil {
+			var cfg BackupDestConfig
+			if json.Unmarshal(plain, &cfg) == nil {
+				dest.URL = cfg.URL
+				dest.User = cfg.User
+				dest.RemotePath = cfg.RemotePath
+				dest.HasPass = cfg.Pass != ""
+				dest.Endpoint = cfg.Endpoint
+				dest.Bucket = cfg.Bucket
+				dest.Prefix = cfg.Prefix
+				dest.AccessKey = cfg.AccessKey
+				dest.HasSecretKey = cfg.SecretKey != ""
+				dest.Host = cfg.Host
+				dest.Port = cfg.Port
+				dest.Cmd = cfg.Cmd
+			}
+		}
+	}
+	return c.JSON(http.StatusOK, dest)
+}
+
+// UpdateOrgBackupDestInput is the request body for PUT /api/v1/admin/org/backup-dest.
+// Empty secret fields (Pass, SecretKey) = keep existing encrypted value.
+type UpdateOrgBackupDestInput struct {
+	Type       string `json:"type"`
+	URL        string `json:"url"`
+	User       string `json:"user"`
+	Pass       string `json:"pass"` // empty = keep existing
+	RemotePath string `json:"remote_path"`
+	Endpoint   string `json:"endpoint"`
+	Bucket     string `json:"bucket"`
+	Prefix     string `json:"prefix"`
+	AccessKey  string `json:"access_key"`
+	SecretKey  string `json:"secret_key"` // empty = keep existing
+	Host       string `json:"host"`
+	Port       int    `json:"port"`
+	Cmd        string `json:"cmd"`
+}
+
+// UpdateOrgBackupDest handles PUT /api/v1/admin/org/backup-dest.
+func (h *Handler) UpdateOrgBackupDest(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	var in UpdateOrgBackupDestInput
+	if err := c.Bind(&in); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid input",
+			"code":  "ADMIN_BAD_REQUEST",
+		})
+	}
+
+	// Load existing config to preserve secrets when empty fields are submitted.
+	var existing BackupDestConfig
+	_, existingEnc, err := h.service.repo.GetOrgBackupDest(c.Request().Context(), orgID)
+	if err == nil && len(existingEnc) > 0 && len(h.service.masterKey) > 0 {
+		if plain, err := sharedcrypto.Decrypt(h.service.masterKey, existingEnc); err == nil {
+			_ = json.Unmarshal(plain, &existing)
+		}
+	}
+
+	cfg := BackupDestConfig{
+		URL:        in.URL,
+		User:       in.User,
+		Pass:       existing.Pass, // keep existing by default
+		RemotePath: in.RemotePath,
+		Endpoint:   in.Endpoint,
+		Bucket:     in.Bucket,
+		Prefix:     in.Prefix,
+		AccessKey:  in.AccessKey,
+		SecretKey:  existing.SecretKey, // keep existing by default
+		Host:       in.Host,
+		Port:       in.Port,
+		Cmd:        in.Cmd,
+	}
+	if in.Pass != "" {
+		cfg.Pass = in.Pass
+	}
+	if in.SecretKey != "" {
+		cfg.SecretKey = in.SecretKey
+	}
+
+	plain, err := json.Marshal(cfg)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to marshal config",
+			"code":  "ADMIN_BACKUP_DEST_MARSHAL_ERROR",
+		})
+	}
+
+	var configEnc []byte
+	if in.Type != "none" && in.Type != "" {
+		if len(h.service.masterKey) == 0 {
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "master key not configured",
+				"code":  "ADMIN_NO_MASTER_KEY",
+			})
+		}
+		configEnc, err = sharedcrypto.Encrypt(h.service.masterKey, plain)
+		if err != nil {
+			log.Error().Err(err).Str("org_id", orgID).Msg("backup dest encryption failed")
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "failed to encrypt backup destination config",
+				"code":  "ADMIN_BACKUP_DEST_ENCRYPT_ERROR",
+			})
+		}
+	}
+
+	if err := h.service.repo.SetOrgBackupDest(c.Request().Context(), orgID, in.Type, configEnc); err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("update org backup dest failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to update backup destination",
+			"code":  "ADMIN_BACKUP_DEST_UPDATE_ERROR",
+		})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 }

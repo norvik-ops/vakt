@@ -53,6 +53,10 @@ func Register(g *echo.Group, h *Handler, health *HealthHandler, db *pgxpool.Pool
 	admin.GET("/org/backup-config", h.GetOrgBackupConfig)
 	admin.PUT("/org/backup-config", h.UpdateOrgBackupConfig)
 
+	// Per-org guided backup destination (DB-backed, config encrypted with master key)
+	admin.GET("/org/backup-dest", h.GetOrgBackupDest)
+	admin.PUT("/org/backup-dest", h.UpdateOrgBackupDest)
+
 	// Per-org LDAP/AD configuration (DB-backed, bind password encrypted with master key)
 	admin.GET("/org/ldap", h.GetOrgLDAPConfig)
 	admin.PUT("/org/ldap", h.UpdateOrgLDAPConfig)

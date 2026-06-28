@@ -89,6 +89,9 @@ var contractCases = []contractCase{
 	// Migration 231: LDAP config — no auth → 401
 	{name: "admin_ldap_config_get", method: http.MethodGet,
 		realPath: "/api/v1/admin/org/ldap", specPath: "/api/v1/admin/org/ldap"},
+	// Migration 232: backup dest — no auth → 401
+	{name: "admin_backup_dest_get", method: http.MethodGet,
+		realPath: "/api/v1/admin/org/backup-dest", specPath: "/api/v1/admin/org/backup-dest"},
 }
 
 // TestOpenAPIContract spins up the same Echo instance the production binary

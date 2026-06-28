@@ -47,9 +47,66 @@ _load_api_config() {
 	v=$(_api_val "notify_webhook");  [ -n "$v" ] && export VAKT_BACKUP_NOTIFY_WEBHOOK="${VAKT_BACKUP_NOTIFY_WEBHOOK:-$v}"
 	v=$(_api_val "offsite_cmd");     [ -n "$v" ] && export VAKT_BACKUP_OFFSITE_CMD="${VAKT_BACKUP_OFFSITE_CMD:-$v}"
 	v=$(_api_val "notify_cmd");      [ -n "$v" ] && export VAKT_BACKUP_NOTIFY_CMD="${VAKT_BACKUP_NOTIFY_CMD:-$v}"
+	# Guided backup destination (migration 232)
+	v=$(_api_val "backup_dest_type");         [ -n "$v" ] && export BACKUP_DEST_TYPE="${BACKUP_DEST_TYPE:-$v}"
+	v=$(_api_val "backup_dest_url");          [ -n "$v" ] && export BACKUP_DEST_URL="${BACKUP_DEST_URL:-$v}"
+	v=$(_api_val "backup_dest_user");         [ -n "$v" ] && export BACKUP_DEST_USER="${BACKUP_DEST_USER:-$v}"
+	v=$(_api_val "backup_dest_pass");         [ -n "$v" ] && export BACKUP_DEST_PASS="${BACKUP_DEST_PASS:-$v}"
+	v=$(_api_val "backup_dest_remote_path");  [ -n "$v" ] && export BACKUP_DEST_REMOTE_PATH="${BACKUP_DEST_REMOTE_PATH:-$v}"
+	v=$(_api_val "backup_dest_endpoint");     [ -n "$v" ] && export BACKUP_DEST_ENDPOINT="${BACKUP_DEST_ENDPOINT:-$v}"
+	v=$(_api_val "backup_dest_bucket");       [ -n "$v" ] && export BACKUP_DEST_BUCKET="${BACKUP_DEST_BUCKET:-$v}"
+	v=$(_api_val "backup_dest_prefix");       [ -n "$v" ] && export BACKUP_DEST_PREFIX="${BACKUP_DEST_PREFIX:-$v}"
+	v=$(_api_val "backup_dest_access_key");   [ -n "$v" ] && export BACKUP_DEST_ACCESS_KEY="${BACKUP_DEST_ACCESS_KEY:-$v}"
+	v=$(_api_val "backup_dest_secret_key");   [ -n "$v" ] && export BACKUP_DEST_SECRET_KEY="${BACKUP_DEST_SECRET_KEY:-$v}"
+	v=$(_api_val "backup_dest_host");         [ -n "$v" ] && export BACKUP_DEST_HOST="${BACKUP_DEST_HOST:-$v}"
+	v=$(_api_int "backup_dest_port");         [ -n "$v" ] && [ "$v" -gt 0 ] && export BACKUP_DEST_PORT="${BACKUP_DEST_PORT:-$v}"
+	v=$(_api_val "backup_dest_cmd");          [ -n "$v" ] && export BACKUP_DEST_CMD="${BACKUP_DEST_CMD:-$v}"
 	echo "→ [backup-cron] config loaded from API"
 }
 _load_api_config
+
+# _run_offsite: push $1 (archive path) to the configured destination.
+# Guided types (nextcloud/s3/sftp) call curl/rclone directly — no eval.
+# "custom" and legacy VAKT_BACKUP_OFFSITE_CMD use bash -c (admin choice).
+_run_offsite() {
+	local archive="$1"
+	local dtype="${BACKUP_DEST_TYPE:-none}"
+
+	case "$dtype" in
+	nextcloud)
+		local base="${BACKUP_DEST_URL%/}"
+		local rpath="${BACKUP_DEST_REMOTE_PATH%/}/$(basename "$archive")"
+		curl -fsS -m 300 --upload-file "$archive" \
+			-u "${BACKUP_DEST_USER}:${BACKUP_DEST_PASS}" \
+			"${base}${rpath}"
+		;;
+	s3)
+		RCLONE_S3_PROVIDER="${RCLONE_S3_PROVIDER:-Other}" \
+		RCLONE_S3_ACCESS_KEY_ID="$BACKUP_DEST_ACCESS_KEY" \
+		RCLONE_S3_SECRET_ACCESS_KEY="$BACKUP_DEST_SECRET_KEY" \
+		RCLONE_S3_ENDPOINT="$BACKUP_DEST_ENDPOINT" \
+		rclone copy "$archive" ":s3:${BACKUP_DEST_BUCKET}/${BACKUP_DEST_PREFIX}"
+		;;
+	sftp)
+		local obscured
+		obscured=$(rclone obscure "${BACKUP_DEST_PASS}")
+		RCLONE_SFTP_HOST="$BACKUP_DEST_HOST" \
+		RCLONE_SFTP_PORT="${BACKUP_DEST_PORT:-22}" \
+		RCLONE_SFTP_USER="$BACKUP_DEST_USER" \
+		RCLONE_SFTP_PASS="$obscured" \
+		rclone copy "$archive" ":sftp:${BACKUP_DEST_REMOTE_PATH}"
+		;;
+	custom)
+		ARCHIVE="$archive" SIG="${archive}.sig" bash -c "${BACKUP_DEST_CMD}"
+		;;
+	none|*)
+		# Legacy fallback
+		if [ -n "${VAKT_BACKUP_OFFSITE_CMD:-}" ]; then
+			ARCHIVE="$archive" SIG="${archive}.sig" bash -c "$VAKT_BACKUP_OFFSITE_CMD"
+		fi
+		;;
+	esac
+}
 
 notify_failure() {
 	local message="$1"
@@ -97,10 +154,11 @@ run_cycle() {
 		exit 1
 	fi
 
-	# Off-site push (opt-in, customer-configured target — never Norvik).
-	if [ -n "${VAKT_BACKUP_OFFSITE_CMD:-}" ]; then
-		echo "→ [backup-cron] off-site push"
-		if ! ARCHIVE="$archive" SIG="${archive}.sig" bash -c "$VAKT_BACKUP_OFFSITE_CMD"; then
+	# Off-site push (opt-in; guided or legacy VAKT_BACKUP_OFFSITE_CMD).
+	local has_guided="${BACKUP_DEST_TYPE:-none}"
+	if [ "$has_guided" != "none" ] && [ -n "$has_guided" ] || [ -n "${VAKT_BACKUP_OFFSITE_CMD:-}" ]; then
+		echo "→ [backup-cron] off-site push (type=${has_guided})"
+		if ! _run_offsite "$archive"; then
 			notify_failure "off-site push failed for $archive"
 			# Off-site failure is reported but does not abort retention.
 		fi
