@@ -2,6 +2,8 @@
 
 Vakt Comply ist das zentrale Modul der Plattform. Es führt durch die Implementierung von Compliance-Frameworks, verfolgt den Status einzelner Controls, verwaltet Nachweise mit Reviewer-Workflow und produziert auditreife Dokumentation. Alle anderen Module liefern ihre Ergebnisse automatisch als Compliance-Evidenz in Vakt Comply ein.
 
+![Vakt Comply – Compliance-Hub](https://raw.githubusercontent.com/norvik-ops/vakt/main/docs/wiki/assets/screenshots/vakt-02-comply.gif)
+
 ---
 
 ## Aktivierung

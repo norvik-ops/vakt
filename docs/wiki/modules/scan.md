@@ -4,6 +4,8 @@ Vakt Scan orchestriert bestehende Open-Source-Scanner und normalisiert deren Erg
 
 Vakt Scan bringt keine eigenen Scanner mit — es orchestriert Scanner, die bereits in deiner Infrastruktur vorhanden sind oder als Container laufen.
 
+![Vakt Scan – Vulnerability-Scanner](https://raw.githubusercontent.com/norvik-ops/vakt/main/docs/wiki/assets/screenshots/vakt-03-scan.gif)
+
 ---
 
 ## Aktivierung

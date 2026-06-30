@@ -11,6 +11,8 @@
 
 **Try it locally** — `docker compose up -d` and open [http://localhost](http://localhost). No sign-up, no cloud, no data leaving your machine.
 
+![Vakt Platform Walkthrough](docs/wiki/assets/screenshots/vakt-platform-walkthrough.gif)
+
 ---
 
 ## What is Vakt?
@@ -49,6 +51,29 @@ Free-to-self-host alternative to Vanta, Drata, or DataGuard (~€9,000–25,000/
 - Cross-module evidence automation (e.g. resolved findings and completed trainings flow into Vakt Comply)
 - Admin CLI
 - Public Trust Pages
+
+---
+
+## Screenshots
+
+<table>
+<tr>
+<td align="center"><b>Dashboard</b></td>
+<td align="center"><b>Vakt Comply</b></td>
+</tr>
+<tr>
+<td><img src="docs/wiki/assets/screenshots/vakt-01-dashboard.gif" alt="Dashboard" width="480"/></td>
+<td><img src="docs/wiki/assets/screenshots/vakt-02-comply.gif" alt="Vakt Comply" width="480"/></td>
+</tr>
+<tr>
+<td align="center"><b>Vakt Scan</b></td>
+<td align="center"><b>Vakt Aware</b></td>
+</tr>
+<tr>
+<td><img src="docs/wiki/assets/screenshots/vakt-03-scan.gif" alt="Vakt Scan" width="480"/></td>
+<td><img src="docs/wiki/assets/screenshots/vakt-04-aware.gif" alt="Vakt Aware" width="480"/></td>
+</tr>
+</table>
 
 ---
 

@@ -2,6 +2,8 @@
 
 Vakt Aware ermöglicht interne Phishing-Simulationen und Micro-Trainings für Mitarbeiter. Das Reporting ist standardmäßig anonymisiert — einzelne Klickdaten werden nicht an die Unternehmensleitung weitergegeben (Betriebsrat-Modus). Abgeschlossene Trainings fließen automatisch als Compliance-Nachweis in Vakt Comply ein.
 
+![Vakt Aware – Awareness-Training](https://raw.githubusercontent.com/norvik-ops/vakt/main/docs/wiki/assets/screenshots/vakt-04-aware.gif)
+
 ---
 
 ## Aktivierung
