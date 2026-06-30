@@ -7,6 +7,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Broken Navigation — „Lizenz aktivieren" im Multi-Framework-Wizard** — Schaltfläche verlinkte auf `/settings/license` (nicht existent). Korrigiert auf `/settings` (Lizenz-Sektion liegt in den allgemeinen Einstellungen).
+- **Broken Navigation — Verknüpfter Datenschutzvorfall in Incident-Detailseite** — Link „DSGVO-Vorfall öffnen" verlinkte auf `/vaktprivacy/breaches/:id` (keine Detail-Route). Korrigiert auf `/vaktprivacy/breach` (Vorfalls-Übersicht).
+
 ---
 
 **Auth & User Provisioning — Sprint 105.**

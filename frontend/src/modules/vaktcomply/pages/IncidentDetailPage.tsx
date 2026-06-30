@@ -461,7 +461,7 @@ export default function IncidentDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <a
-                    href={`/vaktprivacy/breaches/${incident.breach_id}`}
+                    href="/vaktprivacy/breach"
                     className="text-sm text-amber-400 hover:underline"
                   >
                     {t('vaktcomply.incidentDetail.openBreach')}

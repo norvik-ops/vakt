@@ -1,6 +1,6 @@
 # API Reference
 
-Vakt exposes a REST API at `/api/v1`. The full machine-readable spec lives in [`docs/api/openapi.yaml`](../../docs/api/openapi.yaml) (OpenAPI 3.0.3).
+Vakt exposes a REST API at `/api/v1`. The full machine-readable spec lives in [`backend/internal/shared/apidocs/openapi.yaml`](../../backend/internal/shared/apidocs/openapi.yaml) (OpenAPI 3.0.3).
 
 ## Base URL
 

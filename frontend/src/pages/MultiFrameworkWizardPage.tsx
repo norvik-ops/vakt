@@ -504,7 +504,7 @@ function ProGateView() {
           </p>
           <div className="flex gap-3 justify-center pt-2">
             <a
-              href="/settings/license"
+              href="/settings"
               className="inline-block bg-indigo-600 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-indigo-700"
             >
               Lizenz aktivieren

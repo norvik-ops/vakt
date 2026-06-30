@@ -157,7 +157,7 @@ Für Compliance-Texte: `qwen2.5:7b` > `phi3.5:mini` > `qwen2.5:3b` > `llama3.2:3
 Lokal: `llama3.2:1b` (klein → schnell). Cloud: `mistral-small-latest`.
 
 **Q: Was passiert mit dem Compliance-Kontext beim KI-Aufruf?**
-Vakt sendet kompakte Daten-Zusammenfassungen an die KI: z.B. „17 offene Controls, davon 3 überfällig, 5 kritische Risiken offen". **Niemals Klartext-Risiken, niemals Personenbezug, niemals Audit-Log-Einträge.** Die Prompts sind in [`backend/internal/shared/ai/service.go`](../../backend/internal/shared/ai/service.go) im Klartext nachlesbar.
+Vakt sendet kompakte Daten-Zusammenfassungen an die KI: z.B. „17 offene Controls, davon 3 überfällig, 5 kritische Risiken offen". **Niemals Klartext-Risiken, niemals Personenbezug, niemals Audit-Log-Einträge.** Die Prompts sind in [`backend/internal/services/ai/client.go`](../../backend/internal/services/ai/client.go) im Klartext nachlesbar.
 
 **Q: Kann ich eigene Modelle einbinden?**
 Ja — jedes OpenAI-kompatible Endpoint funktioniert. LM Studio, vLLM, LocalAI etc. lassen sich als `VAKT_AI_BASE_URL` setzen.
