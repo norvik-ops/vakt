@@ -91,7 +91,7 @@ Im Demo-Modus (`VAKT_DEMO=true`) wird **bei jedem Aufruf der Login-Seite automat
 Die Credentials erscheinen **immer dynamisch** in der UI / im API-Response von `/demo/start`. Wer in Doku oder Tutorials feste Demo-Credentials nennt, dokumentiert einen Bug. Hintergrund + Design-Entscheidung: ADR-0015 (Entwicklungs-Repo).
 
 **Schutzmechanismen:**
-- `POST /api/v1/demo/start` ist rate-limited auf 5 Requests/Minute pro IP (Burst 5), um DB-Flooding zu verhindern.
+- `POST /api/v1/demo/start` ist rate-limited auf 10 Requests pro 5-Minuten-Fenster pro IP (Fixed-Window), um DB-Flooding zu verhindern.
 - Cleanup-Job läuft alle 15 Min, löscht Demo-Orgs deren `created_at < NOW() - INTERVAL '4 hours'`. Effektive Lebensdauer einer Demo-Session: zwischen 4 h und 4 h 15 min.
 - Demo-Modus deaktiviert keine Produktiv-Features im Code — die Trennung passiert ausschließlich über `cfg.DemoSeed`. Niemals `VAKT_DEMO=true` auf Produktiv-Instanzen mit echten Compliance-Daten.
 

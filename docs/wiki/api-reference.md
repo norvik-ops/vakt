@@ -27,7 +27,7 @@ curl -X POST https://vakt.example.com/api/v1/auth/login \
 Response:
 ```json
 {
-  "token": "v2.local.xxxx",
+  "token": "v4.local.xxxx",
   "user": { "id": "...", "email": "admin@example.com", "role": "admin" }
 }
 ```
@@ -74,7 +74,7 @@ Common HTTP status codes: `400` (validation), `401` (unauthenticated), `403` (fo
 ## Rate limiting
 
 - Authenticated requests: **300 req/min per organisation** (Redis token bucket)
-- Auth endpoints (`/auth/*`): **10 req/min per IP**
+- Login (`/auth/login`): failure-based lockout — **10 failed attempts per (IP, email)** → 15 min block (only that account, NAT-safe); secondary **50 failed attempts per IP** total (`VAKT_RATELIMIT_IP_MAX`)
 
 Rate-limit headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`.
 
@@ -105,7 +105,7 @@ Rate-limit headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-R
 | `GET` | `/vaktscan/findings/:id` | Get finding |
 | `PUT` | `/vaktscan/findings/:id` | Update finding status/severity |
 | `GET` | `/vaktscan/scans` | List scans |
-| `POST` | `/vaktscan/scans` | Trigger scan |
+| `POST` | `/vaktscan/assets/:id/scans` | Trigger scan for an asset |
 
 ### Vakt Comply (`vaktcomply`)
 
@@ -236,7 +236,7 @@ Training assignment and completion tracking are available in Community. The phis
 ## Example: create an asset
 
 ```bash
-TOKEN="v2.local.xxx"
+TOKEN="v4.local.xxx"
 
 curl -X POST https://vakt.example.com/api/v1/vaktscan/assets \
   -H "Authorization: Bearer $TOKEN" \

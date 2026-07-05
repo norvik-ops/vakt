@@ -39,8 +39,8 @@ redis-cli KEYS 'login_fail_ip_email:*' | xargs redis-cli DEL
 ## Rate-Limit 429 — Demo-Start oder Login
 
 **Demo-Start (`POST /api/v1/demo/start`):**
-- Limit: 10 Starts pro Minute pro IP, Reset nach 5 Minuten.
-- Ursache: Mehr als 10 Klicks auf „Demo starten" in einer Minute.
+- Limit: 10 Starts pro 5-Minuten-Fenster pro IP (Fixed-Window).
+- Ursache: Mehr als 10 Klicks auf „Demo starten" in 5 Minuten.
 - Lösung: 5 Minuten warten.
 
 **Login (`POST /api/v1/auth/login`):**

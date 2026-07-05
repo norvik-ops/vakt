@@ -66,7 +66,7 @@ Nach einem Scan normalisiert Vakt Scan alle Ergebnisse in ein einheitliches Find
 
 - **Deduplizierung** — Gleiche CVE-ID auf gleichem Asset wird über Scanner hinweg zusammengeführt; Severity wird auf Maximum gesetzt, alle Quellen (`sources`-JSONB) werden beibehalten
 - **CVE-Anreicherung** — CVSS-Score und Beschreibung werden über NVD API v2.0 nachgeladen (Redis-Cache 24h; automatischer Retry bei 429-Responses)
-- **EPSS-Anreicherung** — EPSS-Score (Exploit Prediction Scoring System) wird nach dem Scan automatisch nachgeladen
+- **EPSS-Anreicherung** — EPSS-Score (Exploit Prediction Scoring System) wird nach dem Scan nachgeladen, sobald `VAKT_EPSS_ENABLED=true` gesetzt ist (Opt-in — der Score kommt aus der öffentlichen FIRST.org-API, daher standardmäßig aus wegen No-Phone-Home)
 
 ### Finding-Status
 

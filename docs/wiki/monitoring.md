@@ -75,7 +75,7 @@ curl -s http://vakt-worker:9090/health/queue | jq .
 ### Access
 
 `/metrics` is served by the API on port `:8080` and is **IP-allowlisted** to localhost
-and Docker-internal subnets (`172.0.0.0/8`, `10.0.0.0/8`, `192.168.0.0/16`).
+and Docker-internal subnets (`172.16.0.0/12`, `10.0.0.0/8`, `192.168.0.0/16`).
 It is **not exposed via nginx** to the public internet — scraping must happen from within
 the Docker network or from the host.
 

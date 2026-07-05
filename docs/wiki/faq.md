@@ -57,7 +57,7 @@ Keine. Vakt arbeitet vollständig lokal:
 - Keine Daten werden an Dritte übermittelt
 - Der KI-Berater läuft standardmäßig über Ollama auf dem eigenen Server
 
-Die einzige externe Verbindung, die Vakt standardmäßig aufbaut, ist eine Prüfung auf neue Releases bei GitHub (`/api/v1/version/check`) — rein lesend, sendet keine Daten. Wenn du auch das unterbinden willst, kannst du den API-Container netzwerktechnisch isolieren.
+Standardmäßig baut Vakt **keine** externe Verbindung auf. Optional aktivierst du mit `VAKT_UPDATE_CHECK=true` eine tägliche, rein lesende Prüfung auf neue Releases gegen die öffentliche GitHub-API — sie sendet keine Daten (kein Instanz-Identifier). Ohne diese Variable bleibt die Instanz vollständig offline.
 
 Der KI-Berater ist standardmäßig aktiv und läuft lokal auf deinem Server — keine Daten verlassen die Instanz. Wer Cloud-KI bevorzugt (z. B. Mistral AI, EU-Server), konfiguriert das explizit in der `.env`. Wer keine KI möchte, setzt `VAKT_AI_PROVIDER=disabled`.
 
@@ -70,7 +70,7 @@ Die wichtigsten Unterschiede:
 | | Vakt | Vanta / Drata |
 |---|---|---|
 | **Hosting** | Selbst gehostet, eigene Infrastruktur | Cloud, Daten beim Anbieter |
-| **Preis** | CE kostenlos · Pro ab 299 €/Monat | ~€10.000–30.000/Jahr |
+| **Preis** | CE kostenlos · Pro ab 299 €/Monat | ~€9.000–25.000/Jahr |
 | **Datenhoheit** | Vollständig bei dir | Beim Cloud-Anbieter |
 | **DSGVO** | Keine Drittübermittlung | Datenexport in US-Cloud |
 | **Anpassbarkeit** | Quellcode zugänglich | Closed Source |

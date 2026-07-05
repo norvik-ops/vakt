@@ -211,7 +211,7 @@ The most important environment variables:
 | `VAKT_MODULES_ENABLED` | all | Comma-separated list of enabled modules |
 | `AUTO_MIGRATE` | `false` | Run DB migrations automatically on startup |
 | `VAKT_DEMO` | `false` | Enable demo mode for local try-out (auto-generates login credentials) |
-| `VAKT_AI_PROVIDER` | — | AI provider (`openai` for OpenAI-compatible APIs) |
+| `VAKT_AI_PROVIDER` | `ollama` | AI provider: `ollama` (default, local) · `openai` (OpenAI-compatible) · `disabled` |
 | `VAKT_AI_BASE_URL` | — | Base URL of the AI API |
 | `VAKT_AI_API_KEY` | — | API key for the AI provider |
 | `VAKT_AI_MODEL` | — | Model name (e.g. `mistral-small-latest`) |

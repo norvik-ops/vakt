@@ -61,7 +61,7 @@ Key env-var changes introduced in 0.5.x (apply if upgrading from < 0.5):
 | `VAKT_OLLAMA_URL` | `VAKT_AI_BASE_URL` | Rename required |
 | `VAKT_OLLAMA_MODEL` | `VAKT_AI_MODEL` | Rename required |
 | — | `VAKT_AI_PROVIDER` | New; default `ollama` |
-| — | `VAKT_CORS_ORIGINS` | New; default `*` |
+| — | `VAKT_CORS_ORIGINS` | New; default `http://localhost,http://localhost:5173` (in Produktion auf die echte Frontend-Domain setzen; `*` bricht im Nicht-Demo-Modus bewusst ab) |
 | — | `VAKT_METRICS_DISABLED` | Opt-out flag; metrics are on by default (set to `true` to disable) |
 
 ---

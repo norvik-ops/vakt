@@ -79,7 +79,7 @@ Die vollständige Referenz aller Variablen findest du in der [Konfigurationsrefe
 | `VAKT_MODULES_ENABLED` | alle | Kommagetrennte Liste aktiver Module |
 | `AUTO_MIGRATE` | `false` | Migrationen automatisch beim Start ausführen |
 | `VAKT_FRONTEND_URL` | `http://localhost:5173` | Öffentliche URL des Frontends (für E-Mail-Links) |
-| `VAKT_AI_PROVIDER` | `openai` | KI-Provider (`openai` oder `disabled`) |
+| `VAKT_AI_PROVIDER` | `ollama` | KI-Provider: `ollama` (Standard, lokal) · `openai` (OpenAI-kompatibel) · `disabled` |
 | `VAKT_AI_BASE_URL` | `http://ollama:11434/v1` | API-Endpunkt des KI-Providers |
 | `VAKT_AI_MODEL` | `qwen2.5:7b` | Modellname (Default; Apache 2.0; ~4.5 GB RAM, braucht 8 GB; auf kleinen VMs `qwen2.5:3b`) |
 

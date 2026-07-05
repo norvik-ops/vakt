@@ -53,7 +53,7 @@ VAKT_REDIS_URL=redis://:REDIS_PASSWORT@redis:6379
 VAKT_SECRET_KEY=<32-byte-hex>
 
 # Domain dieser Instanz (ohne trailing Slash)
-VAKT_BASE_URL=https://vakt.kunde-a.example.com
+VAKT_FRONTEND_URL=https://vakt.kunde-a.example.com
 
 # Lizenz
 VAKT_LICENSE_KEY=<pro-license-key-kunde-a>
