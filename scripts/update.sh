@@ -77,7 +77,7 @@ if [[ "$SKIP_BACKUP" == "false" ]]; then
 		bash ./scripts/backup.sh
 		echo "    Backup complete."
 	else
-		echo "ERROR: backup.sh not found. Run update.sh from the vakt-app root directory,"
+		echo "ERROR: backup.sh not found. Run update.sh from the vakt root directory,"
 		echo "       or use --no-backup if you have taken a manual backup."
 		exit 1
 	fi

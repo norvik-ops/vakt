@@ -4,12 +4,12 @@ Danke fürs Interesse, zu Vakt beizutragen. Diese Datei beschreibt, wie Issues, 
 
 ## Vorab — Repository-Topologie
 
-Vakt lebt in zwei Repos:
+Dieses Repository (`norvik-ops/vakt`) ist ein **kuratierter Mirror**. Die Entwicklung findet stromaufwärts in einem Mono-Repo statt, von dem aus per CI hierher synchronisiert wird. **Direkte PRs auf diesen Mirror werden beim nächsten Sync überschrieben.**
 
-- **`Matharnica/vakt-app`** (privat) — Mono-Repo. Sourcen, ADRs, Sprint-Doku, interne Tools. **Hier wird entwickelt.**
-- **`norvik-ops/vatk`** (public) — kuratierter Mirror, der per CI synchronisiert wird. **Direkte PRs auf den Public Mirror werden beim nächsten Sync überschrieben.**
+So trägst du bei:
 
-Bitte alle Patches gegen `Matharnica/vakt-app` einreichen. Wenn du nur das öffentliche Repo siehst, öffne ein Issue im Public Mirror — wir migrieren es ins private Repo.
+- **Bug oder Feature-Wunsch:** Öffne ein [Issue](https://github.com/norvik-ops/vakt/issues). Wir übernehmen es stromaufwärts und pflegen den Fix zurück in den Mirror.
+- **Code-Vorschlag:** Öffne trotzdem gern einen PR als Referenz — wir übernehmen die Änderung stromaufwärts (mit Credit) statt sie direkt zu mergen.
 
 ## Branch-Strategie
 

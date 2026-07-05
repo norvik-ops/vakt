@@ -14,7 +14,6 @@ Diese Seite ist der Einstieg; jede Datei deckt einen abgegrenzten Betriebsbereic
 | [`pgbouncer.md`](pgbouncer.md) | Connection-Pooling (pgBouncer Transaction-Mode), Pool-Sizing | Multi-Instance / MSP-Setup |
 | [`redis-ha.md`](redis-ha.md) | Redis-Hochverfügbarkeit via Sentinel | HA-Anforderung / SLA |
 | [`migration-db-user.md`](migration-db-user.md) | DB-User-Migration / Rechte-Setup | Bei DB-User-Wechsel |
-| [`maintenance-window-server-upgrade.md`](maintenance-window-server-upgrade.md) | Wartungsfenster-Prozedur für Server-/OS-Upgrades | Geplante Wartung |
 | [`redis-failure.md`](redis-failure.md) | **Redis-Ausfall** — Diagnose, Neustart, Daten-Recovery, Auswirkung auf Asynq-Queue | Bei Redis-Ausfall / Login-500-Fehlern |
 | [`migrations-rollback.md`](migrations-rollback.md) | **Migrations-Rollback** — golang-migrate down, dirty-Flag, fehlendes down.sql, Smoke-Test | Nach fehlgeschlagener DB-Migration |
 | [`bulk-deletion-recovery.md`](bulk-deletion-recovery.md) | **Bulk-Deletion-Recovery** — Erkennung, Audit-Log, partieller Restore, Managed-Hosting-Isolation | Nach versehentlicher Massen-Löschung |

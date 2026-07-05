@@ -157,7 +157,6 @@ Schließt die in v0.14.0 zurückgestellten Items aus Sprint 22 ab. Keine Migrati
 - **SessionsPage zeigt aktuelle Session:** Vom Backend zurückgegebenes `is_current`-Flag macht die laufende Session in der Tabelle erkennbar. Neuer „Panic"-Button beendet auch die eigene Session (2-Step-confirm, auto-redirect auf `/login`). Bestehende Sessions vor dem Upgrade bekommen kein `session_id` im Frontend → die „Diese hier"-Markierung wird ab dem ersten Re-Login angezeigt.
 - **Login-Response enthält neu `session_id`:** Custom-Frontend-Forks die `LoginResponse` typisieren: das Feld ist `string | undefined`, additiv. Wer es nicht nutzt, ignoriert es.
 - **Integration-Tests ergänzt:** `cleanup_jobs_real_test.go` testet die zwei Cleanup-Jobs aus Sprint 22 mit echter Postgres via testcontainers. Run via `go test -tags=integration ./internal/integration_test/...`. CI: braucht Docker-Daemon.
-- **Server-Upgrade-Doku:** Wer Vakt auf Strato self-hosted: `docs/operations/maintenance-window-server-upgrade.md` ist Vorlage für ein Wartungsfenster (VC-2-4 → VC-6-12 als konkretes Beispiel, Pattern für jedes vServer-Upgrade gültig).
 
 ### v0.14.0 (Sprint 22 — Fertigstellungs-Welle für Sprints 17-20)
 
@@ -265,5 +264,5 @@ Falls ein Upgrade schief geht:
 
 ## Support
 
-- GitHub Issues: https://github.com/matharnica/vakt/issues
+- GitHub Issues: https://github.com/norvik-ops/vakt/issues
 - Dokumentation: https://vakt.norvikops.de/docs

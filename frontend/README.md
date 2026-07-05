@@ -84,4 +84,4 @@ Latest 2 Versionen Chrome, Firefox, Safari, Edge. Kein IE-Support, kein Polyfill
 
 ## Public Mirror
 
-Beim Sync nach `norvik-ops/vatk` wird das gesamte `frontend/`-Verzeichnis 1:1 übernommen (siehe ADR-0016). Keine Build-Artefakte im Repo committen — `node_modules/` und `dist/` sind in `.gitignore`.
+Beim Sync nach `norvik-ops/vakt` wird das gesamte `frontend/`-Verzeichnis 1:1 übernommen (siehe ADR-0016). Keine Build-Artefakte im Repo committen — `node_modules/` und `dist/` sind in `.gitignore`.

@@ -320,11 +320,3 @@ docker compose exec redis redis-cli CONFIG GET maxclients
   wenn der `vakt-worker`-DNS-Name auf mehrere Container auflöst.
 - Für `docker compose` (ohne Swarm) ist `deploy.replicas` ab Compose Spec v3.4
   unterstützt.
-
----
-
-## Zabbix Integration (Norvik ISMS Server)
-
-The internal ISMS instance at `isms.norvikops.de` runs Zabbix + a Prometheus pull bridge.
-Vakt metrics appear as `vakt.*` items in Zabbix after the bridge polls `/metrics`.
-This is a Norvik-internal setup — self-hosted customers do not need Zabbix.
