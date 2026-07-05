@@ -232,6 +232,9 @@ services:
       DB_PORT: "5432"
       DB_NAME: vakt
       POOL_MODE: transaction
+      # Postgres 16 authenticates with scram-sha-256; the 1.22.1-p0 image
+      # defaults to md5 and fails with "wrong password type" (S120 smoke test).
+      AUTH_TYPE: scram-sha-256
       MAX_CLIENT_CONN: "100"
       DEFAULT_POOL_SIZE: "20"
       # pgx sends extra_float_digits on connect — pgBouncer must ignore it
