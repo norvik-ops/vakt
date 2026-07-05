@@ -2,12 +2,12 @@
 
 **Self-hosted Security & Compliance Platform — NIS2, ISO 27001, BSI-Grundschutz, DORA, TISAX, EU AI Act. Deploy in 5 minutes. Local AI — your data never leaves your server.**
 
-![Status: Private Beta](https://img.shields.io/badge/status-Private_Beta-6366f1)
+![Status: Early Access](https://img.shields.io/badge/status-Early_Access-6366f1)
 ![License: ELv2](https://img.shields.io/badge/license-Elastic_License_2.0-blue)
 ![Go](https://img.shields.io/badge/go-1.26%2B-blue)
 ![Docker](https://img.shields.io/badge/docker-compose%20v2-blue)
 
-> **Private Beta** — Vakt is under active development. Expect rough edges and breaking changes between releases. Support is **best-effort (no SLA)**, and as a self-hosted product **backups/restore are your responsibility** (scripts + runbook included). See the [Beta Disclaimer](docs/wiki/beta-disclaimer.md) for details. Feedback welcome: [hello@norvikops.de](mailto:hello@norvikops.de)
+> **Early Access** — Vakt is under active development. Expect rough edges and breaking changes between releases. Support is **best-effort (no SLA)**, and as a self-hosted product **backups/restore are your responsibility** (scripts + runbook included). See the [Early Access Disclaimer](docs/wiki/beta-disclaimer.md) for details. Feedback welcome: [hello@norvikops.de](mailto:hello@norvikops.de)
 
 **Try it locally** — `docker compose up -d` and open [http://localhost](http://localhost). No sign-up, no cloud, no data leaving your machine.
 

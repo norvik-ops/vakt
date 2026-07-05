@@ -1,11 +1,11 @@
-# Vakt — Private Beta: Status, Support & Erwartungsmanagement
+# Vakt — Early Access: Status, Support & Erwartungsmanagement
 
-**Status: Private Beta.** Vakt ist funktional umfangreich und wird aktiv
-weiterentwickelt, befindet sich aber noch in der **Private-Beta-Phase**. Dieses
+**Status: Early Access.** Vakt ist funktional umfangreich und wird aktiv
+weiterentwickelt, befindet sich aber noch in der **Early-Access-Phase**. Dieses
 Dokument macht transparent, was das für Support, Betrieb und
 Geschäftskontinuität bedeutet — damit es vorab klar ist, statt im Fragebogen.
 
-## Was „Private Beta" bedeutet
+## Was „Early Access" bedeutet
 
 - **Funktionsumfang:** breit und produktiv nutzbar (NIS2, ISO 27001:2022, BSI
   IT-Grundschutz, DSGVO), aber einzelne Workflows können sich noch ändern.
@@ -18,7 +18,7 @@ Geschäftskontinuität bedeutet — damit es vorab klar ist, statt im Fragebogen
 ## Support — Erwartungsmanagement
 
 - **Best-Effort-Support, keine zugesicherte Reaktionszeit, kein 24/7-SLA.**
-  In der Private Beta gibt es **keine** vertragliche Service-Level-Zusage.
+  Im Early Access gibt es **keine** vertragliche Service-Level-Zusage.
 - Kanal: Issues/Anfragen werden best-effort und in der Regel innerhalb weniger
   Werktage bearbeitet — ohne Garantie.
 - Sicherheitsrelevante Meldungen siehe `SECURITY.md` /
@@ -38,7 +38,7 @@ Datensicherung liegt damit in **deiner** Verantwortung.
 ## Geschäftskontinuität (ehrlich, kein Vertrag)
 
 Vakt wird aktuell maßgeblich von **einer Schlüsselperson** entwickelt und
-betrieben (niedriger „Bus-Faktor"). Das ist für eine Private Beta vertretbar,
+betrieben (niedriger „Bus-Faktor"). Das ist im Early Access vertretbar,
 ist aber transparent zu nennen:
 
 - Der Quellcode ist **source-available** (Elastic License v2). Selbst im Fall, dass
@@ -49,7 +49,7 @@ ist aber transparent zu nennen:
 
 ## Kurzfassung für Procurement/Security-Fragebögen
 
-> Vakt befindet sich in Private Beta. Es gibt aktuell keinen vertraglichen
+> Vakt befindet sich in Early Access. Es gibt aktuell keinen vertraglichen
 > Support-SLA (Best-Effort). Datensicherung und Restore liegen beim Betreiber
 > (Skripte + Runbook mitgeliefert). Der Code ist source-available (ELv2), self-
 > hosted, ohne Phone-Home — Geschäftskontinuität ist dadurch unabhängig vom
