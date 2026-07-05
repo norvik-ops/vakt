@@ -13,7 +13,6 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
@@ -30,12 +29,19 @@ import (
 
 // ── test helpers ──────────────────────────────────────────────────────────────
 
-const testWebhookSecret = "test-secret-polar"
+const (
+	testWebhookSecret = "test-secret-polar"
+	testWebhookID     = "msg_test_00000000"
+	testWebhookTS     = "1700000000"
+)
 
-func makeSignature(secret string, body []byte) string {
+// makeSignature builds a Standard Webhooks signature the way Polar does:
+// "v1," + base64(HMAC-SHA256(secret, "{id}.{timestamp}.{body}")). The secret is
+// used as raw UTF-8 (Polar's convention), not base64-decoded.
+func makeSignature(secret, id, ts string, body []byte) string {
 	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write(body)
-	return "v1=" + hex.EncodeToString(mac.Sum(nil))
+	mac.Write([]byte(id + "." + ts + "." + string(body)))
+	return "v1," + base64.StdEncoding.EncodeToString(mac.Sum(nil))
 }
 
 // testPrivKeyPEM generates a throwaway ECDSA P-256 private key PEM.
@@ -183,7 +189,9 @@ func buildRequest(t *testing.T, event polarEvent) *http.Request {
 	}
 	req := httptest.NewRequest(http.MethodPost, "/billing/webhook", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("webhook-signature", makeSignature(testWebhookSecret, body))
+	req.Header.Set("webhook-id", testWebhookID)
+	req.Header.Set("webhook-timestamp", testWebhookTS)
+	req.Header.Set("webhook-signature", makeSignature(testWebhookSecret, testWebhookID, testWebhookTS, body))
 	return req
 }
 
@@ -239,7 +247,8 @@ func TestKeyExpiry_UnknownFallsBackToMonth(t *testing.T) {
 func TestVerifySignature_Valid(t *testing.T) {
 	h := &Handler{webhookSecret: testWebhookSecret}
 	body := []byte(`{"type":"subscription.created"}`)
-	if !h.verifySignature(makeSignature(testWebhookSecret, body), body) {
+	sig := makeSignature(testWebhookSecret, testWebhookID, testWebhookTS, body)
+	if !h.verifySignature(testWebhookID, testWebhookTS, sig, body) {
 		t.Fatal("valid signature must verify")
 	}
 }
@@ -247,7 +256,8 @@ func TestVerifySignature_Valid(t *testing.T) {
 func TestVerifySignature_WrongSecret(t *testing.T) {
 	h := &Handler{webhookSecret: testWebhookSecret}
 	body := []byte(`{"type":"subscription.created"}`)
-	if h.verifySignature(makeSignature("wrong", body), body) {
+	sig := makeSignature("wrong", testWebhookID, testWebhookTS, body)
+	if h.verifySignature(testWebhookID, testWebhookTS, sig, body) {
 		t.Fatal("wrong secret must fail")
 	}
 }
@@ -255,7 +265,8 @@ func TestVerifySignature_WrongSecret(t *testing.T) {
 func TestVerifySignature_EmptySecret_RejectsAll(t *testing.T) {
 	h := &Handler{webhookSecret: ""}
 	body := []byte(`{"type":"test"}`)
-	if h.verifySignature(makeSignature("anything", body), body) {
+	sig := makeSignature("anything", testWebhookID, testWebhookTS, body)
+	if h.verifySignature(testWebhookID, testWebhookTS, sig, body) {
 		t.Fatal("empty webhook secret must reject all signatures")
 	}
 }
@@ -263,9 +274,46 @@ func TestVerifySignature_EmptySecret_RejectsAll(t *testing.T) {
 func TestVerifySignature_TamperedBody(t *testing.T) {
 	h := &Handler{webhookSecret: testWebhookSecret}
 	original := []byte(`{"type":"subscription.created"}`)
-	sig := makeSignature(testWebhookSecret, original)
-	if h.verifySignature(sig, []byte(`{"type":"subscription.revoked"}`)) {
+	sig := makeSignature(testWebhookSecret, testWebhookID, testWebhookTS, original)
+	if h.verifySignature(testWebhookID, testWebhookTS, sig, []byte(`{"type":"subscription.revoked"}`)) {
 		t.Fatal("tampered body must fail")
+	}
+}
+
+func TestVerifySignature_TamperedTimestamp(t *testing.T) {
+	h := &Handler{webhookSecret: testWebhookSecret}
+	body := []byte(`{"type":"subscription.created"}`)
+	sig := makeSignature(testWebhookSecret, testWebhookID, testWebhookTS, body)
+	// Same signature, different timestamp — the timestamp is part of the signed content.
+	if h.verifySignature(testWebhookID, "1699999999", sig, body) {
+		t.Fatal("tampered timestamp must fail")
+	}
+}
+
+func TestVerifySignature_MultipleSignatures(t *testing.T) {
+	h := &Handler{webhookSecret: testWebhookSecret}
+	body := []byte(`{"type":"subscription.active"}`)
+	good := makeSignature(testWebhookSecret, testWebhookID, testWebhookTS, body)
+	// Standard Webhooks allows a space-separated list (e.g. during secret rotation);
+	// ours is the second entry, an unrelated one is first.
+	header := "v1,bm90LXRoZS1yaWdodC1zaWc= " + good
+	if !h.verifySignature(testWebhookID, testWebhookTS, header, body) {
+		t.Fatal("must verify when a valid signature is present among several")
+	}
+}
+
+func TestVerifySignature_MissingHeaders(t *testing.T) {
+	h := &Handler{webhookSecret: testWebhookSecret}
+	body := []byte(`{}`)
+	sig := makeSignature(testWebhookSecret, testWebhookID, testWebhookTS, body)
+	if h.verifySignature("", testWebhookTS, sig, body) {
+		t.Fatal("missing webhook-id must reject")
+	}
+	if h.verifySignature(testWebhookID, "", sig, body) {
+		t.Fatal("missing webhook-timestamp must reject")
+	}
+	if h.verifySignature(testWebhookID, testWebhookTS, "", body) {
+		t.Fatal("missing webhook-signature must reject")
 	}
 }
 
@@ -275,7 +323,9 @@ func TestHandle_InvalidSignature_Returns401(t *testing.T) {
 	h := NewHandler(testWebhookSecret, "", SMTPConfig{})
 	body, _ := json.Marshal(polarEvent{Type: "subscription.created"})
 	req := httptest.NewRequest(http.MethodPost, "/billing/webhook", bytes.NewReader(body))
-	req.Header.Set("webhook-signature", "v1=badhash")
+	req.Header.Set("webhook-id", testWebhookID)
+	req.Header.Set("webhook-timestamp", testWebhookTS)
+	req.Header.Set("webhook-signature", "v1,YmFkc2lnbmF0dXJl")
 	rec := doHandle(t, h, req)
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("want 401, got %d", rec.Code)

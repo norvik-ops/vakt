@@ -12,6 +12,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -147,7 +148,8 @@ func (h *Handler) Handle(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "cannot read body"})
 	}
 
-	if !h.verifySignature(c.Request().Header.Get("webhook-signature"), body) {
+	hdr := c.Request().Header
+	if !h.verifySignature(hdr.Get("webhook-id"), hdr.Get("webhook-timestamp"), hdr.Get("webhook-signature"), body) {
 		log.Warn().Msg("polar webhook: invalid signature")
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid signature"})
 	}
@@ -221,18 +223,30 @@ func (h *Handler) Handle(c echo.Context) error {
 	}
 }
 
-// verifySignature verifies the Polar.sh HMAC-SHA256 webhook signature.
-// Polar sends the signature as "v1=<hex-digest>" in the "webhook-signature" header.
-func (h *Handler) verifySignature(sig string, body []byte) bool {
-	if h.webhookSecret == "" || sig == "" {
+// verifySignature verifies the Polar.sh webhook signature per the Standard Webhooks
+// spec (https://www.standardwebhooks.com), which Polar follows.
+//
+// Polar sends three headers: webhook-id, webhook-timestamp, webhook-signature.
+// The signed content is "{id}.{timestamp}.{body}", HMAC-SHA256 keyed with the raw
+// secret string (Polar uses the secret as raw UTF-8, NOT base64-decoded — unlike
+// Svix/Clerk), then base64-encoded. webhook-signature is a space-separated list of
+// "v1,<base64>" signatures (there can be several during secret rotation); the request
+// is valid if any one matches.
+func (h *Handler) verifySignature(id, timestamp, sigHeader string, body []byte) bool {
+	if h.webhookSecret == "" || id == "" || timestamp == "" || sigHeader == "" {
 		return false
 	}
-	// Strip the "v1=" prefix if present.
-	hexSig := strings.TrimPrefix(sig, "v1=")
+	signedContent := id + "." + timestamp + "." + string(body)
 	mac := hmac.New(sha256.New, []byte(h.webhookSecret))
-	mac.Write(body)
-	expected := hex.EncodeToString(mac.Sum(nil))
-	return hmac.Equal([]byte(hexSig), []byte(expected))
+	mac.Write([]byte(signedContent))
+	expected := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	for _, part := range strings.Fields(sigHeader) {
+		// Each part is "v1,<base64>"; compare the base64 portion in constant time.
+		if _, sig, ok := strings.Cut(part, ","); ok && hmac.Equal([]byte(sig), []byte(expected)) {
+			return true
+		}
+	}
+	return false
 }
 
 // keyExpiry returns the license validity duration based on the Polar recurring interval.
