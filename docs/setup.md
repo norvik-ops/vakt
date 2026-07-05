@@ -28,14 +28,14 @@ Vakt benötigt **Docker Engine 24+** und **Docker Compose v2**.
 
 ### Systemanforderungen
 
-| Ressource | Minimum | Empfohlen | Mit KI-Berater (Opt-in) |
+| Ressource | Minimum | Empfohlen | Mit KI-Berater (Standard) |
 |---|---|---|---|
 | CPU | 2 Kerne | 4 Kerne | 4 Kerne (kein GPU nötig) |
 | RAM | 2 GB | 4 GB | 8 GB (für qwen2.5:7b) |
 | Disk | 20 GB SSD | 40 GB SSD | 40 GB SSD + ~5 GB für das KI-Modell |
 | Betriebssystem | Linux 64-bit | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
 
-> **Hinweis:** Der KI-Berater ist **Opt-in** und läuft lokal via Ollama auf der CPU — kein GPU, kein Cloud-API-Key nötig. Aktivieren: Stack mit `COMPOSE_PROFILES=ai docker compose up -d` starten und `VAKT_AI_PROVIDER=openai` in `.env` setzen. Das Default-Modell wird beim ersten Start automatisch geladen (`qwen2.5:7b`, ~4.5 GB). Details: [Abschnitt 9](#9-ki-compliance-berater-konfigurieren).
+> **Hinweis:** Der KI-Berater läuft **standardmäßig** lokal via Ollama auf der CPU — kein GPU, kein Cloud-API-Key nötig. Das Default-Modell `qwen2.5:7b` (~4.5 GB) wird beim ersten `docker compose up` automatisch geladen. Deaktivieren: `VAKT_AI_PROVIDER=disabled` in `.env`. Details: [Abschnitt 9](#9-ki-compliance-berater-konfigurieren).
 
 ---
 
@@ -330,20 +330,16 @@ cd backend && go run ./cmd/admin --help
 
 ## 9. KI-Compliance-Berater konfigurieren
 
-Vakt enthält einen KI-Berater, der auf Basis der echten Compliance-Lücken priorisierte Handlungsempfehlungen generiert ("Was soll ich diese Woche tun?"). Er ist **Opt-in** und läuft lokal auf der CPU — kein GPU, kein Cloud-Account nötig.
+Vakt enthält einen KI-Berater, der auf Basis der echten Compliance-Lücken priorisierte Handlungsempfehlungen generiert ("Was soll ich diese Woche tun?"). Er läuft **standardmäßig** lokal auf der CPU — kein GPU, kein Cloud-Account nötig.
 
 ### Standard: Ollama lokal (kein GPU, kein API-Key)
 
-Aktivieren in zwei Schritten: `VAKT_AI_PROVIDER=openai` in `.env` setzen und den Stack mit dem `ai`-Profil starten:
+Ollama startet automatisch mit `docker compose up`. Das Default-Modell wird beim ersten Start einmalig vom `ollama-init`-Container gezogen (~4.5 GB) — kein manueller Schritt nötig.
+
+Zum Wechseln des Modells:
 
 ```bash
-COMPOSE_PROFILES=ai docker compose up -d
-```
-
-Das Default-Modell wird einmalig vom `ollama-init`-Container gezogen (~4.5 GB) — manuell ginge es so:
-
-```bash
-docker compose --profile ai exec ollama ollama pull qwen2.5:7b
+docker compose exec ollama ollama pull qwen2.5:3b
 ```
 
 Empfohlene CPU-taugliche Modelle (kein VRAM nötig):

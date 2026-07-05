@@ -157,13 +157,13 @@ VAKT_SMTP_FROM=vakt@meine-firma.de
 
 ## KI-Berater (Standard — lokal via Ollama)
 
-Vakt enthält einen integrierten KI-Compliance-Berater, der lokal via Ollama läuft. **Opt-in:** `VAKT_AI_PROVIDER=openai` setzen **und** den Stack mit dem `ai`-Compose-Profil starten (`COMPOSE_PROFILES=ai docker compose up -d`) — ohne das Profil startet der Ollama-Container nicht und belegt keinen RAM. Das Default-Modell `qwen2.5:7b` (~4.5 GB, Apache 2.0, CPU-tauglich) wird beim ersten Start automatisch geladen — kein GPU, kein Cloud-API-Key nötig. Auf VMs mit < 8 GB RAM `qwen2.5:3b` verwenden.
+Vakt enthält einen integrierten KI-Compliance-Berater, der lokal via Ollama läuft — **standardmäßig aktiv**. Das Default-Modell `qwen2.5:7b` (~4.5 GB, Apache 2.0, CPU-tauglich) wird beim ersten `docker compose up` automatisch geladen — kein GPU, kein Cloud-API-Key, kein manueller Schritt nötig. Auf VMs mit < 8 GB RAM `qwen2.5:3b` verwenden. Deaktivieren: `VAKT_AI_PROVIDER=disabled` in `.env` setzen.
 
 Cloud-Alternative: **Mistral AI** (EU-Server, DSGVO-freundlich via AVV) — schneller, aber Daten verlassen die Instanz.
 
 | Variable | Pflicht | Standard | Beschreibung |
 |----------|---------|----------|--------------|
-| `VAKT_AI_PROVIDER` | — | `disabled` | KI-Provider. `disabled` schaltet den Berater komplett ab. `openai` aktiviert alle OpenAI-kompatiblen Endpunkte (inkl. lokales Ollama). |
+| `VAKT_AI_PROVIDER` | — | `ollama` | KI-Provider. `ollama` = lokales Ollama (Standard). `openai` = andere OpenAI-kompatible Endpunkte (z.B. Mistral). `disabled` schaltet den Berater ab. |
 | `VAKT_AI_BASE_URL` | — | `http://ollama:11434/v1` | API-Basisendpunkt des Providers. |
 | `VAKT_AI_API_KEY` | — | — | API-Key des Providers. Für lokale Provider (Ollama, LM Studio) leer lassen. |
 | `VAKT_AI_MODEL` | — | `qwen2.5:7b` | Modellname (Default; auf VMs mit < 8 GB RAM `qwen2.5:3b`). |
@@ -175,18 +175,15 @@ Cloud-Alternative: **Mistral AI** (EU-Server, DSGVO-freundlich via AVV) — schn
 | `VAKT_AI_COST_PER_MTOKEN_OUT_MICRO_EUR` | — | `0` | Kosten pro 1 Mio. Output-Tokens in Mikro-EUR. Lokales Ollama = `0`. |
 | `VAKT_AI_FAIL_OPEN_ON_OUTAGE` | — | `false` | Wenn `true`, lassen die KI-Rate-Limit-/Quota-Checks bei Redis-/Postgres-Ausfall „fail open" (KI bleibt erreichbar statt zu blocken). Audit-relevante Abwägung — Default sicher (`false`). |
 
-**Beispiel Ollama (lokal, opt-in):**
+**Standard (Ollama, lokal):**
 
 ```env
-VAKT_AI_PROVIDER=openai
+VAKT_AI_PROVIDER=ollama
 VAKT_AI_BASE_URL=http://ollama:11434/v1
 VAKT_AI_MODEL=qwen2.5:7b
 ```
 
-Modell einmalig laden:
-```bash
-docker compose exec ollama ollama pull qwen2.5:7b
-```
+Das Modell wird beim ersten Start automatisch von `ollama-init` geladen — kein manueller `ollama pull` nötig.
 
 **Beispiel Mistral AI (EU-Server, DSGVO-freundlich):**
 
