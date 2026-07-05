@@ -333,7 +333,9 @@ VAKT_LICENSE_TOKEN=550e8400-e29b-41d4-a716-446655440000
 
 **Manuelle Aktivierung:** Key unter **Einstellungen → Lizenz → License Key eingeben → Aktivieren** eintragen. Nur Admin-Benutzer haben Zugriff.
 
-**Laufzeit & Auto-Renewal:** Pro-Keys haben ein Ablaufdatum (35 Tage bei Monatsabo, 395 Tage bei Jahresabo). Mit `VAKT_LICENSE_TOKEN` erneuert sich der Key täglich automatisch — kein Admin-Eingriff nötig. Ohne Token erscheint ab 30 Tage vor Ablauf ein Banner mit Hinweis auf die Kauf-E-Mail.
+**Testphase:** Der Kauf über Polar startet mit einer 30-tägigen kostenlosen Testphase. Während des Trials ist der Key ~45 Tage gültig (30 Tage Trial + Puffer für die manuelle Aktivierung). Wandelt sich die Testphase in ein bezahltes Abo um, wird automatisch ein Key mit voller Laufzeit ausgestellt und per Mail zugeschickt; kündigst du vor Trial-Ende, läuft der Key einfach aus.
+
+**Laufzeit & Auto-Renewal:** Pro-Keys haben ein Ablaufdatum (35 Tage bei Monatsabo, 395 Tage bei Jahresabo). **Primär (offline):** Nach jedem Kauf/jeder Verlängerung kommt der Key per Mail — unter **Einstellungen → Lizenz** eintragen, keine ausgehende Verbindung nötig. **Optional (Opt-in):** Mit `VAKT_LICENSE_TOKEN` erneuert sich der Key täglich automatisch von `api.norvikops.de` — bequem, aber eine ausgehende Verbindung (siehe Datenschutz-Hinweis unten). Ohne Token erscheint ab 30 Tage vor Ablauf ein Banner mit Hinweis auf die Kauf-E-Mail.
 
 **Datenschutz-Hinweis zu `VAKT_LICENSE_TOKEN`:** Die Instanz stellt einmal täglich eine ausgehende HTTPS-Verbindung zu `api.norvikops.de` her. Dabei wird ausschließlich der Token übertragen — keine Geschäftsdaten, keine Nutzungsdaten. Wer ausgehende Verbindungen in der Firewall kontrolliert (typisch für ISO 27001 / NIS2 Umgebungen), muss `api.norvikops.de:443` in der Egress-Whitelist eintragen oder `VAKT_LICENSE_TOKEN` weglassen und die manuelle Aktivierung nutzen.
 

@@ -378,7 +378,35 @@ Funktioniert auch mit OpenAI, Groq, LM Studio oder jedem anderen OpenAI-kompatib
 
 ---
 
-## 10. Monitoring
+## 10. Pro-Lizenz aktivieren
+
+Vakt Community ist kostenlos und für immer nutzbar. **Pro** schaltet spezialisierte Frameworks, erweiterte Module und Integrationen frei — Kauf über [vakt.norvikops.de](https://vakt.norvikops.de/#preise) (Polar-Checkout, 30 Tage kostenlose Testphase).
+
+Nach dem Kauf bekommst du deinen License Key per E-Mail. Es gibt **zwei Wege**, ihn zu aktivieren:
+
+### Primär: manuell (offline, keine ausgehende Verbindung)
+
+Der empfohlene Weg für ein self-hosted Produkt — nichts verlässt deine Infrastruktur.
+
+1. License Key aus der Kauf-E-Mail kopieren.
+2. In Vakt einloggen (Admin), **Einstellungen → Lizenz** öffnen.
+3. Key einfügen → **Aktivieren**.
+
+Bei jeder Verlängerung (und bei Umwandlung der Testphase in ein bezahltes Abo) kommt automatisch ein neuer Key per Mail — einmal einfügen, fertig. Ab 30 Tage vor Ablauf erinnert ein Banner in der Oberfläche.
+
+### Optional: automatische Erneuerung (Opt-in, ausgehende Verbindung)
+
+Wer den manuellen Schritt sparen will, setzt in der `.env`:
+
+```env
+VAKT_LICENSE_TOKEN=<Renewal-Token aus der Kauf-E-Mail>
+```
+
+Die Instanz holt sich dann täglich den aktuellen Key von `api.norvikops.de` — kein Handanlegen bei Verlängerungen. **Das ist eine bewusste Opt-in-Ausnahme vom No-Phone-Home-Prinzip:** es wird ausschließlich der Token übertragen, keine Geschäfts- oder Nutzungsdaten. In Umgebungen mit strikter Egress-Kontrolle (ISO 27001 / NIS2) entweder `api.norvikops.de:443` in die Whitelist eintragen — oder den Token weglassen und beim manuellen Weg bleiben. Details: [Konfiguration → VAKT_LICENSE_TOKEN](wiki/configuration.md).
+
+---
+
+## 11. Monitoring
 
 ### Health-Endpunkte
 
@@ -397,7 +425,7 @@ Für Produktionsmonitoring empfehlen wir **Grafana + Prometheus**. Eine fertige 
 
 ---
 
-## 11. Kubernetes (Helm)
+## 12. Kubernetes (Helm)
 
 ```bash
 helm install vakt ./helm/vakt \
@@ -410,7 +438,7 @@ Alle verfügbaren Helm-Werte sind in `helm/vakt/values.yaml` dokumentiert.
 
 ---
 
-## 12. Troubleshooting
+## 13. Troubleshooting
 
 ### Container-Logs anzeigen
 

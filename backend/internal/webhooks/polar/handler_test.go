@@ -199,7 +199,7 @@ func doHandle(t *testing.T, h *Handler, req *http.Request) *httptest.ResponseRec
 // ── keyExpiry ─────────────────────────────────────────────────────────────────
 
 func TestKeyExpiry_Month(t *testing.T) {
-	exp := keyExpiry("month")
+	exp := keyExpiry("month", "active")
 	low := time.Now().Add(34 * 24 * time.Hour)
 	high := time.Now().Add(36 * 24 * time.Hour)
 	if exp.Before(low) || exp.After(high) {
@@ -208,7 +208,7 @@ func TestKeyExpiry_Month(t *testing.T) {
 }
 
 func TestKeyExpiry_Year(t *testing.T) {
-	exp := keyExpiry("year")
+	exp := keyExpiry("year", "active")
 	low := time.Now().Add(394 * 24 * time.Hour)
 	high := time.Now().Add(396 * 24 * time.Hour)
 	if exp.Before(low) || exp.After(high) {
@@ -216,8 +216,17 @@ func TestKeyExpiry_Year(t *testing.T) {
 	}
 }
 
+func TestKeyExpiry_Trialing_ShortRegardlessOfInterval(t *testing.T) {
+	exp := keyExpiry("year", "trialing")
+	low := time.Now().Add(44 * 24 * time.Hour)
+	high := time.Now().Add(46 * 24 * time.Hour)
+	if exp.Before(low) || exp.After(high) {
+		t.Fatalf("trialing yearly key must be capped to ~45d, got %v", exp)
+	}
+}
+
 func TestKeyExpiry_UnknownFallsBackToMonth(t *testing.T) {
-	exp := keyExpiry("")
+	exp := keyExpiry("", "active")
 	low := time.Now().Add(34 * 24 * time.Hour)
 	high := time.Now().Add(36 * 24 * time.Hour)
 	if exp.Before(low) || exp.After(high) {
@@ -352,6 +361,61 @@ func TestHandle_SubscriptionCreated_EmailSent(t *testing.T) {
 	}
 }
 
+func TestHandle_SubscriptionCreated_Trialing_IssuesShortKey(t *testing.T) {
+	srv := startSMTPRecorder(t)
+	h := newHandler(t, srv)
+
+	event := polarEvent{
+		Type: "subscription.created",
+		Data: polarSubscription{
+			ID: "sub_trial_1", Status: "trialing",
+			Price: struct {
+				RecurringInterval string `json:"recurring_interval"`
+			}{RecurringInterval: "year"},
+			Customer: struct {
+				Email string `json:"email"`
+				Name  string `json:"name"`
+			}{Email: "trial@beispiel.de", Name: "Trial GmbH"},
+		},
+	}
+	rec := doHandle(t, h, buildRequest(t, event))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d — %s", rec.Code, rec.Body.String())
+	}
+	if srv.messageCount() != 1 {
+		t.Fatalf("trialing subscription must issue a key, got %d emails", srv.messageCount())
+	}
+	if subj := srv.subject(t, 0); subj != "Dein Vakt Pro License Key (Testphase)" {
+		t.Errorf("trial: want subject %q, got %q", "Dein Vakt Pro License Key (Testphase)", subj)
+	}
+
+	// The key must be capped to the trial window even though the interval is yearly.
+	srv.mu.Lock()
+	raw := srv.messages[0]
+	srv.mu.Unlock()
+	licKey := extractLicenseKey(raw)
+	parts := strings.SplitN(licKey, ".", 2)
+	if len(parts) != 2 {
+		t.Fatalf("invalid key format: %q", licKey)
+	}
+	payloadJSON, err := base64.RawURLEncoding.DecodeString(parts[0])
+	if err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	var p struct {
+		Exp *int64 `json:"exp"`
+	}
+	if err := json.Unmarshal(payloadJSON, &p); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+	if p.Exp == nil {
+		t.Fatal("trial key must have an expiry")
+	}
+	if exp := time.Unix(*p.Exp, 0); exp.After(time.Now().Add(46 * 24 * time.Hour)) {
+		t.Errorf("trial key must be short (~45d), got expiry %v — yearly interval must not leak a full year of Pro", exp)
+	}
+}
+
 func TestHandle_SubscriptionUpdated_Active_RenewalSubjectAndEmail(t *testing.T) {
 	srv := startSMTPRecorder(t)
 	h := newHandler(t, srv)
@@ -461,7 +525,7 @@ func TestIssueKey_IssuedKeyHasExpiry(t *testing.T) {
 			srv := startSMTPRecorder(t)
 			h := newHandler(t, srv)
 
-			err := h.issueKey(t.Context(), "test@beispiel.de", "TestOrg", "", tc.interval, false)
+			err := h.issueKey(t.Context(), "test@beispiel.de", "TestOrg", "", tc.interval, "active", false)
 			if err != nil {
 				t.Fatalf("issueKey: %v", err)
 			}

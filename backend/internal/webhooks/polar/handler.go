@@ -182,10 +182,12 @@ func (h *Handler) Handle(c echo.Context) error {
 
 	switch event.Type {
 	case "subscription.created", "subscription.active":
-		if event.Data.Status != "active" {
+		// "trialing" is issued too — a trial subscriber needs a (short) key to
+		// actually try Pro; keyExpiry caps it to the trial window.
+		if event.Data.Status != "active" && event.Data.Status != "trialing" {
 			return c.NoContent(http.StatusOK)
 		}
-		if err := h.issueKey(ctx, event.Data.Customer.Email, event.Data.Customer.Name, event.Data.ID, event.Data.Price.RecurringInterval, false); err != nil {
+		if err := h.issueKey(ctx, event.Data.Customer.Email, event.Data.Customer.Name, event.Data.ID, event.Data.Price.RecurringInterval, event.Data.Status, false); err != nil {
 			log.Error().Err(err).
 				Str("email_redacted", logsafe.RedactEmail(event.Data.Customer.Email)).
 				Str("subscription_id", event.Data.ID).
@@ -197,11 +199,11 @@ func (h *Handler) Handle(c echo.Context) error {
 	case "subscription.updated", "subscription.uncanceled":
 		// subscription.updated fires on renewals (status flips back to "active").
 		// subscription.uncanceled fires when a customer reverses a cancellation.
-		// Only issue a new key when the subscription is actually active.
-		if event.Data.Status != "active" {
+		// Only issue a new key when the subscription is active or trialing.
+		if event.Data.Status != "active" && event.Data.Status != "trialing" {
 			return c.NoContent(http.StatusOK)
 		}
-		if err := h.issueKey(ctx, event.Data.Customer.Email, event.Data.Customer.Name, event.Data.ID, event.Data.Price.RecurringInterval, true); err != nil {
+		if err := h.issueKey(ctx, event.Data.Customer.Email, event.Data.Customer.Name, event.Data.ID, event.Data.Price.RecurringInterval, event.Data.Status, true); err != nil {
 			log.Error().Err(err).
 				Str("email_redacted", logsafe.RedactEmail(event.Data.Customer.Email)).
 				Str("subscription_id", event.Data.ID).
@@ -236,7 +238,14 @@ func (h *Handler) verifySignature(sig string, body []byte) bool {
 // keyExpiry returns the license validity duration based on the Polar recurring interval.
 // Monthly subscriptions get 35 days (31 + 4 day grace), yearly get 395 days (365 + 30 day grace).
 // Unknown intervals fall back to the monthly duration.
-func keyExpiry(interval string) time.Time {
+// A "trialing" subscription is capped to the trial window (30 day trial + 15 day
+// grace) regardless of interval — the grace gives a manual-activation customer time
+// to paste the full key that is mailed on conversion. The full-interval key is
+// issued on conversion to "active".
+func keyExpiry(interval, status string) time.Time {
+	if status == "trialing" {
+		return time.Now().Add(45 * 24 * time.Hour)
+	}
 	if interval == "year" {
 		return time.Now().Add(395 * 24 * time.Hour)
 	}
@@ -245,7 +254,7 @@ func keyExpiry(interval string) time.Time {
 
 // issueKey generates a Pro license key with expiry, persists the subscription record, and emails the key.
 // isRenewal controls the email subject line.
-func (h *Handler) issueKey(ctx context.Context, email, orgName, polarSubID, interval string, isRenewal bool) error {
+func (h *Handler) issueKey(ctx context.Context, email, orgName, polarSubID, interval, status string, isRenewal bool) error {
 	if orgName == "" {
 		orgName = email
 	}
@@ -268,7 +277,7 @@ func (h *Handler) issueKey(ctx context.Context, email, orgName, polarSubID, inte
 		).Scan(&renewalToken)
 	}
 
-	expiry := keyExpiry(interval)
+	expiry := keyExpiry(interval, status)
 	key, err := license.Sign(h.privateKeyPEM, "pro", orgName, proFeatures, &expiry)
 	if err != nil {
 		return fmt.Errorf("generate license key: %w", err)
@@ -283,7 +292,7 @@ func (h *Handler) issueKey(ctx context.Context, email, orgName, polarSubID, inte
 		)
 	}
 
-	if err := h.sendLicenseEmail(email, orgName, key, renewalToken, isRenewal); err != nil {
+	if err := h.sendLicenseEmail(email, orgName, key, renewalToken, isRenewal, status == "trialing"); err != nil {
 		return fmt.Errorf("send license email: %w", err)
 	}
 
@@ -342,10 +351,16 @@ func (h *Handler) handleCancellation(ctx context.Context, polarSubID, reason str
 		Msg("polar: subscription cancelled — key will expire at its scheduled expiry")
 }
 
-func (h *Handler) sendLicenseEmail(to, orgName, key, renewalToken string, isRenewal bool) error {
+func (h *Handler) sendLicenseEmail(to, orgName, key, renewalToken string, isRenewal, isTrial bool) error {
 	subject := "Dein Vakt Pro License Key"
 	intro := "vielen Dank für deine Vakt Pro Lizenz!"
-	if isRenewal {
+	switch {
+	case isTrial:
+		subject = "Dein Vakt Pro License Key (Testphase)"
+		intro = "willkommen zu deiner 30-tägigen Vakt Pro Testphase! Dein License Key ist für die Dauer der Testphase gültig. " +
+			"Es ist keine weitere Aktion nötig: Wandelt sich die Testphase in ein bezahltes Abo um, bekommst du automatisch einen neuen Key mit voller Laufzeit. " +
+			"Kündigst du vor Ende der Testphase, läuft der Key einfach aus."
+	case isRenewal:
 		subject = "Dein neuer Vakt Pro License Key"
 		intro = "deine Vakt Pro Lizenz wurde verlängert. Hier ist dein neuer License Key — bitte aktiviere ihn in deiner Vakt-Instanz, damit die Laufzeit aktualisiert wird."
 	}
