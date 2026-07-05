@@ -28,7 +28,7 @@ type Config struct {
 	SMTPFrom       string
 	// AI reports — OpenAI-compatible provider (default: local Ollama).
 	// Provider "openai" works with any OpenAI-compatible endpoint (Ollama, Mistral, etc.).
-	// Set VAKT_AI_PROVIDER=disabled to opt out.
+	// Set VAKT_AI_PROVIDER=disabled to disable. Default: "openai" (local Ollama).
 	AIProvider string // "openai" | "disabled"
 	AIBaseURL  string // e.g. "https://api.mistral.ai/v1" or "http://ollama:11434/v1"
 	AIAPIKey   string // optional — leave empty for local providers (Ollama, LM Studio)
@@ -245,7 +245,7 @@ func Load() (*Config, error) {
 		SMTPUser:               getEnv("VAKT_SMTP_USER", ""),
 		SMTPPass:               getEnv("VAKT_SMTP_PASS", ""),
 		SMTPFrom:               getEnv("VAKT_SMTP_FROM", "noreply@vakt.local"),
-		AIProvider:             getEnv("VAKT_AI_PROVIDER", "disabled"),
+		AIProvider:             getEnv("VAKT_AI_PROVIDER", "openai"),
 		AIBaseURL:              getEnv("VAKT_AI_BASE_URL", "http://ollama:11434/v1"),
 		AIAPIKey:               getEnv("VAKT_AI_API_KEY", ""),
 		AIModel:                getEnv("VAKT_AI_MODEL", "qwen2.5:7b"),

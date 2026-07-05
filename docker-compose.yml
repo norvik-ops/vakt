@@ -289,17 +289,13 @@ services:
           memory: 512m
           cpus: '0.25'
 
-  # AI Copilot via lokales LLM — Opt-in (Community-Feature).
-  # Start mit KI: COMPOSE_PROFILES=ai docker compose up -d (oder --profile ai)
-  # und VAKT_AI_PROVIDER=openai in .env setzen. Ohne das ai-Profil startet
-  # Ollama nicht — spart 8 GB RAM, passend zum Default VAKT_AI_PROVIDER=disabled.
-  # Default-Modell qwen2.5:7b wird beim ersten Start automatisch von ollama-init
-  # gezogen (~4.5 GB Disk; läuft nur einmal, danach idle).
-  # Mindestanforderung mit KI: 8 GB RAM (Minimum), 16 GB RAM (Empfohlen).
-  # Auf VMs mit < 8 GB RAM auf qwen2.5:3b wechseln (VAKT_AI_MODEL=qwen2.5:3b).
+  # AI Copilot via lokales LLM — standardmäßig aktiv (Community-Feature).
+  # ollama-init zieht qwen2.5:7b beim ersten Start einmalig (~4.5 GB Disk).
+  # Mindestanforderung mit KI: 8 GB RAM. Auf VMs mit < 8 GB RAM auf
+  # qwen2.5:3b wechseln (VAKT_AI_MODEL=qwen2.5:3b, ~1.9 GB RAM).
+  # Deaktivieren: VAKT_AI_PROVIDER=disabled in .env setzen.
   ollama:
     image: ollama/ollama:${OLLAMA_TAG:-0.6}
-    profiles: ["ai"]
     networks:
       - app-net
     volumes:
@@ -325,7 +321,6 @@ services:
   # Restart=no damit der Container nach erfolgreichem Pull beendet bleibt.
   ollama-init:
     image: ollama/ollama:${OLLAMA_TAG:-0.6}
-    profiles: ["ai"]
     networks:
       - app-net
     entrypoint: ["/bin/sh", "-c"]

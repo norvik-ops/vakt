@@ -109,14 +109,14 @@ The login screen will show ready-to-use credentials automatically. When you're r
 
 ## System Requirements
 
-| | Minimum | Recommended | With AI Advisor (opt-in) |
+| | Minimum | Recommended | With AI Advisor (default) |
 |---|---|---|---|
 | **CPU** | 2 cores | 4 cores | 4 cores — no GPU needed |
 | **RAM** | 2 GB | 4 GB | 8 GB (for qwen2.5:7b; 2 GB if AI disabled) |
 | **Disk** | 20 GB SSD | 40 GB SSD | 40 GB SSD + ~5 GB for AI model |
 | **Docker Engine** | 24+ | 24+ | 24+ |
 
-The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key required, and **Community since v0.6.x** (no Pro license needed). It is **opt-in**: start the stack with the `ai` compose profile (`COMPOSE_PROFILES=ai docker compose up -d`) and set `VAKT_AI_PROVIDER=openai`; an `ollama-init` container then pulls the default model (`qwen2.5:7b`, Apache 2.0, ~4.5 GB RAM, needs 8 GB) on first launch — no manual `ollama pull` step. Without the profile, Ollama never starts and the platform runs comfortably in 2 GB RAM. On smaller VMs switch to `qwen2.5:3b` (~1.9 GB, set `VAKT_AI_MODEL=qwen2.5:3b`), or use `phi3.5:mini` (Microsoft, MIT) or the Mistral EU API.
+The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key required, and **Community since v0.6.x** (no Pro license needed). It starts **by default**: `ollama-init` pulls `qwen2.5:7b` (Apache 2.0, ~4.5 GB RAM, needs 8 GB) automatically on first launch — no manual step. To disable, set `VAKT_AI_PROVIDER=disabled`. On smaller VMs switch to `qwen2.5:3b` (~1.9 GB, set `VAKT_AI_MODEL=qwen2.5:3b`), or use `phi3.5:mini` (Microsoft, MIT) or the Mistral EU API.
 
 ---
 
@@ -229,7 +229,7 @@ See [`docs/wiki/configuration.md`](docs/wiki/configuration.md) for the full refe
 
 Vakt includes a built-in AI advisor that analyses your organisation's real compliance gaps and answers "What should I do this week?" — specific to your data, running entirely on your server.
 
-**Opt-in** via a local Ollama container (CPU-only, no GPU, no API key, no Pro license): start with `COMPOSE_PROFILES=ai docker compose up -d` and set `VAKT_AI_PROVIDER=openai`. The Community edition includes **25 AI requests per month**; Pro is unlimited. Default model is `qwen2.5:7b` (Apache 2.0, ~4.5 GB RAM, needs 8 GB, best German compliance quality). The model is pulled automatically by the `ollama-init` container on first start with the `ai` profile — no manual step. On VMs with less than 8 GB RAM, switch to `qwen2.5:3b` (~1.9 GB).
+Runs **by default** via a local Ollama container (CPU-only, no GPU, no API key, no Pro license). The Community edition includes **25 AI requests per month**; Pro is unlimited. Default model is `qwen2.5:7b` (Apache 2.0, ~4.5 GB RAM, needs 8 GB, best German compliance quality). The model is pulled automatically by the `ollama-init` container on first launch — no manual step. To disable: set `VAKT_AI_PROVIDER=disabled`. On VMs with less than 8 GB RAM, switch to `qwen2.5:3b` (~1.9 GB).
 
 To switch to a different model:
 
