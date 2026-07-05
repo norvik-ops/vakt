@@ -196,7 +196,7 @@ Ja, vollständig. Alle Funktionen arbeiten lokal. Die einzigen optionalen Verbin
 
 ### Für welche Frameworks ist Vakt geeignet?
 
-Vakt Comply unterstützt: NIS2, ISO 27001:2022, BSI IT-Grundschutz, DORA, TISAX, EU AI Act, DSGVO Art. 32 TOM, ISO 42001, CRA (Cyber Resilience Act).
+Vakt Comply unterstützt: NIS2, ISO 27001:2022, BSI IT-Grundschutz, EU AI Act, DSGVO Art. 32 TOM, ISO 42001, CRA (Cyber Resilience Act).
 
 Mehrere Frameworks können gleichzeitig aktiv sein.
 

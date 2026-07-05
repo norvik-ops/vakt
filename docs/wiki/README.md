@@ -57,7 +57,7 @@ Datenbankmigrationen laufen automatisch beim Start. Kein manueller Setup-Schritt
 
 ## Features (Auswahl)
 
-- **Compliance-Frameworks** — NIS2, ISO 27001, BSI IT-Grundschutz, DSGVO TOM, CIS Controls v8, KRITIS, BSI C5, EU AI Act, CRA, DORA, TISAX, ISO 42001, ISO 27017, ISO 27018
+- **Compliance-Frameworks** — NIS2, ISO 27001, BSI IT-Grundschutz, DSGVO TOM, CIS Controls v8, KRITIS, BSI C5, EU AI Act, CRA, ISO 42001, ISO 27017, ISO 27018
 - **Scheduled Reports** — Compliance-, Findings- und Risk-Berichte automatisch per E-Mail planen (wöchentlich/monatlich/vierteljährlich)
 - **Excel-Export** — Findings, Risks und Controls als `.xlsx` exportieren
 - **CSV-Import** — Lieferanten, Assets und Controls per CSV-Datei importieren

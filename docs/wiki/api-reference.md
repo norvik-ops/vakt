@@ -112,7 +112,7 @@ Rate-limit headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-R
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/vaktcomply/frameworks` | List installed frameworks |
-| `POST` | `/vaktcomply/frameworks/:name/enable` | Enable framework (NIS2, ISO27001, DORA, TISAX, …) |
+| `POST` | `/vaktcomply/frameworks/:name/enable` | Enable framework (NIS2, ISO27001, BSI, EU AI Act, …) |
 | `GET` | `/vaktcomply/frameworks/:id` | Get framework with score |
 | `DELETE` | `/vaktcomply/frameworks/:id` | Remove framework |
 | `GET` | `/vaktcomply/frameworks/:id/controls` | List controls (paginated) |

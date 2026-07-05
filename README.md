@@ -1,6 +1,6 @@
 # Vakt
 
-**Self-hosted Security & Compliance Platform — NIS2, ISO 27001, BSI-Grundschutz, DORA, TISAX, EU AI Act. Deploy in 5 minutes. Local AI — your data never leaves your server.**
+**Self-hosted Security & Compliance Platform — NIS2, ISO 27001, BSI-Grundschutz, EU AI Act. Deploy in 5 minutes. Local AI — your data never leaves your server.**
 
 ![Status: Early Access](https://img.shields.io/badge/status-Early_Access-6366f1)
 ![License: ELv2](https://img.shields.io/badge/license-Elastic_License_2.0-blue)

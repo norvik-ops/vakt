@@ -13,8 +13,8 @@ Konfigurierbar pro Organisation:
 | Bereich | Inhalt | Toggle |
 |---------|--------|--------|
 | Organisations-Info | Name, Beschreibung, Kontakt-E-Mail, Logo | — (immer sichtbar) |
-| Framework-Status | NIS2 / ISO 27001 / BSI / TISAX Compliance-Score in % | `show_frameworks` |
-| Zertifikate | hochgeladene Zertifikate (ISO 27001-Urkunde, TISAX-Label, etc.) | `show_certs` |
+| Framework-Status | NIS2 / ISO 27001 / BSI / EU AI Act Compliance-Score in % | `show_frameworks` |
+| Zertifikate | hochgeladene Zertifikate (ISO 27001-Urkunde, BSI-Zertifikat, etc.) | `show_certs` |
 | Veröffentlichte Policies | Markdown-Policies die du explizit freigegeben hast | `show_policies` |
 | Sub-Processor-Liste | Markdown-Liste deiner Auftragsverarbeiter | `subprocessors_md` |
 

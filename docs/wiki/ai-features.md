@@ -2,7 +2,7 @@
 
 Vakt enthält einen **lokalen KI-Berater**, der auf deiner eigenen Infrastruktur läuft — **kein Cloud-API-Key, kein GPU, keine Daten verlassen die Instanz** (siehe ADR-0001, Design-Entscheidung im Entwicklungs-Repo).
 
-> **Community-Feature:** Seit v0.6.x sind alle KI-Funktionen in jeder Vakt-Instanz enthalten — keine Pro-Lizenz nötig. Mit dem Default-Modell `qwen2.5:7b` (Apache 2.0, ~4.5 GB RAM, CPU-tauglich, 8 GB RAM) läuft die KI lokal — auf VMs mit < 8 GB RAM alternativ `qwen2.5:3b` (~1.9 GB); ein Pro-Gate würde nur Marketing-Limit ohne echten Schutz bedeuten. **Premium-Compliance-Features** (TISAX-Maturitätsanalyse, DORA, NIS2-Meldungsassistent, EU AI Act, AuditPDF, SSO, API-Access, Vakt Aware Advanced, Vakt Scan Advanced, Granular-Permissions, Supplier-Portal) bleiben dem Pro-Plan vorbehalten.
+> **Community-Feature:** Seit v0.6.x sind alle KI-Funktionen in jeder Vakt-Instanz enthalten — keine Pro-Lizenz nötig. Mit dem Default-Modell `qwen2.5:7b` (Apache 2.0, ~4.5 GB RAM, CPU-tauglich, 8 GB RAM) läuft die KI lokal — auf VMs mit < 8 GB RAM alternativ `qwen2.5:3b` (~1.9 GB); ein Pro-Gate würde nur Marketing-Limit ohne echten Schutz bedeuten. **Premium-Compliance-Features** (NIS2-Meldungsassistent, EU AI Act, AuditPDF, SSO, API-Access, Vakt Aware Advanced, Vakt Scan Advanced, Granular-Permissions, Supplier-Portal) bleiben dem Pro-Plan vorbehalten.
 
 ---
 
@@ -13,7 +13,7 @@ Vakt enthält einen **lokalen KI-Berater**, der auf deiner eigenen Infrastruktur
 | **Compliance-Berater** | `POST /vaktcomply/ai/advice` | „Was sollte ich diese Woche tun?" — analysiert offene Controls, überfällige Tasks, kritische Risiken und gibt eine priorisierte Wochenplan-Empfehlung. |
 | **Bericht-Generator** | `POST /vaktcomply/ai/report` | Generiert Gap-Analyse, Risiko-Übersicht oder Executive Summary als Markdown — als Vorbereitung für Audit-Termine oder Management-Reviews. |
 | **Policy-Drafting** *(neu)* | `POST /vaktcomply/ai/draft-policy` | „Erstelle eine Passwort-Richtlinie für ISO 27001 A.5.17" — generiert einen Markdown-Entwurf in deutscher Sprache mit Standard-Abschnitten (Zweck, Geltungsbereich, Anforderungen, Verantwortlichkeiten). Admin reviewt und veröffentlicht. |
-| **Incident-Response-Guide** *(neu)* | `POST /vaktcomply/ai/incident-guide` | Aus einer Vorfalls-Beschreibung erzeugt die KI eine nummerierte Sofort-Checkliste mit gesetzlichen Fristen-Hinweisen (NIS2 T+24h / T+72h, DSGVO Art. 33 72 h, DORA T+4h). Direkt im UI per „KI-Sofortmaßnahmen"-Button anwendbar. |
+| **Incident-Response-Guide** *(neu)* | `POST /vaktcomply/ai/incident-guide` | Aus einer Vorfalls-Beschreibung erzeugt die KI eine nummerierte Sofort-Checkliste mit gesetzlichen Fristen-Hinweisen (NIS2 T+24h / T+72h, DSGVO Art. 33 72 h). Direkt im UI per „KI-Sofortmaßnahmen"-Button anwendbar. |
 | **AI-System-Dokumentation** | (UI in EU AI Act-Modul) | Hilft beim Ausfüllen der technischen Dokumentation nach EU AI Act Art. 11 / Annex IV. |
 | **AI-Agent** *(experimentell / Beta)* | `POST /vaktcomply/ai/agent/run` | Plan/Execute/Reflect-Agent, der lesende Vakt-Tools nutzt (Findings, Controls, Risks). **Experimentell:** Das Backend kennzeichnet jede Antwort mit `X-Vakt-Status: experimental`, die UI zeigt ein Beta-Badge + KI-Disclaimer. Ergebnisse fachlich prüfen; mutierende Tools nur mit Approve-Before-Apply (Pro). |
 

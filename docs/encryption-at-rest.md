@@ -18,7 +18,7 @@ herzustellen, geordnet nach Aufwand und Schutzwirkung.
 | Cloud-Hosting (AWS/Azure/GCP) | Cloud-Provider-eigene Volume-Verschlüsselung aktivieren |
 | Einzelne hochsensible Spalten | Optional `pgcrypto` (Spalten-Level, bereits in Postgres enthalten) |
 
-Für ISO 27001 / NIS2 / TISAX reicht **eine** dieser Maßnahmen — sie wird als
+Für ISO 27001 / NIS2 reicht **eine** dieser Maßnahmen — sie wird als
 TOM gemäß DSGVO Art. 32 dokumentiert (Vakt Comply → Framework "DSGVO-TOM").
 
 ---

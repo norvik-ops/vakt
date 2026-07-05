@@ -23,8 +23,6 @@ VAKT_MODULES_ENABLED=vaktscan,vaktvault,vaktaware,vaktprivacy
 | **NIS2** (EU 2022/2555) | Alle Maßnahmen Art. 21 Abs. 2 (a–j); Meldepflicht-Assistent mit T+24h/72h/30d-Fristen |
 | **ISO 27001:2022** | Alle 93 Annex-A-Controls trackbar |
 | **BSI IT-Grundschutz** | 38 Bausteine als Framework abbildbar |
-| **DORA** (EU 2022/2554) | Kapitel II–VI; IKT-Vorfallsregister mit 4h/24h/72h/30d-Fristen; Drittanbieter-Register |
-| **TISAX** (VDA ISA) | Kapitel 1–15; Schutzbedarf Normal/Hoch/Sehr hoch; Reifegradskala 0–3 |
 | **EU AI Act** (2024/1689) | KI-System-Inventar; Risikoklassen; technische Dokumentation nach Art. 11 / Annex IV |
 | **DSGVO Art. 32 TOM** | 13 TOMs mit ISO-27001-Deckungsanalyse |
 | **ISO 42001** | KI-Management-System-Framework |
@@ -120,10 +118,6 @@ Beim Anlegen eines Vorfalls führt ein Kurzfragebogen durch die Meldepflicht-Kla
 
 Der Frist-Status wird als Ampel dargestellt. 12 Stunden vor Ablauf einer Frist geht eine E-Mail-Benachrichtigung raus.
 
-### DORA-Meldepflichten
-
-Für IKT-Vorfälle nach DORA Art. 19 gelten engere Fristen (T+4h/24h/72h/30d). Vakt generiert vorausgefüllte Meldungsformulare im BaFin-Layout als PDF und JSON.
-
 ### Behörden-Verzeichnis
 
 Vakt kennt die zuständigen Behörden je nach Sektor der Organisation (BSI, BaFin, BNetzA, Luftfahrtbundesamt) und wählt automatisch die richtige Anlaufstelle aus.
@@ -185,18 +179,9 @@ Für die Übergabe an externe Prüfer oder zur Archivierung: ZIP-Download mit `c
 
 ## Lieferanten-Portal (Supply Chain Compliance)
 
-Vakt Comply verwaltet Lieferanten mit Kritikalitätsstufe (kritisch / wesentlich / standard) und NIS2/DORA-Relevanz-Markierung. Lieferanten können per tokenbasiertem Portal (ohne Vakt-Account) Fragebögen beantworten und Zertifikate hochladen.
+Vakt Comply verwaltet Lieferanten mit Kritikalitätsstufe (kritisch / wesentlich / standard) und NIS2-Relevanz-Markierung. Lieferanten können per tokenbasiertem Portal (ohne Vakt-Account) Fragebögen beantworten und Zertifikate hochladen.
 
-Der Fragebogen-Builder unterstützt: Ja/Nein, Multiple Choice, Freitext, Datei-Upload. Vorgefertigte Vorlagen für NIS2, DORA und ISO 27001 sind enthalten.
-
----
-
-## TISAX-spezifische Ansichten
-
-- Schutzbedarf-Tabs: Normal / Hoch / Sehr hoch
-- Reifegradskala 0–3 pro Control
-- TISAX ↔ ISO 27001 Mapping-Tabelle mit Coverage-Berechnung
-- TISAX-Bereitschaftsbericht als PDF-Export
+Der Fragebogen-Builder unterstützt: Ja/Nein, Multiple Choice, Freitext, Datei-Upload. Vorgefertigte Vorlagen für NIS2 und ISO 27001 sind enthalten.
 
 ---
 
@@ -223,5 +208,5 @@ KI komplett deaktivieren: `VAKT_AI_PROVIDER=disabled`
 | Job | Zeitplan | Beschreibung |
 |-----|----------|--------------|
 | `vaktcomply:evidence_expiry_alert` | Täglich | Warnung 30 Tage vor Ablauf von Evidence |
-| `vaktcomply:incident_deadline_check` | Stündlich | Prüft NIS2/DORA-Meldefristen; E-Mail 12h vor Ablauf |
+| `vaktcomply:incident_deadline_check` | Stündlich | Prüft NIS2-Meldefristen; E-Mail 12h vor Ablauf |
 | `vaktcomply:supplier_cert_expiry` | Täglich | Warnung bei Lieferanten-Zertifikaten, die in 30 Tagen ablaufen |

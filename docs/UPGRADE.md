@@ -99,7 +99,7 @@ Helm führt den migrate-Job vor dem API-Rollout aus (init-Container-Pattern).
 
 ### v0.18.0
 
-- **Migration 136** (DORA Incidents), **Migration 137** (DORA Re-Assessment), **Migration 138** (DORA Third Parties): werden automatisch angewendet.
+- **Migrationen 136–138**: werden automatisch angewendet.
 - Keine Breaking Changes in bestehenden APIs.
 
 ### v0.18.x (S105 — Auth & User Provisioning)
