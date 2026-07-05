@@ -22,7 +22,7 @@ networks:
 
 services:
   frontend:
-    image: ghcr.io/matharnica/vakt-frontend:${VAKT_TAG:-latest}
+    image: ghcr.io/norvik-ops/vakt-frontend:${VAKT_TAG:-latest}
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -62,7 +62,7 @@ services:
   # Copies scanner binaries (Trivy, Nuclei) into the shared scanner_bins volume
   # before the API/worker start. Runs on every compose-up so updates are picked up.
   vakt-scanners:
-    image: ghcr.io/matharnica/vakt-scanners:${VAKT_TAG:-latest}
+    image: ghcr.io/norvik-ops/vakt-scanners:${VAKT_TAG:-latest}
     build:
       context: ./backend
       dockerfile: Dockerfile.scanners
@@ -72,7 +72,7 @@ services:
     restart: "no"
 
   migrate:
-    image: ghcr.io/matharnica/vakt-api:${VAKT_TAG:-latest}
+    image: ghcr.io/norvik-ops/vakt-api:${VAKT_TAG:-latest}
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -90,7 +90,7 @@ services:
     restart: "no"
 
   api:
-    image: ghcr.io/matharnica/vakt-api:${VAKT_TAG:-latest}
+    image: ghcr.io/norvik-ops/vakt-api:${VAKT_TAG:-latest}
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -141,7 +141,7 @@ services:
           cpus: '1.0'
 
   worker:
-    image: ghcr.io/matharnica/vakt-api:${VAKT_TAG:-latest}
+    image: ghcr.io/norvik-ops/vakt-api:${VAKT_TAG:-latest}
     build:
       context: ./backend
       dockerfile: Dockerfile
