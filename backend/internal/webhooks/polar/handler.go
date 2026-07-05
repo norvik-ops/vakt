@@ -19,6 +19,7 @@ import (
 	"io"
 	"net/http"
 	"net/smtp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -234,6 +235,16 @@ func (h *Handler) Handle(c echo.Context) error {
 // is valid if any one matches.
 func (h *Handler) verifySignature(id, timestamp, sigHeader string, body []byte) bool {
 	if h.webhookSecret == "" || id == "" || timestamp == "" || sigHeader == "" {
+		return false
+	}
+	// Reject stale or far-future timestamps to prevent replay of a captured (but
+	// legitimately signed) event. Standard Webhooks recommends a ±5 min tolerance.
+	// The sha256(body) dedup table is the second line of defense; this is the first.
+	ts, err := strconv.ParseInt(timestamp, 10, 64)
+	if err != nil {
+		return false
+	}
+	if diff := time.Now().Unix() - ts; diff > 300 || diff < -300 {
 		return false
 	}
 	signedContent := id + "." + timestamp + "." + string(body)

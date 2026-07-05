@@ -19,6 +19,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -32,8 +33,11 @@ import (
 const (
 	testWebhookSecret = "test-secret-polar"
 	testWebhookID     = "msg_test_00000000"
-	testWebhookTS     = "1700000000"
 )
+
+// testWebhookTS is a fresh Unix timestamp (set at package init) so signed test
+// events pass the ±5 min replay-freshness window; the suite runs well within it.
+var testWebhookTS = strconv.FormatInt(time.Now().Unix(), 10)
 
 // makeSignature builds a Standard Webhooks signature the way Polar does:
 // "v1," + base64(HMAC-SHA256(secret, "{id}.{timestamp}.{body}")). The secret is
@@ -284,9 +288,22 @@ func TestVerifySignature_TamperedTimestamp(t *testing.T) {
 	h := &Handler{webhookSecret: testWebhookSecret}
 	body := []byte(`{"type":"subscription.created"}`)
 	sig := makeSignature(testWebhookSecret, testWebhookID, testWebhookTS, body)
-	// Same signature, different timestamp — the timestamp is part of the signed content.
-	if h.verifySignature(testWebhookID, "1699999999", sig, body) {
+	// A different but still-fresh timestamp — must fail on the signature (the
+	// timestamp is part of the signed content), not on the freshness check.
+	otherTS := strconv.FormatInt(time.Now().Unix()+5, 10)
+	if h.verifySignature(testWebhookID, otherTS, sig, body) {
 		t.Fatal("tampered timestamp must fail")
+	}
+}
+
+func TestVerifySignature_StaleTimestamp_ReplayRejected(t *testing.T) {
+	h := &Handler{webhookSecret: testWebhookSecret}
+	body := []byte(`{"type":"subscription.active"}`)
+	old := strconv.FormatInt(time.Now().Unix()-3600, 10) // 1h ago
+	sig := makeSignature(testWebhookSecret, testWebhookID, old, body)
+	// Signature is valid, but the timestamp is outside the ±5 min window → reject.
+	if h.verifySignature(testWebhookID, old, sig, body) {
+		t.Fatal("stale timestamp (replay) must reject even with a valid signature")
 	}
 }
 
