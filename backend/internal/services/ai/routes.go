@@ -33,7 +33,7 @@ type RegisterOptions struct {
 }
 
 // Register mounts AI report endpoints.
-// provider: "disabled" | "openai" (OpenAI-compatible).
+// provider: "ollama" | "openai" | "disabled". Anything except "disabled"/"" activates AI.
 // The group must already have auth middleware applied.
 //
 // AI features are Community since v0.6.x — with qwen2.5:3b als Default
