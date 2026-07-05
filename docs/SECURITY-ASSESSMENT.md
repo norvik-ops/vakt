@@ -7,7 +7,7 @@ Diese Selbstbewertung dokumentiert den Sicherheitsstand von Vakt für Kunden, di
 ## Zuletzt überprüft: 2026-05-24
 
 - **Statische Code-Verifikation** — alle TOM-Claims gegen Implementierung geprüft
-- **Interner Pentest (Live)** — Black-Box-Test gegen secdemo.norvikops.de; 14 Checks, 13 OK, 1 Infra-Finding (CF-Demo); Details: `docs/security/pentest-intern.md`
+- **Interner Pentest (Live)** — Black-Box-Test gegen die öffentliche Demo-Instanz; 14 Checks, 13 OK, 1 Infra-Finding (CDN/Demo-Umgebung)
 - **Interner Pentest (Lokal, vollständig)** — 21 Checks, alle OWASP-Top-10-kritischen Controls live verifiziert, IDOR mit zwei parallelen Demo-Orgs getestet; 6 Low-Findings identifiziert und behoben; 1 Infra-Finding (CF-Demo) bleibt; keine kritischen oder hohen Findings
 
 ## Authentifizierung & Session-Management
