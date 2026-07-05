@@ -290,6 +290,10 @@ func (h *Handler) ChatStream(c echo.Context) error {
 	resp.Header().Set("Cache-Control", "no-cache")
 	resp.Header().Set("Connection", "keep-alive")
 	resp.Header().Set("X-Accel-Buffering", "no") // nginx: disable buffering
+	// EU AI Act Art. 50(2): machine-readable marker that this response body is
+	// AI-generated. Header instead of an in-stream frame so the SSE parser stays
+	// untouched. JSON endpoints carry the equivalent "ai_generated":true flag.
+	resp.Header().Set("X-AI-Generated", "true")
 	resp.WriteHeader(http.StatusOK)
 
 	stream, err := h.svc.client.StreamGenerate(c.Request().Context(), addInjectionGuard(input.System), input.Prompt, input.MaxTokens)
@@ -390,6 +394,8 @@ func (h *Handler) GapExplain(c echo.Context) error {
 	resp.Header().Set("Cache-Control", "no-cache")
 	resp.Header().Set("Connection", "keep-alive")
 	resp.Header().Set("X-Accel-Buffering", "no")
+	// EU AI Act Art. 50(2): machine-readable AI-generated marker (see ChatStream).
+	resp.Header().Set("X-AI-Generated", "true")
 	resp.WriteHeader(http.StatusOK)
 
 	stream, err := h.svc.client.StreamGenerate(c.Request().Context(), systemPrompt, userPrompt, 800)

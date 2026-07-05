@@ -76,8 +76,8 @@ Alle laufen über Ollama, alle CPU-fähig:
 **Modell wechseln:**
 
 ```bash
-# 1. Modell ziehen (Stack muss mit dem ai-Profil laufen: COMPOSE_PROFILES=ai)
-docker compose --profile ai exec ollama ollama pull phi3.5:mini
+# 1. Modell ziehen (Ollama läuft standardmäßig mit)
+docker compose exec ollama ollama pull phi3.5:mini
 
 # 2. .env anpassen
 echo 'VAKT_AI_MODEL=phi3.5:mini' >> .env
@@ -86,10 +86,9 @@ echo 'VAKT_AI_MODEL=phi3.5:mini' >> .env
 docker compose restart api worker
 ```
 
-Beim ersten Start mit dem `ai`-Profil (`COMPOSE_PROFILES=ai docker compose up -d`)
-zieht ein einmaliger `ollama-init`-Container das in der `.env`-Datei
-konfigurierte Modell (Default `qwen2.5:7b`). Wenn das Modell schon im Volume
-ist, ist der Pull ein No-Op.
+Beim ersten `docker compose up -d` zieht ein einmaliger `ollama-init`-Container
+das in der `.env`-Datei konfigurierte Modell (Default `qwen2.5:7b`). Wenn das
+Modell schon im Volume ist, ist der Pull ein No-Op.
 
 ---
 

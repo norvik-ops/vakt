@@ -11,9 +11,9 @@ Diese Anleitung führt dich von null bis zu einer laufenden Vakt-Instanz.
 | **CPU** | 2 Kerne | 4 Kerne |
 | **RAM** | 2 GB (ohne KI-Berater) / 8 GB (mit Standard-Modell qwen2.5:7b) | 4 GB (ohne KI) / 8 GB (mit KI) |
 | **Disk** | 20 GB SSD | 40 GB SSD (+5 GB für KI-Modell) |
-| **Docker Engine** | 24+ | 24+ | 24+ | 24+ |
-| **Docker Compose** | v2 | v2 | v2 | v2 |
-| **Betriebssystem** | Linux (empfohlen), macOS, Windows (WSL2) | Linux | Linux | Linux |
+| **Docker Engine** | 24+ | 24+ |
+| **Docker Compose** | v2 | v2 |
+| **Betriebssystem** | Linux (empfohlen), macOS, Windows (WSL2) | Linux |
 
 Der KI-Berater läuft standardmäßig lokal via Ollama (CPU, kein GPU, kein Cloud-API-Key). Das Default-Modell `qwen2.5:7b` (Apache 2.0, ~4.5 GB RAM, braucht 8 GB) wird beim ersten `docker compose up` automatisch gezogen — kein manueller Schritt nötig. Deaktivieren: `VAKT_AI_PROVIDER=disabled` in `.env` setzen. Auf VMs mit < 8 GB RAM auf `qwen2.5:3b` wechseln (`VAKT_AI_MODEL=qwen2.5:3b`, ~1.9 GB RAM).
 

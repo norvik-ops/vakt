@@ -71,6 +71,16 @@ We follow coordinated disclosure. We ask that you:
 
 We aim to issue a fix and a public advisory (GitHub Security Advisory) within the SLA above.
 
+### Actively exploited vulnerabilities (EU Cyber Resilience Act)
+
+If a vulnerability in Vakt is **actively exploited in the wild**, an additional
+regulatory reporting duty applies from **11.09.2026**: as the product's
+manufacturer, NorvikOps must report to ENISA / the national CSIRT (early warning
+within 24 h, notification within 72 h, final report within 14 days) and inform
+affected users. A merely *reported* (not yet exploited) vulnerability follows the
+coordinated-disclosure flow above and does not start that clock. The operational
+procedure lives in the internal incident-response runbook (CRA Art. 14 section).
+
 ## Security Architecture
 
 Vakt is a self-hosted platform. Key security properties:
