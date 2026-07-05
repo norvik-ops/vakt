@@ -43,8 +43,8 @@ wait_pg() { # $1 = container name
 }
 
 echo "→ [drill] starting source + target Postgres"
-docker run -d --name "$SRC_NAME" -e POSTGRES_USER=vakt -e POSTGRES_PASSWORD=vakt -e POSTGRES_DB=vakt -p 0:5432 postgres:18-alpine >/dev/null
-docker run -d --name "$DST_NAME" -e POSTGRES_USER=vakt -e POSTGRES_PASSWORD=vakt -e POSTGRES_DB=vakt -p 0:5432 postgres:18-alpine >/dev/null
+docker run -d --name "$SRC_NAME" -e POSTGRES_USER=vakt -e POSTGRES_PASSWORD=vakt -e POSTGRES_DB=vakt -p 0:5432 postgres:16-alpine >/dev/null
+docker run -d --name "$DST_NAME" -e POSTGRES_USER=vakt -e POSTGRES_PASSWORD=vakt -e POSTGRES_DB=vakt -p 0:5432 postgres:16-alpine >/dev/null
 wait_pg "$SRC_NAME"
 wait_pg "$DST_NAME"
 
