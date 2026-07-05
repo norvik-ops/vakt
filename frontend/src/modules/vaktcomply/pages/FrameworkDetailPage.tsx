@@ -425,6 +425,7 @@ const ControlRow = React.memo(function ControlRow({
   selected: boolean
   onToggleSelect: (id: string) => void
 }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const status = effectiveStatus(ctrl)
 

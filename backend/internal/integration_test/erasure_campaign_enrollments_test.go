@@ -38,7 +38,7 @@ func TestExecuteErasureDeletesCampaignEnrollments(t *testing.T) {
 
 	// Seed org, employee, campaign, and enrollment.
 	_, err := pool.Exec(ctx, `
-		INSERT INTO organisations (id, name, slug) VALUES ($1, 'Test', 'test')`,
+		INSERT INTO organizations (id, name, slug) VALUES ($1, 'Test', 'test')`,
 		orgID,
 	)
 	require.NoError(t, err)
@@ -53,8 +53,8 @@ func TestExecuteErasureDeletesCampaignEnrollments(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = pool.Exec(ctx, `
-		INSERT INTO sr_campaigns (id, org_id, name, status)
-		VALUES ($1, $2, 'Test Campaign', 'active')`,
+		INSERT INTO sr_campaigns (id, org_id, name, status, from_name, from_email, subject)
+		VALUES ($1, $2, 'Test Campaign', 'running', 'IT Security', 'it@example.com', 'Awareness Test')`,
 		campaignID, orgID,
 	)
 	require.NoError(t, err)
@@ -69,8 +69,8 @@ func TestExecuteErasureDeletesCampaignEnrollments(t *testing.T) {
 	// Seed DSR erasure request.
 	var dsrID string
 	err = pool.QueryRow(ctx, `
-		INSERT INTO po_dsrs (org_id, requester_email, type, status, due_date)
-		VALUES ($1, $2, 'erasure', 'pending', NOW() + INTERVAL '30 days')
+		INSERT INTO po_dsr (org_id, requester_name, requester_email, type, status, due_date)
+		VALUES ($1, 'Victim User', $2, 'erasure', 'open', NOW() + INTERVAL '30 days')
 		RETURNING id::text`,
 		orgID, requesterEmail,
 	).Scan(&dsrID)
