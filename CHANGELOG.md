@@ -19,6 +19,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- **Frische Installationen: pgBouncer-Image + Auth** — der Docker-Hub-Tag `edoburu/pgbouncer:1.22.1` wurde upstream entfernt, `docker compose up` schlug bei Neuinstallationen mit einem Pull-Fehler fehl → Pin auf `1.22.1-p0` (gleiche pgBouncer-Version, neu gebautes Image). Zusätzlich `AUTH_TYPE: scram-sha-256` gesetzt: das neue Image default't auf md5, Postgres 16 authentifiziert mit SCRAM — ohne den Fix startete die API mit „DB unavailable — all routes disabled". Bestandsinstallationen mit lokal gecachtem altem Image sind nicht betroffen, übernehmen den Fix aber beim nächsten `docker compose pull`.
 - **Art. 17 DSGVO Erasure — sr_campaign_enrollments** — Löschung von `sr_campaign_enrollments` (Aware-Kampagnen) war nicht in `ExecuteErasure()` enthalten. `employee_id` ist TEXT ohne FK-Cascade auf `hr_employees`, daher musste die Löschung explizit ergänzt werden. Evidence-Note wird um `sr_campaign_enrollments deleted: N` erweitert.
 - **Impressum §5 DDG** — Vollständiger Name „Stefan Moseler" in beiden Sites (`sites/vakt/`, `sites/main/`) ergänzt. Steuernummer-Abschnitt als Pflichtangabe vorbereitet (⚠️ Steuernummer muss manuell eingetragen werden).
 - **Broken Navigation — „Lizenz aktivieren" im Multi-Framework-Wizard** — Schaltfläche verlinkte auf `/settings/license` (nicht existent). Link korrigiert auf `/settings`. Zusätzlich: `/settings/license` im Router als Redirect → `/settings` eingetragen, damit direkte URL-Eingabe nicht zu 404 führt.
