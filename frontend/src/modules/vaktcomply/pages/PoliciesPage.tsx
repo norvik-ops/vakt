@@ -260,7 +260,7 @@ export default function PoliciesPage() {
             <ExportButton
               endpoint="/api/v1/vaktcomply/policies/export/xlsx"
               filename={`richtlinien-${new Date().toISOString().slice(0, 10)}`}
-              label="Exportieren"
+              label={t('common.export')}
               format="xlsx"
             />
             <Button variant="outline" size="sm" onClick={() => { window.print(); }} className="no-print">

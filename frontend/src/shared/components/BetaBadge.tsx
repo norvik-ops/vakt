@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 
 // Public disclaimer (synced to the public mirror via docs/wiki/**).
-const DISCLAIMER_URL = 'https://github.com/norvik-ops/vatk/blob/main/docs/wiki/beta-disclaimer.md'
+const DISCLAIMER_URL = 'https://github.com/norvik-ops/vakt/blob/main/docs/wiki/beta-disclaimer.md'
 
 // BetaBadge is a discreet "Private Beta" pill shown in the sidebar header. It
 // links to the beta disclaimer (status, best-effort support, backup

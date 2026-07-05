@@ -7,10 +7,37 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Security
+
+- **API-Key-Verwaltung RBAC-gegated (S120-4)** — `POST/DELETE /api-keys` und Key-Rotation erfordern jetzt die Rolle Admin oder SecurityAnalyst. Zusätzlich erbt jeder API-Key höchstens die aktuelle Rolle seines Ausstellers (kein pauschales `SecurityAnalyst`-Grant mehr für Personal-Keys) — ein Viewer-/Auditor-Konto kann sich über einen API-Key keine Schreibrechte mehr verschaffen; Downgrade/Offboarding des Ausstellers wirkt auf den Key durch.
+- **form-handler: Slowloris-/Memory-Flood-Schutz (S120-3)** — `http.Server` mit Read-/ReadHeader-/Write-/Idle-Timeouts und 64-KiB-`MaxBytesReader` auf beiden POST-Endpunkten. `realIP()` akzeptiert `X-Real-IP`/`X-Forwarded-For` nur noch vom vertrauenswürdigen Proxy (Caddy setzt `X-Real-IP` explizit) — der Pro-IP-Rate-Limiter kollabiert hinter dem Proxy nicht mehr zu einem globalen Limiter.
+- **IP-Rate-Limits hinter Reverse-Proxy korrekt (S120-5)** — das Root-Compose setzt `VAKT_TRUSTED_PROXIES` (Default `172.16.0.0/12`), sodass Login-Lockouts, IP-Rate-Limits und die Admin-IP-Allowlist die echte Client-IP sehen statt der nginx-Container-IP. Dokumentiert in `docs/wiki/configuration.md`.
+- **DNS-Rebinding-TOCTOU geschlossen (S120-12)** — CCM-HTTP-Checks und Outgoing Webhooks validieren die Ziel-IP jetzt beim Dial (resolve+validate+dial in einem Schritt, wie SAML-Metadata) statt nur per Pre-Flight-Lookup. App-Container laufen mit `cap_drop: ALL` + `no-new-privileges`.
+- **CI-Supply-Chain (S120-10)** — alle GitHub-Actions in sämtlichen 8 verbleibenden Workflows (inkl. `release.yml`, Kunden-Image-Build + Signing) sind auf Commit-SHAs gepinnt; Backup-GPG-Roundtrip und der End-to-End-Restore-Drill laufen als Gate vor jedem Release-Build.
+- **form-handler: Header-Injection-Schutz** — CRLF-Zeichen (`\r`, `\n`) in Name, E-Mail und Betreff werden jetzt abgelehnt (400 Bad Request). IP-Ermittlung verwendet `RemoteAddr` statt `X-Forwarded-For` (XFF-Spoofing-Schutz). E-Mail-Validierung via `mail.ParseAddress` (RFC 5322).
+- **AI Goal Sanitizing** — `AgentRunRequest.Goal` wird auf 2000 Zeichen begrenzt; ANSI-Escape-Codes und Steuerzeichen werden via `logsafe.SanitizeField` entfernt bevor der Prompt an das LLM weitergegeben wird.
+
 ### Fixed
 
-- **Broken Navigation — „Lizenz aktivieren" im Multi-Framework-Wizard** — Schaltfläche verlinkte auf `/settings/license` (nicht existent). Korrigiert auf `/settings` (Lizenz-Sektion liegt in den allgemeinen Einstellungen).
+- **Art. 17 DSGVO Erasure — sr_campaign_enrollments** — Löschung von `sr_campaign_enrollments` (Aware-Kampagnen) war nicht in `ExecuteErasure()` enthalten. `employee_id` ist TEXT ohne FK-Cascade auf `hr_employees`, daher musste die Löschung explizit ergänzt werden. Evidence-Note wird um `sr_campaign_enrollments deleted: N` erweitert.
+- **Impressum §5 DDG** — Vollständiger Name „Stefan Moseler" in beiden Sites (`sites/vakt/`, `sites/main/`) ergänzt. Steuernummer-Abschnitt als Pflichtangabe vorbereitet (⚠️ Steuernummer muss manuell eingetragen werden).
+- **Broken Navigation — „Lizenz aktivieren" im Multi-Framework-Wizard** — Schaltfläche verlinkte auf `/settings/license` (nicht existent). Link korrigiert auf `/settings`. Zusätzlich: `/settings/license` im Router als Redirect → `/settings` eingetragen, damit direkte URL-Eingabe nicht zu 404 führt.
 - **Broken Navigation — Verknüpfter Datenschutzvorfall in Incident-Detailseite** — Link „DSGVO-Vorfall öffnen" verlinkte auf `/vaktprivacy/breaches/:id` (keine Detail-Route). Korrigiert auf `/vaktprivacy/breach` (Vorfalls-Übersicht).
+
+### Changed
+
+- **Ollama nur noch mit `ai`-Compose-Profil (S120-6)** — der lokale KI-Container startet nur bei `COMPOSE_PROFILES=ai` (passend zum Default `VAKT_AI_PROVIDER=disabled`); ohne KI läuft die Plattform in 2 GB RAM. Worker-Memory-Limit 256m→768m mit Scan-Semaphore (`VAKT_SCAN_CONCURRENCY`, Default 2) gegen Scanner-OOM; Redis `--maxmemory 400mb` mit 512m-cgroup-Limit (Eviction greift vor dem Kernel-OOM-Kill).
+- **Findings-Export: echte Keyset-Pagination (S120-9)** — der Export nutzt jetzt `ListFindingsCursor` statt eines OFFSET-Loops (war O(n²) bei großen Exports); Integrationstest über 1203 Findings.
+- **AI-Agent als Beta gekennzeichnet (S120-8)** — `AIAgentPage` zeigt KI-Disclaimer + Beta-Badge (EU-AI-Act-Transparenz), reflektiert `X-Vakt-Status: experimental` und ist vollständig übersetzt (de/en/fr/nl), ebenso die SecVitals-KPIs und Export-Buttons (S120-11).
+- **setup.md repariert + Mirror vollständig (S120-7)** — Schnellstart erzeugt jetzt gültige Secrets (Secret-Key, Postgres-/Redis-Passwort), `VAKT_REDIS_URL` wird im Compose aus `REDIS_PASSWORD` abgeleitet, und `docs/operations/` (13 Runbooks) wird in den Public Mirror gesynct; `check-docs.py` prüft Mirror-Links ab jetzt automatisch.
+- **Code-Hygiene: Refactoring** — `vaktcomply/repository.go` (war 2333 Zeilen, 120 Funktionen) wurde in 9 Domain-Dateien aufgeteilt (`repository_milestones.go`, `repository_access_review.go`, `repository_interested_parties.go`, `repository_isms_scope.go`, `repository_tasks_comments.go`, `repository_resilience.go`, `repository_capa.go`, `repository_reporting.go`, `repository_incidents.go`). `admin/handler.go` (war 1376 Zeilen) wurde in `handler_org.go`, `handler_sso.go` und `handler_settings.go` aufgeteilt. Kein Behavior-Change.
+- **Findings-Export: alle Seiten** — `ExportFindings` (CSV/JSON) und `ExportFindingsXLSX` paginieren jetzt alle Findings in 500er-Batches statt bei 500/25 abzuschneiden. Orgs mit > 500 Findings bekommen vollständige Exports.
+- **AI-Report-Timeout konfigurierbar** — `VAKT_AI_REPORT_TIMEOUT` (Sekunden, Standard 120) steuert den HTTP-Timeout für KI-Report-Generierung. Nützlich bei langsamen CPU-only-Modellen auf kleinen VMs.
+- **Backup: db.pgdump GPG-verschlüsselt** — `backup.sh` verschlüsselt den PostgreSQL-Dump nach der Erstellung symmetrisch mit GPG (AES256). Klartext-Dump wird nach Verschlüsselung gelöscht. `backup-verify.sh` entschlüsselt automatisch wenn `VAKT_BACKUP_PASSPHRASE`/`VAKT_BACKUP_PASSPHRASE_FILE` gesetzt. gpg (GnuPG) ist jetzt Pflicht-Dependency für `backup.sh`.
+- **VAKT_AI_PROVIDER Default → `disabled`** — KI-Berater ist standardmäßig deaktiviert. Vorher war `openai` der Default, was bei Instanzen ohne `.env`-Konfiguration ungewollt Verbindungsversuche zu OpenAI ausgelöst hat. Aktivierung explizit via `VAKT_AI_PROVIDER=openai` + `VAKT_AI_BASE_URL`.
+- **Redis maxmemory** — Redis-Container startet jetzt mit `--maxmemory 512mb --maxmemory-policy allkeys-lru`. Verhindert OOM-Kills auf kleinen VMs; älteste Cache-Keys werden bei Speicherdruck verdrängt.
+- **Public Mirror: docs/guides/ enthalten** — `docs/guides/` (Getting-Started-Guides, Tutorials) wird jetzt in den Public Mirror gespiegelt. `docs/modules/` (veraltete Modulbeschreibungen) wird nicht mehr gespiegelt — `docs/wiki/` ist die kanonische Quelle.
+- **README: First-Login-Hinweis** — Quick-Start-Sektion erklärt den ersten Login ohne Demo-Modus (`/setup`).
 
 ---
 

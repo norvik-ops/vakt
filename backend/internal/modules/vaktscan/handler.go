@@ -670,17 +670,23 @@ func (h *Handler) ExportFindingsXLSX(c echo.Context) error {
 		Severity: c.QueryParam("severity"),
 		Status:   c.QueryParam("status"),
 		AssetID:  c.QueryParam("asset_id"),
-		Limit:    5000,
-		Page:     1,
+		Limit:    500,
 	}
-
-	findings, err := h.service.ListFindings(c.Request().Context(), orgID, filter)
-	if err != nil {
-		log.Error().Err(err).Str("org_id", orgID).Msg("export findings xlsx")
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "export failed",
-			"code":  "VB_EXPORT_ERROR",
-		})
+	var findings []Finding
+	for page := 1; ; page++ {
+		filter.Page = page
+		batch, err := h.service.ListFindings(c.Request().Context(), orgID, filter)
+		if err != nil {
+			log.Error().Err(err).Str("org_id", orgID).Msg("export findings xlsx")
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "export failed",
+				"code":  "VB_EXPORT_ERROR",
+			})
+		}
+		findings = append(findings, batch...)
+		if len(batch) < 500 {
+			break
+		}
 	}
 
 	var buf bytes.Buffer

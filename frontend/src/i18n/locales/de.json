@@ -1679,7 +1679,19 @@
     },
     "secVitals": {
       "customizeWidgets": "Widgets anpassen",
-      "orderSaved": "Reihenfolge gespeichert"
+      "orderSaved": "Reihenfolge gespeichert",
+      "kpiFrameworks": "Frameworks",
+      "kpiFrameworksSub": "aktiviert",
+      "kpiOpenRisks": "Offene Risiken",
+      "kpiCriticalHigh": "{{count}} kritisch/hoch",
+      "kpiNoCritical": "keine kritischen",
+      "kpiOpenIncidents": "Offene Vorfälle",
+      "kpiCritical": "{{count}} kritisch",
+      "kpiPolicies": "Richtlinien",
+      "kpiOverdue": "{{count}} überfällig",
+      "kpiAllCurrent": "alle aktuell",
+      "kpiAudits": "Audits",
+      "kpiAuditsSub": "aktiv / geplant"
     },
     "mappingCoverage": {
       "covered": "Abgedeckt:",
@@ -2608,7 +2620,11 @@
       "cancelled": "Abgebrochen"
     },
     "savePending": "Speichern …",
-    "confirmDeleteTitle": "Löschen bestätigen"
+    "confirmDeleteTitle": "Löschen bestätigen",
+    "word": "Word",
+    "exportControls": "Controls exportieren",
+    "statusUpdated": "Status aktualisiert",
+    "bulkUpdateFailed": "Bulk-Update fehlgeschlagen"
   },
   "actions": {
     "save": "Speichern",
@@ -5270,5 +5286,45 @@
     "submitting": "Wird erstellt...",
     "submitButton": "Kampagne erstellen & E-Mails senden",
     "defaultPolicy": "Richtlinie"
+  },
+  "aiAgent": {
+    "title": "AI-Agent",
+    "betaBadge": "Beta",
+    "description": "Lass den Agenten Tools deiner Vakt-Instanz nutzen, um konkrete Aufträge zu erledigen — Plan/Execute/Reflect, alle Schritte transparent.",
+    "experimentalNote": "Dieses Feature ist experimentell (Beta). Ergebnisse können unvollständig oder fehlerhaft sein — bitte fachlich prüfen.",
+    "whatTitle": "Was darf der Agent?",
+    "whatScope": "Nur Tools nutzen, deren RequireScope deine Rolle abdeckt.",
+    "whatRead": "Lesende Tools (Findings, Controls, Risks listen) sind freigegeben.",
+    "whatWrite": "Mutierende Tools (Evidence anlegen, Status ändern) sind Pro-Tier — kommen mit Approve-Before-Apply.",
+    "whatAudit": "Jeder Lauf wird vollständig im Audit-Log persistiert (org-scoped).",
+    "goalTitle": "Agent-Auftrag",
+    "goalPlaceholder": "Z.B.: Erstelle eine Übersicht aller offenen Controls für NIS2 und schlage Prioritäten vor.",
+    "scopesNote": "Der Agent darf nur Tools nutzen, für die du die nötigen Scopes hast (ADR-0020).",
+    "start": "Starten",
+    "stop": "Stoppen",
+    "statusRunning": "läuft…",
+    "statusDone": "fertig",
+    "eventsCount": "{{count}} Events",
+    "errorTitle": "Agent-Lauf fehlgeschlagen",
+    "noRunYet": "Noch kein Lauf gestartet.",
+    "collapse": "einklappen",
+    "argumentsLabel": "Argumente:",
+    "resultLabel": "Ergebnis:",
+    "unknownTool": "unbekannt",
+    "eventPlan": "Plan #{{step}}",
+    "eventTool": "Tool: {{tool}}",
+    "eventResult": "Ergebnis: {{tool}}",
+    "eventReflect": "Reflexion",
+    "eventFinal": "Antwort",
+    "eventError": "Fehler",
+    "eventApproval": "Freigabe erforderlich: {{tool}}",
+    "eventRunStarted": "Lauf gestartet",
+    "eventUnknown": "Unbekannt",
+    "approvalTitle": "Freigabe erforderlich",
+    "approvalBody": "Der Agent möchte ein Write-Tool ausführen, das Daten verändert. Bitte prüfe die Argumente und genehmige oder lehne ab.",
+    "approve": "Genehmigen",
+    "approving": "Wird genehmigt…",
+    "reject": "Ablehnen",
+    "rejecting": "Wird abgelehnt…"
   }
 }

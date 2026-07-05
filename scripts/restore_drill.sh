@@ -25,8 +25,17 @@ cleanup() {
 trap cleanup EXIT
 
 wait_pg() { # $1 = container name
-	for _ in $(seq 1 30); do
-		if docker exec "$1" pg_isready -U vakt >/dev/null 2>&1; then return 0; fi
+	# Require 2 consecutive successful checks 1s apart: the official postgres
+	# image restarts once during init, and a single pg_isready can hit the
+	# short-lived init instance — the host connection then fails (S120-10).
+	local streak=0
+	for _ in $(seq 1 60); do
+		if docker exec "$1" pg_isready -U vakt >/dev/null 2>&1; then
+			streak=$((streak + 1))
+			if [ "$streak" -ge 2 ]; then return 0; fi
+		else
+			streak=0
+		fi
 		sleep 1
 	done
 	echo "ERROR: postgres $1 did not become ready" >&2

@@ -32,7 +32,7 @@
     compose_file: docker-compose.yml
     backup_dir: "{{ vakt_dir }}/backups"
     force_update: false
-    github_repo: norvik-ops/vatk
+    github_repo: norvik-ops/vakt
     update_script: "{{ vakt_dir }}/scripts/update.sh"
 
   tasks:

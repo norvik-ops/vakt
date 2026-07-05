@@ -298,6 +298,7 @@ function StatCard({ icon: Icon, label, value, sub, onClick, accent = 'default' }
 }
 
 export default function SecVitalsOverviewPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { data: frameworks } = useFrameworks()
   const { data: aiStatus } = useAIStatus()
@@ -362,41 +363,41 @@ export default function SecVitalsOverviewPage() {
       <div key="kpis" className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <StatCard
           icon={ShieldCheck}
-          label="Frameworks"
+          label={t('vaktcomply.secVitals.kpiFrameworks')}
           value={frameworks?.length ?? 0}
-          sub="aktiviert"
+          sub={t('vaktcomply.secVitals.kpiFrameworksSub')}
           onClick={() => { navigate('/vaktcomply/frameworks'); }}
           accent={frameworks?.length ? 'green' : 'default'}
         />
         <StatCard
           icon={ShieldAlert}
-          label="Offene Risiken"
+          label={t('vaktcomply.secVitals.kpiOpenRisks')}
           value={openRisks.length}
-          sub={highRisks.length > 0 ? `${highRisks.length} kritisch/hoch` : 'keine kritischen'}
+          sub={highRisks.length > 0 ? t('vaktcomply.secVitals.kpiCriticalHigh', { count: highRisks.length }) : t('vaktcomply.secVitals.kpiNoCritical')}
           onClick={() => { navigate('/vaktcomply/risks'); }}
           accent={highRisks.length > 0 ? 'red' : openRisks.length > 0 ? 'yellow' : 'green'}
         />
         <StatCard
           icon={Siren}
-          label="Offene Vorfälle"
+          label={t('vaktcomply.secVitals.kpiOpenIncidents')}
           value={openIncidents.length}
-          sub={criticalIncidents.length > 0 ? `${criticalIncidents.length} kritisch` : 'keine kritischen'}
+          sub={criticalIncidents.length > 0 ? t('vaktcomply.secVitals.kpiCritical', { count: criticalIncidents.length }) : t('vaktcomply.secVitals.kpiNoCritical')}
           onClick={() => { navigate('/vaktcomply/incidents'); }}
           accent={criticalIncidents.length > 0 ? 'red' : openIncidents.length > 0 ? 'yellow' : 'green'}
         />
         <StatCard
           icon={BookOpen}
-          label="Richtlinien"
+          label={t('vaktcomply.secVitals.kpiPolicies')}
           value={policies?.length ?? 0}
-          sub={overdueReviews.length > 0 ? `${overdueReviews.length} überfällig` : 'alle aktuell'}
+          sub={overdueReviews.length > 0 ? t('vaktcomply.secVitals.kpiOverdue', { count: overdueReviews.length }) : t('vaktcomply.secVitals.kpiAllCurrent')}
           onClick={() => { navigate('/vaktcomply/policies'); }}
           accent={overdueReviews.length > 0 ? 'yellow' : 'default'}
         />
         <StatCard
           icon={ClipboardList}
-          label="Audits"
+          label={t('vaktcomply.secVitals.kpiAudits')}
           value={plannedAudits.length}
-          sub="aktiv / geplant"
+          sub={t('vaktcomply.secVitals.kpiAuditsSub')}
           onClick={() => { navigate('/vaktcomply/audits'); }}
         />
       </div>

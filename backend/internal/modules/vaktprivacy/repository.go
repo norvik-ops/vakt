@@ -827,6 +827,20 @@ func (r *Repository) ExecuteErasure(ctx context.Context, orgID, id string) (*DSR
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	// 3a-pre. Delete Aware campaign enrollment records (no FK cascade on hr_employees.id —
+	// employee_id is TEXT, so rows survive the hr_employees delete and retain PII).
+	enrollTag, err := tx.Exec(ctx, `
+		DELETE FROM sr_campaign_enrollments
+		WHERE org_id = $1 AND employee_id IN (
+			SELECT id::text FROM hr_employees
+			WHERE org_id = $1 AND lower(email) = lower($2)
+		)`, orgID, requesterEmail,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("execute erasure: delete sr_campaign_enrollments: %w", err)
+	}
+	enrollDeleted := enrollTag.RowsAffected()
+
 	// 3a. Delete from hr_employees.
 	hrTag, err := tx.Exec(ctx,
 		`DELETE FROM hr_employees WHERE org_id = $1 AND lower(email) = lower($2)`,
@@ -910,12 +924,13 @@ func (r *Repository) ExecuteErasure(ctx context.Context, orgID, id string) (*DSR
 	// 4. Build evidence note summarising affected rows.
 	evidenceNote := fmt.Sprintf(
 		"Art. 17 DSGVO erasure executed at %s.\n"+
+			"sr_campaign_enrollments deleted: %d\n"+
 			"hr_employees deleted: %d\n"+
 			"sr_events deleted: %d\n"+
 			"sr_targets deleted: %d\n"+
 			"users anonymised: %d",
 		time.Now().UTC().Format(time.RFC3339),
-		hrDeleted, srEventsDeleted, srDeleted, usersAnonymised,
+		enrollDeleted, hrDeleted, srEventsDeleted, srDeleted, usersAnonymised,
 	)
 
 	// 5. Mark the DSR as completed — AFTER all deletions, inside the same tx.

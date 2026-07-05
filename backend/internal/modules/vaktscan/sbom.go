@@ -45,7 +45,12 @@ func RunSyftScan(ctx context.Context, db *pgxpool.Pool, orgID, assetID, target s
 		Str("target", target).
 		Msg("starting syft SBOM scan")
 
+	// Same subprocess-memory concern as trivy/nuclei — share the scan slots.
+	if err := acquireScanSlot(ctx); err != nil {
+		return err
+	}
 	out, err := exec.CommandContext(ctx, "syft", "packages", target, "-o", "cyclonedx-json", "--quiet").Output()
+	releaseScanSlot()
 	if err != nil {
 		return fmt.Errorf("syft exec: %w", err)
 	}

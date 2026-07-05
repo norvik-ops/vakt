@@ -1679,7 +1679,19 @@
     },
     "secVitals": {
       "customizeWidgets": "Customize widgets",
-      "orderSaved": "Order saved"
+      "orderSaved": "Order saved",
+      "kpiFrameworks": "Frameworks",
+      "kpiFrameworksSub": "enabled",
+      "kpiOpenRisks": "Open risks",
+      "kpiCriticalHigh": "{{count}} critical/high",
+      "kpiNoCritical": "none critical",
+      "kpiOpenIncidents": "Open incidents",
+      "kpiCritical": "{{count}} critical",
+      "kpiPolicies": "Policies",
+      "kpiOverdue": "{{count}} overdue",
+      "kpiAllCurrent": "all current",
+      "kpiAudits": "Audits",
+      "kpiAuditsSub": "active / planned"
     },
     "mappingCoverage": {
       "covered": "Covered:",
@@ -2608,7 +2620,11 @@
       "cancelled": "Cancelled"
     },
     "savePending": "Saving…",
-    "confirmDeleteTitle": "Confirm Deletion"
+    "confirmDeleteTitle": "Confirm Deletion",
+    "word": "Word",
+    "exportControls": "Export controls",
+    "statusUpdated": "Status updated",
+    "bulkUpdateFailed": "Bulk update failed"
   },
   "actions": {
     "save": "Save",
@@ -5270,5 +5286,45 @@
     "submitting": "Creating...",
     "submitButton": "Create campaign & send e-mails",
     "defaultPolicy": "Policy"
+  },
+  "aiAgent": {
+    "title": "AI Agent",
+    "betaBadge": "Beta",
+    "description": "Let the agent use your Vakt instance's tools to complete concrete tasks — plan/execute/reflect, every step transparent.",
+    "experimentalNote": "This feature is experimental (beta). Results may be incomplete or incorrect — please verify with an expert.",
+    "whatTitle": "What may the agent do?",
+    "whatScope": "Only use tools whose RequireScope your role covers.",
+    "whatRead": "Read-only tools (list findings, controls, risks) are allowed.",
+    "whatWrite": "Mutating tools (create evidence, change status) are Pro-tier — shipped with approve-before-apply.",
+    "whatAudit": "Every run is fully persisted in the audit log (org-scoped).",
+    "goalTitle": "Agent task",
+    "goalPlaceholder": "E.g.: Create an overview of all open NIS2 controls and suggest priorities.",
+    "scopesNote": "The agent may only use tools you hold the required scopes for (ADR-0020).",
+    "start": "Start",
+    "stop": "Stop",
+    "statusRunning": "running…",
+    "statusDone": "done",
+    "eventsCount": "{{count}} events",
+    "errorTitle": "Agent run failed",
+    "noRunYet": "No run started yet.",
+    "collapse": "collapse",
+    "argumentsLabel": "Arguments:",
+    "resultLabel": "Result:",
+    "unknownTool": "unknown",
+    "eventPlan": "Plan #{{step}}",
+    "eventTool": "Tool: {{tool}}",
+    "eventResult": "Result: {{tool}}",
+    "eventReflect": "Reflection",
+    "eventFinal": "Answer",
+    "eventError": "Error",
+    "eventApproval": "Approval required: {{tool}}",
+    "eventRunStarted": "Run started",
+    "eventUnknown": "Unknown",
+    "approvalTitle": "Approval required",
+    "approvalBody": "The agent wants to execute a write tool that modifies data. Please review the arguments and approve or reject.",
+    "approve": "Approve",
+    "approving": "Approving…",
+    "reject": "Reject",
+    "rejecting": "Rejecting…"
   }
 }

@@ -53,6 +53,13 @@ func NewAIClient(baseURL, apiKey, model string) *AIClient {
 	}
 }
 
+// WithTimeout overrides the HTTP client timeout used for non-streaming AI calls.
+// Call this after NewAIClient when VAKT_AI_REPORT_TIMEOUT is configured.
+func (c *AIClient) WithTimeout(d time.Duration) *AIClient {
+	c.client.Timeout = d
+	return c
+}
+
 type chatMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`

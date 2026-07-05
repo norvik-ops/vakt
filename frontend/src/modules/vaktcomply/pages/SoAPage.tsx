@@ -227,7 +227,7 @@ export default function SoAPage() {
           <ExportButton
             endpoint="/api/v1/vaktcomply/soa/export.docx"
             filename={`soa-${new Date().toISOString().slice(0, 10)}`}
-            label="Word"
+            label={t('common.word')}
             format="docx"
           />
           {summary?.version_status === 'draft' && (

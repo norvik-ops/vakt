@@ -86,8 +86,40 @@ func NewWebhookService(db *pgxpool.Pool, masterKey []byte) *WebhookService {
 		masterKey: masterKey,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
+			// S120-12: validateWebhookURL alone (create/update time) leaves a
+			// DNS-rebinding TOCTOU window — re-validate at dial time against
+			// the exact IP being connected (saml_metadata pattern).
+			Transport: &http.Transport{DialContext: webhookDialContext},
 		},
 	}
+}
+
+// webhookForbiddenIP mirrors the ranges rejected by validateWebhookURL.
+func webhookForbiddenIP(ip net.IP) bool {
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() || ip.IsUnspecified()
+}
+
+// webhookDialContext resolves, validates, and dials in one step so the OS
+// cannot re-resolve the webhook host to a private address after validation.
+func webhookDialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid dial address: %w", err)
+	}
+	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	if err != nil {
+		return nil, fmt.Errorf("DNS lookup failed: %w", err)
+	}
+	if len(addrs) == 0 {
+		return nil, fmt.Errorf("DNS returned no addresses for %q", host)
+	}
+	for _, a := range addrs {
+		if webhookForbiddenIP(a.IP) {
+			return nil, fmt.Errorf("webhook URL resolves to a private or loopback address — blocked")
+		}
+	}
+	return (&net.Dialer{}).DialContext(ctx, network, net.JoinHostPort(addrs[0].IP.String(), port))
 }
 
 // encryptSecret encrypts a plaintext secret for storage. Returns the value

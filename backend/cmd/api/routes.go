@@ -408,7 +408,11 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		ckSvc.WithNotifyService(notify.NewService(pool, cfg))
 		ckSvc.WithWebhooks(webhookSvc)
 		if cfg.AIProvider != "disabled" && cfg.AIProvider != "" && cfg.AIBaseURL != "" {
-			ckSvc.WithAIClient(ai.NewAIClient(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel))
+			aiClient := ai.NewAIClient(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel)
+			if cfg.AIReportTimeoutSeconds > 0 {
+				aiClient.WithTimeout(time.Duration(cfg.AIReportTimeoutSeconds) * time.Second)
+			}
+			ckSvc.WithAIClient(aiClient)
 		}
 		cloudEvidence = vaktcomply.NewCloudEvidenceWriter(ckSvc.Repo())
 		hrEvidence = vaktcomply.NewHREvidenceWriter(pool)

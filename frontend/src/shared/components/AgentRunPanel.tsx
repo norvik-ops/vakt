@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Sparkles,
   Wrench,
@@ -46,65 +47,67 @@ interface EventCardProps {
 }
 
 function EventCard({ evt, index }: EventCardProps) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const hasDetails =
     evt.arguments !== undefined || evt.result !== undefined
 
+  const unknownTool = t('aiAgent.unknownTool')
   const meta = (() => {
     switch (evt.type) {
       case 'plan':
         return {
           icon: <Sparkles className="w-4 h-4 text-brand" />,
           tint: 'border-brand/30 bg-brand/5',
-          label: `Plan #${evt.step.toString()}`,
+          label: t('aiAgent.eventPlan', { step: evt.step }),
         }
       case 'tool_call':
         return {
           icon: <Wrench className="w-4 h-4 text-amber-600" />,
           tint: 'border-amber-300/50 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-950/30',
-          label: `Tool: ${evt.tool ?? 'unbekannt'}`,
+          label: t('aiAgent.eventTool', { tool: evt.tool ?? unknownTool }),
         }
       case 'tool_result':
         return {
           icon: <CheckCircle2 className="w-4 h-4 text-green-600" />,
           tint: 'border-green-300/50 bg-green-50 dark:border-green-800/50 dark:bg-green-950/30',
-          label: `Ergebnis: ${evt.tool ?? 'unbekannt'}`,
+          label: t('aiAgent.eventResult', { tool: evt.tool ?? unknownTool }),
         }
       case 'reflect':
         return {
           icon: <RotateCw className="w-4 h-4 text-secondary" />,
           tint: 'border-border bg-muted/20',
-          label: 'Reflexion',
+          label: t('aiAgent.eventReflect'),
         }
       case 'final':
         return {
           icon: <ShieldCheck className="w-4 h-4 text-green-600" />,
           tint: 'border-green-400/50 bg-green-50 dark:border-green-700/50 dark:bg-green-950/30',
-          label: 'Antwort',
+          label: t('aiAgent.eventFinal'),
         }
       case 'error':
         return {
           icon: <AlertCircle className="w-4 h-4 text-destructive" />,
           tint: 'border-destructive/40 bg-destructive/5',
-          label: 'Fehler',
+          label: t('aiAgent.eventError'),
         }
       case 'approval_required':
         return {
           icon: <ShieldAlert className="w-4 h-4 text-amber-600" />,
           tint: 'border-amber-400/50 bg-amber-50 dark:border-amber-700/50 dark:bg-amber-950/30',
-          label: `Freigabe erforderlich: ${evt.tool ?? 'unbekannt'}`,
+          label: t('aiAgent.eventApproval', { tool: evt.tool ?? unknownTool }),
         }
       case 'run_started':
         return {
           icon: <Sparkles className="w-4 h-4 text-secondary" />,
           tint: 'border-border bg-muted/10',
-          label: 'Lauf gestartet',
+          label: t('aiAgent.eventRunStarted'),
         }
       default:
         return {
           icon: <AlertCircle className="w-4 h-4 text-secondary" />,
           tint: 'border-border bg-muted/10',
-          label: 'Unbekannt',
+          label: t('aiAgent.eventUnknown'),
         }
     }
   })()
@@ -125,7 +128,7 @@ function EventCard({ evt, index }: EventCardProps) {
                 className="text-[10px] text-secondary hover:text-primary flex items-center gap-0.5"
               >
                 {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                {expanded ? 'einklappen' : 'JSON'}
+                {expanded ? t('aiAgent.collapse') : 'JSON'}
               </button>
             )}
           </div>
@@ -136,13 +139,13 @@ function EventCard({ evt, index }: EventCardProps) {
           )}
           {expanded && evt.arguments !== undefined && (
             <div>
-              <span className="text-[10px] text-secondary">Arguments:</span>
+              <span className="text-[10px] text-secondary">{t('aiAgent.argumentsLabel')}</span>
               <JsonBlock data={evt.arguments} />
             </div>
           )}
           {expanded && evt.result !== undefined && (
             <div>
-              <span className="text-[10px] text-secondary">Result:</span>
+              <span className="text-[10px] text-secondary">{t('aiAgent.resultLabel')}</span>
               <JsonBlock data={evt.result} />
             </div>
           )}
@@ -159,6 +162,7 @@ interface ApproveCardProps {
 }
 
 function ApproveCard({ approval, onApprove, onReject }: ApproveCardProps) {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState<'approve' | 'reject' | null>(null)
 
   const handleApprove = async () => {
@@ -185,11 +189,10 @@ function ApproveCard({ approval, onApprove, onReject }: ApproveCardProps) {
         <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-            Freigabe erforderlich
+            {t('aiAgent.approvalTitle')}
           </p>
           <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-            Der Agent möchte ein Write-Tool ausführen, das Daten verändert.
-            Bitte prüfe die Argumente und genehmige oder lehne ab.
+            {t('aiAgent.approvalBody')}
           </p>
         </div>
       </div>
@@ -203,7 +206,7 @@ function ApproveCard({ approval, onApprove, onReject }: ApproveCardProps) {
         </div>
         <div>
           <span className="text-[10px] text-amber-700 dark:text-amber-400 uppercase tracking-wide">
-            Argumente:
+            {t('aiAgent.argumentsLabel')}
           </span>
           <pre className="mt-1 text-[11px] font-mono bg-amber-100/60 dark:bg-amber-950/60 p-2 rounded overflow-x-auto whitespace-pre text-amber-900 dark:text-amber-200">
             {JSON.stringify(approval.arguments, null, 2)}
@@ -219,7 +222,7 @@ function ApproveCard({ approval, onApprove, onReject }: ApproveCardProps) {
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-300 bg-red-50 text-red-700 text-sm hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-red-800 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50"
         >
           <XCircle className="w-3.5 h-3.5" />
-          {loading === 'reject' ? 'Wird abgelehnt…' : 'Ablehnen'}
+          {loading === 'reject' ? t('aiAgent.rejecting') : t('aiAgent.reject')}
         </button>
         <button
           type="button"
@@ -228,7 +231,7 @@ function ApproveCard({ approval, onApprove, onReject }: ApproveCardProps) {
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-sm hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <CheckCircle2 className="w-3.5 h-3.5" />
-          {loading === 'approve' ? 'Wird genehmigt…' : 'Genehmigen'}
+          {loading === 'approve' ? t('aiAgent.approving') : t('aiAgent.approve')}
         </button>
       </div>
     </div>
@@ -243,8 +246,9 @@ interface AgentRunPanelProps {
 }
 
 export function AgentRunPanel({ initialGoal = '', contextHints }: AgentRunPanelProps) {
+  const { t } = useTranslation()
   const [goal, setGoal] = useState(initialGoal)
-  const { events, isRunning, error, durationMs, start, stop, runId, pendingApproval, approve, reject } = useAgentRun()
+  const { events, isRunning, error, durationMs, start, stop, runId, pendingApproval, approve, reject, experimental } = useAgentRun()
 
   const handleStart = () => {
     if (!goal.trim()) return
@@ -257,19 +261,24 @@ export function AgentRunPanel({ initialGoal = '', contextHints }: AgentRunPanelP
       <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-brand shrink-0" />
-          <h2 className="text-sm font-semibold text-primary">Agent-Auftrag</h2>
+          <h2 className="text-sm font-semibold text-primary">{t('aiAgent.goalTitle')}</h2>
+          {experimental && (
+            <span className="inline-flex items-center rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+              {t('aiAgent.betaBadge')}
+            </span>
+          )}
         </div>
         <textarea
           value={goal}
           onChange={(e) => { setGoal(e.target.value); }}
-          placeholder="Z.B.: Erstelle eine Übersicht aller offenen Controls für NIS2 und schlage Prioritäten vor."
+          placeholder={t('aiAgent.goalPlaceholder')}
           rows={3}
           disabled={isRunning}
           className="w-full rounded-lg border border-border bg-bg p-3 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand/40 resize-none disabled:opacity-60"
         />
         <div className="flex items-center justify-between">
           <p className="text-[11px] text-secondary">
-            Der Agent darf nur Tools nutzen, für die du die nötigen Scopes hast (ADR-0020).
+            {t('aiAgent.scopesNote')}
           </p>
           {isRunning ? (
             <button
@@ -278,7 +287,7 @@ export function AgentRunPanel({ initialGoal = '', contextHints }: AgentRunPanelP
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-sm hover:bg-destructive/20"
             >
               <Square className="w-3.5 h-3.5" />
-              Stoppen
+              {t('aiAgent.stop')}
             </button>
           ) : (
             <button
@@ -288,7 +297,7 @@ export function AgentRunPanel({ initialGoal = '', contextHints }: AgentRunPanelP
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand text-white text-sm hover:bg-brand/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              Starten
+              {t('aiAgent.start')}
             </button>
           )}
         </div>
@@ -298,7 +307,7 @@ export function AgentRunPanel({ initialGoal = '', contextHints }: AgentRunPanelP
       {(isRunning || events.length > 0 || error) && (
         <div className="flex items-center gap-3 text-xs text-secondary">
           <span>
-            {isRunning ? 'läuft…' : 'fertig'} · {events.length.toString()} Events
+            {isRunning ? t('aiAgent.statusRunning') : t('aiAgent.statusDone')} · {t('aiAgent.eventsCount', { count: events.length })}
           </span>
           {durationMs > 0 && (
             <span>
@@ -313,7 +322,7 @@ export function AgentRunPanel({ initialGoal = '', contextHints }: AgentRunPanelP
         <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive flex items-start gap-2">
           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
           <div>
-            <p className="font-medium">Agent-Lauf fehlgeschlagen</p>
+            <p className="font-medium">{t('aiAgent.errorTitle')}</p>
             <p className="text-xs mt-0.5">{error.message}</p>
           </div>
         </div>
@@ -335,7 +344,7 @@ export function AgentRunPanel({ initialGoal = '', contextHints }: AgentRunPanelP
         ))}
         {!isRunning && events.length === 0 && !error && (
           <p className="text-xs text-secondary text-center py-6">
-            Noch kein Lauf gestartet.
+            {t('aiAgent.noRunYet')}
           </p>
         )}
       </div>

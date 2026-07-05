@@ -34,7 +34,7 @@ export function VersionBanner() {
       <span className="text-amber-800">
         Neue Version verfügbar: v{data.latest} —{' '}
         <a
-          href="https://github.com/norvik-ops/vatk/releases"
+          href="https://github.com/norvik-ops/vakt/releases"
           target="_blank"
           rel="noopener noreferrer"
           className="underline hover:text-amber-900 font-medium"

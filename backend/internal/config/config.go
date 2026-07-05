@@ -38,15 +38,16 @@ type Config struct {
 	// AIDailyTokenLimit  — pro Org pro Kalendertag (UTC). 0 = aus.
 	// AICacheTTLSeconds  — Response-Cache-TTL (sha256(model+prompt) → cached body). 0 = aus.
 	// AICostPerMTokenIn/Out (in Mikro-EUR pro 1M Tokens) — für Kosten-Tracking. Lokales Ollama = 0.
-	AIRateLimitRPM      int
-	AIDailyTokenLimit   int
-	AICacheTTLSeconds   int
-	AICostPerMTokenIn   int64 // micro-EUR per 1M input tokens
-	AICostPerMTokenOut  int64 // micro-EUR per 1M output tokens
-	CasdoorURL          string
-	CasdoorClientID     string
-	CasdoorClientSecret string
-	FrontendURL         string
+	AIRateLimitRPM         int
+	AIDailyTokenLimit      int
+	AICacheTTLSeconds      int
+	AIReportTimeoutSeconds int   // HTTP client timeout for AI report generation (default 120s)
+	AICostPerMTokenIn      int64 // micro-EUR per 1M input tokens
+	AICostPerMTokenOut     int64 // micro-EUR per 1M output tokens
+	CasdoorURL             string
+	CasdoorClientID        string
+	CasdoorClientSecret    string
+	FrontendURL            string
 	// LDAP/AD sync
 	LDAPUrl         string
 	LDAPBindDN      string
@@ -230,51 +231,52 @@ func Load() (*Config, error) {
 	}
 
 	cfg := &Config{
-		DBUrl:               dbURL,
-		RedisUrl:            getEnv("VAKT_REDIS_URL", ""),
-		SecretKey:           secretKey,
-		APIPort:             getEnv("VAKT_API_PORT", "8080"),
-		InternalPort:        getEnv("VAKT_INTERNAL_PORT", "8081"),
-		ModulesEnabled:      getEnv("VAKT_MODULES_ENABLED", "vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,vakthr"),
-		AutoMigrate:         getEnv("AUTO_MIGRATE", "false") == "true",
-		DemoSeed:            getEnv("VAKT_DEMO", "false") == "true",
-		Version:             getEnv("APP_VERSION", "0.1.0"),
-		SMTPHost:            getEnv("VAKT_SMTP_HOST", "localhost"),
-		SMTPPort:            getEnv("VAKT_SMTP_PORT", "1025"),
-		SMTPUser:            getEnv("VAKT_SMTP_USER", ""),
-		SMTPPass:            getEnv("VAKT_SMTP_PASS", ""),
-		SMTPFrom:            getEnv("VAKT_SMTP_FROM", "noreply@vakt.local"),
-		AIProvider:          getEnv("VAKT_AI_PROVIDER", "openai"),
-		AIBaseURL:           getEnv("VAKT_AI_BASE_URL", "http://ollama:11434/v1"),
-		AIAPIKey:            getEnv("VAKT_AI_API_KEY", ""),
-		AIModel:             getEnv("VAKT_AI_MODEL", "qwen2.5:7b"),
-		AIRateLimitRPM:      getEnvInt("VAKT_AI_RATE_LIMIT_RPM", 30),
-		AIDailyTokenLimit:   getEnvInt("VAKT_AI_DAILY_TOKEN_LIMIT_PER_ORG", 0),
-		AICacheTTLSeconds:   getEnvInt("VAKT_AI_CACHE_TTL_SECONDS", 3600),
-		AICostPerMTokenIn:   getEnvInt64("VAKT_AI_COST_PER_MTOKEN_IN_MICRO_EUR", 0),
-		AICostPerMTokenOut:  getEnvInt64("VAKT_AI_COST_PER_MTOKEN_OUT_MICRO_EUR", 0),
-		CasdoorURL:          getEnv("CASDOOR_URL", ""),
-		CasdoorClientID:     getEnv("CASDOOR_CLIENT_ID", ""),
-		CasdoorClientSecret: getEnv("CASDOOR_CLIENT_SECRET", ""),
-		FrontendURL:         getEnv("VAKT_FRONTEND_URL", "http://localhost:5173"),
-		LDAPUrl:             getEnv("VAKT_LDAP_URL", ""),
-		LDAPBindDN:          getEnv("VAKT_LDAP_BIND_DN", ""),
-		LDAPBindPass:        getEnv("VAKT_LDAP_BIND_PASS", ""),
-		LDAPBaseDN:          getEnv("VAKT_LDAP_BASE_DN", ""),
-		LDAPUserFilter:      getEnv("VAKT_LDAP_USER_FILTER", "(objectClass=person)"),
-		LDAPGroupFilter:     getEnv("VAKT_LDAP_GROUP_FILTER", "(objectClass=group)"),
-		LDAPTLS:             getEnv("VAKT_LDAP_TLS", "false") == "true",
-		UploadDir:           getEnv("VAKT_UPLOAD_DIR", "./data/uploads"),
-		LicenseKey:          licenseKey,
-		LicenseToken:        getEnv("VAKT_LICENSE_TOKEN", ""),
-		LicenseRefreshURL:   getEnv("VAKT_LICENSE_REFRESH_URL", ""),
-		LSWebhookSecret:     getEnv("VAKT_LS_WEBHOOK_SECRET", ""),
-		PolarWebhookSecret:  getEnv("VAKT_POLAR_WEBHOOK_SECRET", ""),
-		LicensePrivateKey:   getEnv("VAKT_LICENSE_PRIVATE_KEY", ""),
-		UpdateCheck:         getEnv("VAKT_UPDATE_CHECK", "false") == "true",
-		Staging:             getEnv("VAKT_STAGING", "false") == "true",
-		PromoteURL:          getEnv("VAKT_PROMOTE_URL", "http://host.docker.internal:9099/promote"),
-		PromoteSecret:       getEnv("VAKT_PROMOTE_SECRET", ""),
+		DBUrl:                  dbURL,
+		RedisUrl:               getEnv("VAKT_REDIS_URL", ""),
+		SecretKey:              secretKey,
+		APIPort:                getEnv("VAKT_API_PORT", "8080"),
+		InternalPort:           getEnv("VAKT_INTERNAL_PORT", "8081"),
+		ModulesEnabled:         getEnv("VAKT_MODULES_ENABLED", "vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,vakthr"),
+		AutoMigrate:            getEnv("AUTO_MIGRATE", "false") == "true",
+		DemoSeed:               getEnv("VAKT_DEMO", "false") == "true",
+		Version:                getEnv("APP_VERSION", "0.1.0"),
+		SMTPHost:               getEnv("VAKT_SMTP_HOST", "localhost"),
+		SMTPPort:               getEnv("VAKT_SMTP_PORT", "1025"),
+		SMTPUser:               getEnv("VAKT_SMTP_USER", ""),
+		SMTPPass:               getEnv("VAKT_SMTP_PASS", ""),
+		SMTPFrom:               getEnv("VAKT_SMTP_FROM", "noreply@vakt.local"),
+		AIProvider:             getEnv("VAKT_AI_PROVIDER", "disabled"),
+		AIBaseURL:              getEnv("VAKT_AI_BASE_URL", "http://ollama:11434/v1"),
+		AIAPIKey:               getEnv("VAKT_AI_API_KEY", ""),
+		AIModel:                getEnv("VAKT_AI_MODEL", "qwen2.5:7b"),
+		AIRateLimitRPM:         getEnvInt("VAKT_AI_RATE_LIMIT_RPM", 30),
+		AIDailyTokenLimit:      getEnvInt("VAKT_AI_DAILY_TOKEN_LIMIT_PER_ORG", 0),
+		AICacheTTLSeconds:      getEnvInt("VAKT_AI_CACHE_TTL_SECONDS", 3600),
+		AIReportTimeoutSeconds: getEnvInt("VAKT_AI_REPORT_TIMEOUT", 120),
+		AICostPerMTokenIn:      getEnvInt64("VAKT_AI_COST_PER_MTOKEN_IN_MICRO_EUR", 0),
+		AICostPerMTokenOut:     getEnvInt64("VAKT_AI_COST_PER_MTOKEN_OUT_MICRO_EUR", 0),
+		CasdoorURL:             getEnv("CASDOOR_URL", ""),
+		CasdoorClientID:        getEnv("CASDOOR_CLIENT_ID", ""),
+		CasdoorClientSecret:    getEnv("CASDOOR_CLIENT_SECRET", ""),
+		FrontendURL:            getEnv("VAKT_FRONTEND_URL", "http://localhost:5173"),
+		LDAPUrl:                getEnv("VAKT_LDAP_URL", ""),
+		LDAPBindDN:             getEnv("VAKT_LDAP_BIND_DN", ""),
+		LDAPBindPass:           getEnv("VAKT_LDAP_BIND_PASS", ""),
+		LDAPBaseDN:             getEnv("VAKT_LDAP_BASE_DN", ""),
+		LDAPUserFilter:         getEnv("VAKT_LDAP_USER_FILTER", "(objectClass=person)"),
+		LDAPGroupFilter:        getEnv("VAKT_LDAP_GROUP_FILTER", "(objectClass=group)"),
+		LDAPTLS:                getEnv("VAKT_LDAP_TLS", "false") == "true",
+		UploadDir:              getEnv("VAKT_UPLOAD_DIR", "./data/uploads"),
+		LicenseKey:             licenseKey,
+		LicenseToken:           getEnv("VAKT_LICENSE_TOKEN", ""),
+		LicenseRefreshURL:      getEnv("VAKT_LICENSE_REFRESH_URL", ""),
+		LSWebhookSecret:        getEnv("VAKT_LS_WEBHOOK_SECRET", ""),
+		PolarWebhookSecret:     getEnv("VAKT_POLAR_WEBHOOK_SECRET", ""),
+		LicensePrivateKey:      getEnv("VAKT_LICENSE_PRIVATE_KEY", ""),
+		UpdateCheck:            getEnv("VAKT_UPDATE_CHECK", "false") == "true",
+		Staging:                getEnv("VAKT_STAGING", "false") == "true",
+		PromoteURL:             getEnv("VAKT_PROMOTE_URL", "http://host.docker.internal:9099/promote"),
+		PromoteSecret:          getEnv("VAKT_PROMOTE_SECRET", ""),
 		// Sprint 15 S15-11: Prometheus-Metrics default-on. Vorher war
 		// VAKT_METRICS_ENABLED=false der Default — Operatoren mussten erst
 		// einen Schalter umlegen. Jetzt ist der Endpoint immer aktiv (IP-

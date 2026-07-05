@@ -26,6 +26,14 @@ if [ -z "$SECRET_KEY" ]; then
 	exit 1
 fi
 
+# Passphrase needed to decrypt db.pgdump.gpg — env var or file, no interactive.
+PASSPHRASE=""
+if [ -n "${VAKT_BACKUP_PASSPHRASE:-}" ]; then
+	PASSPHRASE="$VAKT_BACKUP_PASSPHRASE"
+elif [ -n "${VAKT_BACKUP_PASSPHRASE_FILE:-}" ] && [ -f "$VAKT_BACKUP_PASSPHRASE_FILE" ]; then
+	PASSPHRASE=$(cat "$VAKT_BACKUP_PASSPHRASE_FILE")
+fi
+
 echo "→ Verifying HMAC-SHA256 signature..."
 EXPECTED=$(cat "$SIG_FILE")
 # Use the same derived HMAC key as backup.sh.
@@ -48,6 +56,24 @@ echo "→ Verifying manifest..."
 cat "$WORK_DIR/manifest.json"
 
 echo "→ Checking dump integrity..."
-pg_restore --list "$WORK_DIR/db.pgdump" >/dev/null && echo "✓ Dump is valid"
+if [ -f "$WORK_DIR/db.pgdump.gpg" ]; then
+	if [ -z "$PASSPHRASE" ]; then
+		echo "WARNING: db.pgdump.gpg found but no passphrase — skipping dump integrity check" >&2
+		echo "  Set VAKT_BACKUP_PASSPHRASE or VAKT_BACKUP_PASSPHRASE_FILE to verify the dump."
+	else
+		DUMP_TMP=$(mktemp)
+		trap 'rm -f "$DUMP_TMP"; rm -rf "$WORK_DIR"' EXIT
+		printf '%s' "$PASSPHRASE" | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback \
+			--decrypt --output "$DUMP_TMP" "$WORK_DIR/db.pgdump.gpg"
+		pg_restore --list "$DUMP_TMP" >/dev/null && echo "✓ Dump decrypted and valid"
+		rm -f "$DUMP_TMP"
+		unset PASSPHRASE
+	fi
+elif [ -f "$WORK_DIR/db.pgdump" ]; then
+	pg_restore --list "$WORK_DIR/db.pgdump" >/dev/null && echo "✓ Dump is valid"
+else
+	echo "ERROR: No db.pgdump or db.pgdump.gpg found in archive" >&2
+	exit 1
+fi
 
 echo "✓ Backup verification passed: $BACKUP_FILE"

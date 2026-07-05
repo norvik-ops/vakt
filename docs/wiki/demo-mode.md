@@ -88,7 +88,7 @@ Im Demo-Modus (`VAKT_DEMO=true`) wird **bei jedem Aufruf der Login-Seite automat
 - `admin@vakt.local / admin1234` — das war ein alter statischer Seed (9 Zeichen, < Mindestlänge 10)
 - Irgendein anderer hardcoded Default
 
-Die Credentials erscheinen **immer dynamisch** in der UI / im API-Response von `/demo/start`. Wer in Doku oder Tutorials feste Demo-Credentials nennt, dokumentiert einen Bug. Hintergrund + Design-Entscheidung: siehe [ADR-0015](../adr/0015-ephemere-demo-sessions.md).
+Die Credentials erscheinen **immer dynamisch** in der UI / im API-Response von `/demo/start`. Wer in Doku oder Tutorials feste Demo-Credentials nennt, dokumentiert einen Bug. Hintergrund + Design-Entscheidung: ADR-0015 (Entwicklungs-Repo).
 
 **Schutzmechanismen:**
 - `POST /api/v1/demo/start` ist rate-limited auf 5 Requests/Minute pro IP (Burst 5), um DB-Flooding zu verhindern.

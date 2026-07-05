@@ -626,13 +626,31 @@ func calculateRiskScore(cvss *float64, epssPercent *float64, criticality string)
 }
 
 // ExportFindings returns findings for an org as a CSV or JSON reader.
+// Batches of 500 via keyset pagination (S120-9) — the previous OFFSET/page
+// loop re-scanned all prior rows per batch (O(n²) on deep exports).
 func (s *Service) ExportFindings(ctx context.Context, orgID, format string, filter FindingFilter) (io.Reader, error) {
-	filter.Limit = 500
-	filter.Page = 1
-
-	findings, err := s.repo.ListFindings(ctx, orgID, filter)
-	if err != nil {
-		return nil, fmt.Errorf("list findings for export: %w", err)
+	const batchSize = 500
+	var (
+		findings []Finding
+		cursorID string
+		cursorTS time.Time
+	)
+	for {
+		batch, err := s.repo.ListFindingsCursor(ctx, orgID, filter, cursorID, cursorTS, batchSize)
+		if err != nil {
+			return nil, fmt.Errorf("list findings for export: %w", err)
+		}
+		// ListFindingsCursor fetches batchSize+1 rows for HasMore detection.
+		hasMore := len(batch) > batchSize
+		if hasMore {
+			batch = batch[:batchSize]
+		}
+		findings = append(findings, batch...)
+		if !hasMore {
+			break
+		}
+		last := batch[len(batch)-1]
+		cursorID, cursorTS = last.ID, last.CreatedAt
 	}
 
 	switch strings.ToLower(format) {

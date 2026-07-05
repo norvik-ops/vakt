@@ -295,7 +295,7 @@ export default function FrameworksPage() {
             <ExportButton
               endpoint="/api/v1/vaktcomply/controls/export/xlsx"
               filename={`controls-${new Date().toISOString().slice(0, 10)}`}
-              label="Controls exportieren"
+              label={t('common.exportControls')}
               format="xlsx"
             />
             <Button variant="outline" size="sm" onClick={handleExport}>

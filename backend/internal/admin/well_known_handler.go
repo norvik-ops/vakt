@@ -13,7 +13,7 @@ import (
 // per RFC 9116 (S45-6).
 const securityTXT = `Contact: mailto:security@norvikops.de
 Expires: 2027-05-24T00:00:00.000Z
-Policy: https://github.com/norvik-ops/vatk/blob/main/SECURITY.md
+Policy: https://github.com/norvik-ops/vakt/blob/main/SECURITY.md
 Preferred-Languages: de, en
 Canonical: https://vakt.norvikops.de/.well-known/security.txt
 `

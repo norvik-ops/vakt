@@ -1679,7 +1679,19 @@
     },
     "secVitals": {
       "customizeWidgets": "Personnaliser les widgets",
-      "orderSaved": "Ordre sauvegardé"
+      "orderSaved": "Ordre sauvegardé",
+      "kpiFrameworks": "Référentiels",
+      "kpiFrameworksSub": "activés",
+      "kpiOpenRisks": "Risques ouverts",
+      "kpiCriticalHigh": "{{count}} critiques/élevés",
+      "kpiNoCritical": "aucun critique",
+      "kpiOpenIncidents": "Incidents ouverts",
+      "kpiCritical": "{{count}} critiques",
+      "kpiPolicies": "Politiques",
+      "kpiOverdue": "{{count}} en retard",
+      "kpiAllCurrent": "toutes à jour",
+      "kpiAudits": "Audits",
+      "kpiAuditsSub": "actifs / planifiés"
     },
     "mappingCoverage": {
       "covered": "Couvert :",
@@ -2608,7 +2620,11 @@
       "cancelled": "Annulé"
     },
     "savePending": "Enregistrement…",
-    "confirmDeleteTitle": "Confirmer la suppression"
+    "confirmDeleteTitle": "Confirmer la suppression",
+    "word": "Word",
+    "exportControls": "Exporter les contrôles",
+    "statusUpdated": "Statut mis à jour",
+    "bulkUpdateFailed": "Échec de la mise à jour groupée"
   },
   "actions": {
     "save": "Enregistrer",
@@ -5270,5 +5286,45 @@
     "submitting": "Création...",
     "submitButton": "Créer la campagne & envoyer les e-mails",
     "defaultPolicy": "Politique"
+  },
+  "aiAgent": {
+    "title": "Agent IA",
+    "betaBadge": "Bêta",
+    "description": "Laissez l'agent utiliser les outils de votre instance Vakt pour accomplir des tâches concrètes — plan/exécution/réflexion, chaque étape transparente.",
+    "experimentalNote": "Cette fonctionnalité est expérimentale (bêta). Les résultats peuvent être incomplets ou erronés — veuillez les faire vérifier par un expert.",
+    "whatTitle": "Que peut faire l'agent ?",
+    "whatScope": "Utiliser uniquement les outils dont le RequireScope couvre votre rôle.",
+    "whatRead": "Les outils en lecture seule (findings, contrôles, risques) sont autorisés.",
+    "whatWrite": "Les outils de modification (créer des preuves, changer un statut) sont réservés au niveau Pro — avec approbation préalable.",
+    "whatAudit": "Chaque exécution est intégralement journalisée dans le journal d'audit (par organisation).",
+    "goalTitle": "Mission de l'agent",
+    "goalPlaceholder": "Ex. : Crée un aperçu de tous les contrôles NIS2 ouverts et propose des priorités.",
+    "scopesNote": "L'agent ne peut utiliser que les outils pour lesquels vous disposez des scopes requis (ADR-0020).",
+    "start": "Démarrer",
+    "stop": "Arrêter",
+    "statusRunning": "en cours…",
+    "statusDone": "terminé",
+    "eventsCount": "{{count}} événements",
+    "errorTitle": "Échec de l'exécution de l'agent",
+    "noRunYet": "Aucune exécution démarrée.",
+    "collapse": "replier",
+    "argumentsLabel": "Arguments :",
+    "resultLabel": "Résultat :",
+    "unknownTool": "inconnu",
+    "eventPlan": "Plan n°{{step}}",
+    "eventTool": "Outil : {{tool}}",
+    "eventResult": "Résultat : {{tool}}",
+    "eventReflect": "Réflexion",
+    "eventFinal": "Réponse",
+    "eventError": "Erreur",
+    "eventApproval": "Approbation requise : {{tool}}",
+    "eventRunStarted": "Exécution démarrée",
+    "eventUnknown": "Inconnu",
+    "approvalTitle": "Approbation requise",
+    "approvalBody": "L'agent souhaite exécuter un outil d'écriture qui modifie des données. Vérifiez les arguments puis approuvez ou refusez.",
+    "approve": "Approuver",
+    "approving": "Approbation…",
+    "reject": "Refuser",
+    "rejecting": "Refus…"
   }
 }

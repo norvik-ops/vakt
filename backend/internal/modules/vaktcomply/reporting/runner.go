@@ -64,6 +64,37 @@ func validateCCMURL(rawURL string) error {
 	return nil
 }
 
+// ccmForbiddenIP reports whether an IP must never be contacted by the CCM
+// runner (loopback, private, link-local, cloud metadata).
+func ccmForbiddenIP(ip net.IP) bool {
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() || ip.Equal(net.ParseIP("169.254.169.254"))
+}
+
+// ccmDialContext resolves, validates, and dials in one step (S120-12,
+// saml_metadata pattern) — the pre-flight validateCCMURL alone leaves a
+// DNS-rebinding TOCTOU window: an attacker-controlled DNS server can return
+// a public IP for the check and a private one for the actual request.
+func ccmDialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid dial address: %w", err)
+	}
+	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	if err != nil {
+		return nil, fmt.Errorf("DNS lookup failed: %w", err)
+	}
+	if len(addrs) == 0 {
+		return nil, fmt.Errorf("DNS returned no addresses for %q", host)
+	}
+	for _, a := range addrs {
+		if ccmForbiddenIP(a.IP) {
+			return nil, fmt.Errorf("CCM URL resolves to a private/internal address — not allowed")
+		}
+	}
+	return (&net.Dialer{}).DialContext(ctx, network, net.JoinHostPort(addrs[0].IP.String(), port))
+}
+
 // runHTTPEndpointCheck performs a GET request and passes if the response status is 2xx.
 func runHTTPEndpointCheck(ctx context.Context, check CCMCheck) (string, string, error) {
 	url, ok := check.Config["url"]
@@ -75,7 +106,10 @@ func runHTTPEndpointCheck(ctx context.Context, check CCMCheck) (string, string, 
 		return "fail", fmt.Sprintf("URL validation failed: %s", err.Error()), nil
 	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{
+		Timeout:   10 * time.Second,
+		Transport: &http.Transport{DialContext: ccmDialContext},
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return "fail", fmt.Sprintf("build request: %s", err.Error()), nil

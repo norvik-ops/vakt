@@ -1679,7 +1679,19 @@
     },
     "secVitals": {
       "customizeWidgets": "Widgets aanpassen",
-      "orderSaved": "Volgorde opgeslagen"
+      "orderSaved": "Volgorde opgeslagen",
+      "kpiFrameworks": "Frameworks",
+      "kpiFrameworksSub": "geactiveerd",
+      "kpiOpenRisks": "Open risico's",
+      "kpiCriticalHigh": "{{count}} kritiek/hoog",
+      "kpiNoCritical": "geen kritieke",
+      "kpiOpenIncidents": "Open incidenten",
+      "kpiCritical": "{{count}} kritiek",
+      "kpiPolicies": "Beleidsregels",
+      "kpiOverdue": "{{count}} achterstallig",
+      "kpiAllCurrent": "alles actueel",
+      "kpiAudits": "Audits",
+      "kpiAuditsSub": "actief / gepland"
     },
     "mappingCoverage": {
       "covered": "Gedekt:",
@@ -2608,7 +2620,11 @@
       "cancelled": "Geannuleerd"
     },
     "savePending": "Opslaan…",
-    "confirmDeleteTitle": "Verwijdering bevestigen"
+    "confirmDeleteTitle": "Verwijdering bevestigen",
+    "word": "Word",
+    "exportControls": "Controls exporteren",
+    "statusUpdated": "Status bijgewerkt",
+    "bulkUpdateFailed": "Bulkupdate mislukt"
   },
   "actions": {
     "save": "Opslaan",
@@ -5270,5 +5286,45 @@
     "submitting": "Wordt aangemaakt...",
     "submitButton": "Campagne aanmaken & e-mails verzenden",
     "defaultPolicy": "Beleid"
+  },
+  "aiAgent": {
+    "title": "AI-agent",
+    "betaBadge": "Bèta",
+    "description": "Laat de agent de tools van je Vakt-instantie gebruiken om concrete taken uit te voeren — plan/uitvoeren/reflecteren, elke stap transparant.",
+    "experimentalNote": "Deze functie is experimenteel (bèta). Resultaten kunnen onvolledig of onjuist zijn — laat ze door een expert controleren.",
+    "whatTitle": "Wat mag de agent?",
+    "whatScope": "Alleen tools gebruiken waarvan de RequireScope jouw rol dekt.",
+    "whatRead": "Alleen-lezen tools (findings, controls, risico's weergeven) zijn toegestaan.",
+    "whatWrite": "Muterende tools (bewijs aanmaken, status wijzigen) zijn Pro-tier — met approve-before-apply.",
+    "whatAudit": "Elke run wordt volledig vastgelegd in het auditlog (per organisatie).",
+    "goalTitle": "Agent-opdracht",
+    "goalPlaceholder": "Bijv.: Maak een overzicht van alle open NIS2-controls en stel prioriteiten voor.",
+    "scopesNote": "De agent mag alleen tools gebruiken waarvoor je de vereiste scopes hebt (ADR-0020).",
+    "start": "Starten",
+    "stop": "Stoppen",
+    "statusRunning": "bezig…",
+    "statusDone": "klaar",
+    "eventsCount": "{{count}} events",
+    "errorTitle": "Agent-run mislukt",
+    "noRunYet": "Nog geen run gestart.",
+    "collapse": "inklappen",
+    "argumentsLabel": "Argumenten:",
+    "resultLabel": "Resultaat:",
+    "unknownTool": "onbekend",
+    "eventPlan": "Plan #{{step}}",
+    "eventTool": "Tool: {{tool}}",
+    "eventResult": "Resultaat: {{tool}}",
+    "eventReflect": "Reflectie",
+    "eventFinal": "Antwoord",
+    "eventError": "Fout",
+    "eventApproval": "Goedkeuring vereist: {{tool}}",
+    "eventRunStarted": "Run gestart",
+    "eventUnknown": "Onbekend",
+    "approvalTitle": "Goedkeuring vereist",
+    "approvalBody": "De agent wil een write-tool uitvoeren die gegevens wijzigt. Controleer de argumenten en keur goed of wijs af.",
+    "approve": "Goedkeuren",
+    "approving": "Bezig met goedkeuren…",
+    "reject": "Afwijzen",
+    "rejecting": "Bezig met afwijzen…"
   }
 }

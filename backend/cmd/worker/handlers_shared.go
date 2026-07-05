@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -343,6 +344,9 @@ func handleAIWeeklyDigest(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerF
 		}
 
 		client := ai.NewAIClient(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel)
+		if cfg.AIReportTimeoutSeconds > 0 {
+			client.WithTimeout(time.Duration(cfg.AIReportTimeoutSeconds) * time.Second)
+		}
 		repo := vaktcomply.NewRepository(pool)
 
 		smtpCfg := emaildigest.SMTPConfig{}

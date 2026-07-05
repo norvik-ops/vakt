@@ -146,6 +146,52 @@ def check_links() -> None:
                     err(f"{f}:{lineno}: kaputter interner Link → {target}")
 
 
+# ── 3b. Mirror-Link-Check (S120-7) ───────────────────────────────────────────
+# build-public-mirror.sh synct diese docs-Pfade in den Public Mirror
+# (norvik-ops/vakt). Links INNERHALB gemirrorter Dateien dürfen nur auf
+# ebenfalls gemirrorte docs-Pfade zeigen — sonst hat der Mirror tote Links,
+# obwohl der Source-Baum-Check oben grün ist (Auslöser: troubleshooting.md →
+# docs/operations/, Zert-v5 SA-13). Liste synchron zu build-public-mirror.sh
+# pflegen.
+_MIRRORED_DOCS = (
+    "README.md",
+    "docs/setup.md", "docs/configuration.md", "docs/SECURITY-ASSESSMENT.md",
+    "docs/backup-restore.md", "docs/encryption-at-rest.md",
+    "docs/UPGRADE.md", "docs/operations.md",
+    "docs/wiki/", "docs/runbooks/", "docs/guides/", "docs/operations/",
+)
+
+
+def _in_mirror(path: str) -> bool:
+    return any(
+        path == p or (p.endswith("/") and path.startswith(p))
+        for p in _MIRRORED_DOCS
+    )
+
+
+def check_mirror_links() -> None:
+    tracked = subprocess.run(
+        ["git", "ls-files", "*.md"], capture_output=True, text=True
+    ).stdout.split()
+    for f in tracked:
+        if not _in_mirror(f):
+            continue
+        base = os.path.dirname(f)
+        for lineno, line in enumerate(open(f, encoding="utf-8", errors="ignore"), 1):
+            for mm in _LINK.finditer(line):
+                target = mm.group(1)
+                if target.startswith(("http://", "https://", "mailto:")):
+                    continue
+                resolved = os.path.normpath(os.path.join(base, target)).replace(os.sep, "/")
+                # Nur docs-interne Links prüfen — Code-Pfade deckt der Mirror
+                # ohnehin ab, und nicht-existente Ziele meldet check_links.
+                if resolved.startswith("docs/") and os.path.exists(resolved) and not _in_mirror(resolved):
+                    err(
+                        f"{f}:{lineno}: Link-Ziel {resolved} wird nicht in den "
+                        f"Public Mirror gesynct (build-public-mirror.sh) → toter Link im Mirror"
+                    )
+
+
 # ── 4. Env-Var-Coverage ──────────────────────────────────────────────────────
 # Zwei Invarianten, beide mit dem Code als Quelle der Wahrheit:
 #   (A) Referenz-Vollständigkeit: jede Variable in .env.example MUSS in der
@@ -459,6 +505,7 @@ def main() -> int:
     check_go_version()
     check_ai_default()
     check_links()
+    check_mirror_links()
     check_env_vars()
     check_volume_backup()
     check_prices()

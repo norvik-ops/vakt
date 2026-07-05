@@ -163,7 +163,7 @@ export function TopBar({ onOpenSearch, onOpenShortcuts }: TopBarProps) {
               {t('nav.sessions')}
             </Link>
             <a
-              href="https://github.com/norvik-ops/vatk/wiki"
+              href="https://github.com/norvik-ops/vakt/wiki"
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => { setUserMenuOpen(false); }}

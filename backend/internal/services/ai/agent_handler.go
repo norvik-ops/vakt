@@ -10,6 +10,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/logsafe"
 )
 
 // Sprint 18 S18-3: AgentRunHandler ist der SSE-Endpoint für Agent-Runs.
@@ -65,6 +67,10 @@ func (h *AgentHandler) AgentRun(c echo.Context) error {
 	if err := c.Bind(&input); err != nil || input.Goal == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "goal required"})
 	}
+	if len(input.Goal) > 2000 {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "goal too long (max 2000 characters)"})
+	}
+	input.Goal = logsafe.SanitizeField(input.Goal, 2000)
 
 	// Eindeutige Run-ID für Approval-Flows generieren.
 	runID := uuid.New().String()

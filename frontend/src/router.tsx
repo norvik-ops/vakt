@@ -215,6 +215,7 @@ export const router = createBrowserRouter([
           { path: '/settings/webhooks', element: <WebhooksPage /> },
           { path: '/settings/reports', element: <ScheduledReportsPage /> },
           { path: '/settings/notifications', element: <NotificationPreferencesPage /> },
+          { path: '/settings/license', element: <Navigate to="/settings" replace /> },
           { path: '/admin', element: <AdminHubPage /> },
           { path: '/admin/health', element: <AdminHealthPage /> },
           { path: '/admin/tenants', element: <AdminTenantsPage /> },

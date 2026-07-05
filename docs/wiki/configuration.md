@@ -69,6 +69,7 @@ REDIS_PASSWORD=sicherespasswort
 | `VAKT_CORS_ORIGINS` | **Prod: Ja** | `http://localhost,http://localhost:5173` | Komma-separierte Liste erlaubter Cross-Origin-Quellen, z. B. `https://vakt.meine-firma.de`. **In Produktion zwingend auf die echte Frontend-Domain setzen.** Der Wert `*` (alle Origins) wird zusammen mit Session-Cookies nur im Demo-Modus (`VAKT_DEMO=true`) akzeptiert — im Nicht-Demo-Modus **bricht der Start mit `*` bewusst ab** (Fail-Closed, S87-2). |
 | `VAKT_FORCE_SECURE_COOKIES` | — | `false` | Wenn `true`, tragen alle Session-/CSRF-Cookies das `Secure`-Attribut **unabhängig** von TLS/`X-Forwarded-Proto`. Empfehlung für Produktion hinter einem TLS-terminierenden Reverse-Proxy: `=true` — schützt als hartes Sicherheitsnetz gegen einen fehlkonfigurierten Proxy, der `X-Forwarded-Proto: https` nicht setzt (S87-5, CWE-614). |
 | `VAKT_RATELIMIT_IP_MAX` | — | `50` | Sekundäre IP-Sperre beim Login: wie viele Fehlversuche **von einer einzelnen IP** (egal welche Email) innerhalb von 15 Minuten erlaubt sind. Primäre Sperre ist pro (IP, Email)-Paar (Threshold 10). Erhöhen für Corporate-NAT-Umgebungen (viele Nutzer hinter einer IP), senken für strengere Absicherung. Gilt für `POST /api/v1/auth/login`. |
+| `VAKT_TRUSTED_PROXIES` | **Prod: Ja** | — (Compose-Stack: `172.16.0.0/12`) | Komma-separierte CIDR-Liste der Reverse-Proxies, deren `X-Forwarded-For`-Header die API glaubt. **Ohne diesen Wert läuft die API im Direct-IP-Modus**: hinter nginx/Caddy sehen dann alle IP-basierten Schutzmechanismen (Rate-Limits, sekundärer Login-Lockout, `VAKT_ADMIN_ALLOWED_IPS`) nur die Proxy-IP — ein einzelner Angreifer kann so den Login für alle Nutzer sperren. Das Root-`docker-compose.yml` setzt als Default das Docker-Bridge-Netz `172.16.0.0/12`; bei eigenem Proxy dessen IP/Netz eintragen. Nur die Proxy-Adressen eintragen, nie ganze öffentliche Netze (sonst werden XFF-Header spoofbar). |
 | `VAKT_AUDIT_SYSLOG_ADDR` | — | — (aus) | **Opt-in.** Ziel `host:port` eines kunden-eigenen Syslog-/SIEM-Servers, an den Audit-Log-Ereignisse (Login, Rollenwechsel, Offboarding, Export …) ausgeleitet werden. Leer = kein ausgehender Traffic. **Datenschutz:** Der Endpunkt wird vom Kunden konfiguriert (analog Outgoing-Webhooks/SMTP) — der Kunde trägt die Verantwortung für die Datenweitergabe. **Kein Norvik-Relay, kein Phone-Home.** Der Audit-Schreibpfad wird nie blockiert (asynchron, Drop-Zähler `vakt_audit_forward_dropped`). |
 | `VAKT_AUDIT_SYSLOG_PROTO` | — | `tcp` | Transport: `tcp` oder `tcp+tls` (TLS 1.2+). |
 | `VAKT_AUDIT_SYSLOG_FORMAT` | — | `rfc5424` | Nachrichtenformat: `rfc5424` (Syslog) oder `cef` (ArcSight CEF). |
@@ -156,16 +157,17 @@ VAKT_SMTP_FROM=vakt@meine-firma.de
 
 ## KI-Berater (Standard — lokal via Ollama)
 
-Vakt enthält einen integrierten KI-Compliance-Berater, der standardmäßig lokal via Ollama läuft. Das Default-Modell `qwen2.5:7b` (~4.5 GB, Apache 2.0, CPU-tauglich) wird beim ersten Start automatisch geladen — kein GPU, kein Cloud-API-Key nötig. Auf VMs mit < 8 GB RAM `qwen2.5:3b` verwenden oder KI mit `VAKT_AI_PROVIDER=disabled` abschalten.
+Vakt enthält einen integrierten KI-Compliance-Berater, der lokal via Ollama läuft. **Opt-in:** `VAKT_AI_PROVIDER=openai` setzen **und** den Stack mit dem `ai`-Compose-Profil starten (`COMPOSE_PROFILES=ai docker compose up -d`) — ohne das Profil startet der Ollama-Container nicht und belegt keinen RAM. Das Default-Modell `qwen2.5:7b` (~4.5 GB, Apache 2.0, CPU-tauglich) wird beim ersten Start automatisch geladen — kein GPU, kein Cloud-API-Key nötig. Auf VMs mit < 8 GB RAM `qwen2.5:3b` verwenden.
 
 Cloud-Alternative: **Mistral AI** (EU-Server, DSGVO-freundlich via AVV) — schneller, aber Daten verlassen die Instanz.
 
 | Variable | Pflicht | Standard | Beschreibung |
 |----------|---------|----------|--------------|
-| `VAKT_AI_PROVIDER` | — | `openai` | KI-Provider. `openai` aktiviert alle OpenAI-kompatiblen Endpunkte. `disabled` schaltet den Berater komplett ab. |
+| `VAKT_AI_PROVIDER` | — | `disabled` | KI-Provider. `disabled` schaltet den Berater komplett ab. `openai` aktiviert alle OpenAI-kompatiblen Endpunkte (inkl. lokales Ollama). |
 | `VAKT_AI_BASE_URL` | — | `http://ollama:11434/v1` | API-Basisendpunkt des Providers. |
 | `VAKT_AI_API_KEY` | — | — | API-Key des Providers. Für lokale Provider (Ollama, LM Studio) leer lassen. |
 | `VAKT_AI_MODEL` | — | `qwen2.5:7b` | Modellname (Default; auf VMs mit < 8 GB RAM `qwen2.5:3b`). |
+| `VAKT_AI_REPORT_TIMEOUT` | — | `120` | HTTP-Timeout für KI-Report-Generierung in Sekunden. Bei langsamen lokalen Modellen erhöhen. |
 | `VAKT_AI_RATE_LIMIT_RPM` | — | `30` | Max. KI-Anfragen pro Minute und Organisation. |
 | `VAKT_AI_DAILY_TOKEN_LIMIT_PER_ORG` | — | `0` | Tägliches Token-Budget pro Organisation. `0` = unbegrenzt. |
 | `VAKT_AI_CACHE_TTL_SECONDS` | — | `3600` | Cache-Dauer identischer KI-Antworten (Key = `sha256(Modell+Prompt)`). `0` = Cache aus. |
@@ -173,7 +175,7 @@ Cloud-Alternative: **Mistral AI** (EU-Server, DSGVO-freundlich via AVV) — schn
 | `VAKT_AI_COST_PER_MTOKEN_OUT_MICRO_EUR` | — | `0` | Kosten pro 1 Mio. Output-Tokens in Mikro-EUR. Lokales Ollama = `0`. |
 | `VAKT_AI_FAIL_OPEN_ON_OUTAGE` | — | `false` | Wenn `true`, lassen die KI-Rate-Limit-/Quota-Checks bei Redis-/Postgres-Ausfall „fail open" (KI bleibt erreichbar statt zu blocken). Audit-relevante Abwägung — Default sicher (`false`). |
 
-**Beispiel Ollama (lokal, Standard):**
+**Beispiel Ollama (lokal, opt-in):**
 
 ```env
 VAKT_AI_PROVIDER=openai
@@ -239,6 +241,7 @@ Admins können die Update-Prüfung auch zur Laufzeit unter **Einstellungen → U
 | Variable | Pflicht | Standard | Beschreibung |
 |----------|---------|----------|--------------|
 | `VAKT_SCAN_ALLOW_PRIVATE` | — | `false` | Wenn `true`, darf Vakt Scan auch interne IP-Adressen (RFC-1918, Loopback, Link-Local) als Scan-Ziele akzeptieren. **Standardmäßig blockiert (SSRF-Schutz).** Nur in vollständig isolierten internen Netzwerken setzen, in denen Scanner-Zugriff auf interne Hosts erwünscht ist. |
+| `VAKT_SCAN_CONCURRENCY` | — | `2` | Max. gleichzeitig laufende Scanner-Subprozesse (Trivy/Nuclei/Syft) pro Worker. Jeder Subprozess puffert seine komplette Ausgabe im Speicher — der Wert ist auf das Worker-Memory-Limit (768m) abgestimmt. Auf größeren Hosts zusammen mit dem Memory-Limit erhöhen. |
 
 ---
 

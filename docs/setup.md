@@ -28,14 +28,14 @@ Vakt benötigt **Docker Engine 24+** und **Docker Compose v2**.
 
 ### Systemanforderungen
 
-| Ressource | Minimum | Empfohlen | Mit KI-Berater (Standard) |
+| Ressource | Minimum | Empfohlen | Mit KI-Berater (Opt-in) |
 |---|---|---|---|
-| CPU | 4 Kerne | 6 Kerne | 6 Kerne (kein GPU nötig) |
-| RAM | 16 GB | 16 GB | 16 GB |
-| Disk | 160 GB SSD | 160 GB SSD | 160 GB SSD |
+| CPU | 2 Kerne | 4 Kerne | 4 Kerne (kein GPU nötig) |
+| RAM | 2 GB | 4 GB | 8 GB (für qwen2.5:7b) |
+| Disk | 20 GB SSD | 40 GB SSD | 40 GB SSD + ~5 GB für das KI-Modell |
 | Betriebssystem | Linux 64-bit | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
 
-> **Hinweis:** Der KI-Berater ist standardmäßig aktiviert und läuft lokal via Ollama auf der CPU — kein GPU, kein Cloud-API-Key nötig. Das Default-Modell wird beim ersten Start automatisch geladen (`qwen2.5:7b`, ~4.5 GB) — manuell: `docker compose exec ollama ollama pull qwen2.5:7b`
+> **Hinweis:** Der KI-Berater ist **Opt-in** und läuft lokal via Ollama auf der CPU — kein GPU, kein Cloud-API-Key nötig. Aktivieren: Stack mit `COMPOSE_PROFILES=ai docker compose up -d` starten und `VAKT_AI_PROVIDER=openai` in `.env` setzen. Das Default-Modell wird beim ersten Start automatisch geladen (`qwen2.5:7b`, ~4.5 GB). Details: [Abschnitt 9](#9-ki-compliance-berater-konfigurieren).
 
 ---
 
@@ -48,13 +48,15 @@ sudo usermod -aG docker $USER   # Neuanmeldung danach erforderlich
 
 # 2. Vakt klonen
 git clone https://github.com/norvik-ops/vakt
-cd vakt-app
+cd vakt
 
 # 3. Konfiguration
 cp .env.example .env
 
-# Secret Key generieren und automatisch eintragen:
-sed -i "s/changeme_generate_with_openssl_rand_hex_32/$(openssl rand -hex 32)/" .env
+# Secret Key + Passwörter generieren und automatisch eintragen:
+sed -i "s/^VAKT_SECRET_KEY=.*/VAKT_SECRET_KEY=$(openssl rand -hex 32)/" .env
+sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 24)/" .env
+sed -i "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=$(openssl rand -hex 24)/" .env
 
 # 4. Starten
 docker compose up -d
@@ -328,14 +330,20 @@ cd backend && go run ./cmd/admin --help
 
 ## 9. KI-Compliance-Berater konfigurieren
 
-Vakt enthält einen KI-Berater, der auf Basis der echten Compliance-Lücken priorisierte Handlungsempfehlungen generiert ("Was soll ich diese Woche tun?"). Er ist **standardmäßig aktiviert** und läuft lokal auf der CPU — kein GPU, kein Cloud-Account nötig.
+Vakt enthält einen KI-Berater, der auf Basis der echten Compliance-Lücken priorisierte Handlungsempfehlungen generiert ("Was soll ich diese Woche tun?"). Er ist **Opt-in** und läuft lokal auf der CPU — kein GPU, kein Cloud-Account nötig.
 
 ### Standard: Ollama lokal (kein GPU, kein API-Key)
 
-Ollama startet automatisch mit `docker compose up`. Das Default-Modell wird einmalig vom `ollama-init`-Container gezogen (~4.5 GB) — manuell ginge es so:
+Aktivieren in zwei Schritten: `VAKT_AI_PROVIDER=openai` in `.env` setzen und den Stack mit dem `ai`-Profil starten:
 
 ```bash
-docker compose exec ollama ollama pull qwen2.5:7b
+COMPOSE_PROFILES=ai docker compose up -d
+```
+
+Das Default-Modell wird einmalig vom `ollama-init`-Container gezogen (~4.5 GB) — manuell ginge es so:
+
+```bash
+docker compose --profile ai exec ollama ollama pull qwen2.5:7b
 ```
 
 Empfohlene CPU-taugliche Modelle (kein VRAM nötig):
@@ -452,7 +460,7 @@ Fix — DB-Passwort aktualisieren:
 
 ```bash
 # 1. Starkes Passwort in .env setzen
-nano .env   # VAKT_DB_PASS=<neues_passwort>
+nano .env   # POSTGRES_PASSWORD=<neues_passwort>
 
 # 2. DB-User-Passwort anpassen
 docker compose exec postgres psql -U vakt -c \
@@ -497,7 +505,7 @@ Den blockierenden Prozess beenden oder Vakt auf einem anderen Port starten (Ngin
 grep VAKT_SECRET_KEY .env
 ```
 
-Der Wert darf nicht `changeme_generate_with_openssl_rand_hex_32` sein. Neuen Key generieren:
+Der Wert darf nicht der Platzhalter aus `.env.example` (`ERSETZEN_SIE_DIESEN_WERT`) sein. Neuen Key generieren:
 
 ```bash
 openssl rand -hex 32

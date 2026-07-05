@@ -51,6 +51,9 @@ export function useAgentRun() {
   const [durationMs, setDurationMs] = useState(0)
   const [runId, setRunId] = useState<string | null>(null)
   const [pendingApproval, setPendingApproval] = useState<ApprovalRequired | null>(null)
+  // S120-8: backend marks the agent endpoint with X-Vakt-Status: experimental —
+  // surfaced so the UI can show a beta label.
+  const [experimental, setExperimental] = useState(false)
 
   const abortRef = useRef<AbortController | null>(null)
   const startTimeRef = useRef(0)
@@ -97,6 +100,8 @@ export function useAgentRun() {
         }),
         signal: controller.signal,
       })
+
+      if (res.headers.get('X-Vakt-Status') === 'experimental') setExperimental(true)
 
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string }
@@ -191,5 +196,5 @@ export function useAgentRun() {
     setPendingApproval(null)
   }, [])
 
-  return { events, isRunning, error, durationMs, start, stop, runId, pendingApproval, approve, reject }
+  return { events, isRunning, error, durationMs, start, stop, runId, pendingApproval, approve, reject, experimental }
 }

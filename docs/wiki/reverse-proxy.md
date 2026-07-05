@@ -1,6 +1,6 @@
 # Reverse-Proxy-Konfiguration (nginx)
 
-Vakt nutzt Server-Sent Events (SSE) für Realtime-Updates (siehe [ADR-0019](../adr/0019-sse-statt-websocket-fuer-realtime.md)). Damit SSE-Streams sauber durch nginx kommen, müssen drei Punkte beachtet werden — sonst werden Frames gepuffert und der User sieht erst nach Sekunden/Minuten die Live-Updates.
+Vakt nutzt Server-Sent Events (SSE) für Realtime-Updates (siehe ADR-0019, Design-Entscheidung im Entwicklungs-Repo). Damit SSE-Streams sauber durch nginx kommen, müssen drei Punkte beachtet werden — sonst werden Frames gepuffert und der User sieht erst nach Sekunden/Minuten die Live-Updates.
 
 ## Minimal-Konfig für nginx
 
@@ -101,6 +101,6 @@ Weitere geplant in Sprint 18+ (Agent-Run-Stream).
 
 ## Referenzen
 
-- [ADR-0019 — SSE statt WebSocket](../adr/0019-sse-statt-websocket-fuer-realtime.md)
+- ADR-0019 — SSE statt WebSocket (Design-Entscheidung im Entwicklungs-Repo)
 - nginx-Doku: <https://nginx.org/en/docs/http/ngx_http_proxy_module.html>
 - HTML5-Spec SSE: <https://html.spec.whatwg.org/multipage/server-sent-events.html>

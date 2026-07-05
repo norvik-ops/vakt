@@ -438,8 +438,8 @@ const ControlRow = React.memo(function ControlRow({
         manual_status: v === 'missing' ? '' : v as '' | 'in_progress' | 'implemented',
       },
       {
-        onSuccess: () => toast('Gespeichert', 'success'),
-        onError: (err) => toast(`Fehler: ${err.message}`, 'error'),
+        onSuccess: () => toast(t('common.saved'), 'success'),
+        onError: (err) => toast(`${t('common.error')}: ${err.message}`, 'error'),
       },
     )
   }
@@ -651,9 +651,9 @@ function ControlsTab({
       })
       setSelected(new Set())
       setStatusDialogOpen(false)
-      toast('Status aktualisiert', 'success')
+      toast(t('common.statusUpdated'), 'success')
     } catch {
-      toast('Bulk-Update fehlgeschlagen', 'error')
+      toast(t('common.bulkUpdateFailed'), 'error')
     }
   }
 
@@ -806,7 +806,7 @@ function ControlsTab({
             onClick: () => { setStatusDialogOpen(true); },
           },
           {
-            label: 'Exportieren',
+            label: t('common.export'),
             icon: FileDown,
             onClick: handleExportSelected,
           },

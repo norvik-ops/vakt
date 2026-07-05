@@ -313,7 +313,7 @@ export default function TrustPage() {
           <p>Zuletzt aktualisiert: {formatDate(data.published_at)}</p>
           <p className="mt-1">
             Powered by{' '}
-            <a href="https://github.com/norvik-ops/vatk" className="text-indigo-500 hover:underline" target="_blank" rel="noreferrer">
+            <a href="https://github.com/norvik-ops/vakt" className="text-indigo-500 hover:underline" target="_blank" rel="noreferrer">
               Vakt
             </a>
           </p>

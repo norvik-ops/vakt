@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Vakt backup script — exports PostgreSQL dump + encryption key.
 # Usage: ./scripts/backup.sh [output-dir]
-# Requires: pg_dump, openssl, docker (if using compose)
+# Requires: pg_dump, gpg, openssl, docker (if using compose)
 
 OUTPUT_DIR="${1:-.}"
 DATE=$(date +%Y-%m-%d_%H-%M-%S)
@@ -32,23 +32,12 @@ if [ -z "$SECRET_KEY" ]; then
 	exit 1
 fi
 
-echo "→ Dumping PostgreSQL..."
-pg_dump "$DB_URL" --format=custom --compress=9 -f "$WORK_DIR/db.pgdump"
-
-echo "→ Backing up uploads volume (evidence attachments)..."
-if docker volume inspect uploads_data >/dev/null 2>&1; then
-	docker run --rm \
-		-v uploads_data:/data:ro \
-		-v "$WORK_DIR":/backup \
-		alpine:latest tar czf /backup/uploads.tar.gz -C /data .
-	echo "   uploads_data volume archived"
-else
-	echo "   uploads_data volume not found — skipping (no evidence attachments yet?)"
+if ! command -v gpg >/dev/null 2>&1; then
+	echo "ERROR: gpg not found — install gnupg to run backup" >&2
+	exit 1
 fi
 
-echo "→ Encrypting encryption key..."
-# Non-interactive mode: use env var or passphrase file (for cron/automation).
-# Falls back to interactive prompt when running with a TTY.
+# Load passphrase early — needed for both dump and key encryption.
 if [ -n "${VAKT_BACKUP_PASSPHRASE:-}" ]; then
 	PASSPHRASE="$VAKT_BACKUP_PASSPHRASE"
 elif [ -n "${VAKT_BACKUP_PASSPHRASE_FILE:-}" ] && [ -f "$VAKT_BACKUP_PASSPHRASE_FILE" ]; then
@@ -74,6 +63,28 @@ else
 	echo "ERROR: No passphrase provided. Set VAKT_BACKUP_PASSPHRASE, VAKT_BACKUP_PASSPHRASE_FILE, or run interactively." >&2
 	exit 1
 fi
+
+echo "→ Dumping PostgreSQL..."
+pg_dump "$DB_URL" --format=custom --compress=9 -f "$WORK_DIR/db.pgdump"
+
+echo "→ Encrypting dump with GPG..."
+printf '%s' "$PASSPHRASE" | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback \
+	--symmetric --cipher-algo AES256 \
+	--output "$WORK_DIR/db.pgdump.gpg" "$WORK_DIR/db.pgdump"
+rm "$WORK_DIR/db.pgdump"
+
+echo "→ Backing up uploads volume (evidence attachments)..."
+if docker volume inspect uploads_data >/dev/null 2>&1; then
+	docker run --rm \
+		-v uploads_data:/data:ro \
+		-v "$WORK_DIR":/backup \
+		alpine:latest tar czf /backup/uploads.tar.gz -C /data .
+	echo "   uploads_data volume archived"
+else
+	echo "   uploads_data volume not found — skipping (no evidence attachments yet?)"
+fi
+
+echo "→ Encrypting encryption key..."
 echo "$SECRET_KEY" | PASSPHRASE="$PASSPHRASE" openssl enc -aes-256-cbc -pbkdf2 -pass env:PASSPHRASE -out "$WORK_DIR/secret.key.enc"
 unset PASSPHRASE
 

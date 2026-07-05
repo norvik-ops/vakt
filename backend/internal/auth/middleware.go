@@ -336,7 +336,12 @@ func handleAPIKey(c echo.Context, next echo.HandlerFunc, db *pgxpool.Pool, rawKe
 	const query = `
 		SELECT ak.id, ak.org_id, ak.created_by, ak.scopes,
 		       (ak.key_hash = $1) AS matched_current,
-		       ak.previous_key_grace_expires_at
+		       ak.previous_key_grace_expires_at,
+		       COALESCE((SELECT r.name
+		                 FROM org_members om
+		                 JOIN roles r ON r.id = om.role_id
+		                 WHERE om.user_id = ak.created_by AND om.org_id = ak.org_id
+		                 LIMIT 1), '') AS creator_role
 		FROM api_keys ak
 		WHERE (ak.key_hash = $1
 		       OR (ak.previous_key_hash = $1
@@ -345,11 +350,11 @@ func handleAPIKey(c echo.Context, next echo.HandlerFunc, db *pgxpool.Pool, rawKe
 		  AND ak.revoked_at IS NULL
 		  AND (ak.expires_at IS NULL OR ak.expires_at > NOW())`
 
-	var keyID, orgID, createdBy string
+	var keyID, orgID, createdBy, creatorRole string
 	var scopes []string
 	var matchedCurrent bool
 	var graceExpiresAt *time.Time
-	err := db.QueryRow(c.Request().Context(), query, keyHash).Scan(&keyID, &orgID, &createdBy, &scopes, &matchedCurrent, &graceExpiresAt)
+	err := db.QueryRow(c.Request().Context(), query, keyHash).Scan(&keyID, &orgID, &createdBy, &scopes, &matchedCurrent, &graceExpiresAt, &creatorRole)
 	if err != nil {
 		log.Debug().Err(err).Msg("api key lookup failed")
 		return c.JSON(http.StatusUnauthorized, map[string]string{
@@ -396,11 +401,13 @@ func handleAPIKey(c echo.Context, next echo.HandlerFunc, db *pgxpool.Pool, rawKe
 		return nil
 	})
 
-	// Personal keys with empty scopes have full user-level access — no path check.
+	// Personal keys with empty scopes have full user-level access — no path
+	// check. S120-4: the key inherits the creator's role instead of a blanket
+	// SecurityAnalyst grant, so a Viewer's personal key cannot escalate.
 	if isPersonalKey && len(scopes) == 0 {
 		c.Set("user_id", createdBy)
 		c.Set("org_id", orgID)
-		c.Set("roles", []string{"SecurityAnalyst"})
+		c.Set("roles", []string{capRoleAtCreator("SecurityAnalyst", creatorRole)})
 		return next(c)
 	}
 
@@ -474,20 +481,53 @@ func handleAPIKey(c echo.Context, next echo.HandlerFunc, db *pgxpool.Pool, rawKe
 		})
 	}
 
-	var roles []string
+	var role string
 	switch {
 	case isAdmin:
-		roles = []string{"Admin"}
+		role = "Admin"
 	case readOnlyKey:
-		roles = []string{"Viewer"}
+		role = "Viewer"
 	default:
-		roles = []string{"SecurityAnalyst"}
+		role = "SecurityAnalyst"
 	}
 
 	c.Set("user_id", createdBy)
 	c.Set("org_id", orgID)
-	c.Set("roles", roles)
+	// S120-4: a key never grants more than its creator currently has — if the
+	// creator was downgraded after issuing the key, the key follows.
+	c.Set("roles", []string{capRoleAtCreator(role, creatorRole)})
 	return next(c)
+}
+
+// roleRank orders roles by write power for API-key capping. Unknown or
+// read-only/audit roles rank lowest (least privilege).
+func roleRank(role string) int {
+	switch role {
+	case "Admin":
+		return 3
+	case "SecurityAnalyst":
+		return 2
+	default: // Viewer, AuditorReadOnly, InternalAuditor, unknown
+		return 1
+	}
+}
+
+// capRoleAtCreator returns the weaker of the scope-derived role and the key
+// creator's current role (S120-4). An empty creatorRole (creator left the
+// org) caps to Viewer.
+func capRoleAtCreator(scopeRole, creatorRole string) string {
+	if creatorRole == "" {
+		return "Viewer"
+	}
+	if roleRank(scopeRole) <= roleRank(creatorRole) {
+		return scopeRole
+	}
+	// Cap: report the creator's role only if it is one of the write roles,
+	// otherwise fall back to Viewer (read-only semantics for audit roles).
+	if roleRank(creatorRole) == 1 {
+		return "Viewer"
+	}
+	return creatorRole
 }
 
 // isSafeMethod reports whether an HTTP method is read-only (no state change).

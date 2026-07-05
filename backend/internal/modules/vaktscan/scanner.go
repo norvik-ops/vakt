@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,6 +24,31 @@ import (
 
 // ErrNotConfigured is returned when a scanner is not configured in the environment.
 var ErrNotConfigured = errors.New("scanner not configured")
+
+// scanSlots bounds concurrent external scanner subprocesses (trivy, nuclei,
+// syft). Each run buffers its full stdout in memory via .Output(), so
+// unbounded parallelism OOMs the worker container (S120-6).
+// ponytail: fixed semaphore; raise VAKT_SCAN_CONCURRENCY on bigger hosts.
+var scanSlots = make(chan struct{}, scanConcurrency())
+
+func scanConcurrency() int {
+	if v, err := strconv.Atoi(os.Getenv("VAKT_SCAN_CONCURRENCY")); err == nil && v > 0 {
+		return v
+	}
+	return 2
+}
+
+// acquireScanSlot blocks until a subprocess slot is free or ctx is done.
+func acquireScanSlot(ctx context.Context) error {
+	select {
+	case scanSlots <- struct{}{}:
+		return nil
+	case <-ctx.Done():
+		return fmt.Errorf("waiting for scan slot: %w", ctx.Err())
+	}
+}
+
+func releaseScanSlot() { <-scanSlots }
 
 // privateRanges holds the RFC-1918 CIDR blocks that are considered private.
 var privateRanges = []net.IPNet{
@@ -133,6 +159,11 @@ type nucleiResult struct {
 // RunTrivyScan executes trivy against the scan target, normalises findings into
 // vb_findings, and updates the vb_scans record accordingly.
 func RunTrivyScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) error {
+	if err := acquireScanSlot(ctx); err != nil {
+		return err
+	}
+	defer releaseScanSlot()
+
 	repo := NewRepository(db)
 	startedAt := time.Now()
 
@@ -237,6 +268,11 @@ func RunTrivyScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) er
 
 // RunNucleiScan executes nuclei against the scan target and normalises findings.
 func RunNucleiScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) error {
+	if err := acquireScanSlot(ctx); err != nil {
+		return err
+	}
+	defer releaseScanSlot()
+
 	repo := NewRepository(db)
 	startedAt := time.Now()
 

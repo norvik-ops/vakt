@@ -400,13 +400,13 @@ export default function RisksPage() {
             <ExportButton
               endpoint="/api/v1/vaktcomply/risks/export/xlsx"
               filename={`risiken-${new Date().toISOString().slice(0, 10)}`}
-              label="Exportieren"
+              label={t('common.export')}
               format="xlsx"
             />
             <ExportButton
               endpoint="/api/v1/vaktcomply/risks/export/docx"
               filename={`risikoregister-${new Date().toISOString().slice(0, 10)}`}
-              label="Word"
+              label={t('common.word')}
               format="docx"
             />
             <Button variant="ghost" size="sm" onClick={() => { setMethodologyOpen(true); }} title={t('vaktcomply.risksPage.methodologyBtn')}>

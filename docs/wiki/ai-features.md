@@ -1,6 +1,6 @@
 # Vakt KI-Funktionen
 
-Vakt enthält einen **lokalen KI-Berater**, der auf deiner eigenen Infrastruktur läuft — **kein Cloud-API-Key, kein GPU, keine Daten verlassen die Instanz** (siehe [ADR-0001](../adr/0001-self-hosted-no-phone-home.md)).
+Vakt enthält einen **lokalen KI-Berater**, der auf deiner eigenen Infrastruktur läuft — **kein Cloud-API-Key, kein GPU, keine Daten verlassen die Instanz** (siehe ADR-0001, Design-Entscheidung im Entwicklungs-Repo).
 
 > **Community-Feature:** Seit v0.6.x sind alle KI-Funktionen in jeder Vakt-Instanz enthalten — keine Pro-Lizenz nötig. Mit dem Default-Modell `qwen2.5:7b` (Apache 2.0, ~4.5 GB RAM, CPU-tauglich, 8 GB RAM) läuft die KI lokal — auf VMs mit < 8 GB RAM alternativ `qwen2.5:3b` (~1.9 GB); ein Pro-Gate würde nur Marketing-Limit ohne echten Schutz bedeuten. **Premium-Compliance-Features** (TISAX-Maturitätsanalyse, DORA, NIS2-Meldungsassistent, EU AI Act, AuditPDF, SSO, API-Access, Vakt Aware Advanced, Vakt Scan Advanced, Granular-Permissions, Supplier-Portal) bleiben dem Pro-Plan vorbehalten.
 
@@ -15,6 +15,7 @@ Vakt enthält einen **lokalen KI-Berater**, der auf deiner eigenen Infrastruktur
 | **Policy-Drafting** *(neu)* | `POST /vaktcomply/ai/draft-policy` | „Erstelle eine Passwort-Richtlinie für ISO 27001 A.5.17" — generiert einen Markdown-Entwurf in deutscher Sprache mit Standard-Abschnitten (Zweck, Geltungsbereich, Anforderungen, Verantwortlichkeiten). Admin reviewt und veröffentlicht. |
 | **Incident-Response-Guide** *(neu)* | `POST /vaktcomply/ai/incident-guide` | Aus einer Vorfalls-Beschreibung erzeugt die KI eine nummerierte Sofort-Checkliste mit gesetzlichen Fristen-Hinweisen (NIS2 T+24h / T+72h, DSGVO Art. 33 72 h, DORA T+4h). Direkt im UI per „KI-Sofortmaßnahmen"-Button anwendbar. |
 | **AI-System-Dokumentation** | (UI in EU AI Act-Modul) | Hilft beim Ausfüllen der technischen Dokumentation nach EU AI Act Art. 11 / Annex IV. |
+| **AI-Agent** *(experimentell / Beta)* | `POST /vaktcomply/ai/agent/run` | Plan/Execute/Reflect-Agent, der lesende Vakt-Tools nutzt (Findings, Controls, Risks). **Experimentell:** Das Backend kennzeichnet jede Antwort mit `X-Vakt-Status: experimental`, die UI zeigt ein Beta-Badge + KI-Disclaimer. Ergebnisse fachlich prüfen; mutierende Tools nur mit Approve-Before-Apply (Pro). |
 
 ---
 
@@ -75,8 +76,8 @@ Alle laufen über Ollama, alle CPU-fähig:
 **Modell wechseln:**
 
 ```bash
-# 1. Modell ziehen (ollama läuft default seit v0.6.x — kein --profile mehr nötig)
-docker compose exec ollama ollama pull phi3.5:mini
+# 1. Modell ziehen (Stack muss mit dem ai-Profil laufen: COMPOSE_PROFILES=ai)
+docker compose --profile ai exec ollama ollama pull phi3.5:mini
 
 # 2. .env anpassen
 echo 'VAKT_AI_MODEL=phi3.5:mini' >> .env
@@ -85,9 +86,10 @@ echo 'VAKT_AI_MODEL=phi3.5:mini' >> .env
 docker compose restart api worker
 ```
 
-Beim ersten `docker compose up` zieht ein einmaliger `ollama-init`-Container
-das in `.env`-Datei konfigurierte Modell (Default `qwen2.5:7b`). Wenn das
-Modell schon im Volume ist, ist der Pull ein No-Op.
+Beim ersten Start mit dem `ai`-Profil (`COMPOSE_PROFILES=ai docker compose up -d`)
+zieht ein einmaliger `ollama-init`-Container das in der `.env`-Datei
+konfigurierte Modell (Default `qwen2.5:7b`). Wenn das Modell schon im Volume
+ist, ist der Pull ein No-Op.
 
 ---
 

@@ -231,7 +231,7 @@ export default function Login() {
                   <div className="space-y-1.5">
                     <p className="text-xs text-red-500">{t('auth.demoUnavailable')}</p>
                     <a
-                      href="https://github.com/norvik-ops/vatk/blob/main/docs/guides/getting-started.md"
+                      href="https://github.com/norvik-ops/vakt/blob/main/docs/guides/getting-started.md"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs text-brand underline hover:text-brand/80"

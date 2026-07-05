@@ -79,8 +79,8 @@ WORK_DIR=$(mktemp -d)
 echo "→ Extracting backup..."
 tar -xzf "$BACKUP_FILE" -C "$WORK_DIR"
 
-if [ ! -f "$WORK_DIR/db.pgdump" ] || [ ! -f "$WORK_DIR/secret.key.enc" ]; then
-	echo "ERROR: Backup archive is missing required files (db.pgdump, secret.key.enc)" >&2
+if [ ! -f "$WORK_DIR/db.pgdump.gpg" ] || [ ! -f "$WORK_DIR/secret.key.enc" ]; then
+	echo "ERROR: Backup archive is missing required files (db.pgdump.gpg, secret.key.enc)" >&2
 	exit 1
 fi
 
@@ -90,19 +90,27 @@ if [ -f "$WORK_DIR/manifest.json" ]; then
 	echo
 fi
 
-# Resolve the decryption passphrase (non-interactive for automation/tests).
-PASS_ARGS=()
+# Resolve the backup passphrase once — used for both GPG (db dump) and openssl (secret key).
+PASSPHRASE=""
 if [ -n "${VAKT_BACKUP_PASSPHRASE:-}" ]; then
-	PASS_ARGS=(-pass env:VAKT_BACKUP_PASSPHRASE)
+	PASSPHRASE="$VAKT_BACKUP_PASSPHRASE"
 elif [ -n "${VAKT_BACKUP_PASSPHRASE_FILE:-}" ] && [ -f "$VAKT_BACKUP_PASSPHRASE_FILE" ]; then
-	PASS_ARGS=(-pass "file:${VAKT_BACKUP_PASSPHRASE_FILE}")
+	PASSPHRASE=$(cat "$VAKT_BACKUP_PASSPHRASE_FILE")
 else
-	echo "→ Decrypting encryption key (enter passphrase)..."
+	read -r -s -p "→ Enter backup passphrase: " PASSPHRASE
+	echo
 fi
 
-# Decrypt into a variable to verify the passphrase. The plaintext key is NEVER
-# echoed to stdout/logs (S89-1), here or in the dry-run path.
-RESTORED_KEY=$(openssl enc -d -aes-256-cbc -pbkdf2 -in "$WORK_DIR/secret.key.enc" "${PASS_ARGS[@]}")
+# Decrypt db.pgdump.gpg → db.pgdump
+echo "→ Decrypting database dump..."
+printf '%s' "$PASSPHRASE" | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback \
+	--decrypt --output "$WORK_DIR/db.pgdump" "$WORK_DIR/db.pgdump.gpg"
+echo "✓ Database dump decrypted"
+
+# Decrypt secret.key.enc into a variable. The plaintext key is NEVER echoed (S89-1).
+RESTORED_KEY=$(printf '%s' "$PASSPHRASE" | openssl enc -d -aes-256-cbc -pbkdf2 -pass stdin \
+	-in "$WORK_DIR/secret.key.enc")
+unset PASSPHRASE
 if [ -z "$RESTORED_KEY" ]; then
 	echo "ERROR: key decryption produced an empty result (wrong passphrase?)" >&2
 	exit 1
