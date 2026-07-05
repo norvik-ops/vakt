@@ -109,7 +109,7 @@ The login screen will show ready-to-use credentials automatically. When you're r
 
 ## System Requirements
 
-| | Minimum | Recommended | With AI Advisor (default) |
+| | Minimum | Recommended | With AI Advisor (opt-in) |
 |---|---|---|---|
 | **CPU** | 2 cores | 4 cores | 4 cores — no GPU needed |
 | **RAM** | 2 GB | 4 GB | 8 GB (for qwen2.5:7b; 2 GB if AI disabled) |
