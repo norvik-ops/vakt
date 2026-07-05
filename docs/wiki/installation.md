@@ -145,51 +145,27 @@ Alternativ die Services `ollama` und `ollama-init` aus der `docker-compose.yml` 
 
 ## HTTPS
 
-Vakt läuft standardmäßig auf HTTP (Port 80). Für die meisten internen Installationen ist das ausreichend — die VM ist typischerweise nicht direkt aus dem Internet erreichbar, und TLS wird durch einen vorgelagerten Load-Balancer oder Reverse-Proxy der eigenen Infrastruktur terminiert.
+Der Stack enthält **Caddy als Frontdoor** mit **automatischem HTTPS** — kein Certbot, keine Cronjobs, keine manuelle Erneuerung.
 
-### Variante A: Eigenes Zertifikat (empfohlen für interne Installationen)
+### Öffentlich erreichbarer Server (automatisches Let's Encrypt)
 
-Das Repository enthält ein HTTPS-Overlay und ein Skript zur Zertifikatserstellung:
+Domain in `.env` setzen:
 
-```bash
-# Zertifikat erzeugen (nutzt mkcert wenn vorhanden, sonst openssl)
-./scripts/gen-local-cert.sh
-
-# Stack mit HTTPS starten
-docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d
+```env
+VAKT_DOMAIN=vakt.example.com
 ```
 
-Das Skript legt `nginx/certs/localhost.crt` und `nginx/certs/localhost.key` an. Mit einem Zertifikat des eigenen internen CA einfach die Dateien direkt dort ablegen — das Skript überschreibt nichts, wenn die Dateien bereits existieren.
+Dann `docker compose up -d`. Caddy terminiert HTTPS auf Port 443, leitet Port 80 automatisch dorthin um und erneuert das Zertifikat ohne Eingriff. Voraussetzung: Ports **80 und 443** sind aus dem Internet erreichbar und die Domain zeigt per DNS auf den Server.
 
-Anschließend `VAKT_FRONTEND_URL` auf die HTTPS-URL setzen:
+### Interne Installation / eigener TLS-Terminator
+
+Ohne `VAKT_DOMAIN` (Default `localhost`) serviert Caddy HTTPS mit einem lokal signierten Zertifikat — gut für Tests im Intranet. Terminierst du TLS an einem vorgelagerten Load-Balancer, setze `VAKT_DOMAIN=:80`, dann serviert Caddy nur HTTP.
+
+Anschließend `VAKT_FRONTEND_URL` auf die extern erreichbare URL setzen:
 
 ```env
 VAKT_FRONTEND_URL=https://vakt.intranet.meine-firma.de
 ```
-
-### Variante B: Caddy als Reverse-Proxy (für öffentlich erreichbare Server)
-
-Wenn Vakt auf einem Server mit öffentlichem DNS läuft, übernimmt [Caddy](https://caddyserver.com) TLS-Zertifikate vollautomatisch via Let's Encrypt — kein Certbot, keine Cronjobs, keine manuelle Erneuerung.
-
-```bash
-# Caddy auf dem Host installieren (Ubuntu/Debian)
-sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | \
-    sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | \
-    sudo tee /etc/apt/sources.list.d/caddy-stable.list
-sudo apt update && sudo apt install caddy
-```
-
-`/etc/caddy/Caddyfile`:
-
-```caddyfile
-deine-domain.de {
-    reverse_proxy localhost:80
-}
-```
-
-Der Docker-Stack bleibt unverändert auf Port 80. Caddy übernimmt Port 80/443, holt das Zertifikat automatisch und erneuert es ohne Eingriff.
 
 ---
 

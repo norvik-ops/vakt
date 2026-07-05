@@ -44,7 +44,7 @@ Diese Selbstbewertung dokumentiert den Sicherheitsstand von Vakt für Kunden, di
 |-----------|--------|---------|
 | Container-Ausführung | OK | API, Worker und Migrate laufen als `nonroot` (UID 65532, distroless/static) — kein Root-Prozess im Container |
 | Secrets in Images | OK | Keine Credentials im Image; alle Werte über Umgebungsvariablen zur Laufzeit |
-| TLS | OK | HTTPS-Overlay (`docker-compose.tls.yml`) für eigene Zertifikate; HSTS vorgeschaltet |
+| TLS | OK | Caddy-Frontdoor mit automatischem HTTPS (Let's Encrypt, `VAKT_DOMAIN`); HSTS |
 | Healthcheck | OK | Statisch kompilierte Go-Binary `/healthcheck` im Image — kein Shell, kein busybox |
 
 ## Datenschutz & Verschlüsselung

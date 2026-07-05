@@ -379,8 +379,9 @@ _VOLUME_BACKUP_EXEMPT = {
     "postgres_data",   # Inhalt via pg_dump gesichert, nicht als Volume-Export
     "redis_data",      # Session-State — explizit als kein Backup nötig dokumentiert
     "scanner_bins",    # Scanner-Binaries werden beim Start neu geladen
-    "frontend_dist",   # Build-Artefakte — werden beim Start regeneriert
     "ollama_models",   # KI-Modell-Download — kein Kundendaten, re-downloadbar
+    "caddy_data",      # Let's-Encrypt-Certs — werden von Caddy automatisch neu geholt
+    "caddy_config",    # Caddy-Autosave-Config — regenerierbar, keine Kundendaten
 }
 
 

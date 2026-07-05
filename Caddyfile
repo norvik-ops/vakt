@@ -1,0 +1,23 @@
+# Vakt frontdoor / reverse proxy.
+#
+# Set VAKT_DOMAIN in .env to your public domain (e.g. vakt.example.com): Caddy
+# then obtains and auto-renews a Let's-Encrypt certificate (ports 80 + 443 must
+# be reachable from the internet). The default "localhost" serves HTTPS with a
+# locally-trusted cert for testing. To run plain HTTP behind your own TLS
+# terminator, set VAKT_DOMAIN to ":80" (or "http://your.domain").
+{$VAKT_DOMAIN:localhost} {
+	# Backend API + health check → api service.
+	# flush_interval -1 keeps SSE streams (AI chat, control explanations)
+	# unbuffered so tokens arrive live.
+	@api path /api/* /health
+	handle @api {
+		reverse_proxy api:8080 {
+			flush_interval -1
+		}
+	}
+
+	# Everything else → the self-serving frontend SPA image.
+	handle {
+		reverse_proxy frontend:80
+	}
+}

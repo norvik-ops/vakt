@@ -77,44 +77,18 @@ Wenn `VAKT_DEMO=true` gesetzt wurde, legt die Login-Seite beim ersten Aufruf aut
 
 ## 3. Produktions-Deployment
 
-### HTTPS mit Caddy (empfohlen)
+### HTTPS (automatisch via Caddy)
 
-Caddy ist ein moderner Webserver, der **automatisch Let's Encrypt-Zertifikate** holt und erneuert — ohne manuelle Konfiguration.
-
-Erstelle eine Datei `Caddyfile` im Projektverzeichnis:
-
-```
-yourdomain.com {
-    reverse_proxy api:8080
-    file_server {
-        root /usr/share/nginx/html
-    }
-}
-```
-
-Ergänze `docker-compose.prod.yml` um den Caddy-Service:
-
-```yaml
-services:
-  caddy:
-    image: caddy:2-alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-    restart: unless-stopped
-
-volumes:
-  caddy_data:
-```
-
-Starten mit:
+Der Stack enthält **Caddy als Frontdoor** — es holt und erneuert Let's-Encrypt-Zertifikate **vollautomatisch**, ohne Certbot oder Cronjobs. Du musst nur deine Domain setzen:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# In .env:
+VAKT_DOMAIN=vakt.example.com
 ```
+
+Danach `docker compose up -d`. Caddy terminiert HTTPS auf Port 443 und leitet HTTP (Port 80) automatisch dorthin um. Voraussetzung: Ports **80 und 443** sind aus dem Internet erreichbar (für die ACME-Domain-Validierung) und die Domain zeigt per DNS auf den Server.
+
+Ohne `VAKT_DOMAIN` (Default `localhost`) serviert Caddy HTTPS mit einem lokal signierten Zertifikat — praktisch für Tests. Für den Betrieb hinter einem eigenen TLS-Terminator: `VAKT_DOMAIN=:80` setzen, dann serviert Caddy nur HTTP. Die Routing-Regeln stehen im `Caddyfile` im Projektverzeichnis.
 
 ### Firewall einrichten (ufw)
 
@@ -521,7 +495,7 @@ ss -tlnp | grep :80
 ss -tlnp | grep :443
 ```
 
-Den blockierenden Prozess beenden oder Vakt auf einem anderen Port starten (Nginx-Konfiguration in `nginx/nginx.conf` anpassen).
+Den blockierenden Prozess beenden oder Vakt auf einem anderen Port starten (Port-Zuordnung des `caddy`-Service in `docker-compose.yml` anpassen).
 
 **Secret Key fehlt oder ist der Standard-Wert**
 
