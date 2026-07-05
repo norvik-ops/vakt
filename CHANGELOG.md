@@ -7,6 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.42.20] — 2026-07-06
+
+### Removed
+
+- **DORA + TISAX aus dem Angebot genommen** — beide Frameworks werden nicht mehr angeboten. Aus allen kundenseitigen Docs entfernt (README-Headline, Wiki-Framework-Listen, comply-Modul-Doc inkl. DORA-Meldepflichten-/TISAX-Ansichten-Abschnitte, ai-features, trust-center, api-reference, encryption-at-rest, UPGRADE) und im Code auf `draft`-Status gegatet (`plugins.go` `builtinAvailable`) — der `EnableFramework`-Guard lehnt draft-Frameworks ab (in der Community-Edition zusätzlich durch das Pro-Lizenz-Gate → `402`). Ein CI-Guard in `build-public-mirror.sh` failt Build + Sync, falls DORA/TISAX wieder in eine gemirrorte `*.md` geraten. Handler/Migrationen bleiben latent im Source (kein Rückbau, damit bestehende Aktivierungen nicht brechen). Runtime-verifiziert: DORA-Enable → 402, NIS2-Enable → 200.
+
 ### Security
 
 - **EU AI Act Art. 50(2) — maschinenlesbare KI-Kennzeichnung auf Streams** — die SSE-Endpoints (`ai/chat/stream`, `controls/:id/explain`) senden jetzt den Header `X-AI-Generated: true`, konsistent zum bestehenden `"ai_generated": true`-Flag der JSON-Antworten. Damit ist jeder KI-Output maschinenlesbar als künstlich erzeugt markiert (UI-Kennzeichnung via `AIDisclaimer` bestand bereits). Rechts-Einordnung (AI Act + CRA) intern dokumentiert (`docs/legal/ai-act-cra-einordnung.md`); CRA-Art.-14-Meldeprozess ins Incident-Runbook aufgenommen.
