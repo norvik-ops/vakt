@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **RSS-Feed für den Blog (`sites/vakt`)** — `/rss.xml` über `@astrojs/rss`, mit `<link rel="alternate">` in `Layout.astro` für Feed-Reader-Autodiscovery. Artikel-Metadaten (Titel, Beschreibung, Tags, Datum) aus `blog/index.astro` nach `src/data/blog-posts.ts` ausgelagert — eine Quelle für Übersichtsseite und Feed statt zweier gepflegter Listen.
+
 ## [0.42.20] — 2026-07-06
 
 ### Removed
