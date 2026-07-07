@@ -548,7 +548,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["User"];
+                        "application/json": components["schemas"]["AuthMeResponse"];
                     };
                 };
                 /** @description Not authenticated */
@@ -13516,6 +13516,8 @@ export interface components {
              * @description refresh_sessions.id der gerade ausgestellten Session — Frontend speichert sie und sendet sie als X-Vakt-Session-Id Header beim Sessions-Endpoint, damit "diese Session" in der UI markiert + Revoke-All-Others sich selbst ausnehmen kann.
              */
             session_id?: string;
+            /** @description Spiegelt den csrf_token-Cookie-Wert. Fallback für den Fall, dass ein Reverse Proxy/CDN vor der Instanz den Set-Cookie-Header umschreibt und document.cookie ihn dadurch nicht mehr lesen kann — der Body-Wert ist davon unberührt (client.ts nutzt ihn als In-Memory-Fallback). */
+            csrf_token?: string;
         };
         User: {
             /** Format: uuid */
@@ -13524,6 +13526,10 @@ export interface components {
             email: string;
             display_name: string;
             roles: ("Admin" | "SecurityAnalyst" | "Auditor" | "Viewer")[];
+        };
+        AuthMeResponse: components["schemas"]["User"] & {
+            /** @description Aktueller csrf_token-Cookie-Wert, siehe LoginResponse.csrf_token. */
+            csrf_token?: string;
         };
         Asset: {
             /** Format: uuid */

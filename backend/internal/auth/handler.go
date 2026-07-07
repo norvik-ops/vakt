@@ -309,7 +309,9 @@ func (h *Handler) Login(c echo.Context) error {
 		Path:     "/api/v1",
 		MaxAge:   3600, // 1 hour, matches access token TTL
 	})
-	SetCSRFCookie(c, GenerateCSRFToken())
+	csrfToken := GenerateCSRFToken()
+	SetCSRFCookie(c, csrfToken)
+	resp.CSRFToken = csrfToken
 
 	return c.JSON(http.StatusOK, resp)
 }
@@ -352,7 +354,9 @@ func (h *Handler) Refresh(c echo.Context) error {
 		Path:     "/api/v1",
 		MaxAge:   3600, // 1 hour, matches access token TTL
 	})
-	SetCSRFCookie(c, GenerateCSRFToken())
+	csrfToken := GenerateCSRFToken()
+	SetCSRFCookie(c, csrfToken)
+	resp.CSRFToken = csrfToken
 
 	return c.JSON(http.StatusOK, resp)
 }
@@ -399,7 +403,21 @@ func (h *Handler) Me(c echo.Context) error {
 			}
 		}
 	}
-	return c.JSON(http.StatusOK, user)
+	// Echo the current csrf_token cookie value back in the body (see
+	// AuthResponse.CSRFToken) so the frontend can rehydrate its in-memory
+	// fallback after a page reload, not just right after login/refresh.
+	resp := MeResponse{AuthUser: user}
+	if cookie, err := c.Cookie(CSRFCookieName); err == nil {
+		resp.CSRFToken = cookie.Value
+	}
+	return c.JSON(http.StatusOK, resp)
+}
+
+// MeResponse extends AuthUser with the current CSRF token for the frontend's
+// in-memory cache (see AuthResponse.CSRFToken for the rationale).
+type MeResponse struct {
+	AuthUser
+	CSRFToken string `json:"csrf_token,omitempty"`
 }
 
 // OIDCInitiate handles GET /api/v1/auth/oidc/initiate.
@@ -506,7 +524,9 @@ func (h *Handler) OIDCCallback(c echo.Context) error {
 		Path:     "/api/v1",
 		MaxAge:   3600,
 	})
-	SetCSRFCookie(c, GenerateCSRFToken())
+	csrfToken := GenerateCSRFToken()
+	SetCSRFCookie(c, csrfToken)
+	resp.CSRFToken = csrfToken
 
 	return c.JSON(http.StatusOK, resp)
 }
@@ -557,7 +577,9 @@ func (h *Handler) SAMLCallback(c echo.Context) error {
 		Path:     "/api/v1",
 		MaxAge:   3600,
 	})
-	SetCSRFCookie(c, GenerateCSRFToken())
+	csrfToken := GenerateCSRFToken()
+	SetCSRFCookie(c, csrfToken)
+	resp.CSRFToken = csrfToken
 
 	return c.JSON(http.StatusOK, resp)
 }

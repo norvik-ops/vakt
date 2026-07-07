@@ -120,6 +120,30 @@ func TestLogoutClearsCookie(t *testing.T) {
 	)
 }
 
+// TestLoginResponseBodyCsrfTokenMatchesCookie verifies the invariant the
+// AuthResponse.CSRFToken field exists for: the value echoed in the JSON body
+// must be byte-identical to the value set in the csrf_token cookie. The
+// frontend falls back to this body value when a reverse proxy/CDN rewrites
+// Set-Cookie in a way that hides the cookie from document.cookie (see
+// client.ts setCsrfToken) — if the two ever drift, that fallback silently
+// authenticates with the wrong token and every mutation 403s.
+func TestLoginResponseBodyCsrfTokenMatchesCookie(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	csrfToken := auth.GenerateCSRFToken()
+	require.NotEmpty(t, csrfToken)
+	auth.SetCSRFCookie(c, csrfToken)
+	err := c.JSON(http.StatusOK, map[string]string{"csrf_token": csrfToken})
+	require.NoError(t, err)
+
+	cookieHeader := setCookieHeader(rec)
+	assert.Contains(t, cookieHeader, "csrf_token="+csrfToken, "cookie must carry the generated token")
+	assert.Contains(t, rec.Body.String(), csrfToken, "response body must echo the same token")
+}
+
 // TestMiddlewareAcceptsCookie verifies that PasetoMiddleware correctly reads a
 // valid Paseto token from the access_token httpOnly cookie and populates the
 // echo context, returning HTTP 200.

@@ -126,6 +126,13 @@ type AuthResponse struct {
 	// SessionID ist die UUID der refresh_sessions-Row. Frontend speichert sie,
 	// damit die SessionsPage die "diese hier"-Session markieren kann.
 	SessionID string `json:"session_id,omitempty"`
+	// CSRFToken spiegelt den csrf_token-Cookie-Wert im Response-Body.
+	// Grund: Reverse Proxies/CDNs vor der Instanz können Set-Cookie-Header
+	// umschreiben (z.B. HttpOnly nachträglich setzen), wodurch das Frontend
+	// den Cookie nicht mehr per document.cookie lesen kann, obwohl der Browser
+	// ihn weiterhin korrekt mitsendet. Der Body-Wert ist von sowas unberührt
+	// und dient dem Frontend als zuverlässiger Fallback (client.ts).
+	CSRFToken string `json:"csrf_token,omitempty"`
 }
 
 // AuthUser ist die minimal nötige User-Repräsentation für Frontend-State.

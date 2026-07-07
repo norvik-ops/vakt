@@ -11,6 +11,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - **RSS-Feed für den Blog (`sites/vakt`)** — `/rss.xml` über `@astrojs/rss`, mit `<link rel="alternate">` in `Layout.astro` für Feed-Reader-Autodiscovery. Artikel-Metadaten (Titel, Beschreibung, Tags, Datum) aus `blog/index.astro` nach `src/data/blog-posts.ts` ausgelagert — eine Quelle für Übersichtsseite und Feed statt zweier gepflegter Listen.
 
+### Fixed
+
+- **CSRF-Header wird nicht angehängt, wenn ein Reverse Proxy/CDN vor der Instanz den `csrf_token`-Cookie umschreibt** — Framework-Aktivierung (und jede andere state-ändernde Aktion) schlug mit `403 CSRF_HEADER_MISSING` fehl, obwohl Backend und Frontend den Cookie nachweislich korrekt setzen/lesen (Path=/, kein HttpOnly). Auf `isms.norvikops.de` (hinter Cloudflare) reproduzierbar in 3 verschiedenen Browsern: der Cookie kam im `Cookie:`-Header beim Server an, aber `document.cookie` im Browser enthielt ihn nicht — irgendetwas zwischen Origin und Browser macht ihn unlesbar für JS, obwohl er weiterhin gesendet wird. Fix: `/auth/login`, `/auth/refresh`, `/auth/oidc/callback`, `/auth/saml/callback`, `/demo/login` und `/auth/me` spiegeln den `csrf_token`-Wert jetzt zusätzlich im JSON-Response-Body (`AuthResponse.CSRFToken`); das Frontend cached ihn in-memory (`client.ts` `setCsrfToken`) und nutzt ihn als Fallback, wenn der Cookie nicht per `document.cookie` lesbar ist — unabhängig davon, was zwischen Origin und Browser mit dem Set-Cookie-Header passiert.
+
 ## [0.42.20] — 2026-07-06
 
 ### Removed

@@ -155,7 +155,9 @@ func (h *StartHandler) Login(c echo.Context) error {
 		Path:     "/api/v1",
 		MaxAge:   3600,
 	})
-	auth.SetCSRFCookie(c, auth.GenerateCSRFToken())
+	csrfToken := auth.GenerateCSRFToken()
+	auth.SetCSRFCookie(c, csrfToken)
+	resp.CSRFToken = csrfToken
 
 	return c.JSON(http.StatusOK, resp)
 }

@@ -18,6 +18,7 @@ export interface AuthMe {
   email: string
   display_name: string
   roles: string[]
+  csrf_token?: string
 }
 
 export async function fetchMe(): Promise<AuthMe | null> {
@@ -27,7 +28,9 @@ export async function fetchMe(): Promise<AuthMe | null> {
       headers: { 'Content-Type': 'application/json' },
     })
     if (!res.ok) return null
-    return (await res.json()) as AuthMe
+    const me = (await res.json()) as AuthMe
+    setCsrfToken(me.csrf_token)
+    return me
   } catch {
     return null
   }
@@ -80,12 +83,26 @@ const IDEMPOTENT_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 const MAX_RETRIES = 3
 const BASE_BACKOFF_MS = 300
 
+// In-memory fallback for the CSRF token. Some reverse proxies/CDNs in front
+// of an instance rewrite Set-Cookie headers (e.g. adding HttpOnly), which
+// makes the csrf_token cookie unreadable via document.cookie even though the
+// browser still sends it correctly on requests — every mutation then 403s
+// with "CSRF header missing". The backend echoes the same token value in the
+// login/refresh/me response bodies (see AuthResponse.CSRFToken), which no
+// proxy can interfere with; setCsrfToken() below caches it here.
+let inMemoryCsrfToken: string | null = null
+export function setCsrfToken(token: string | null | undefined): void {
+  inMemoryCsrfToken = token ?? null
+}
+
 // Read the CSRF token from the `csrf_token` cookie (set by the backend on
 // login/refresh). The cookie is intentionally NOT HttpOnly so we can echo it
-// back in the X-CSRF-Token header — the double-submit-cookie pattern.
+// back in the X-CSRF-Token header — the double-submit-cookie pattern. Falls
+// back to the in-memory value from setCsrfToken() when the cookie isn't
+// JS-readable (see above).
 function readCsrfToken(): string | null {
   const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/)
-  return match ? decodeURIComponent(match[1]) : null
+  return match ? decodeURIComponent(match[1]) : inMemoryCsrfToken
 }
 
 function backoffDelay(attempt: number): number {

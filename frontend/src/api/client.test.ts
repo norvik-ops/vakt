@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { apiFetch, RateLimitedError, FeatureLockedError, MFARequiredError } from './client'
+import { apiFetch, setCsrfToken, RateLimitedError, FeatureLockedError, MFARequiredError } from './client'
 
 const realFetch = globalThis.fetch
 const realCookie = Object.getOwnPropertyDescriptor(document, 'cookie')
@@ -7,6 +7,7 @@ const realCookie = Object.getOwnPropertyDescriptor(document, 'cookie')
 beforeEach(() => {
   // Reset cookies between tests so CSRF state doesn't bleed across.
   Object.defineProperty(document, 'cookie', { value: '', writable: true, configurable: true })
+  setCsrfToken(null)
 })
 
 afterEach(() => {
@@ -71,6 +72,39 @@ describe('apiFetch — CSRF', () => {
 
     const [, opts] = spy.mock.calls[0] as [string, RequestInit]
     expect((opts.headers as Record<string, string>)['X-CSRF-Token']).toBeUndefined()
+  })
+
+  it('falls back to the in-memory token from setCsrfToken() when the cookie is unreadable', async () => {
+    // Reverse proxies/CDNs can rewrite Set-Cookie (e.g. add HttpOnly), making
+    // document.cookie blind to csrf_token even though the browser still sends
+    // it on requests. setCsrfToken() (populated from login/me response bodies)
+    // must still get the header attached in that case.
+    setCsrfToken('body-fallback-token')
+    const spy = vi.fn().mockResolvedValue({
+      ok: true, status: 200, headers: new Headers({ 'content-type': 'application/json' }),
+      json: () => Promise.resolve({ ok: true }),
+    })
+    globalThis.fetch = spy
+
+    await apiFetch('/test', { method: 'POST', body: '{}' })
+
+    const [, opts] = spy.mock.calls[0] as [string, RequestInit]
+    expect((opts.headers as Record<string, string>)['X-CSRF-Token']).toBe('body-fallback-token')
+  })
+
+  it('prefers the cookie over the in-memory fallback when both are present', async () => {
+    document.cookie = 'csrf_token=cookie-token'
+    setCsrfToken('stale-memory-token')
+    const spy = vi.fn().mockResolvedValue({
+      ok: true, status: 200, headers: new Headers({ 'content-type': 'application/json' }),
+      json: () => Promise.resolve({ ok: true }),
+    })
+    globalThis.fetch = spy
+
+    await apiFetch('/test', { method: 'POST', body: '{}' })
+
+    const [, opts] = spy.mock.calls[0] as [string, RequestInit]
+    expect((opts.headers as Record<string, string>)['X-CSRF-Token']).toBe('cookie-token')
   })
 })
 

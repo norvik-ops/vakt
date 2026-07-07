@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { Spinner } from '../components/Spinner'
 import { Building2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { apiFetch, setSessionId } from '../api/client'
+import { apiFetch, setSessionId, setCsrfToken } from '../api/client'
 import { useAuthStore } from '../shared/stores/auth'
 import { useDemoMode } from '../shared/hooks/useDemoMode'
 import { toast } from '../shared/hooks/useToast'
@@ -66,6 +66,7 @@ export default function Login() {
       if ('session_id' in data && typeof data.session_id === 'string') {
         setSessionId(data.session_id)
       }
+      setCsrfToken(data.csrf_token)
       navigate('/')
     } catch {
       setDemoError(true)
@@ -110,6 +111,7 @@ export default function Login() {
       if ('session_id' in data && typeof data.session_id === 'string') {
         setSessionId(data.session_id)
       }
+      setCsrfToken(data.csrf_token)
       navigate('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : t('auth.loginFailed'))

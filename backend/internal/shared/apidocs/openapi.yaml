@@ -260,6 +260,12 @@ components:
             speichert sie und sendet sie als X-Vakt-Session-Id Header beim Sessions-Endpoint,
             damit "diese Session" in der UI markiert + Revoke-All-Others sich selbst
             ausnehmen kann.
+        csrf_token:
+          type: string
+          description: Spiegelt den csrf_token-Cookie-Wert. Fallback für den Fall, dass
+            ein Reverse Proxy/CDN vor der Instanz den Set-Cookie-Header umschreibt und
+            document.cookie ihn dadurch nicht mehr lesen kann — der Body-Wert ist davon
+            unberührt (client.ts nutzt ihn als In-Memory-Fallback).
 
     User:
       type: object
@@ -278,6 +284,15 @@ components:
           items:
             type: string
             enum: [Admin, SecurityAnalyst, Auditor, Viewer]
+
+    AuthMeResponse:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            csrf_token:
+              type: string
+              description: Aktueller csrf_token-Cookie-Wert, siehe LoginResponse.csrf_token.
 
     # ── SecPulse ──────────────────────────────────────────────────────────────
 
@@ -2771,7 +2786,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/AuthMeResponse'
         '401':
           description: Not authenticated
           content:
