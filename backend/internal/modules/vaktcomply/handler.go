@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,6 +15,7 @@ import (
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/pagination"
+	"github.com/matharnica/vakt/internal/shared/platform/features"
 	"github.com/rs/zerolog/log"
 )
 
@@ -371,12 +373,40 @@ func (h *Handler) enableFrameworkNamed(name string) echo.HandlerFunc {
 	}
 }
 
+// frameworkFeatureGate mirrors the per-framework feature gates applied at
+// the route level in routes.go (features.Require(...) on the static
+// /frameworks/CRA/enable-style routes). It is re-checked here, keyed by the
+// case-normalised name, so license enforcement doesn't depend on which route
+// matched: Echo's router is case-sensitive, so a request for
+// /frameworks/cra/enable (or any other casing) falls through the literal
+// static routes and hits the generic, feature-gate-less
+// /frameworks/:name/enable — without this check, that's a paywall bypass
+// (any Admin/SecurityAnalyst on any license tier could enable any
+// Pro/Enterprise framework just by varying casing in the URL).
+var frameworkFeatureGate = map[string]features.Feature{
+	"CRA":      features.FeatureCRA,
+	"EUAIACT":  features.FeatureEUAIAct,
+	"BSI":      features.FeatureBSIGrundschutz,
+	"TISAX":    features.FeatureTISAX,
+	"DORA":     features.FeatureDORA,
+	"ISO42001": features.FeatureISO42001,
+	"ISO27017": features.FeatureMultiFramework,
+	"ISO27018": features.FeatureMultiFramework,
+}
+
 // EnableFramework handles POST /api/v1/vaktcomply/frameworks/:name/enable.
 // Accepts optional body {"variant": "full"|"simplified"} for DORA Art. 16.
 func (h *Handler) EnableFramework(c echo.Context) error {
-	name := c.Param("name")
+	name := strings.ToUpper(c.Param("name"))
 	if name == "" {
 		return errResp(c, http.StatusBadRequest, "framework name is required", "CK_BAD_REQUEST")
+	}
+	if feature, gated := frameworkFeatureGate[name]; gated && !features.IsEnabled(c, feature) {
+		return c.JSON(http.StatusPaymentRequired, map[string]string{
+			"error":   "feature_not_available",
+			"message": "This feature requires Vakt Pro. Visit https://vakt.norvikops.de for details.",
+			"feature": feature,
+		})
 	}
 
 	var input EnableFrameworkInput

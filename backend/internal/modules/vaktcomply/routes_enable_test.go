@@ -101,3 +101,40 @@ func TestEnableDraftFrameworkReturns403NotInternalError(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	assert.Contains(t, rec.Body.String(), "CK_FRAMEWORK_DRAFT")
 }
+
+// TestEnableFrameworkCasingCannotBypassFeatureGate is a regression test for a
+// real paywall bypass: Echo's router is case-sensitive, so a request for
+// /frameworks/cra/enable (or any non-canonical casing) doesn't match the
+// literal, feature-gated /frameworks/CRA/enable route — it falls through to
+// the generic /frameworks/:name/enable route, which only checks role, not
+// license. Verified live against a real license/DB stack before this fix:
+// POST /frameworks/cra/enable succeeded and enabled CRA for an org with no
+// Pro license. The fix re-checks the feature gate inside EnableFramework
+// itself, keyed by the case-normalised name, so it can't be routed around.
+func TestEnableFrameworkCasingCannotBypassFeatureGate(t *testing.T) {
+	e := echo.New()
+	e.Use(middleware.Recover())
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Set("roles", []string{"Admin"})
+			// Community tier: no Demo flag, no Features — CRA must stay gated.
+			c.Set("license", &license.License{Tier: "community"})
+			return next(c)
+		}
+	})
+	g := e.Group("")
+	registerRoutes(g, &Handler{}) // service-less — a 402 here must never reach it
+
+	for _, path := range []string{"/frameworks/cra/enable", "/frameworks/Cra/enable", "/frameworks/CRA/enable"} {
+		t.Run(path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, path, nil)
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusPaymentRequired, rec.Code,
+				"a Community-tier license must not be able to enable CRA via any casing")
+			assert.Contains(t, rec.Body.String(), "feature_not_available")
+		})
+	}
+}

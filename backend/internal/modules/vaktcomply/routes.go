@@ -62,9 +62,16 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/frameworks/tisax/iso-mapping", h.GetTISAXISOMapping, features.Require(features.FeatureTISAX))
 	g.GET("/frameworks/tisax/coverage-after-iso", h.GetTISAXCoverageAfterISO, features.Require(features.FeatureTISAX))
 	g.GET("/frameworks/:id", h.GetFrameworkByID)
-	// CRITICAL: feature-gated enable routes must be registered BEFORE the generic /:name/enable
-	// so the respective feature must be active to enable these frameworks.
 	// Tiering mirrors the public pricing page: BSI/EUAIACT/CRA = Pro, TISAX/DORA/ISO42001 = Enterprise.
+	// The features.Require(...) gate below only fires for the EXACT casing
+	// registered here — Echo's router is case-sensitive, so /frameworks/cra/enable
+	// (or any other casing) falls through to the generic, ungated
+	// /frameworks/:name/enable further down, NOT this route. Registration
+	// order does not fix that (found + fixed as a real paywall bypass,
+	// v0.42.24) — the actual enforcement lives in EnableFramework's
+	// frameworkFeatureGate map (handler.go), keyed by the case-normalised
+	// name, so it can't be routed around. These per-route gates are only a
+	// fast-path; do not rely on them alone if you add a new gated framework.
 	g.POST("/frameworks/CRA/enable", h.enableFrameworkNamed("CRA"), rw, features.Require(features.FeatureCRA))
 	g.POST("/frameworks/EUAIACT/enable", h.enableFrameworkNamed("EUAIACT"), rw, features.Require(features.FeatureEUAIAct))
 	g.POST("/frameworks/BSI/enable", h.enableFrameworkNamed("BSI"), rw, features.Require(features.FeatureBSIGrundschutz))
