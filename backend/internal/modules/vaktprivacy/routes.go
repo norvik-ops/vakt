@@ -87,6 +87,12 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.DELETE("/dsr/:id", h.DeleteDSR, admin)
 	g.POST("/dsr/:id/resolve", h.ResolveDSR, rw)
 	g.PATCH("/dsr/:id/assign", h.AssignDSR, rw)
+	// DSR self-service portal configuration — never wired up despite the
+	// handler existing; DSRPortalSettingsPage.tsx has 404'd since it was
+	// added (unrelated to the CSRF bug — no route means the request never
+	// even reached the CSRF check).
+	g.GET("/dsr-portal-settings", h.GetDSRPortalSettings)
+	g.PATCH("/dsr-portal-settings", h.UpdateDSRPortalSettings, admin)
 
 	// Retention / deletion reminders (S68-5)
 	g.GET("/retention/summary", h.GetRetentionSummary)

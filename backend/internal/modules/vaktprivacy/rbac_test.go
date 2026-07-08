@@ -42,6 +42,7 @@ var writeRoutes = []struct {
 	{http.MethodPost, "/vaktprivacy/dsr/1/resolve"},
 	{http.MethodPatch, "/vaktprivacy/dsr/1/assign"},
 	{http.MethodPut, "/vaktprivacy/processing-activities/1/retention"},
+	{http.MethodPatch, "/vaktprivacy/dsr-portal-settings"},
 }
 
 // TestVaktprivacyRBAC verifies that AuditorReadOnly tokens receive 403 on all
