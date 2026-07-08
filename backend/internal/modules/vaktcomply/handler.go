@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/pagination"
 	"github.com/rs/zerolog/log"
@@ -358,6 +359,18 @@ func (h *Handler) ListFrameworks(c echo.Context) error {
 	return c.JSON(http.StatusOK, frameworks)
 }
 
+// enableFrameworkNamed wraps EnableFramework for the static, feature-gated
+// enable routes (e.g. /frameworks/CRA/enable) which don't declare a :name
+// path segment — so c.Param("name") would otherwise always be empty and
+// every one of these frameworks would 400 with "framework name is required".
+func (h *Handler) enableFrameworkNamed(name string) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		c.SetParamNames("name")
+		c.SetParamValues(name)
+		return h.EnableFramework(c)
+	}
+}
+
 // EnableFramework handles POST /api/v1/vaktcomply/frameworks/:name/enable.
 // Accepts optional body {"variant": "full"|"simplified"} for DORA Art. 16.
 func (h *Handler) EnableFramework(c echo.Context) error {
@@ -378,6 +391,9 @@ func (h *Handler) EnableFramework(c echo.Context) error {
 
 	fw, err := h.service.EnableFramework(c.Request().Context(), orgID(c), name, input.Variant)
 	if err != nil {
+		if errors.Is(err, policy.ErrFrameworkDraft) {
+			return errResp(c, http.StatusForbidden, "framework is in draft status and not yet available", "CK_FRAMEWORK_DRAFT")
+		}
 		log.Error().Err(err).Str("name", name).Msg("enable framework")
 		return errResp(c, http.StatusInternalServerError, "failed to enable framework", "CK_ENABLE_FRAMEWORK_FAILED")
 	}

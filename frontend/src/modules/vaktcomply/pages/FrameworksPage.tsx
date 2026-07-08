@@ -61,6 +61,9 @@ const FRAMEWORK_CATALOGUE: Array<{
     category: 'EU-Recht / Finanz',
     controls: '15 Controls (Kap. II–V)',
     color: 'text-orange-500',
+    // Aus dem Angebot genommen (v0.42.20), Backend gated auf draft-Status
+    // (plugins.go builtinAvailable) — gleicher Grund wie bei TISAX.
+    draft: true,
   },
   {
     key: 'EUAIACT',
@@ -79,6 +82,10 @@ const FRAMEWORK_CATALOGUE: Array<{
     category: 'Automotive',
     controls: '39 Controls (Kap. 1–15)',
     color: 'text-red-500',
+    // Aus dem Angebot genommen (v0.42.20), Backend gated auf draft-Status
+    // (plugins.go builtinAvailable) — Katalog-Eintrag muss das spiegeln, sonst
+    // zeigt der Button "Aktivieren" obwohl das Backend jede Aktivierung ablehnt.
+    draft: true,
   },
   {
     key: 'ISO42001',

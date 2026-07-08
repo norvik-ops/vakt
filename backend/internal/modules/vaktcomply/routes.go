@@ -65,14 +65,14 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	// CRITICAL: feature-gated enable routes must be registered BEFORE the generic /:name/enable
 	// so the respective feature must be active to enable these frameworks.
 	// Tiering mirrors the public pricing page: BSI/EUAIACT/CRA = Pro, TISAX/DORA/ISO42001 = Enterprise.
-	g.POST("/frameworks/CRA/enable", h.EnableFramework, rw, features.Require(features.FeatureCRA))
-	g.POST("/frameworks/EUAIACT/enable", h.EnableFramework, rw, features.Require(features.FeatureEUAIAct))
-	g.POST("/frameworks/BSI/enable", h.EnableFramework, rw, features.Require(features.FeatureBSIGrundschutz))
-	g.POST("/frameworks/TISAX/enable", h.EnableFramework, rw, features.Require(features.FeatureTISAX))
-	g.POST("/frameworks/DORA/enable", h.EnableFramework, rw, features.Require(features.FeatureDORA))
-	g.POST("/frameworks/ISO42001/enable", h.EnableFramework, rw, features.Require(features.FeatureISO42001))
-	g.POST("/frameworks/ISO27017/enable", h.EnableFramework, rw, features.Require(features.FeatureMultiFramework))
-	g.POST("/frameworks/ISO27018/enable", h.EnableFramework, rw, features.Require(features.FeatureMultiFramework))
+	g.POST("/frameworks/CRA/enable", h.enableFrameworkNamed("CRA"), rw, features.Require(features.FeatureCRA))
+	g.POST("/frameworks/EUAIACT/enable", h.enableFrameworkNamed("EUAIACT"), rw, features.Require(features.FeatureEUAIAct))
+	g.POST("/frameworks/BSI/enable", h.enableFrameworkNamed("BSI"), rw, features.Require(features.FeatureBSIGrundschutz))
+	g.POST("/frameworks/TISAX/enable", h.enableFrameworkNamed("TISAX"), rw, features.Require(features.FeatureTISAX))
+	g.POST("/frameworks/DORA/enable", h.enableFrameworkNamed("DORA"), rw, features.Require(features.FeatureDORA))
+	g.POST("/frameworks/ISO42001/enable", h.enableFrameworkNamed("ISO42001"), rw, features.Require(features.FeatureISO42001))
+	g.POST("/frameworks/ISO27017/enable", h.enableFrameworkNamed("ISO27017"), rw, features.Require(features.FeatureMultiFramework))
+	g.POST("/frameworks/ISO27018/enable", h.enableFrameworkNamed("ISO27018"), rw, features.Require(features.FeatureMultiFramework))
 	g.POST("/frameworks/:name/enable", h.EnableFramework, rw)
 	// CRITICAL: dora/variant must be registered BEFORE /:id to avoid route collision.
 	g.PUT("/frameworks/dora/variant", h.SwitchDORAVariant, rw)

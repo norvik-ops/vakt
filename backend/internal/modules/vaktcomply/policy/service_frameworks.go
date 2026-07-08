@@ -5,6 +5,7 @@ package policy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -15,6 +16,12 @@ import (
 	"github.com/matharnica/vakt/internal/db"
 	"github.com/matharnica/vakt/internal/shared/notify"
 )
+
+// ErrFrameworkDraft is returned by EnableFramework when the requested
+// framework is still in draft status (see builtinAvailable). Handlers should
+// map this to a 4xx, not a generic 500 — it's an expected business-rule
+// rejection, not an internal failure.
+var ErrFrameworkDraft = errors.New("framework is in draft status and cannot be enabled yet")
 
 // --- Frameworks ---
 
@@ -45,7 +52,7 @@ func (s *Service) EnableFramework(ctx context.Context, orgID, name, variant stri
 	// Reject enabling of draft frameworks.
 	for _, b := range builtinAvailable {
 		if strings.EqualFold(b.name, name) && b.status == "draft" {
-			return nil, fmt.Errorf("framework %s is in draft status and cannot be enabled yet", name)
+			return nil, fmt.Errorf("%s: %w", name, ErrFrameworkDraft)
 		}
 	}
 
