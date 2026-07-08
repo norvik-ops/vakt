@@ -106,6 +106,34 @@ describe('apiFetch — CSRF', () => {
     const [, opts] = spy.mock.calls[0] as [string, RequestInit]
     expect((opts.headers as Record<string, string>)['X-CSRF-Token']).toBe('cookie-token')
   })
+
+  it('survives a caller-supplied options.headers on POST (the actual production bug)', async () => {
+    // Every real mutation hook (useEnableFramework, useSwitchDORAVariant, ...)
+    // calls apiFetch with `headers: { 'Content-Type': 'application/json' }` in
+    // options. A previous version spread `...options` AFTER the constructed
+    // `headers` object in the fetch() call, so options.headers silently
+    // replaced the whole headers object at the top level — dropping
+    // X-CSRF-Token on every such request regardless of where the token came
+    // from. This is what actually caused "CSRF header missing" in production,
+    // not cookie/proxy transport as originally suspected.
+    document.cookie = 'csrf_token=real-token'
+    const spy = vi.fn().mockResolvedValue({
+      ok: true, status: 200, headers: new Headers({ 'content-type': 'application/json' }),
+      json: () => Promise.resolve({ ok: true }),
+    })
+    globalThis.fetch = spy
+
+    await apiFetch('/vaktcomply/frameworks/NIS2/enable', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    })
+
+    const [, opts] = spy.mock.calls[0] as [string, RequestInit]
+    expect((opts.headers as Record<string, string>)['X-CSRF-Token']).toBe('real-token')
+    expect(opts.credentials).toBe('include')
+    expect(opts.method).toBe('POST')
+  })
 })
 
 // ── Retry / backoff ──────────────────────────────────────────────────────────

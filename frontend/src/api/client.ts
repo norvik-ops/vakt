@@ -171,14 +171,20 @@ export async function apiFetch<T>(
     let res: Response
     try {
       res = await fetch(`${API_BASE}${path}`, {
+        ...options,
         credentials: 'include', // send httpOnly cookie automatically
+        // Spread after ...options (not before): options.headers (e.g. every
+        // mutation hook passes { 'Content-Type': 'application/json' }) would
+        // otherwise silently replace this whole object at the top level,
+        // wiping out X-CSRF-Token and X-Vakt-Session-Id on every request that
+        // sets its own headers — the actual cause of the CSRF-header-missing
+        // bug, unrelated to cookie readability.
         headers: {
           'Content-Type': 'application/json',
           ...csrfHeader,
           ...sessionHeader,
           ...(options?.headers ?? {}),
         },
-        ...options,
       })
     } catch (err) {
       // Network failure — retry only if we have attempts left.
