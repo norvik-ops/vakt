@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Vakt API
-  version: "0.42.28"
+  version: "0.42.29"
   description: |
     Self-hosted Security & Compliance Platform API.
     All data stays within your infrastructure — no phone-home, no cloud dependency.
@@ -1109,6 +1109,31 @@ components:
         completed_at:
           type: string
           format: date-time
+
+    AssignmentDetail:
+      type: object
+      description: Per-target assignment detail for a single training module (email + completion outcome joined in).
+      properties:
+        id:
+          type: string
+          format: uuid
+        module_id:
+          type: string
+          format: uuid
+        user_email:
+          type: string
+          format: email
+        status:
+          type: string
+          enum: [assigned, completed, failed]
+        assigned_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        score:
+          type: integer
 
     DORAThirdParty:
       type: object
@@ -3224,6 +3249,21 @@ paths:
       responses:
         '200':
           description: Updated finding
+    delete:
+      summary: Delete a finding
+      tags: [vaktscan]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Finding not found
 
   # ── SecPulse — TLS Certificate Tracking ──────────────────────────────────
 
@@ -4353,6 +4393,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/TargetGroup'
 
+  /vaktaware/groups/{id}:
+    delete:
+      summary: Delete a target group (Pro) — cascades to its targets; campaigns referencing it keep group_id set to null
+      tags: [vaktaware]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Target group not found
+
   /vaktaware/groups/{id}/targets:
     get:
       summary: List targets in a group (Pro)
@@ -4378,6 +4435,40 @@ paths:
                       $ref: '#/components/schemas/Target'
                   pagination:
                     $ref: '#/components/schemas/Pagination'
+    post:
+      summary: Add a single target to a group (Pro) — manual entry, as opposed to CSV import
+      tags: [vaktaware]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                department:
+                  type: string
+      responses:
+        '201':
+          description: Created target
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Target'
 
   /vaktaware/groups/{id}/targets/import:
     post:
@@ -4628,6 +4719,72 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TrainingModule'
+
+  /vaktaware/training-modules/{id}/assignments:
+    get:
+      summary: List per-target assignment detail for a module (email + completion outcome)
+      tags: [vaktaware]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AssignmentDetail'
+
+  /vaktaware/training-modules/{id}/assign:
+    post:
+      summary: Assign a training module to a list of user emails
+      description: >-
+        Resolves each email to an existing target anywhere in the org, or
+        creates one in a reserved "Manuelle Zuweisungen" group if none
+        exists. Emails that fail to resolve/assign are skipped and
+        reported back rather than failing the whole batch.
+      tags: [vaktaware]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_emails]
+              properties:
+                user_emails:
+                  type: array
+                  items:
+                    type: string
+                    format: email
+      responses:
+        '200':
+          description: Assignment result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assigned:
+                    type: integer
+                  failed:
+                    type: array
+                    items:
+                      type: string
+                      format: email
 
   /vaktaware/assignments:
     get:
