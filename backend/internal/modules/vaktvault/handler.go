@@ -87,6 +87,24 @@ func (h *Handler) ListProjects(c echo.Context) error {
 	return c.JSON(http.StatusOK, projects)
 }
 
+func (h *Handler) GetProject(c echo.Context) error {
+	orgID := mustString(c, "org_id")
+	projectID := c.Param("id")
+	if projectID == "" {
+		return badRequest(c, "project id is required")
+	}
+
+	project, err := h.service.GetProject(c.Request().Context(), orgID, projectID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return notFound(c, "project not found")
+		}
+		log.Error().Err(err).Msg("GetProject failed")
+		return serverError(c, err)
+	}
+	return c.JSON(http.StatusOK, project)
+}
+
 func (h *Handler) DeleteProject(c echo.Context) error {
 	orgID := mustString(c, "org_id")
 	projectID := c.Param("id")
@@ -332,15 +350,12 @@ func (h *Handler) GetProjectHealth(c echo.Context) error {
 		return badRequest(c, "project_id is required")
 	}
 
-	scores, err := h.service.GetProjectHealth(c.Request().Context(), orgID, projectID)
+	health, err := h.service.GetProjectHealth(c.Request().Context(), orgID, projectID)
 	if err != nil {
 		log.Error().Err(err).Msg("GetProjectHealth failed")
 		return serverError(c, err)
 	}
-	if scores == nil {
-		scores = []SecretHealth{}
-	}
-	return c.JSON(http.StatusOK, scores)
+	return c.JSON(http.StatusOK, health)
 }
 
 // --- Share links ---

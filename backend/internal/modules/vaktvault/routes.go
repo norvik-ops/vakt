@@ -19,6 +19,7 @@ func Register(g *echo.Group, h *Handler) {
 	// Projects — read: analyst+; delete: admin only
 	g.POST("/projects", h.CreateProject, rw)
 	g.GET("/projects", h.ListProjects, rw)
+	g.GET("/projects/:id", h.GetProject, rw)
 	g.DELETE("/projects/:id", h.DeleteProject, admin)
 
 	// Environments

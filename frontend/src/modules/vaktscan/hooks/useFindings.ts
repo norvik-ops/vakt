@@ -103,7 +103,7 @@ export function useDeleteFinding() {
 
 export async function exportFindingsCsv() {
   // Use fetch with Authorization header + blob download to avoid 401 on <a href> navigation
-  const blob = await apiFetch<Blob>('/vaktscan/findings/export.csv', {
+  const blob = await apiFetch<Blob>('/vaktscan/findings/export?format=csv', {
     headers: { Accept: 'text/csv' },
   })
   const url = URL.createObjectURL(blob)

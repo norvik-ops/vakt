@@ -292,6 +292,14 @@ type SecretHealth struct {
 	Issues            []string `json:"issues"`
 }
 
+// ProjectHealth is the aggregate health summary for a project: the average
+// health score across its secrets, plus a flat list of per-secret issues
+// (each prefixed with the secret's key for context).
+type ProjectHealth struct {
+	Score  int      `json:"score"`
+	Issues []string `json:"issues"`
+}
+
 // APIToken represents a SecretOps-scoped API key.
 type APIToken struct {
 	ID         string     `json:"id"`

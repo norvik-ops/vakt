@@ -219,20 +219,41 @@ func (s *Service) GetProjectAccessLog(ctx context.Context, orgID, projectID stri
 
 // --- Health ---
 
-// GetProjectHealth computes health scores for all secrets in a project.
-func (s *Service) GetProjectHealth(ctx context.Context, orgID, projectID string) ([]SecretHealth, error) {
+// GetProjectHealth computes the aggregate health score for a project: the
+// average of each secret's health score, plus every secret's issues in one
+// flat, key-labelled list.
+func (s *Service) GetProjectHealth(ctx context.Context, orgID, projectID string) (*ProjectHealth, error) {
 	secrets, err := s.repo.ListProjectSecrets(ctx, orgID, projectID)
 	if err != nil {
 		return nil, err
 	}
 
 	now := time.Now().UTC()
-	results := make([]SecretHealth, 0, len(secrets))
+	perSecret := make([]SecretHealth, 0, len(secrets))
 	for _, sec := range secrets {
-		h := computeHealth(sec, now)
-		results = append(results, h)
+		perSecret = append(perSecret, computeHealth(sec, now))
 	}
-	return results, nil
+	agg := aggregateProjectHealth(perSecret)
+	return &agg, nil
+}
+
+// aggregateProjectHealth folds per-secret health entries into the
+// project-level summary: the average score (100 when there are no secrets
+// yet — nothing to flag), and every secret's issues in one flat,
+// key-labelled list.
+func aggregateProjectHealth(perSecret []SecretHealth) ProjectHealth {
+	if len(perSecret) == 0 {
+		return ProjectHealth{Score: 100, Issues: []string{}}
+	}
+	totalScore := 0
+	issues := make([]string, 0)
+	for _, h := range perSecret {
+		totalScore += h.HealthScore
+		for _, issue := range h.Issues {
+			issues = append(issues, fmt.Sprintf("%s: %s", h.Key, issue))
+		}
+	}
+	return ProjectHealth{Score: totalScore / len(perSecret), Issues: issues}
 }
 
 // computeHealth calculates a 0-100 health score for a single secret.

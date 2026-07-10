@@ -109,7 +109,8 @@ function ChangeLogTab({ controlId }: { controlId: string }) {
     queryKey: ['control-changelog', controlId],
     queryFn: async () => {
       try {
-        return await apiFetch<ChangeLogEntry[]>(`/vaktcomply/controls/${controlId}/changelog`)
+        const res = await apiFetch<{ changelog: ChangeLogEntry[] }>(`/vaktcomply/controls/${controlId}/changelog`)
+        return res.changelog
       } catch {
         return []
       }
