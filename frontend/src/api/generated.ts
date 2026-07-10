@@ -1378,7 +1378,34 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete a finding */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Finding not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         /** Update a finding (status, severity, assignee) */
@@ -3436,6 +3463,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vaktaware/groups/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a target group (Pro) — cascades to its targets; campaigns referencing it keep group_id set to null */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Target group not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/vaktaware/groups/{id}/targets": {
         parameters: {
             query?: never;
@@ -3470,7 +3540,39 @@ export interface paths {
             };
         };
         put?: never;
-        post?: never;
+        /** Add a single target to a group (Pro) — manual entry, as opposed to CSV import */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** Format: email */
+                        email: string;
+                        first_name?: string;
+                        last_name?: string;
+                        department?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Created target */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Target"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -3900,6 +4002,94 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["TrainingModule"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktaware/training-modules/{id}/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List per-target assignment detail for a module (email + completion outcome) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Assignments */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AssignmentDetail"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktaware/training-modules/{id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Assign a training module to a list of user emails
+         * @description Resolves each email to an existing target anywhere in the org, or creates one in a reserved "Manuelle Zuweisungen" group if none exists. Emails that fail to resolve/assign are skipped and reported back rather than failing the whole batch.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        user_emails: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Assignment result */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            assigned?: number;
+                            failed?: string[];
+                        };
                     };
                 };
             };
@@ -13977,6 +14167,22 @@ export interface components {
             assigned_at?: string;
             /** Format: date-time */
             completed_at?: string;
+        };
+        /** @description Per-target assignment detail for a single training module (email + completion outcome joined in). */
+        AssignmentDetail: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            module_id?: string;
+            /** Format: email */
+            user_email?: string;
+            /** @enum {string} */
+            status?: "assigned" | "completed" | "failed";
+            /** Format: date-time */
+            assigned_at?: string;
+            /** Format: date-time */
+            completed_at?: string;
+            score?: number;
         };
         DORAThirdParty: {
             /** Format: uuid */
