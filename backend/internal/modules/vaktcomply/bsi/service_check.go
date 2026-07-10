@@ -473,13 +473,13 @@ func (s *Service) buildHeatmap(ctx context.Context, orgID string) ([]HeatmapRow,
 
 func (s *Service) getTopGaps(ctx context.Context, orgID string, limit int) ([]BSIGapEntry, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT baustein_id, anforderung_id,
-		       array_agg(DISTINCT t.name) as zielobjekte,
+		SELECT cr.baustein_id, cr.anforderung_id, COALESCE(c.title, ''),
 		       COUNT(*) as affected
 		FROM ck_bsi_check_results cr
 		JOIN ck_bsi_target_objects t ON t.id = cr.target_object_id
+		LEFT JOIN ck_controls c ON c.control_id = cr.anforderung_id AND c.org_id = cr.org_id
 		WHERE cr.org_id=$1 AND cr.umsetzungsstatus='nein'
-		GROUP BY baustein_id, anforderung_id
+		GROUP BY cr.baustein_id, cr.anforderung_id, c.title
 		ORDER BY affected DESC
 		LIMIT $2`, orgID, limit)
 	if err != nil {
@@ -490,9 +490,8 @@ func (s *Service) getTopGaps(ctx context.Context, orgID string, limit int) ([]BS
 	var out []BSIGapEntry
 	for rows.Next() {
 		var e BSIGapEntry
-		var affected int
-		if err := rows.Scan(&e.BausteinID, &e.AnforderungID,
-			&e.BetroffeneZielobjekte, &affected); err != nil {
+		if err := rows.Scan(&e.BausteinID, &e.AnforderungID, &e.AnforderungTitle,
+			&e.AffectedObjects); err != nil {
 			return nil, err
 		}
 		e.Status = "nein"

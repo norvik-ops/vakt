@@ -121,6 +121,9 @@ func (r *Repository) ListDeletionReminders(ctx context.Context, orgID string) ([
 		}
 		reminders = append(reminders, d)
 	}
+	if reminders == nil {
+		reminders = []DeletionReminder{}
+	}
 	return reminders, rows.Err()
 }
 
@@ -180,6 +183,9 @@ func (r *Repository) ListRetentionTemplates(ctx context.Context) ([]RetentionTem
 			t.RetentionPeriodMonths = &v
 		}
 		templates = append(templates, t)
+	}
+	if templates == nil {
+		templates = []RetentionTemplate{}
 	}
 	return templates, rows.Err()
 }

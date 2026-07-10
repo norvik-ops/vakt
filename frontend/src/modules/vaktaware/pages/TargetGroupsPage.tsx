@@ -159,7 +159,7 @@ export default function TargetGroupsPage() {
         tier="pro"
         actions={
           <Button onClick={() => { setOpen(true); }}>
-            <Plus className="w-4 h-4 mr-1" />New Group
+            <Plus className="w-4 h-4 mr-1" />{t('vaktaware.targetGroups.newGroup')}
           </Button>
         }
       />
@@ -174,7 +174,7 @@ export default function TargetGroupsPage() {
             icon={Users}
             title={t('vaktaware.targetGroups.noGroups')}
             description={t('vaktaware.targetGroups.noGroupsDesc')}
-            action={<Button onClick={() => { setOpen(true); }}><Plus className="w-4 h-4 mr-1" />New Group</Button>}
+            action={<Button onClick={() => { setOpen(true); }}><Plus className="w-4 h-4 mr-1" />{t('vaktaware.targetGroups.newGroup')}</Button>}
           />
         ) : (
           groups.map((g) => (

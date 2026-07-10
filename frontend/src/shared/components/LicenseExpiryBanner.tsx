@@ -52,7 +52,7 @@ export function LicenseExpiryBanner() {
   const [dismissed, setDismissed] = useState(false)
   const { formatDate } = useFormatDate()
 
-  const isAdmin = user?.roles.includes('admin') || user?.roles.includes('owner')
+  const isAdmin = user?.roles.includes('Admin') ?? false
 
   // Only admins, only Pro licenses with an expiry, not already dismissed this session/day.
   // Auto-renewal handles key rotation automatically — no expiry warning needed.

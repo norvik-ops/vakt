@@ -193,8 +193,13 @@ type AssignBausteinInput struct {
 // ── S74-2: Grundschutz-Cockpit & GAP-Report ──
 
 // BSICockpit holds dashboard data: heatmap, top gaps, overall progress.
+// Field names (json tags) must match openapi.yaml's BSICockpit schema and
+// frontend/src/modules/vaktcomply/types.ts's BSICockpit — they were written
+// against the spec, not the earlier German field names here, which caused
+// the BSI Cockpit page to crash on load ("Cannot read properties of
+// undefined") reading cockpit.overall_pct.
 type BSICockpit struct {
-	GesamtFortschrittPct float64       `json:"gesamt_fortschritt_pct"`
+	GesamtFortschrittPct float64       `json:"overall_pct"`
 	Heatmap              []HeatmapRow  `json:"heatmap"`
 	TopGaps              []BSIGapEntry `json:"top_gaps"`
 	UeberfaelligCount    int           `json:"ueberfaellig_count"`
@@ -211,16 +216,16 @@ type HeatmapRow struct {
 type HeatmapCell struct {
 	TargetObjectID   string  `json:"target_object_id"`
 	TargetObjectName string  `json:"target_object_name"`
-	FortschrittPct   float64 `json:"fortschritt_pct"`
+	FortschrittPct   float64 `json:"pct"`
 }
 
 // BSIGapEntry represents one open requirement across multiple Zielobjekte.
 type BSIGapEntry struct {
-	BausteinID            string   `json:"baustein_id"`
-	AnforderungID         string   `json:"anforderung_id"`
-	AnforderungTitle      string   `json:"anforderung_title"`
-	BetroffeneZielobjekte []string `json:"betroffene_zielobjekte"`
-	Status                string   `json:"status"`
+	BausteinID       string `json:"baustein_id"`
+	AnforderungID    string `json:"anforderung_id"`
+	AnforderungTitle string `json:"anforderung_title"`
+	AffectedObjects  int    `json:"affected_objects"`
+	Status           string `json:"status"`
 }
 
 // BSIGapReport holds the full GAP report data.

@@ -120,7 +120,7 @@ function SkeletonRows() {
 export default function AuditLogPage() {
   const { t } = useTranslation()
   const { user } = useAuthStore()
-  const isAdminOrOwner = user?.roles?.includes('admin') || user?.roles?.includes('owner')
+  const isAdminOrOwner = user?.roles.includes('Admin') ?? false
   const { formatDateTime } = useFormatDate()
 
   // Filter state — persisted across page reloads via localStorage
