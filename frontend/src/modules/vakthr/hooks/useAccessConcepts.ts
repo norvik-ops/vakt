@@ -137,7 +137,7 @@ export function useSnapshotAccessConcept(conceptId: string) {
   const queryClient = useQueryClient()
   return useMutation<AccessConceptVersionSummary>({
     mutationFn: () =>
-      apiFetch<AccessConceptVersionSummary>(`/vakthr/access-concepts/${conceptId}/snapshot`, {
+      apiFetch<AccessConceptVersionSummary>(`/vakthr/access-concepts/${conceptId}/versions`, {
         method: 'POST',
       }),
     onSuccess: () => {

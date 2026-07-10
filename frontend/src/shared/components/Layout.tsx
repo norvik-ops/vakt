@@ -21,7 +21,6 @@ import { FeedbackWidget } from './FeedbackWidget'
 import { useBackupStatus } from '../../hooks/useDashboard'
 import { useDemoMode } from '../hooks/useDemoMode'
 import { GlobalSearch } from './GlobalSearch'
-import { VersionBanner } from './VersionBanner'
 import { LicenseExpiryBanner } from './LicenseExpiryBanner'
 import { WhatsNewModal } from './WhatsNewModal'
 import { useOverdueControls } from '../../modules/vaktcomply/hooks/useControlReviews'
@@ -387,7 +386,6 @@ export default function Layout() {
           <button onClick={() => { setBackupDismissed(true); }} aria-label={t('common.close')} className="text-amber-600 hover:text-amber-800 ml-4">✕</button>
         </div>
       )}
-      <VersionBanner />
       {isAdminOrOwner && updateInfo?.update_available && !updateDismissed && (
         <div className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800 px-4 py-2 flex items-center justify-between text-sm shrink-0">
           <span className="text-amber-800 dark:text-amber-300 flex items-center gap-2">

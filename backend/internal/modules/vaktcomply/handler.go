@@ -513,6 +513,54 @@ func (h *Handler) GetGapAnalysis(c echo.Context) error {
 	return c.JSON(http.StatusOK, analysis)
 }
 
+// ListControlsAcrossFrameworks handles GET /api/v1/vaktcomply/controls.
+// Returns up to `limit` controls (default/max 20) across every framework
+// enabled for the org, optionally filtered by `status`
+// (missing|partial|covered|not_applicable|<manual status>). Used by the
+// dashboard "Quick Wins" widget — the handler existed as a bare method
+// (h.ListControls, framework-scoped only) but this org-wide variant, and its
+// route, never did; the widget silently 404'd and rendered nothing.
+func (h *Handler) ListControlsAcrossFrameworks(c echo.Context) error {
+	ctx := c.Request().Context()
+	oid := orgID(c)
+	statusFilter := c.QueryParam("status")
+
+	limit := 20
+	if raw := c.QueryParam("limit"); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 && n <= 20 {
+			limit = n
+		}
+	}
+
+	frameworks, err := h.service.ListFrameworks(ctx, oid)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", oid).Msg("list controls across frameworks: list frameworks")
+		return errResp(c, http.StatusInternalServerError, "failed to list controls", "CK_LIST_CONTROLS_FAILED")
+	}
+
+	result := make([]Control, 0, limit)
+	for _, fw := range frameworks {
+		if len(result) >= limit {
+			break
+		}
+		controls, cErr := h.service.ListControls(ctx, oid, fw.ID)
+		if cErr != nil {
+			log.Warn().Err(cErr).Str("framework_id", fw.ID).Msg("list controls across frameworks: list controls for framework")
+			continue
+		}
+		for _, ctrl := range controls {
+			if statusFilter != "" && ctrl.Status != statusFilter {
+				continue
+			}
+			result = append(result, ctrl)
+			if len(result) >= limit {
+				break
+			}
+		}
+	}
+	return c.JSON(http.StatusOK, result)
+}
+
 // ListControls handles GET /api/v1/vaktcomply/frameworks/:id/controls.
 // Cursor mode (preferred): ?cursor=<opaque>&limit=25
 // Offset mode (deprecated): ?page=1&limit=25 — sends Deprecation header

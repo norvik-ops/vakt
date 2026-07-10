@@ -138,3 +138,23 @@ func TestEnableFrameworkCasingCannotBypassFeatureGate(t *testing.T) {
 		})
 	}
 }
+
+// TestBareControlsRouteIsRegistered is a regression test for
+// h.ListControlsAcrossFrameworks existing as a handler with no route — the
+// dashboard "Quick Wins" widget (DashboardWidgets.tsx) called
+// GET /vaktcomply/controls?status=missing&limit=20 and silently 404'd since
+// it was added, since nothing was registered at the bare /controls path
+// (only /controls/:id and other /controls/<literal> sub-paths existed).
+func TestBareControlsRouteIsRegistered(t *testing.T) {
+	e := echo.New()
+	e.Use(middleware.Recover())
+	g := e.Group("")
+	registerRoutes(g, &Handler{}) // service-less — a 404 here means routing is still broken
+
+	req := httptest.NewRequest(http.MethodGet, "/controls?status=missing&limit=20", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.NotEqual(t, http.StatusNotFound, rec.Code,
+		"GET /controls must resolve to a handler, not 404")
+}

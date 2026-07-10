@@ -15,9 +15,11 @@ import (
 //	GET    /comments?entity_type=<type>&entity_id=<uuid>
 //	POST   /comments
 //	DELETE /comments/:id
+//	GET    /settings/team/members
 func Register(g *echo.Group, db *pgxpool.Pool) {
 	h := NewHandler(NewRepository(db), db)
 	g.GET("/comments", h.ListComments)
 	g.POST("/comments", h.CreateComment)
 	g.DELETE("/comments/:id", h.DeleteComment)
+	g.GET("/settings/team/members", h.ListTeamMembers)
 }

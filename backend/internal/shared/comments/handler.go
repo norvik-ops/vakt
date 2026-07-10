@@ -52,6 +52,52 @@ func isAdmin(c echo.Context) bool {
 	return false
 }
 
+// TeamMember is a minimal user projection for the @-mention picker — no
+// role/security fields, since any authenticated org member can see it.
+type TeamMember struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+// ListTeamMembers handles GET /api/v1/settings/team/members.
+// Existed as a Comments.tsx call with no backend route (silently returned
+// an empty list on 404 via a try/catch) — the @-mention picker in comments
+// never had anyone to suggest. Reuses the same org_members/users join as the
+// @mention notification lookup in CreateComment below.
+func (h *Handler) ListTeamMembers(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	if orgID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "unauthorized",
+			"code":  "AUTH_MISSING_TOKEN",
+		})
+	}
+	rows, err := h.db.Query(c.Request().Context(),
+		`SELECT u.id::text, COALESCE(u.display_name, u.email), u.email
+		 FROM org_members om
+		 JOIN users u ON u.id = om.user_id
+		 WHERE om.org_id = $1::uuid AND u.is_active = true
+		 ORDER BY u.display_name ASC`, orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("list team members failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to list team members",
+			"code":  "COMMENTS_TEAM_LIST_ERROR",
+		})
+	}
+	defer rows.Close()
+	members := []TeamMember{}
+	for rows.Next() {
+		var m TeamMember
+		if scanErr := rows.Scan(&m.ID, &m.Name, &m.Email); scanErr != nil {
+			continue
+		}
+		members = append(members, m)
+	}
+	return c.JSON(http.StatusOK, members)
+}
+
 // ListComments handles GET /api/v1/comments?entity_type=<type>&entity_id=<uuid>.
 func (h *Handler) ListComments(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)

@@ -88,6 +88,11 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	// to prevent Echo from matching them as param routes.
 	g.GET("/controls/overdue-reviews", h.ListOverdueControls)
 	g.GET("/controls/export/xlsx", h.ExportControlsXLSX)
+	// Bare /controls (org-wide, across all enabled frameworks) is a distinct
+	// path shape from /controls/:id — no collision. Existed as a handler
+	// (h.ListControlsAcrossFrameworks) with no route; DashboardWidgets.tsx's
+	// "Quick Wins" widget has called it since it was added and always 404'd.
+	g.GET("/controls", h.ListControlsAcrossFrameworks)
 	g.GET("/controls/:id", h.GetControlByID)
 	g.GET("/frameworks/:id/report", h.GetReadinessReport)
 	g.GET("/frameworks/:id/export-pdf", h.ExportFrameworkPDF, features.Require(features.FeatureAuditPDF))
