@@ -158,3 +158,28 @@ func TestBareControlsRouteIsRegistered(t *testing.T) {
 	assert.NotEqual(t, http.StatusNotFound, rec.Code,
 		"GET /controls must resolve to a handler, not 404")
 }
+
+// TestDBTemplatesRoutesAreRegistered is a regression test for
+// h.ListDBPolicyTemplates/h.GetDBPolicyTemplate existing as fully-implemented
+// handlers (querying ck_policy_templates via sqlc) with no route ever
+// registered for them. PolicyTemplatesPage.tsx has called
+// GET /vaktcomply/templates?category=policy|dpia|avv since it was added and
+// silently 404'd — the frontend's policy/DPIA/AVV template picker never had
+// anything to show.
+func TestDBTemplatesRoutesAreRegistered(t *testing.T) {
+	e := echo.New()
+	e.Use(middleware.Recover())
+	g := e.Group("")
+	registerRoutes(g, &Handler{}) // service-less — a 404 here means routing is still broken
+
+	for _, path := range []string{"/templates?category=policy", "/templates/00000000-0000-0000-0000-000000000000"} {
+		t.Run(path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.NotEqual(t, http.StatusNotFound, rec.Code,
+				"GET "+path+" must resolve to a handler, not 404")
+		})
+	}
+}

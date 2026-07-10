@@ -101,7 +101,7 @@ func (r *Repository) GetCurrentISMSScope(ctx context.Context, orgID string) (ISM
 	scope, err := scanISMSScope(row)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return ISMSScope{}, fmt.Errorf("isms scope not found")
+			return ISMSScope{}, fmt.Errorf("isms scope not found: %w", ErrNotFound)
 		}
 		return ISMSScope{}, fmt.Errorf("get current isms scope: %w", err)
 	}
@@ -148,7 +148,7 @@ func (r *Repository) ApproveISMSScope(ctx context.Context, orgID, id, approverID
 	scope, err := scanISMSScope(row)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return ISMSScope{}, fmt.Errorf("isms scope not found")
+			return ISMSScope{}, fmt.Errorf("isms scope not found: %w", ErrNotFound)
 		}
 		return ISMSScope{}, fmt.Errorf("approve isms scope: %w", err)
 	}

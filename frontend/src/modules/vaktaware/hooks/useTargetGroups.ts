@@ -7,7 +7,7 @@ const BASE = '/vaktaware'
 export function useTargetGroups() {
   return useQuery<TargetGroup[]>({
     queryKey: ['vaktaware', 'target-groups'],
-    queryFn: () => apiFetch<TargetGroup[]>(`${BASE}/target-groups`),
+    queryFn: () => apiFetch<TargetGroup[]>(`${BASE}/groups`),
     staleTime: 30_000,
   })
 }
@@ -15,7 +15,7 @@ export function useTargetGroups() {
 export function useTargets(groupId: string) {
   return useQuery<Target[]>({
     queryKey: ['vaktaware', 'target-groups', groupId, 'targets'],
-    queryFn: () => apiFetch<Target[]>(`${BASE}/target-groups/${groupId}/targets`),
+    queryFn: () => apiFetch<Target[]>(`${BASE}/groups/${groupId}/targets`),
     staleTime: 30_000,
     enabled: Boolean(groupId),
   })
@@ -30,7 +30,7 @@ export function useCreateTargetGroup() {
   const queryClient = useQueryClient()
   return useMutation<TargetGroup, Error, CreateTargetGroupInput>({
     mutationFn: (data) =>
-      apiFetch<TargetGroup>(`${BASE}/target-groups`, {
+      apiFetch<TargetGroup>(`${BASE}/groups`, {
         method: 'POST',
         body: JSON.stringify(data),
       }),

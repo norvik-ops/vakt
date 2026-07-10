@@ -11,7 +11,7 @@ const QK = ['vaktcomply', 'protection-needs'] as const
 export function useProtectionNeeds() {
   return useQuery<ProtectionNeedAssessment[]>({
     queryKey: [...QK],
-    queryFn: () => apiFetch<ProtectionNeedAssessment[]>('/vaktcomply/protection-needs'),
+    queryFn: () => apiFetch<ProtectionNeedAssessment[]>('/vaktcomply/protection-needs/assessments'),
     staleTime: 5 * 60 * 1000,
   })
 }
@@ -20,7 +20,7 @@ export function useCreateProtectionNeed() {
   const queryClient = useQueryClient()
   return useMutation<ProtectionNeedAssessment, Error, CreateProtectionNeedInput>({
     mutationFn: (input) =>
-      apiFetch<ProtectionNeedAssessment>('/vaktcomply/protection-needs', {
+      apiFetch<ProtectionNeedAssessment>('/vaktcomply/protection-needs/assessments', {
         method: 'POST',
         body: JSON.stringify(input),
       }),
@@ -34,8 +34,8 @@ export function useUpdateProtectionNeed(id: string) {
   const queryClient = useQueryClient()
   return useMutation<ProtectionNeedAssessment, Error, UpdateProtectionNeedInput>({
     mutationFn: (input) =>
-      apiFetch<ProtectionNeedAssessment>(`/vaktcomply/protection-needs/${id}`, {
-        method: 'PUT',
+      apiFetch<ProtectionNeedAssessment>(`/vaktcomply/protection-needs/assessments/${id}`, {
+        method: 'PATCH',
         body: JSON.stringify(input),
       }),
     onSuccess: () => {
@@ -48,7 +48,7 @@ export function useFinalizeProtectionNeed() {
   const queryClient = useQueryClient()
   return useMutation<ProtectionNeedAssessment, Error, string>({
     mutationFn: (id) =>
-      apiFetch<ProtectionNeedAssessment>(`/vaktcomply/protection-needs/${id}/finalize`, {
+      apiFetch<ProtectionNeedAssessment>(`/vaktcomply/protection-needs/assessments/${id}/finalize`, {
         method: 'POST',
       }),
     onSuccess: () => {
@@ -61,7 +61,7 @@ export function useDeleteProtectionNeed() {
   const queryClient = useQueryClient()
   return useMutation<undefined, Error, string>({
     mutationFn: (id) =>
-      apiFetch<undefined>(`/vaktcomply/protection-needs/${id}`, { method: 'DELETE' }),
+      apiFetch<undefined>(`/vaktcomply/protection-needs/assessments/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [...QK] })
     },

@@ -327,6 +327,10 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/policy-templates", h.ListPolicyTemplates)
 	g.POST("/policy-templates/:id/apply", h.CreatePolicyFromTemplate, rw)
 
+	// DB-backed compliance templates (policy/dpia/avv), used by PolicyTemplatesPage.tsx
+	g.GET("/templates", h.ListDBPolicyTemplates)
+	g.GET("/templates/:id", h.GetDBPolicyTemplate)
+
 	// Resilience Tests (DORA Art. 24-27) — DORA Pro feature
 	g.GET("/resilience-tests", h.ListResilienceTests, features.Require(features.FeatureDORA))
 	g.POST("/resilience-tests", h.CreateResilienceTest, rw, features.Require(features.FeatureDORA))

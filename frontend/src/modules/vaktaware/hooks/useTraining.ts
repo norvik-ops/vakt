@@ -7,7 +7,7 @@ const BASE = '/vaktaware'
 export function useTrainingModules() {
   return useQuery<TrainingModule[]>({
     queryKey: ['vaktaware', 'training'],
-    queryFn: () => apiFetch<TrainingModule[]>(`${BASE}/training`),
+    queryFn: () => apiFetch<TrainingModule[]>(`${BASE}/training-modules`),
     staleTime: 60_000,
   })
 }
