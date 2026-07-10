@@ -22,10 +22,14 @@ func Register(g *echo.Group, h *Handler, health *HealthHandler, db *pgxpool.Pool
 	admin.GET("/audit-log/export.cef", siem.ExportCEF)
 	admin.GET("/audit-log/export.syslog", siem.ExportSyslog)
 
-	admin.GET("/users", h.ListUsers)
+	// GET /users and PATCH /users/:id/role are NOT registered here — they'd
+	// be shadowed anyway by usermgmt.RegisterRoutes's later registration on
+	// the identical /admin path (Echo lets the last registration silently
+	// win on an exact path collision). usermgmt's versions are the real
+	// implementation (last-admin protection, session revocation on
+	// downgrade); this package used to carry a dead, less-safe duplicate.
 	admin.POST("/users", h.CreateUser) // S105-1: direct creation, no SMTP
 	admin.POST("/users/invite", h.InviteUser)
-	admin.PATCH("/users/:id/role", h.UpdateUserRole)
 	admin.GET("/modules", h.ListModules)
 
 	// Notification channel management

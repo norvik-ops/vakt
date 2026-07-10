@@ -258,6 +258,19 @@ type Assignment struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
+// AssignmentDetail is the per-module assignment view used by TrainingPage.tsx:
+// one row per assigned target, with email and completion outcome joined in
+// (as opposed to Assignment, which is the raw sr_assignments row).
+type AssignmentDetail struct {
+	ID          string     `json:"id"`
+	ModuleID    string     `json:"module_id"`
+	UserEmail   string     `json:"user_email"`
+	Status      string     `json:"status"` // assigned | completed | failed
+	AssignedAt  time.Time  `json:"assigned_at"`
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+	Score       *int       `json:"score,omitempty"`
+}
+
 // Completion records that an assignment was finished, along with the quiz score.
 type Completion struct {
 	ID           string    `json:"id"`

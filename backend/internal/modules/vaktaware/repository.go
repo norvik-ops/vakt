@@ -400,6 +400,20 @@ func (r *Repository) ListTargetGroups(ctx context.Context, orgID string) ([]Targ
 	return out, nil
 }
 
+// DeleteTargetGroup removes a target group by ID within the org. Cascades to
+// its targets in the DB (ON DELETE CASCADE); campaigns referencing it get
+// group_id set to NULL rather than being blocked or deleted.
+func (r *Repository) DeleteTargetGroup(ctx context.Context, orgID, groupID string) error {
+	n, err := r.q.DeleteSRTargetGroup(ctx, db.DeleteSRTargetGroupParams{ID: groupID, OrgID: orgID})
+	if err != nil {
+		return fmt.Errorf("delete target group: %w", err)
+	}
+	if n == 0 {
+		return fmt.Errorf("target group not found")
+	}
+	return nil
+}
+
 func (r *Repository) CreateTarget(ctx context.Context, orgID, groupID, email, firstName, lastName, department string) (*Target, error) {
 	row, err := r.q.UpsertSRTarget(ctx, db.UpsertSRTargetParams{
 		OrgID:      orgID,
@@ -671,16 +685,49 @@ func (r *Repository) GetModuleByID(ctx context.Context, orgID, moduleID string) 
 
 // ── Assignments ───────────────────────────────────────────────────────────
 
+// UpsertAssignment creates an assignment, or — when targetID is set and a
+// matching (module_id, target_id) assignment already exists — extends its
+// due date instead of duplicating it. Implemented as an explicit
+// find-then-insert-or-update rather than ON CONFLICT: sr_assignments'
+// UNIQUE(module_id, target_id) is DEFERRABLE INITIALLY DEFERRED, which
+// Postgres does not allow as an ON CONFLICT arbiter. Department-only
+// assignments (targetID == nil) always insert a new row, matching the old
+// query's behaviour — NULL never matches NULL in SQL, so ON CONFLICT would
+// never have deduplicated those either.
 func (r *Repository) UpsertAssignment(ctx context.Context, orgID, moduleID string, targetID *string, department string, dueDate time.Time) (*Assignment, error) {
-	row, err := r.q.UpsertSRAssignment(ctx, db.UpsertSRAssignmentParams{
+	pgDueDate := pgtype.Timestamptz{Time: dueDate, Valid: true}
+
+	if targetID != nil && *targetID != "" {
+		existing, err := r.q.FindSRAssignmentByTarget(ctx, db.FindSRAssignmentByTargetParams{
+			OrgID:    orgID,
+			ModuleID: moduleID,
+			TargetID: optUUIDFromPtr(targetID),
+		})
+		switch {
+		case err == nil:
+			row, updErr := r.q.UpdateSRAssignmentDueDate(ctx, db.UpdateSRAssignmentDueDateParams{
+				ID:      existing.ID,
+				DueDate: pgDueDate,
+			})
+			if updErr != nil {
+				return nil, fmt.Errorf("update assignment due date: %w", updErr)
+			}
+			a := assignmentFromRow(row)
+			return &a, nil
+		case !errors.Is(err, pgx.ErrNoRows):
+			return nil, fmt.Errorf("find existing assignment: %w", err)
+		}
+	}
+
+	row, err := r.q.InsertSRAssignment(ctx, db.InsertSRAssignmentParams{
 		OrgID:      orgID,
 		ModuleID:   moduleID,
-		DueDate:    pgtype.Timestamptz{Time: dueDate, Valid: true},
+		DueDate:    pgDueDate,
 		TargetID:   optUUIDFromPtr(targetID),
 		Department: optText(department),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("upsert assignment: %w", err)
+		return nil, fmt.Errorf("insert assignment: %w", err)
 	}
 	a := assignmentFromRow(row)
 	return &a, nil
@@ -696,6 +743,89 @@ func (r *Repository) GetAssignment(ctx context.Context, orgID, assignmentID stri
 	}
 	a := assignmentFromRow(row)
 	return &a, nil
+}
+
+// ListAssignmentsByModule returns per-target assignment detail (email,
+// status, score) for a single training module.
+func (r *Repository) ListAssignmentsByModule(ctx context.Context, orgID, moduleID string) ([]AssignmentDetail, error) {
+	rows, err := r.q.ListSRAssignmentsByModule(ctx, db.ListSRAssignmentsByModuleParams{
+		OrgID:    orgID,
+		ModuleID: moduleID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list assignments by module: %w", err)
+	}
+	out := make([]AssignmentDetail, 0, len(rows))
+	for _, row := range rows {
+		var score *int
+		if row.Score.Valid {
+			v := int(row.Score.Int32)
+			score = &v
+		}
+		out = append(out, AssignmentDetail{
+			ID:          row.ID,
+			ModuleID:    moduleID,
+			UserEmail:   textOrEmpty(row.UserEmail),
+			Status:      assignmentStatus(row.Passed),
+			AssignedAt:  tsToTime(row.CreatedAt),
+			CompletedAt: tsToTimePtr(row.CompletedAt),
+			Score:       score,
+		})
+	}
+	return out, nil
+}
+
+// assignmentStatus derives the display status from the (possibly absent)
+// joined completion row: no row (NULL) means still assigned; a row with
+// passed=false means failed.
+func assignmentStatus(passed pgtype.Bool) string {
+	if !passed.Valid {
+		return "assigned"
+	}
+	if passed.Bool {
+		return "completed"
+	}
+	return "failed"
+}
+
+// FindOrCreateTargetByEmail resolves an email to an existing target anywhere
+// in the org, or creates one in a reserved "Manuelle Zuweisungen" group if
+// none exists — targets always belong to a group (NOT NULL group_id), so
+// there is no way to attach a bare email to an assignment without one.
+func (r *Repository) FindOrCreateTargetByEmail(ctx context.Context, orgID, email string) (*Target, error) {
+	row, err := r.q.GetSRTargetByEmail(ctx, db.GetSRTargetByEmailParams{OrgID: orgID, Email: email})
+	if err == nil {
+		t := targetFromRow(row)
+		return &t, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("find target by email: %w", err)
+	}
+
+	groupID, err := r.getOrCreateManualAssignmentGroup(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+	return r.CreateTarget(ctx, orgID, groupID, email, "", "", "")
+}
+
+const manualAssignmentGroupName = "Manuelle Zuweisungen"
+
+func (r *Repository) getOrCreateManualAssignmentGroup(ctx context.Context, orgID string) (string, error) {
+	groups, err := r.ListTargetGroups(ctx, orgID)
+	if err != nil {
+		return "", fmt.Errorf("list target groups: %w", err)
+	}
+	for _, g := range groups {
+		if g.Name == manualAssignmentGroupName {
+			return g.ID, nil
+		}
+	}
+	g, err := r.CreateTargetGroup(ctx, orgID, manualAssignmentGroupName, "manual")
+	if err != nil {
+		return "", fmt.Errorf("create manual assignment group: %w", err)
+	}
+	return g.ID, nil
 }
 
 func (r *Repository) ListAssignments(ctx context.Context, orgID, status string) ([]Assignment, error) {

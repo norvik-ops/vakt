@@ -497,6 +497,15 @@ func (s *Service) UpdateFinding(ctx context.Context, orgID, findingID string, in
 	return finding, nil
 }
 
+// DeleteFinding removes a finding by ID within the org.
+func (s *Service) DeleteFinding(ctx context.Context, orgID, findingID string) error {
+	if err := s.repo.DeleteFinding(ctx, orgID, findingID); err != nil {
+		return err
+	}
+	s.invalidateDashboardCache(ctx, orgID)
+	return nil
+}
+
 // BulkUpdateFindings applies a bulk status/assignee update.
 func (s *Service) BulkUpdateFindings(ctx context.Context, orgID string, input BulkFindingInput) (int, error) {
 	return s.repo.BulkUpdateFindings(ctx, orgID, input)

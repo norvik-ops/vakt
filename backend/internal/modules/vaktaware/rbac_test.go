@@ -53,10 +53,13 @@ func TestRBACVaktaware(t *testing.T) {
 		// Templates and groups
 		{http.MethodPost, "/vaktaware/templates"},
 		{http.MethodPost, "/vaktaware/groups"},
+		{http.MethodDelete, "/vaktaware/groups/1"},
+		{http.MethodPost, "/vaktaware/groups/1/targets"},
 		{http.MethodPost, "/vaktaware/groups/1/targets/import"},
 		{http.MethodPost, "/vaktaware/landing-pages"},
 		// Training modules
 		{http.MethodPost, "/vaktaware/training-modules"},
+		{http.MethodPost, "/vaktaware/training-modules/1/assign"},
 		// Enrollment rules
 		{http.MethodPost, "/vaktaware/enrollment-rules"},
 		{http.MethodPut, "/vaktaware/enrollment-rules/1"},

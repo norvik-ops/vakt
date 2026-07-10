@@ -382,6 +382,25 @@ func (q *Queries) CreateSRTrainingModule(ctx context.Context, arg CreateSRTraini
 	return i, err
 }
 
+const deleteSRTargetGroup = `-- name: DeleteSRTargetGroup :execrows
+DELETE FROM sr_target_groups
+WHERE id = $1 AND org_id = $2
+`
+
+type DeleteSRTargetGroupParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+// Cascades to sr_targets (ON DELETE CASCADE); sr_campaigns.group_id is SET NULL.
+func (q *Queries) DeleteSRTargetGroup(ctx context.Context, arg DeleteSRTargetGroupParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSRTargetGroup, arg.ID, arg.OrgID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const findActiveSRCampaignForReporter = `-- name: FindActiveSRCampaignForReporter :one
 SELECT c.id
 FROM sr_campaigns c
@@ -649,6 +668,39 @@ func (q *Queries) GetSRPhishReportStats(ctx context.Context, orgID string) (GetS
 	return i, err
 }
 
+const getSRTargetByEmail = `-- name: GetSRTargetByEmail :one
+SELECT id, org_id, group_id, email, first_name, last_name, department,
+       is_bounced, created_at
+FROM sr_targets
+WHERE org_id = $1 AND email = $2
+ORDER BY created_at ASC
+LIMIT 1
+`
+
+type GetSRTargetByEmailParams struct {
+	OrgID string `json:"org_id"`
+	Email string `json:"email"`
+}
+
+// Used to resolve "assign by email" to an existing target regardless of
+// which group it lives in, before falling back to creating a new one.
+func (q *Queries) GetSRTargetByEmail(ctx context.Context, arg GetSRTargetByEmailParams) (SrTargets, error) {
+	row := q.db.QueryRow(ctx, getSRTargetByEmail, arg.OrgID, arg.Email)
+	var i SrTargets
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.GroupID,
+		&i.Email,
+		&i.FirstName,
+		&i.LastName,
+		&i.Department,
+		&i.IsBounced,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getSRTemplate = `-- name: GetSRTemplate :one
 SELECT id, org_id, name, subject, from_name, from_email, html_body,
        attack_type, is_preset, created_by, created_at
@@ -770,6 +822,64 @@ func (q *Queries) ListSRAssignments(ctx context.Context, orgID string) ([]SrAssi
 			&i.DueDate,
 			&i.IsOverdue,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSRAssignmentsByModule = `-- name: ListSRAssignmentsByModule :many
+SELECT a.id, a.due_date, a.created_at,
+       t.email AS user_email,
+       c.score, c.passed, c.completed_at
+FROM sr_assignments a
+LEFT JOIN sr_targets t ON t.id = a.target_id
+LEFT JOIN sr_completions c ON c.assignment_id = a.id
+WHERE a.org_id = $1 AND a.module_id = $2
+ORDER BY a.created_at DESC
+LIMIT 500
+`
+
+type ListSRAssignmentsByModuleParams struct {
+	OrgID    string `json:"org_id"`
+	ModuleID string `json:"module_id"`
+}
+
+type ListSRAssignmentsByModuleRow struct {
+	ID          string             `json:"id"`
+	DueDate     pgtype.Timestamptz `json:"due_date"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UserEmail   pgtype.Text        `json:"user_email"`
+	Score       pgtype.Int4        `json:"score"`
+	Passed      pgtype.Bool        `json:"passed"`
+	CompletedAt pgtype.Timestamptz `json:"completed_at"`
+}
+
+// Per-assignment detail for a single module: target email (NULL if the
+// assignment has no target or the target was later deleted — target_id is
+// ON DELETE SET NULL) plus completion outcome (NULL = still "assigned").
+func (q *Queries) ListSRAssignmentsByModule(ctx context.Context, arg ListSRAssignmentsByModuleParams) ([]ListSRAssignmentsByModuleRow, error) {
+	rows, err := q.db.Query(ctx, listSRAssignmentsByModule, arg.OrgID, arg.ModuleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSRAssignmentsByModuleRow{}
+	for rows.Next() {
+		var i ListSRAssignmentsByModuleRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DueDate,
+			&i.CreatedAt,
+			&i.UserEmail,
+			&i.Score,
+			&i.Passed,
+			&i.CompletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1212,20 +1322,54 @@ func (q *Queries) UpdateSRCampaignStatus(ctx context.Context, arg UpdateSRCampai
 	return err
 }
 
-const upsertSRAssignment = `-- name: UpsertSRAssignment :one
+// ── Assignments ───────────────────────────────────────────────────────────
+//
+// sr_assignments.UNIQUE(module_id, target_id) is DEFERRABLE INITIALLY
+// DEFERRED, and Postgres does not allow ON CONFLICT against a deferrable
+// constraint as the arbiter — upserting is an explicit find-then-insert-or-
+// update instead of a single ON CONFLICT statement.
 
+const findSRAssignmentByTarget = `-- name: FindSRAssignmentByTarget :one
+SELECT id, org_id, module_id, target_id, department, due_date,
+       is_overdue, created_at
+FROM sr_assignments
+WHERE org_id = $1 AND module_id = $2 AND target_id = $3::uuid
+LIMIT 1
+`
+
+type FindSRAssignmentByTargetParams struct {
+	OrgID    string      `json:"org_id"`
+	ModuleID string      `json:"module_id"`
+	TargetID pgtype.UUID `json:"target_id"`
+}
+
+func (q *Queries) FindSRAssignmentByTarget(ctx context.Context, arg FindSRAssignmentByTargetParams) (SrAssignments, error) {
+	row := q.db.QueryRow(ctx, findSRAssignmentByTarget, arg.OrgID, arg.ModuleID, arg.TargetID)
+	var i SrAssignments
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.ModuleID,
+		&i.TargetID,
+		&i.Department,
+		&i.DueDate,
+		&i.IsOverdue,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const insertSRAssignment = `-- name: InsertSRAssignment :one
 INSERT INTO sr_assignments (org_id, module_id, target_id, department, due_date)
 VALUES ($1, $2,
         $4::uuid,
         $5::text,
         $3)
-ON CONFLICT (module_id, target_id) DO UPDATE
-   SET due_date = GREATEST(EXCLUDED.due_date, sr_assignments.due_date)
 RETURNING id, org_id, module_id, target_id, department, due_date,
           is_overdue, created_at
 `
 
-type UpsertSRAssignmentParams struct {
+type InsertSRAssignmentParams struct {
 	OrgID      string             `json:"org_id"`
 	ModuleID   string             `json:"module_id"`
 	DueDate    pgtype.Timestamptz `json:"due_date"`
@@ -1233,15 +1377,42 @@ type UpsertSRAssignmentParams struct {
 	Department pgtype.Text        `json:"department"`
 }
 
-// ── Assignments ───────────────────────────────────────────────────────────
-func (q *Queries) UpsertSRAssignment(ctx context.Context, arg UpsertSRAssignmentParams) (SrAssignments, error) {
-	row := q.db.QueryRow(ctx, upsertSRAssignment,
+func (q *Queries) InsertSRAssignment(ctx context.Context, arg InsertSRAssignmentParams) (SrAssignments, error) {
+	row := q.db.QueryRow(ctx, insertSRAssignment,
 		arg.OrgID,
 		arg.ModuleID,
 		arg.DueDate,
 		arg.TargetID,
 		arg.Department,
 	)
+	var i SrAssignments
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.ModuleID,
+		&i.TargetID,
+		&i.Department,
+		&i.DueDate,
+		&i.IsOverdue,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateSRAssignmentDueDate = `-- name: UpdateSRAssignmentDueDate :one
+UPDATE sr_assignments SET due_date = GREATEST($2, due_date)
+WHERE id = $1
+RETURNING id, org_id, module_id, target_id, department, due_date,
+          is_overdue, created_at
+`
+
+type UpdateSRAssignmentDueDateParams struct {
+	ID      string             `json:"id"`
+	DueDate pgtype.Timestamptz `json:"due_date"`
+}
+
+func (q *Queries) UpdateSRAssignmentDueDate(ctx context.Context, arg UpdateSRAssignmentDueDateParams) (SrAssignments, error) {
+	row := q.db.QueryRow(ctx, updateSRAssignmentDueDate, arg.ID, arg.DueDate)
 	var i SrAssignments
 	err := row.Scan(
 		&i.ID,

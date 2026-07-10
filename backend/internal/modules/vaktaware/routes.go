@@ -30,7 +30,9 @@ func Register(g *echo.Group, h *Handler) {
 	// --- Pro: Target groups ---
 	p.GET("/groups", h.ListTargetGroups, features.Require(features.FeatureSecReflex))
 	p.POST("/groups", h.CreateTargetGroup, rw, features.Require(features.FeatureSecReflex))
+	p.DELETE("/groups/:id", h.DeleteTargetGroup, rw, features.Require(features.FeatureSecReflex))
 	p.GET("/groups/:id/targets", h.ListTargets, features.Require(features.FeatureSecReflex))
+	p.POST("/groups/:id/targets", h.AddTarget, rw, features.Require(features.FeatureSecReflex))
 	p.POST("/groups/:id/targets/import", h.ImportTargetsCSV, rw, features.Require(features.FeatureSecReflex))
 
 	// --- Pro: Landing pages ---
@@ -50,6 +52,8 @@ func Register(g *echo.Group, h *Handler) {
 	p.GET("/training-modules", h.ListModules)
 	p.GET("/training-modules/presets", h.ListTrainingPresets)
 	p.POST("/training-modules", h.CreateModule, rw)
+	p.GET("/training-modules/:id/assignments", h.ListAssignmentsByModule)
+	p.POST("/training-modules/:id/assign", h.AssignModule, rw)
 
 	// --- Community: Basic assignment tracking ---
 	p.GET("/assignments", h.ListAssignments)

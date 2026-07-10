@@ -349,6 +349,24 @@ func (q *Queries) CreateSPSuppression(ctx context.Context, arg CreateSPSuppressi
 	return i, err
 }
 
+const deleteSPFinding = `-- name: DeleteSPFinding :execrows
+DELETE FROM vb_findings
+WHERE id = $1 AND org_id = $2
+`
+
+type DeleteSPFindingParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+func (q *Queries) DeleteSPFinding(ctx context.Context, arg DeleteSPFindingParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSPFinding, arg.ID, arg.OrgID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteSPScanSchedule = `-- name: DeleteSPScanSchedule :execrows
 DELETE FROM vb_scan_schedules
 WHERE id = $1 AND org_id = $2

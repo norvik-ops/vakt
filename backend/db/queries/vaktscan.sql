@@ -207,6 +207,10 @@ UPDATE vb_findings SET
   updated_at  = NOW()
 WHERE org_id = $1 AND id = ANY(sqlc.arg('ids')::uuid[]);
 
+-- name: DeleteSPFinding :execrows
+DELETE FROM vb_findings
+WHERE id = $1 AND org_id = $2;
+
 -- ── Suppression Rules ───────────────────────────────────────────────────────
 
 -- name: CreateSPSuppression :one

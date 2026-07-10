@@ -202,8 +202,10 @@ type Querier interface {
 	DeletePPDPIA(ctx context.Context, arg DeletePPDPIAParams) error
 	DeletePPDSR(ctx context.Context, arg DeletePPDSRParams) error
 	DeletePPVVT(ctx context.Context, arg DeletePPVVTParams) error
+	DeleteSPFinding(ctx context.Context, arg DeleteSPFindingParams) (int64, error)
 	DeleteSPScanSchedule(ctx context.Context, arg DeleteSPScanScheduleParams) (int64, error)
 	DeleteSPSuppression(ctx context.Context, arg DeleteSPSuppressionParams) (int64, error)
+	DeleteSRTargetGroup(ctx context.Context, arg DeleteSRTargetGroupParams) (int64, error)
 	DeleteSVEnvironment(ctx context.Context, arg DeleteSVEnvironmentParams) (int64, error)
 	DeleteSVProject(ctx context.Context, arg DeleteSVProjectParams) (int64, error)
 	DeleteSVSecret(ctx context.Context, arg DeleteSVSecretParams) (int64, error)
@@ -221,6 +223,7 @@ type Querier interface {
 	FindCKFrameworkByName(ctx context.Context, arg FindCKFrameworkByNameParams) (CkFrameworks, error)
 	// ── Control Discovery (used by SecPulse auto-evidence + AI classifier) ────
 	FindCKPatchControls(ctx context.Context, orgID string) ([]FindCKPatchControlsRow, error)
+	FindSRAssignmentByTarget(ctx context.Context, arg FindSRAssignmentByTargetParams) (SrAssignments, error)
 	FirstHRChecklistByType(ctx context.Context, arg FirstHRChecklistByTypeParams) (HrChecklists, error)
 	// Liefert pro Framework: Gesamtanzahl Controls + Anzahl implemented (Board Report Score).
 	GetBoardReportComplianceScoreRows(ctx context.Context, orgID string) ([]GetBoardReportComplianceScoreRowsRow, error)
@@ -331,6 +334,7 @@ type Querier interface {
 	// ── SecReflex cross-table lookups ─────────────────────────────────────────
 	GetSROrganizationName(ctx context.Context, id string) (string, error)
 	GetSRPhishReportStats(ctx context.Context, orgID string) (GetSRPhishReportStatsRow, error)
+	GetSRTargetByEmail(ctx context.Context, arg GetSRTargetByEmailParams) (SrTargets, error)
 	GetSRTargetEmail(ctx context.Context, id string) (string, error)
 	GetSRTemplate(ctx context.Context, arg GetSRTemplateParams) (SrTemplates, error)
 	GetSRTrainingModuleByAttackType(ctx context.Context, arg GetSRTrainingModuleByAttackTypeParams) (SrTrainingModules, error)
@@ -360,6 +364,7 @@ type Querier interface {
 	InsertHRRunEvent(ctx context.Context, arg InsertHRRunEventParams) error
 	// Upsert variant — duplicate (sbom_id, name, version) is a no-op (DO NOTHING).
 	InsertSPComponent(ctx context.Context, arg InsertSPComponentParams) error
+	InsertSRAssignment(ctx context.Context, arg InsertSRAssignmentParams) (SrAssignments, error)
 	// ── Access Log ──────────────────────────────────────────────────────────────
 	InsertSVAccessLog(ctx context.Context, arg InsertSVAccessLogParams) error
 	// ── Risk ↔ Control Links ────────────────────────────────────────────────────
@@ -497,6 +502,7 @@ type Querier interface {
 	ListSPScanSchedules(ctx context.Context, arg ListSPScanSchedulesParams) ([]VbScanSchedules, error)
 	ListSPSuppressions(ctx context.Context, orgID string) ([]VbFindingSuppressions, error)
 	ListSRAssignments(ctx context.Context, orgID string) ([]SrAssignments, error)
+	ListSRAssignmentsByModule(ctx context.Context, arg ListSRAssignmentsByModuleParams) ([]ListSRAssignmentsByModuleRow, error)
 	ListSRCampaigns(ctx context.Context, orgID string) ([]ListSRCampaignsRow, error)
 	ListSRCompletedAssignments(ctx context.Context, orgID string) ([]SrAssignments, error)
 	ListSRLandingPages(ctx context.Context, orgID string) ([]SrLandingPages, error)
@@ -654,6 +660,7 @@ type Querier interface {
 	// Updates status plus any optional fields. Pass NULL via sqlc.narg() to leave
 	// a column unchanged (COALESCE keeps the existing value).
 	UpdateSPScanStatus(ctx context.Context, arg UpdateSPScanStatusParams) error
+	UpdateSRAssignmentDueDate(ctx context.Context, arg UpdateSRAssignmentDueDateParams) (SrAssignments, error)
 	UpdateSRCampaignStatus(ctx context.Context, arg UpdateSRCampaignStatusParams) error
 	// ── Answers + Reviews ───────────────────────────────────────────────────────
 	RevokeSVAPIToken(ctx context.Context, arg RevokeSVAPITokenParams) (int64, error)
@@ -673,7 +680,6 @@ type Querier interface {
 	UpsertSPFindingByRawID(ctx context.Context, arg UpsertSPFindingByRawIDParams) (VbFindings, error)
 	UpsertSPSLAConfig(ctx context.Context, arg UpsertSPSLAConfigParams) error
 	// ── Assignments ───────────────────────────────────────────────────────────
-	UpsertSRAssignment(ctx context.Context, arg UpsertSRAssignmentParams) (SrAssignments, error)
 	UpsertSRCompletion(ctx context.Context, arg UpsertSRCompletionParams) (SrCompletions, error)
 	// ── Targets ───────────────────────────────────────────────────────────────
 	UpsertSRTarget(ctx context.Context, arg UpsertSRTargetParams) (SrTargets, error)

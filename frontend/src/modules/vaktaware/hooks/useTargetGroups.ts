@@ -44,7 +44,7 @@ export function useDeleteTargetGroup() {
   const queryClient = useQueryClient()
   return useMutation<undefined, Error, string>({
     mutationFn: (id) =>
-      apiFetch<undefined>(`${BASE}/target-groups/${id}`, { method: 'DELETE' }),
+      apiFetch<undefined>(`${BASE}/groups/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['vaktaware', 'target-groups'] })
     },
@@ -55,7 +55,7 @@ export function useAddTarget(groupId: string) {
   const queryClient = useQueryClient()
   return useMutation<Target, Error, Omit<Target, 'id'>>({
     mutationFn: (data) =>
-      apiFetch<Target>(`${BASE}/target-groups/${groupId}/targets`, {
+      apiFetch<Target>(`${BASE}/groups/${groupId}/targets`, {
         method: 'POST',
         body: JSON.stringify(data),
       }),

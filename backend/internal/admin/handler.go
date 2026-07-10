@@ -89,24 +89,6 @@ func (h *Handler) ListAuditLogs(c echo.Context) error {
 	})
 }
 
-// ListUsers handles GET /api/v1/admin/users.
-func (h *Handler) ListUsers(c echo.Context) error {
-	orgID, _ := c.Get("org_id").(string)
-
-	members, err := h.service.ListUsers(c.Request().Context(), orgID)
-	if err != nil {
-		log.Error().Err(err).Str("org_id", orgID).Msg("list users failed")
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "failed to retrieve users",
-			"code":  "ADMIN_USERS_ERROR",
-		})
-	}
-
-	return c.JSON(http.StatusOK, map[string]any{
-		"data": members,
-	})
-}
-
 // InviteUser handles POST /api/v1/admin/users/invite.
 func (h *Handler) InviteUser(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
@@ -179,44 +161,6 @@ func (h *Handler) CreateUser(c echo.Context) error {
 		"user_id": result.UserID,
 		"email":   input.Email,
 		"role":    input.Role,
-	})
-}
-
-// UpdateUserRole handles PATCH /api/v1/admin/users/:id/role.
-func (h *Handler) UpdateUserRole(c echo.Context) error {
-	orgID, _ := c.Get("org_id").(string)
-	targetUserID := c.Param("id")
-
-	var input RoleUpdateInput
-	if err := c.Bind(&input); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "invalid request body",
-			"code":  "ADMIN_BAD_REQUEST",
-		})
-	}
-	if err := h.validate.Struct(input); err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
-			"code":  "ADMIN_VALIDATION_ERROR",
-		})
-	}
-
-	if err := h.service.UpdateUserRole(c.Request().Context(), orgID, targetUserID, input); err != nil {
-		if err.Error() == "user not found in org" {
-			return c.JSON(http.StatusNotFound, map[string]string{
-				"error": "user not found",
-				"code":  "ADMIN_USER_NOT_FOUND",
-			})
-		}
-		log.Error().Err(err).Str("target_user_id", targetUserID).Msg("update user role failed")
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "failed to update role",
-			"code":  "ADMIN_ROLE_ERROR",
-		})
-	}
-
-	return c.JSON(http.StatusOK, map[string]string{
-		"message": "role updated",
 	})
 }
 

@@ -237,6 +237,18 @@ func (r *Repository) UpdateFinding(ctx context.Context, orgID, findingID string,
 	return &f, nil
 }
 
+// DeleteFinding removes a finding by ID within the org.
+func (r *Repository) DeleteFinding(ctx context.Context, orgID, findingID string) error {
+	n, err := r.q.DeleteSPFinding(ctx, db.DeleteSPFindingParams{ID: findingID, OrgID: orgID})
+	if err != nil {
+		return fmt.Errorf("delete finding: %w", err)
+	}
+	if n == 0 {
+		return fmt.Errorf("finding not found")
+	}
+	return nil
+}
+
 // BulkUpdateFindings applies a bulk status/assignee update; returns the number of affected rows.
 func (r *Repository) BulkUpdateFindings(ctx context.Context, orgID string, input BulkFindingInput) (int, error) {
 	if len(input.IDs) == 0 {

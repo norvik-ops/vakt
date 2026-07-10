@@ -58,6 +58,7 @@ func Register(g *echo.Group, h *Handler) {
 	assets.GET("/findings", h.ListFindings)
 	assets.GET("/findings/:id", h.GetFinding)
 	assets.PATCH("/findings/:id", h.UpdateFinding, rw)
+	assets.DELETE("/findings/:id", h.DeleteFinding, rw)
 
 	// --- Community: Suppression rules ---
 	assets.GET("/suppressions", h.ListSuppressions)

@@ -29,15 +29,6 @@ type AuditLog struct {
 	Timestamp    time.Time `json:"timestamp"`
 }
 
-// OrgMember represents a user within an organisation.
-type OrgMember struct {
-	UserID      string    `json:"user_id"`
-	Email       string    `json:"email"`
-	DisplayName string    `json:"display_name"`
-	Role        string    `json:"role"`
-	JoinedAt    time.Time `json:"joined_at"`
-}
-
 // InviteInput is the request body for POST /admin/users/invite.
 type InviteInput struct {
 	Email string `json:"email" validate:"required,email"`
@@ -62,11 +53,6 @@ type OIDCConfigInput struct {
 	ClientID     string `json:"client_id"     validate:"required"`
 	ClientSecret string `json:"client_secret" validate:"required"`
 	Enabled      bool   `json:"enabled"`
-}
-
-// RoleUpdateInput is the request body for PATCH /admin/users/:id/role.
-type RoleUpdateInput struct {
-	Role string `json:"role" validate:"required,oneof=Admin SecurityAnalyst Viewer AuditorReadOnly"`
 }
 
 // ModuleStatus describes the enabled/disabled state of a platform module.
@@ -202,34 +188,6 @@ func (s *Service) ListAuditLogs(ctx context.Context, orgID string, page, limit i
 	return logs, total, nil
 }
 
-// ListUsers returns all members of the given organisation.
-func (s *Service) ListUsers(ctx context.Context, orgID string) ([]OrgMember, error) {
-	rows, err := s.db.Query(ctx, `
-		SELECT u.id::text, u.email, COALESCE(u.display_name, ''), r.name, om.joined_at
-		FROM org_members om
-		JOIN users u ON u.id = om.user_id
-		JOIN roles r ON r.id = om.role_id
-		WHERE om.org_id = $1::uuid
-		ORDER BY om.joined_at ASC`, orgID)
-	if err != nil {
-		return nil, fmt.Errorf("query org members: %w", err)
-	}
-	defer rows.Close()
-
-	var members []OrgMember
-	for rows.Next() {
-		var m OrgMember
-		if err := rows.Scan(&m.UserID, &m.Email, &m.DisplayName, &m.Role, &m.JoinedAt); err != nil {
-			return nil, fmt.Errorf("scan org member: %w", err)
-		}
-		members = append(members, m)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate org member rows: %w", err)
-	}
-	return members, nil
-}
-
 // InviteUser creates a pending invitation for a new org member.
 // The user row is created immediately with is_active=false; activation flow
 // is handled outside this epic.
@@ -275,28 +233,6 @@ func (s *Service) InviteUser(ctx context.Context, orgID, invitedByID string, inp
 	}
 
 	return tx.Commit(ctx)
-}
-
-// UpdateUserRole changes the role of a user within the organisation.
-func (s *Service) UpdateUserRole(ctx context.Context, orgID, targetUserID string, input RoleUpdateInput) error {
-	var roleID string
-	if err := s.db.QueryRow(ctx,
-		`SELECT id::text FROM roles WHERE name = $1`, input.Role,
-	).Scan(&roleID); err != nil {
-		return fmt.Errorf("lookup role %q: %w", input.Role, err)
-	}
-
-	tag, err := s.db.Exec(ctx, `
-		UPDATE org_members SET role_id = $1::uuid
-		WHERE org_id = $2::uuid AND user_id = $3::uuid`,
-		roleID, orgID, targetUserID)
-	if err != nil {
-		return fmt.Errorf("update member role: %w", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("user not found in org")
-	}
-	return nil
 }
 
 // CreateUser directly creates an active user in the org without requiring SMTP.

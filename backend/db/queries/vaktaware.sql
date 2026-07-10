@@ -41,6 +41,11 @@ WHERE org_id = $1
 ORDER BY name
 LIMIT 500;
 
+-- name: DeleteSRTargetGroup :execrows
+-- Cascades to sr_targets (ON DELETE CASCADE); sr_campaigns.group_id is SET NULL.
+DELETE FROM sr_target_groups
+WHERE id = $1 AND org_id = $2;
+
 -- ── Targets ───────────────────────────────────────────────────────────────
 
 -- name: UpsertSRTarget :one
@@ -63,6 +68,16 @@ LIMIT 500;
 
 -- name: CountSRTargetsInGroup :one
 SELECT COUNT(*) FROM sr_targets WHERE group_id = $1;
+
+-- name: GetSRTargetByEmail :one
+-- Used to resolve "assign by email" to an existing target regardless of
+-- which group it lives in, before falling back to creating a new one.
+SELECT id, org_id, group_id, email, first_name, last_name, department,
+       is_bounced, created_at
+FROM sr_targets
+WHERE org_id = $1 AND email = $2
+ORDER BY created_at ASC
+LIMIT 1;
 
 -- ── Landing pages ─────────────────────────────────────────────────────────
 
@@ -207,14 +222,30 @@ WHERE id = $1 AND org_id = $2;
 
 -- ── Assignments ───────────────────────────────────────────────────────────
 
--- name: UpsertSRAssignment :one
+-- sr_assignments.UNIQUE(module_id, target_id) is DEFERRABLE INITIALLY DEFERRED
+-- (to tolerate races within a transaction), and Postgres does not allow
+-- ON CONFLICT against a deferrable constraint as the arbiter — so upserting
+-- is done as an explicit find-then-insert-or-update instead of ON CONFLICT.
+
+-- name: FindSRAssignmentByTarget :one
+SELECT id, org_id, module_id, target_id, department, due_date,
+       is_overdue, created_at
+FROM sr_assignments
+WHERE org_id = $1 AND module_id = $2 AND target_id = $3::uuid
+LIMIT 1;
+
+-- name: InsertSRAssignment :one
 INSERT INTO sr_assignments (org_id, module_id, target_id, department, due_date)
 VALUES ($1, $2,
         sqlc.narg('target_id')::uuid,
         sqlc.narg('department')::text,
         $3)
-ON CONFLICT (module_id, target_id) DO UPDATE
-   SET due_date = GREATEST(EXCLUDED.due_date, sr_assignments.due_date)
+RETURNING id, org_id, module_id, target_id, department, due_date,
+          is_overdue, created_at;
+
+-- name: UpdateSRAssignmentDueDate :one
+UPDATE sr_assignments SET due_date = GREATEST($2, due_date)
+WHERE id = $1
 RETURNING id, org_id, module_id, target_id, department, due_date,
           is_overdue, created_at;
 
@@ -230,6 +261,20 @@ SELECT id, org_id, module_id, target_id, department, due_date,
 FROM sr_assignments
 WHERE org_id = $1
 ORDER BY due_date
+LIMIT 500;
+
+-- name: ListSRAssignmentsByModule :many
+-- Per-assignment detail for a single module: target email (NULL if the
+-- assignment has no target or the target was later deleted — target_id is
+-- ON DELETE SET NULL) plus completion outcome (NULL = still "assigned").
+SELECT a.id, a.due_date, a.created_at,
+       t.email AS user_email,
+       c.score, c.passed, c.completed_at
+FROM sr_assignments a
+LEFT JOIN sr_targets t ON t.id = a.target_id
+LEFT JOIN sr_completions c ON c.assignment_id = a.id
+WHERE a.org_id = $1 AND a.module_id = $2
+ORDER BY a.created_at DESC
 LIMIT 500;
 
 -- name: ListSROverdueAssignments :many

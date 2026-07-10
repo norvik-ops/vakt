@@ -383,6 +383,16 @@ func (s *Service) ListTargetGroups(ctx context.Context, orgID string) ([]TargetG
 	return s.repo.ListTargetGroups(ctx, orgID)
 }
 
+// DeleteTargetGroup removes a target group and, via DB cascade, its targets.
+func (s *Service) DeleteTargetGroup(ctx context.Context, orgID, groupID string) error {
+	return s.repo.DeleteTargetGroup(ctx, orgID, groupID)
+}
+
+// AddTarget adds a single target to a group (manual entry, as opposed to CSV import).
+func (s *Service) AddTarget(ctx context.Context, orgID, groupID, email, firstName, lastName, department string) (*Target, error) {
+	return s.repo.CreateTarget(ctx, orgID, groupID, email, firstName, lastName, department)
+}
+
 // ImportTargetsCSV parses a CSV string and upserts targets into the given group.
 // Returns the number of successfully imported rows and a slice of per-row errors.
 func (s *Service) ImportTargetsCSV(ctx context.Context, orgID, groupID, csvContent string) (int, []string) {
@@ -551,6 +561,42 @@ func (s *Service) CreateModule(ctx context.Context, orgID, userID string, input 
 
 func (s *Service) ListModules(ctx context.Context, orgID string) ([]TrainingModule, error) {
 	return s.repo.ListModules(ctx, orgID)
+}
+
+// assignmentDefaultDueDays is how far out a manually-assigned module is due
+// when the caller (TrainingPage.tsx's "Assign" dialog) doesn't collect a
+// due date — no other default exists anywhere else in this codebase to
+// mirror, so two weeks was chosen as a reasonable default completion window.
+const assignmentDefaultDueDays = 14
+
+// AssignModule assigns a training module to a list of user emails, resolving
+// each to an existing target (anywhere in the org) or creating one in a
+// reserved "Manuelle Zuweisungen" group. Emails that fail to resolve/assign
+// are skipped and reported back rather than failing the whole batch.
+func (s *Service) AssignModule(ctx context.Context, orgID, moduleID string, emails []string) (assigned int, failed []string) {
+	dueDate := time.Now().UTC().AddDate(0, 0, assignmentDefaultDueDays)
+	for _, email := range emails {
+		email = strings.TrimSpace(email)
+		if email == "" {
+			continue
+		}
+		target, err := s.repo.FindOrCreateTargetByEmail(ctx, orgID, email)
+		if err != nil {
+			failed = append(failed, email)
+			continue
+		}
+		if _, err := s.repo.UpsertAssignment(ctx, orgID, moduleID, &target.ID, "", dueDate); err != nil {
+			failed = append(failed, email)
+			continue
+		}
+		assigned++
+	}
+	return assigned, failed
+}
+
+// ListAssignmentsByModule returns per-target assignment detail for a module.
+func (s *Service) ListAssignmentsByModule(ctx context.Context, orgID, moduleID string) ([]AssignmentDetail, error) {
+	return s.repo.ListAssignmentsByModule(ctx, orgID, moduleID)
 }
 
 // evaluateQuiz scores the submitted answers against the module's questions.

@@ -122,6 +122,16 @@ func (h *Handler) CreateTargetGroup(c echo.Context) error {
 	return c.JSON(http.StatusCreated, g)
 }
 
+func (h *Handler) DeleteTargetGroup(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	groupID := c.Param("id")
+	if err := h.service.DeleteTargetGroup(c.Request().Context(), orgID, groupID); err != nil {
+		return errJSON(c, http.StatusNotFound, "target group not found", "PG_NOT_FOUND")
+	}
+	h.audit(c, "delete", "vaktaware/target-group", groupID, "")
+	return c.NoContent(http.StatusNoContent)
+}
+
 func (h *Handler) ListTargets(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
 	items, err := h.service.ListTargets(c.Request().Context(), orgID, c.Param("id"))
@@ -132,6 +142,29 @@ func (h *Handler) ListTargets(c echo.Context) error {
 		items = []Target{}
 	}
 	return c.JSON(http.StatusOK, items)
+}
+
+func (h *Handler) AddTarget(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	groupID := c.Param("id")
+	var body struct {
+		Email      string `json:"email"      validate:"required,email"`
+		FirstName  string `json:"first_name"`
+		LastName   string `json:"last_name"`
+		Department string `json:"department"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return errJSON(c, http.StatusBadRequest, "invalid body", "PG_BAD_REQUEST")
+	}
+	if err := h.validate.Struct(body); err != nil {
+		return errJSON(c, http.StatusUnprocessableEntity, "Ungültige Eingabe", "VALIDATION_ERROR")
+	}
+	target, err := h.service.AddTarget(c.Request().Context(), orgID, groupID, body.Email, body.FirstName, body.LastName, body.Department)
+	if err != nil {
+		return errJSON(c, http.StatusInternalServerError, "failed to add target", "PG_ERROR")
+	}
+	h.audit(c, "create", "vaktaware/target", target.ID, target.Email)
+	return c.JSON(http.StatusCreated, target)
 }
 
 func (h *Handler) ImportTargetsCSV(c echo.Context) error {
@@ -349,6 +382,37 @@ func (h *Handler) CreateModule(c echo.Context) error {
 	}
 	h.audit(c, "create", "vaktaware/training-module", m.ID, m.Title)
 	return c.JSON(http.StatusCreated, m)
+}
+
+// ListAssignmentsByModule handles GET /api/v1/vaktaware/training-modules/:id/assignments
+func (h *Handler) ListAssignmentsByModule(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	items, err := h.service.ListAssignmentsByModule(c.Request().Context(), orgID, c.Param("id"))
+	if err != nil {
+		return errJSON(c, http.StatusInternalServerError, "failed to list assignments", "PG_ERROR")
+	}
+	if items == nil {
+		items = []AssignmentDetail{}
+	}
+	return c.JSON(http.StatusOK, items)
+}
+
+// AssignModule handles POST /api/v1/vaktaware/training-modules/:id/assign
+func (h *Handler) AssignModule(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	moduleID := c.Param("id")
+	var body struct {
+		UserEmails []string `json:"user_emails" validate:"required,min=1,dive,email"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return errJSON(c, http.StatusBadRequest, "invalid body", "PG_BAD_REQUEST")
+	}
+	if err := h.validate.Struct(body); err != nil {
+		return errJSON(c, http.StatusUnprocessableEntity, "Ungültige Eingabe", "VALIDATION_ERROR")
+	}
+	assigned, failed := h.service.AssignModule(c.Request().Context(), orgID, moduleID, body.UserEmails)
+	h.audit(c, "assign", "vaktaware/training-module", moduleID, fmt.Sprintf("%d assigned", assigned))
+	return c.JSON(http.StatusOK, map[string]any{"assigned": assigned, "failed": failed})
 }
 
 // ── Assignments ───────────────────────────────────────────────────────────────

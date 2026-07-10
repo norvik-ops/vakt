@@ -400,6 +400,17 @@ func (h *Handler) UpdateFinding(c echo.Context) error {
 	return c.JSON(http.StatusOK, finding)
 }
 
+// DeleteFinding handles DELETE /api/v1/vaktscan/findings/:id
+func (h *Handler) DeleteFinding(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	findingID := c.Param("id")
+	if err := h.service.DeleteFinding(c.Request().Context(), orgID, findingID); err != nil {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "finding not found", "code": "VB_FINDING_NOT_FOUND"})
+	}
+	h.audit(c, "delete", "vaktscan/finding", findingID, "")
+	return c.NoContent(http.StatusNoContent)
+}
+
 // BulkUpdateFindings handles POST /api/v1/vaktscan/findings/bulk
 func (h *Handler) BulkUpdateFindings(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
