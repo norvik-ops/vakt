@@ -12,24 +12,34 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/matharnica/vakt/internal/auth"
 )
 
-// Register mounts all dashboard routes under the provided Echo group,
-// protecting each endpoint with the supplied auth middleware. The caller is
-// responsible for passing a group already rooted at /api/v1/dashboard.
-func Register(g *echo.Group, db *pgxpool.Pool, rdb *redis.Client, auth echo.MiddlewareFunc) {
+// Register mounts all dashboard routes under the provided Echo group. The caller
+// must pass a group off the `protected` chain rooted at /api/v1/dashboard so the
+// routes inherit auth, CSRF, MFA and per-org rate limiting.
+//
+// S121-B3 (R3): previously mounted on the bare `api` group with only inline
+// auth middleware — the mutating PUT /score/config had neither CSRF protection
+// nor a role gate, so a Viewer with a Bearer token (no CSRF cookie) could rewrite
+// the org-wide security-score weighting. Mounting on `protected` restores CSRF/MFA;
+// UpdateScoreConfig is additionally gated to Admin. Per-user notification actions
+// stay open to any authenticated user.
+func Register(g *echo.Group, db *pgxpool.Pool, rdb *redis.Client) {
 	svc := NewService(db)
 	h := NewHandler(svc, rdb)
-	g.GET("/score", h.GetScore, auth)
-	g.GET("/score/config", h.GetScoreConfig, auth)
-	g.PUT("/score/config", h.UpdateScoreConfig, auth)
-	g.GET("/backup-status", h.GetBackupStatus, auth)
-	g.GET("/aggregate", h.GetAggregate, auth)
-	g.GET("/notifications", h.ListNotifications, auth)
-	g.POST("/notifications/read-all", h.MarkAllRead, auth)
-	g.POST("/notifications/:id/read", h.MarkNotificationRead, auth)
+	admin := auth.RequireRole("Admin")
+	g.GET("/score", h.GetScore)
+	g.GET("/score/config", h.GetScoreConfig)
+	g.PUT("/score/config", h.UpdateScoreConfig, admin)
+	g.GET("/backup-status", h.GetBackupStatus)
+	g.GET("/aggregate", h.GetAggregate)
+	g.GET("/notifications", h.ListNotifications)
+	g.POST("/notifications/read-all", h.MarkAllRead)
+	g.POST("/notifications/:id/read", h.MarkNotificationRead)
 	// Sprint 17 S17-1: SSE-Stream-Endpoint. Klient verbindet sich nach dem
 	// initialen GET /notifications und empfängt Deltas via Server-Sent Events
 	// (siehe ADR-0019).
-	g.GET("/notifications/stream", h.StreamNotifications, auth)
+	g.GET("/notifications/stream", h.StreamNotifications)
 }

@@ -360,6 +360,10 @@ func (h *Handler) DeleteEvidenceFile(c echo.Context) error {
 	fileID := c.Param("fid")
 	if err := h.evidenceFiles.Delete(c.Request().Context(), orgID(c), fileID); err != nil {
 		log.Error().Err(err).Str("file_id", fileID).Msg("delete evidence file")
+		// S121-D4 (P3): not-found → 404, not 500
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "evidence file not found", "CK_EVIDENCE_FILE_NOT_FOUND")
+		}
 		return errResp(c, http.StatusInternalServerError, "failed to delete evidence file", "CK_DELETE_FAILED")
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -424,7 +428,7 @@ func (h *Handler) UpdateBackupJob(c echo.Context) error {
 // DeleteBackupJob handles DELETE /api/v1/vaktcomply/backup/jobs/:id
 func (h *Handler) DeleteBackupJob(c echo.Context) error {
 	if err := h.service.DeleteBackupJob(c.Request().Context(), orgID(c), c.Param("id")); err != nil {
-		if err.Error() == "backup job not found" {
+		if isNotFound(err) || err.Error() == "backup job not found" {
 			return errResp(c, http.StatusNotFound, "backup job not found", "CK_BACKUP_NOT_FOUND")
 		}
 		log.Error().Err(err).Msg("delete backup job")
@@ -509,7 +513,7 @@ func (h *Handler) CreateVVTControlLink(c echo.Context) error {
 // DeleteVVTControlLink handles DELETE /api/v1/vaktcomply/vvt-links/:id
 func (h *Handler) DeleteVVTControlLink(c echo.Context) error {
 	if err := h.service.UnlinkVVTFromControl(c.Request().Context(), orgID(c), c.Param("id")); err != nil {
-		if err.Error() == "link not found" {
+		if isNotFound(err) || err.Error() == "link not found" {
 			return errResp(c, http.StatusNotFound, "link not found", "CK_VVT_LINK_NOT_FOUND")
 		}
 		log.Error().Err(err).Msg("delete vvt control link")
@@ -598,6 +602,9 @@ func (h *Handler) DeleteCollabTask(c echo.Context) error {
 	}
 	if err := h.service.DeleteTask(c.Request().Context(), orgID(c), taskID); err != nil {
 		log.Error().Err(err).Str("task_id", taskID).Msg("delete collab task")
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "task not found", "CK_TASK_NOT_FOUND")
+		}
 		return errResp(c, http.StatusInternalServerError, "failed to delete task", "CK_INTERNAL")
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -652,6 +659,9 @@ func (h *Handler) DeleteCollabComment(c echo.Context) error {
 	}
 	if err := h.service.DeleteComment(c.Request().Context(), orgID(c), commentID); err != nil {
 		log.Error().Err(err).Str("comment_id", commentID).Msg("delete comment")
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "comment not found", "CK_COMMENT_NOT_FOUND")
+		}
 		return errResp(c, http.StatusInternalServerError, "failed to delete comment", "CK_INTERNAL")
 	}
 	return c.NoContent(http.StatusNoContent)

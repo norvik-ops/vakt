@@ -472,8 +472,10 @@ export default function FindingsPage() {
                 {t('vaktscan.findingsPage.noScannerDesc')}
               </p>
             </div>
+            {/* S121-F1 (F4-UI): /docs/guides/scanner-setup is not served by the app —
+                the guide lives in the source repo (mirror-synced to the public repo). */}
             <a
-              href="/docs/guides/scanner-setup"
+              href="https://github.com/norvik-ops/vakt/blob/main/docs/guides/scanner-setup.md"
               target="_blank"
               rel="noopener noreferrer"
               className="shrink-0 text-[11px] font-medium text-amber-400 hover:text-amber-300 transition-colors whitespace-nowrap"

@@ -143,8 +143,10 @@ export function MyTasksWidget() {
               <button
                 className="w-full flex items-center gap-2 text-left rounded-md px-2 py-1.5 hover:bg-border/50 transition-colors group"
                 onClick={() => {
-                  if (task.type === 'control' && task.framework_id) {
-                    navigate(`/vaktcomply/frameworks/${task.framework_id}/controls/${task.id}`)
+                  if (task.type === 'control') {
+                    // S121-F1 (F1-UI): the /frameworks/:id/controls/:id route does not
+                    // exist — control detail is served at /vaktcomply/controls/:id.
+                    navigate(`/vaktcomply/controls/${task.id}`)
                   } else if (task.type === 'risk') {
                     navigate(`/vaktcomply/risks/${task.id}`)
                   }

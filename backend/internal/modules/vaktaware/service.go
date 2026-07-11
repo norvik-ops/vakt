@@ -388,6 +388,11 @@ func (s *Service) DeleteTargetGroup(ctx context.Context, orgID, groupID string) 
 	return s.repo.DeleteTargetGroup(ctx, orgID, groupID)
 }
 
+// DeleteTemplate removes an org-owned phishing template. S121-D3 (C9).
+func (s *Service) DeleteTemplate(ctx context.Context, orgID, templateID string) error {
+	return s.repo.DeleteTemplate(ctx, orgID, templateID)
+}
+
 // AddTarget adds a single target to a group (manual entry, as opposed to CSV import).
 func (s *Service) AddTarget(ctx context.Context, orgID, groupID, email, firstName, lastName, department string) (*Target, error) {
 	return s.repo.CreateTarget(ctx, orgID, groupID, email, firstName, lastName, department)

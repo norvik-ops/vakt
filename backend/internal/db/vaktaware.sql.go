@@ -401,6 +401,25 @@ func (q *Queries) DeleteSRTargetGroup(ctx context.Context, arg DeleteSRTargetGro
 	return result.RowsAffected(), nil
 }
 
+const deleteSRTemplate = `-- name: DeleteSRTemplate :execrows
+DELETE FROM sr_templates
+WHERE id = $1 AND org_id = $2 AND is_preset = FALSE
+`
+
+type DeleteSRTemplateParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+// Only org-owned templates are deletable; shared presets (is_preset=TRUE) are protected.
+func (q *Queries) DeleteSRTemplate(ctx context.Context, arg DeleteSRTemplateParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSRTemplate, arg.ID, arg.OrgID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const findActiveSRCampaignForReporter = `-- name: FindActiveSRCampaignForReporter :one
 SELECT c.id
 FROM sr_campaigns c

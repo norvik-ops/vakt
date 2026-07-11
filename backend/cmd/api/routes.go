@@ -508,10 +508,11 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 			Pass: cfg.SMTPPass,
 			From: cfg.SMTPFrom,
 		})
-		alerting.Register(api, pool, alertKey, alerting.SMTPConfig{
+		// S121-B5 (R6): mounted on `protected` for CSRF; channel writes Admin-gated inside Register.
+		alerting.Register(protected, pool, alertKey, alerting.SMTPConfig{
 			Host: cfg.SMTPHost, Port: cfg.SMTPPort,
 			User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
-		}, auth.AuthMiddleware(pasetoKey, pool, rdb))
+		})
 		log.Info().Msg("alerting routes registered")
 	}
 
@@ -630,15 +631,18 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	trustcenter.RegisterAdmin(protected, pool)
 	log.Info().Msg("trust center admin routes registered")
 
-	// Dashboard — shared cross-module score endpoint (aggregate cached in Redis for 60 s)
-	dashboard.Register(api.Group("/dashboard"), pool, rdb, auth.AuthMiddleware(pasetoKey, pool, rdb))
+	// Dashboard — shared cross-module score endpoint (aggregate cached in Redis for 60 s).
+	// S121-B3 (R3): mounted on `protected` (not bare `api`) so state-changing routes
+	// get CSRF/MFA/OrgRL; UpdateScoreConfig is additionally Admin-gated inside Register.
+	dashboard.Register(protected.Group("/dashboard"), pool, rdb)
 	log.Info().Msg("dashboard routes registered")
 
 	// Global search — cross-module text search
 	search.Register(api, pool, auth.AuthMiddleware(pasetoKey, pool, rdb))
 
-	// Retention config API — data-pruning settings per org
-	retention.Register(api, pool, auth.AuthMiddleware(pasetoKey, pool, rdb))
+	// Retention config API — data-pruning settings per org.
+	// S121-B5 (R5): mounted on `protected` for CSRF; UpdateConfig is Admin-gated.
+	retention.Register(protected, pool)
 	log.Info().Msg("retention routes registered")
 
 	// 2FA/TOTP — local account second factor
@@ -707,8 +711,9 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	if cfg.MetricsEnabled {
 		metricsToken := os.Getenv("VAKT_METRICS_TOKEN")
 		metrics.RegisterWithOptions(e, pool, metrics.RegisterOptions{
-			RedisAddr:    redisOpt.Addr,
-			MetricsToken: metricsToken,
+			RedisAddr:     redisOpt.Addr,
+			RedisPassword: redisOpt.Password, // S121-C3 (I1): auth for --requirepass Redis
+			MetricsToken:  metricsToken,
 		})
 		log.Info().Msg("metrics endpoint registered")
 	}

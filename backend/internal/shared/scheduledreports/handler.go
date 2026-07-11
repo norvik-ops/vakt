@@ -9,6 +9,8 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/auth"
 )
 
 // Handler handles HTTP requests for scheduled reports.
@@ -27,12 +29,19 @@ func NewHandler(svc *Service) *Handler {
 
 // Register wires scheduled report routes under the provided group.
 // Expected: group is already at /api/v1/reports.
+//
+// S121-B1 (R1): scheduled reports email compliance/findings data to an
+// operator-chosen external address on a recurring basis — a data-exfiltration
+// vector. Every mutating route is gated to Admin so read-only (Viewer) and
+// read-write (SecurityAnalyst) roles cannot schedule an exfil. Reading the
+// schedule list stays open to any authenticated user.
 func Register(g *echo.Group, h *Handler) {
+	admin := auth.RequireRole("Admin")
 	g.GET("/scheduled", h.List)
-	g.POST("/scheduled", h.Create)
-	g.PUT("/scheduled/:id", h.Update)
-	g.DELETE("/scheduled/:id", h.Delete)
-	g.POST("/scheduled/:id/run", h.RunNow)
+	g.POST("/scheduled", h.Create, admin)
+	g.PUT("/scheduled/:id", h.Update, admin)
+	g.DELETE("/scheduled/:id", h.Delete, admin)
+	g.POST("/scheduled/:id/run", h.RunNow, admin)
 }
 
 // orgID extracts org_id from the Echo context.

@@ -198,8 +198,10 @@ export default function Login() {
                     <span className="bg-card px-2 text-secondary">{t('auth.orSeparator')}</span>
                   </div>
                 </div>
+                {/* S121-F1 (F2-UI): /auth/sso is not a route — the OIDC entry point
+                    is the backend redirect endpoint GET /api/v1/auth/oidc/initiate. */}
                 <a
-                  href="/auth/sso"
+                  href="/api/v1/auth/oidc/initiate"
                   className="flex items-center justify-center gap-2 w-full rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-primary hover:bg-muted transition-colors"
                 >
                   {/* WCAG 1.1.1: icon is decorative, link text names the element */}

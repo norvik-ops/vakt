@@ -105,7 +105,8 @@ function useCompleteAudit() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: { summary?: string; overall_rating?: string; completed_date?: string } }) =>
-      apiFetch<AuditProgramAudit>(`/vaktcomply/audit-program/${id}/complete`, { method: 'POST', body: JSON.stringify(input) }),
+      // S121-C5 (C1): backend registers this as PATCH; POST returned 404.
+      apiFetch<AuditProgramAudit>(`/vaktcomply/audit-program/${id}/complete`, { method: 'PATCH', body: JSON.stringify(input) }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['vaktcomply', 'audit-program'] })
       void qc.invalidateQueries({ queryKey: ['vaktcomply', 'audit-program-summary'] })

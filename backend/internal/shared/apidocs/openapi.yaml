@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Vakt API
-  version: "0.42.32"
+  version: "0.42.33"
   description: |
     Self-hosted Security & Compliance Platform API.
     All data stays within your infrastructure — no phone-home, no cloud dependency.
@@ -3520,6 +3520,28 @@ paths:
                 type: string
                 format: binary
 
+  /vaktcomply/controls/bulk:
+    patch:
+      summary: Bulk-update control status
+      tags: [vaktcomply]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids, status]
+              properties:
+                ids:
+                  type: array
+                  items: { type: string, format: uuid }
+                status: { type: string }
+      responses:
+        '200':
+          description: Controls updated
+        '401':
+          description: Unauthorized
+
   /vaktcomply/controls/{id}:
     get:
       summary: Get a single control
@@ -4226,6 +4248,27 @@ paths:
                 $ref: '#/components/schemas/Checklist'
 
   /vakthr/checklists/{id}:
+    get:
+      summary: Get a single checklist template
+      tags: [hr]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Checklist template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Checklist'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
     delete:
       summary: Delete checklist template
       tags: [hr]
@@ -4336,6 +4379,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PhishingTemplate'
+
+  /vaktaware/templates/{id}:
+    delete:
+      summary: Delete a phishing template (Pro)
+      tags: [vaktaware]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
 
   /vaktaware/templates/presets:
     get:
@@ -5237,6 +5297,28 @@ paths:
         '201':
           description: Created CAPA
 
+  /vaktcomply/capas/bulk:
+    patch:
+      summary: Bulk-update CAPA status
+      tags: [vaktcomply]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids, status]
+              properties:
+                ids:
+                  type: array
+                  items: { type: string, format: uuid }
+                status: { type: string }
+      responses:
+        '200':
+          description: CAPAs updated
+        '401':
+          description: Unauthorized
+
   /vaktcomply/capas/{id}:
     parameters:
       - name: id
@@ -5271,6 +5353,34 @@ paths:
       responses:
         '204':
           description: Deleted
+
+  /vaktcomply/evidence/{id}/history:
+    get:
+      summary: Get version/audit history of an evidence item
+      tags: [vaktcomply]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Evidence history entries, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    action: { type: string }
+                    actor: { type: string }
+                    created_at: { type: string, format: date-time }
+        '401':
+          description: Unauthorized
 
   # ── SecVitals — Approvals ─────────────────────────────────────────────────
 
@@ -6985,6 +7095,34 @@ paths:
           description: Email already in use
         '422':
           description: Validation error
+
+  /admin/org:
+    put:
+      summary: Update org branding
+      operationId: updateOrgBranding
+      tags: [admin]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [logo_url]
+              properties:
+                logo_url: { type: string }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+        '401':
+          description: Unauthorized
 
   /admin/org/saml-config:
     get:

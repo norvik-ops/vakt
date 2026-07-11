@@ -312,11 +312,14 @@ function ResultView({ result, isAuthenticated }: { result: ResultResponse; isAut
           <p className="text-sm text-indigo-800">
             Speichern Sie Ihr Ergebnis und schließen Sie die Lücken systematisch — mit Vakt-Compliance-Plattform.
           </p>
+          {/* S121-F1 (F3-UI): /auth/signup is not a route (self-hosted Vakt has no
+              public self-signup — accounts are provisioned by an admin). Link to the
+              login page instead; the nis2_token is preserved for the claim flow. */}
           <a
-            href={`/auth/signup?nis2_token=${result.token}`}
+            href={`/login?nis2_token=${result.token}`}
             className="inline-block bg-indigo-600 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-indigo-700"
           >
-            Account erstellen + Ergebnis übernehmen →
+            Anmelden + Ergebnis übernehmen →
           </a>
           <p className="text-xs text-indigo-700">
             Bei Account-Erstellung werden Ihre Antworten in Vakt-Comply als initialer Compliance-Status übernommen.

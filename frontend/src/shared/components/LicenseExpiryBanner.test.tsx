@@ -9,9 +9,15 @@ vi.mock('../../api/client', async (importOriginal) => {
   return { ...actual, apiFetch: vi.fn() }
 })
 
+// Role names are case-sensitive and capitalised across the platform
+// ('Admin', 'SecurityAnalyst', 'Viewer', 'AuditorReadOnly' — see auth.RequireRole).
+// The mock previously used lowercase 'admin', so LicenseExpiryBanner's
+// `roles.includes('Admin')` guard was always false and the banner never
+// rendered: the two "renders nothing" cases passed vacuously and the two
+// banner cases failed.
 vi.mock('../stores/auth', () => ({
   useAuthStore: vi.fn(() => ({
-    user: { id: 'u1', email: 'admin@test.com', roles: ['admin'] },
+    user: { id: 'u1', email: 'admin@test.com', roles: ['Admin'] },
   })),
 }))
 

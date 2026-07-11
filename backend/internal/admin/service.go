@@ -140,14 +140,19 @@ func (s *Service) ListAuditLogs(ctx context.Context, orgID string, page, limit i
 
 	// Query audit_log directly (not the audit_logs VIEW) so that created_at is
 	// available as a real column.
+	// S121-C2 (P2): $3/$4 are optional *string filters passed as nil when the
+	// caller omits them. Without an explicit ::text cast, Postgres cannot infer
+	// the parameter type of a bare nil ($3) and rejects the query with 42P08
+	// ("could not determine data type of parameter"), so the default audit-log
+	// view (no filters) returned 500. The ::text casts make the type explicit.
 	var total int
 	if err := s.db.QueryRow(ctx, `
 		SELECT COUNT(*) FROM audit_log
 		WHERE org_id = $1::uuid
 		  AND deleted_at IS NULL
 		  AND ($2::uuid IS NULL OR user_id = $2::uuid)
-		  AND ($3 IS NULL OR action = $3)
-		  AND ($4 IS NULL OR resource_type = $4)`,
+		  AND ($3::text IS NULL OR action = $3::text)
+		  AND ($4::text IS NULL OR resource_type = $4::text)`,
 		orgID, nullUserID, nullAction, nullResourceType,
 	).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count audit logs: %w", err)
@@ -160,8 +165,8 @@ func (s *Service) ListAuditLogs(ctx context.Context, orgID string, page, limit i
 		WHERE org_id = $1::uuid
 		  AND deleted_at IS NULL
 		  AND ($2::uuid IS NULL OR user_id = $2::uuid)
-		  AND ($3 IS NULL OR action = $3)
-		  AND ($4 IS NULL OR resource_type = $4)
+		  AND ($3::text IS NULL OR action = $3::text)
+		  AND ($4::text IS NULL OR resource_type = $4::text)
 		ORDER BY created_at DESC
 		LIMIT $5 OFFSET $6`,
 		orgID, nullUserID, nullAction, nullResourceType, limit, offset)

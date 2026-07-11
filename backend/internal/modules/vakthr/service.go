@@ -177,6 +177,14 @@ func (s *Service) ListChecklists(ctx context.Context, orgID string) ([]Checklist
 	return checklists, nil
 }
 
+// GetChecklist returns a single checklist template by ID, scoped to the org.
+// S121-C4 (C7): the checklist-run page fetches the template to render its items,
+// but no single-template read route existed — only the list. This exposes the
+// already-present repository.GetChecklist through the service/handler layers.
+func (s *Service) GetChecklist(ctx context.Context, orgID, id string) (*Checklist, error) {
+	return s.repo.GetChecklist(ctx, orgID, id)
+}
+
 // CreateChecklist creates a new checklist template.
 func (s *Service) CreateChecklist(ctx context.Context, actor Actor, in CreateChecklistInput) (*Checklist, error) {
 	cl, err := s.repo.CreateChecklist(ctx, actor.OrgID, in)

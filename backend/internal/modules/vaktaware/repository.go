@@ -414,6 +414,20 @@ func (r *Repository) DeleteTargetGroup(ctx context.Context, orgID, groupID strin
 	return nil
 }
 
+// DeleteTemplate removes an org-owned phishing template. Shared presets cannot
+// be deleted (the query excludes is_preset=TRUE), so a preset ID returns 0 rows
+// and surfaces as "not found". S121-D3 (C9).
+func (r *Repository) DeleteTemplate(ctx context.Context, orgID, templateID string) error {
+	n, err := r.q.DeleteSRTemplate(ctx, db.DeleteSRTemplateParams{ID: templateID, OrgID: orgID})
+	if err != nil {
+		return fmt.Errorf("delete template: %w", err)
+	}
+	if n == 0 {
+		return fmt.Errorf("template not found")
+	}
+	return nil
+}
+
 func (r *Repository) CreateTarget(ctx context.Context, orgID, groupID, email, firstName, lastName, department string) (*Target, error) {
 	row, err := r.q.UpsertSRTarget(ctx, db.UpsertSRTargetParams{
 		OrgID:      orgID,

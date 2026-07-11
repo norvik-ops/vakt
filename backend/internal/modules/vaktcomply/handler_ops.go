@@ -253,6 +253,10 @@ func (h *Handler) DeletePentest(c echo.Context) error {
 	id := c.Param("id")
 	if err := h.service.DeletePentest(c.Request().Context(), orgID(c), id); err != nil {
 		log.Error().Err(err).Str("pentest_id", id).Msg("delete pentest")
+		// S121-D4 (P3): not-found → 404, not 500
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "pentest not found", "CK_PENTEST_NOT_FOUND")
+		}
 		return errResp(c, http.StatusInternalServerError, "failed to delete pentest", "CK_DELETE_PENTEST_FAILED")
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -347,6 +351,9 @@ func (h *Handler) UpdateInterestedParty(c echo.Context) error {
 func (h *Handler) DeleteInterestedParty(c echo.Context) error {
 	if err := h.service.DeleteInterestedParty(c.Request().Context(), orgID(c), c.Param("id")); err != nil {
 		log.Error().Err(err).Msg("delete interested party")
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "interested party not found", "CK_INTERESTED_PARTY_NOT_FOUND")
+		}
 		return errResp(c, http.StatusInternalServerError, "failed to delete interested party", "CK_INTERESTED_PARTIES_FAILED")
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -439,7 +446,7 @@ func (h *Handler) UpdateAccessReviewCampaign(c echo.Context) error {
 func (h *Handler) DeleteAccessReviewCampaign(c echo.Context) error {
 	id := c.Param("id")
 	if err := h.service.DeleteAccessReviewCampaign(c.Request().Context(), orgID(c), id); err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "access review campaign not found", "CK_ACCESS_REVIEW_NOT_FOUND")
 		}
 		log.Error().Err(err).Msg("delete access review campaign")
@@ -568,6 +575,9 @@ func (h *Handler) DeleteMeasure(c echo.Context) error {
 	}
 	if err := h.service.DeleteMeasure(c.Request().Context(), orgID(c), measureID); err != nil {
 		log.Error().Err(err).Str("measure_id", measureID).Msg("delete measure")
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "measure not found", "CK_MEASURE_NOT_FOUND")
+		}
 		return errResp(c, http.StatusInternalServerError, "failed to delete measure", "CK_INTERNAL")
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -1181,7 +1191,11 @@ func (h *Handler) DeleteSupplier(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "invalid supplier id", "CK_BAD_REQUEST")
 	}
 	if err := h.service.DeleteSupplier(c.Request().Context(), orgID(c), id); err != nil {
-		return errResp(c, http.StatusNotFound, "supplier not found", "CK_SUPPLIER_NOT_FOUND")
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "supplier not found", "CK_SUPPLIER_NOT_FOUND")
+		}
+		log.Error().Err(err).Str("id", id).Msg("delete supplier")
+		return errResp(c, http.StatusInternalServerError, "failed to delete supplier", "CK_DELETE_SUPPLIER_FAILED")
 	}
 	return c.NoContent(http.StatusNoContent)
 }
@@ -1391,6 +1405,9 @@ func (h *Handler) DeleteQuestionnaire(c echo.Context) error {
 	}
 	if err := h.service.DeleteQuestionnaire(c.Request().Context(), orgID(c), id); err != nil {
 		log.Error().Err(err).Str("id", id).Msg("delete questionnaire")
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "questionnaire not found", "CK_QUESTIONNAIRE_NOT_FOUND")
+		}
 		return errResp(c, http.StatusInternalServerError, "failed to delete questionnaire", "CK_DELETE_QUESTIONNAIRE_FAILED")
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -1470,6 +1487,9 @@ func (h *Handler) DeleteQuestion(c echo.Context) error {
 	}
 	if err := h.service.DeleteQuestion(c.Request().Context(), orgID(c), id, qid); err != nil {
 		log.Error().Err(err).Str("questionnaire_id", id).Str("question_id", qid).Msg("delete question")
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "question not found", "CK_QUESTION_NOT_FOUND")
+		}
 		return errResp(c, http.StatusInternalServerError, "failed to delete question", "CK_DELETE_QUESTION_FAILED")
 	}
 	return c.NoContent(http.StatusNoContent)

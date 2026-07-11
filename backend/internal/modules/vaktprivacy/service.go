@@ -450,6 +450,11 @@ func (s *Service) CreateDSR(ctx context.Context, orgID string, in CreateDSRInput
 // matching users row, and only then marks the DSR as completed — all inside a
 // single transaction, so the audit trail never claims completion before the
 // actual deletion has been committed.
+// AssignDSR sets the assignee of a DSR. S121-D5 (A2): moved out of the handler.
+func (s *Service) AssignDSR(ctx context.Context, orgID, id, assignedTo string) error {
+	return s.repo.AssignDSR(ctx, orgID, id, assignedTo)
+}
+
 func (s *Service) UpdateDSR(ctx context.Context, orgID, id string, in UpdateDSRInput) (*DSR, error) {
 	var (
 		dsr *DSR

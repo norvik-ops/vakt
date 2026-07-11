@@ -617,11 +617,8 @@ func (h *Handler) AssignDSR(c echo.Context) error {
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "PO_BAD_REQUEST")
 	}
-	_, err := h.service.db.Exec(c.Request().Context(),
-		`UPDATE po_dsr SET assigned_to = NULLIF($1,''), updated_at = NOW() WHERE org_id = $2 AND id = $3`,
-		in.AssignedTo, orgID(c), c.Param("id"),
-	)
-	if err != nil {
+	// S121-D5 (A2): delegate to the service layer instead of running raw SQL here.
+	if err := h.service.AssignDSR(c.Request().Context(), orgID(c), c.Param("id"), in.AssignedTo); err != nil {
 		log.Error().Err(err).Msg("assign dsr")
 		return errResp(c, http.StatusInternalServerError, "failed to assign DSR", "PO_ASSIGN_DSR_FAILED")
 	}

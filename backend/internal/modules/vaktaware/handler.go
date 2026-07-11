@@ -85,6 +85,19 @@ func (h *Handler) CreateTemplate(c echo.Context) error {
 	return c.JSON(http.StatusCreated, t)
 }
 
+// DeleteTemplate handles DELETE /api/v1/vaktaware/templates/:id.
+// S121-D3 (C9): the template-management UI's delete button called this endpoint,
+// but no backend route/handler existed, so deleting a phishing template 404'd.
+func (h *Handler) DeleteTemplate(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	templateID := c.Param("id")
+	if err := h.service.DeleteTemplate(c.Request().Context(), orgID, templateID); err != nil {
+		return errJSON(c, http.StatusNotFound, "Vorlage nicht gefunden", "PG_NOT_FOUND")
+	}
+	h.audit(c, "delete", "vaktaware/template", templateID, "")
+	return c.NoContent(http.StatusNoContent)
+}
+
 // ── Target groups ─────────────────────────────────────────────────────────────
 
 func (h *Handler) ListTargetGroups(c echo.Context) error {

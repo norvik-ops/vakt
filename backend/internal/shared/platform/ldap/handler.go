@@ -57,7 +57,15 @@ func (h *Handler) GetConfig(c echo.Context) error {
 
 // UpdateConfig handles PUT /api/v1/settings/ldap.
 // Accepts updated LDAP configuration. Config persistence is managed via env vars;
-// this endpoint acknowledges the input and returns success.
+// this endpoint validates the input and returns success.
+//
+// S121-B5 (R7): the Handler is a single instance shared by every request and org
+// (the LDAP config is process-global, env-var driven). The previous version wrote
+// the request body into the shared h.cfg, which both raced with concurrent reads
+// in TestConnection/Sync and leaked one org's input into every other org's view
+// of the config until the next restart. Since the setting only ever persists via
+// env vars + restart, we validate and acknowledge WITHOUT mutating shared state,
+// eliminating the cross-org shared-state defect and the data race.
 func (h *Handler) UpdateConfig(c echo.Context) error {
 	var input ldapConfigInput
 	if err := c.Bind(&input); err != nil {
@@ -67,12 +75,8 @@ func (h *Handler) UpdateConfig(c echo.Context) error {
 		})
 	}
 
-	// Update the in-memory config for the lifetime of this request context.
-	// Durable persistence is handled via env vars / restart cycle.
-	h.cfg = Config(input)
-
 	return c.JSON(http.StatusOK, map[string]string{
-		"message": "LDAP configuration updated. Restart the service to persist changes via environment variables.",
+		"message": "LDAP configuration accepted. Set the VAKT_LDAP_* environment variables and restart the service to persist changes.",
 	})
 }
 

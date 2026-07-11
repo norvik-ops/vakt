@@ -119,7 +119,12 @@ func (h *Handler) DeleteRisk(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "invalid risk id", "CK_BAD_REQUEST")
 	}
 	if err := h.service.Risk.DeleteRisk(c.Request().Context(), orgID(c), id); err != nil {
-		return errResp(c, http.StatusNotFound, "risk not found", "CK_RISK_NOT_FOUND")
+		// S121-D4 (P3): not-found → 404, not 500
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "risk not found", "CK_RISK_NOT_FOUND")
+		}
+		log.Error().Err(err).Str("id", id).Msg("delete risk")
+		return errResp(c, http.StatusInternalServerError, "failed to delete risk", "CK_DELETE_RISK_FAILED")
 	}
 	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
 		OrgID:        orgID(c),
@@ -284,7 +289,7 @@ func (h *Handler) DeleteControlException(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "invalid exception ID", "CK_INVALID_ID")
 	}
 	if err := h.service.Risk.DeleteControlException(c.Request().Context(), orgID(c), id); err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "exception not found", "CK_NOT_FOUND")
 		}
 		log.Error().Err(err).Str("id", id).Msg("delete control exception")
@@ -393,7 +398,7 @@ func (h *Handler) UpdateCAPA(c echo.Context) error {
 func (h *Handler) DeleteCAPA(c echo.Context) error {
 	id := c.Param("id")
 	if err := h.service.DeleteCAPA(c.Request().Context(), orgID(c), id); err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "capa not found", "CK_CAPA_NOT_FOUND")
 		}
 		log.Error().Err(err).Msg("delete capa")
@@ -603,6 +608,9 @@ func (h *Handler) DeleteProtectionNeedAssessment(c echo.Context) error {
 	id := c.Param("id")
 	if err := h.service.Risk.DeleteProtectionNeedAssessment(c.Request().Context(), orgID(c), id); err != nil {
 		log.Error().Err(err).Str("id", id).Msg("delete protection need assessment")
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "assessment not found", "CK_PNA_NOT_FOUND")
+		}
 		return errResp(c, http.StatusInternalServerError, "failed to delete assessment", "CK_DELETE_PNA_FAILED")
 	}
 	return c.NoContent(http.StatusNoContent)

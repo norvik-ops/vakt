@@ -99,9 +99,13 @@ func GeneratePackage(ctx context.Context, db *pgxpool.Pool, orgID string) (*Audi
 func writeControlsCSV(ctx context.Context, db *pgxpool.Pool, orgID string, zw *zip.Writer) error {
 	f, _ := zw.Create("controls.csv")
 	w := csv.NewWriter(f)
-	_ = w.Write([]string{"ID", "Framework", "Domain", "Control-ID", "Titel", "Status", "Gewichtung", "Lücken-Hinweis"})
+	// S121-C1 (P1): the previous query selected c.gap_description, a column that
+	// exists in no migration (ck_controls has no gap column), so the whole
+	// audit-evidence ZIP export returned 500 for every org (SQLSTATE 42703). The
+	// column is dropped here to match the real ck_controls schema.
+	_ = w.Write([]string{"ID", "Framework", "Domain", "Control-ID", "Titel", "Status", "Gewichtung"})
 	rows, err := db.Query(ctx, `
-		SELECT c.id, fr.name, c.domain, c.control_id, c.title, c.status, c.weight, COALESCE(c.gap_description, '')
+		SELECT c.id, fr.name, c.domain, c.control_id, c.title, c.status, c.weight
 		FROM ck_controls c
 		JOIN ck_frameworks fr ON fr.id = c.framework_id
 		WHERE c.org_id = $1::uuid
@@ -111,12 +115,12 @@ func writeControlsCSV(ctx context.Context, db *pgxpool.Pool, orgID string, zw *z
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var id, framework, domain, controlID, title, status, gap string
+		var id, framework, domain, controlID, title, status string
 		var weight int
-		if err := rows.Scan(&id, &framework, &domain, &controlID, &title, &status, &weight, &gap); err != nil {
+		if err := rows.Scan(&id, &framework, &domain, &controlID, &title, &status, &weight); err != nil {
 			continue
 		}
-		_ = w.Write([]string{id, framework, domain, controlID, title, status, fmt.Sprint(weight), gap})
+		_ = w.Write([]string{id, framework, domain, controlID, title, status, fmt.Sprint(weight)})
 	}
 	w.Flush()
 	return rows.Err()

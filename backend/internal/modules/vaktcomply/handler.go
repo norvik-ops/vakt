@@ -251,6 +251,10 @@ func (h *Handler) DeleteControlTask(c echo.Context) error {
 	taskID := c.Param("taskId")
 	ctx := c.Request().Context()
 	if err := h.service.DeleteControlTask(ctx, orgID(c), controlID, taskID); err != nil {
+		// S121-D4 (P3): not-found → 404, not 500
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "task not found", "CK_TASK_NOT_FOUND")
+		}
 		return errResp(c, http.StatusInternalServerError, "failed to delete task", "CK_DELETE_TASK_FAILED")
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -472,6 +476,9 @@ func (h *Handler) DeleteFramework(c echo.Context) error {
 	}
 	if err := h.service.DeleteFramework(c.Request().Context(), orgID(c), frameworkID); err != nil {
 		log.Error().Err(err).Str("framework_id", frameworkID).Msg("delete framework")
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "framework not found", "CK_FRAMEWORK_NOT_FOUND")
+		}
 		return errResp(c, http.StatusInternalServerError, "failed to delete framework", "CK_DELETE_FRAMEWORK_FAILED")
 	}
 	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{

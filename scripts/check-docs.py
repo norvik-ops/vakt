@@ -502,6 +502,42 @@ def check_typos() -> None:
             err(f"{f}:{lineno}: Tippfehler 'vatk' gefunden — muss 'vakt' heißen")
 
 
+# ── 7. Compose-Parität (S121-E4 / I2) ────────────────────────────────────────
+# Jede VAKT_*-Env-Var im Root-Compose (App-Stack) MUSS auch im ISMS-Stack
+# (infra/server/docker-compose.yml) gesetzt sein — sonst driftet die
+# Prod-ISMS-Config still von der ausgelieferten Config weg (I2:
+# VAKT_TRUSTED_PROXIES fehlte im isms-api, alle Clients teilten einen
+# Rate-Limit-Bucket hinter Caddy). Ein Root-`VAKT_X` gilt als erfüllt, wenn
+# infra `VAKT_X` ODER die Secret-File-Variante `VAKT_X_FILE` setzt.
+_COMPOSE_PARITY_EXEMPT = {
+    "VAKT_DOMAIN",  # Root-Caddy nutzt VAKT_DOMAIN; im ISMS-Stack macht Caddy im sites-Compose das Routing.
+}
+
+
+def _compose_env_keys(path: str) -> set[str]:
+    if not os.path.exists(path):
+        return set()
+    text = open(path, encoding="utf-8", errors="ignore").read()
+    return set(re.findall(r"^\s+(VAKT_[A-Z0-9_]+):", text, re.MULTILINE))
+
+
+def check_compose_parity() -> None:
+    root = _compose_env_keys("docker-compose.yml")
+    infra = _compose_env_keys("infra/server/docker-compose.yml")
+    if not root or not infra:
+        return
+    for var in sorted(root):
+        if var in _COMPOSE_PARITY_EXEMPT:
+            continue
+        if var in infra or f"{var}_FILE" in infra:
+            continue
+        err(
+            f"{var} steht im Root-Compose, fehlt aber in "
+            f"infra/server/docker-compose.yml (isms-api) — ISMS-Config driftet. "
+            f"Var ergänzen oder in _COMPOSE_PARITY_EXEMPT eintragen."
+        )
+
+
 def main() -> int:
     check_go_version()
     check_ai_default()
@@ -511,13 +547,14 @@ def main() -> int:
     check_volume_backup()
     check_prices()
     check_typos()
+    check_compose_parity()
     if errors:
         print("Doku-Drift gefunden:\n")
         for e in errors:
             print("  ❌", e)
         print(f"\n{len(errors)} Problem(e). Quelle der Wahrheit ist der Code (go.mod/config.go).")
         return 1
-    print("✓ Doku-Konsistenz OK (Go-Version, AI-Default, interne Links, Env-Var-Coverage, Volume-Backup, Preis, Tippfehler)")
+    print("✓ Doku-Konsistenz OK (Go-Version, AI-Default, interne Links, Env-Var-Coverage, Volume-Backup, Preis, Tippfehler, Compose-Parität)")
     return 0
 
 

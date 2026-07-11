@@ -12,14 +12,8 @@ export function useTemplates() {
   })
 }
 
-export function useTemplate(id: string) {
-  return useQuery<Template>({
-    queryKey: ['vaktaware', 'templates', id],
-    queryFn: () => apiFetch<Template>(`${BASE}/templates/${id}`),
-    staleTime: 60_000,
-    enabled: Boolean(id),
-  })
-}
+// S121-F2 (C8): removed dead hook useTemplate — 0 UI references and it GET
+// /vaktaware/templates/:id, a route the backend never registered.
 
 export interface CreateTemplateInput {
   name: string

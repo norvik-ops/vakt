@@ -27,6 +27,11 @@ SELECT id, org_id, name, subject, from_name, from_email, html_body,
 FROM sr_templates
 WHERE id = $1 AND (org_id = $2 OR is_preset = TRUE);
 
+-- name: DeleteSRTemplate :execrows
+-- Only org-owned templates are deletable; shared presets (is_preset=TRUE) are protected.
+DELETE FROM sr_templates
+WHERE id = $1 AND org_id = $2 AND is_preset = FALSE;
+
 -- ── Target groups ─────────────────────────────────────────────────────────
 
 -- name: CreateSRTargetGroup :one

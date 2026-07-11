@@ -33,8 +33,9 @@ export function useUpdateBCPPlan(id: string) {
   const queryClient = useQueryClient()
   return useMutation<BCPPlan, Error, UpdateBCPPlanInput>({
     mutationFn: (input) =>
+      // S121-C5 (C2): backend registers this as PATCH; PUT returned 404.
       apiFetch<BCPPlan>(`/vaktcomply/bcp/plans/${id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         body: JSON.stringify(input),
       }),
     onSuccess: () => {
@@ -78,12 +79,6 @@ export function useAddBCPTest() {
   })
 }
 
-export function useLinkBCPPlanAsEvidence(planId: string) {
-  return useMutation<{ id: string }, Error, { control_id?: string }>({
-    mutationFn: (body) =>
-      apiFetch<{ id: string }>(`/vaktcomply/bcp/plans/${planId}/link-evidence`, {
-        method: 'POST',
-        body: JSON.stringify(body),
-      }),
-  })
-}
+// S121-F2 (C3): removed dead hook useLinkBCPPlanAsEvidence — 0 UI references and
+// it POSTed to /bcp/plans/:id/link-evidence while the backend registers the
+// BCP evidence link as /bcp/plans/:id/evidence (LinkBCPPlanAsEvidence).

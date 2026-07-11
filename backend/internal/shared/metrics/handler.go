@@ -23,8 +23,9 @@ import (
 
 // Handler serves Prometheus-format metrics.
 type Handler struct {
-	db        *pgxpool.Pool
-	redisAddr string // optional — used for queue-depth metrics
+	db            *pgxpool.Pool
+	redisAddr     string // optional — used for queue-depth metrics
+	redisPassword string // optional — Redis AUTH password (see WithRedisPassword)
 }
 
 // NewHandler constructs a Handler.
@@ -36,6 +37,20 @@ func NewHandler(db *pgxpool.Pool) *Handler {
 // When not set, queue-depth metrics are omitted.
 func (h *Handler) WithRedisAddr(addr string) *Handler {
 	h.redisAddr = addr
+	return h
+}
+
+// WithRedisPassword sets the Redis AUTH password used by the queue-depth and
+// per-task Asynq metrics clients.
+//
+// S121-C3 (I1): the shipped compose default runs Redis with --requirepass, but
+// the metrics Redis/Asynq clients were built with only {Addr} and no Password.
+// On any auth-protected Redis (i.e. the default deployment) every SCAN/Inspector
+// call failed with NOAUTH, so vakt_queue_depth and vakt_asynq_jobs_* were
+// silently absent — a Zabbix blind spot for queue backlog. Mirrors the worker
+// wiring in cmd/worker/main.go.
+func (h *Handler) WithRedisPassword(password string) *Handler {
+	h.redisPassword = password
 	return h
 }
 
@@ -451,7 +466,7 @@ func (h *Handler) writeAsynqJobMetrics(ctx context.Context, w io.Writer) {
 	if h.redisAddr == "" {
 		return
 	}
-	rdb := redis.NewClient(&redis.Options{Addr: h.redisAddr})
+	rdb := redis.NewClient(&redis.Options{Addr: h.redisAddr, Password: h.redisPassword})
 	defer func() { _ = rdb.Close() }()
 
 	// SCAN once for all metric keys; parse each into (kind, task, result).
@@ -527,7 +542,7 @@ func (h *Handler) writeAsynqJobMetrics(ctx context.Context, w io.Writer) {
 // writeQueueDepth queries Asynq queue depths and writes them to w.
 // One gauge line per known queue; errors are logged but don't abort the output.
 func (h *Handler) writeQueueDepth(_ context.Context, w io.Writer) {
-	inspector := asynq.NewInspector(asynq.RedisClientOpt{Addr: h.redisAddr})
+	inspector := asynq.NewInspector(asynq.RedisClientOpt{Addr: h.redisAddr, Password: h.redisPassword})
 	defer func() { _ = inspector.Close() }()
 
 	queues, err := inspector.Queues()

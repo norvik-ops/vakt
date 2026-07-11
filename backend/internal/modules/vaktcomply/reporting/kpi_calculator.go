@@ -27,9 +27,74 @@ func CalculateKPIsForOrg(ctx context.Context, db *pgxpool.Pool, orgID string) KP
 		ExpiringEvidenceCount: calcExpiringEvidence(ctx, db, orgID),
 		FindingSLACompliance:  calcFindingSLACompliance(ctx, db, orgID),
 		OpenMajorNCs:          calcOpenMajorNCs(ctx, db, orgID),
-		SuppliersOverduePct:   nil, // TODO(data-source): vakt-msp supplier assessment module, planned Q4 2026
-		PhishingClickRate:     nil, // TODO(data-source): sr_events click-rate aggregate, requires campaign-period scoping — see Sprint 100 ADR
+		// S121-F5 (T5): both previously-nil KPIs are now computed —
+		// SuppliersOverduePct from ck_suppliers.next_assessment_due (migration 176)
+		// and PhishingClickRate from sr_events over completed campaigns.
+		SuppliersOverduePct: calcSuppliersOverduePct(ctx, db, orgID),
+		PhishingClickRate:   calcPhishingClickRate(ctx, db, orgID),
 	}
+}
+
+// phishingClickWindowDays bounds the phishing KPI to a rolling period so a
+// long-past campaign cannot dominate the current figure. This is the
+// "campaign-period scoping" the KPI was previously blocked on.
+const phishingClickWindowDays = 365
+
+// calcPhishingClickRate returns the share of phished recipients who clicked,
+// across the org's COMPLETED campaigns in the last phishingClickWindowDays.
+//
+// Denominator: the recipients of those campaigns (targets of the campaign's
+// group — the same derivation vaktaware uses for its per-campaign rate).
+// Numerator: DISTINCT (campaign, target) click events, so a recipient clicking
+// twice cannot push the rate above 100 %. Returns nil (unknown) when the org ran
+// no completed campaign with recipients in the window — the dashboard then hides
+// the KPI rather than showing a misleading 0 %.
+func calcPhishingClickRate(ctx context.Context, db *pgxpool.Pool, orgID string) *float64 {
+	if db == nil {
+		return nil
+	}
+	var val pgtype.Numeric
+	_ = db.QueryRow(ctx, `
+		WITH camp AS (
+			SELECT c.id,
+			       COALESCE((SELECT COUNT(*) FROM sr_targets t
+			                  WHERE t.group_id = c.group_id
+			                    AND t.org_id = $1::uuid), 0) AS recipients
+			FROM sr_campaigns c
+			WHERE c.org_id = $1::uuid
+			  AND c.status = 'completed'
+			  AND c.completed_at >= NOW() - make_interval(days => $2::int)
+		)
+		SELECT CASE WHEN COALESCE(SUM(camp.recipients), 0) > 0
+			THEN ROUND(100.0 * (
+				SELECT COUNT(DISTINCT (e.campaign_id, e.target_id))
+				FROM sr_events e
+				JOIN camp ON camp.id = e.campaign_id
+				WHERE e.org_id = $1::uuid
+				  AND e.type = 'click'
+				  AND e.target_id IS NOT NULL
+			)::numeric / SUM(camp.recipients), 2)
+			ELSE NULL END
+		FROM camp`, orgID, phishingClickWindowDays).Scan(&val)
+	return numericToFloat64Ptr(val)
+}
+
+// calcSuppliersOverduePct returns the percentage of assessable suppliers whose
+// next assessment is past due. The denominator is suppliers that have a due date
+// set (next_assessment_due IS NOT NULL); if none do, the KPI is unknown (nil).
+func calcSuppliersOverduePct(ctx context.Context, db *pgxpool.Pool, orgID string) *float64 {
+	if db == nil {
+		return nil
+	}
+	var val pgtype.Numeric
+	_ = db.QueryRow(ctx, `
+		SELECT CASE WHEN COUNT(*) FILTER (WHERE next_assessment_due IS NOT NULL) > 0
+			THEN ROUND(
+				100.0 * COUNT(*) FILTER (WHERE next_assessment_due < CURRENT_DATE)::numeric
+				/ COUNT(*) FILTER (WHERE next_assessment_due IS NOT NULL), 2)
+			ELSE NULL END
+		FROM ck_suppliers WHERE org_id = $1`, orgID).Scan(&val)
+	return numericToFloat64Ptr(val)
 }
 
 // numericToFloat64Ptr converts a pgtype.Numeric to *float64 (nil on NULL or error).

@@ -149,6 +149,19 @@ run_cycle() {
 		exit 1
 	fi
 
+	# S121-E4 (O1 class): assert the archive is non-trivial before verifying,
+	# replicating off-site, or pruning older backups. A pg_dump that silently
+	# produced nothing yields a tiny tarball; without this guard an empty backup
+	# would be verified/replicated and then the prior good copies pruned away —
+	# exactly the server-side failure mode that left the ISMS DB with no
+	# recoverable backup for a week.
+	local archive_size
+	archive_size="$(stat -c%s "$archive" 2>/dev/null || echo 0)"
+	if [ "$archive_size" -lt 1024 ]; then
+		notify_failure "backup archive $archive is only ${archive_size} bytes (< 1 KB) — pg_dump likely failed; refusing to replicate/prune"
+		exit 1
+	fi
+
 	echo "→ [backup-cron] verifying $archive"
 	if ! bash "$SCRIPT_DIR/backup-verify.sh" "$archive"; then
 		notify_failure "backup-verify.sh failed for $archive"

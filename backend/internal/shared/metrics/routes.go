@@ -85,24 +85,24 @@ type RegisterOptions struct {
 	// RedisAddr is the host:port of the Redis server used for queue-depth metrics.
 	// Leave empty to skip queue-depth metrics.
 	RedisAddr string
+	// RedisPassword is the Redis AUTH password. Required when Redis runs with
+	// --requirepass (the shipped compose default), otherwise queue-depth and
+	// Asynq metrics fail silently with NOAUTH (S121-C3 / I1).
+	RedisPassword string
 	// MetricsToken is the Bearer token required to access /metrics.
 	// When empty, only the IP allowlist applies.
 	MetricsToken string
 }
 
-// Register mounts the /metrics endpoint on the root Echo instance.
-// Access is restricted to loopback and Docker-internal network ranges so that
-// Prometheus can scrape the endpoint while external traffic is denied.
-// Deprecated: use RegisterWithOptions for queue-depth and token-auth support.
-func Register(e *echo.Echo, db *pgxpool.Pool) {
-	RegisterWithOptions(e, db, RegisterOptions{})
-}
+// S121-F2 (T6): removed the deprecated Register(e, db) — it had no callers
+// (cmd/api uses RegisterWithOptions). Use RegisterWithOptions directly.
 
 // RegisterWithOptions mounts the /metrics endpoint with extended options.
 func RegisterWithOptions(e *echo.Echo, db *pgxpool.Pool, opts RegisterOptions) {
 	h := NewHandler(db)
 	if opts.RedisAddr != "" {
 		h.WithRedisAddr(opts.RedisAddr)
+		h.WithRedisPassword(opts.RedisPassword)
 	}
 	tokenMiddleware := func(next echo.HandlerFunc) echo.HandlerFunc {
 		return metricsTokenAuth(opts.MetricsToken, next)

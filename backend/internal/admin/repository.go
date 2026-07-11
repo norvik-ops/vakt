@@ -90,6 +90,20 @@ func (r *Repository) UpdateOrgTrustCenter(ctx context.Context, orgID string, ena
 	return err
 }
 
+// UpdateOrgLogo sets the organisation's branding logo URL.
+// S121-D3 (C6): the org-branding page's PUT /admin/org had no backend route, so
+// saving a logo silently 404'd. organizations.logo_url exists since migration 032.
+func (r *Repository) UpdateOrgLogo(ctx context.Context, orgID, logoURL string) error {
+	_, err := r.db.Exec(ctx, `
+		UPDATE organizations
+		SET logo_url   = NULLIF($2, ''),
+		    updated_at = NOW()
+		WHERE id = $1::uuid`,
+		orgID, logoURL,
+	)
+	return err
+}
+
 // GetOrgSecurity fetches the security policy settings for an organisation.
 func (r *Repository) GetOrgSecurity(ctx context.Context, orgID string) (*OrgSecurity, error) {
 	var s OrgSecurity

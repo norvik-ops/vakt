@@ -26,6 +26,34 @@ func (h *Handler) GetCurrentOrg(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]any{"data": org})
 }
 
+// UpdateOrgInput is the request body for PUT /api/v1/admin/org.
+type UpdateOrgInput struct {
+	LogoURL string `json:"logo_url"`
+}
+
+// UpdateOrg handles PUT /api/v1/admin/org.
+// S121-D3 (C6): the org-branding page saved the logo via PUT /admin/org, but
+// only GET /admin/org was registered — saving branding 404'd. This wires the
+// write path through the service repository (no raw SQL in the handler).
+func (h *Handler) UpdateOrg(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	var in UpdateOrgInput
+	if err := c.Bind(&in); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid input",
+			"code":  "ADMIN_BAD_REQUEST",
+		})
+	}
+	if err := h.service.repo.UpdateOrgLogo(c.Request().Context(), orgID, in.LogoURL); err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("update org branding failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to update organization",
+			"code":  "ADMIN_ORG_UPDATE_ERROR",
+		})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
 // UpdateTrustCenter handles PUT /api/v1/admin/trust-center.
 type UpdateTrustCenterInput struct {
 	Enabled     bool   `json:"enabled"`

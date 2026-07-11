@@ -268,11 +268,13 @@ func TestOpenAPIReverseContract(t *testing.T) {
 		// Controls measures — spec has PUT with {controlId}, code has PATCH with :id.
 		"PUT /api/v1/vaktcomply/controls/{controlId}/measures/{mid}": "spec has PUT, code has PATCH/:id (method + param mismatch); TODO align",
 
-		// BCP plan link-evidence — not yet implemented.
-		"POST /api/v1/vaktcomply/bcp/plans/{id}/link-evidence": "not yet implemented, TODO",
+		// BCP plan link-evidence — spec-only; the backend links BCP evidence via
+		// POST /bcp/plans/{id}/evidence, and the dead FE hook was removed in
+		// S121-F2 (C3). The spec op is scheduled for removal in the OpenAPI cleanup (F7).
+		"POST /api/v1/vaktcomply/bcp/plans/{id}/link-evidence": "spec-only, real path is /evidence; TODO remove op (S121-F7)",
 
-		// Board report — not yet implemented.
-		"GET /api/v1/vaktcomply/board-report": "not yet implemented, TODO",
+		// S121-D2 (D4): board-report route is now registered — no allowlist entry
+		// needed; the reverse-contract gate actively verifies it.
 
 		// DSR single GET — only PUT /{id} registered, no GET /{id} handler yet.
 		"GET /api/v1/vaktprivacy/dsr/{id}": "GET single DSR not yet registered, TODO",

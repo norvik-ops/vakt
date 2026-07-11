@@ -593,7 +593,8 @@ func (h *Handler) UpdateMilestone(c echo.Context) error {
 func (h *Handler) DeleteMilestone(c echo.Context) error {
 	id := c.Param("id")
 	if err := h.service.repo.DeleteMilestone(c.Request().Context(), orgID(c), id); err != nil {
-		if err.Error() == "milestone not found" {
+		// S121-D4 (P3): not-found → 404, not 500
+		if isNotFound(err) || err.Error() == "milestone not found" {
 			return errResp(c, http.StatusNotFound, "milestone not found", "CK_MILESTONE_NOT_FOUND")
 		}
 		log.Error().Err(err).Msg("delete milestone")
@@ -651,6 +652,9 @@ func (h *Handler) DeleteCCMCheck(c echo.Context) error {
 	id := c.Param("id")
 	if err := h.service.DeleteCCMCheck(c.Request().Context(), orgID(c), id); err != nil {
 		log.Error().Err(err).Str("id", id).Msg("delete ccm check")
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "CCM check not found", "CCM_NOT_FOUND")
+		}
 		return errResp(c, http.StatusInternalServerError, "failed to delete CCM check", "CCM_DELETE_FAILED")
 	}
 	return c.NoContent(http.StatusNoContent)

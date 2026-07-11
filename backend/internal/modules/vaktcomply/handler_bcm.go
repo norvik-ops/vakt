@@ -219,6 +219,10 @@ func (h *Handler) UpdateBIAProcess(c echo.Context) error {
 func (h *Handler) DeleteBIAProcess(c echo.Context) error {
 	if err := h.service.BCM.DeleteBIAProcess(c.Request().Context(), orgID(c), c.Param("id")); err != nil {
 		log.Error().Err(err).Str("id", c.Param("id")).Msg("delete bia process")
+		// S121-D4 (P3): not-found → 404, not 500
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "BIA process not found", "CK_BIA_NOT_FOUND")
+		}
 		return errResp(c, http.StatusInternalServerError, "failed to delete BIA process", "CK_DELETE_BIA_FAILED")
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -309,6 +313,9 @@ func (h *Handler) UpdateRecoveryPlan(c echo.Context) error {
 func (h *Handler) DeleteRecoveryPlan(c echo.Context) error {
 	if err := h.service.BCM.DeleteRecoveryPlan(c.Request().Context(), orgID(c), c.Param("id")); err != nil {
 		log.Error().Err(err).Str("id", c.Param("id")).Msg("delete recovery plan")
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "recovery plan not found", "CK_RECOVERY_PLAN_NOT_FOUND")
+		}
 		return errResp(c, http.StatusInternalServerError, "failed to delete recovery plan", "CK_DELETE_RECOVERY_PLAN_FAILED")
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -367,6 +374,9 @@ func (h *Handler) UpdateEmergencyContact(c echo.Context) error {
 func (h *Handler) DeleteEmergencyContact(c echo.Context) error {
 	if err := h.service.BCM.DeleteEmergencyContact(c.Request().Context(), orgID(c), c.Param("id")); err != nil {
 		log.Error().Err(err).Str("id", c.Param("id")).Msg("delete emergency contact")
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "emergency contact not found", "CK_EMERGENCY_CONTACT_NOT_FOUND")
+		}
 		return errResp(c, http.StatusInternalServerError, "failed to delete emergency contact", "CK_DELETE_EMERGENCY_CONTACT_FAILED")
 	}
 	return c.NoContent(http.StatusNoContent)

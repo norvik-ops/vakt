@@ -160,6 +160,18 @@ func (h *Handler) ListChecklists(c echo.Context) error {
 	return c.JSON(http.StatusOK, checklists)
 }
 
+// GetChecklist handles GET /api/v1/vakthr/checklists/:id.
+// S121-C4 (C7): the checklist-run page needs the template (and its items) to
+// render each run step; this single-template read route was missing, so the
+// page failed with 404 and was unusable.
+func (h *Handler) GetChecklist(c echo.Context) error {
+	checklist, err := h.Service.GetChecklist(c.Request().Context(), orgID(c), c.Param("id"))
+	if err != nil {
+		return errResp(c, http.StatusNotFound, "checklist not found", "HR_CHECKLIST_NOT_FOUND")
+	}
+	return c.JSON(http.StatusOK, checklist)
+}
+
 // CreateChecklist handles POST /api/v1/hr/checklists.
 func (h *Handler) CreateChecklist(c echo.Context) error {
 	var in CreateChecklistInput

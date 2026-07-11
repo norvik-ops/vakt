@@ -25,6 +25,8 @@ func Register(g *echo.Group, h *Handler) {
 
 	// Checklists — templates; admin only
 	g.GET("/checklists", h.ListChecklists, rw)
+	// S121-C4 (C7): single-template read for the checklist-run page.
+	g.GET("/checklists/:id", h.GetChecklist, rw)
 	g.POST("/checklists", h.CreateChecklist, admin)
 	g.DELETE("/checklists/:id", h.DeleteChecklist, admin)
 

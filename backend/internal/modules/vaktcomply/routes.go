@@ -93,7 +93,16 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	// (h.ListControlsAcrossFrameworks) with no route; DashboardWidgets.tsx's
 	// "Quick Wins" widget has called it since it was added and always 404'd.
 	g.GET("/controls", h.ListControlsAcrossFrameworks)
+	// S121-D1 (D1): bulk-status update. Static /controls/bulk must precede the
+	// param /controls/:id routes below — the handler existed with no route, so
+	// PATCH /controls/bulk fell through to PATCH /controls/:id with id="bulk"
+	// (403/500). Registered here so Echo matches the static segment.
+	g.PATCH("/controls/bulk", h.BulkUpdateControls, rw)
 	g.GET("/controls/:id", h.GetControlByID)
+	// S121-D2 (D4): management board-report PDF. Handler and OpenAPI spec both
+	// existed (openapi.yaml /vaktcomply/board-report) but no route was wired, so
+	// the declared endpoint 404'd. Registered here to honour the contract.
+	g.GET("/board-report", h.GetBoardReport)
 	g.GET("/frameworks/:id/report", h.GetReadinessReport)
 	g.GET("/frameworks/:id/export-pdf", h.ExportFrameworkPDF, features.Require(features.FeatureAuditPDF))
 	g.GET("/frameworks/:id/gaps", h.GetGapAnalysis)
@@ -193,6 +202,10 @@ func registerRoutes(g *echo.Group, h *Handler) {
 
 	// Evidence review
 	g.POST("/evidence/:id/review", h.ReviewEvidence, rw)
+
+	// S121-D2 (D3): evidence version history. Handler existed with no route, so
+	// the version-history panel 404'd since it was added.
+	g.GET("/evidence/:id/history", h.GetEvidenceHistory)
 
 	// Evidence expiry alert
 	g.GET("/evidence/expiring", h.GetExpiringEvidence)
@@ -408,6 +421,10 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	// CAPA (Corrective and Preventive Actions)
 	g.GET("/capas", h.ListCAPAs)
 	g.POST("/capas", h.CreateCAPA, rw)
+	// S121-D1 (D2): bulk-status update. Static /capas/bulk before param /capas/:id
+	// — the handler existed with no route, so PATCH /capas/bulk fell through to
+	// /capas/:id with id="bulk" (500).
+	g.PATCH("/capas/bulk", h.BulkUpdateCAPAs, rw)
 	g.GET("/capas/:id", h.GetCAPA)
 	g.PATCH("/capas/:id", h.UpdateCAPA, rw)
 	g.DELETE("/capas/:id", h.DeleteCAPA, rw)

@@ -145,7 +145,8 @@ func (h *Handler) UpdateBSIModeling(c echo.Context) error {
 func (h *Handler) DeleteBSIModeling(c echo.Context) error {
 	id := c.Param("id")
 	if err := h.service.BSI.DeleteBSIModeling(c.Request().Context(), orgID(c), id); err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		// S121-D4 (P3): not-found → 404, not 500
+		if isNotFound(err) || strings.Contains(err.Error(), "not found") {
 			return errResp(c, http.StatusNotFound, "BSI modeling entry not found", "CK_BSI_NOT_FOUND")
 		}
 		log.Error().Err(err).Str("id", id).Msg("delete bsi modeling")

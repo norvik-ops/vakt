@@ -26,6 +26,8 @@ func Register(g *echo.Group, h *Handler) {
 	p.GET("/templates", h.ListTemplates, features.Require(features.FeatureSecReflex))
 	p.GET("/templates/presets", h.ListPresets, features.Require(features.FeatureSecReflex))
 	p.POST("/templates", h.CreateTemplate, rw, features.Require(features.FeatureSecReflex))
+	// S121-D3 (C9): delete an org-owned template (the UI delete button 404'd).
+	p.DELETE("/templates/:id", h.DeleteTemplate, rw, features.Require(features.FeatureSecReflex))
 
 	// --- Pro: Target groups ---
 	p.GET("/groups", h.ListTargetGroups, features.Require(features.FeatureSecReflex))

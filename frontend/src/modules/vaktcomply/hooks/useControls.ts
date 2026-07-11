@@ -146,22 +146,5 @@ export function useStaleControls(frameworkId?: string) {
   })
 }
 
-interface SetMaxAgeInput {
-  max_age_days: number | null
-}
-
-export function useSetControlMaxAge(controlId: string) {
-  const queryClient = useQueryClient()
-  return useMutation<undefined, Error, SetMaxAgeInput>({
-    mutationFn: (input) =>
-      apiFetch<undefined>(`/vaktcomply/controls/${controlId}/max-age`, {
-        method: 'PATCH',
-        body: JSON.stringify(input),
-      }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'controls', controlId] })
-      void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'compliance-score'] })
-      void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'controls', 'stale'] })
-    },
-  })
-}
+// S121-F2 (C10): removed dead hook useSetControlMaxAge — 0 UI references and it
+// called PATCH /vaktcomply/controls/:id/max-age, a route the backend never had.

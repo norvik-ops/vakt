@@ -769,6 +769,19 @@ func (r *Repository) DeleteDSR(ctx context.Context, orgID, id string) error {
 	return r.q.DeletePPDSR(ctx, db.DeletePPDSRParams{ID: id, OrgID: orgID})
 }
 
+// AssignDSR sets the assignee of a DSR (empty string clears it), scoped to org.
+// S121-D5 (A2): the raw UPDATE previously lived in the HTTP handler
+// (h.service.db.Exec), breaking the handler→service→repository layering rule.
+// The SQL now sits in the repository like every other DSR mutation.
+func (r *Repository) AssignDSR(ctx context.Context, orgID, id, assignedTo string) error {
+	_, err := r.db.Exec(ctx,
+		`UPDATE po_dsr SET assigned_to = NULLIF($1,''), updated_at = NOW()
+		 WHERE org_id = $2 AND id = $3`,
+		assignedTo, orgID, id,
+	)
+	return err
+}
+
 // GetDSR returns a single DSR by ID, scoped to the organisation.
 func (r *Repository) GetDSR(ctx context.Context, orgID, id string) (*DSR, error) {
 	row, err := r.q.GetPPDSR(ctx, db.GetPPDSRParams{ID: id, OrgID: orgID})

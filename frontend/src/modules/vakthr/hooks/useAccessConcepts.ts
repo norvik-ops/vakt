@@ -47,8 +47,9 @@ export function useUpdateAccessConcept(id: string) {
   const queryClient = useQueryClient()
   return useMutation<AccessConcept, Error, UpdateAccessConceptInput>({
     mutationFn: (input) =>
+      // S121-C5 (C4): backend registers this as PATCH; PUT returned 404.
       apiFetch<AccessConcept>(`/vakthr/access-concepts/${id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         body: JSON.stringify(input),
       }),
     onSuccess: () => {
@@ -98,8 +99,9 @@ export function useUpdateAccessRole(conceptId: string, roleId: string) {
   const queryClient = useQueryClient()
   return useMutation<AccessRole, Error, UpdateAccessRoleInput>({
     mutationFn: (input) =>
+      // S121-C5 (C5): backend registers this as PATCH; PUT returned 404.
       apiFetch<AccessRole>(`/vakthr/access-concepts/${conceptId}/roles/${roleId}`, {
-        method: 'PUT',
+        method: 'PATCH',
         body: JSON.stringify(input),
       }),
     onSuccess: () => {

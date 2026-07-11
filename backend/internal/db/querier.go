@@ -206,6 +206,7 @@ type Querier interface {
 	DeleteSPScanSchedule(ctx context.Context, arg DeleteSPScanScheduleParams) (int64, error)
 	DeleteSPSuppression(ctx context.Context, arg DeleteSPSuppressionParams) (int64, error)
 	DeleteSRTargetGroup(ctx context.Context, arg DeleteSRTargetGroupParams) (int64, error)
+	DeleteSRTemplate(ctx context.Context, arg DeleteSRTemplateParams) (int64, error)
 	DeleteSVEnvironment(ctx context.Context, arg DeleteSVEnvironmentParams) (int64, error)
 	DeleteSVProject(ctx context.Context, arg DeleteSVProjectParams) (int64, error)
 	DeleteSVSecret(ctx context.Context, arg DeleteSVSecretParams) (int64, error)

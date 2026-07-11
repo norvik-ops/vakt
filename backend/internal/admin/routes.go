@@ -39,6 +39,7 @@ func Register(g *echo.Group, h *Handler, health *HealthHandler, db *pgxpool.Pool
 
 	// Current org info + trust center settings
 	admin.GET("/org", h.GetCurrentOrg)
+	admin.PUT("/org", h.UpdateOrg) // S121-D3 (C6): org branding (logo) save
 	admin.PUT("/trust-center", h.UpdateTrustCenter)
 
 	// Org security policy (MFA enforcement, etc.)
