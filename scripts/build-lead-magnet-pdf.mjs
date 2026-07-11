@@ -49,13 +49,21 @@ const out = resolve(ROOT, `sites/vakt/public/downloads/${slug}.pdf`)
 mkdirSync(dirname(out), { recursive: true })
 
 // Die Quell-Markdown trägt oben eine interne Redaktionsnotiz als Blockquote
-// ("Lead-Magnet 1 (S97-6). Als PDF exportieren ..."). Die darf nicht ins
-// Kunden-PDF — Blockquotes mit internen Markern werden verworfen.
-const INTERNAL = /(Lead-Magnet \d|S9\d-\d|Download-Gate|SEO-Artikel)/
-const md = readFileSync(src, 'utf-8')
-  .split('\n')
-  .filter((l) => !(l.startsWith('>') && INTERNAL.test(l)))
-  .join('\n')
+// (Build-Anweisung, Sprint-Referenz, ADR-Verweise). Die darf nicht ins Kunden-PDF.
+//
+// Bewusst STRUKTURELL abgegrenzt statt über Stichwörter: Alles vor dem ersten
+// `---` ist Redaktionsbereich (H1 + interne Notiz), danach beginnt der
+// Kundeninhalt. Eine Stichwortliste wäre still gebrochen, sobald jemand die
+// Notiz umformuliert — genau das ist beim Schreiben dieses Skripts passiert.
+function stripInternalNote(raw) {
+  const lines = raw.split('\n')
+  const sep = lines.findIndex((l) => /^---+$/.test(l.trim()))
+  if (sep === -1) return raw // kein Trenner → nichts zu strippen
+  const head = lines.slice(0, sep).filter((l) => !l.trimStart().startsWith('>'))
+  return [...head, ...lines.slice(sep)].join('\n')
+}
+
+const md = stripInternalNote(readFileSync(src, 'utf-8'))
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const inline = (s) =>
