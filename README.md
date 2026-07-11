@@ -23,7 +23,7 @@ Vakt is a **self-hosted, source-available** compliance documentation platform fo
 
 **Why source-available?** Business continuity. An ISMS platform is critical infrastructure. With ELv2, the full source code is auditable and you can keep running Vakt independently if we ever disappear — no data held hostage, no vendor lock-in.
 
-Free-to-self-host alternative to Vanta, Drata, or DataGuard (~€9,000–25,000/year). Deploy with a single `docker compose up` — **ready in under 5 minutes**. The bundled local AI advisor takes a bit longer on first start (downloads the ~4.5 GB `qwen2.5:7b` model on first launch — 3–30 minutes depending on bandwidth). The platform itself is ready immediately.
+Free-to-self-host alternative to Vanta, Drata, or DataGuard. Those vendors don't publish pricing (contact-sales only); aggregated real-contract data ([Vendr](https://www.vendr.com/marketplace/vanta), July 2026) puts the median at ~$20,000/year for Vanta and ~$24,900/year for Drata. Deploy Vakt with a single `docker compose up` — **ready in under 5 minutes**. The bundled local AI advisor takes a bit longer on first start (downloads the ~4.5 GB `qwen2.5:7b` model on first launch — 3–30 minutes depending on bandwidth). The platform itself is ready immediately.
 
 ---
 

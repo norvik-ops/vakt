@@ -70,12 +70,14 @@ Die wichtigsten Unterschiede:
 | | Vakt | Vanta / Drata |
 |---|---|---|
 | **Hosting** | Selbst gehostet, eigene Infrastruktur | Cloud, Daten beim Anbieter |
-| **Preis** | CE kostenlos · Pro ab 299 €/Monat | ~€9.000–25.000/Jahr |
+| **Preis** | CE kostenlos · Pro ab 299 €/Monat | keine öffentliche Preisliste (Contact Sales) — Median laut Vertragsdaten* ~20.000 $/Jahr (Vanta), ~24.900 $/Jahr (Drata) |
 | **Datenhoheit** | Vollständig bei dir | Beim Cloud-Anbieter |
 | **DSGVO** | Keine Drittübermittlung | Datenexport in US-Cloud |
 | **Anpassbarkeit** | Quellcode zugänglich | Closed Source |
 | **Multi-Tenancy** | Nein (eine Instanz = eine Org) | Ja |
 | **Zielgruppe** | KMU, IT-Admins, DACH-Markt | Enterprise, US-Markt |
+
+\* Vanta und Drata veröffentlichen keine Preise — Angebote gibt es ausschließlich nach einem Sales-Gespräch. Die genannten Zahlen stammen daher nicht von den Anbietern, sondern aus aggregierten Ist-Vertragsdaten von [Vendr](https://www.vendr.com/marketplace/vanta) (Stand Juli 2026). Individuelle Angebote können deutlich abweichen.
 
 Vanta und Drata sind ausgereifte Tools mit großen Teams. Vakt ist für Unternehmen, die keine Compliance-Daten in eine US-Cloud geben wollen oder können, und die keinen fünfstelligen Jahresbeitrag zahlen möchten.
 
