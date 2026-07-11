@@ -1203,6 +1203,10 @@ func isNotFound(err error) bool {
 		errors.Is(err, policy.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
 		return true
 	}
+	// NB: a malformed UUID/int in a path param (SQLSTATE 22P02) is deliberately
+	// NOT treated as not-found here — it is a client input error. The
+	// ValidateUUIDParams middleware rejects it with 400 at the module group up
+	// front, and isBadParam classifies it where a handler still needs to.
 	// Safety net: the live write-sweep found ~30 handlers returning 500 because a
 	// repository returned a raw fmt.Errorf("X not found") (no sentinel), which the
 	// isNotFound checks above cannot match. A message ENDING in "not found" is that

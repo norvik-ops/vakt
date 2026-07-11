@@ -382,7 +382,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		vbSvc := vaktscan.NewService(pool, asynq.RedisClientOpt{Addr: redisOpt.Addr})
 		vbSvc.WithRedis(rdb)
 		vbSvc.WithWebhooks(webhookSvc)
-		vaktscan.Register(protected.Group("/vaktscan", auth.RequireModuleAccess(pool, "vaktscan", rdb)), vaktscan.NewHandler(vbSvc))
+		vaktscan.Register(protected.Group("/vaktscan", auth.RequireModuleAccess(pool, "vaktscan", rdb), sharedmw.ValidateUUIDParams()), vaktscan.NewHandler(vbSvc))
 		log.Info().Msg("vaktscan routes registered")
 	}
 
@@ -444,7 +444,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		}
 		efSvc := vaktcomply.NewEvidenceFileService(ckSvc.Repo(), cfg.UploadDir)
 		ckHandler.WithEvidenceFileService(efSvc)
-		vaktcomply.Register(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), ckHandler)
+		vaktcomply.Register(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb), sharedmw.ValidateUUIDParams()), ckHandler)
 		// Sprint 22 / S22-6: authentifizierter NIS2-Wizard-Migrate-Endpoint
 		// (POST /vaktcomply/nis2-assessment/migrate-from-anonymous).
 		nis2wizard.RegisterAuthenticated(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), nis2wizardHandler)
@@ -485,7 +485,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 
 	if cfg.IsModuleEnabled("vaktvault") && cfg.SecretKey != "" {
 		soSvc := vaktvault.NewService(pool, vaultKey, asynqClient)
-		vaktvault.Register(protected.Group("/vaktvault", auth.RequireModuleAccess(pool, "vaktvault", rdb)), vaktvault.NewHandler(soSvc))
+		vaktvault.Register(protected.Group("/vaktvault", auth.RequireModuleAccess(pool, "vaktvault", rdb), sharedmw.ValidateUUIDParams()), vaktvault.NewHandler(soSvc))
 		log.Info().Msg("vaktvault routes registered")
 	}
 
@@ -494,7 +494,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 			Host: cfg.SMTPHost, Port: cfg.SMTPPort,
 			User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
 		}, asynq.RedisClientOpt{Addr: redisOpt.Addr})
-		vaktaware.Register(protected.Group("/vaktaware", auth.RequireModuleAccess(pool, "vaktaware", rdb)), vaktaware.NewHandler(pgSvc))
+		vaktaware.Register(protected.Group("/vaktaware", auth.RequireModuleAccess(pool, "vaktaware", rdb), sharedmw.ValidateUUIDParams()), vaktaware.NewHandler(pgSvc))
 		log.Info().Msg("vaktaware routes registered")
 	}
 
@@ -523,7 +523,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		if alertSvc != nil {
 			poHandler.WithAlerting(alertSvc.Fire)
 		}
-		vaktprivacy.Register(protected.Group("/vaktprivacy", auth.RequireModuleAccess(pool, "vaktprivacy", rdb)), poHandler)
+		vaktprivacy.Register(protected.Group("/vaktprivacy", auth.RequireModuleAccess(pool, "vaktprivacy", rdb), sharedmw.ValidateUUIDParams()), poHandler)
 		// DSR portal uses URL slug/token — exempt from Bearer auth; rate-limited to 30 req/min per IP
 		dsrPortalRateLimiter := sharedmw.IPRateLimitRedis(rdb, "dsr_portal", 30, time.Minute, false)
 		vaktprivacy.RegisterPublic(api.Group("/vaktprivacy", dsrPortalRateLimiter), poHandler)
@@ -537,7 +537,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 			WithEvidenceWriter(hrEvidence).
 			WithAccessReviewTrigger(hrAccessReview)
 		hrHandler = vakthr.NewHandler(hrSvc)
-		vakthr.Register(protected.Group("/vakthr", auth.RequireModuleAccess(pool, "vakthr", rdb)), hrHandler)
+		vakthr.Register(protected.Group("/vakthr", auth.RequireModuleAccess(pool, "vakthr", rdb), sharedmw.ValidateUUIDParams()), hrHandler)
 		log.Info().Msg("vakthr routes registered")
 	}
 
