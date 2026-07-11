@@ -239,15 +239,8 @@ func TestOpenAPIReverseContract(t *testing.T) {
 		"POST /api/v1/vaktcomply/ai/agent/runs/{run_id}/approve": "AI routes require VAKT_AI_PROVIDER set",
 		"POST /api/v1/vaktcomply/ai/agent/runs/{run_id}/reject":  "AI routes require VAKT_AI_PROVIDER set",
 
-		// Controls sub-resources — routes.go registers with :id param, spec uses {controlId}.
-		// Param-name mismatch prevents Echo route lookup. TODO: align routes.go to use :controlId.
-		"GET /api/v1/vaktcomply/controls/{controlId}/evidence":          "param :id vs :controlId mismatch, TODO align",
-		"POST /api/v1/vaktcomply/controls/{controlId}/evidence":         "param :id vs :controlId mismatch, TODO align",
-		"POST /api/v1/vaktcomply/controls/{controlId}/evidence/upload":  "param :id vs :controlId mismatch, TODO align",
-		"GET /api/v1/vaktcomply/controls/{controlId}/measures":          "param :id vs :controlId mismatch, TODO align",
-		"POST /api/v1/vaktcomply/controls/{controlId}/measures":         "param :id vs :controlId mismatch, TODO align",
-		"PATCH /api/v1/vaktcomply/controls/{controlId}/measures/{mid}":  "param :id vs :controlId mismatch, TODO align",
-		"DELETE /api/v1/vaktcomply/controls/{controlId}/measures/{mid}": "param :id vs :controlId mismatch, TODO align",
+		// S121-F7: controls sub-resource param drift resolved — spec now uses {id}
+		// to match routes.go (:id). No allowlist entries needed.
 
 		// Protection needs — code registers /protection-needs/assessments/{id} path.
 		// Spec uses shorter /protection-needs/{id}. TODO: align paths in one direction.
@@ -268,11 +261,9 @@ func TestOpenAPIReverseContract(t *testing.T) {
 		// Controls measures — spec has PUT with {controlId}, code has PATCH with :id.
 		"PUT /api/v1/vaktcomply/controls/{controlId}/measures/{mid}": "spec has PUT, code has PATCH/:id (method + param mismatch); TODO align",
 
-		// BCP plan link-evidence — spec-only; the backend links BCP evidence via
-		// POST /bcp/plans/{id}/evidence, and the dead FE hook was removed in
-		// S121-F2 (C3). The spec op is scheduled for removal in the OpenAPI cleanup (F7).
-		"POST /api/v1/vaktcomply/bcp/plans/{id}/link-evidence": "spec-only, real path is /evidence; TODO remove op (S121-F7)",
-
+		// S121-F7: the spec-only POST /bcp/plans/{id}/link-evidence op was removed
+		// (the backend links BCP evidence via /evidence; the dead FE hook went in
+		// F2/C3), so no allowlist entry is needed.
 		// S121-D2 (D4): board-report route is now registered — no allowlist entry
 		// needed; the reverse-contract gate actively verifies it.
 

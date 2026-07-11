@@ -8395,12 +8395,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vaktcomply/controls/{controlId}/evidence": {
+    "/vaktcomply/controls/{id}/evidence": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                controlId: string;
+                id: string;
             };
             cookie?: never;
         };
@@ -8410,7 +8410,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    controlId: string;
+                    id: string;
                 };
                 cookie?: never;
             };
@@ -8432,7 +8432,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    controlId: string;
+                    id: string;
                 };
                 cookie?: never;
             };
@@ -8464,12 +8464,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vaktcomply/controls/{controlId}/evidence/upload": {
+    "/vaktcomply/controls/{id}/evidence/upload": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                controlId: string;
+                id: string;
             };
             cookie?: never;
         };
@@ -8478,14 +8478,14 @@ export interface paths {
         /**
          * Upload a file as evidence for a control
          * @deprecated
-         * @description Deprecated — use POST /vaktcomply/controls/{controlId}/evidence with type=file instead (S100-5/ARCH-M03).
+         * @description Deprecated — use POST /vaktcomply/controls/{id}/evidence with type=file instead (S100-5/ARCH-M03).
          */
         post: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    controlId: string;
+                    id: string;
                 };
                 cookie?: never;
             };
@@ -8514,12 +8514,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vaktcomply/controls/{controlId}/measures": {
+    "/vaktcomply/controls/{id}/measures": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                controlId: string;
+                id: string;
             };
             cookie?: never;
         };
@@ -8529,7 +8529,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    controlId: string;
+                    id: string;
                 };
                 cookie?: never;
             };
@@ -8551,7 +8551,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    controlId: string;
+                    id: string;
                 };
                 cookie?: never;
             };
@@ -8585,24 +8585,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vaktcomply/controls/{controlId}/measures/{mid}": {
+    "/vaktcomply/controls/{id}/measures/{mid}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                controlId: string;
+                id: string;
                 mid: string;
             };
             cookie?: never;
         };
         get?: never;
-        /** Update a measure */
-        put: {
+        put?: never;
+        post?: never;
+        /** Delete a measure */
+        delete: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    controlId: string;
+                    id: string;
+                    mid: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Update a measure */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
                     mid: string;
                 };
                 cookie?: never;
@@ -8631,32 +8657,6 @@ export interface paths {
                 };
             };
         };
-        post?: never;
-        /** Delete a measure */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    controlId: string;
-                    mid: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Deleted */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/vaktcomply/suppliers/{id}/assessments": {
@@ -10025,25 +10025,6 @@ export interface paths {
         put?: never;
         /** Add BCP test to a plan */
         post: operations["addBCPTest"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/vaktcomply/bcp/plans/{id}/link-evidence": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Link BCP plan as compliance evidence */
-        post: operations["linkBCPPlanEvidence"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17760,33 +17741,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BCPTest"];
                 };
-            };
-        };
-    };
-    linkBCPPlanEvidence: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": {
-                    /** Format: uuid */
-                    control_id?: string;
-                };
-            };
-        };
-        responses: {
-            /** @description Evidence linked or skipped */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/labstack/echo/v4"
 	"github.com/matharnica/vakt/internal/db"
 	"github.com/matharnica/vakt/internal/shared/audit"
@@ -32,20 +31,10 @@ func (h *Handler) ListDBPolicyTemplates(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "invalid category; must be policy, dpia, or avv", "INVALID_CATEGORY")
 	}
 
-	arg := db.ListCKPolicyTemplatesParams{}
-	if category != "" {
-		arg.Category = pgtype.Text{String: category, Valid: true}
-	}
-
-	rows, queryErr := h.q.ListCKPolicyTemplates(ctx, arg)
+	templates, queryErr := h.service.ListPolicyTemplates(ctx, category)
 	if queryErr != nil {
 		log.Error().Err(queryErr).Msg("ListDBPolicyTemplates: query failed")
 		return errResp(c, http.StatusInternalServerError, "failed to list templates", "DB_ERROR")
-	}
-
-	templates := make([]DBPolicyTemplate, 0, len(rows))
-	for _, r := range rows {
-		templates = append(templates, templateListRowToDTO(r))
 	}
 	return c.JSON(http.StatusOK, templates)
 }
@@ -60,13 +49,13 @@ func (h *Handler) GetDBPolicyTemplate(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "missing template id", "MISSING_ID")
 	}
 
-	r, err := h.q.GetCKPolicyTemplateByID(ctx, id)
+	tmpl, err := h.service.GetPolicyTemplate(ctx, id)
 	if err != nil {
 		log.Error().Err(err).Str("id", id).Msg("GetDBPolicyTemplate: not found")
 		return errResp(c, http.StatusNotFound, "template not found", "TEMPLATE_NOT_FOUND")
 	}
 
-	return c.JSON(http.StatusOK, templateGetRowToDTO(r))
+	return c.JSON(http.StatusOK, tmpl)
 }
 
 // templateListRowToDTO converts a ListCKPolicyTemplatesRow to DBPolicyTemplate.
@@ -205,13 +194,15 @@ func (h *Handler) CalendarDeadlines(c echo.Context) error {
 
 	var events []icalEvent
 
-	// --- Source 1: Audit milestones ---
-	milestones, err := h.q.ListCKICalMilestones(ctx, oid)
+	// S121-F6 (A3): deadline data now comes from the service layer, not h.q.*.
+	deadlines, err := h.service.ListICalDeadlines(ctx, oid)
 	if err != nil {
-		log.Error().Err(err).Str("org_id", oid).Msg("ical: query milestones")
+		log.Error().Err(err).Str("org_id", oid).Msg("ical: load deadlines")
 		return errResp(c, http.StatusInternalServerError, "failed to load deadlines", "CK_ICAL_ERROR")
 	}
-	for _, m := range milestones {
+
+	// --- Source 1: Audit milestones ---
+	for _, m := range deadlines.Milestones {
 		events = append(events, icalEvent{
 			uid:         m.ID + "@vakt",
 			dtstart:     m.MilestoneDate.Time.Format("20060102"),
@@ -221,12 +212,7 @@ func (h *Handler) CalendarDeadlines(c echo.Context) error {
 	}
 
 	// --- Source 2: Open/in-progress CAPAs with due dates ---
-	capas, err := h.q.ListCKICalCAPAs(ctx, oid)
-	if err != nil {
-		log.Error().Err(err).Str("org_id", oid).Msg("ical: query capas")
-		return errResp(c, http.StatusInternalServerError, "failed to load deadlines", "CK_ICAL_ERROR")
-	}
-	for _, ca := range capas {
+	for _, ca := range deadlines.CAPAs {
 		events = append(events, icalEvent{
 			uid:         ca.ID + "@vakt",
 			dtstart:     ca.DueDate.Time.Format("20060102"),
@@ -236,12 +222,7 @@ func (h *Handler) CalendarDeadlines(c echo.Context) error {
 	}
 
 	// --- Source 3: Evidence expiring within the future ---
-	evidences, err := h.q.ListCKICalExpiringEvidence(ctx, oid)
-	if err != nil {
-		log.Error().Err(err).Str("org_id", oid).Msg("ical: query evidence")
-		return errResp(c, http.StatusInternalServerError, "failed to load deadlines", "CK_ICAL_ERROR")
-	}
-	for _, ev := range evidences {
+	for _, ev := range deadlines.Evidence {
 		events = append(events, icalEvent{
 			uid:         ev.ID + "@vakt",
 			dtstart:     ev.ExpiresAt.Time.UTC().Format("20060102"),

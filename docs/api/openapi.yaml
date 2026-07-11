@@ -6726,9 +6726,9 @@ paths:
 
   # --- Controls sub-routes ---
 
-  /vaktcomply/controls/{controlId}/evidence:
+  /vaktcomply/controls/{id}/evidence:
     parameters:
-      - name: controlId
+      - name: id
         in: path
         required: true
         schema: { type: string, format: uuid }
@@ -6757,16 +6757,16 @@ paths:
         '201':
           description: Evidence created
 
-  /vaktcomply/controls/{controlId}/evidence/upload:
+  /vaktcomply/controls/{id}/evidence/upload:
     parameters:
-      - name: controlId
+      - name: id
         in: path
         required: true
         schema: { type: string, format: uuid }
     post:
       summary: Upload a file as evidence for a control
       deprecated: true
-      description: "Deprecated — use POST /vaktcomply/controls/{controlId}/evidence with type=file instead (S100-5/ARCH-M03)."
+      description: "Deprecated — use POST /vaktcomply/controls/{id}/evidence with type=file instead (S100-5/ARCH-M03)."
       tags: [vaktcomply]
       requestBody:
         required: true
@@ -6784,9 +6784,9 @@ paths:
         '201':
           description: Evidence uploaded
 
-  /vaktcomply/controls/{controlId}/measures:
+  /vaktcomply/controls/{id}/measures:
     parameters:
-      - name: controlId
+      - name: id
         in: path
         required: true
         schema: { type: string, format: uuid }
@@ -6816,9 +6816,9 @@ paths:
         '201':
           description: Measure created
 
-  /vaktcomply/controls/{controlId}/measures/{mid}:
+  /vaktcomply/controls/{id}/measures/{mid}:
     parameters:
-      - name: controlId
+      - name: id
         in: path
         required: true
         schema: { type: string, format: uuid }
@@ -6826,7 +6826,7 @@ paths:
         in: path
         required: true
         schema: { type: string, format: uuid }
-    put:
+    patch:
       summary: Update a measure
       tags: [vaktcomply]
       requestBody:
@@ -8680,32 +8680,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BCPTest'
-
-  /vaktcomply/bcp/plans/{id}/link-evidence:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string, format: uuid }
-    post:
-      summary: Link BCP plan as compliance evidence
-      operationId: linkBCPPlanEvidence
-      tags: [vaktcomply]
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                control_id: { type: string, format: uuid }
-      responses:
-        '201':
-          description: Evidence linked or skipped
-
-  # ── Schutzbedarfsfeststellung (Migration 157) ─────────────────────────────
 
   /vaktcomply/protection-needs:
     get:
