@@ -378,7 +378,7 @@ func (r *Repository) DeleteMeasure(ctx context.Context, orgID, measureID string)
 		return fmt.Errorf("delete measure: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("measure not found or is builtin")
+		return fmt.Errorf("measure not found or is builtin: %w", ErrNotFound)
 	}
 	return nil
 }

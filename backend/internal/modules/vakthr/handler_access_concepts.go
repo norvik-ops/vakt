@@ -74,6 +74,9 @@ func (h *Handler) UpdateAccessConcept(c echo.Context) error {
 func (h *Handler) DeleteAccessConcept(c echo.Context) error {
 	id := c.Param("id")
 	if err := h.Service.DeleteAccessConcept(c.Request().Context(), orgID(c), id); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errResp(c, http.StatusNotFound, "access concept not found", "HR_NOT_FOUND")
+		}
 		log.Error().Err(err).Str("concept_id", id).Msg("delete access concept")
 		return errResp(c, http.StatusInternalServerError, "failed to delete access concept", "HR_DELETE_ACCESS_CONCEPT_FAILED")
 	}
@@ -137,6 +140,9 @@ func (h *Handler) UpdateAccessRole(c echo.Context) error {
 func (h *Handler) DeleteAccessRole(c echo.Context) error {
 	roleID := c.Param("rid")
 	if err := h.Service.DeleteAccessRole(c.Request().Context(), orgID(c), roleID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errResp(c, http.StatusNotFound, "access concept not found", "HR_NOT_FOUND")
+		}
 		log.Error().Err(err).Str("role_id", roleID).Msg("delete access role")
 		return errResp(c, http.StatusInternalServerError, "failed to delete access role", "HR_DELETE_ACCESS_ROLE_FAILED")
 	}

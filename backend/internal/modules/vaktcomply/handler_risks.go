@@ -1,7 +1,6 @@
 package vaktcomply
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -51,6 +50,9 @@ func (h *Handler) UpdateRiskTreatment(c echo.Context) error {
 	}
 	risk, err := h.service.Risk.UpdateRiskTreatment(c.Request().Context(), orgID(c), id, in)
 	if err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "risk not found", "CK_NOT_FOUND")
+		}
 		log.Error().Err(err).Msg("update risk treatment")
 		return errResp(c, http.StatusInternalServerError, "failed to update risk treatment", "CK_UPDATE_RISK_TREATMENT_FAILED")
 	}
@@ -190,6 +192,9 @@ func (h *Handler) UpdateRiskResidualFields(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
 	if err := h.service.Risk.UpdateRiskResidualFields(c.Request().Context(), orgID(c), id, in); err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "risk not found", "CK_NOT_FOUND")
+		}
 		log.Error().Err(err).Msg("update risk residual fields")
 		return errResp(c, http.StatusInternalServerError, "failed to update residual fields", "CK_UPDATE_RESIDUAL_FAILED")
 	}
@@ -273,7 +278,7 @@ func (h *Handler) UpdateControlException(c echo.Context) error {
 	}
 	exception, err := h.service.Risk.UpdateControlException(c.Request().Context(), orgID(c), id, in)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "exception not found", "CK_NOT_FOUND")
 		}
 		log.Error().Err(err).Str("id", id).Msg("update control exception")
@@ -360,7 +365,7 @@ func (h *Handler) CreateCAPA(c echo.Context) error {
 func (h *Handler) GetCAPA(c echo.Context) error {
 	capa, err := h.service.GetCAPA(c.Request().Context(), orgID(c), c.Param("id"))
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "capa not found", "CK_CAPA_NOT_FOUND")
 		}
 		log.Error().Err(err).Msg("get capa")
@@ -380,7 +385,7 @@ func (h *Handler) UpdateCAPA(c echo.Context) error {
 	}
 	capa, err := h.service.UpdateCAPA(c.Request().Context(), orgID(c), c.Param("id"), in)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "capa not found", "CK_CAPA_NOT_FOUND")
 		}
 		log.Error().Err(err).Msg("update capa")
@@ -484,7 +489,7 @@ func (h *Handler) UpdateCAPANCFields(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.service.Risk.UpdateCAPANCFields(c.Request().Context(), orgID(c), c.Param("id"), in); err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "capa not found", "CK_CAPA_NOT_FOUND")
 		}
 		log.Error().Err(err).Msg("update capa nc fields")
@@ -510,7 +515,7 @@ func (h *Handler) CompleteEffectivenessCheck(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.service.Risk.CompleteEffectivenessCheck(c.Request().Context(), orgID(c), c.Param("id"), userID(c), in); err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "capa not found", "CK_CAPA_NOT_FOUND")
 		}
 		log.Error().Err(err).Msg("complete effectiveness check")

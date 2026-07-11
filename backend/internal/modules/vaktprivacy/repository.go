@@ -775,7 +775,10 @@ func (r *Repository) DeleteDSR(ctx context.Context, orgID, id string) error {
 // The SQL now sits in the repository like every other DSR mutation.
 func (r *Repository) AssignDSR(ctx context.Context, orgID, id, assignedTo string) error {
 	_, err := r.db.Exec(ctx,
-		`UPDATE po_dsr SET assigned_to = NULLIF($1,''), updated_at = NOW()
+		// S121 (live write-sweep): assigned_to is uuid, so NULLIF($1,'') (text) must
+		// be cast — the un-cast query 500'd with SQLSTATE 42804 (born-broken; AssignDSR
+		// never worked).
+		`UPDATE po_dsr SET assigned_to = NULLIF($1,'')::uuid, updated_at = NOW()
 		 WHERE org_id = $2 AND id = $3`,
 		assignedTo, orgID, id,
 	)

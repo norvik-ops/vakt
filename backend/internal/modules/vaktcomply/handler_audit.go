@@ -113,6 +113,9 @@ func (h *Handler) UpdateAuditPlan(c echo.Context) error {
 	}
 	plan, err := h.service.Audit.UpdateAuditPlan(c.Request().Context(), orgID(c), c.Param("id"), in)
 	if err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "audit plan not found", "CK_NOT_FOUND")
+		}
 		log.Error().Err(err).Msg("update audit plan")
 		return errResp(c, http.StatusInternalServerError, "failed to update audit plan", "CK_AUDIT_PLAN_UPDATE_FAILED")
 	}
@@ -163,8 +166,16 @@ func (h *Handler) UpdateAuditProgramAudit(c echo.Context) error {
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
+	// S121 (live write-sweep): validate required fields → 422; without this an empty
+	// body reached the UPDATE and 500'd casting "" to date/uuid (SQLSTATE 22007).
+	if err := h.validate.Struct(in); err != nil {
+		return errResp(c, http.StatusUnprocessableEntity, "Ungültige Eingabe", "VALIDATION_ERROR")
+	}
 	auditRec, err := h.service.Audit.UpdateAuditProgramAudit(c.Request().Context(), orgID(c), c.Param("id"), in)
 	if err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "audit not found", "CK_NOT_FOUND")
+		}
 		log.Error().Err(err).Msg("update audit program audit")
 		return errResp(c, http.StatusInternalServerError, "failed to update audit", "CK_AUDIT_UPDATE_FAILED")
 	}
@@ -677,6 +688,9 @@ func (h *Handler) ToggleCCMCheck(c echo.Context) error {
 	}
 
 	if err := h.service.ToggleCCMCheck(c.Request().Context(), orgID(c), id, in.Enabled); err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "CCM check not found", "CCM_NOT_FOUND")
+		}
 		log.Error().Err(err).Str("id", id).Msg("toggle ccm check")
 		return errResp(c, http.StatusInternalServerError, "failed to toggle CCM check", "CCM_TOGGLE_FAILED")
 	}

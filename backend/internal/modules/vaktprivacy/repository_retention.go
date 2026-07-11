@@ -151,7 +151,7 @@ func (r *Repository) CompleteDeletionReminder(ctx context.Context, orgID, id, co
 	_, err := r.db.Exec(ctx, `
 		UPDATE po_deletion_reminders SET
 			completed_at     = NOW(),
-			completed_by     = NULLIF($1,''),
+			completed_by     = NULLIF($1,'')::uuid,
 			completion_notes = NULLIF($2,'')
 		WHERE org_id = $3 AND id = $4`,
 		completedByUserID, in.CompletionNotes, orgID, id,

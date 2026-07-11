@@ -74,6 +74,9 @@ func (h *Handler) UpdateBCPPlan(c echo.Context) error {
 func (h *Handler) DeleteBCPPlan(c echo.Context) error {
 	id := c.Param("id")
 	if err := h.service.BCM.DeleteBCPPlan(c.Request().Context(), orgID(c), id); err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "BCP plan not found", "CK_BCP_PLAN_NOT_FOUND")
+		}
 		log.Error().Err(err).Str("plan_id", id).Msg("delete bcp plan")
 		return errResp(c, http.StatusInternalServerError, "failed to delete BCP plan", "CK_DELETE_BCP_PLAN_FAILED")
 	}

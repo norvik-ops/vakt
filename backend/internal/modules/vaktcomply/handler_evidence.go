@@ -592,6 +592,9 @@ func (h *Handler) UpdateCollabTask(c echo.Context) error {
 	}
 	task, err := h.service.UpdateTask(c.Request().Context(), orgID(c), taskID, in)
 	if err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "task not found", "CK_TASK_NOT_FOUND")
+		}
 		log.Error().Err(err).Str("task_id", taskID).Msg("update collab task")
 		return errResp(c, http.StatusInternalServerError, "failed to update task", "CK_INTERNAL")
 	}

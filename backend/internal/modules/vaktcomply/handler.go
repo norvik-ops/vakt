@@ -194,6 +194,9 @@ func (h *Handler) UpdateControlSoAMetadata(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "invalid request", "CK_BAD_REQUEST")
 	}
 	if err := h.service.UpdateSoAMetadata(c.Request().Context(), orgID(c), c.Param("id"), in); err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "control not found", "CK_NOT_FOUND")
+		}
 		log.Error().Err(err).Str("control_id", c.Param("id")).Msg("update soa metadata")
 		return errResp(c, http.StatusInternalServerError, "failed to update soa metadata", "CK_SOA_UPDATE_FAILED")
 	}
@@ -240,6 +243,9 @@ func (h *Handler) UpdateControlTask(c echo.Context) error {
 	}
 	task, err := h.service.UpdateControlTask(ctx, orgID(c), controlID, taskID, in)
 	if err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "task not found", "CK_TASK_NOT_FOUND")
+		}
 		return errResp(c, http.StatusInternalServerError, "failed to update task", "CK_UPDATE_TASK_FAILED")
 	}
 	return c.JSON(http.StatusOK, task)

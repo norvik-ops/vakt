@@ -561,6 +561,9 @@ func (h *Handler) UpdateMeasure(c echo.Context) error {
 	}
 	measure, err := h.service.UpdateMeasure(c.Request().Context(), orgID(c), measureID, in)
 	if err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "measure not found", "CK_MEASURE_NOT_FOUND")
+		}
 		log.Error().Err(err).Str("measure_id", measureID).Msg("update measure")
 		return errResp(c, http.StatusInternalServerError, "failed to update measure", "CK_INTERNAL")
 	}

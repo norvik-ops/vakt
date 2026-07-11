@@ -3,6 +3,7 @@ package vaktcomply
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -1192,12 +1193,23 @@ var (
 // isNotFound returns true for any "resource does not exist" error — either the
 // service-layer ErrNotFound sentinel or a raw pgx.ErrNoRows from the repository.
 func isNotFound(err error) bool {
-	// S121 (live sweep): several GET/PDF handlers 500'd on a non-existent id
-	// because a sub-package's ErrNotFound (risk/policy) was not recognised here —
-	// each vaktcomply sub-package defines its own sentinel.
-	return errors.Is(err, ErrNotFound) || errors.Is(err, bsi.ErrNotFound) ||
+	if err == nil {
+		return false
+	}
+	// S121 (live sweep): each vaktcomply sub-package defines its own ErrNotFound
+	// sentinel, so all of them must be listed here.
+	if errors.Is(err, ErrNotFound) || errors.Is(err, bsi.ErrNotFound) ||
 		errors.Is(err, audit.ErrNotFound) || errors.Is(err, risk.ErrNotFound) ||
-		errors.Is(err, policy.ErrNotFound) || errors.Is(err, pgx.ErrNoRows)
+		errors.Is(err, policy.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+		return true
+	}
+	// Safety net: the live write-sweep found ~30 handlers returning 500 because a
+	// repository returned a raw fmt.Errorf("X not found") (no sentinel), which the
+	// isNotFound checks above cannot match. A message ENDING in "not found" is that
+	// pattern — treat it as a 404. HasSuffix (not Contains) is deliberate: it will
+	// NOT swallow a genuine schema error like `column "x" does not exist`, so real
+	// query bugs still surface as 500 for the next sweep to catch.
+	return strings.HasSuffix(err.Error(), "not found")
 }
 
 // isBadParam returns true when an error is caused by malformed caller input that

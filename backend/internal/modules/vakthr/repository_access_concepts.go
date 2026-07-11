@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/matharnica/vakt/internal/db"
 )
 
@@ -71,7 +73,7 @@ func (r *Repository) DeleteAccessConcept(ctx context.Context, orgID, id string) 
 		return fmt.Errorf("delete access concept: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("access concept not found")
+		return fmt.Errorf("access concept not found: %w", pgx.ErrNoRows)
 	}
 	return nil
 }
@@ -132,7 +134,7 @@ func (r *Repository) DeleteAccessRole(ctx context.Context, orgID, roleID string)
 		return fmt.Errorf("delete access role: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("access role not found")
+		return fmt.Errorf("access role not found: %w", pgx.ErrNoRows)
 	}
 	return nil
 }
