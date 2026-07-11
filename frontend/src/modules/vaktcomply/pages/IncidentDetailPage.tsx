@@ -18,6 +18,7 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { useIncident, useUpdateIncident, useMarkDeadlineReported, useIncidentReports, useGenerateIncidentReport } from '../hooks/useIncidents'
 import { useAICopilot } from '../../../shared/hooks/useAICopilot'
+import { useAIStatus } from '../hooks/useAIAdvisor'
 import { toast } from '../../../shared/hooks/useToast'
 import { Sparkles } from 'lucide-react'
 import { ReportabilityWizard } from '../components/ReportabilityWizard'
@@ -585,7 +586,15 @@ interface AISuggestActionsProps {
 // Disabled while the description is empty — the LLM needs context to work with.
 function AISuggestActionsButton({ summary, type, onAppend }: AISuggestActionsProps) {
   const { t } = useTranslation()
+  const { data: aiStatus } = useAIStatus()
   const { incidentGuide } = useAICopilot()
+
+  // S121-F3 (P5): hide the AI action entirely when the provider is disabled —
+  // the /ai/incident-guide route is not registered and would 404 on click.
+  if (!aiStatus?.available) {
+    return null
+  }
+
   const handleClick = () => {
     if (!summary.trim()) return
     incidentGuide.mutate(

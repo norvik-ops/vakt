@@ -74,25 +74,17 @@ func TestValidatePasswordStrength_ErrorMessage(t *testing.T) {
 	assert.EqualError(t, err, ErrWeakPassword.Error())
 }
 
-// TestLoginFailKey verifies the key format used for login failure counters.
-// This is important because it determines Redis key namespace isolation.
-func TestLoginFailKey(t *testing.T) {
-	key := loginFailKey("user@example.com")
-	assert.Equal(t, "login_fail:user@example.com", key)
-
-	// Ensure different emails produce different keys.
-	key2 := loginFailKey("other@example.com")
-	assert.NotEqual(t, key, key2)
-}
+// S121-F4: TestLoginFailKey is gone with loginFailKey — the pure per-email
+// lockout counter it namespaced was removed as an account-DoS vector.
 
 // TestLoginIPFailKey verifies the key format used for per-IP login failure counters.
 func TestLoginIPFailKey(t *testing.T) {
 	key := loginIPFailKey("192.168.1.1")
 	assert.Equal(t, "login_fail_ip:192.168.1.1", key)
 
-	// Ensure IP keys are separate from email keys.
-	emailKey := loginFailKey("192.168.1.1")
-	assert.NotEqual(t, key, emailKey, "IP and email keys must use different namespaces")
+	// Ensure the per-IP and per-(IP, email) counters use different namespaces.
+	pairKey := loginIPEmailFailKey("192.168.1.1", "user@example.com")
+	assert.NotEqual(t, key, pairKey, "IP and (IP, email) keys must use different namespaces")
 
 	// Different IPs produce different keys.
 	key2 := loginIPFailKey("10.0.0.1")

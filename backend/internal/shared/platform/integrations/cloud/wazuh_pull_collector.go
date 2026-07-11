@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/matharnica/vakt/internal/shared/httputil"
 	"github.com/rs/zerolog/log"
 )
 
@@ -152,11 +153,21 @@ func (c *WazuhPullCollector) authenticate(ctx context.Context, cfg WazuhConfig) 
 	return authResp.Data.Token, nil
 }
 
+// newHTTPClient builds the Wazuh client. Both branches dial through
+// httputil.GuardedDialContext, which re-resolves and validates the target IP at
+// DIAL time and honours the config's allow_private_target (S121-F4 / F1-Inj:
+// closes the DNS-rebinding TOCTOU window that ValidateOutboundURL alone leaves
+// open — an on-prem Wazuh in RFC1918 space stays reachable via the opt-in flag).
 func (c *WazuhPullCollector) newHTTPClient(cfg WazuhConfig) *http.Client {
-	transport := http.DefaultTransport
+	var transport http.RoundTripper = &http.Transport{
+		DialContext:         httputil.GuardedDialContext(cfg.AllowPrivateTarget),
+		TLSHandshakeTimeout: 10 * time.Second,
+	}
 	if !cfg.VerifyTLS {
 		log.Warn().Str("collector", "wazuh").Msg("TLS certificate verification disabled — only use for self-signed on-prem Wazuh instances")
 		transport = &http.Transport{
+			DialContext:         httputil.GuardedDialContext(cfg.AllowPrivateTarget),
+			TLSHandshakeTimeout: 10 * time.Second,
 			TLSClientConfig: &tls.Config{ // nosemgrep: bypass-tls-verification -- InsecureSkipVerify opt-in for self-signed on-prem Wazuh instances
 				InsecureSkipVerify: true,             // #nosec G402 -- opt-in for self-signed on-prem Wazuh instances
 				MinVersion:         tls.VersionTLS12, // nosemgrep: missing-ssl-minversion

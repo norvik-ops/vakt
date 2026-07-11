@@ -546,10 +546,12 @@ func (s *Service) issueTokenPair(ctx context.Context, userID, orgID string, role
 }
 
 const (
-	// loginFailMax is the number of consecutive failed logins that trigger a lockout.
-	loginFailMax = 5
-	// loginLockoutTTL is the lockout duration and the TTL of the failure counter.
-	loginLockoutTTL = 15 * time.Minute
+	// S121-F4 (F1-Auth): a pure per-email lockout (loginFailMax = 5, keyed only on
+	// the address) used to live here. Because it ignored the source IP, ANY caller
+	// could lock ANY account out of the product with five wrong passwords — a
+	// trivial targeted denial of service, and never part of the documented design.
+	// It has been removed; the two lockouts below are the whole scheme
+	// (S107 / ADR-0044) and neither lets an attacker lock out a third party.
 
 	// ipEmailLockoutFailMax is the number of failed login attempts for a specific
 	// (IP, email) pair that trigger a per-pair lockout. Primary protection: stops
@@ -563,11 +565,6 @@ const (
 	// ipLockoutTTL is the lockout duration for both IP-level lockouts.
 	ipLockoutTTL = 15 * time.Minute
 )
-
-// loginFailKey returns the Redis key used to count consecutive login failures.
-func loginFailKey(email string) string {
-	return "login_fail:" + email
-}
 
 // loginIPFailKey returns the Redis key for counting per-IP login failures.
 func loginIPFailKey(ip string) string {
@@ -615,50 +612,18 @@ func (s *Service) recordIPEmailLoginFailure(ctx context.Context, ip, email strin
 	log.Debug().Str("ip", ip).Str("email_redacted", logsafe.RedactEmail(email)).Int64("count", incrCmd.Val()).Msg("login: recorded IP+email failure")
 }
 
-// checkAccountLocked returns true if the account is currently locked out.
-func (s *Service) checkAccountLocked(ctx context.Context, email string) (bool, error) {
+// clearLoginFailures deletes this user's (IP, email) failure counter after a
+// successful login, so their own typos don't count against them next time.
+//
+// S121-F4: this used to clear the pure per-email counter, which meant the
+// (IP, email) counter survived a successful login — a user who mistyped a few
+// times and then signed in could still be locked out by a single further typo.
+// The per-IP counter is deliberately left alone (see the call site).
+func (s *Service) clearLoginFailures(ctx context.Context, ip, email string) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	val, err := s.redis.Get(ctx, loginFailKey(email)).Int64()
-	if err == redis.Nil {
-		return false, nil
-	}
-	if err != nil {
-		log.Warn().Err(err).Str("email_redacted", logsafe.RedactEmail(email)).Bool("fail_open", s.failOpenOnRedisOutage).Msg("login lockout check: Redis unavailable")
-		if s.failOpenOnRedisOutage {
-			return false, nil
-		}
-		return true, ErrLockoutCheckUnavailable
-	}
-	return val >= loginFailMax, nil
-}
-
-// recordLoginFailure increments the failure counter for the given email,
-// setting a 15-minute TTL on first increment.
-func (s *Service) recordLoginFailure(ctx context.Context, email string) {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-	key := loginFailKey(email)
-	// Use a pipeline: INCR then ExpireNX so the TTL is set only on the FIRST
-	// increment. Subsequent failures preserve the original expiry window,
-	// preventing an attacker from extending the lockout window by submitting
-	// a steady stream of bad passwords (sliding-window attack).
-	pipe := s.redis.Pipeline()
-	incrCmd := pipe.Incr(ctx, key)
-	pipe.ExpireNX(ctx, key, loginLockoutTTL)
-	if _, err := pipe.Exec(ctx); err != nil {
-		log.Warn().Err(err).Str("email_redacted", logsafe.RedactEmail(email)).Msg("login: failed to record login failure")
-		return
-	}
-	log.Debug().Str("email_redacted", logsafe.RedactEmail(email)).Int64("count", incrCmd.Val()).Msg("login: recorded failure")
-}
-
-// clearLoginFailures deletes the login failure counter for the given email.
-func (s *Service) clearLoginFailures(ctx context.Context, email string) {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-	if err := s.redis.Del(ctx, loginFailKey(email)).Err(); err != nil && err != redis.Nil {
-		log.Warn().Err(err).Str("email_redacted", logsafe.RedactEmail(email)).Msg("login: failed to clear login failures")
+	if err := s.redis.Del(ctx, loginIPEmailFailKey(ip, email)).Err(); err != nil && err != redis.Nil {
+		log.Warn().Err(err).Str("ip", ip).Str("email_redacted", logsafe.RedactEmail(email)).Msg("login: failed to clear login failures")
 	}
 }
 

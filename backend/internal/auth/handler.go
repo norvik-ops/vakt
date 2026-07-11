@@ -253,23 +253,13 @@ func (h *Handler) Login(c echo.Context) error {
 		})
 	}
 
-	// Account lockout: reject immediately if too many recent failures for this email.
-	locked, lockErr := h.service.checkAccountLocked(c.Request().Context(), body.Email)
-	if errors.Is(lockErr, ErrLockoutCheckUnavailable) {
-		return c.JSON(http.StatusServiceUnavailable, map[string]string{
-			"error": "Authentication temporarily unavailable. Please retry shortly.",
-			"code":  "AUTH_LOCKOUT_UNAVAILABLE",
-		})
-	}
-	if lockErr != nil {
-		log.Warn().Err(lockErr).Str("email_redacted", logsafe.RedactEmail(body.Email)).Msg("login: lockout check error")
-	}
-	if locked {
-		return c.JSON(http.StatusTooManyRequests, map[string]string{
-			"error": "Account temporarily locked. Try again in 15 minutes.",
-			"code":  "ACCOUNT_LOCKED",
-		})
-	}
+	// S121-F4 (F1-Auth): the pure per-email lockout that used to sit here has been
+	// removed. It locked an account after 5 failures from ANY IP, so anyone could
+	// deny service to any user just by knowing their address — the exact opposite
+	// of the NAT-safe guarantee the (IP, email) scheme (S107/ADR-0044) exists to
+	// provide, and it was never part of the documented design. Targeted brute-force
+	// is covered by the (IP, email) lockout above (10) and credential spraying by
+	// the per-IP lockout (50), both enforced before we get here.
 
 	loginDeviceHint := c.Request().Header.Get("User-Agent")
 	if len(loginDeviceHint) > 120 {
@@ -278,8 +268,8 @@ func (h *Handler) Login(c echo.Context) error {
 	resp, err := h.service.Login(c.Request().Context(), body.Email, body.Password, loginDeviceHint)
 	if err != nil {
 		log.Debug().Err(err).Str("email_redacted", logsafe.RedactEmail(body.Email)).Msg("login failed")
-		// Record failure for per-email, per-(IP,email), and secondary per-IP lockouts.
-		h.service.recordLoginFailure(c.Request().Context(), body.Email)
+		// Record the failure for the primary (IP, email) lockout and the secondary
+		// per-IP lockout. No pure per-email counter — see S121-F4 note above.
 		h.service.recordIPEmailLoginFailure(c.Request().Context(), clientIP, body.Email)
 		h.service.recordIPLoginFailure(c.Request().Context(), clientIP)
 		return c.JSON(http.StatusUnauthorized, map[string]string{
@@ -288,14 +278,18 @@ func (h *Handler) Login(c echo.Context) error {
 		})
 	}
 
-	// Successful login — clear per-email failure counter so the user's own
-	// typos don't count against them on the next attempt.
+	// Successful login — clear this user's (IP, email) failure counter so their own
+	// typos don't count against them on the next attempt. S121-F4: this used to
+	// clear only the (now removed) pure per-email counter, leaving the (IP, email)
+	// counter standing after a successful login — a user who mistyped a few times
+	// and then got in could still be locked out by their next single typo.
+	//
 	// The per-IP counter is intentionally NOT cleared here: clearing it on any
 	// successful login from that IP would let an attacker reset a near-threshold
 	// IP counter by piggybacking on a legitimate login from the same network.
 	// The ExpireNX fix ensures the 15-min TTL runs from the first failure and
 	// expires naturally without any explicit clear needed.
-	h.service.clearLoginFailures(c.Request().Context(), body.Email)
+	h.service.clearLoginFailures(c.Request().Context(), clientIP, body.Email)
 
 	// Set access token as httpOnly cookie (XSS protection).
 	// SameSite=Strict + double-submit CSRF token cookie prevent CSRF.

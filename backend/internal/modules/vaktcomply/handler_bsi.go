@@ -199,6 +199,10 @@ func (h *Handler) GenerateBSIReport(c echo.Context) error {
 	reportType := c.Param("type")
 	data, err := h.service.BSI.GenerateBSIReport(c.Request().Context(), orgID(c), userID(c), reportType)
 	if err != nil {
+		// S121-F3 (P4): an unknown report type is a client mistake → 400, not 500.
+		if isBadParam(err) {
+			return errResp(c, http.StatusBadRequest, "unknown report type", "CK_BSI_UNKNOWN_REPORT_TYPE")
+		}
 		log.Error().Err(err).Str("type", reportType).Msg("generate bsi report")
 		return errResp(c, http.StatusInternalServerError, "failed to generate report", "CK_BSI_REPORT_GEN_FAILED")
 	}

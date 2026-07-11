@@ -40,6 +40,7 @@ import { ControlMappingsBadge } from '../components/ControlMappingsBadge'
 import { useTranslation } from 'react-i18next'
 import { TermTooltip } from '../../../shared/components/TermTooltip'
 import { useAIStream } from '../../../shared/hooks/useAIStream'
+import { useAIStatus } from '../hooks/useAIAdvisor'
 import { toast } from '../../../shared/hooks/useToast'
 import { handleApiError } from '../../../shared/utils/errorMessages'
 import { useAuthStore } from '../../../shared/stores/auth'
@@ -293,7 +294,15 @@ function NotApplicableDialog({
 
 function GapExplainPanel({ controlId, controlTitle }: { controlId: string; controlTitle: string }) {
   const { t } = useTranslation()
+  const { data: aiStatus } = useAIStatus()
   const { text, isStreaming, error, start, stop } = useAIStream()
+
+  // S121-F3 (P5): when the AI provider is disabled the /ai/* routes are not
+  // registered and every call 404s. Hide the panel entirely rather than showing
+  // an "Explain" button that fails on click.
+  if (!aiStatus?.available) {
+    return null
+  }
 
   const handleExplain = () => {
     void start({

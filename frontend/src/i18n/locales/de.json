@@ -5289,6 +5289,7 @@
     "defaultPolicy": "Richtlinie"
   },
   "aiAgent": {
+    "unavailable": "KI-Funktionen sind auf dieser Instanz deaktiviert. Setze VAKT_AI_PROVIDER (z. B. ollama) und starte neu, um den KI-Agenten zu aktivieren.",
     "title": "AI-Agent",
     "betaBadge": "Beta",
     "description": "Lassen Sie den Agenten Tools Ihrer Vakt-Instanz nutzen, um konkrete Aufträge zu erledigen — Plan/Execute/Reflect, alle Schritte transparent.",

@@ -5289,6 +5289,7 @@
     "defaultPolicy": "Politique"
   },
   "aiAgent": {
+    "unavailable": "Les fonctionnalités d'IA sont désactivées sur cette instance. Définissez VAKT_AI_PROVIDER (par ex. ollama) et redémarrez pour activer l'agent IA.",
     "title": "Agent IA",
     "betaBadge": "Bêta",
     "description": "Laissez l'agent utiliser les outils de votre instance Vakt pour accomplir des tâches concrètes — plan/exécution/réflexion, chaque étape transparente.",

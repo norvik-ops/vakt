@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/matharnica/vakt/internal/shared/httputil"
 	"github.com/rs/zerolog/log"
 )
 
@@ -22,45 +23,58 @@ const prometheusSource = "prometheus-collector"
 type PrometheusCollector struct {
 	db         *pgxpool.Pool
 	evidence   EvidenceWriter
-	httpClient *http.Client
+	httpClient *http.Client // injectable for tests; nil in production (see clientFor)
 }
 
 // NewPrometheusCollector creates a new PrometheusCollector.
 func NewPrometheusCollector(db *pgxpool.Pool, evidence EvidenceWriter) *PrometheusCollector {
 	return &PrometheusCollector{
-		db:         db,
-		evidence:   evidence,
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		db:       db,
+		evidence: evidence,
 	}
+}
+
+// clientFor returns the client for this run. Tests inject c.httpClient
+// directly and it is used as-is; in production it is nil and we build a
+// dial-guarded client honouring the config's allow_private_target
+// (S121-F4 / F1-Inj: closes the DNS-rebinding TOCTOU window that
+// ValidateOutboundURL alone leaves open).
+func (c *PrometheusCollector) clientFor(allowPrivate bool) *http.Client {
+	if c.httpClient != nil {
+		return c.httpClient
+	}
+	return httputil.GuardedClient(30*time.Second, allowPrivate)
 }
 
 // Collect runs all Prometheus evidence collectors for the given org and config.
 func (c *PrometheusCollector) Collect(ctx context.Context, orgID string, cfg PrometheusConfig) (int, error) {
+	client := c.clientFor(cfg.AllowPrivateTarget)
+
 	availabilityControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"availability", "capacity", "uptime"})
 	monitoringControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"monitoring", "alerting", "observability"})
 
 	total := 0
 
-	if n, err := c.collectUptime(ctx, orgID, cfg, availabilityControls); err != nil {
+	if n, err := c.collectUptime(ctx, client, orgID, cfg, availabilityControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("prometheus_collector: uptime collection failed")
 	} else {
 		total += n
 	}
 
-	if n, err := c.collectTargetHealth(ctx, orgID, cfg, monitoringControls); err != nil {
+	if n, err := c.collectTargetHealth(ctx, client, orgID, cfg, monitoringControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("prometheus_collector: target health failed")
 	} else {
 		total += n
 	}
 
 	if cfg.AlertmanagerURL != "" {
-		if n, err := c.collectAlerts(ctx, orgID, cfg, monitoringControls); err != nil {
+		if n, err := c.collectAlerts(ctx, client, orgID, cfg, monitoringControls); err != nil {
 			log.Warn().Err(err).Str("org_id", orgID).Msg("prometheus_collector: alerts collection failed")
 		} else {
 			total += n
 		}
 
-		if n, err := c.collectAlertmanagerStatus(ctx, orgID, cfg, monitoringControls); err != nil {
+		if n, err := c.collectAlertmanagerStatus(ctx, client, orgID, cfg, monitoringControls); err != nil {
 			log.Warn().Err(err).Str("org_id", orgID).Msg("prometheus_collector: alertmanager status failed")
 		} else {
 			total += n
@@ -70,7 +84,7 @@ func (c *PrometheusCollector) Collect(ctx context.Context, orgID string, cfg Pro
 	return total, nil
 }
 
-func (c *PrometheusCollector) fetchRaw(ctx context.Context, token, rawURL string) ([]byte, int, error) {
+func (c *PrometheusCollector) fetchRaw(ctx context.Context, client *http.Client, token, rawURL string) ([]byte, int, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return nil, 0, fmt.Errorf("build request: %w", err)
@@ -80,7 +94,7 @@ func (c *PrometheusCollector) fetchRaw(ctx context.Context, token, rawURL string
 	}
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, 0, fmt.Errorf("get %s: %w", rawURL, err)
 	}
@@ -93,8 +107,8 @@ func (c *PrometheusCollector) fetchRaw(ctx context.Context, token, rawURL string
 	return raw, resp.StatusCode, nil
 }
 
-func (c *PrometheusCollector) doGet(ctx context.Context, token, rawURL string) (map[string]any, error) {
-	raw, status, err := c.fetchRaw(ctx, token, rawURL)
+func (c *PrometheusCollector) doGet(ctx context.Context, client *http.Client, token, rawURL string) (map[string]any, error) {
+	raw, status, err := c.fetchRaw(ctx, client, token, rawURL)
 	if err != nil {
 		return nil, err
 	}
@@ -108,8 +122,8 @@ func (c *PrometheusCollector) doGet(ctx context.Context, token, rawURL string) (
 	return result, nil
 }
 
-func (c *PrometheusCollector) doGetArray(ctx context.Context, token, rawURL string) ([]any, error) {
-	raw, status, err := c.fetchRaw(ctx, token, rawURL)
+func (c *PrometheusCollector) doGetArray(ctx context.Context, client *http.Client, token, rawURL string) ([]any, error) {
+	raw, status, err := c.fetchRaw(ctx, client, token, rawURL)
 	if err != nil {
 		return nil, err
 	}
@@ -123,9 +137,9 @@ func (c *PrometheusCollector) doGetArray(ctx context.Context, token, rawURL stri
 	return result, nil
 }
 
-func (c *PrometheusCollector) queryPrometheus(ctx context.Context, cfg PrometheusConfig, query string) (float64, error) {
+func (c *PrometheusCollector) queryPrometheus(ctx context.Context, client *http.Client, cfg PrometheusConfig, query string) (float64, error) {
 	apiURL := cfg.PrometheusURL + "/api/v1/query?query=" + url.QueryEscape(query)
-	result, err := c.doGet(ctx, cfg.Token, apiURL)
+	result, err := c.doGet(ctx, client, cfg.Token, apiURL)
 	if err != nil {
 		return 0, err
 	}
@@ -150,8 +164,8 @@ func (c *PrometheusCollector) queryPrometheus(ctx context.Context, cfg Prometheu
 	return 0, nil
 }
 
-func (c *PrometheusCollector) collectUptime(ctx context.Context, orgID string, cfg PrometheusConfig, controls []ControlMatch) (int, error) {
-	uptime, err := c.queryPrometheus(ctx, cfg, "avg_over_time(up[24h])*100")
+func (c *PrometheusCollector) collectUptime(ctx context.Context, client *http.Client, orgID string, cfg PrometheusConfig, controls []ControlMatch) (int, error) {
+	uptime, err := c.queryPrometheus(ctx, client, cfg, "avg_over_time(up[24h])*100")
 	if err != nil {
 		return 0, err
 	}
@@ -179,9 +193,9 @@ func (c *PrometheusCollector) collectUptime(ctx context.Context, orgID string, c
 	return 1, nil
 }
 
-func (c *PrometheusCollector) collectTargetHealth(ctx context.Context, orgID string, cfg PrometheusConfig, controls []ControlMatch) (int, error) {
+func (c *PrometheusCollector) collectTargetHealth(ctx context.Context, client *http.Client, orgID string, cfg PrometheusConfig, controls []ControlMatch) (int, error) {
 	apiURL := cfg.PrometheusURL + "/api/v1/targets"
-	result, err := c.doGet(ctx, cfg.Token, apiURL)
+	result, err := c.doGet(ctx, client, cfg.Token, apiURL)
 	if err != nil {
 		return 0, err
 	}
@@ -228,10 +242,10 @@ func (c *PrometheusCollector) collectTargetHealth(ctx context.Context, orgID str
 	return 1, nil
 }
 
-func (c *PrometheusCollector) collectAlerts(ctx context.Context, orgID string, cfg PrometheusConfig, controls []ControlMatch) (int, error) {
+func (c *PrometheusCollector) collectAlerts(ctx context.Context, client *http.Client, orgID string, cfg PrometheusConfig, controls []ControlMatch) (int, error) {
 	// Alertmanager /api/v2/alerts returns a JSON array directly
 	apiURL := cfg.AlertmanagerURL + "/api/v2/alerts?filter=severity=critical"
-	alerts, err := c.doGetArray(ctx, cfg.Token, apiURL)
+	alerts, err := c.doGetArray(ctx, client, cfg.Token, apiURL)
 	if err != nil {
 		return 0, err
 	}
@@ -265,9 +279,9 @@ func (c *PrometheusCollector) collectAlerts(ctx context.Context, orgID string, c
 	return 1, nil
 }
 
-func (c *PrometheusCollector) collectAlertmanagerStatus(ctx context.Context, orgID string, cfg PrometheusConfig, controls []ControlMatch) (int, error) {
+func (c *PrometheusCollector) collectAlertmanagerStatus(ctx context.Context, client *http.Client, orgID string, cfg PrometheusConfig, controls []ControlMatch) (int, error) {
 	apiURL := cfg.AlertmanagerURL + "/api/v2/status"
-	result, err := c.doGet(ctx, cfg.Token, apiURL)
+	result, err := c.doGet(ctx, client, cfg.Token, apiURL)
 	if err != nil {
 		return 0, err
 	}
@@ -308,8 +322,9 @@ func (c *PrometheusCollector) addEvidence(ctx context.Context, orgID, controlID,
 
 // CountTargets returns target count for the status endpoint.
 func (c *PrometheusCollector) CountTargets(ctx context.Context, cfg PrometheusConfig) (int, error) {
+	client := c.clientFor(cfg.AllowPrivateTarget)
 	apiURL := cfg.PrometheusURL + "/api/v1/targets"
-	result, err := c.doGet(ctx, cfg.Token, apiURL)
+	result, err := c.doGet(ctx, client, cfg.Token, apiURL)
 	if err != nil {
 		return 0, err
 	}
@@ -326,8 +341,9 @@ func (c *PrometheusCollector) CountActiveAlerts(ctx context.Context, cfg Prometh
 	if cfg.AlertmanagerURL == "" {
 		return 0, nil
 	}
+	client := c.clientFor(cfg.AllowPrivateTarget)
 	apiURL := cfg.AlertmanagerURL + "/api/v2/alerts?filter=severity=critical"
-	alerts, err := c.doGetArray(ctx, cfg.Token, apiURL)
+	alerts, err := c.doGetArray(ctx, client, cfg.Token, apiURL)
 	if err != nil {
 		return 0, err
 	}

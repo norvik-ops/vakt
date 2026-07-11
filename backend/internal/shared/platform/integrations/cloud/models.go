@@ -163,6 +163,9 @@ type WazuhConfig struct {
 	Username  string `json:"username"`   // stored encrypted
 	Password  string `json:"password"`   // stored encrypted
 	VerifyTLS bool   `json:"verify_tls"` // false = accept self-signed
+	// AllowPrivateTarget is persisted (S121-F4 / F1-Inj) so the dial-time SSRF
+	// guard can honour the admin's opt-in at request time, not just at save time.
+	AllowPrivateTarget bool `json:"allow_private_target"`
 }
 
 // SaveWazuhConfigInput is the validated HTTP input for saving Wazuh config.
@@ -197,6 +200,9 @@ type PrometheusConfig struct {
 	PrometheusURL   string `json:"prometheus_url"`   // e.g. "http://prometheus:9090"
 	AlertmanagerURL string `json:"alertmanager_url"` // optional
 	Token           string `json:"token"`            // optional Bearer Token (stored encrypted)
+	// AllowPrivateTarget is persisted (S121-F4 / F1-Inj) so the dial-time SSRF
+	// guard can honour the admin's opt-in at request time, not just at save time.
+	AllowPrivateTarget bool `json:"allow_private_target"`
 }
 
 // SavePrometheusConfigInput is the validated HTTP input for saving Prometheus config.
@@ -292,6 +298,9 @@ type KeycloakConfig struct {
 	Realm        string `json:"realm"`        // e.g. "master" or "company"
 	ClientID     string `json:"client_id"`
 	ClientSecret string `json:"client_secret"` // stored encrypted
+	// AllowPrivateTarget is persisted (S121-F4 / F1-Inj) so the dial-time SSRF
+	// guard can honour the admin's opt-in at request time, not just at save time.
+	AllowPrivateTarget bool `json:"allow_private_target"`
 }
 
 // SaveKeycloakConfigInput is the validated HTTP input for saving Keycloak config.
@@ -373,6 +382,9 @@ type GitLabConfig struct {
 	GitLabURL   string `json:"gitlab_url"`   // e.g. "https://gitlab.example.com" or "https://gitlab.com"
 	AccessToken string `json:"access_token"` // stored encrypted
 	GroupID     string `json:"group_id"`     // optional group namespace or numeric ID
+	// AllowPrivateTarget is persisted (S121-F4 / F1-Inj) so the dial-time SSRF
+	// guard can honour the admin's opt-in at request time, not just at save time.
+	AllowPrivateTarget bool `json:"allow_private_target"`
 }
 
 // SaveGitLabConfigInput is the validated HTTP input for saving GitLab config.
@@ -404,6 +416,9 @@ type GitLabStatus struct {
 type SonarQubeConfig struct {
 	BaseURL string `json:"base_url"` // e.g. "https://sonarqube.example.com" or "https://sonarcloud.io"
 	Token   string `json:"token"`    // stored encrypted
+	// AllowPrivateTarget is persisted (S121-F4 / F1-Inj) so the dial-time SSRF
+	// guard can honour the admin's opt-in at request time, not just at save time.
+	AllowPrivateTarget bool `json:"allow_private_target"`
 }
 
 // SaveSonarQubeConfigInput is the validated HTTP input for saving SonarQube config.

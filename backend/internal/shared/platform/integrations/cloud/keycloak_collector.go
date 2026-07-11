@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/matharnica/vakt/internal/shared/httputil"
 	"github.com/rs/zerolog/log"
 )
 
@@ -25,7 +26,7 @@ const keycloakSource = "keycloak-collector"
 type KeycloakCollector struct {
 	db         *pgxpool.Pool
 	evidence   EvidenceWriter
-	httpClient *http.Client
+	httpClient *http.Client // injectable for tests; nil in production (see clientFor)
 }
 
 // NewKeycloakCollector creates a new KeycloakCollector.
@@ -33,15 +34,26 @@ func NewKeycloakCollector(db *pgxpool.Pool, evidence EvidenceWriter) *KeycloakCo
 	return &KeycloakCollector{
 		db:       db,
 		evidence: evidence,
-		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
-		},
 	}
+}
+
+// clientFor returns the client for this run. Tests inject c.httpClient
+// directly and it is used as-is; in production it is nil and we build a
+// dial-guarded client honouring the config's allow_private_target
+// (S121-F4 / F1-Inj: closes the DNS-rebinding TOCTOU window that
+// ValidateOutboundURL alone leaves open).
+func (c *KeycloakCollector) clientFor(allowPrivate bool) *http.Client {
+	if c.httpClient != nil {
+		return c.httpClient
+	}
+	return httputil.GuardedClient(30*time.Second, allowPrivate)
 }
 
 // Collect runs all Keycloak evidence collectors. Returns the number of evidence items created.
 func (c *KeycloakCollector) Collect(ctx context.Context, orgID string, cfg KeycloakConfig) (int, error) {
-	token, err := c.authenticate(ctx, cfg)
+	client := c.clientFor(cfg.AllowPrivateTarget)
+
+	token, err := c.authenticate(ctx, client, cfg)
 	if err != nil {
 		return 0, fmt.Errorf("keycloak auth: %w", err)
 	}
@@ -52,18 +64,18 @@ func (c *KeycloakCollector) Collect(ctx context.Context, orgID string, cfg Keycl
 
 	total := 0
 
-	users, err := c.getAllUsers(ctx, cfg, token)
+	users, err := c.getAllUsers(ctx, client, cfg, token)
 	if err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("keycloak_collector: could not load users")
 	}
 
-	if n, err := c.collectMFAStatus(ctx, orgID, baseURL, token, users, identityControls); err != nil {
+	if n, err := c.collectMFAStatus(ctx, client, orgID, baseURL, token, users, identityControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("keycloak_collector: mfa status failed")
 	} else {
 		total += n
 	}
 
-	if n, err := c.collectPasswordPolicy(ctx, orgID, baseURL, token, identityControls); err != nil {
+	if n, err := c.collectPasswordPolicy(ctx, client, orgID, baseURL, token, identityControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("keycloak_collector: password policy failed")
 	} else {
 		total += n
@@ -75,13 +87,13 @@ func (c *KeycloakCollector) Collect(ctx context.Context, orgID string, cfg Keycl
 		total += n
 	}
 
-	if n, err := c.collectAdminRoles(ctx, orgID, baseURL, token, users, accessControls); err != nil {
+	if n, err := c.collectAdminRoles(ctx, client, orgID, baseURL, token, users, accessControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("keycloak_collector: admin roles failed")
 	} else {
 		total += n
 	}
 
-	if n, err := c.collectSessionPolicy(ctx, orgID, baseURL, token, identityControls); err != nil {
+	if n, err := c.collectSessionPolicy(ctx, client, orgID, baseURL, token, identityControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("keycloak_collector: session policy failed")
 	} else {
 		total += n
@@ -91,7 +103,7 @@ func (c *KeycloakCollector) Collect(ctx context.Context, orgID string, cfg Keycl
 }
 
 // authenticate obtains a Bearer token via client_credentials from the realm token endpoint.
-func (c *KeycloakCollector) authenticate(ctx context.Context, cfg KeycloakConfig) (string, error) {
+func (c *KeycloakCollector) authenticate(ctx context.Context, client *http.Client, cfg KeycloakConfig) (string, error) {
 	tokenURL := strings.TrimRight(cfg.KeycloakURL, "/") +
 		"/realms/" + cfg.Realm + "/protocol/openid-connect/token"
 
@@ -106,7 +118,7 @@ func (c *KeycloakCollector) authenticate(ctx context.Context, cfg KeycloakConfig
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("token request: %w", err)
 	}
@@ -143,7 +155,7 @@ type keycloakUser struct {
 }
 
 // getAllUsers fetches all users from the realm using pagination.
-func (c *KeycloakCollector) getAllUsers(ctx context.Context, cfg KeycloakConfig, token string) ([]keycloakUser, error) {
+func (c *KeycloakCollector) getAllUsers(ctx context.Context, client *http.Client, cfg KeycloakConfig, token string) ([]keycloakUser, error) {
 	baseURL := strings.TrimRight(cfg.KeycloakURL, "/") + "/admin/realms/" + cfg.Realm
 
 	var all []keycloakUser
@@ -159,7 +171,7 @@ func (c *KeycloakCollector) getAllUsers(ctx context.Context, cfg KeycloakConfig,
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Accept", "application/json")
 
-		resp, err := c.httpClient.Do(req)
+		resp, err := client.Do(req)
 		if err != nil {
 			return all, fmt.Errorf("get users: %w", err)
 		}
@@ -193,7 +205,7 @@ func (c *KeycloakCollector) getAllUsers(ctx context.Context, cfg KeycloakConfig,
 }
 
 // collectMFAStatus checks OTP credentials for each user.
-func (c *KeycloakCollector) collectMFAStatus(ctx context.Context, orgID, baseURL, token string, users []keycloakUser, controls []ControlMatch) (int, error) {
+func (c *KeycloakCollector) collectMFAStatus(ctx context.Context, client *http.Client, orgID, baseURL, token string, users []keycloakUser, controls []ControlMatch) (int, error) {
 	total := len(users)
 	mfaEnabled := 0
 
@@ -206,7 +218,7 @@ func (c *KeycloakCollector) collectMFAStatus(ctx context.Context, orgID, baseURL
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Accept", "application/json")
 
-		resp, err := c.httpClient.Do(req)
+		resp, err := client.Do(req)
 		if err != nil {
 			continue
 		}
@@ -258,7 +270,7 @@ func (c *KeycloakCollector) collectMFAStatus(ctx context.Context, orgID, baseURL
 }
 
 // collectPasswordPolicy evaluates the realm password policy string.
-func (c *KeycloakCollector) collectPasswordPolicy(ctx context.Context, orgID, baseURL, token string, controls []ControlMatch) (int, error) {
+func (c *KeycloakCollector) collectPasswordPolicy(ctx context.Context, client *http.Client, orgID, baseURL, token string, controls []ControlMatch) (int, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL, nil)
 	if err != nil {
 		return 0, fmt.Errorf("build realm request: %w", err)
@@ -266,7 +278,7 @@ func (c *KeycloakCollector) collectPasswordPolicy(ctx context.Context, orgID, ba
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return 0, fmt.Errorf("get realm: %w", err)
 	}
@@ -346,7 +358,7 @@ func (c *KeycloakCollector) collectInactiveUsers(ctx context.Context, orgID stri
 }
 
 // collectAdminRoles finds users with realm-admin, manage-users, or manage-realm roles.
-func (c *KeycloakCollector) collectAdminRoles(ctx context.Context, orgID, baseURL, token string, users []keycloakUser, controls []ControlMatch) (int, error) {
+func (c *KeycloakCollector) collectAdminRoles(ctx context.Context, client *http.Client, orgID, baseURL, token string, users []keycloakUser, controls []ControlMatch) (int, error) {
 	adminRoles := map[string]bool{
 		"realm-admin":  true,
 		"manage-users": true,
@@ -363,7 +375,7 @@ func (c *KeycloakCollector) collectAdminRoles(ctx context.Context, orgID, baseUR
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Accept", "application/json")
 
-		resp, err := c.httpClient.Do(req)
+		resp, err := client.Do(req)
 		if err != nil {
 			continue
 		}
@@ -402,7 +414,7 @@ func (c *KeycloakCollector) collectAdminRoles(ctx context.Context, orgID, baseUR
 }
 
 // collectSessionPolicy evaluates the SSO session timeout configuration.
-func (c *KeycloakCollector) collectSessionPolicy(ctx context.Context, orgID, baseURL, token string, controls []ControlMatch) (int, error) {
+func (c *KeycloakCollector) collectSessionPolicy(ctx context.Context, client *http.Client, orgID, baseURL, token string, controls []ControlMatch) (int, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL, nil)
 	if err != nil {
 		return 0, fmt.Errorf("build realm request: %w", err)
@@ -410,7 +422,7 @@ func (c *KeycloakCollector) collectSessionPolicy(ctx context.Context, orgID, bas
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return 0, fmt.Errorf("get realm: %w", err)
 	}

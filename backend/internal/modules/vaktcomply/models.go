@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/audit"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/bsi"
 )
@@ -1191,4 +1192,24 @@ var (
 func isNotFound(err error) bool {
 	return errors.Is(err, ErrNotFound) || errors.Is(err, bsi.ErrNotFound) ||
 		errors.Is(err, audit.ErrNotFound) || errors.Is(err, pgx.ErrNoRows)
+}
+
+// isBadParam returns true when an error is caused by malformed caller input that
+// reached Postgres — a bad UUID/number in a path param surfaces as SQLSTATE
+// 22P02 (invalid_text_representation). S121-F3 (P4): lets handlers answer 400
+// instead of leaking a 500 for a client mistake. Also matches the BSI
+// unknown-report-type sentinel, which is likewise a bad-input case.
+func isBadParam(err error) bool {
+	if errors.Is(err, bsi.ErrUnknownReportType) {
+		return true
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "22P02", // invalid_text_representation (bad UUID / int)
+			"22003": // numeric_value_out_of_range
+			return true
+		}
+	}
+	return false
 }

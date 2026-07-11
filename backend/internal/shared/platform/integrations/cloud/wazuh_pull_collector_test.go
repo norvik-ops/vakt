@@ -101,11 +101,14 @@ func TestWazuhPullCollector_CollectsActiveAgent(t *testing.T) {
 	}
 	collector := &WazuhPullCollector{evidence: ew}
 
+	// httptest serves on loopback (127.0.0.1) and the S121-F4 dial guard refuses
+	// private/loopback targets unless allow_private_target is set.
 	n, err := collector.Collect(context.Background(), "org-1", WazuhConfig{
-		BaseURL:   srv.URL,
-		Username:  "wazuh",
-		Password:  "pass",
-		VerifyTLS: true,
+		BaseURL:            srv.URL,
+		Username:           "wazuh",
+		Password:           "pass",
+		VerifyTLS:          true,
+		AllowPrivateTarget: true,
 	})
 
 	require.NoError(t, err)
@@ -131,11 +134,14 @@ func TestWazuhPullCollector_OfflineAgentWarning(t *testing.T) {
 	}
 	collector := &WazuhPullCollector{evidence: ew}
 
+	// httptest serves on loopback (127.0.0.1) and the S121-F4 dial guard refuses
+	// private/loopback targets unless allow_private_target is set.
 	n, err := collector.Collect(context.Background(), "org-1", WazuhConfig{
-		BaseURL:   srv.URL,
-		Username:  "wazuh",
-		Password:  "pass",
-		VerifyTLS: true,
+		BaseURL:            srv.URL,
+		Username:           "wazuh",
+		Password:           "pass",
+		VerifyTLS:          true,
+		AllowPrivateTarget: true,
 	})
 
 	require.NoError(t, err)
@@ -197,8 +203,13 @@ func TestWazuhPullCollector_CriticalCVEWarning(t *testing.T) {
 	}
 	collector := &WazuhPullCollector{evidence: ew}
 
+	// AllowPrivateTarget: httptest = loopback, see dial guard note above.
 	n, err := collector.Collect(context.Background(), "org-1", WazuhConfig{
-		BaseURL: srv.URL, Username: "wazuh", Password: "pass", VerifyTLS: true,
+		BaseURL:            srv.URL,
+		Username:           "wazuh",
+		Password:           "pass",
+		VerifyTLS:          true,
+		AllowPrivateTarget: true,
 	})
 
 	require.NoError(t, err)
@@ -212,8 +223,13 @@ func TestWazuhPullCollector_AuthFailure(t *testing.T) {
 	defer srv.Close()
 
 	collector := &WazuhPullCollector{evidence: &mockEvidenceWriter{}}
+	// AllowPrivateTarget: httptest = loopback, see dial guard note above.
 	_, err := collector.Collect(context.Background(), "org-1", WazuhConfig{
-		BaseURL: srv.URL, Username: "bad", Password: "creds", VerifyTLS: true,
+		BaseURL:            srv.URL,
+		Username:           "bad",
+		Password:           "creds",
+		VerifyTLS:          true,
+		AllowPrivateTarget: true,
 	})
 	assert.Error(t, err, "expected error on auth failure")
 	assert.Contains(t, err.Error(), "wazuh auth")

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/matharnica/vakt/internal/shared/httputil"
 	"github.com/rs/zerolog/log"
 )
 
@@ -23,16 +24,27 @@ const gitlabSource = "gitlab-collector"
 type GitLabCollector struct {
 	db         *pgxpool.Pool
 	evidence   EvidenceWriter
-	httpClient *http.Client // injectable for tests
+	httpClient *http.Client // injectable for tests; nil in production (see clientFor)
 }
 
 // NewGitLabCollector creates a new GitLabCollector.
 func NewGitLabCollector(db *pgxpool.Pool, evidence EvidenceWriter) *GitLabCollector {
 	return &GitLabCollector{
-		db:         db,
-		evidence:   evidence,
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		db:       db,
+		evidence: evidence,
 	}
+}
+
+// clientFor returns the client for this run. Tests inject c.httpClient
+// directly and it is used as-is; in production it is nil and we build a
+// dial-guarded client honouring the config's allow_private_target
+// (S121-F4 / F1-Inj: closes the DNS-rebinding TOCTOU window that
+// ValidateOutboundURL alone leaves open).
+func (c *GitLabCollector) clientFor(allowPrivate bool) *http.Client {
+	if c.httpClient != nil {
+		return c.httpClient
+	}
+	return httputil.GuardedClient(30*time.Second, allowPrivate)
 }
 
 // gitlabProject is a minimal GitLab project representation.
@@ -75,7 +87,9 @@ type gitlabVulnFinding struct {
 
 // Collect runs all GitLab evidence collectors for the given org and config.
 func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabConfig) (int, error) {
-	projects, err := c.listProjects(ctx, cfg)
+	client := c.clientFor(cfg.AllowPrivateTarget)
+
+	projects, err := c.listProjects(ctx, client, cfg)
 	if err != nil {
 		return 0, fmt.Errorf("gitlab: list projects: %w", err)
 	}
@@ -92,7 +106,7 @@ func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabC
 
 	for _, p := range projects {
 		// Branch protection
-		protected, err := c.collectBranchProtection(ctx, cfg, p)
+		protected, err := c.collectBranchProtection(ctx, client, cfg, p)
 		if err != nil {
 			log.Warn().Err(err).Int("project_id", p.ID).Msg("gitlab_collector: branch protection failed")
 		} else {
@@ -102,7 +116,7 @@ func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabC
 		}
 
 		// MR approvals
-		hasApproval, err := c.collectMRApprovals(ctx, cfg, p)
+		hasApproval, err := c.collectMRApprovals(ctx, client, cfg, p)
 		if err != nil {
 			log.Warn().Err(err).Int("project_id", p.ID).Msg("gitlab_collector: mr approvals failed")
 		} else {
@@ -112,7 +126,7 @@ func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabC
 		}
 
 		// SAST presence
-		hasSAST, err := c.collectSASTPresence(ctx, cfg, p)
+		hasSAST, err := c.collectSASTPresence(ctx, client, cfg, p)
 		if err != nil {
 			log.Warn().Err(err).Int("project_id", p.ID).Msg("gitlab_collector: sast presence failed")
 		} else if hasSAST {
@@ -120,7 +134,7 @@ func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabC
 		}
 
 		// Vulnerability findings (GitLab EE/Ultimate only — 403 = skip)
-		n, err := c.collectVulnerabilityFindings(ctx, orgID, cfg, p)
+		n, err := c.collectVulnerabilityFindings(ctx, client, orgID, cfg, p)
 		if err != nil {
 			log.Warn().Err(err).Int("project_id", p.ID).Msg("gitlab_collector: vuln findings failed")
 		} else {
@@ -196,7 +210,7 @@ func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabC
 }
 
 // listProjects returns all accessible projects for the configured group or membership.
-func (c *GitLabCollector) listProjects(ctx context.Context, cfg GitLabConfig) ([]gitlabProject, error) {
+func (c *GitLabCollector) listProjects(ctx context.Context, client *http.Client, cfg GitLabConfig) ([]gitlabProject, error) {
 	var baseURL string
 	if cfg.GroupID != "" {
 		baseURL = fmt.Sprintf("%s/api/v4/groups/%s/projects?per_page=100&include_subgroups=true&order_by=id",
@@ -206,7 +220,7 @@ func (c *GitLabCollector) listProjects(ctx context.Context, cfg GitLabConfig) ([
 			strings.TrimRight(cfg.GitLabURL, "/"))
 	}
 
-	raw, err := c.gitlabGetAll(ctx, baseURL, cfg.AccessToken)
+	raw, err := c.gitlabGetAll(ctx, client, baseURL, cfg.AccessToken)
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +236,7 @@ func (c *GitLabCollector) listProjects(ctx context.Context, cfg GitLabConfig) ([
 }
 
 // collectBranchProtection returns true if the project's default branch is protected.
-func (c *GitLabCollector) collectBranchProtection(ctx context.Context, cfg GitLabConfig, p gitlabProject) (bool, error) {
+func (c *GitLabCollector) collectBranchProtection(ctx context.Context, client *http.Client, cfg GitLabConfig, p gitlabProject) (bool, error) {
 	branch := p.DefaultBranch
 	if branch == "" {
 		branch = "main"
@@ -230,7 +244,7 @@ func (c *GitLabCollector) collectBranchProtection(ctx context.Context, cfg GitLa
 	apiURL := fmt.Sprintf("%s/api/v4/projects/%d/protected_branches",
 		strings.TrimRight(cfg.GitLabURL, "/"), p.ID)
 
-	raw, err := c.gitlabGetAll(ctx, apiURL, cfg.AccessToken)
+	raw, err := c.gitlabGetAll(ctx, client, apiURL, cfg.AccessToken)
 	if err != nil {
 		return false, err
 	}
@@ -250,7 +264,7 @@ func (c *GitLabCollector) collectBranchProtection(ctx context.Context, cfg GitLa
 }
 
 // collectMRApprovals returns true if the project requires at least one approver.
-func (c *GitLabCollector) collectMRApprovals(ctx context.Context, cfg GitLabConfig, p gitlabProject) (bool, error) {
+func (c *GitLabCollector) collectMRApprovals(ctx context.Context, client *http.Client, cfg GitLabConfig, p gitlabProject) (bool, error) {
 	apiURL := fmt.Sprintf("%s/api/v4/projects/%d/approvals",
 		strings.TrimRight(cfg.GitLabURL, "/"), p.ID)
 
@@ -260,7 +274,7 @@ func (c *GitLabCollector) collectMRApprovals(ctx context.Context, cfg GitLabConf
 	}
 	req.Header.Set("PRIVATE-TOKEN", cfg.AccessToken)
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return false, err
 	}
@@ -282,11 +296,11 @@ func (c *GitLabCollector) collectMRApprovals(ctx context.Context, cfg GitLabConf
 }
 
 // collectSASTPresence returns true if any recent successful job has "sast" in its name.
-func (c *GitLabCollector) collectSASTPresence(ctx context.Context, cfg GitLabConfig, p gitlabProject) (bool, error) {
+func (c *GitLabCollector) collectSASTPresence(ctx context.Context, client *http.Client, cfg GitLabConfig, p gitlabProject) (bool, error) {
 	apiURL := fmt.Sprintf("%s/api/v4/projects/%d/jobs?scope=success&per_page=100",
 		strings.TrimRight(cfg.GitLabURL, "/"), p.ID)
 
-	raw, err := c.gitlabGetAll(ctx, apiURL, cfg.AccessToken)
+	raw, err := c.gitlabGetAll(ctx, client, apiURL, cfg.AccessToken)
 	if err != nil {
 		return false, err
 	}
@@ -315,7 +329,7 @@ func hasSASTJob(name string) bool {
 
 // collectVulnerabilityFindings imports GitLab EE/Ultimate vulnerability findings as vaktscan findings.
 // Returns 0, nil if GitLab EE is not available (403).
-func (c *GitLabCollector) collectVulnerabilityFindings(ctx context.Context, orgID string, cfg GitLabConfig, p gitlabProject) (int, error) {
+func (c *GitLabCollector) collectVulnerabilityFindings(ctx context.Context, client *http.Client, orgID string, cfg GitLabConfig, p gitlabProject) (int, error) {
 	apiURL := fmt.Sprintf("%s/api/v4/projects/%d/vulnerability_findings?state=detected&severity=critical,high&per_page=100",
 		strings.TrimRight(cfg.GitLabURL, "/"), p.ID)
 
@@ -325,7 +339,7 @@ func (c *GitLabCollector) collectVulnerabilityFindings(ctx context.Context, orgI
 	}
 	req.Header.Set("PRIVATE-TOKEN", cfg.AccessToken)
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return 0, err
 	}
@@ -384,7 +398,7 @@ func (c *GitLabCollector) collectVulnerabilityFindings(ctx context.Context, orgI
 }
 
 // gitlabGetAll fetches all pages from a GitLab REST API endpoint (Link-header pagination).
-func (c *GitLabCollector) gitlabGetAll(ctx context.Context, startURL, token string) ([]json.RawMessage, error) {
+func (c *GitLabCollector) gitlabGetAll(ctx context.Context, client *http.Client, startURL, token string) ([]json.RawMessage, error) {
 	var all []json.RawMessage
 	nextURL := startURL
 
@@ -395,7 +409,7 @@ func (c *GitLabCollector) gitlabGetAll(ctx context.Context, startURL, token stri
 		}
 		req.Header.Set("PRIVATE-TOKEN", token)
 
-		resp, err := c.httpClient.Do(req)
+		resp, err := client.Do(req)
 		if err != nil {
 			return nil, err
 		}
@@ -477,12 +491,14 @@ func (c *GitLabCollector) addEvidence(ctx context.Context, orgID, controlID, tit
 
 // CountUnprotectedBranches returns the number of projects without branch protection (used by status).
 func (c *GitLabCollector) CountUnprotectedBranches(ctx context.Context, cfg GitLabConfig) (projectCount, unprotectedCount int, err error) {
-	projects, err := c.listProjects(ctx, cfg)
+	client := c.clientFor(cfg.AllowPrivateTarget)
+
+	projects, err := c.listProjects(ctx, client, cfg)
 	if err != nil {
 		return 0, 0, err
 	}
 	for _, p := range projects {
-		protected, _ := c.collectBranchProtection(ctx, cfg, p)
+		protected, _ := c.collectBranchProtection(ctx, client, cfg, p)
 		if !protected {
 			unprotectedCount++
 		}

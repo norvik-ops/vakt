@@ -65,7 +65,7 @@ func (s *Service) GenerateBSIReport(ctx context.Context, orgID, userID, reportTy
 	case "full":
 		data, err = renderer.RenderFull(ctx)
 	default:
-		return nil, fmt.Errorf("unknown report type: %s", reportType)
+		return nil, fmt.Errorf("%w: %s", ErrUnknownReportType, reportType)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("render %s: %w", reportType, err)

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { AgentRunPanel } from '../../../shared/components/AgentRunPanel'
 import { AIDisclaimer } from '../../../shared/components/AIDisclaimer'
+import { useAIStatus } from '../hooks/useAIAdvisor'
 
 // Sprint 18 + S22-8: AI-Agent-Page mit Live-Visualisierung des Plan/Execute/
 // Reflect-Loops. Wird im SecVitals-Modul gemountet, weil die meisten der
@@ -11,6 +12,7 @@ import { AIDisclaimer } from '../../../shared/components/AIDisclaimer'
 
 export default function AIAgentPage() {
   const { t } = useTranslation()
+  const { data: aiStatus } = useAIStatus()
 
   return (
     <div className="space-y-6 p-6">
@@ -23,7 +25,15 @@ export default function AIAgentPage() {
         </span>
       </div>
       <AIDisclaimer />
-      <AgentRunPanel />
+      {/* S121-F3 (P5): the agent needs the /ai/* routes, which are absent when the
+          provider is disabled. Show a clear notice instead of a panel that 404s. */}
+      {aiStatus && !aiStatus.available ? (
+        <div className="rounded-lg border border-border bg-muted/20 p-6 text-sm text-secondary">
+          {t('aiAgent.unavailable')}
+        </div>
+      ) : (
+        <AgentRunPanel />
+      )}
       <div className="rounded-lg border border-border bg-muted/20 p-4 text-xs text-secondary leading-relaxed">
         <p className="font-semibold text-primary mb-1">{t('aiAgent.whatTitle')}</p>
         <ul className="space-y-1 list-disc list-inside">

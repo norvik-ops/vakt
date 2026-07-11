@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
@@ -316,6 +317,14 @@ func (h *Handler) ExportCampaignReport(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
 	pdfBytes, filename, err := h.service.ExportCampaignReport(c.Request().Context(), orgID, c.Param("id"))
 	if err != nil {
+		// S121-F3 (P4): malformed campaign id → 400, missing campaign → 404, else 500.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && (pgErr.Code == "22P02" || pgErr.Code == "22003") {
+			return errJSON(c, http.StatusBadRequest, "invalid campaign id", "PG_BAD_REQUEST")
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errJSON(c, http.StatusNotFound, "campaign not found", "SR_NOT_FOUND")
+		}
 		log.Error().Err(err).Str("campaign_id", c.Param("id")).Msg("export campaign report")
 		return errJSON(c, http.StatusInternalServerError, "failed to generate report", "PG_REPORT_ERROR")
 	}

@@ -230,6 +230,13 @@ func (h *Handler) GetAuditProgramSummary(c echo.Context) error {
 func (h *Handler) ExportAuditProgramReport(c echo.Context) error {
 	data, err := h.service.Audit.ExportAuditReport(c.Request().Context(), orgID(c), c.Param("id"))
 	if err != nil {
+		// S121-F3 (P4): malformed id → 400, missing audit → 404, else 500.
+		if isBadParam(err) {
+			return errResp(c, http.StatusBadRequest, "invalid audit id", "CK_BAD_REQUEST")
+		}
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "audit not found", "CK_AUDIT_NOT_FOUND")
+		}
 		log.Error().Err(err).Msg("export audit report")
 		return errResp(c, http.StatusInternalServerError, "export failed", "CK_AUDIT_EXPORT_FAILED")
 	}
@@ -694,6 +701,14 @@ func (h *Handler) ListCCMResults(c echo.Context) error {
 
 	results, err := h.service.ListCCMResults(c.Request().Context(), orgID(c), id)
 	if err != nil {
+		// S121-F3 (P4): a malformed check id is a client mistake → 400; a
+		// non-existent one → 404. Neither is a 500.
+		if isBadParam(err) {
+			return errResp(c, http.StatusBadRequest, "invalid check id", "CK_BAD_REQUEST")
+		}
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "CCM check not found", "CCM_NOT_FOUND")
+		}
 		log.Error().Err(err).Str("id", id).Msg("list ccm results")
 		return errResp(c, http.StatusInternalServerError, "failed to list CCM results", "CCM_RESULTS_FAILED")
 	}

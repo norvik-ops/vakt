@@ -341,6 +341,10 @@ func (h *Handler) DownloadEvidenceFile(c echo.Context) error {
 	fileID := c.Param("fid")
 	ef, diskPath, err := h.evidenceFiles.Download(c.Request().Context(), orgID(c), fileID)
 	if err != nil {
+		// S121-F3 (P4): a malformed file id is a client mistake → 400, not a 500 leak.
+		if isBadParam(err) {
+			return errResp(c, http.StatusBadRequest, "invalid file id", "CK_BAD_REQUEST")
+		}
 		log.Error().Err(err).Str("file_id", fileID).Msg("download evidence file")
 		return errResp(c, http.StatusNotFound, "file not found", "CK_NOT_FOUND")
 	}

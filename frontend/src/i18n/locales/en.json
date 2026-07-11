@@ -5289,6 +5289,7 @@
     "defaultPolicy": "Policy"
   },
   "aiAgent": {
+    "unavailable": "AI features are disabled on this instance. Set VAKT_AI_PROVIDER (e.g. ollama) and restart to enable the AI agent.",
     "title": "AI Agent",
     "betaBadge": "Beta",
     "description": "Let the agent use your Vakt instance's tools to complete concrete tasks — plan/execute/reflect, every step transparent.",

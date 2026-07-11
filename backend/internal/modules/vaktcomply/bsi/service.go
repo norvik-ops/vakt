@@ -28,6 +28,10 @@ func NewService(pool *pgxpool.Pool) *Service {
 var (
 	// ErrNotFound is returned when a requested resource does not exist.
 	ErrNotFound = errors.New("not found")
+	// ErrUnknownReportType is returned when a caller asks for a BSI report type
+	// that does not exist. S121-F3 (P4): lets the handler answer 400 (bad input)
+	// instead of 500. Sentinel, not string matching.
+	ErrUnknownReportType = errors.New("unknown report type")
 	// ErrConflict is returned when a uniqueness constraint is violated.
 	ErrConflict = errors.New("resource already exists")
 	// ErrCycle is returned when adding a dependency would create a cycle.

@@ -661,6 +661,9 @@ func (s *Service) SaveWazuhConfig(ctx context.Context, orgID string, in SaveWazu
 		"username":   in.Username,
 		"password":   encPw,
 		"verify_tls": in.VerifyTLS,
+		// S121-F4 (F1-Inj): persist the opt-in so the dial-time SSRF guard
+		// can honour it at request time.
+		"allow_private_target": in.AllowPrivateTarget,
 	})
 }
 
@@ -791,6 +794,9 @@ func (s *Service) SavePrometheusConfig(ctx context.Context, orgID string, in Sav
 		"prometheus_url":   in.PrometheusURL,
 		"alertmanager_url": in.AlertmanagerURL,
 		"token":            encToken,
+		// S121-F4 (F1-Inj): persist the opt-in so the dial-time SSRF guard
+		// can honour it at request time.
+		"allow_private_target": in.AllowPrivateTarget,
 	})
 }
 
@@ -1145,6 +1151,9 @@ func (s *Service) SaveKeycloakConfig(ctx context.Context, orgID string, in SaveK
 		"realm":         in.Realm,
 		"client_id":     in.ClientID,
 		"client_secret": encSecret,
+		// S121-F4 (F1-Inj): persist the opt-in so the dial-time SSRF guard
+		// can honour it at request time.
+		"allow_private_target": in.AllowPrivateTarget,
 	})
 }
 
@@ -1436,6 +1445,9 @@ func (s *Service) SaveGitLabConfig(ctx context.Context, orgID string, in SaveGit
 		"gitlab_url":   in.GitLabURL,
 		"access_token": encToken,
 		"group_id":     in.GroupID,
+		// S121-F4 (F1-Inj): persist the opt-in so the dial-time SSRF guard
+		// can honour it at request time.
+		"allow_private_target": in.AllowPrivateTarget,
 	})
 }
 
@@ -1553,6 +1565,9 @@ func (s *Service) SaveSonarQubeConfig(ctx context.Context, orgID string, in Save
 	return s.repo.UpsertConfig(ctx, orgID, ProviderSonarQube, map[string]any{
 		"base_url": in.BaseURL,
 		"token":    encToken,
+		// S121-F4 (F1-Inj): persist the opt-in so the dial-time SSRF guard
+		// can honour it at request time.
+		"allow_private_target": in.AllowPrivateTarget,
 	})
 }
 

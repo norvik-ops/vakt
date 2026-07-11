@@ -32,10 +32,14 @@ func dialFailingRedis(t *testing.T) *redis.Client {
 // Without VAKT_AUTH_FAIL_OPEN_ON_REDIS_OUTAGE the service must reject
 // reads when Redis cannot answer: returns (true, ErrLockoutCheckUnavailable)
 // so the caller knows to surface a 503 — never a 200.
+//
+// S121-F4: exercised against the (IP, email) lockout, which is now the primary
+// account lockout (the pure per-email counter was removed as an account-DoS
+// vector). The fail-closed guarantee itself is unchanged.
 func TestCheckAccountLocked_FailClosedByDefault(t *testing.T) {
 	svc := &Service{redis: dialFailingRedis(t)}
 
-	locked, err := svc.checkAccountLocked(context.Background(), "victim@example.org")
+	locked, err := svc.checkIPEmailLocked(context.Background(), "203.0.113.5", "victim@example.org")
 	assert.True(t, locked, "fail-closed must report the account as locked")
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, ErrLockoutCheckUnavailable))
@@ -58,7 +62,7 @@ func TestCheckIPLocked_FailClosedByDefault(t *testing.T) {
 func TestCheckAccountLocked_FailOpenIfConfigured(t *testing.T) {
 	svc := (&Service{redis: dialFailingRedis(t)}).WithFailOpenOnRedisOutage(true)
 
-	locked, err := svc.checkAccountLocked(context.Background(), "victim@example.org")
+	locked, err := svc.checkIPEmailLocked(context.Background(), "203.0.113.5", "victim@example.org")
 	assert.False(t, locked, "fail-open must let the request through")
 	assert.NoError(t, err)
 }

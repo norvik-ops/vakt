@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/matharnica/vakt/internal/shared/httputil"
 	"github.com/rs/zerolog/log"
 )
 
@@ -23,16 +24,27 @@ const sonarqubeSource = "sonarqube-collector"
 type SonarQubeCollector struct {
 	db         *pgxpool.Pool
 	evidence   EvidenceWriter
-	httpClient *http.Client // injectable for tests
+	httpClient *http.Client // injectable for tests; nil in production (see clientFor)
 }
 
 // NewSonarQubeCollector creates a new SonarQubeCollector.
 func NewSonarQubeCollector(db *pgxpool.Pool, evidence EvidenceWriter) *SonarQubeCollector {
 	return &SonarQubeCollector{
-		db:         db,
-		evidence:   evidence,
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		db:       db,
+		evidence: evidence,
 	}
+}
+
+// clientFor returns the client for this run. Tests inject c.httpClient
+// directly and it is used as-is; in production it is nil and we build a
+// dial-guarded client honouring the config's allow_private_target
+// (S121-F4 / F1-Inj: closes the DNS-rebinding TOCTOU window that
+// ValidateOutboundURL alone leaves open).
+func (c *SonarQubeCollector) clientFor(allowPrivate bool) *http.Client {
+	if c.httpClient != nil {
+		return c.httpClient
+	}
+	return httputil.GuardedClient(30*time.Second, allowPrivate)
 }
 
 // sonarProject is a minimal SonarQube project representation.
@@ -92,7 +104,9 @@ type sonarIssue struct {
 
 // Collect runs all SonarQube evidence collectors for the given org and config.
 func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg SonarQubeConfig) (int, error) {
-	projects, err := c.listProjects(ctx, cfg)
+	client := c.clientFor(cfg.AllowPrivateTarget)
+
+	projects, err := c.listProjects(ctx, client, cfg)
 	if err != nil {
 		return 0, fmt.Errorf("sonarqube: list projects: %w", err)
 	}
@@ -117,7 +131,7 @@ func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg Sona
 	failedQG := []string{}
 	okQG := []string{}
 	for _, p := range projects {
-		status, err := c.getQualityGateStatus(ctx, cfg, p.Key)
+		status, err := c.getQualityGateStatus(ctx, client, cfg, p.Key)
 		if err != nil {
 			log.Warn().Err(err).Str("project", p.Key).Msg("sonarqube_collector: quality gate status failed")
 			continue
@@ -155,7 +169,7 @@ func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg Sona
 	}
 
 	// Security Hotspots → vaktscan findings
-	hotspotCount, err := c.collectSecurityHotspots(ctx, orgID, cfg)
+	hotspotCount, err := c.collectSecurityHotspots(ctx, client, orgID, cfg)
 	if err != nil {
 		log.Warn().Err(err).Msg("sonarqube_collector: hotspot collection failed")
 	} else {
@@ -163,7 +177,7 @@ func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg Sona
 	}
 
 	// Critical/Blocker vulnerabilities → vaktscan findings
-	vulnCount, err := c.collectVulnerabilities(ctx, orgID, cfg)
+	vulnCount, err := c.collectVulnerabilities(ctx, client, orgID, cfg)
 	if err != nil {
 		log.Warn().Err(err).Msg("sonarqube_collector: vulnerability collection failed")
 	} else {
@@ -186,7 +200,7 @@ func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg Sona
 }
 
 // listProjects returns all SonarQube projects (paginated).
-func (c *SonarQubeCollector) listProjects(ctx context.Context, cfg SonarQubeConfig) ([]sonarProject, error) {
+func (c *SonarQubeCollector) listProjects(ctx context.Context, client *http.Client, cfg SonarQubeConfig) ([]sonarProject, error) {
 	var all []sonarProject
 	page := 1
 	const pageSize = 500
@@ -195,7 +209,7 @@ func (c *SonarQubeCollector) listProjects(ctx context.Context, cfg SonarQubeConf
 		apiURL := fmt.Sprintf("%s/api/projects/search?p=%d&ps=%d",
 			strings.TrimRight(cfg.BaseURL, "/"), page, pageSize)
 
-		body, err := c.sonarRequest(ctx, cfg.Token, apiURL)
+		body, err := c.sonarRequest(ctx, client, cfg.Token, apiURL)
 		if err != nil {
 			return nil, err
 		}
@@ -216,11 +230,11 @@ func (c *SonarQubeCollector) listProjects(ctx context.Context, cfg SonarQubeConf
 }
 
 // getQualityGateStatus returns "OK", "WARN", "ERROR", or "NONE" for a project.
-func (c *SonarQubeCollector) getQualityGateStatus(ctx context.Context, cfg SonarQubeConfig, projectKey string) (string, error) {
+func (c *SonarQubeCollector) getQualityGateStatus(ctx context.Context, client *http.Client, cfg SonarQubeConfig, projectKey string) (string, error) {
 	apiURL := fmt.Sprintf("%s/api/qualitygates/project_status?projectKey=%s",
 		strings.TrimRight(cfg.BaseURL, "/"), projectKey)
 
-	body, err := c.sonarRequest(ctx, cfg.Token, apiURL)
+	body, err := c.sonarRequest(ctx, client, cfg.Token, apiURL)
 	if err != nil {
 		return "", err
 	}
@@ -233,11 +247,11 @@ func (c *SonarQubeCollector) getQualityGateStatus(ctx context.Context, cfg Sonar
 }
 
 // collectSecurityHotspots imports unreviewed SonarQube security hotspots as vaktscan findings.
-func (c *SonarQubeCollector) collectSecurityHotspots(ctx context.Context, orgID string, cfg SonarQubeConfig) (int, error) {
+func (c *SonarQubeCollector) collectSecurityHotspots(ctx context.Context, client *http.Client, orgID string, cfg SonarQubeConfig) (int, error) {
 	apiURL := fmt.Sprintf("%s/api/hotspots/search?status=TO_REVIEW&ps=500",
 		strings.TrimRight(cfg.BaseURL, "/"))
 
-	body, err := c.sonarRequest(ctx, cfg.Token, apiURL)
+	body, err := c.sonarRequest(ctx, client, cfg.Token, apiURL)
 	if err != nil {
 		return 0, err
 	}
@@ -278,11 +292,11 @@ func (c *SonarQubeCollector) collectSecurityHotspots(ctx context.Context, orgID 
 }
 
 // collectVulnerabilities imports BLOCKER/CRITICAL vulnerability issues as vaktscan findings.
-func (c *SonarQubeCollector) collectVulnerabilities(ctx context.Context, orgID string, cfg SonarQubeConfig) (int, error) {
+func (c *SonarQubeCollector) collectVulnerabilities(ctx context.Context, client *http.Client, orgID string, cfg SonarQubeConfig) (int, error) {
 	apiURL := fmt.Sprintf("%s/api/issues/search?severities=BLOCKER,CRITICAL&types=VULNERABILITY&ps=500",
 		strings.TrimRight(cfg.BaseURL, "/"))
 
-	body, err := c.sonarRequest(ctx, cfg.Token, apiURL)
+	body, err := c.sonarRequest(ctx, client, cfg.Token, apiURL)
 	if err != nil {
 		return 0, err
 	}
@@ -330,14 +344,14 @@ func (c *SonarQubeCollector) collectVulnerabilities(ctx context.Context, orgID s
 }
 
 // sonarRequest performs a GET request to the SonarQube API with token auth.
-func (c *SonarQubeCollector) sonarRequest(ctx context.Context, token, apiURL string) ([]byte, error) {
+func (c *SonarQubeCollector) sonarRequest(ctx context.Context, client *http.Client, token, apiURL string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.SetBasicAuth(token, "")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -369,12 +383,14 @@ func sonarURLHash(baseURL string) string {
 
 // CountQualityGateFailed returns the number of projects with a failed Quality Gate.
 func (c *SonarQubeCollector) CountQualityGateFailed(ctx context.Context, cfg SonarQubeConfig) (projectCount, failedCount int, err error) {
-	projects, err := c.listProjects(ctx, cfg)
+	client := c.clientFor(cfg.AllowPrivateTarget)
+
+	projects, err := c.listProjects(ctx, client, cfg)
 	if err != nil {
 		return 0, 0, err
 	}
 	for _, p := range projects {
-		status, qErr := c.getQualityGateStatus(ctx, cfg, p.Key)
+		status, qErr := c.getQualityGateStatus(ctx, client, cfg, p.Key)
 		if qErr != nil {
 			continue
 		}

@@ -5289,6 +5289,7 @@
     "defaultPolicy": "Beleid"
   },
   "aiAgent": {
+    "unavailable": "AI-functies zijn uitgeschakeld op deze instantie. Stel VAKT_AI_PROVIDER in (bijv. ollama) en herstart om de AI-agent in te schakelen.",
     "title": "AI-agent",
     "betaBadge": "Bèta",
     "description": "Laat de agent de tools van je Vakt-instantie gebruiken om concrete taken uit te voeren — plan/uitvoeren/reflecteren, elke stap transparant.",

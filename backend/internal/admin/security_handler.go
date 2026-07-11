@@ -48,8 +48,25 @@ type SecurityEventsResponse struct {
 	FailuresLast24h int             `json:"failures_last_24h"`
 }
 
-// loginFailMax must stay in sync with auth/service.go.
-const securityLoginFailMax int64 = 5
+// securityLoginFailMax must stay in sync with auth.ipEmailLockoutFailMax.
+// S121-F4: the pure per-email lockout (threshold 5) was removed as an account-DoS
+// vector; the primary lockout is now the NAT-safe (IP, email) counter at 10.
+const securityLoginFailMax int64 = 10
+
+// lockoutKeyPrefix is the Redis prefix of the primary (IP, email) lockout counter
+// written by auth.recordIPEmailLoginFailure: "login_fail_ip_email:<ip>:<email>".
+const lockoutKeyPrefix = "login_fail_ip_email:"
+
+// emailFromLockoutKey extracts the email from a lockout key. The IP segment may
+// itself contain colons (IPv6), but an email address cannot — so the address is
+// everything after the LAST colon.
+func emailFromLockoutKey(key string) string {
+	i := strings.LastIndex(key, ":")
+	if i < 0 || i+1 >= len(key) {
+		return ""
+	}
+	return key[i+1:]
+}
 
 // lockoutTTL must stay in sync with auth/service.go.
 const lockoutTTL = 15 * time.Minute
@@ -84,19 +101,24 @@ func (h *SecurityHandler) GetSecurityEvents(c echo.Context) error {
 	})
 }
 
-// listLockedAccounts scans Redis for all login_fail:* keys where the count has
-// reached the lockout threshold and the key still has a remaining TTL.
+// listLockedAccounts scans Redis for (IP, email) lockout counters that have
+// reached the threshold and still have a remaining TTL.
+//
+// S121-F4: this used to scan the pure per-email counter (login_fail:*), which no
+// longer exists. It now reads the primary NAT-safe counter. Because the same
+// account can be locked from several source IPs at once, entries are deduplicated
+// per email, keeping the one that unlocks last.
 func (h *SecurityHandler) listLockedAccounts(ctx context.Context) ([]LockedAccount, error) {
 	scanCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	var cursor uint64
-	var locked []LockedAccount
+	byEmail := make(map[string]LockedAccount)
 
 	for {
-		keys, nextCursor, err := h.rdb.Scan(scanCtx, cursor, "login_fail:*", 100).Result()
+		keys, nextCursor, err := h.rdb.Scan(scanCtx, cursor, lockoutKeyPrefix+"*", 100).Result()
 		if err != nil {
-			return nil, fmt.Errorf("scan redis login_fail keys: %w", err)
+			return nil, fmt.Errorf("scan redis lockout keys: %w", err)
 		}
 
 		for _, key := range keys {
@@ -113,17 +135,21 @@ func (h *SecurityHandler) listLockedAccounts(ctx context.Context) ([]LockedAccou
 				continue
 			}
 
-			email := strings.TrimPrefix(key, "login_fail:")
+			email := emailFromLockoutKey(key)
+			if email == "" {
+				continue
+			}
 			now := time.Now().UTC()
 			// Approximate locked_at: lockoutTTL minus remaining TTL from now.
-			lockedAt := now.Add(-(lockoutTTL - ttl))
-			lockedUntil := now.Add(ttl)
-
-			locked = append(locked, LockedAccount{
+			entry := LockedAccount{
 				Email:       email,
-				LockedAt:    lockedAt,
-				LockedUntil: lockedUntil,
-			})
+				LockedAt:    now.Add(-(lockoutTTL - ttl)),
+				LockedUntil: now.Add(ttl),
+			}
+			// Same account locked from multiple IPs — surface the latest unlock time.
+			if prev, ok := byEmail[email]; !ok || entry.LockedUntil.After(prev.LockedUntil) {
+				byEmail[email] = entry
+			}
 		}
 
 		cursor = nextCursor
@@ -132,6 +158,10 @@ func (h *SecurityHandler) listLockedAccounts(ctx context.Context) ([]LockedAccou
 		}
 	}
 
+	locked := make([]LockedAccount, 0, len(byEmail))
+	for _, e := range byEmail {
+		locked = append(locked, e)
+	}
 	return locked, nil
 }
 
@@ -184,7 +214,11 @@ func (h *SecurityHandler) listRecentFailures(ctx context.Context, orgID string) 
 }
 
 // UnlockAccount handles DELETE /api/v1/admin/accounts/:email/unlock.
-// It deletes the Redis login_fail:<email> key, immediately releasing the lockout.
+//
+// S121-F4: the lockout is keyed on (IP, email), so one account can be locked from
+// several source IPs at once. Deleting a single key would leave the account locked
+// from the other IPs, so we scan for every counter belonging to this address and
+// drop them all.
 func (h *SecurityHandler) UnlockAccount(c echo.Context) error {
 	ctx := c.Request().Context()
 	email := c.Param("email")
@@ -195,13 +229,39 @@ func (h *SecurityHandler) UnlockAccount(c echo.Context) error {
 		})
 	}
 
-	key := "login_fail:" + email
-	if err := h.rdb.Del(ctx, key).Err(); err != nil && err != redis.Nil {
-		log.Error().Err(err).Str("email_redacted", logsafe.RedactEmail(email)).Msg("admin: unlock account failed")
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "failed to unlock account",
-			"code":  "ADMIN_UNLOCK_ERROR",
-		})
+	scanCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var cursor uint64
+	var toDelete []string
+	for {
+		keys, next, err := h.rdb.Scan(scanCtx, cursor, lockoutKeyPrefix+"*", 100).Result()
+		if err != nil {
+			log.Error().Err(err).Str("email_redacted", logsafe.RedactEmail(email)).Msg("admin: unlock account scan failed")
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "failed to unlock account",
+				"code":  "ADMIN_UNLOCK_ERROR",
+			})
+		}
+		for _, k := range keys {
+			if emailFromLockoutKey(k) == email {
+				toDelete = append(toDelete, k)
+			}
+		}
+		cursor = next
+		if cursor == 0 {
+			break
+		}
+	}
+
+	if len(toDelete) > 0 {
+		if err := h.rdb.Del(scanCtx, toDelete...).Err(); err != nil && err != redis.Nil {
+			log.Error().Err(err).Str("email_redacted", logsafe.RedactEmail(email)).Msg("admin: unlock account failed")
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "failed to unlock account",
+				"code":  "ADMIN_UNLOCK_ERROR",
+			})
+		}
 	}
 
 	log.Info().Str("email_redacted", logsafe.RedactEmail(email)).Msg("admin: account lockout cleared")
