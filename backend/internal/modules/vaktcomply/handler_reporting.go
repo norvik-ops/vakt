@@ -180,12 +180,27 @@ func (h *Handler) GetKPIDashboard(c echo.Context) error {
 }
 
 // ExportKPIReportPDF handles GET /api/v1/vaktcomply/kpi-dashboard/export-pdf.
-// PDF export is not yet implemented — returns 501 Not Implemented.
 func (h *Handler) ExportKPIReportPDF(c echo.Context) error {
-	return c.JSON(http.StatusNotImplemented, map[string]string{
-		"error": "PDF export not yet implemented",
-		"code":  "CK_KPI_PDF_NOT_IMPLEMENTED",
-	})
+	ctx := c.Request().Context()
+	oid := orgID(c)
+	dashboard, err := h.service.GetKPIDashboard(ctx, oid)
+	if err != nil {
+		log.Error().Err(err).Msg("kpi report: load dashboard")
+		return errResp(c, http.StatusInternalServerError, "failed to load KPI dashboard", "CK_KPI_DASHBOARD_FAILED")
+	}
+	orgName := fetchOrgName(ctx, h.service.db, oid)
+	if orgName == "" {
+		orgName = oid
+	}
+	now := time.Now().UTC()
+	pdfBytes, err := GenerateKPIReportPDF(dashboard, orgName, now)
+	if err != nil {
+		log.Error().Err(err).Msg("kpi report: generate pdf")
+		return errResp(c, http.StatusInternalServerError, "failed to generate KPI report PDF", "CK_KPI_PDF_FAILED")
+	}
+	filename := fmt.Sprintf("vakt-kpi-report-%s.pdf", now.Format("2006-01-02"))
+	c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, filename))
+	return c.Blob(http.StatusOK, "application/pdf", pdfBytes)
 }
 
 func (h *Handler) GetSoA(c echo.Context) error {

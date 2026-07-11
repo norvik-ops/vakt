@@ -354,7 +354,29 @@ func (h *Handler) ApproveManagementReview(c echo.Context) error {
 
 // ExportManagementReviewPDF handles GET /api/v1/vaktcomply/management-reviews/:id/export-pdf.
 func (h *Handler) ExportManagementReviewPDF(c echo.Context) error {
-	return errResp(c, http.StatusNotImplemented, "PDF export coming soon", "CK_MGMT_REVIEW_PDF_NOT_IMPLEMENTED")
+	ctx := c.Request().Context()
+	oid := orgID(c)
+	id := c.Param("id")
+	review, err := h.service.Audit.GetManagementReview(ctx, oid, id)
+	if err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "management review not found", "CK_MGMT_REVIEW_NOT_FOUND")
+		}
+		log.Error().Err(err).Str("review_id", id).Msg("mgmt review pdf: load")
+		return errResp(c, http.StatusInternalServerError, "failed to load management review", "CK_MGMT_REVIEW_LOAD_FAILED")
+	}
+	orgName := fetchOrgName(ctx, h.service.db, oid)
+	if orgName == "" {
+		orgName = oid
+	}
+	pdfBytes, err := GenerateManagementReviewPDF(review, orgName, time.Now().UTC())
+	if err != nil {
+		log.Error().Err(err).Str("review_id", id).Msg("mgmt review pdf: generate")
+		return errResp(c, http.StatusInternalServerError, "failed to generate management review PDF", "CK_MGMT_REVIEW_PDF_FAILED")
+	}
+	filename := fmt.Sprintf("vakt-management-review-%s.pdf", review.ReviewDate)
+	c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, filename))
+	return c.Blob(http.StatusOK, "application/pdf", pdfBytes)
 }
 
 func (h *Handler) CreateAuditorLink(c echo.Context) error {

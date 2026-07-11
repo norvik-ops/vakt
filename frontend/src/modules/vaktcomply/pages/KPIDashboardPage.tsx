@@ -114,8 +114,27 @@ function KPICard({ cfg, snapshot }: { cfg: KPIConfig; snapshot: KPISnapshot | un
 export default function KPIDashboardPage() {
   const { data, isLoading, isError } = useKPIDashboard()
 
-  function handleExportPDF() {
-    toast('PDF-Export demnächst verfügbar', 'info')
+  async function handleExportPDF() {
+    try {
+      const res = await fetch('/api/v1/vaktcomply/kpi-dashboard/export-pdf', {
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        toast('PDF-Export fehlgeschlagen', 'error')
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `vakt-kpi-report-${new Date().toISOString().slice(0, 10)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      toast('PDF-Export fehlgeschlagen', 'error')
+    }
   }
 
   if (isLoading) {
@@ -142,7 +161,7 @@ export default function KPIDashboardPage() {
         title="ISMS KPI-Dashboard"
         description="Überblick über die 12 wichtigsten ISMS-Kennzahlen für ISO 27001-Auditbereitschaft."
         actions={
-          <Button variant="outline" size="sm" onClick={handleExportPDF}>
+          <Button variant="outline" size="sm" onClick={() => { void handleExportPDF() }}>
             <FileDown className="mr-2 h-4 w-4" />
             KPI-Report exportieren
           </Button>

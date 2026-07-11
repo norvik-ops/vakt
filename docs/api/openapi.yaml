@@ -9295,8 +9295,8 @@ paths:
               schema:
                 type: string
                 format: binary
-        '501':
-          description: Not implemented
+        '404':
+          description: Management review not found
 
   # ── Sprint 61: CAPA NC fields + Effectiveness Check (S61-3) ───────────────
 
@@ -10864,8 +10864,13 @@ paths:
       security:
         - BearerAuth: []
       responses:
-        '501':
-          description: Not implemented
+        '200':
+          description: PDF document
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
 
   /vaktcomply/kpi-dashboard:
     get:

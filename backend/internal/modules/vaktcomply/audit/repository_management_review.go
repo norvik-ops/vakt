@@ -98,18 +98,18 @@ func (r *Repository) CreateManagementReview(ctx context.Context, orgID, userID s
 		participantIDs = json.RawMessage("[]")
 	}
 
-	q := `WITH ins AS (
-    INSERT INTO ck_management_reviews (org_id, review_date, review_type, participant_ids, created_by)
+	// A data-modifying CTE cannot see its own inserted rows from an outer scan of
+	// the same table (all sub-statements share one snapshot), so the previous
+	// "WITH ins AS (INSERT…) SELECT … FROM ck_management_reviews JOIN ins" pattern
+	// always returned zero rows → pgx.ErrNoRows → 500 (and each retry inserted a
+	// duplicate). RETURNING reads the freshly inserted row directly, defaults included.
+	q := `INSERT INTO ck_management_reviews (org_id, review_date, review_type, participant_ids, created_by)
     VALUES ($1, $2::date, $3, $4, $5::uuid)
-    RETURNING id
-)
-SELECT mr.id::text, mr.org_id::text, mr.review_date::text, mr.review_type, mr.participant_ids,
-       mr.status, mr.audit_findings_summary, mr.incident_summary, mr.risk_status_summary,
-       mr.previous_actions_status, mr.kpi_snapshot, mr.context_changes, mr.customer_feedback,
-       mr.improvement_decisions, mr.resource_decisions, mr.isms_changes,
-       mr.next_review_date::text, mr.approved_by::text, mr.approved_at, mr.created_by::text, mr.created_at, mr.updated_at
-FROM ck_management_reviews mr
-JOIN ins ON mr.id = ins.id`
+    RETURNING id::text, org_id::text, review_date::text, review_type, participant_ids,
+       status, audit_findings_summary, incident_summary, risk_status_summary,
+       previous_actions_status, kpi_snapshot, context_changes, customer_feedback,
+       improvement_decisions, resource_decisions, isms_changes,
+       next_review_date::text, approved_by::text, approved_at, created_by::text, created_at, updated_at`
 
 	row := r.db.QueryRow(ctx, q, orgID, in.ReviewDate, in.ReviewType, []byte(participantIDs), userID)
 	mr, err := scanManagementReview(row)

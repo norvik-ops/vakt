@@ -107,8 +107,27 @@ function ReviewDetail({ review }: { review: ManagementReview }) {
     })
   }
 
-  function handleExportPDF() {
-    toast(t('vaktcomply.managementReviews.pdfComingSoon'), 'info')
+  async function handleExportPDF() {
+    try {
+      const res = await fetch(`/api/v1/vaktcomply/management-reviews/${review.id}/export-pdf`, {
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        toast(t('vaktcomply.managementReviews.toastError', { message: `HTTP ${res.status}` }), 'error')
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `vakt-management-review-${review.review_date}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      toast(t('vaktcomply.managementReviews.toastError', { message: String(e) }), 'error')
+    }
   }
 
   const inputFields: [keyof UpdateManagementReviewInputsInput, string][] = [
@@ -149,7 +168,7 @@ function ReviewDetail({ review }: { review: ManagementReview }) {
                 {t('vaktcomply.managementReviews.approve')}
               </Button>
             )}
-            <Button size="sm" variant="ghost" onClick={handleExportPDF}>
+            <Button size="sm" variant="ghost" onClick={() => { void handleExportPDF() }}>
               {t('vaktcomply.managementReviews.exportPdf')}
             </Button>
             <button

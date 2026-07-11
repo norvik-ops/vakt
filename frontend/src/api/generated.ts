@@ -18493,8 +18493,8 @@ export interface operations {
                     "application/pdf": string;
                 };
             };
-            /** @description Not implemented */
-            501: {
+            /** @description Management review not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -20503,12 +20503,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Not implemented */
-            501: {
+            /** @description PDF document */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/pdf": string;
+                };
             };
         };
     };
