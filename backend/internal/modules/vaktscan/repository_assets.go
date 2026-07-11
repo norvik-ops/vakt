@@ -322,9 +322,12 @@ func (r *Repository) SoftDeleteAsset(ctx context.Context, orgID, assetID string)
 // GetAssetProtectionNeedID returns the protection_need_id soft-link for an asset, or nil if unlinked.
 func (r *Repository) GetAssetProtectionNeedID(ctx context.Context, orgID, assetID string) (*string, error) {
 	var pnaID *string
+	// S121: vb_assets has no deleted_at column — soft-delete is the is_deleted
+	// boolean. The old `deleted_at IS NULL` 500'd for every asset (SQLSTATE 42703),
+	// found by the live route sweep.
 	err := r.db.QueryRow(ctx,
 		`SELECT protection_need_id FROM vb_assets
-		 WHERE id = $1::uuid AND org_id = $2::uuid AND deleted_at IS NULL`,
+		 WHERE id = $1::uuid AND org_id = $2::uuid AND is_deleted = FALSE`,
 		assetID, orgID,
 	).Scan(&pnaID)
 	if err != nil {

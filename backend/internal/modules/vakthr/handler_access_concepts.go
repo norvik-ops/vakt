@@ -4,8 +4,10 @@
 package vakthr
 
 import (
+	"errors"
 	"net/http"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 )
@@ -83,6 +85,9 @@ func (h *Handler) ListAccessRoles(c echo.Context) error {
 	conceptID := c.Param("id")
 	roles, err := h.Service.ListAccessRoles(c.Request().Context(), orgID(c), conceptID)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) { // S121: non-existent concept → 404 (live sweep)
+			return errResp(c, http.StatusNotFound, "access concept not found", "HR_NOT_FOUND")
+		}
 		log.Error().Err(err).Str("concept_id", conceptID).Msg("list access roles")
 		return errResp(c, http.StatusInternalServerError, "failed to list access roles", "HR_LIST_ACCESS_ROLES_FAILED")
 	}
@@ -155,6 +160,9 @@ func (h *Handler) ListAccessConceptVersions(c echo.Context) error {
 	conceptID := c.Param("id")
 	versions, err := h.Service.ListAccessConceptVersions(c.Request().Context(), orgID(c), conceptID)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) { // S121: non-existent concept → 404 (live sweep)
+			return errResp(c, http.StatusNotFound, "access concept not found", "HR_NOT_FOUND")
+		}
 		log.Error().Err(err).Str("concept_id", conceptID).Msg("list access concept versions")
 		return errResp(c, http.StatusInternalServerError, "failed to list versions", "HR_LIST_VERSIONS_FAILED")
 	}

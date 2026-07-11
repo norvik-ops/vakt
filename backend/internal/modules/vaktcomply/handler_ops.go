@@ -1815,6 +1815,9 @@ func (h *Handler) GetAssessmentAnswers(c echo.Context) error {
 func (h *Handler) ExportAuditPackage(c echo.Context) error {
 	data, filename, err := h.service.ExportAuditPackage(c.Request().Context(), orgID(c), c.Param("id"))
 	if err != nil {
+		if isNotFound(err) { // S121: non-existent framework → 404 (live sweep)
+			return errResp(c, http.StatusNotFound, "framework not found", "CK_FRAMEWORK_NOT_FOUND")
+		}
 		log.Error().Err(err).Str("framework_id", c.Param("id")).Msg("export audit package")
 		return errResp(c, http.StatusInternalServerError, "failed to generate audit package", "CK_AUDIT_PACKAGE_FAILED")
 	}

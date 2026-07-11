@@ -250,7 +250,7 @@ func (r *Repository) ListExpiringCertificates(ctx context.Context, orgID string,
 		FROM vb_certificates
 		WHERE org_id = $1::uuid
 		  AND not_after IS NOT NULL
-		  AND not_after <= NOW() + ($2 || ' days')::interval
+		  AND not_after <= NOW() + make_interval(days => $2::int)
 		ORDER BY not_after ASC
 	`, orgID, days)
 	if err != nil {

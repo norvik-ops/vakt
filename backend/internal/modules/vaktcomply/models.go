@@ -9,6 +9,8 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/audit"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/bsi"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/risk"
 )
 
 type Incident struct {
@@ -1190,8 +1192,12 @@ var (
 // isNotFound returns true for any "resource does not exist" error — either the
 // service-layer ErrNotFound sentinel or a raw pgx.ErrNoRows from the repository.
 func isNotFound(err error) bool {
+	// S121 (live sweep): several GET/PDF handlers 500'd on a non-existent id
+	// because a sub-package's ErrNotFound (risk/policy) was not recognised here —
+	// each vaktcomply sub-package defines its own sentinel.
 	return errors.Is(err, ErrNotFound) || errors.Is(err, bsi.ErrNotFound) ||
-		errors.Is(err, audit.ErrNotFound) || errors.Is(err, pgx.ErrNoRows)
+		errors.Is(err, audit.ErrNotFound) || errors.Is(err, risk.ErrNotFound) ||
+		errors.Is(err, policy.ErrNotFound) || errors.Is(err, pgx.ErrNoRows)
 }
 
 // isBadParam returns true when an error is caused by malformed caller input that

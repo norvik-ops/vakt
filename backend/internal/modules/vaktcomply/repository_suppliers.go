@@ -434,7 +434,7 @@ func (r *Repository) DeleteSupplier(ctx context.Context, orgID, id string) error
 		return fmt.Errorf("delete supplier: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("supplier not found")
+		return fmt.Errorf("supplier not found: %w", ErrNotFound)
 	}
 	return nil
 }
@@ -446,7 +446,7 @@ func (r *Repository) supplierExists(ctx context.Context, supplierID, orgID strin
 		return fmt.Errorf("verify supplier: %w", err)
 	}
 	if !exists {
-		return fmt.Errorf("supplier not found")
+		return fmt.Errorf("supplier not found: %w", ErrNotFound)
 	}
 	return nil
 }

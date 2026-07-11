@@ -9899,7 +9899,7 @@ func (q *Queries) GetExecutiveTopRisks(ctx context.Context, orgID string) ([]Get
 
 const countCKClosedControlsSince = `-- name: CountCKClosedControlsSince :one
 SELECT COUNT(*)::int FROM ck_controls
-WHERE org_id = $1::uuid AND manual_status = 'implemented' AND updated_at >= $2
+WHERE org_id = $1::uuid AND manual_status = 'implemented' AND last_reviewed_at >= $2
 `
 
 type CountCKClosedControlsSinceParams struct {

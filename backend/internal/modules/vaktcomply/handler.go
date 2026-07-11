@@ -503,6 +503,9 @@ func (h *Handler) GetReadinessReport(c echo.Context) error {
 	frameworkID := c.Param("id")
 	report, err := h.service.GetReadinessReport(c.Request().Context(), orgID(c), frameworkID)
 	if err != nil {
+		if isNotFound(err) { // S121: non-existent framework → 404, not 500 (live sweep)
+			return errResp(c, http.StatusNotFound, "framework not found", "CK_FRAMEWORK_NOT_FOUND")
+		}
 		log.Error().Err(err).Str("framework_id", frameworkID).Msg("get readiness report")
 		return errResp(c, http.StatusInternalServerError, "failed to generate readiness report", "CK_READINESS_REPORT_FAILED")
 	}
@@ -789,6 +792,9 @@ func (h *Handler) GetDSGVOTOMCoverage(c echo.Context) error {
 func (h *Handler) ExportSoAPDF(c echo.Context) error {
 	pdfBytes, filename, err := h.service.ExportSoAPDF(c.Request().Context(), orgID(c), c.Param("id"))
 	if err != nil {
+		if isNotFound(err) { // S121: non-existent framework → 404 (live sweep)
+			return errResp(c, http.StatusNotFound, "framework not found", "CK_FRAMEWORK_NOT_FOUND")
+		}
 		log.Error().Err(err).Str("framework_id", c.Param("id")).Msg("export soa pdf")
 		return errResp(c, http.StatusInternalServerError, "failed to generate soa pdf", "CK_SOA_PDF_FAILED")
 	}
@@ -800,6 +806,9 @@ func (h *Handler) ExportSoAPDF(c echo.Context) error {
 func (h *Handler) ExportFrameworkPDF(c echo.Context) error {
 	pdfBytes, filename, err := h.service.ExportFrameworkPDF(c.Request().Context(), orgID(c), c.Param("id"))
 	if err != nil {
+		if isNotFound(err) { // S121: non-existent framework → 404 (live sweep)
+			return errResp(c, http.StatusNotFound, "framework not found", "CK_FRAMEWORK_NOT_FOUND")
+		}
 		log.Error().Err(err).Str("framework_id", c.Param("id")).Msg("export framework pdf")
 		return errResp(c, http.StatusInternalServerError, "failed to generate pdf", "CK_PDF_EXPORT_FAILED")
 	}
@@ -826,6 +835,9 @@ func (h *Handler) ExportTISAXReportPDF(c echo.Context) error {
 	if err != nil {
 		if errors.Is(err, ErrInvalidProtection) || errors.Is(err, ErrInvalidAssessment) {
 			return errResp(c, http.StatusBadRequest, err.Error(), "CK_TISAX_PDF_BAD_PARAMS")
+		}
+		if isNotFound(err) { // S121: non-existent framework → 404 (live sweep)
+			return errResp(c, http.StatusNotFound, "framework not found", "CK_FRAMEWORK_NOT_FOUND")
 		}
 		log.Error().Err(err).Str("framework_id", frameworkID).Msg("export tisax report pdf")
 		return errResp(c, http.StatusInternalServerError, "failed to generate TISAX report PDF", "CK_TISAX_PDF_FAILED")

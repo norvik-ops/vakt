@@ -4,11 +4,13 @@ package vaktprivacy
 import (
 	"context"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -870,6 +872,9 @@ func (h *Handler) CreateAVVFromTemplate(c echo.Context) error {
 func (h *Handler) ExportAVVPDF(c echo.Context) error {
 	data, filename, err := h.service.ExportAVVPDF(c.Request().Context(), orgID(c), c.Param("id"))
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) { // S121: non-existent AVV → 404 (live sweep)
+			return errResp(c, http.StatusNotFound, "AVV not found", "PO_NOT_FOUND")
+		}
 		log.Error().Err(err).Msg("export avv pdf")
 		return errResp(c, http.StatusInternalServerError, "failed to generate AVV PDF", "PO_AVV_PDF_FAILED")
 	}
@@ -897,6 +902,9 @@ func (h *Handler) UpdateAVVSCC(c echo.Context) error {
 func (h *Handler) ExportSCCPDF(c echo.Context) error {
 	data, filename, err := h.service.ExportSCCPDF(c.Request().Context(), orgID(c), c.Param("id"))
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) { // S121: non-existent AVV → 404 (live sweep)
+			return errResp(c, http.StatusNotFound, "AVV not found", "PO_NOT_FOUND")
+		}
 		log.Error().Err(err).Msg("export scc pdf")
 		return errResp(c, http.StatusInternalServerError, "failed to generate SCC PDF", "PO_SCC_PDF_FAILED")
 	}
