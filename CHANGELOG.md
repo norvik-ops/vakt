@@ -7,6 +7,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`docker compose up` startete seit v0.42.20 überhaupt nicht mehr.** Der Ollama-Dienst zeigte auf `ollama/ollama:${OLLAMA_TAG:-0.6}` — einen Tag, den Ollama **nie veröffentlicht hat** (es gibt `0.6.8`, aber kein blankes `0.6`). Der Wert stand seit dem initialen Monorepo-Merge im Compose und fiel nie auf, weil Ollama hinter `--profile ai` hing. Als die KI mit v0.42.20 default-on wurde, fiel das Profil weg — und damit brach docker compose den **gesamten** `up` ab (Exit 1, **kein einziger Container startet**), also genau der beworbene „in unter 5 Minuten startbereit"-Weg. Jetzt auf `0.31.2` gepinnt. Ein neues CI-Gate (`scripts/check_image_tags.py`) prüft jeden Fremd-Image-Tag gegen die Registry.
+- **Helm-Chart: das KI-Deployment hat noch nie funktioniert.** Der Ollama-Image-Tag trug die **Vakt**-Version (zuletzt `0.42.41`), weil das Release-`sed` blind jede `tag:`-Zeile mitzog — `ImagePullBackOff` für jeden, der mit `ai.enabled` deployt. Außerdem gab es **zwei unabhängige Knöpfe** für dasselbe Modell (der Init-Job zog `ollama.model`, die API las `api.env.VAKT_AI_MODEL`): Wer nur einen umstellte, ließ ein Modell ziehen, nach dem die API nie fragte. Jetzt ein Wert; Modell auf `qwen2.5:7b` (wie überall sonst), Ressourcen von 2 Gi/4 Gi auf 5 Gi/8 Gi angehoben (7b hätte den Pod sonst beim ersten Prompt OOM-gekillt), und `VAKT_AI_PROVIDER` folgt `ollama.enabled` statt bei `false` einen Service zu rufen, den es nicht gibt.
+- **Die Lizenz-Mail versprach jedem Kunden eine Jahreslaufzeit** — auch dem Monatskunden, der 299 € zahlt und einen 30-Tage-Schlüssel bekommt. Sie nennt jetzt das echte Ablaufdatum des mitgeschickten Schlüssels.
+- **Eine Abrechnungsperiode war 30 Tage, kein Kalendermonat.** 12 × 30 = 360 Tage, also 12,17 Rechnungen im Jahr (3.639 € statt der ausgewiesenen 3.588 €), und das Rechnungsdatum wanderte durch den Monat (1.3. → 31.3. → 30.4.). Jetzt Kalendermonate, geklemmt auf den letzten Monatstag (31.01. + 1 Monat = 28.02., nicht 03.03.).
+
+### Changed
+
+- **Bestellseite und Preiskarte sagen jetzt die Wahrheit.** Laufzeit und Zahlungsziel unter dem Formular folgen der getroffenen Auswahl (vorher standen dort fest die Jahreswerte — 14 Tage statt der 10 des Monatsplans). Der Button heißt **„Kostenpflichtig bestellen"** statt „Angebot anfordern": Wir verschicken kein Angebot, sondern eine Rechnung — und nach den eigenen AGB (§ 3.1/3.2) ist **die Bestellung des Kunden** das verbindliche Angebot. Entfernt: „30 Tage kostenlos testen · jederzeit kündbar" auf der Preiskarte und „Polar-Checkout, 30 Tage kostenlose Testphase" in `docs/setup.md` — es gibt **keine** Testphase; man bestellt und wird sofort in Rechnung gestellt, der 45-Tage-Schlüssel liegt der Rechnung **bei**.
+
 ### Changed
 
 - **Neues Marken-Logo: Monogramm-Badges statt Schild-Logos ([ADR-0070](docs/adr/0070-marken-logo-system.md)).** Alle vier Marken tragen jetzt denselben Badge — gleicher Container, Eckenradius und Strichstärke — mit eigenem Buchstaben und eigener Farbe: **N** teal für NorvikOps (Dachmarke), **V** indigo für Vakt, **D** sky für DirHealth, **F** amber für ForgeHive. Die vier Schilde vorher unterschieden sich praktisch nur im Farbton und waren nebeneinander kaum auseinanderzuhalten; ein Schild ist außerdem die Aussage eines *Produkts*, nicht die eines Hauses, das mehrere trägt. Ein einziges Logo für alles wurde bewusst verworfen — das Vakt-Icon trüge dann im Browser-Tab ein „N".
