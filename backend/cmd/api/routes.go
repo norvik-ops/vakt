@@ -757,6 +757,12 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		if cfg.BillingBaseURL != "" {
 			go lexware.EnsureWebhook(lexClient, cfg.BillingBaseURL+"/api/v1/billing/lexware/webhook")
 		}
+
+		// Fallback: ask Lexware every 30 minutes whether an approved invoice has
+		// been paid. The webhook is the fast path, not the only one — if it ever
+		// goes quiet (key rotated, subscription dropped, Lexware hiccup), a paying
+		// customer would otherwise receive nothing and we would find out from them.
+		go lexHandler.PollPayments(context.Background(), 30*time.Minute)
 	}
 
 	// S46-1: Prometheus metrics — IP-allowlisted (loopback + Docker-internal only).

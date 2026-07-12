@@ -328,7 +328,7 @@ func (h *Handler) settle(ctx context.Context, invoiceID string) {
 		return
 	}
 	if pay == nil {
-		return // 406: voucher went back to draft. Nothing to do.
+		return // 406: voucher is a draft. Nothing to do.
 	}
 	if !pay.Paid() {
 		log.Info().Str("invoice_id", invoiceID).Str("payment_status", pay.PaymentStatus).
@@ -336,41 +336,106 @@ func (h *Handler) settle(ctx context.Context, invoiceID string) {
 		return
 	}
 
-	var id, company, email, interval, status string
+	// Claim the row before doing anything irreversible.
+	//
+	// Two webhooks can arrive at once, and the fallback poller can run while a
+	// webhook is in flight. Reading the status and then writing it would let both
+	// pass the check and mail the customer two different license keys for the same
+	// invoice — confusing at best, and the second one silently replaces the first.
+	// A conditional UPDATE makes exactly one of them the winner.
+	var company, email, interval string
 	err = h.db.QueryRow(ctx, `
-		SELECT id, company_name, email, interval, status
-		  FROM billing_quote_requests WHERE lexware_invoice_id = $1`, invoiceID).
-		Scan(&id, &company, &email, &interval, &status)
+		UPDATE billing_quote_requests
+		   SET status = 'paid', paid_at = NOW()
+		 WHERE lexware_invoice_id = $1 AND status = 'approved'
+		RETURNING company_name, email, interval`, invoiceID).
+		Scan(&company, &email, &interval)
 	if err != nil {
-		// An invoice paid in Lexware that we never issued — e.g. a manual invoice
-		// for something else entirely. Not an error.
-		log.Info().Str("invoice_id", invoiceID).Msg("billing: paid invoice has no quote request — ignoring")
+		// No row claimed: either already settled (webhook replay, poller overlap)
+		// or the invoice belongs to no quote request at all — someone paid a manual
+		// invoice that has nothing to do with Vakt. Neither is an error.
 		return
-	}
-	if status == "paid" {
-		return // already settled; webhook replay
 	}
 
 	key, mailErr := h.issuer.Issue(licensing.Request{
 		OrgName: company, Email: email, Interval: interval, Trial: false,
 	}, nil, "")
 	if key == "" {
-		log.Error().Err(mailErr).Str("request_id", id).Msg("billing: could not sign full license key")
+		log.Error().Err(mailErr).Str("invoice_id", invoiceID).
+			Msg("billing: CRITICAL — payment settled but license key could not be signed")
 		return
 	}
 
-	if _, err := h.db.Exec(ctx, `
-		UPDATE billing_quote_requests SET status = 'paid', license_key = $2, paid_at = NOW()
-		 WHERE id = $1`, id, key); err != nil {
-		log.Error().Err(err).Str("request_id", id).Msg("billing: persist paid state")
+	if _, err := h.db.Exec(ctx,
+		`UPDATE billing_quote_requests SET license_key = $2 WHERE lexware_invoice_id = $1`,
+		invoiceID, key); err != nil {
+		log.Error().Err(err).Str("invoice_id", invoiceID).Msg("billing: persist license key")
 	}
 
 	if mailErr != nil {
-		log.Error().Err(mailErr).Str("request_id", id).Msg("billing: full license mail failed — send manually")
+		log.Error().Err(mailErr).Str("invoice_id", invoiceID).
+			Msg("billing: CRITICAL — key issued but mail failed. Send it manually from the DB.")
 		return
 	}
 	log.Info().
-		Str("request_id", id).
+		Str("invoice_id", invoiceID).
 		Str("email_redacted", logsafe.RedactEmail(email)).
 		Msg("billing: payment settled, full license key issued")
+}
+
+// PollPayments periodically asks Lexware whether an approved-but-unpaid invoice
+// has been settled, and issues the key if so.
+//
+// The webhook is the fast path, not the only path. It is a single point of
+// failure with a nasty failure mode: rotating the Lexware API key silently
+// deletes every event subscription, and Lexware itself drops subscriptions whose
+// callback looks dead. If it stops firing, a customer pays 2.990 € and receives
+// nothing — and nobody notices until they complain. That is the worst possible
+// way to find out.
+//
+// So we ask, too. Slower (up to one interval), but it cannot silently stop.
+func (h *Handler) PollPayments(ctx context.Context, interval time.Duration) {
+	if !h.client.Enabled() || !h.issuer.Enabled() {
+		return
+	}
+	t := time.NewTicker(interval)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			h.pollOnce(ctx)
+		}
+	}
+}
+
+func (h *Handler) pollOnce(ctx context.Context) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
+	rows, err := h.db.Query(ctx, `
+		SELECT lexware_invoice_id
+		  FROM billing_quote_requests
+		 WHERE status = 'approved' AND lexware_invoice_id IS NOT NULL
+		   AND approved_at > NOW() - INTERVAL '180 days'`)
+	if err != nil {
+		log.Error().Err(err).Msg("billing: poll approved invoices")
+		return
+	}
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err == nil {
+			ids = append(ids, id)
+		}
+	}
+	rows.Close()
+
+	for _, id := range ids {
+		// settle() re-checks payment status against Lexware and claims the row
+		// atomically, so running it here is safe even while a webhook fires.
+		h.settle(ctx, id)
+	}
 }
