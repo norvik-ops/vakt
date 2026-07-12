@@ -178,7 +178,7 @@ The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key requi
 | SCIM provisioning | — | ✅ |
 | SIEM export (Splunk, Elastic, Webhook) | — | ✅ |
 
-**Get a license key:** [buy.polar.sh](https://buy.polar.sh/polar_cl_3evwYMHJEFIS6SAIBbO3QFHCPwDwvLNbW29cH30tlfr) — purchase and receive your key by email. Activate in **Settings → License**.
+**Get a license key:** [request a quote](https://vakt.norvikops.de/angebot) — you receive an invoice by email, and your licence key once it is paid. Activate it in **Settings → License**. Payment is by bank transfer; no payment processor sits between you and us.
 
 ---
 

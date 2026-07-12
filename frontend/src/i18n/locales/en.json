@@ -2332,7 +2332,7 @@
     "licenseRevoked": "Your Pro subscription has been cancelled. Your access expires at the end of the current billing period.",
     "licenseExpiringSoon": "Your subscription expires in {{days}} days.",
     "licenseExpired": "Your subscription has already expired.",
-    "manageSubscription": "Manage subscription →",
+    "renewLicense": "Renew licence →",
     "proFeatures": "Pro unlocks:",
     "proKeyActivate": "Activate Pro Key",
     "proKeyPlaceholder": "Your license key",

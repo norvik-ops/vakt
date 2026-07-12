@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next'
 import { apiFetch, FeatureLockedError } from '../../../api/client'
 import { useAuthStore } from '../../../shared/stores/auth'
 import { cn } from '../../../lib/utils'
-import { VAKT_POLAR_PORTAL_URL } from '../../../lib/constants'
+import { VAKT_LICENSE_RENEW_URL } from '../../../lib/constants'
 import { useOrgSector, useUpdateOrgSector } from '../../../shared/hooks/useOrgSector'
 import { useApprovalSetting, useUpdateApprovalSetting } from '../../../shared/hooks/useApprovals'
 import { SECTOR_LABELS } from '../../../shared/types/sectors'
@@ -416,8 +416,8 @@ function LicenseSection() {
         )}
 
         {isPro && !lic?.demo && (
-          <a href={VAKT_POLAR_PORTAL_URL} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
-            {t('settingsPage.manageSubscription')}
+          <a href={VAKT_LICENSE_RENEW_URL} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
+            {t('settingsPage.renewLicense')}
           </a>
         )}
 

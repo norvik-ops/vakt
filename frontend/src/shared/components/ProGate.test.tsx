@@ -36,7 +36,9 @@ describe('ProGate', () => {
     expect(screen.getByText('Vakt Pro')).toBeInTheDocument()
     // CTA link must be present
     const link = screen.getByRole('link')
-    expect(link).toHaveAttribute('href', expect.stringContaining('polar.sh'))
+    // Not merely "a link": it must lead to the quote form. It used to point at a
+    // Polar checkout that quoted a VAT-inflated price the website never advertised.
+    expect(link).toHaveAttribute('href', expect.stringContaining('/angebot'))
   })
 
   it('shows ProUpgradeUI when error is FeatureLockedError', () => {

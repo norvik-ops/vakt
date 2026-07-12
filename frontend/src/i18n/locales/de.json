@@ -2332,7 +2332,7 @@
     "licenseRevoked": "Ihr Pro-Abonnement wurde gekündigt. Ihr Zugang läuft mit dem Ende des aktuellen Abrechnungszeitraums aus.",
     "licenseExpiringSoon": "Ihr Abonnement läuft in {{days}} Tagen ab.",
     "licenseExpired": "Ihr Abonnement ist bereits abgelaufen.",
-    "manageSubscription": "Abonnement verwalten →",
+    "renewLicense": "Lizenz verlängern →",
     "proFeatures": "Pro schaltet frei:",
     "proKeyActivate": "Pro-Key aktivieren",
     "proKeyPlaceholder": "Ihr Lizenzschlüssel",
