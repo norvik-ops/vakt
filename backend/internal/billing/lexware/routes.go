@@ -6,6 +6,7 @@ package lexware
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -37,6 +38,16 @@ func Register(g *echo.Group, h *Handler) {
 	g.POST("/billing/quote-request", h.RequestQuote, quoteLimiter)
 	g.GET("/billing/quote-request/:id/approve", h.Approve)
 	g.POST("/billing/lexware/webhook", h.Webhook)
+
+	// Lexware probes the callback URL with HEAD before it accepts a subscription.
+	// Without this the probe fell through to the catch-all and answered 401 —
+	// harmless today (the subscription registered anyway), but Lexware deletes
+	// subscriptions whose callback looks dead. A webhook that quietly stops firing
+	// means paid invoices stop issuing licences, and nobody finds out until a
+	// customer writes in. Answer the probe explicitly instead of hoping.
+	g.HEAD("/billing/lexware/webhook", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
 
 	log.Info().Msg("billing: direct-sale routes registered (quote-request, approve, lexware webhook)")
 }
