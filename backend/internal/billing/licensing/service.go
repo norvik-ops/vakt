@@ -94,8 +94,13 @@ func (i *Issuer) Issue(r Request, invoicePDF []byte, invoiceName string) (string
 }
 
 func (i *Issuer) sendMail(r Request, key string, pdf []byte, pdfName string) error {
-	subject := "Deine Vakt Pro Lizenz"
-	intro := "vielen Dank für deinen Auftrag. Anbei findest du deine Rechnung und deinen Vakt Pro Lizenzschlüssel."
+	// Zwei Mails, zwei Texte. Der Nicht-Trial-Fall ist die Mail NACH dem
+	// Zahlungseingang — sie traegt keinen Anhang mehr, weil die Rechnung schon
+	// mit der ersten Mail rausging. Ein "anbei findest du deine Rechnung" haette
+	// den Kunden vergeblich nach einem Anhang suchen lassen.
+	subject := "Deine Vakt Pro Lizenz — Zahlung eingegangen"
+	intro := "deine Zahlung ist eingegangen — vielen Dank. Hier ist dein Lizenzschlüssel mit voller Jahreslaufzeit.\r\n\r\n" +
+		"Er ersetzt den 45-Tage-Schlüssel aus der Auftragsbestätigung: einfach in deiner Instanz eintragen, dann läuft die Lizenz das volle Jahr."
 	if r.Trial {
 		subject = "Deine Vakt Pro Lizenz (45 Tage, bis zum Zahlungseingang)"
 		intro = "vielen Dank für deinen Auftrag. Anbei findest du deine Rechnung.\r\n\r\n" +
