@@ -8,7 +8,7 @@ package features
 //
 // This is the single source of truth for what "Pro" means. It used to live
 // unexported inside the Polar webhook package — which meant a license issued
-// through any other path (CLI, direct sale, manual re-issue) would have needed
+// through a different path (CLI, direct sale, manual re-issue) would have needed
 // its own copy of the list. Two copies drift; a customer who bought by invoice
 // would silently get a different feature set than one who paid by card.
 //

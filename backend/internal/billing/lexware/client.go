@@ -61,7 +61,7 @@ func (c *Client) Enabled() bool { return c != nil && c.apiKey != "" }
 // draft". Their docs state plainly: "This is not an error condition."
 var errNotApplicable = fmt.Errorf("lexware: resource not applicable (draft)")
 
-func (c *Client) do(ctx context.Context, method, path string, body any, accept string) ([]byte, error) {
+func (c *Client) do(ctx context.Context, method, path string, body []byte, accept string) ([]byte, error) {
 	if !c.Enabled() {
 		return nil, fmt.Errorf("lexware: no API key configured")
 	}
@@ -71,11 +71,7 @@ func (c *Client) do(ctx context.Context, method, path string, body any, accept s
 
 	var rdr io.Reader
 	if body != nil {
-		b, err := json.Marshal(body)
-		if err != nil {
-			return nil, fmt.Errorf("lexware: marshal request: %w", err)
-		}
-		rdr = bytes.NewReader(b)
+		rdr = bytes.NewReader(body)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, BaseURL+path, rdr)
@@ -153,43 +149,33 @@ type ContactInput struct {
 // invoice we issue is tax-free, and Lexware rejects vat-free invoices for a
 // referenced contact that does not permit them.
 func (c *Client) CreateContact(ctx context.Context, in ContactInput) (string, error) {
-	company := map[string]any{
-		"name":                 in.CompanyName,
-		"allowTaxFreeInvoices": true,
-	}
-	if in.VATID != "" {
-		company["vatRegistrationId"] = in.VATID
+	req := contactRequest{
+		Version: 0,
+		Company: contactCompany{
+			Name:                 in.CompanyName,
+			AllowTaxFreeInvoices: true,
+			VatRegistrationID:    in.VATID,
+		},
+		Addresses: contactAddresses{Billing: []contactAddress{{
+			Street: in.Street, Zip: in.Zip, City: in.City, CountryCode: in.CountryCode,
+		}}},
+		Emails: contactEmails{Business: []string{in.Email}},
 	}
 	if in.ContactName != "" {
-		company["contactPersons"] = []map[string]any{{
-			"lastName":     in.ContactName,
-			"primary":      true,
-			"emailAddress": in.Email,
+		req.Company.ContactPersons = []contactPerson{{
+			LastName: in.ContactName, Primary: true, EmailAddress: in.Email,
 		}}
 	}
 
-	body := map[string]any{
-		"version": 0,
-		"roles":   map[string]any{"customer": map[string]any{}},
-		"company": company,
-		"addresses": map[string]any{
-			"billing": []map[string]any{{
-				"street":      in.Street,
-				"zip":         in.Zip,
-				"city":        in.City,
-				"countryCode": in.CountryCode,
-			}},
-		},
-		"emailAddresses": map[string]any{"business": []string{in.Email}},
+	body, err := json.Marshal(req)
+	if err != nil {
+		return "", fmt.Errorf("lexware: marshal contact: %w", err)
 	}
-
 	raw, err := c.do(ctx, http.MethodPost, "/v1/contacts", body, "")
 	if err != nil {
 		return "", err
 	}
-	var out struct {
-		ID string `json:"id"`
-	}
+	var out idResponse
 	if err := json.Unmarshal(raw, &out); err != nil {
 		return "", fmt.Errorf("lexware: decode contact: %w", err)
 	}
@@ -226,42 +212,43 @@ func (c *Client) CreateInvoice(ctx context.Context, in InvoiceInput) (string, er
 	if in.DueInDays <= 0 {
 		in.DueInDays = 14
 	}
-	body := map[string]any{
-		"voucherDate": time.Now().Format(time.RFC3339),
-		"address":     map[string]any{"contactId": in.ContactID},
-		"lineItems": []map[string]any{{
-			"type":        "custom",
-			"name":        in.Title,
-			"description": in.Description,
-			"quantity":    1,
-			"unitName":    "Stück",
-			"unitPrice": map[string]any{
-				"currency":          "EUR",
-				"netAmount":         in.NetAmount,
-				"taxRatePercentage": 0,
+	now := time.Now().Format(time.RFC3339)
+
+	req := invoiceRequest{
+		VoucherDate: now,
+		Address:     invoiceAddress{ContactID: in.ContactID},
+		LineItems: []lineItem{{
+			Type:        "custom",
+			Name:        in.Title,
+			Description: in.Description,
+			Quantity:    1,
+			UnitName:    "Stück",
+			UnitPrice: unitPrice{
+				Currency:          "EUR",
+				NetAmount:         in.NetAmount,
+				TaxRatePercentage: 0,
 			},
 		}},
-		"totalPrice":    map[string]any{"currency": "EUR"},
-		"taxConditions": map[string]any{"taxType": "vatfree"},
-		"paymentConditions": map[string]any{
-			"paymentTermLabel":    fmt.Sprintf("Zahlbar innerhalb von %d Tagen ohne Abzug.", in.DueInDays),
-			"paymentTermDuration": in.DueInDays,
+		TotalPrice:    totalPrice{Currency: "EUR"},
+		TaxConditions: taxConditions{TaxType: "vatfree"},
+		PaymentConditions: paymentConditions{
+			PaymentTermLabel:    fmt.Sprintf("Zahlbar innerhalb von %d Tagen ohne Abzug.", in.DueInDays),
+			PaymentTermDuration: in.DueInDays,
 		},
-		"shippingConditions": map[string]any{
-			"shippingType": "service",
-			"shippingDate": time.Now().Format(time.RFC3339),
-		},
-		"title":        "Rechnung",
-		"introduction": in.Intro,
+		ShippingConditions: shippingConditions{ShippingType: "service", ShippingDate: now},
+		Title:              "Rechnung",
+		Introduction:       in.Intro,
 	}
 
+	body, err := json.Marshal(req)
+	if err != nil {
+		return "", fmt.Errorf("lexware: marshal invoice: %w", err)
+	}
 	raw, err := c.do(ctx, http.MethodPost, "/v1/invoices?finalize=true", body, "")
 	if err != nil {
 		return "", err
 	}
-	var out struct {
-		ID string `json:"id"`
-	}
+	var out idResponse
 	if err := json.Unmarshal(raw, &out); err != nil {
 		return "", fmt.Errorf("lexware: decode invoice: %w", err)
 	}
@@ -339,9 +326,7 @@ func (c *Client) EnsureEventSubscription(ctx context.Context, callbackURL string
 	if err != nil {
 		return fmt.Errorf("list event subscriptions: %w", err)
 	}
-	var list struct {
-		Content []subscription `json:"content"`
-	}
+	var list subscriptionList
 	if err := json.Unmarshal(raw, &list); err != nil {
 		return fmt.Errorf("decode event subscriptions: %w", err)
 	}
@@ -351,11 +336,14 @@ func (c *Client) EnsureEventSubscription(ctx context.Context, callbackURL string
 		}
 	}
 
-	_, err = c.do(ctx, http.MethodPost, "/v1/event-subscriptions", map[string]any{
-		"eventType":   EventPaymentChanged,
-		"callbackUrl": callbackURL,
-	}, "")
+	sub, err := json.Marshal(eventSubscriptionRequest{
+		EventType:   EventPaymentChanged,
+		CallbackURL: callbackURL,
+	})
 	if err != nil {
+		return fmt.Errorf("marshal event subscription: %w", err)
+	}
+	if _, err = c.do(ctx, http.MethodPost, "/v1/event-subscriptions", sub, ""); err != nil {
 		return fmt.Errorf("create event subscription: %w", err)
 	}
 	return nil
