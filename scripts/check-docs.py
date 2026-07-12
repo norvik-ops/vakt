@@ -473,6 +473,78 @@ def check_prices() -> None:
                 err(f"{f}:{lineno}: verbotener Preis-String '{label}' — UWG §5/PAngV-Risiko")
 
 
+
+# ── 6b. Preis = Katalog ──────────────────────────────────────────────────────
+# Die Preise auf der Website MÜSSEN die sein, die der Backend-Katalog auch
+# wirklich in Rechnung stellt.
+#
+# Das ist kein Formalismus. Genau diese Drift war live: Die Preisseite warb mit
+# 2.990 €, der "Pro kaufen"-Button IN DER APP führte auf einen Polar-Checkout,
+# der 3.558,10 € verlangte (Polar schlug als Merchant of Record 19 % USt drauf,
+# die es bei § 19 UStG gar nicht gibt). Zwei Preise für dasselbe Produkt, und der
+# höhere stand dort, wo niemand hinsieht. Ein Blacklist-Check auf "verbotene
+# Preis-Strings" (oben) findet so etwas NICHT — er kennt die Wahrheit nicht.
+#
+# Quelle der Wahrheit: backend/internal/billing/lexware/plans.go
+_PLANS_GO = "backend/internal/billing/lexware/plans.go"
+
+# Seiten, die einen Preis nennen, und was dort stehen MUSS.
+_PRICE_SURFACES = {
+    "sites/vakt/src/components/Pricing.astro": ["pro/year", "pro/month"],
+    "sites/vakt/src/pages/angebot.astro": ["pro/year", "pro/month"],
+}
+
+
+def _catalog_prices() -> dict:
+    """Liest NetEUR je Plan aus plans.go. Bewusst simpel: der Katalog ist eine
+    flache Map aus Literalen — wenn er das mal nicht mehr ist, schlägt das hier
+    fehl statt still das Falsche zu prüfen."""
+    try:
+        text = open(_PLANS_GO, encoding="utf-8").read()
+    except OSError:
+        err(f"{_PLANS_GO}: nicht lesbar — der Preis-Katalog ist die Quelle der Wahrheit")
+        return {}
+    out = {}
+    for m in re.finditer(
+        r'PeriodKey\("(\w+)",\s*"(\w+)"\):\s*\{(.*?)\n\t\},', text, re.S
+    ):
+        product, interval, body = m.group(1), m.group(2), m.group(3)
+        pm = re.search(r"NetEUR:\s*([0-9.]+)", body)
+        if pm:
+            out[f"{product}/{interval}"] = float(pm.group(1))
+    if not out:
+        err(f"{_PLANS_GO}: kein einziger Plan erkannt — Regex kaputt oder Katalog umgebaut")
+    return out
+
+
+def _de_price(v: float) -> str:
+    """2990.0 -> '2.990', 299.0 -> '299' — so, wie es auf der Seite steht."""
+    n = int(v)
+    return f"{n:,}".replace(",", ".")
+
+
+def check_price_catalog() -> None:
+    prices = _catalog_prices()
+    if not prices:
+        return
+    for page, plan_keys in _PRICE_SURFACES.items():
+        try:
+            text = open(page, encoding="utf-8").read()
+        except OSError:
+            err(f"{page}: fehlt — steht in _PRICE_SURFACES, existiert aber nicht")
+            continue
+        for key in plan_keys:
+            if key not in prices:
+                err(f"{page}: Plan '{key}' steht in _PRICE_SURFACES, aber nicht im Katalog")
+                continue
+            want = _de_price(prices[key])
+            if want not in text:
+                err(
+                    f"{page}: Preis '{want} €' (Plan {key}) kommt auf der Seite nicht vor — "
+                    f"die Seite bewirbt etwas anderes, als {_PLANS_GO} in Rechnung stellt"
+                )
+
+
 _TYPO_EXCL = (
     "docs/stories/",
     "docs/sprints/",
@@ -545,6 +617,7 @@ def main() -> int:
     check_env_vars()
     check_volume_backup()
     check_prices()
+    check_price_catalog()
     check_typos()
     check_compose_parity()
     if errors:
@@ -553,7 +626,7 @@ def main() -> int:
             print("  ❌", e)
         print(f"\n{len(errors)} Problem(e). Quelle der Wahrheit ist der Code (go.mod/config.go).")
         return 1
-    print("✓ Doku-Konsistenz OK (Go-Version, AI-Default, interne Links, Env-Var-Coverage, Volume-Backup, Preis, Tippfehler, Compose-Parität)")
+    print("✓ Doku-Konsistenz OK (Go-Version, AI-Default, interne Links, Env-Var-Coverage, Volume-Backup, Preis+Katalog, Tippfehler, Compose-Parität)")
     return 0
 
 

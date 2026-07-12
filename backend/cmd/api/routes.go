@@ -741,6 +741,14 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		// goes quiet (key rotated, subscription dropped, Lexware hiccup), a paying
 		// customer would otherwise receive nothing and we would find out from them.
 		go lexHandler.PollPayments(context.Background(), 30*time.Minute)
+
+		// Recurring billing. Vakt Pro is sold monthly and yearly, so a subscription
+		// needs a follow-up invoice before its period runs out. Nothing did that
+		// until now: Approve() raised exactly one invoice, and a monthly customer's
+		// key simply expired on day 36. Six hours is far more often than needed
+		// (renewals are due once a month at most) and cheap — the query is indexed
+		// and hits nothing when nothing is due.
+		go lexHandler.RenewDue(context.Background(), 6*time.Hour)
 	}
 
 	// S46-1: Prometheus metrics — IP-allowlisted (loopback + Docker-internal only).

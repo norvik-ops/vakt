@@ -158,11 +158,19 @@ Stefan
 Norvik Ops
 `, intro, key, key, renewal)
 
-	// Every header value that can carry attacker- or customer-supplied text goes
-	// through mailhdr.Sanitize. The company name arrives from a public web form:
-	// an unsanitised "\r\nBcc:" in it would turn this into an open relay.
+	return i.Send(r.Email, subject, body, pdf, pdfName)
+}
+
+// Send delivers one mail. It is the only place that talks to SMTP.
+//
+// Extracted from sendMail so a renewal invoice — which carries no key, because the
+// key is only issued once the money lands — reuses the exact same hardened
+// delivery instead of a second copy that would drift. The header sanitising below
+// is the whole reason: the company name arrives from a PUBLIC web form, and an
+// unsanitised "\r\nBcc:" in it would turn this into an open relay.
+func (i *Issuer) Send(toAddr, subject, body string, pdf []byte, pdfName string) error {
 	from := mailhdr.Sanitize(i.smtp.From)
-	to := mailhdr.Sanitize(r.Email)
+	to := mailhdr.Sanitize(toAddr)
 	subj := mailhdr.Sanitize(subject)
 	replyTo := ""
 	if i.smtp.ReplyTo != "" {
@@ -203,7 +211,7 @@ Norvik Ops
 	if i.smtp.User != "" {
 		auth = smtp.PlainAuth("", i.smtp.User, i.smtp.Pass, i.smtp.Host)
 	}
-	return smtp.SendMail(i.smtp.Host+":"+i.smtp.Port, auth, i.smtp.From, []string{r.Email}, []byte(msg.String()))
+	return smtp.SendMail(i.smtp.Host+":"+i.smtp.Port, auth, i.smtp.From, []string{toAddr}, []byte(msg.String()))
 }
 
 // chunk76 wraps base64 at 76 characters, as RFC 2045 requires. Some MTAs reject

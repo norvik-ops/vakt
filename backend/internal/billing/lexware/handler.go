@@ -26,10 +26,6 @@ import (
 	"github.com/matharnica/vakt/internal/shared/mailhdr"
 )
 
-// ProNetAmountEUR is the yearly Pro price. Net, because as a §19 small business
-// no VAT is charged — the invoice carries Lexware's stored § 19 note instead.
-const ProNetAmountEUR = 2990.0
-
 // Handler serves the direct-sale flow: quote request -> human approval ->
 // invoice -> payment -> license.
 type Handler struct {
@@ -57,6 +53,8 @@ type quoteRequestInput struct {
 	City        string `json:"city"`
 	CountryCode string `json:"country_code"`
 	Note        string `json:"note"`
+	Product     string `json:"product"`  // pro (managed, msp planned) — empty means pro
+	Quantity    int    `json:"quantity"` // seats; an MSP buys more than one
 	Interval    string `json:"interval"` // year | month
 	Website     string `json:"website"`  // honeypot — humans never fill this
 }
@@ -105,15 +103,40 @@ func (h *Handler) RequestQuote(c echo.Context) error {
 	token := hex.EncodeToString(tokenBytes)
 	sum := sha256.Sum256([]byte(token))
 
+	// The form posts a product. Reject anything we do not sell right here, at the
+	// public edge: an unknown value would sail through to Approve() and only fail
+	// once a human had already clicked "freigeben", which is a rotten place to
+	// discover it. Empty means "pro" — the form shipped before products existed.
+	product := in.Product
+	if product == "" {
+		product = "pro"
+	}
+	if _, err := PlanFor(product, in.Interval); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "unknown product or interval"})
+	}
+
+	// Seats. Bounded on both sides: 0 or negative would invoice nothing, and an
+	// absurd number typed into a public form would produce an absurd invoice under
+	// our tax number. 500 is far above any real MSP and far below "someone is
+	// having fun with the form".
+	quantity := in.Quantity
+	if quantity < 1 {
+		quantity = 1
+	}
+	if quantity > 500 {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "quantity out of range"})
+	}
+
 	ctx := c.Request().Context()
 	var id string
 	err := h.db.QueryRow(ctx, `
 		INSERT INTO billing_quote_requests
-			(company_name, contact_name, email, vat_id, street, zip, city, country_code, note, interval, approval_token_hash)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+			(company_name, contact_name, email, vat_id, street, zip, city, country_code, note,
+			 product, quantity, interval, approval_token_hash)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
 		RETURNING id`,
 		in.CompanyName, in.ContactName, in.Email, in.VATID, in.Street, in.Zip, in.City,
-		in.CountryCode, in.Note, in.Interval, hex.EncodeToString(sum[:]),
+		in.CountryCode, in.Note, product, quantity, in.Interval, hex.EncodeToString(sum[:]),
 	).Scan(&id)
 	if err != nil {
 		log.Error().Err(err).Msg("billing: persist quote request")
@@ -190,15 +213,16 @@ func (h *Handler) Approve(c echo.Context) error {
 	ctx := c.Request().Context()
 	var (
 		storedHash, status, company, contact, email, vatID string
-		street, zip, city, country, interval               string
+		street, zip, city, country, interval, product      string
 		renewalToken                                       string
+		quantity                                           int
 	)
 	err := h.db.QueryRow(ctx, `
 		SELECT approval_token_hash, status, company_name, contact_name, email, vat_id,
-		       street, zip, city, country_code, interval, renewal_token
+		       street, zip, city, country_code, interval, product, quantity, renewal_token
 		  FROM billing_quote_requests WHERE id = $1`, id).
 		Scan(&storedHash, &status, &company, &contact, &email, &vatID, &street, &zip, &city, &country,
-			&interval, &renewalToken)
+			&interval, &product, &quantity, &renewalToken)
 	if err != nil {
 		return c.String(http.StatusNotFound, "Anfrage nicht gefunden")
 	}
@@ -215,6 +239,17 @@ func (h *Handler) Approve(c echo.Context) error {
 		return c.String(http.StatusServiceUnavailable, "Billing ist auf dieser Instanz nicht konfiguriert")
 	}
 
+	// Before anything is created in Lexware: is this even a thing we sell? An
+	// unknown product/interval must fail HERE, not silently fall back to some
+	// default amount — that would invoice a real customer the wrong price.
+	plan, err := PlanFor(product, interval)
+	if err != nil {
+		log.Error().Err(err).Str("request_id", id).Msg("billing: unknown plan")
+		return c.String(http.StatusOK,
+			"FEHLER: Für diese Kombination gibt es keinen Tarif ("+product+"/"+interval+").\n\n"+
+				"Es wurde nichts erstellt. Wenn das Produkt verkauft werden soll, gehört es in plans.go.")
+	}
+
 	contactID, err := h.client.CreateContact(ctx, ContactInput{
 		CompanyName: company, VATID: vatID, ContactName: contact, Email: email,
 		Street: street, Zip: zip, City: city, CountryCode: country,
@@ -227,20 +262,13 @@ func (h *Handler) Approve(c echo.Context) error {
 		return c.String(http.StatusOK, "FEHLER: Lexware-Kontakt konnte nicht angelegt werden.\n\n"+err.Error()+"\n\nEs wurde nichts erstellt. Der Link bleibt gültig — nach dem Fix erneut klicken.")
 	}
 
-	amount := ProNetAmountEUR
-	title := "Vakt Pro — Jahreslizenz"
-	if interval == "month" {
-		amount = 299.0
-		title = "Vakt Pro — Monatslizenz"
-	}
-
 	invoiceID, err := h.client.CreateInvoice(ctx, InvoiceInput{
 		ContactID:   contactID,
-		Title:       title,
+		Title:       plan.Title,
 		Intro:       "vielen Dank für Ihren Auftrag. Wir stellen Ihnen wie vereinbart in Rechnung:",
-		Description: "Vakt Pro — self-hosted ISMS-Plattform, unbegrenzte Nutzer",
-		NetAmount:   amount,
-		DueInDays:   14,
+		Description: plan.LineDesc(quantity),
+		NetAmount:   plan.TotalEUR(quantity),
+		DueInDays:   plan.DueDays,
 	})
 	if err != nil {
 		log.Error().Err(err).Str("request_id", id).Msg("billing: create lexware invoice")
@@ -263,17 +291,43 @@ func (h *Handler) Approve(c echo.Context) error {
 		RenewalToken: renewalToken,
 	}, pdf, "Rechnung-Vakt-Pro.pdf")
 
-	if _, dbErr := h.db.Exec(ctx, `
-		UPDATE billing_quote_requests
-		   SET status = 'approved', lexware_contact_id = $2, lexware_invoice_id = $3,
-		       license_key = $4, approved_at = NOW()
-		 WHERE id = $1`, id, contactID, invoiceID, key); dbErr != nil {
-		// The invoice is out and cannot be recalled — losing the link between it
-		// and this request would orphan the payment webhook. Loud failure.
+	// The quote request becomes the subscription here, and the invoice gets its own
+	// row: from now on there will be many invoices against this one subscription,
+	// and settle() has to know which period a payment belongs to.
+	//
+	// Both writes in one transaction. An invoice row without its subscription
+	// update (or the reverse) would either orphan the payment webhook — customer
+	// pays, no key — or bill someone twice.
+	from, to := plan.Period(time.Now())
+	tx, dbErr := h.db.Begin(ctx)
+	if dbErr == nil {
+		_, dbErr = tx.Exec(ctx, `
+			UPDATE billing_quote_requests
+			   SET status = 'approved', lexware_contact_id = $2, lexware_invoice_id = $3,
+			       license_key = $4, approved_at = NOW()
+			 WHERE id = $1`, id, contactID, invoiceID, key)
+		if dbErr == nil {
+			_, dbErr = tx.Exec(ctx, `
+				INSERT INTO billing_invoices
+					(subscription_id, lexware_invoice_id, period_start, period_end, net_amount_cents, status)
+				VALUES ($1, $2, $3, $4, $5, 'open')`,
+				id, invoiceID, from, to, plan.TotalCents(quantity))
+		}
+		if dbErr == nil {
+			dbErr = tx.Commit(ctx)
+		} else {
+			_ = tx.Rollback(ctx)
+		}
+	}
+	if dbErr != nil {
+		// The invoice is out in Lexware and cannot be recalled — losing the link
+		// between it and this request would orphan the payment webhook. Loud failure.
 		log.Error().Err(dbErr).Str("request_id", id).Str("invoice_id", invoiceID).
 			Msg("billing: CRITICAL — invoice sent but request not updated")
-		return c.String(http.StatusInternalServerError,
-			"Rechnung wurde erstellt ("+invoiceID+"), aber die Anfrage konnte nicht aktualisiert werden. Bitte manuell prüfen.")
+		return c.String(http.StatusOK,
+			"FEHLER: Rechnung "+invoiceID+" wurde in Lexware erstellt, aber die Anfrage konnte nicht "+
+				"aktualisiert werden.\n\n"+dbErr.Error()+"\n\nBitte manuell prüfen — die Zahlung kann sonst "+
+				"nicht zugeordnet werden.")
 	}
 
 	if mailErr != nil {
@@ -339,24 +393,47 @@ func (h *Handler) settle(ctx context.Context, invoiceID string) {
 		return
 	}
 
-	// Claim the row before doing anything irreversible.
+	// Claim the INVOICE before doing anything irreversible.
 	//
 	// Two webhooks can arrive at once, and the fallback poller can run while a
 	// webhook is in flight. Reading the status and then writing it would let both
 	// pass the check and mail the customer two different license keys for the same
 	// invoice — confusing at best, and the second one silently replaces the first.
 	// A conditional UPDATE makes exactly one of them the winner.
-	var company, email, interval, renewalToken string
+	//
+	// The claim moved from the subscription row to the invoice row when billing
+	// became recurring: a subscription is paid many times, so "status = 'approved'"
+	// stopped being a usable guard after the first cycle. The invoice is the thing
+	// that is paid exactly once.
+	var subID string
+	var periodEnd time.Time
 	err = h.db.QueryRow(ctx, `
-		UPDATE billing_quote_requests
+		UPDATE billing_invoices
 		   SET status = 'paid', paid_at = NOW()
-		 WHERE lexware_invoice_id = $1 AND status = 'approved'
-		RETURNING company_name, email, interval, renewal_token`, invoiceID).
-		Scan(&company, &email, &interval, &renewalToken)
+		 WHERE lexware_invoice_id = $1 AND status = 'open'
+		RETURNING subscription_id, period_end`, invoiceID).
+		Scan(&subID, &periodEnd)
 	if err != nil {
 		// No row claimed: either already settled (webhook replay, poller overlap)
-		// or the invoice belongs to no quote request at all — someone paid a manual
+		// or the invoice belongs to no subscription at all — someone paid a manual
 		// invoice that has nothing to do with Vakt. Neither is an error.
+		return
+	}
+
+	var company, email, interval, product, renewalToken string
+	if err := h.db.QueryRow(ctx, `
+		SELECT company_name, email, interval, product, renewal_token
+		  FROM billing_quote_requests WHERE id = $1`, subID).
+		Scan(&company, &email, &interval, &product, &renewalToken); err != nil {
+		log.Error().Err(err).Str("invoice_id", invoiceID).Str("subscription_id", subID).
+			Msg("billing: CRITICAL — invoice paid but its subscription could not be read")
+		return
+	}
+
+	plan, err := PlanFor(product, interval)
+	if err != nil {
+		log.Error().Err(err).Str("subscription_id", subID).
+			Msg("billing: CRITICAL — payment settled for a plan that no longer exists")
 		return
 	}
 
@@ -370,9 +447,14 @@ func (h *Handler) settle(ctx context.Context, invoiceID string) {
 		return
 	}
 
-	if _, err := h.db.Exec(ctx,
-		`UPDATE billing_quote_requests SET license_key = $2 WHERE lexware_invoice_id = $1`,
-		invoiceID, key); err != nil {
+	// The new key and the next billing date land together. next_invoice_at is set
+	// HERE and nowhere else: an invoice is only ever raised for a customer whose
+	// previous one was paid.
+	if _, err := h.db.Exec(ctx, `
+		UPDATE billing_quote_requests
+		   SET status = 'paid', paid_at = COALESCE(paid_at, NOW()),
+		       license_key = $2, next_invoice_at = $3
+		 WHERE id = $1`, subID, key, plan.NextInvoiceAt(periodEnd)); err != nil {
 		log.Error().Err(err).Str("invoice_id", invoiceID).Msg("billing: persist license key")
 	}
 
@@ -383,8 +465,10 @@ func (h *Handler) settle(ctx context.Context, invoiceID string) {
 	}
 	log.Info().
 		Str("invoice_id", invoiceID).
+		Str("subscription_id", subID).
+		Str("next_invoice_at", plan.NextInvoiceAt(periodEnd).Format("2006-01-02")).
 		Str("email_redacted", logsafe.RedactEmail(email)).
-		Msg("billing: payment settled, full license key issued")
+		Msg("billing: payment settled, full license key issued, cycle advanced")
 }
 
 // PollPayments periodically asks Lexware whether an approved-but-unpaid invoice
@@ -419,13 +503,17 @@ func (h *Handler) pollOnce(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
+	// Every OPEN invoice, not just the first one of a subscription. Once billing
+	// became recurring, "the subscription is still in status approved" stopped
+	// meaning "an invoice is waiting for money" — a subscription in its fifth month
+	// is long since 'paid', and its fifth invoice would never have been polled.
 	rows, err := h.db.Query(ctx, `
 		SELECT lexware_invoice_id
-		  FROM billing_quote_requests
-		 WHERE status = 'approved' AND lexware_invoice_id IS NOT NULL
-		   AND approved_at > NOW() - INTERVAL '180 days'`)
+		  FROM billing_invoices
+		 WHERE status = 'open'
+		   AND created_at > NOW() - INTERVAL '180 days'`)
 	if err != nil {
-		log.Error().Err(err).Msg("billing: poll approved invoices")
+		log.Error().Err(err).Msg("billing: poll open invoices")
 		return
 	}
 	var ids []string
