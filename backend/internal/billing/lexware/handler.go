@@ -219,7 +219,10 @@ func (h *Handler) Approve(c echo.Context) error {
 	})
 	if err != nil {
 		log.Error().Err(err).Str("request_id", id).Msg("billing: create lexware contact")
-		return c.String(http.StatusBadGateway, "Lexware-Kontakt konnte nicht angelegt werden: "+err.Error())
+		// 200, nicht 502: Diese Seite liest ein MENSCH. Cloudflare ersetzt 5xx
+		// durch seine eigene "Bad gateway"-Seite, und die Fehlerursache — die
+		// hier steht — ginge verloren.
+		return c.String(http.StatusOK, "FEHLER: Lexware-Kontakt konnte nicht angelegt werden.\n\n"+err.Error()+"\n\nEs wurde nichts erstellt. Der Link bleibt gültig — nach dem Fix erneut klicken.")
 	}
 
 	amount := ProNetAmountEUR
@@ -239,7 +242,7 @@ func (h *Handler) Approve(c echo.Context) error {
 	})
 	if err != nil {
 		log.Error().Err(err).Str("request_id", id).Msg("billing: create lexware invoice")
-		return c.String(http.StatusBadGateway, "Rechnung konnte nicht erstellt werden: "+err.Error())
+		return c.String(http.StatusOK, "FEHLER: Rechnung konnte nicht erstellt werden.\n\n"+err.Error()+"\n\nDer Kontakt wurde in Lexware angelegt, die Rechnung nicht. Der Link bleibt gültig — nach dem Fix erneut klicken.")
 	}
 
 	pdf, err := h.client.InvoicePDF(ctx, invoiceID)

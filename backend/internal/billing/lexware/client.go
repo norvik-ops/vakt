@@ -37,6 +37,15 @@ const BaseURL = "https://api.lexware.io"
 // construction rather than by reacting to 429s.
 const rateLimitPerSecond = 2
 
+// lexwareTime is the only date format Lexware accepts on a voucher.
+//
+// time.RFC3339 produces "2026-07-12T09:17:13+00:00" — and Lexware rejects it
+// with a flat 400: "The date value ... cannot be parsed." It insists on
+// milliseconds ("2026-07-12T09:17:13.000+00:00"), which RFC3339 does not emit.
+// Found the hard way: the very first invoice this code tried to create failed,
+// and the reason was invisible because the error body was not surfaced.
+const lexwareTime = "2006-01-02T15:04:05.000-07:00"
+
 // Client is a Lexware Office API client. Safe for concurrent use.
 type Client struct {
 	apiKey string
@@ -102,8 +111,19 @@ func (c *Client) do(ctx context.Context, method, path string, body []byte, accep
 		return nil, errNotApplicable
 	}
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		// Never log `raw` at call sites without care: Lexware echoes request
-		// fields back in validation errors, which can include customer data.
+		// Surface Lexware's own explanation. Without it, a 400 is unactionable —
+		// the first real invoice failed on a date format and the log said only
+		// "status 400", which cost a debugging round against the live API.
+		//
+		// Only the `message` field is taken, never the whole body: Lexware echoes
+		// submitted fields back in validation errors, and those carry customer data.
+		var e struct {
+			Message string `json:"message"`
+		}
+		_ = json.Unmarshal(raw, &e)
+		if e.Message != "" {
+			return nil, fmt.Errorf("lexware: %s %s: status %d: %s", method, path, resp.StatusCode, e.Message)
+		}
 		return nil, fmt.Errorf("lexware: %s %s: status %d", method, path, resp.StatusCode)
 	}
 	return raw, nil
@@ -212,7 +232,7 @@ func (c *Client) CreateInvoice(ctx context.Context, in InvoiceInput) (string, er
 	if in.DueInDays <= 0 {
 		in.DueInDays = 14
 	}
-	now := time.Now().Format(time.RFC3339)
+	now := time.Now().Format(lexwareTime)
 
 	req := invoiceRequest{
 		VoucherDate: now,
