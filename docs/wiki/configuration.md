@@ -71,7 +71,7 @@ REDIS_PASSWORD=<dein-redis-passwort>
 | `VAKT_DOMAIN` | — | `localhost` | Domain für den eingebauten **Caddy**-Frontdoor. Auf die öffentliche Domain setzen (z. B. `vakt.example.com`) → Caddy holt und erneuert automatisch ein Let's-Encrypt-Zertifikat (Ports **80+443** müssen aus dem Internet erreichbar sein). Default `localhost` = HTTPS mit lokal signiertem Cert (Tests). `:80` = nur HTTP (Betrieb hinter eigenem TLS-Terminator). Wird von Caddy/Compose gelesen, nicht vom Backend. |
 | `VAKT_RATELIMIT_IP_MAX` | — | `50` | Sekundäre IP-Sperre beim Login: wie viele Fehlversuche **von einer einzelnen IP** (egal welche Email) innerhalb von 15 Minuten erlaubt sind. Primäre Sperre ist pro (IP, Email)-Paar (Threshold 10). Erhöhen für Corporate-NAT-Umgebungen (viele Nutzer hinter einer IP), senken für strengere Absicherung. Gilt für `POST /api/v1/auth/login`. |
 | `VAKT_TRUSTED_PROXIES` | **Prod: Ja** | — (Compose-Stack: `172.16.0.0/12`) | Komma-separierte CIDR-Liste der Reverse-Proxies, deren `X-Forwarded-For`-Header die API glaubt. **Ohne diesen Wert läuft die API im Direct-IP-Modus**: hinter nginx/Caddy sehen dann alle IP-basierten Schutzmechanismen (Rate-Limits, sekundärer Login-Lockout, `VAKT_ADMIN_ALLOWED_IPS`) nur die Proxy-IP — ein einzelner Angreifer kann so den Login für alle Nutzer sperren. Das Root-`docker-compose.yml` setzt als Default das Docker-Bridge-Netz `172.16.0.0/12`; bei eigenem Proxy dessen IP/Netz eintragen. Nur die Proxy-Adressen eintragen, nie ganze öffentliche Netze (sonst werden XFF-Header spoofbar). |
-| `VAKT_AUDIT_SYSLOG_ADDR` | — | — (aus) | **Opt-in.** Ziel `host:port` eines kunden-eigenen Syslog-/SIEM-Servers, an den Audit-Log-Ereignisse (Login, Rollenwechsel, Offboarding, Export …) ausgeleitet werden. Leer = kein ausgehender Traffic. **Datenschutz:** Der Endpunkt wird vom Kunden konfiguriert (analog Outgoing-Webhooks/SMTP) — der Kunde trägt die Verantwortung für die Datenweitergabe. **Kein Norvik-Relay, kein Phone-Home.** Der Audit-Schreibpfad wird nie blockiert (asynchron, Drop-Zähler `vakt_audit_forward_dropped`). |
+| `VAKT_AUDIT_SYSLOG_ADDR` | — | — (aus) | **Opt-in.** Ziel `host:port` eines kunden-eigenen Syslog-/SIEM-Servers, an den Audit-Log-Ereignisse (Login, Rollenwechsel, Offboarding, Export …) ausgeleitet werden. Leer = kein ausgehender Traffic. **Datenschutz:** Der Endpunkt wird vom Kunden konfiguriert (analog Outgoing-Webhooks/SMTP) — der Kunde trägt die Verantwortung für die Datenweitergabe. **Kein Norvik-Relay** — die Daten gehen direkt an deinen Server, nie über uns. Der Audit-Schreibpfad wird nie blockiert (asynchron, Drop-Zähler `vakt_audit_forward_dropped`). |
 | `VAKT_AUDIT_SYSLOG_PROTO` | — | `tcp` | Transport: `tcp` oder `tcp+tls` (TLS 1.2+). |
 | `VAKT_AUDIT_SYSLOG_FORMAT` | — | `rfc5424` | Nachrichtenformat: `rfc5424` (Syslog) oder `cef` (ArcSight CEF). |
 | `VAKT_AUDIT_SYSLOG_ALLOW_PRIVATE` | — | `false` | Erlaubt ein Ziel in privaten/Loopback-Netzen (RFC1918/IMDS), z. B. ein SIEM im selben LAN. Default: solche Ziele werden als SSRF-Schutz abgelehnt. |
@@ -321,6 +321,46 @@ Self-Hosted-Instanzen laufen standardmäßig als **Community Edition** (kostenlo
 | `VAKT_LICENSE_KEY` | — | — | Pro License Key. Nach dem Kauf per E-Mail erhalten. Kann auch direkt unter **Einstellungen → Lizenz** eingetragen werden — dann ist kein Neustart nötig. |
 | `VAKT_LICENSE_TOKEN` | — | — | Renewal-Token für automatische Key-Erneuerung (ebenfalls in der Kauf-E-Mail). Wenn gesetzt, holt die Instanz täglich den aktuellen Key von `api.norvikops.de` — kein manueller Eingriff bei Verlängerungen nötig. Opt-in, siehe unten. |
 | `VAKT_LICENSE_REFRESH_URL` | — | `https://api.norvikops.de` | Überschreibt den Renewal-Endpunkt (nur für Air-Gap-/Eigenbetrieb des Lizenzservers nötig — normalerweise leer lassen). |
+| `VAKT_PORTAL_BASE_URL` | — | `https://lizenz.norvikops.de` | **Nur für den Norvik-eigenen Billing-Dienst.** Basis-URL des Lizenzportals, in dem ein Kunde (typisch ein MSP) seine gekauften Plätze sieht und Schlüssel für Endkunden ausstellt. Gehört **nicht** in eine Kunden-Konfiguration. |
+| `VAKT_BILLING_METRICS_PORT` | — | `9099` | **Nur für den Norvik-eigenen Billing-Dienst.** Port des Prometheus-Endpunkts (`/metrics`). Wird per Compose auf `127.0.0.1` des Hosts gemappt — Zabbix zieht ihn von dort, aus dem Internet ist er nicht erreichbar. Gehört **nicht** in eine Kunden-Konfiguration. |
+
+> ### Wie die Pro-Lizenz sich erneuert — und was dabei übertragen wird
+>
+> **Dein Schlüssel ist genau so lange gültig, wie du bezahlt hast — plus Kulanz** (30 Tage im
+> Jahrestarif, 5 im Monatstarif). Nie kürzer, nie länger.
+>
+> „Nie kürzer" ist die wichtige Hälfte: **Du hängst nicht von uns ab.** Wenn unser Billing-Dienst
+> oder unser Mailversand monatelang ausfällt, läuft deine Instanz trotzdem weiter — du hast bezahlt,
+> also funktioniert es. Ein Ausfall auf unserer Seite darf dich nicht mitten in einem Audit
+> abschalten.
+>
+> Zwei Wege, deinen nächsten Schlüssel zu bekommen — beide funktionieren:
+>
+> **Weg 1 — automatisch (Standard).** Du musst nichts konfigurieren: Der Erneuerungs-Token steckt im
+> signierten Schlüssel selbst. Deine Instanz holt sich den nächsten Schlüssel, **wenn der aktuelle
+> zur Neige geht** — im letzten Viertel seiner Laufzeit, höchstens im letzten Monat.
+>
+> Bei einer **Jahreslizenz ist das etwa ein Aufruf pro Jahr.** Bei einer Monatslizenz eine Handvoll
+> pro Verlängerung. **Dazwischen: gar nichts.** Deine Instanz schweigt monatelang.
+>
+> Das ist eine **Erneuerung, kein Heartbeat** — und der Unterschied ist keine Wortklauberei, sondern
+> ein Aufruf im Jahr statt 365. Übertragen wird **ausschließlich der Lizenz-Token**: keine
+> Organisationsdaten, keine Nutzerzahlen, keine Compliance-Inhalte, kein Instanz-Fingerprint. Auf
+> unserer Seite wird das **Datum der letzten Anfrage** gespeichert, damit du (und bei
+> Mehrfach-Lizenzen dein MSP) siehst, welche Lizenzen laufen. Mehr nicht — keine Nutzungsstatistik,
+> kein Profil. Diese Grenze steht als Architekturentscheidung fest (ADR-0071) und darf ohne neues ADR
+> nicht erweitert werden.
+>
+> **Weg 2 — gar nichts.** Setz `VAKT_LICENSE_AUTORENEW=false`. Dann spricht deine Instanz **nie** mit
+> uns — kein einziger ausgehender Aufruf in Richtung Norvik. Wir mailen dir den nächsten Schlüssel,
+> sobald deine Verlängerung bezahlt ist. Einfügen, fertig. Air-Gap-Betrieb ist ein legitimer
+> Anwendungsfall, kein Sonderweg.
+>
+> **Die Community Edition telefoniert in keinem Fall nach Hause.** Sie braucht keinen Schlüssel.
+>
+> Die vollständige Liste **aller** ausgehenden Verbindungen (auch derer, die nicht zu uns gehen) steht
+> in `SECURITY.md` — und du kannst sie im Quellcode nachprüfen.
+
 
 **Beispiel:**
 
@@ -339,9 +379,11 @@ VAKT_LICENSE_TOKEN=550e8400-e29b-41d4-a716-446655440000
 
 **Datenschutz-Hinweis zu `VAKT_BSI_FEED_ENABLED`:** Wenn aktiviert (Standard), ruft Vakt einmal täglich den BSI CERT-Bund RSS-Feed (`www.bsi.bund.de`) ab, um aktuelle Sicherheitswarnungen in das Dashboard einzuspeisen. Dabei werden **keine Inhaltsdaten übertragen** — es ist ein reiner HTTP GET-Abruf des öffentlichen Feeds. Wer diese ausgehende Verbindung unterbinden möchte (Air-Gap-Umgebungen, strikte Egress-Policies), setzt `VAKT_BSI_FEED_ENABLED=false`. Das Sicherheitshinweis-Widget im Dashboard bleibt dann leer.
 
+**Datenschutz-Hinweis zu `VAKT_EOL_CHECK_ENABLED`:** **Standardmäßig an.** Nach einem SBOM-Scan fragt Vakt bei `endoflife.date` nach, ob eine gefundene Komponente noch Support hat. **Übertragen wird dabei der Komponentenname** (z. B. `openssl`, `postgresql`) — keine Compliance-Daten, keine Versionsstände deiner Systeme, keine Organisationsdaten. Es ist die einzige ausgehende Verbindung, die überhaupt etwas über deinen Stack aussagt, und sie passiert nur bei einem Scan, den du gestartet hast. Wer sie unterbinden will (Air-Gap, strikte Egress-Policy), setzt `VAKT_EOL_CHECK_ENABLED=false`; der Scan läuft dann ohne EOL-Spalte weiter.
+
 **Datenschutz-Hinweis zu `VAKT_EPSS_ENABLED`:** **Standardmäßig aus.** Wenn auf `true` gesetzt, reichert Vakt Findings mit EPSS-Scores (Exploit Prediction Scoring System) aus einer externen API an — eine ausgehende Verbindung. Bewusst opt-in, um das No-Phone-Home-Versprechen nicht zu unterlaufen. In Air-Gap-/strikten Egress-Umgebungen auf `false` (Default) belassen.
 
-> **Hinweis:** Die Variablen `VAKT_LICENSE_PRIVATE_KEY`, `VAKT_LEXWARE_API_KEY`, `VAKT_BILLING_BASE_URL` und `VAKT_BILLING_NOTIFY_EMAIL` sind ausschließlich für den Norvik-eigenen Billing-Server — sie gehören **nicht** in die Kunden-Konfiguration.
+> **Hinweis:** Die Variablen `VAKT_LICENSE_PRIVATE_KEY`, `VAKT_LEXWARE_API_KEY`, `VAKT_BILLING_BASE_URL`, `VAKT_BILLING_NOTIFY_EMAIL`, `VAKT_PORTAL_BASE_URL` sowie `VAKT_BILLING_ADMIN_MODE` / `VAKT_BILLING_ADMIN_PORT` / `VAKT_BILLING_ADMIN_CF_TEAM` / `VAKT_BILLING_ADMIN_CF_AUD` sind ausschließlich für den Norvik-eigenen Billing-Dienst — sie gehören **nicht** in die Kunden-Konfiguration.
 
 ---
 

@@ -1,0 +1,45 @@
+{{define "content"}}
+<h1>Lizenzen</h1>
+<p class="lede">Jeder Schlüssel, den wir je ausgestellt haben. Ruft ein Kunde an — hier steht seiner.</p>
+
+<form method="get" style="margin-bottom:18px;max-width:460px">
+  <input type="search" name="q" value="{{.Q}}" placeholder="Firma, Organisation oder Schlüssel suchen …">
+</form>
+
+<div class="card">
+  {{if .Licences}}
+  <table>
+    <thead><tr><th>Organisation</th><th>Status</th><th>Gültig bis</th><th>Zuletzt gesehen</th><th>Schlüssel</th></tr></thead>
+    <tbody>
+    {{range .Licences}}
+      <tr>
+        <td data-l="Organisation">
+          <span class="name">{{.OrgName}}</span>
+          <div class="sublabel">gekauft von <a href="/subscriptions/{{.SubID}}">{{.Company}}</a> · {{.Kind}}</div>
+        </td>
+        <td data-l="Status">
+          {{if .Revoked}}<span class="pill bad">gesperrt</span>
+          {{else if eq .Status "bezahlt"}}<span class="pill ok">bezahlt</span>
+          {{else if eq .Status "läuft aus"}}<span class="pill warn">läuft aus</span>
+          {{else}}<span class="pill bad">{{.Status}}</span>{{end}}
+        </td>
+        <td data-l="Gültig bis" class="num">
+          {{if .Expired}}<span class="pill bad">{{.Expires}}</span>{{else}}{{.Expires}}{{end}}
+        </td>
+        <td data-l="Zuletzt gesehen" class="num muted">{{.LastSeen}}</td>
+        <td data-l="Schlüssel"><code class="key">{{.Key}}</code></td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}<div class="empty">{{if .Q}}Nichts gefunden für „{{.Q}}".{{else}}Noch kein Schlüssel ausgestellt.{{end}}</div>{{end}}
+</div>
+
+<p class="muted" style="font-size:13px;margin-top:16px;line-height:1.75">
+  <strong>„Zuletzt gesehen"</strong> heißt: Die Instanz hat nach ihrem nächsten Schlüssel gefragt. Das
+  passiert nur im letzten Viertel der Laufzeit — bei einem Jahreskunden also etwa <em>einmal jährlich</em>,
+  nicht täglich. Wer <code>VAKT_LICENSE_AUTORENEW=false</code> gesetzt hat, meldet sich nie.
+  <strong>„—" heißt also nicht „ungenutzt"</strong>, sondern „hat sich nicht gemeldet". Das ist ein
+  Unterschied, den wir nicht verwischen.
+</p>
+{{end}}

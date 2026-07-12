@@ -151,7 +151,7 @@ Backups am besten auf einem separaten Volume oder externen Speicher ablegen.
 
 ## 6. Update-Benachrichtigungen
 
-Vakt prüft **nicht automatisch** auf Updates (kein Phone-Home). Es gibt zwei opt-in Mechanismen:
+Vakt prüft **nicht automatisch** auf Updates. Es gibt zwei opt-in Mechanismen:
 
 ### Option 1 — In-App-Banner (empfohlen)
 
@@ -350,7 +350,7 @@ Funktioniert auch mit OpenAI, Groq, LM Studio oder jedem anderen OpenAI-kompatib
 
 ## 10. Pro-Lizenz aktivieren
 
-Vakt Community ist kostenlos und für immer nutzbar. **Pro** schaltet spezialisierte Frameworks, erweiterte Module und Integrationen frei — Kauf über [vakt.norvikops.de](https://vakt.norvikops.de/#preise) (Polar-Checkout, 30 Tage kostenlose Testphase).
+Vakt Community ist kostenlos und für immer nutzbar. **Pro** schaltet spezialisierte Frameworks, erweiterte Module und Integrationen frei — Bestellung über [vakt.norvikops.de](https://vakt.norvikops.de/#preise): Kauf auf Rechnung, Zahlung per Überweisung, kein Zahlungsanbieter.
 
 Nach dem Kauf bekommst du deinen License Key per E-Mail. Es gibt **zwei Wege**, ihn zu aktivieren:
 

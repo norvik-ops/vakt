@@ -1,0 +1,37 @@
+{{define "content"}}
+<h1>Abos</h1>
+<p class="lede">Jede Anfrage, jedes Abo, jeder Zustand — von „angefragt" bis „gekündigt".</p>
+
+<div style="display:flex;gap:12px;align-items:center;margin-bottom:18px">
+  <form method="get" style="flex:1;max-width:420px;margin:0">
+    <input type="search" name="q" value="{{.Q}}" placeholder="Firma, E-Mail oder Tarif suchen …">
+  </form>
+  <a href="/new"><button type="button">+ Neues Abo</button></a>
+</div>
+
+<div class="card">
+  {{if .Subs}}
+  <table>
+    <thead><tr><th>Firma</th><th>Tarif</th><th>Plätze</th><th>Status</th><th>Nächste Rechnung</th></tr></thead>
+    <tbody>
+    {{range .Subs}}
+      <tr>
+        <td data-l="Firma"><a href="/subscriptions/{{.ID}}" class="name">{{.Company}}</a>
+            <div class="sublabel">{{.Email}}</div></td>
+        <td data-l="Tarif"><span class="pill brand">{{.Plan}}</span></td>
+        <td data-l="Plätze" class="num">{{.SeatsUsed}} / {{.Quantity}}</td>
+        <td data-l="Status">
+          {{if eq .Status "bezahlt"}}<span class="pill ok">bezahlt</span>
+          {{else if eq .Status "angefragt"}}<span class="pill neutral">angefragt</span>
+          {{else if eq .Status "läuft aus"}}<span class="pill warn">läuft aus</span>
+          {{else if eq .Status "Rechnung raus"}}<span class="pill warn">Rechnung raus</span>
+          {{else}}<span class="pill bad">{{.Status}}</span>{{end}}
+        </td>
+        <td data-l="Nächste Rechnung" class="num">{{.NextInvoice}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}<div class="empty">{{if .Q}}Nichts gefunden für „{{.Q}}".{{else}}Noch keine Anfrage eingegangen.{{end}}</div>{{end}}
+</div>
+{{end}}

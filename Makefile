@@ -1,5 +1,9 @@
 .PHONY: dev api-local frontend-local stop stop-local test lint build migrate seed seed-local backup public-mirror rotate-key install-hooks
 
+# Lokale Overrides fuer interne Ops-Ziele (z.B. BILLING_HOST). Gitignored und NICHT
+# im oeffentlichen Mirror — Infra-Namen gehoeren nicht ins Kunden-Repo.
+-include Makefile.local
+
 # ── Docker-based dev (requires Docker) ─────────────────────────────────────
 dev:
 	docker compose -f docker-compose.dev.yml up --build
@@ -90,3 +94,30 @@ backup-verify: ## Verify backup integrity without restoring: make backup-verify 
 
 support-bundle: ## Collect logs + health into a support archive: make support-bundle [TAIL=2000] [SINCE=30m]
 	@bash scripts/support-bundle.sh .
+
+## billing: Billing-Admin-Panel im Browser oeffnen (SSH-Tunnel, kein Setup noetig)
+##
+## Das Panel lauscht auf 127.0.0.1 IM Container — es ist aus dem Internet nicht
+## erreichbar, auch wenn jemand die Firewall vergisst. Wer SSH auf den Server hat,
+## ist ohnehin drin; es gibt keinen zweiten Login, der falsch gebaut sein koennte.
+##
+## Browser-/Handy-Zugriff ohne Tunnel braucht Cloudflare Access — siehe
+## docs/dev/billing-admin.md. Bis dahin: dieser Befehl.
+##
+## BILLING_HOST steht NICHT hier drin: Dieses Makefile wird in den oeffentlichen
+## Mirror gespiegelt, und der Leak-Guard (scripts/build-public-mirror.sh) bricht den
+## Sync ab, sobald ein NorvikOps-Infra-Name darin auftaucht. Genau das ist passiert —
+## der Mirror hing fest, und der Fix fuer `docker compose up` erreichte tagelang
+## keinen Kunden. Der Hostname gehoert in Makefile.local (gitignored, nicht gespiegelt):
+##
+##     echo 'BILLING_HOST = mein-server' > Makefile.local
+.PHONY: billing
+billing:
+	@[ -n "$(BILLING_HOST)" ] || { \
+		echo "BILLING_HOST ist nicht gesetzt."; \
+		echo "  echo 'BILLING_HOST = <host>' > Makefile.local"; \
+		exit 1; }
+	@echo "→ Tunnel nach $(BILLING_HOST):8099 …"
+	@echo "→ Panel:  http://localhost:8099   (Strg-C beendet den Tunnel)"
+	@(sleep 2 && (xdg-open http://localhost:8099 2>/dev/null || open http://localhost:8099 2>/dev/null || true)) &
+	@ssh -N -L 8099:localhost:8099 $(BILLING_HOST)

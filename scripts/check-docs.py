@@ -123,6 +123,29 @@ def check_ai_default() -> None:
                     f"config.go-Default ({canon}): {line.strip()[:90]}"
                 )
 
+    # 2c. Helm. Bis 2026-07-12 prüfte dieser Check ausschließlich Markdown — und
+    #     genau deshalb stand das Chart als einzige Stelle im Repo jahrelang auf
+    #     qwen2.5:3b, während Backend, Compose, .env.example und README 7b sagten.
+    #     Doku-Drift fängt man nicht, indem man nur Doku prüft.
+    #
+    #     values.yaml.ollama.model ist die EINE Quelle: der Init-Job zieht das Modell
+    #     daraus, und die ConfigMap gibt es der API. Die Fallbacks in den Templates
+    #     dürfen nicht davon abweichen, sonst zieht der Job ein Modell, nach dem die
+    #     API nie fragt.
+    hm = re.search(r'^\s*model:\s*"([^"]+)"', open("helm/vakt/values.yaml").read(), re.M)
+    if not hm:
+        err("helm/vakt/values.yaml: ollama.model nicht gefunden")
+    elif hm.group(1) != canon:
+        err(f"helm/vakt/values.yaml: ollama.model={hm.group(1)} ≠ config.go-Default ({canon})")
+
+    for f in ("helm/vakt/templates/configmap.yaml", "helm/vakt/templates/ollama/init-job.yaml"):
+        for lineno, line in enumerate(open(f, encoding="utf-8"), 1):
+            if line.lstrip().startswith("#"):
+                continue  # Kommentare dürfen die Alternative nennen
+            for hit in tag_re.findall(line):
+                if hit != canon:
+                    err(f"{f}:{lineno}: Fallback-Modell {hit} ≠ config.go-Default ({canon})")
+
 
 # ── 3. Interne .md-Links ─────────────────────────────────────────────────────
 _LINK = re.compile(r"\]\(([^)#?]+\.md)(?:#[^)]*)?\)")

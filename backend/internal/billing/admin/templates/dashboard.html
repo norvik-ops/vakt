@@ -1,0 +1,82 @@
+{{define "content"}}
+<h1>Übersicht</h1>
+<p class="lede">Alles, was gerade Geld bringt — oder es gerade nicht tut.</p>
+
+{{range .Warnings}}<div class="notice warn"><b>⚠</b><span>{{.}}</span></div>{{end}}
+
+<div class="grid" style="margin-top:18px">
+  <div class="card pad">
+    <div class="lbl">MRR</div>
+    <div class="stat">{{.MRR}}</div>
+    <div class="sub">Jahrespläne auf den Monat umgerechnet</div>
+  </div>
+  <div class="card pad">
+    <div class="lbl">Aktive Abos</div>
+    <div class="stat">{{.N.Subs}}</div>
+    <div class="sub">bezahlt, nicht gekündigt</div>
+  </div>
+  <div class="card pad">
+    <div class="lbl">Offene Rechnungen</div>
+    <div class="stat">{{.N.OpenInvoices}}</div>
+    <div class="sub">gestellt, Geld fehlt</div>
+  </div>
+  <div class="card pad">
+    <div class="lbl">Anfragen</div>
+    <div class="stat">{{len .Pending}}</div>
+    <div class="sub">warten auf deine Freigabe</div>
+  </div>
+</div>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin:34px 0 12px">
+  <h2 style="margin:0">Warten auf Freigabe</h2>
+  <a href="/new"><button class="ghost sm" type="button">+ Abo von Hand</button></a>
+</div>
+<div class="card">
+  {{if .Pending}}
+  <table>
+    <thead><tr><th>Firma</th><th>Tarif</th><th>Menge</th><th></th></tr></thead>
+    <tbody>
+    {{range .Pending}}
+      <tr>
+        <td data-l="Firma"><a href="/subscriptions/{{.ID}}" class="name">{{.Company}}</a>
+            <div class="sublabel">{{.Email}}</div></td>
+        <td data-l="Tarif"><span class="pill brand">{{.Plan}}</span></td>
+        <td data-l="Menge" class="num">{{.Quantity}}</td>
+        <td>
+          <form method="post" action="/subscriptions/{{.ID}}/approve" style="margin:0"
+                onsubmit="return confirm('Rechnung für {{.Company}} erstellen?\n\nDas legt den Lexware-Kontakt an, erzeugt eine FINALISIERTE Rechnung und schickt sie mit einem 45-Tage-Schlüssel raus.\n\nDas ist NICHT rückgängig zu machen.')">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <button type="submit" class="sm">Freigeben</button>
+          </form>
+        </td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}<div class="empty">Keine offenen Anfragen.</div>{{end}}
+</div>
+
+<h2>Aktive Abos</h2>
+<div class="card">
+  {{if .Active}}
+  <table>
+    <thead><tr><th>Firma</th><th>Tarif</th><th>Plätze</th><th>Nächste Rechnung</th><th>Status</th></tr></thead>
+    <tbody>
+    {{range .Active}}
+      <tr>
+        <td data-l="Firma"><a href="/subscriptions/{{.ID}}" class="name">{{.Company}}</a>
+            <div class="sublabel">{{.Email}}</div></td>
+        <td data-l="Tarif"><span class="pill brand">{{.Plan}}</span></td>
+        <td data-l="Plätze" class="num">{{.SeatsUsed}} / {{.Quantity}}</td>
+        <td data-l="Nächste Rechnung" class="num">{{.NextInvoice}}</td>
+        <td data-l="Status">
+          {{if eq .Status "bezahlt"}}<span class="pill ok">bezahlt</span>
+          {{else}}<span class="pill warn">{{.Status}}</span>{{end}}
+        </td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}<div class="empty">Noch kein zahlender Kunde.<br><span style="font-size:13px">Der erste Eintrag hier wird ein echter sein.</span></div>{{end}}
+</div>
+{{end}}

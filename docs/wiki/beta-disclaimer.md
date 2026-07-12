@@ -44,13 +44,17 @@ ist aber transparent zu nennen:
 - Der Quellcode ist **source-available** (Elastic License v2). Selbst im Fall, dass
   der Maintainer ausfällt, bleibt dein Self-Hosted-Betrieb lauffähig, und der Code
   ist auditierbar/forkbar — es gibt keine proprietäre Cloud-Abhängigkeit.
-- Es gibt **kein Phone-Home** und **keine** zentrale Norvik-Infrastruktur, von der
-  dein Betrieb abhängt (Ausnahme: optionale Lizenz-Erneuerung, nur Lizenz-Token).
+- Es gibt **keine Telemetrie** und **keine** zentrale Norvik-Infrastruktur, von der
+  dein Betrieb abhängt. Die einzige Verbindung zu uns ist die Pro-Lizenz-Erneuerung
+  (nur der Lizenz-Token, bei Jahreslizenz ~1×/Jahr, abschaltbar mit
+  `VAKT_LICENSE_AUTORENEW=false`) — und selbst wenn wir morgen verschwinden, läuft
+  dein Schlüssel bis zum Ende des Zeitraums, den du bezahlt hast. Die Community
+  Edition ruft nie an.
 
 ## Kurzfassung für Procurement/Security-Fragebögen
 
 > Vakt befindet sich in Early Access. Es gibt aktuell keinen vertraglichen
 > Support-SLA (Best-Effort). Datensicherung und Restore liegen beim Betreiber
 > (Skripte + Runbook mitgeliefert). Der Code ist source-available (ELv2), self-
-> hosted, ohne Phone-Home — Geschäftskontinuität ist dadurch unabhängig vom
+> hosted, ohne Telemetrie — Geschäftskontinuität ist dadurch unabhängig vom
 > Anbieter gegeben.

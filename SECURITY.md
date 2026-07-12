@@ -89,11 +89,35 @@ Vakt is a self-hosted platform. Key security properties:
 
 | Destination | Purpose | Opt-in variable | Data sent |
 |---|---|---|---|
-| `api.norvikops.de` | License auto-renewal | `VAKT_LICENSE_TOKEN=<token>` | License token only |
+| `api.norvikops.de` | Fetching the **next licence key** when the current one is running out | on for Pro; `VAKT_LICENSE_AUTORENEW=false` | The licence's renewal token, nothing else. **Only inside the last quarter of the key's life** — on a yearly plan that is roughly **one call per year**, and none at all in between. No instance identifier, no user count, no usage data, no compliance content. Switch it off and we mail you the key instead; your instance then never contacts us. **The Community Edition has no key and never calls at all.** |
 | `www.bsi.bund.de` | BSI CERT-Bund advisory RSS feed | default-on; disable with `VAKT_BSI_FEED_ENABLED=false` | None (GET request) |
+| `endoflife.date` | Is a component in your SBOM past its end of life? | default-on; disable with `VAKT_EOL_CHECK_ENABLED=false` | **The names of components you run** (e.g. `openssl`, `postgresql`). Not your compliance data — but it does say something about your stack. Only during an SBOM scan you started. |
 | `api.first.org` | EPSS vulnerability scores | `VAKT_EPSS_ENABLED=true` | CVE IDs |
 | `api.github.com` | Update availability check | `VAKT_UPDATE_CHECK=true` | None (GET request) |
 | Operator-configured LLM provider | AI features | `VAKT_AI_PROVIDER=openai` + `VAKT_AI_BASE_URL` | Compliance document excerpts — **data leaves your instance!** Ensure a DSGVO-compliant AVV with the provider. |
+
+**Licence lifecycle.** A paid Pro key is valid **through the period you paid for, plus a grace
+window** (30 days on a yearly plan, 5 on a monthly one). It is never shorter and never longer, and
+that is deliberate in both directions:
+
+- **Never shorter**, so our outage cannot hurt you. If our billing service or our mail is down for
+  months, your key carries you anyway — you paid, you keep working. You do not depend on us being up.
+- **Never longer**, so a licence can actually be withdrawn: we simply stop issuing keys, and the last
+  one runs out. There is no kill switch and there never will be — **a key already in your hands works
+  until it expires, and nothing we do can reach into your instance.** That is the same property that
+  lets you run Vakt air-gapped.
+
+Renewal is automatic: the renewal token rides inside your signed key, so your instance can fetch the
+next one by itself. **It only asks when the key is actually running out** — the last quarter of its
+life, capped at a month. On a yearly plan that is about one outbound call a year; the rest of the
+time your instance does not contact us at all.
+
+That is a licence renewal, not a heartbeat, and the difference is not wordplay: it is one call a year
+versus 365. A daily check-in would be telemetry wearing a different name, and we are not going to do
+that and then argue about the label. `VAKT_LICENSE_AUTORENEW=false` switches it off entirely — we
+then mail you the key, and your instance never speaks to us. That path is supported, not punished:
+running Vakt air-gapped is a legitimate thing to do, and it is half of why people buy it.
+
 - **Paseto v4 tokens** (not JWT — no algorithm confusion attacks); PASETO signing key domain-separated from AES-256-GCM encryption keys via HKDF-SHA256
 - **AES-256-GCM** encryption for stored secrets; HKDF key derivation per project and per service
 - **bcrypt cost 12** for password hashing

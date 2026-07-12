@@ -1,0 +1,199 @@
+{{define "layout"}}<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{{.Title}} — Vakt Billing</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%236366F1'/%3E%3Cpath d='M9,7 L20,33 L31,7' stroke='white' stroke-width='3.5' fill='none'/%3E%3C/svg%3E">
+<style>
+  /* Vakt-Markenfarben: Indigo-500 (#6366F1) auf dunklem Slate — ADR-0070. */
+  :root {
+    --bg:#0b0b12; --bg-2:#0f0f1a; --panel:#14141f; --panel-2:#191926;
+    --line:#26263a; --line-soft:#1e1e2e;
+    --text:#e8e8f0; --text-2:#a8a8bd; --muted:#6f6f88;
+    --brand:#6366f1; --brand-soft:#818cf8;
+    --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444;
+    --sidebar: 232px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Inter,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--brand-soft);text-decoration:none}
+  a:hover{color:#a5b4fc}
+
+  /* ── Shell ─────────────────────────────────────────────────────── */
+  .shell{display:flex;min-height:100%}
+
+  aside{
+    width:var(--sidebar);flex:0 0 var(--sidebar);
+    background:var(--bg-2);border-right:1px solid var(--line-soft);
+    padding:20px 14px;display:flex;flex-direction:column;gap:24px;
+    position:sticky;top:0;height:100vh;
+  }
+  .brand{display:flex;align-items:center;gap:10px;padding:0 8px}
+  .brand svg{width:30px;height:30px;border-radius:8px;flex:0 0 30px}
+  .brand b{font-size:15px;letter-spacing:.01em}
+  .brand span{display:block;font-size:11px;color:var(--muted);font-weight:500;letter-spacing:.06em;text-transform:uppercase}
+
+  nav{display:flex;flex-direction:column;gap:2px}
+  nav a{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:9px 10px;border-radius:8px;color:var(--text-2);font-size:14px;font-weight:500;
+    transition:background .12s,color .12s;
+  }
+  nav a:hover{background:#ffffff0a;color:var(--text)}
+  nav a.on{background:color-mix(in srgb,var(--brand) 16%,transparent);color:#c7d2fe}
+  nav a.on::before{content:"";position:absolute;left:0;width:3px;height:20px;border-radius:0 3px 3px 0;background:var(--brand)}
+  nav a{position:relative}
+  nav .count{
+    font-size:11px;font-weight:700;min-width:20px;text-align:center;
+    padding:1px 6px;border-radius:999px;background:#ffffff12;color:var(--text-2);
+  }
+  nav a.on .count{background:var(--brand);color:#fff}
+  nav .count.warn{background:color-mix(in srgb,var(--warn) 25%,transparent);color:#fcd34d}
+
+  .who{margin-top:auto;padding:10px;border-top:1px solid var(--line-soft);font-size:12px;color:var(--muted);word-break:break-all}
+  .who b{display:block;color:var(--text-2);font-weight:600;margin-bottom:2px}
+
+  main{flex:1;min-width:0;padding:28px 32px 72px;max-width:1180px}
+  @media (max-width:820px){
+    .shell{flex-direction:column}
+    aside{width:auto;flex:none;height:auto;position:static;flex-direction:row;align-items:center;
+          gap:12px;padding:12px 14px;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line-soft)}
+    nav{flex-direction:row;gap:4px}
+    nav a{padding:7px 10px;white-space:nowrap}
+    nav a.on::before{display:none}
+    .who{display:none}
+    main{padding:20px 16px 64px}
+  }
+
+  /* ── Typo ──────────────────────────────────────────────────────── */
+  h1{font-size:24px;font-weight:700;letter-spacing:-.01em;margin:0 0 4px}
+  .lede{color:var(--text-2);margin:0 0 26px;font-size:15px}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);
+     margin:34px 0 12px;font-weight:700}
+  .muted{color:var(--muted)}
+  .dim{color:var(--text-2)}
+
+  /* ── Cards / Stats ─────────────────────────────────────────────── */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .pad{padding:18px 20px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
+  .stat{font-size:30px;font-weight:700;letter-spacing:-.025em;line-height:1.15}
+  .stat.sm{font-size:19px}
+  .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin-bottom:6px}
+  .sub{font-size:12px;color:var(--muted);margin-top:5px}
+
+  /* ── Tables ────────────────────────────────────────────────────── */
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.07em;
+     color:var(--muted);padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;
+     background:var(--panel-2)}
+  td{padding:13px 16px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:#ffffff05}
+  td .name{font-weight:600}
+  td .sublabel{font-size:12px;color:var(--muted);margin-top:2px}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ── Pills ─────────────────────────────────────────────────────── */
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;
+        font-size:12px;font-weight:600;border:1px solid var(--line);white-space:nowrap}
+  .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .pill.ok{color:#4ade80;border-color:color-mix(in srgb,var(--ok) 35%,transparent);
+           background:color-mix(in srgb,var(--ok) 10%,transparent)}
+  .pill.warn{color:#fbbf24;border-color:color-mix(in srgb,var(--warn) 35%,transparent);
+             background:color-mix(in srgb,var(--warn) 10%,transparent)}
+  .pill.bad{color:#f87171;border-color:color-mix(in srgb,var(--bad) 35%,transparent);
+            background:color-mix(in srgb,var(--bad) 10%,transparent)}
+  .pill.neutral{color:var(--text-2)}
+  .pill.brand{color:#a5b4fc;border-color:color-mix(in srgb,var(--brand) 40%,transparent);
+              background:color-mix(in srgb,var(--brand) 12%,transparent)}
+
+  /* ── Notices ───────────────────────────────────────────────────── */
+  .notice{border-radius:12px;padding:13px 16px;margin-bottom:10px;font-size:14px;
+          display:flex;gap:10px;align-items:flex-start}
+  .notice.warn{background:color-mix(in srgb,var(--warn) 9%,transparent);
+               border:1px solid color-mix(in srgb,var(--warn) 30%,transparent)}
+  .notice.info{background:color-mix(in srgb,var(--brand) 10%,transparent);
+               border:1px solid color-mix(in srgb,var(--brand) 32%,transparent);margin-bottom:20px}
+  .notice b{font-weight:700}
+
+  /* ── Forms ─────────────────────────────────────────────────────── */
+  input[type=text],input[type=email],input[type=search]{
+    background:#0d0d16;border:1px solid var(--line);border-radius:9px;padding:9px 12px;
+    color:var(--text);width:100%;font:inherit;transition:border-color .12s}
+  input:focus{outline:none;border-color:var(--brand)}
+  input::placeholder{color:var(--muted)}
+  label.lbl{display:block}
+  button{background:var(--brand);color:#fff;border:0;border-radius:9px;padding:9px 17px;
+         font:inherit;font-weight:600;cursor:pointer;transition:background .12s}
+  button:hover{background:#4f46e5}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--text-2)}
+  button.ghost:hover{background:#ffffff08;color:var(--text)}
+  button.danger{background:transparent;border:1px solid color-mix(in srgb,var(--bad) 45%,transparent);color:#f87171}
+  button.danger:hover{background:color-mix(in srgb,var(--bad) 12%,transparent)}
+  button.sm{padding:5px 11px;font-size:13px;border-radius:7px}
+  .row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+  .row > div{flex:1;min-width:190px}
+
+  code{font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:#0d0d16;
+       border:1px solid var(--line);border-radius:6px;padding:2px 7px;word-break:break-all;
+       display:inline-block;color:var(--text-2)}
+  code.key{max-width:100%;font-size:11px;line-height:1.45}
+
+  .empty{padding:36px 20px;text-align:center;color:var(--muted);font-size:14px}
+  .back{display:inline-flex;align-items:center;gap:6px;font-size:14px;margin-bottom:16px}
+
+  @media (max-width:700px){
+    table,thead,tbody,th,td,tr{display:block}
+    thead{display:none}
+    td{border:none;padding:5px 16px}
+    tbody tr{border-bottom:1px solid var(--line);padding:12px 0}
+    tbody tr:hover{background:none}
+    td:before{content:attr(data-l);display:block;font-size:10px;text-transform:uppercase;
+              letter-spacing:.07em;color:var(--muted);margin-bottom:3px;font-weight:700}
+    td:empty{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside>
+    <a href="/" class="brand">
+      <!-- Das Vakt-V (ADR-0070), NICHT das Norvik-N. Die Assets in
+           frontend/src/assets/logo_neu/ tragen alle das N der Dachmarke — wer dort
+           blind kopiert, setzt das falsche Zeichen auf das Produkt.
+           Quelle der Wahrheit: sites/vakt/public/logo.svg -->
+      <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect width="40" height="40" rx="10" fill="#6366F1"/>
+        <path d="M9,7 L20,33 L31,7" stroke="#fff" stroke-width="3.5" fill="none"
+              stroke-linecap="butt" stroke-linejoin="miter"/>
+      </svg>
+      <div><b>Vakt</b><span>Billing</span></div>
+    </a>
+
+    <nav>
+      <a href="/"              class="{{if eq .Nav "overview"}}on{{end}}">Übersicht</a>
+      <a href="/subscriptions" class="{{if eq .Nav "subs"}}on{{end}}">Abos
+        {{if .N.Subs}}<span class="count">{{.N.Subs}}</span>{{end}}</a>
+      <a href="/invoices"      class="{{if eq .Nav "invoices"}}on{{end}}">Rechnungen
+        {{if .N.OpenInvoices}}<span class="count warn">{{.N.OpenInvoices}}</span>{{end}}</a>
+      <a href="/licences"      class="{{if eq .Nav "licences"}}on{{end}}">Lizenzen
+        {{if .N.Licences}}<span class="count">{{.N.Licences}}</span>{{end}}</a>
+      <a href="/lexware"       class="{{if eq .Nav "lexware"}}on{{end}}">Abgleich
+        <span class="count" title="Vergleicht Vakts Rechnungen mit dem, was Lexware wirklich sagt">↔</span></a>
+    </nav>
+
+    <div class="who"><b>Angemeldet</b>{{.Who}}</div>
+  </aside>
+
+  <main>{{template "content" .}}</main>
+</div>
+</body>
+</html>{{end}}

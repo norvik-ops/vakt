@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
+	"github.com/matharnica/vakt/internal/billing/licensing"
+	"github.com/matharnica/vakt/internal/license"
 	"github.com/matharnica/vakt/internal/shared/logsafe"
 )
 
@@ -53,15 +55,14 @@ func (h *Handler) RenewDue(ctx context.Context, every time.Duration) {
 }
 
 type dueSubscription struct {
-	id         string
-	company    string
-	email      string
-	product    string
-	interval   string
-	quantity   int
-	contactID  string
-	periodEnd  time.Time
-	renewalTok string
+	id        string
+	company   string
+	email     string
+	product   string
+	interval  string
+	quantity  int
+	contactID string
+	periodEnd time.Time
 }
 
 func (h *Handler) renewOnce(ctx context.Context) {
@@ -70,7 +71,7 @@ func (h *Handler) renewOnce(ctx context.Context) {
 
 	rows, err := h.db.Query(ctx, `
 		SELECT s.id, s.company_name, s.email, s.product, s.interval, s.quantity,
-		       s.lexware_contact_id, s.renewal_token,
+		       s.lexware_contact_id,
 		       (SELECT MAX(bi.period_end) FROM billing_invoices bi WHERE bi.subscription_id = s.id)
 		  FROM billing_quote_requests s
 		 WHERE s.status = 'paid'
@@ -90,7 +91,7 @@ func (h *Handler) renewOnce(ctx context.Context) {
 		var d dueSubscription
 		var end *time.Time
 		if err := rows.Scan(&d.id, &d.company, &d.email, &d.product, &d.interval, &d.quantity,
-			&d.contactID, &d.renewalTok, &end); err != nil {
+			&d.contactID, &end); err != nil {
 			log.Error().Err(err).Msg("billing: renewal sweep scan")
 			continue
 		}
@@ -211,14 +212,13 @@ Norvik Ops
 // Deliberately not an HTTP endpoint: cancellations arrive by e-mail ("Antworte
 // einfach auf diese Mail"), and a self-service cancel button on a product with a
 // handful of customers is machinery nobody needs. Called from the admin CLI.
-// Execer is the sliver of pgx that Cancel needs. Both *pgxpool.Pool (the API) and
-// *pgx.Conn (the admin CLI) satisfy it, so the cancellation logic lives in exactly
-// one place instead of being retyped in the CLI.
-type Execer interface {
-	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
-}
-
-func Cancel(ctx context.Context, db Execer, subscriptionID string) error {
+// Cancel takes the pool, not a narrower interface.
+//
+// A minimal Execer interface here would have to mirror pgx's variadic untyped
+// arguments — and this codebase deliberately ratchets untyped parameters DOWN
+// (scripts/check_interface_ratchet.py). Adding one so the admin CLI could pass a
+// *pgx.Conn is a bad trade: the CLI can simply open a pool.
+func Cancel(ctx context.Context, db *pgxpool.Pool, subscriptionID string) error {
 	tag, err := db.Exec(ctx, `
 		UPDATE billing_quote_requests
 		   SET cancelled_at = NOW(), next_invoice_at = NULL
@@ -230,4 +230,128 @@ func Cancel(ctx context.Context, db Execer, subscriptionID string) error {
 		return fmt.Errorf("billing: no active subscription %s (already cancelled, or unknown)", subscriptionID)
 	}
 	return nil
+}
+
+// MailExpiringKeys is the safety net for customers who never set VAKT_LICENSE_TOKEN.
+//
+// Their key normally arrives on payment (settle) and is valid through the period they
+// paid for, plus grace — they need nothing else, and our being down cannot hurt them.
+// But mail fails, people delete things, and a key issued by hand can be short. This
+// sweep catches a licence whose key is about to run out while the customer is STILL
+// ENTITLED to one, signs a fresh key up to their paid-through date, and mails it.
+//
+// The cap is the point. It never extends anyone beyond what they paid for: someone who
+// stopped paying is simply not selected, no key is mailed, and theirs runs out. Cutting
+// a customer off does not require detecting that they are running — it requires not
+// handing them the next key. That distinction is the whole reason Vakt need not phone
+// home, and it is why the renewal token can stay opt-in.
+//
+// A customer WITH the token rarely reaches this: their instance already re-fetched.
+func (h *Handler) MailExpiringKeys(ctx context.Context, every time.Duration) {
+	if h.db == nil || !h.issuer.Enabled() {
+		return
+	}
+	t := time.NewTicker(every)
+	defer t.Stop()
+	h.mailExpiringOnce(ctx)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			h.mailExpiringOnce(ctx)
+		}
+	}
+}
+
+func (h *Handler) mailExpiringOnce(ctx context.Context) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
+	rows, err := h.db.Query(ctx, `
+		SELECT bl.renewal_token, bl.org_name, s.email, s.interval
+		  FROM billing_licenses bl
+		  JOIN billing_quote_requests s ON s.id = bl.subscription_id
+		 WHERE bl.revoked_at IS NULL
+		   AND bl.license_key <> ''
+		   AND bl.kind <> 'trial'
+		   AND s.status = 'paid'
+		   AND s.cancelled_at IS NULL
+		   AND bl.expires_at < $1`,
+		// Cutoff computed in Go, not as ($1 || ' days')::interval — that construction
+		// is a documented pgx trap (the driver cannot type a bound param inside a cast)
+		// and it has broken a query in this codebase before.
+		time.Now().Add(license.MailBelowDays*24*time.Hour))
+	if err != nil {
+		log.Error().Err(err).Msg("billing: expiring-key sweep")
+		return
+	}
+
+	type due struct{ token, org, email, interval string }
+	var list []due
+	for rows.Next() {
+		var d due
+		if err := rows.Scan(&d.token, &d.org, &d.email, &d.interval); err == nil {
+			list = append(list, d)
+		}
+	}
+	rows.Close()
+
+	for _, d := range list {
+		// Never past what they paid for. A customer whose period has run out and whose
+		// next invoice is unpaid gets nothing — that IS the cut-off.
+		expiry, err := EntitlementByToken(ctx, h.db, d.token)
+		if err != nil || !expiry.After(time.Now()) {
+			continue
+		}
+
+		key, err := h.issuer.SignUntil(licensing.Request{OrgName: d.org, Interval: d.interval}, expiry)
+		if err != nil {
+			log.Error().Err(err).Str("org", d.org).Msg("billing: could not sign renewal key")
+			continue
+		}
+
+		body := fmt.Sprintf(`Hallo,
+
+hier ist der neue Lizenzschlüssel für %s. Der bisherige läuft demnächst aus —
+trag den neuen einfach in deiner Vakt-Instanz ein (Einstellungen → Lizenz) oder in
+die .env:
+
+  VAKT_LICENSE_KEY=%s
+
+Gültig bis %s.
+
+Das geht auch von allein: Trägst du zusätzlich
+
+  VAKT_LICENSE_TOKEN=%s
+
+ein, holt sich deine Instanz den jeweils aktuellen Schlüssel selbst und du bekommst
+diese Mail nie wieder. Übertragen wird dabei ausschließlich dieser Token — keine
+Daten aus deiner Instanz, keine Nutzungsstatistik, nichts über deine Compliance.
+Freiwillig: Ohne den Token bekommst du weiter alle paar Wochen einen Schlüssel von
+uns, und deine Instanz spricht nie mit uns.
+
+Viele Grüße
+Stefan
+Norvik Ops
+`, d.org, key, expiry.Format("02.01.2006"), d.token)
+
+		if err := h.issuer.Send(d.email, "Dein neuer Vakt-Lizenzschlüssel", body, nil, ""); err != nil {
+			// Do NOT store the key if the mail failed: the customer does not have it, and
+			// pretending they do would leave them locked out with a key only we can see.
+			log.Error().Err(err).Str("org", d.org).
+				Msg("billing: CRITICAL — renewal key could not be mailed; customer will go dark")
+			continue
+		}
+
+		if _, err := h.db.Exec(ctx, `
+			UPDATE billing_licenses SET license_key = $2, expires_at = $3
+			 WHERE renewal_token = $1::uuid`, d.token, key, expiry); err != nil {
+			log.Error().Err(err).Str("org", d.org).Msg("billing: renewal key mailed but not stored")
+		}
+
+		log.Info().Str("org", d.org).Str("expires", expiry.Format("2006-01-02")).
+			Str("email_redacted", logsafe.RedactEmail(d.email)).
+			Msg("billing: renewal key mailed (no auto-renewal token set)")
+	}
 }

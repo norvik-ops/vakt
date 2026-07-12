@@ -22,6 +22,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/billing/licensing"
+	"github.com/matharnica/vakt/internal/license"
 	"github.com/matharnica/vakt/internal/shared/logsafe"
 	"github.com/matharnica/vakt/internal/shared/mailhdr"
 )
@@ -35,6 +36,17 @@ type Handler struct {
 	smtp     licensing.SMTPConfig
 	baseURL  string // public URL of this billing API, for the approval link
 	notifyTo string // where the "new request, approve?" mail goes
+
+	// portalLink mints the MSP self-service link. Injected rather than imported:
+	// the portal package imports THIS one for Seats, so importing it back would be
+	// a cycle.
+	portalLink func(context.Context, string) (string, error)
+}
+
+// WithPortalLink wires the MSP portal link generator.
+func (h *Handler) WithPortalLink(f func(context.Context, string) (string, error)) *Handler {
+	h.portalLink = f
+	return h
 }
 
 func NewHandler(db *pgxpool.Pool, c *Client, iss *licensing.Issuer, smtpCfg licensing.SMTPConfig, baseURL, notifyTo string) *Handler {
@@ -117,7 +129,7 @@ func (h *Handler) RequestQuote(c echo.Context) error {
 
 	// Seats. Bounded on both sides: 0 or negative would invoice nothing, and an
 	// absurd number typed into a public form would produce an absurd invoice under
-	// our tax number. 500 is far above any real MSP and far below "someone is
+	// our tax number. 500 sits far above every real MSP and far below "someone is
 	// having fun with the form".
 	quantity := in.Quantity
 	if quantity < 1 {
@@ -211,43 +223,78 @@ func (h *Handler) Approve(c echo.Context) error {
 	}
 
 	ctx := c.Request().Context()
-	var (
-		storedHash, status, company, contact, email, vatID string
-		street, zip, city, country, interval, product      string
-		renewalToken                                       string
-		quantity                                           int
-	)
-	err := h.db.QueryRow(ctx, `
-		SELECT approval_token_hash, status, company_name, contact_name, email, vat_id,
-		       street, zip, city, country_code, interval, product, quantity, renewal_token
-		  FROM billing_quote_requests WHERE id = $1`, id).
-		Scan(&storedHash, &status, &company, &contact, &email, &vatID, &street, &zip, &city, &country,
-			&interval, &product, &quantity, &renewalToken)
-	if err != nil {
+
+	var storedHash string
+	if err := h.db.QueryRow(ctx,
+		`SELECT approval_token_hash FROM billing_quote_requests WHERE id = $1`, id).
+		Scan(&storedHash); err != nil {
 		return c.String(http.StatusNotFound, "Anfrage nicht gefunden")
 	}
-
 	sum := sha256.Sum256([]byte(token))
 	if subtle.ConstantTimeCompare([]byte(hex.EncodeToString(sum[:])), []byte(storedHash)) != 1 {
 		log.Warn().Str("request_id", id).Msg("billing: approval token mismatch")
 		return c.String(http.StatusForbidden, "Token ungültig")
 	}
-	if status != "requested" {
-		return c.String(http.StatusOK, "Diese Anfrage wurde bereits bearbeitet (Status: "+status+"). Es wurde nichts erneut erstellt.")
-	}
-	if !h.client.Enabled() || !h.issuer.Enabled() {
-		return c.String(http.StatusServiceUnavailable, "Billing ist auf dieser Instanz nicht konfiguriert")
+
+	res := h.ApproveRequest(ctx, id, "mail-link")
+	// 200, nicht 5xx: Diese Seite liest ein MENSCH. Cloudflare ersetzt 5xx durch seine
+	// eigene "Bad gateway"-Seite, und die Fehlerursache — die hier steht — ginge verloren.
+	return c.String(http.StatusOK, res.Message)
+}
+
+// ApproveResult is what a human needs to know afterwards. It is deliberately not an
+// error: half of these outcomes are partial successes (the invoice IS out, only the
+// mail failed), and collapsing them into err/nil would lose exactly the information
+// that decides what to do next.
+type ApproveResult struct {
+	OK        bool
+	InvoiceID string
+	Message   string
+}
+
+// ApproveRequest turns a quote request into a finalised invoice plus a 45-day key.
+//
+// One implementation, two callers: the one-click link from the notification mail, and
+// the admin panel. Two copies would drift, and the way they would drift is that one of
+// them forgets to create the licence row — which is not a cosmetic bug: the customer
+// then gets a key with no renewal token and can never auto-renew, and there is no
+// fixing it after the fact.
+//
+// Everything it does is IRREVERSIBLE from the API: a finalised Lexware invoice cannot
+// be un-finalised, and a mailed key cannot be recalled. So it fails loudly and it says
+// exactly what did and did not happen.
+func (h *Handler) ApproveRequest(ctx context.Context, id, by string) ApproveResult {
+	var (
+		status, company, contact, email, vatID        string
+		street, zip, city, country, interval, product string
+		quantity                                      int
+	)
+	if err := h.db.QueryRow(ctx, `
+		SELECT status, company_name, contact_name, email, vat_id,
+		       street, zip, city, country_code, interval, product, quantity
+		  FROM billing_quote_requests WHERE id = $1`, id).
+		Scan(&status, &company, &contact, &email, &vatID, &street, &zip, &city, &country,
+			&interval, &product, &quantity); err != nil {
+		return ApproveResult{Message: "Anfrage nicht gefunden."}
 	}
 
-	// Before anything is created in Lexware: is this even a thing we sell? An
-	// unknown product/interval must fail HERE, not silently fall back to some
-	// default amount — that would invoice a real customer the wrong price.
+	if status != "requested" {
+		return ApproveResult{
+			Message: "Diese Anfrage wurde bereits bearbeitet (Status: " + status + "). Es wurde nichts erneut erstellt.",
+		}
+	}
+	if !h.client.Enabled() || !h.issuer.Enabled() {
+		return ApproveResult{Message: "Billing ist auf dieser Instanz nicht konfiguriert."}
+	}
+
+	// Before anything is created in Lexware: is this even a thing we sell? An unknown
+	// product/interval must fail HERE, not silently fall back to some default amount —
+	// that would invoice a real customer the wrong price.
 	plan, err := PlanFor(product, interval)
 	if err != nil {
 		log.Error().Err(err).Str("request_id", id).Msg("billing: unknown plan")
-		return c.String(http.StatusOK,
-			"FEHLER: Für diese Kombination gibt es keinen Tarif ("+product+"/"+interval+").\n\n"+
-				"Es wurde nichts erstellt. Wenn das Produkt verkauft werden soll, gehört es in plans.go.")
+		return ApproveResult{Message: "FEHLER: Für diese Kombination gibt es keinen Tarif (" +
+			product + "/" + interval + "). Es wurde nichts erstellt."}
 	}
 
 	contactID, err := h.client.CreateContact(ctx, ContactInput{
@@ -256,10 +303,8 @@ func (h *Handler) Approve(c echo.Context) error {
 	})
 	if err != nil {
 		log.Error().Err(err).Str("request_id", id).Msg("billing: create lexware contact")
-		// 200, nicht 502: Diese Seite liest ein MENSCH. Cloudflare ersetzt 5xx
-		// durch seine eigene "Bad gateway"-Seite, und die Fehlerursache — die
-		// hier steht — ginge verloren.
-		return c.String(http.StatusOK, "FEHLER: Lexware-Kontakt konnte nicht angelegt werden.\n\n"+err.Error()+"\n\nEs wurde nichts erstellt. Der Link bleibt gültig — nach dem Fix erneut klicken.")
+		return ApproveResult{Message: "FEHLER: Lexware-Kontakt konnte nicht angelegt werden.\n\n" +
+			err.Error() + "\n\nEs wurde NICHTS erstellt. Nach dem Fix erneut versuchen."}
 	}
 
 	invoiceID, err := h.client.CreateInvoice(ctx, InvoiceInput{
@@ -272,32 +317,55 @@ func (h *Handler) Approve(c echo.Context) error {
 	})
 	if err != nil {
 		log.Error().Err(err).Str("request_id", id).Msg("billing: create lexware invoice")
-		return c.String(http.StatusOK, "FEHLER: Rechnung konnte nicht erstellt werden.\n\n"+err.Error()+"\n\nDer Kontakt wurde in Lexware angelegt, die Rechnung nicht. Der Link bleibt gültig — nach dem Fix erneut klicken.")
+		return ApproveResult{Message: "FEHLER: Rechnung konnte nicht erstellt werden.\n\n" + err.Error() +
+			"\n\nDer Kontakt wurde in Lexware angelegt, die Rechnung NICHT. Nach dem Fix erneut versuchen."}
 	}
 
 	pdf, err := h.client.InvoicePDF(ctx, invoiceID)
 	if err != nil {
-		// Non-fatal: the invoice exists in Lexware either way. Better to send the
-		// key without the PDF than to leave the customer with nothing.
+		// Non-fatal: the invoice exists in Lexware either way. Better to send the key
+		// without the PDF than to leave the customer with nothing.
 		log.Error().Err(err).Str("invoice_id", invoiceID).Msg("billing: fetch invoice pdf")
 		pdf = nil
 	}
 
-	// The customer gets a 45-day key straight away. Making a B2B buyer wait days
-	// for a bank transfer to clear before they can even start would be a strange
-	// way to sell software.
+	// The licence row goes in BEFORE the key is signed, because the mail has to carry
+	// that licence's renewal token — a key mailed without one leaves the customer unable
+	// to auto-renew, and there is no fixing it after the fact.
+	var renewalToken string
+	if err := h.db.QueryRow(ctx, `
+		INSERT INTO billing_licenses (subscription_id, org_name, license_key, expires_at, kind, note)
+		VALUES ($1, $2, '', $3, 'trial', 'mit der Rechnung ausgestellt, vor der Zahlung')
+		RETURNING renewal_token`,
+		id, company, license.TrialExpiry()).Scan(&renewalToken); err != nil {
+		log.Error().Err(err).Str("request_id", id).Msg("billing: create licence row")
+		return ApproveResult{InvoiceID: invoiceID,
+			Message: "FEHLER: Lizenz-Datensatz konnte nicht angelegt werden.\n\n" + err.Error() +
+				"\n\nDie Rechnung " + invoiceID + " IST in Lexware, der Schlüssel wurde NICHT verschickt. " +
+				"Bitte manuell prüfen."}
+	}
+
+	// The customer gets a 45-day key straight away. Making a B2B buyer wait days for a
+	// bank transfer to clear before they can even start would be a strange way to sell
+	// software.
 	key, mailErr := h.issuer.Issue(licensing.Request{
 		OrgName: company, Email: email, Interval: interval, Trial: true,
 		RenewalToken: renewalToken,
 	}, pdf, "Rechnung-Vakt-Pro.pdf")
 
-	// The quote request becomes the subscription here, and the invoice gets its own
-	// row: from now on there will be many invoices against this one subscription,
-	// and settle() has to know which period a payment belongs to.
+	if _, err := h.db.Exec(ctx,
+		`UPDATE billing_licenses SET license_key = $2 WHERE renewal_token = $1::uuid`,
+		renewalToken, key); err != nil {
+		log.Error().Err(err).Str("request_id", id).Msg("billing: store trial key")
+	}
+
+	// The quote request becomes the subscription here, and the invoice gets its own row:
+	// from now on there will be many invoices against this one subscription, and settle()
+	// has to know which period a payment belongs to.
 	//
-	// Both writes in one transaction. An invoice row without its subscription
-	// update (or the reverse) would either orphan the payment webhook — customer
-	// pays, no key — or bill someone twice.
+	// Both writes in one transaction. An invoice row without its subscription update (or
+	// the reverse) would either orphan the payment webhook — customer pays, no key — or
+	// bill someone twice.
 	from, to := plan.Period(time.Now())
 	tx, dbErr := h.db.Begin(ctx)
 	if dbErr == nil {
@@ -320,26 +388,30 @@ func (h *Handler) Approve(c echo.Context) error {
 		}
 	}
 	if dbErr != nil {
-		// The invoice is out in Lexware and cannot be recalled — losing the link
-		// between it and this request would orphan the payment webhook. Loud failure.
+		// The invoice is out in Lexware and cannot be recalled — losing the link between
+		// it and this request would orphan the payment webhook. Loud failure.
 		log.Error().Err(dbErr).Str("request_id", id).Str("invoice_id", invoiceID).
 			Msg("billing: CRITICAL — invoice sent but request not updated")
-		return c.String(http.StatusOK,
-			"FEHLER: Rechnung "+invoiceID+" wurde in Lexware erstellt, aber die Anfrage konnte nicht "+
-				"aktualisiert werden.\n\n"+dbErr.Error()+"\n\nBitte manuell prüfen — die Zahlung kann sonst "+
-				"nicht zugeordnet werden.")
+		return ApproveResult{InvoiceID: invoiceID,
+			Message: "FEHLER: Rechnung " + invoiceID + " wurde in Lexware erstellt, aber die Anfrage " +
+				"konnte nicht aktualisiert werden.\n\n" + dbErr.Error() +
+				"\n\nBitte manuell prüfen — die Zahlung kann sonst nicht zugeordnet werden."}
 	}
 
 	if mailErr != nil {
 		log.Error().Err(mailErr).Str("request_id", id).Msg("billing: license mail failed")
-		return c.String(http.StatusOK,
-			"Rechnung "+invoiceID+" wurde erstellt, aber die E-Mail an den Kunden ist fehlgeschlagen. Bitte manuell versenden.")
+		return ApproveResult{InvoiceID: invoiceID,
+			Message: "Rechnung " + invoiceID + " wurde erstellt, aber die E-Mail an den Kunden ist " +
+				"fehlgeschlagen. Bitte manuell versenden."}
 	}
 
-	log.Info().Str("request_id", id).Str("invoice_id", invoiceID).Msg("billing: invoice sent, trial key issued")
-	return c.String(http.StatusOK,
-		"Erledigt.\n\nRechnung "+invoiceID+" wurde finalisiert und mit einem 45-Tage-Lizenzschlüssel an "+email+" geschickt.\n\n"+
-			"Sobald die Zahlung eingeht: in Lexware zuordnen — den Vollkey verschickt Vakt dann automatisch.")
+	log.Info().Str("request_id", id).Str("invoice_id", invoiceID).Str("by", by).
+		Msg("billing: invoice sent, trial key issued")
+
+	return ApproveResult{OK: true, InvoiceID: invoiceID,
+		Message: "Erledigt. Rechnung " + invoiceID + " ist finalisiert und mit einem 45-Tage-Schlüssel " +
+			"an " + email + " raus. Sobald die Zahlung in Lexware zugeordnet ist, verschickt Vakt den " +
+			"Vollschlüssel automatisch."}
 }
 
 // ── 3. Lexware webhook: payment landed ───────────────────────────────────────
@@ -420,11 +492,11 @@ func (h *Handler) settle(ctx context.Context, invoiceID string) {
 		return
 	}
 
-	var company, email, interval, product, renewalToken string
+	var company, email, interval, product string
 	if err := h.db.QueryRow(ctx, `
-		SELECT company_name, email, interval, product, renewal_token
+		SELECT company_name, email, interval, product
 		  FROM billing_quote_requests WHERE id = $1`, subID).
-		Scan(&company, &email, &interval, &product, &renewalToken); err != nil {
+		Scan(&company, &email, &interval, &product); err != nil {
 		log.Error().Err(err).Str("invoice_id", invoiceID).Str("subscription_id", subID).
 			Msg("billing: CRITICAL — invoice paid but its subscription could not be read")
 		return
@@ -437,10 +509,30 @@ func (h *Handler) settle(ctx context.Context, invoiceID string) {
 		return
 	}
 
-	key, mailErr := h.issuer.Issue(licensing.Request{
+	// The customer's own licence — the one that got the 45-day key — keeps its
+	// renewal token. Handing them a NEW token on payment would silently orphan the
+	// VAKT_LICENSE_TOKEN they already put in their .env, and their auto-renewal would
+	// stop working the moment they paid us. Reuse it.
+	var renewalToken string
+	if err := h.db.QueryRow(ctx, `
+		SELECT renewal_token FROM billing_licenses
+		 WHERE subscription_id = $1 AND org_name = $2
+		 ORDER BY created_at ASC LIMIT 1`, subID, company).Scan(&renewalToken); err != nil {
+		log.Error().Err(err).Str("subscription_id", subID).
+			Msg("billing: CRITICAL — paid subscription has no licence row to renew")
+		return
+	}
+
+	// The key is valid to the end of the period THIS invoice paid for, plus grace.
+	// Not "a year from now" — that would drift away from what was actually bought, and
+	// not a fixed 90 days — that would make a customer who paid in advance depend on us
+	// staying up.
+	entitledTo := periodEnd.AddDate(0, 0, plan.GraceDays)
+
+	key, mailErr := h.issuer.IssueUntil(licensing.Request{
 		OrgName: company, Email: email, Interval: interval, Trial: false,
 		RenewalToken: renewalToken,
-	}, nil, "")
+	}, entitledTo, nil, "")
 	if key == "" {
 		log.Error().Err(mailErr).Str("invoice_id", invoiceID).
 			Msg("billing: CRITICAL — payment settled but license key could not be signed")
@@ -458,11 +550,48 @@ func (h *Handler) settle(ctx context.Context, invoiceID string) {
 		log.Error().Err(err).Str("invoice_id", invoiceID).Msg("billing: persist license key")
 	}
 
+	// Same licence, upgraded from trial to full. NOT a second row: that would count
+	// as a second seat and show a one-seat customer as "2 / 1 used".
+	if _, err := h.db.Exec(ctx, `
+		UPDATE billing_licenses
+		   SET license_key = $2, expires_at = $3, kind = 'full', note = 'issued on payment'
+		 WHERE renewal_token = $1::uuid`,
+		renewalToken, key, entitledTo); err != nil {
+		log.Error().Err(err).Str("subscription_id", subID).Msg("billing: record issued licence")
+	}
+
 	if mailErr != nil {
 		log.Error().Err(mailErr).Str("invoice_id", invoiceID).
 			Msg("billing: CRITICAL — key issued but mail failed. Send it manually from the DB.")
 		return
 	}
+	// More than one seat means an MSP (or a group with several sites). They must not
+	// have to mail us for every client they onboard — they get a self-service link.
+	// Handing it out automatically, here, is the difference between a feature that
+	// exists and a feature anyone uses.
+	if h.portalLink != nil {
+		var quantity int
+		if err := h.db.QueryRow(ctx,
+			`SELECT quantity FROM billing_quote_requests WHERE id = $1`, subID).Scan(&quantity); err == nil && quantity > 1 {
+			if link, err := h.portalLink(ctx, subID); err != nil {
+				log.Error().Err(err).Str("subscription_id", subID).Msg("billing: could not create portal link")
+			} else {
+				body := "Hallo,\n\nihr habt " + fmt.Sprint(quantity) + " Vakt-Pro-Lizenzen gekauft.\n\n" +
+					"Unter diesem Link seht ihr, wie viele Plätze noch frei sind, und stellt euch die\n" +
+					"Schlüssel für eure Kunden selbst aus — ihr müsst uns dafür nicht schreiben:\n\n" +
+					link + "\n\n" +
+					"Der Link ist euer Zugang, bitte behandelt ihn wie ein Passwort. Braucht ihr einen\n" +
+					"neuen, sagt Bescheid — dann wird der alte ungültig.\n\n" +
+					"Wichtig: Der Name der Organisation wird in den Schlüssel signiert und erscheint in\n" +
+					"der Vakt-Instanz eures Kunden. Er lässt sich nachträglich nicht ändern.\n\n" +
+					"Viele Grüße\nStefan\nNorvik Ops\n"
+				if err := h.issuer.Send(email, "Eure Vakt-Lizenzverwaltung", body, nil, ""); err != nil {
+					log.Error().Err(err).Str("subscription_id", subID).Msg("billing: portal link mail failed")
+				}
+			}
+		}
+	}
+
 	log.Info().
 		Str("invoice_id", invoiceID).
 		Str("subscription_id", subID).
@@ -512,6 +641,8 @@ func (h *Handler) pollOnce(ctx context.Context) {
 		  FROM billing_invoices
 		 WHERE status = 'open'
 		   AND created_at > NOW() - INTERVAL '180 days'`)
+	// 'voided' faellt hier raus: eine in Lexware stornierte Rechnung wird nie bezahlt,
+	// und sie weiter abzufragen ist Laerm. Reconcile() setzt den Status.
 	if err != nil {
 		log.Error().Err(err).Msg("billing: poll open invoices")
 		return
@@ -558,15 +689,86 @@ func (h *Handler) GetLicense(c echo.Context) error {
 		return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "billing not configured"})
 	}
 
-	var key string
-	err := h.db.QueryRow(c.Request().Context(), `
-		SELECT license_key
-		  FROM billing_quote_requests
-		 WHERE renewal_token = $1::uuid
-		   AND status = 'paid'
-		   AND license_key IS NOT NULL`, token).Scan(&key)
+	// The token identifies ONE LICENCE, not the subscription.
+	//
+	// It used to identify the subscription, which works for a direct customer and is
+	// broken for an MSP: ten seats are ten different keys (each carries its end
+	// customer's organisation name, signed), and all ten instances polling one
+	// subscription token would have been handed the same key — the MSP's own. Nine
+	// customers would have silently replaced their correct key with a stranger's.
+	//
+	// The UPDATE doubles as the heartbeat. This is the only thing a Vakt instance
+	// ever tells us, it is opt-in (VAKT_LICENSE_TOKEN), and it is a token and a
+	// timestamp — no ISMS data, ever. That is the line the no-phone-home promise
+	// actually draws, and it is drawn around compliance data, not around a licence
+	// check.
+	ctx := c.Request().Context()
+
+	var key, orgName, interval string
+	var expires time.Time
+	err := h.db.QueryRow(ctx, `
+		UPDATE billing_licenses bl
+		   SET last_seen_at = NOW()
+		  FROM billing_quote_requests s
+		 WHERE bl.subscription_id = s.id
+		   AND bl.renewal_token = $1::uuid
+		   AND bl.revoked_at IS NULL
+		   AND bl.license_key <> ''
+		   AND s.status = 'paid'
+		   AND s.cancelled_at IS NULL
+		RETURNING bl.license_key, bl.org_name, bl.expires_at, s.interval`, token).
+		Scan(&key, &orgName, &expires, &interval)
 	if err != nil {
+		// Revoked, cancelled, unpaid, unknown token — all the same 404. Distinguishing
+		// them would turn this into an oracle: try tokens until one answers differently.
+		//
+		// Note what this means: a licence is withdrawn simply by no longer answering
+		// here. No kill switch is needed, and none exists — the key the customer holds
+		// stays valid until it expires. That is the whole reason KeyLifetimeDays is 90
+		// and not 395.
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "not found"})
 	}
+
+	// Re-sign when the key is running low — but NEVER past what the customer paid for.
+	//
+	// The cap is the whole point, and without it there is a hole big enough to drive a
+	// year through: a subscription's status stays 'paid' forever after the first
+	// payment. A customer who paid year 1 and then stopped would have kept polling,
+	// kept being re-signed, and never gone dark at all.
+	//
+	// Entitlement() answers "paid through when?" from the invoices that were actually
+	// settled. Past that, we simply have nothing to give them.
+	limit, err := EntitlementByToken(ctx, h.db, token)
+	if err != nil {
+		log.Error().Err(err).Str("org", orgName).Msg("billing: cannot determine entitlement")
+		return c.JSON(http.StatusOK, map[string]string{"key": key}) // serve what they have
+	}
+	if !limit.After(time.Now()) {
+		// Paid period is over and the next invoice was not settled. Their key runs out
+		// on its own; we do not extend it. This is what "cutting someone off" is — not
+		// a switch, just the absence of a new key.
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "not found"})
+	}
+
+	if h.issuer.Enabled() && time.Until(expires) < license.RenewBelowDays*24*time.Hour && limit.After(expires) {
+		fresh, err := h.issuer.SignUntil(licensing.Request{OrgName: orgName, Interval: interval}, limit)
+		if err != nil {
+			// Serve the old key. It is still valid, and the customer did not break
+			// anything — locking them out over OUR signing problem would be the worst
+			// possible response.
+			log.Error().Err(err).Str("org", orgName).Msg("billing: could not re-sign licence on renewal")
+			return c.JSON(http.StatusOK, map[string]string{"key": key})
+		}
+		if _, err := h.db.Exec(ctx, `
+			UPDATE billing_licenses SET license_key = $2, expires_at = $3
+			 WHERE renewal_token = $1::uuid`, token, fresh, limit); err != nil {
+			log.Error().Err(err).Msg("billing: could not store re-signed licence")
+			return c.JSON(http.StatusOK, map[string]string{"key": key})
+		}
+		log.Info().Str("org", orgName).Str("expires", limit.Format("2006-01-02")).
+			Msg("billing: licence re-signed up to the paid-through date")
+		key = fresh
+	}
+
 	return c.JSON(http.StatusOK, map[string]string{"key": key})
 }

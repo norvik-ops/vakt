@@ -276,7 +276,13 @@ graph TD
     Worker --> DB
 ```
 
-All services run in Docker containers. No telemetry, no usage tracking. The optional `VAKT_LICENSE_TOKEN` feature contacts `api.norvikops.de` once daily for license renewal — no business data transmitted.
+All services run in Docker containers. **No telemetry, no usage tracking, no analytics.** Vakt makes exactly three outbound calls of its own, all of them switchable, none of them carrying your compliance data — the complete list, with what each one sends, is in [SECURITY.md](SECURITY.md#data-protection):
+
+- `api.norvikops.de` — fetches the next licence key when yours is running out. **Only in the last quarter of the key's life** — about **one call a year** on an annual plan, none in between. Sends the licence token, nothing else. `VAKT_LICENSE_AUTORENEW=false` to switch it off; we then mail you the key. **Community Edition never calls at all.**
+- `www.bsi.bund.de` — BSI CERT-Bund advisories. On by default, `VAKT_BSI_FEED_ENABLED=false` to stop it. Sends nothing.
+- `endoflife.date` — is a component in your SBOM out of support? On by default, `VAKT_EOL_CHECK_ENABLED=false` to stop it. Sends the names of components you run.
+
+Everything else that leaves your network is something you configured yourself: your cloud, your GitHub, your LLM. Turn all the switches off and Vakt makes no outbound connection at all.
 
 ---
 

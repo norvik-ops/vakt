@@ -1,0 +1,73 @@
+{{define "content"}}
+<h1>Abgleich mit Lexware</h1>
+<p class="lede">Was Vakt glaubt — und was Lexware wirklich sagt.</p>
+
+{{if .Err}}
+  <div class="notice warn"><b>⚠</b><span>{{.Err}}</span></div>
+{{else if .Drifts}}
+
+  {{if .Severe}}
+  <div class="notice warn">
+    <b>⚠</b>
+    <span><b>{{.Severe}} Punkt{{if ne .Severe 1}}e brauchen{{else}} braucht{{end}} eine Entscheidung.</b>
+    Nicht nur einen Blick — es geht um Geld oder um einen Schlüssel, der schon draußen ist.</span>
+  </div>
+  {{end}}
+
+  <div class="card">
+    <table>
+      <thead><tr><th>Art</th><th>Rechnung</th><th>Firma</th><th>Betrag</th><th>Was los ist</th></tr></thead>
+      <tbody>
+      {{range .Drifts}}
+        <tr>
+          <td data-l="Art">
+            {{if eq .Kind "storniert-mit-key"}}<span class="pill bad">Storno mit Key</span>
+            {{else if eq .Kind "nur-in-vakt"}}<span class="pill bad">nur in Vakt</span>
+            {{else if eq .Kind "storniert"}}<span class="pill warn">storniert</span>
+            {{else}}<span class="pill neutral">nur in Lexware</span>{{end}}
+          </td>
+          <td data-l="Rechnung">
+            {{if .Number}}<span class="name">{{.Number}}</span>{{end}}
+            <div class="sublabel"><code>{{.InvoiceID}}</code></div>
+          </td>
+          <td data-l="Firma">{{.Company}}</td>
+          <td data-l="Betrag" class="num name">{{.Amount}}</td>
+          <td data-l="Was los ist" class="dim" style="font-size:13px;line-height:1.65;max-width:420px">{{.Detail}}</td>
+        </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+{{else}}
+  <div class="card">
+    <div class="empty">
+      <span class="pill ok" style="margin-bottom:10px">deckungsgleich</span><br>
+      Vakt und Lexware sagen dasselbe. Keine Abweichung.
+    </div>
+  </div>
+{{end}}
+
+<h2>Warum es diese Seite gibt</h2>
+<div class="card pad">
+  <p class="dim" style="margin:0;font-size:14px;line-height:1.75">
+    Vakt <strong>hört</strong> auf Zahlungen — per Webhook, und alle 30 Minuten fragt ein Poller nach,
+    falls der Webhook mal stillschweigend aufhört. Was Vakt aber <strong>nicht</strong> hört, ist ein
+    <strong>Storno</strong>: Eine Rechnung in Lexware zu stornieren löst kein Zahlungsereignis aus.
+    <br><br>
+    Eine Rechnung, die wir als bezahlt gebucht haben und für die längst ein Lizenzschlüssel raus ist,
+    kann in Lexware still storniert werden — und <strong>nichts in unserer Datenbank würde es je
+    merken</strong>. Genau das war die allererste Testrechnung: in Lexware storniert, in Vakt „bezahlt,
+    Key ausgestellt".
+    <br><br>
+    Das lässt sich nicht durch besseres Zuhören lösen. Man muss fragen. Diese Seite fragt — und im
+    Hintergrund läuft derselbe Abgleich alle 6 Stunden, damit ein Storno nicht wochenlang liegt, bis
+    zufällig jemand hier draufschaut.
+    <br><br>
+    <strong>Automatisch passiert nur eine Sache:</strong> Eine in Lexware stornierte Rechnung wird auch
+    hier als storniert markiert — der Poller fragt nicht mehr nach, und sie zählt nicht mehr als Umsatz.
+    <strong>Die Lizenz wird nicht angefasst.</strong> Ein Storno ist genauso oft eine Korrektur (falsche
+    Adresse → stornieren, neu stellen) wie eine echte Stornierung. Automatisch zu sperren würde einen
+    zahlenden Kunden für <em>unseren</em> Tippfehler bestrafen. Das entscheidest du.
+  </p>
+</div>
+{{end}}

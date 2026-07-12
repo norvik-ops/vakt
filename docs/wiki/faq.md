@@ -53,7 +53,8 @@ Kurz: Wenn du Vakt für dein Unternehmen einsetzt, ist alles erlaubt. Wenn du pl
 
 Keine. Vakt arbeitet vollständig lokal:
 
-- Kein Phone-home, kein Telemetry, keine Usage-Tracking
+- Keine Telemetrie, kein Usage-Tracking, keine Nutzungsdaten.
+  Einzige ausgehende Verbindung zu uns: die Pro-Lizenz-Erneuerung: Läuft der Schlüssel ab, holt sich die Instanz einen neuen von `api.norvikops.de` (bei Jahreslizenz **etwa einmal pro Jahr**, dazwischen kein Aufruf). Übertragen wird **ausschließlich der Lizenz-Token** — keine Nutzungsdaten, keine Compliance-Inhalte. Abschaltbar mit `VAKT_LICENSE_AUTORENEW=false`; der Schlüssel kommt dann per Mail. **Die Community Edition ruft nie an.**
 - Keine Daten werden an Dritte übermittelt
 - Der KI-Berater läuft standardmäßig über Ollama auf dem eigenen Server
 

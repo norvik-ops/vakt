@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"net/smtp"
 	"strings"
+	"time"
 
 	"github.com/matharnica/vakt/internal/license"
 	"github.com/matharnica/vakt/internal/shared/mailhdr"
@@ -71,11 +72,38 @@ type Request struct {
 	RenewalToken string
 }
 
+// SignUntil produces a key that expires exactly when the caller says.
+//
+// Real sales use this, not Sign: the expiry must be capped at the period the customer
+// actually paid for (lexware.Entitlement). Deriving it from the interval instead would
+// let a customer who stopped paying keep renewing forever — the subscription's status
+// stays "paid" once it has ever been paid.
+func (i *Issuer) SignUntil(r Request, expires time.Time) (string, error) {
+	if !i.Enabled() {
+		return "", fmt.Errorf("licensing: no signing key configured (VAKT_LICENSE_PRIVATE_KEY)")
+	}
+	org := strings.TrimSpace(r.OrgName)
+	if org == "" {
+		org = r.Email
+	}
+	return license.SignWithToken(i.privateKeyPEM, "pro", org, r.RenewalToken, features.ProTier, &expires)
+}
+
 // Sign produces the license key without sending mail. Used by the CLI, and by
 // Issue below.
 func (i *Issuer) Sign(r Request) (string, error) {
+	key, _, err := i.sign(r)
+	return key, err
+}
+
+// sign returns the key AND the moment it stops working.
+//
+// Issue needs both, because the mail names the expiry date. Deriving that date a
+// second time inside sendMail would be a second place to get it wrong — and the
+// mail would eventually promise something the key does not do.
+func (i *Issuer) sign(r Request) (string, time.Time, error) {
 	if !i.Enabled() {
-		return "", fmt.Errorf("licensing: no signing key configured (VAKT_LICENSE_PRIVATE_KEY)")
+		return "", time.Time{}, fmt.Errorf("licensing: no signing key configured (VAKT_LICENSE_PRIVATE_KEY)")
 	}
 	org := strings.TrimSpace(r.OrgName)
 	if org == "" {
@@ -86,18 +114,48 @@ func (i *Issuer) Sign(r Request) (string, error) {
 		status = "trialing"
 	}
 	expiry := license.KeyExpiry(r.Interval, status)
-	return license.Sign(i.privateKeyPEM, "pro", org, features.ProTier, &expiry)
+	key, err := license.SignWithToken(i.privateKeyPEM, "pro", org, r.RenewalToken, features.ProTier, &expiry)
+	return key, expiry, err
+}
+
+// termOf names the period the customer actually bought.
+//
+// The mail used to say "volle Jahreslaufzeit" no matter what was sold. A customer on
+// the Monatslizenz paid 299 €, read that he was getting a full year, and received a
+// key that dies after 30 days. The Interval sat in the Request the whole time — the
+// text simply ignored it.
+//
+// The branch mirrors license.KeyExpiry exactly (year, else month). If the two ever
+// disagree, the mail is the one that lies.
+func termOf(interval string) string {
+	if interval == "year" {
+		return "ein volles Jahr"
+	}
+	return "einen vollen Monat"
+}
+
+// IssueUntil signs a key with an explicit expiry and mails it. This is what a real
+// sale uses — the expiry is capped at the period the customer actually paid for.
+func (i *Issuer) IssueUntil(r Request, expires time.Time, invoicePDF []byte, invoiceName string) (string, error) {
+	key, err := i.SignUntil(r, expires)
+	if err != nil {
+		return "", err
+	}
+	if err := i.sendMail(r, key, expires, invoicePDF, invoiceName); err != nil {
+		return key, err
+	}
+	return key, nil
 }
 
 // Issue signs a key and mails it to the customer. If invoicePDF is non-empty it
 // is attached — so the invoice and the key that unlocks the product arrive in
 // one message, from us, rather than the customer chasing two senders.
 func (i *Issuer) Issue(r Request, invoicePDF []byte, invoiceName string) (string, error) {
-	key, err := i.Sign(r)
+	key, expires, err := i.sign(r)
 	if err != nil {
 		return "", err
 	}
-	if err := i.sendMail(r, key, invoicePDF, invoiceName); err != nil {
+	if err := i.sendMail(r, key, expires, invoicePDF, invoiceName); err != nil {
 		// The key is signed and valid at this point; the caller must persist it
 		// even though delivery failed, otherwise a retry would mint a second key.
 		return key, fmt.Errorf("send license mail: %w", err)
@@ -105,19 +163,34 @@ func (i *Issuer) Issue(r Request, invoicePDF []byte, invoiceName string) (string
 	return key, nil
 }
 
-func (i *Issuer) sendMail(r Request, key string, pdf []byte, pdfName string) error {
+func (i *Issuer) sendMail(r Request, key string, expires time.Time, pdf []byte, pdfName string) error {
+	subject, body := licenseMail(r, key, expires)
+	return i.Send(r.Email, subject, body, pdf, pdfName)
+}
+
+// licenseMail builds the mail. Pure on purpose: it is the only claim we make to a
+// paying customer about what he just bought, and a function that needs an SMTP
+// server to run is a function nobody tests.
+func licenseMail(r Request, key string, expires time.Time) (subject, body string) {
 	// Zwei Mails, zwei Texte. Der Nicht-Trial-Fall ist die Mail NACH dem
 	// Zahlungseingang — sie traegt keinen Anhang mehr, weil die Rechnung schon
 	// mit der ersten Mail rausging. Ein "anbei findest du deine Rechnung" haette
 	// den Kunden vergeblich nach einem Anhang suchen lassen.
-	subject := "Deine Vakt Pro Lizenz — Zahlung eingegangen"
-	intro := "deine Zahlung ist eingegangen — vielen Dank. Hier ist dein Lizenzschlüssel mit voller Jahreslaufzeit.\r\n\r\n" +
-		"Er ersetzt den 45-Tage-Schlüssel aus der Auftragsbestätigung: einfach in deiner Instanz eintragen, dann läuft die Lizenz das volle Jahr."
+	//
+	// Beide nennen das echte Ablaufdatum des mitgeschickten Schluessels. Eine
+	// Laufzeit-Floskel ("volle Jahreslaufzeit") stand hier frueher fest im Text und
+	// war fuer jeden Monatskunden schlicht falsch; ein Datum kann gar nicht erst
+	// vom ausgestellten Schluessel abweichen, weil es aus ihm stammt.
+	until := expires.Format("02.01.2006")
+
+	subject = "Deine Vakt Pro Lizenz — Zahlung eingegangen"
+	intro := "deine Zahlung ist eingegangen — vielen Dank. Hier ist dein Lizenzschlüssel für " + termOf(r.Interval) + ".\r\n\r\n" +
+		"Er ersetzt den 45-Tage-Schlüssel aus der Auftragsbestätigung: einfach in deiner Instanz eintragen, dann läuft die Lizenz bis zum " + until + "."
 	if r.Trial {
 		subject = "Deine Vakt Pro Lizenz (45 Tage, bis zum Zahlungseingang)"
 		intro = "vielen Dank für deinen Auftrag. Anbei findest du deine Rechnung.\r\n\r\n" +
-			"Damit du sofort loslegen kannst, liegt schon jetzt ein Lizenzschlüssel bei — er läuft 45 Tage. " +
-			"Sobald deine Zahlung eingegangen ist, bekommst du automatisch den Schlüssel mit voller Jahreslaufzeit. " +
+			"Damit du sofort loslegen kannst, liegt schon jetzt ein Lizenzschlüssel bei — er läuft bis zum " + until + ". " +
+			"Sobald deine Zahlung eingegangen ist, bekommst du automatisch den Schlüssel für " + termOf(r.Interval) + ". " +
 			"Du musst dafür nichts tun."
 	}
 
@@ -136,7 +209,7 @@ funktioniert alles wie gewohnt, nur der Schlüsselwechsel bleibt manuell.
 `, r.RenewalToken)
 	}
 
-	body := fmt.Sprintf(`Hallo,
+	body = fmt.Sprintf(`Hallo,
 
 %s
 
@@ -158,7 +231,7 @@ Stefan
 Norvik Ops
 `, intro, key, key, renewal)
 
-	return i.Send(r.Email, subject, body, pdf, pdfName)
+	return subject, body
 }
 
 // Send delivers one mail. It is the only place that talks to SMTP.

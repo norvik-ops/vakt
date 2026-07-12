@@ -54,7 +54,7 @@ Diese Selbstbewertung dokumentiert den Sicherheitsstand von Vakt für Kunden, di
 | Secrets-Verschlüsselung | OK | AES-256-GCM, Key aus VAKT_SECRET_KEY |
 | Verschlüsselung at-Rest | Operator-Entscheidung | Dokumentiert in `docs/encryption-at-rest.md`: LUKS-Volume (Bare-Metal), Cloud-Provider-Encryption oder optional pgcrypto. Eine der drei ist DSGVO-Art.-32-Pflicht und Teil der Installations-Checklist. |
 | CSRF-Schutz | OK | Double-Submit-Cookie auf allen state-ändernden Endpoints; SameSite=Strict zusätzlich |
-| Datenhaltung | OK | Vollständig self-hosted, kein Phone-Home, keine Telemetrie |
+| Datenhaltung | OK | Vollständig self-hosted, keine Telemetrie, keine Nutzungsdaten. Einzige ausgehende Verbindung: Pro-Lizenz-Erneuerung (nur der Lizenz-Token, ~1×/Jahr, abschaltbar). Vollständige Liste in `SECURITY.md` |
 | Audit-Log | OK | Immutables Audit-Log mit konfigurierbarer Retention |
 | DSGVO | OK | VVT, DPIA, AVV, Breach-Notification integriert |
 | Data Retention | OK | Konfigurierbares automatisches Löschen alter Daten |

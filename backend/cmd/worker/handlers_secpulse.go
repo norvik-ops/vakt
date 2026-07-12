@@ -258,6 +258,15 @@ func handleEOLCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 			return fmt.Errorf("parse eol check payload: %w", err)
 		}
 
+		// Opt-out: VAKT_EOL_CHECK_ENABLED=false. The check asks endoflife.date about a
+		// component the customer runs — the only outbound call that says anything about
+		// their stack. An air-gapped instance must be able to turn it off, and must
+		// degrade quietly rather than log a failed connection every scan.
+		if cfg != nil && !cfg.EOLCheckEnabled {
+			log.Info().Msg("EOL check skipped (VAKT_EOL_CHECK_ENABLED=false)")
+			return nil
+		}
+
 		checker := vaktscan.NewEOLChecker(pool)
 		if err := checker.CheckComponents(ctx, payload.OrgID, payload.SBOMID); err != nil {
 			log.Error().Err(err).

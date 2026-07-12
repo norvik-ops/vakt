@@ -20,6 +20,12 @@ import (
 // The PEM may use literal \n escapes (as stored in env vars) or real newlines.
 // expires is optional — pass nil for a perpetual license.
 func Sign(privateKeyPEM, tier, org string, features []string, expires *time.Time) (string, error) {
+	return SignWithToken(privateKeyPEM, tier, org, "", features, expires)
+}
+
+// SignWithToken embeds the licence's own renewal token, so the instance can fetch
+// its next key by itself when this one runs low. See payload.RenewalToken.
+func SignWithToken(privateKeyPEM, tier, org, renewalToken string, features []string, expires *time.Time) (string, error) {
 	privateKeyPEM = strings.ReplaceAll(privateKeyPEM, `\n`, "\n")
 	block, _ := pem.Decode([]byte(privateKeyPEM))
 	if block == nil {
@@ -29,15 +35,16 @@ func Sign(privateKeyPEM, tier, org string, features []string, expires *time.Time
 	if err != nil {
 		return "", fmt.Errorf("license: parse private key: %w", err)
 	}
-	return signWith(privKey, tier, org, features, expires)
+	return signWith(privKey, tier, org, renewalToken, features, expires)
 }
 
-func signWith(privKey *ecdsa.PrivateKey, tier, org string, features []string, expires *time.Time) (string, error) {
+func signWith(privKey *ecdsa.PrivateKey, tier, org, renewalToken string, features []string, expires *time.Time) (string, error) {
 	p := payload{
-		Tier:     tier,
-		Features: features,
-		Org:      org,
-		IssuedAt: time.Now().UTC().Unix(),
+		Tier:         tier,
+		Features:     features,
+		Org:          org,
+		RenewalToken: renewalToken,
+		IssuedAt:     time.Now().UTC().Unix(),
 	}
 	if expires != nil {
 		exp := expires.UTC().Unix()
@@ -66,22 +73,51 @@ func signWith(privKey *ecdsa.PrivateKey, tier, org string, features []string, ex
 	return payloadB64 + "." + base64.RawURLEncoding.EncodeToString(sig), nil
 }
 
-// KeyExpiry returns the expiry date for a newly issued license key.
+// TrialLifetimeDays is the key issued WITH the invoice, before the money lands. A
+// B2B buyer should not have to wait for a bank transfer to clear before they can
+// start; if they never pay, it runs out on its own.
+const TrialLifetimeDays = 45
+
+// RenewBelowDays is the remaining lifetime below which a renewal poll re-signs the
+// key, so an instance that checks in always carries a comfortable runway.
 //
-// Both the billing webhook and the admin CLI (direct/invoice sale) call this —
-// a key issued by invoice must expire on the same schedule as one bought by
-// card. The grace period is deliberate: a yearly key lives 395 days, so a
-// renewal that arrives a few weeks late does not lock the customer out of an
-// ISMS they may be mid-audit with.
+// It never extends the key beyond what the customer actually paid for — see
+// billing.PaidThrough. That cap is the whole safety mechanism.
+const RenewBelowDays = 60
+
+// MailBelowDays is the remaining lifetime below which a customer WITHOUT auto-renewal
+// gets a fresh key by mail. Deliberately above the 30-day in-app expiry banner, so a
+// customer who did nothing wrong never sees a warning at all.
+const MailBelowDays = 35
+
+// TrialExpiry is when the pre-payment key runs out.
+func TrialExpiry() time.Time {
+	return time.Now().Add(TrialLifetimeDays * 24 * time.Hour)
+}
+
+// KeyExpiry is the fallback for callers with no subscription behind them — the
+// admin CLI signing a key by hand. Real sales do NOT use this: they cap the expiry
+// at the period the customer actually paid for (billing.Entitlement).
 //
-// status "trialing" yields a 45-day key regardless of interval.
+// Why the distinction matters, and why it is not a detail:
+//
+// The obvious way to keep control over a licence is to make keys short-lived and
+// force a renewal. It is also wrong. A short key moves the risk of OUR outage onto
+// a customer who paid a year in advance: if our mail or our billing service is down
+// for three months, their ISMS goes dark — possibly mid-audit — through no fault of
+// theirs. The party that did everything right must not carry our operational risk.
+//
+// The correct rule is the other one: a key is valid exactly as long as the customer
+// paid for, plus grace. It cannot be extended past that, so someone who stops paying
+// is out shortly after their period ends — and it does not need to be extended by us
+// to keep working, so our outage cannot hurt them. Control and robustness come from
+// the same rule, not from a trade-off between them.
 func KeyExpiry(interval, status string) time.Time {
-	switch {
-	case status == "trialing":
-		return time.Now().Add(45 * 24 * time.Hour)
-	case interval == "year":
-		return time.Now().Add(395 * 24 * time.Hour)
-	default:
-		return time.Now().Add(35 * 24 * time.Hour)
+	if status == "trialing" {
+		return TrialExpiry()
 	}
+	if interval == "year" {
+		return time.Now().AddDate(0, 0, 365+30)
+	}
+	return time.Now().AddDate(0, 0, 30+5)
 }

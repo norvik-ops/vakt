@@ -307,7 +307,7 @@ func TestLicenseToCache_RoundTrip(t *testing.T) {
 }
 
 func TestNewAutoRefresher_DefaultURL(t *testing.T) {
-	r := NewAutoRefresher("token", "", nil, nil, nil)
+	r := NewAutoRefresher("token", "", true, nil, nil, nil)
 	if r.baseURL != defaultRefreshURL {
 		t.Fatalf("want %s, got %s", defaultRefreshURL, r.baseURL)
 	}
@@ -317,18 +317,30 @@ func TestNewAutoRefresher_DefaultURL(t *testing.T) {
 }
 
 func TestNewAutoRefresher_CustomURL(t *testing.T) {
-	r := NewAutoRefresher("", "http://custom", nil, nil, nil)
+	r := NewAutoRefresher("", "http://custom", true, nil, nil, nil)
 	if r.baseURL != "http://custom" {
 		t.Fatalf("want http://custom, got %s", r.baseURL)
 	}
 }
 
-func TestAutoRefresher_Start_NoToken(t *testing.T) {
+func TestAutoRefresher_Start_Disabled(t *testing.T) {
 	h := NewHandler(communityLicense())
-	r := NewAutoRefresher("", "", h, nil, nil)
+	r := NewAutoRefresher("", "", false, h, nil, nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
-	r.Start(ctx) // must return immediately — empty token is a no-op
+	r.Start(ctx) // VAKT_LICENSE_AUTORENEW=false — must return immediately and never call out
+}
+
+// TestAutoRefresher_CommunityNeverCalls: the Community Edition has no key, so there is
+// nothing to renew and no reason to contact anyone. If this ever regresses, a free
+// self-hosted instance would start phoning home — the single worst thing this product
+// could do to its own promise.
+func TestAutoRefresher_CommunityNeverCalls(t *testing.T) {
+	h := NewHandler(communityLicense())
+	r := NewAutoRefresher("token", "", true, h, nil, nil)
+	if r.due() {
+		t.Fatal("a community licence has no expiry — the instance must never ask for a renewal")
+	}
 }
 
 func TestNewHandler_WithOptions(t *testing.T) {
@@ -445,5 +457,82 @@ func TestCommunityKeyNoLegacyFallback(t *testing.T) {
 		if lic.Has(f) {
 			t.Errorf("community license must not gain %q via legacy fallback", f)
 		}
+	}
+}
+
+// TestRenewWindowScalesWithTheKey guards the one number that decides whether this is a
+// licence renewal or a heartbeat with a nicer name.
+//
+// A FIXED window would be a disaster on the monthly plan. That key lives 35 days; a
+// 30-day window would leave the instance inside it almost permanently, and it would
+// call every single day — 365 times a year, exactly the thing we told customers we do
+// not do. Deriving the window from the key's own lifetime is what keeps a yearly
+// instance at roughly ONE call a year and a monthly one at a handful per renewal.
+//
+// If someone "simplifies" this back to a constant, nothing else fails. This does.
+func TestRenewWindowScalesWithTheKey(t *testing.T) {
+	mk := func(lifetimeDays int) *License {
+		iat := time.Now().Add(-time.Hour)
+		exp := iat.Add(time.Duration(lifetimeDays) * 24 * time.Hour)
+		return &License{IssuedAt: iat, ExpiresAt: &exp}
+	}
+
+	yearly := renewWindow(mk(395))
+	if yearly != maxRenewWindow {
+		t.Errorf("yearly key: window = %v, want the %v cap", yearly, maxRenewWindow)
+	}
+
+	monthly := renewWindow(mk(35))
+	if monthly >= 15*24*time.Hour {
+		t.Errorf("monthly key (35 days): window = %v. Anything near a month means the "+
+			"instance sits inside the window permanently and phones home DAILY — the exact "+
+			"thing the design exists to avoid.", monthly)
+	}
+	if monthly < 3*24*time.Hour {
+		t.Errorf("monthly key: window = %v is too tight — a customer who pays a few days "+
+			"late would go dark before the instance ever asked for the new key", monthly)
+	}
+
+	// A perpetual key has nothing to renew. It must never call.
+	if w := renewWindow(&License{IssuedAt: time.Now()}); w != 0 {
+		t.Errorf("perpetual key: window = %v, want 0 — there is nothing to fetch", w)
+	}
+	if w := renewWindow(nil); w != 0 {
+		t.Errorf("nil licence: window = %v, want 0", w)
+	}
+}
+
+// TestRenewalTokenSurvivesTheRoundTrip: the token rides INSIDE the signed key, which is
+// what makes auto-renewal work without the customer configuring anything. If it does
+// not survive sign->parse, every instance silently falls back to "enter a key by hand
+// forever" — and nothing would fail except the customer's patience.
+func TestRenewalTokenSurvivesTheRoundTrip(t *testing.T) {
+	priv, restore := setupTestKeys(t)
+	defer restore()
+
+	exp := time.Now().Add(90 * 24 * time.Hour)
+	key, err := signWith(priv, "pro", "Acme GmbH", "tok-12345", []string{"sso"}, &exp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lic, err := parse(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lic.RenewalToken != "tok-12345" {
+		t.Errorf("renewal token did not survive the key: got %q, want %q", lic.RenewalToken, "tok-12345")
+	}
+
+	// And an old key without one must still parse — every existing customer holds one.
+	old, err := signWith(priv, "pro", "Acme GmbH", "", []string{"sso"}, &exp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldLic, err := parse(old)
+	if err != nil {
+		t.Fatalf("a key signed without a renewal token must still parse: %v", err)
+	}
+	if oldLic.RenewalToken != "" {
+		t.Errorf("want empty renewal token on a legacy key, got %q", oldLic.RenewalToken)
 	}
 }

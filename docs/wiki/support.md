@@ -4,7 +4,7 @@ Wenn etwas in deiner Vakt-Instanz nicht funktioniert, helfen uns ein paar
 Standard-Artefakte, das Problem schnell zu finden. Diese Seite beschreibt, **was
 du einsammelst und wie du es uns zuschickst**.
 
-> **Datenschutz vorab:** Vakt ist self-hosted und hat **kein Phone-home**. Es
+> **Datenschutz vorab:** Vakt ist self-hosted, sammelt **keine Telemetrie und keine Nutzungsdaten**. Es
 > werden niemals automatisch Daten an uns übertragen — du entscheidest, was du
 > uns schickst. Die Anwendungs-Logs sind PII-redigiert (E-Mail-Adressen
 > erscheinen als `***@firma.de`), enthalten aber Domains, IP-Adressen und

@@ -1,0 +1,79 @@
+{{define "content"}}
+<h1>Rechnungen</h1>
+<p class="lede">Was gestellt ist — und was davon noch nicht bezahlt wurde.</p>
+
+<div class="grid" style="margin-bottom:24px">
+  <div class="card pad">
+    <div class="lbl">Offen</div>
+    <div class="stat sm">{{.OpenSum}}</div>
+    <div class="sub">{{len .Open}} Rechnung{{if ne (len .Open) 1}}en{{end}}{{if .Overdues}} · <span style="color:#fbbf24">{{.Overdues}} überfällig</span>{{end}}</div>
+  </div>
+  <div class="card pad">
+    <div class="lbl">Bezahlt</div>
+    <div class="stat sm">{{.PaidSum}}</div>
+    <div class="sub">{{len .Paid}} Rechnung{{if ne (len .Paid) 1}}en{{end}}</div>
+  </div>
+</div>
+
+<form method="get" style="margin-bottom:18px;max-width:420px">
+  <input type="search" name="q" value="{{.Q}}" placeholder="Firma oder Lexware-Nummer suchen …">
+</form>
+
+<h2>Offen</h2>
+<div class="card">
+  {{if .Open}}
+  <table>
+    <thead><tr><th>Firma</th><th>Zeitraum</th><th>Betrag</th><th>Status</th><th>Erinnert</th><th></th></tr></thead>
+    <tbody>
+    {{range .Open}}
+      <tr>
+        <td data-l="Firma"><a href="/subscriptions/{{.SubID}}" class="name">{{.Company}}</a>
+            <div class="sublabel"><a href="/invoices/{{.LexwareID}}/pdf" target="_blank">PDF ansehen ↗</a></div></td>
+        <td data-l="Zeitraum" class="num dim">{{.Period}}</td>
+        <td data-l="Betrag" class="num name">{{.Amount}}</td>
+        <td data-l="Status">
+          {{if .Overdue}}<span class="pill bad">überfällig</span>
+          {{else}}<span class="pill warn">offen</span>{{end}}
+        </td>
+        <td data-l="Erinnert" class="num muted">{{.Reminded}}</td>
+        <td>
+          <form method="post" action="/invoices/{{.LexwareID}}/remind" style="margin:0"
+                onsubmit="return confirm('Zahlungserinnerung an {{.Company}} schicken?')">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <input type="hidden" name="sub" value="{{.SubID}}">
+            <button type="submit" class="ghost sm">Erinnern</button>
+          </form>
+        </td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}<div class="empty">Nichts offen. Alles bezahlt.</div>{{end}}
+</div>
+
+<h2>Bezahlt</h2>
+<div class="card">
+  {{if .Paid}}
+  <table>
+    <thead><tr><th>Firma</th><th>Zeitraum</th><th>Betrag</th><th>Lexware</th><th>Bezahlt am</th></tr></thead>
+    <tbody>
+    {{range .Paid}}
+      <tr>
+        <td data-l="Firma"><a href="/subscriptions/{{.SubID}}" class="name">{{.Company}}</a></td>
+        <td data-l="Zeitraum" class="num dim">{{.Period}}</td>
+        <td data-l="Betrag" class="num name">{{.Amount}}</td>
+        <td data-l="Lexware"><a href="/invoices/{{.LexwareID}}/pdf" target="_blank">PDF ↗</a></td>
+        <td data-l="Bezahlt am" class="num">{{.PaidOn}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}<div class="empty">Noch keine Zahlung eingegangen.</div>{{end}}
+</div>
+
+<p class="muted" style="font-size:13px;margin-top:16px;line-height:1.7">
+  <strong>„überfällig"</strong> heißt: Das Zahlungsziel der Rechnung ist abgelaufen (längstens 14 Tage).
+  Der Schlüssel des Kunden funktioniert weiter bis zum Ende seines bezahlten Zeitraums plus Kulanz —
+  er wird nur nicht erneuert, solange nicht gezahlt wird.
+</p>
+{{end}}

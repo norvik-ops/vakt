@@ -69,6 +69,21 @@ type Config struct {
 	// LicenseRefreshURL overrides the default refresh endpoint (https://api.norvikops.de).
 	// Only useful for testing.
 	LicenseRefreshURL string
+
+	// LicenseAutoRenew (VAKT_LICENSE_AUTORENEW, default true).
+	//
+	// When on, a Pro instance fetches its next licence key by itself — but ONLY in the
+	// last quarter of the current key's life. A yearly customer's instance therefore
+	// contacts api.norvikops.de roughly once a year, a monthly one a few times per
+	// renewal, and never otherwise. It sends the renewal token carried inside the
+	// signed key, and nothing else.
+	//
+	// Set to false and the instance never contacts us at all; we mail the key instead.
+	// That path is supported, not a punishment — an air-gapped ISMS is a legitimate
+	// thing to run, and it is half of why people buy this.
+	//
+	// The Community Edition has no key and never calls, regardless of this setting.
+	LicenseAutoRenew bool
 	// ECDSA private key PEM for signing license keys on purchase (VAKT_LICENSE_PRIVATE_KEY).
 	LicensePrivateKey string
 
@@ -92,6 +107,15 @@ type Config struct {
 	BillingBaseURL string
 	// Where "new quote request, approve?" mails go (VAKT_BILLING_NOTIFY_EMAIL).
 	BillingNotifyEmail string
+
+	// PortalBaseURL (VAKT_PORTAL_BASE_URL) is where a customer's licence portal lives.
+	//
+	// A separate host from the API on purpose: a HUMAN opens this link, and
+	// "api.norvikops.de/api/v1/billing/portal/<64 hex chars>" is not a link you send a
+	// customer. It is also deliberately NOT called msp.* — that name belongs to the
+	// MSP dashboard, a different product, and the whole point of ADR-0071 is that a
+	// licence portal is not that. Single-seat customers use this too.
+	PortalBaseURL string
 	// UpdateCheck — opt-in check against GitHub releases API once per day.
 	// Set VAKT_UPDATE_CHECK=true to enable. No data is sent; only a GET request to the public GitHub API.
 	UpdateCheck bool
@@ -119,6 +143,21 @@ type Config struct {
 	// Set VAKT_BSI_FEED_ENABLED=false to disable in air-gapped environments or
 	// when the outbound connection to bsi.bund.de is not permitted.
 	BSIFeedEnabled bool
+
+	// EOLCheckEnabled controls whether Vakt asks endoflife.date whether a component
+	// from an SBOM scan is past its end of life.
+	//
+	// This is the only outbound call that carries anything ABOUT the customer: the
+	// name of a software component they run (e.g. "openssl", "postgresql"). Not their
+	// compliance data, but not nothing either — it says something about their stack.
+	// It was undeclared until 2026-07-12, while SECURITY.md called its table of
+	// outbound connections "complete". For a product sold on data sovereignty, a
+	// falsifiable claim is more dangerous than the connection itself: it dies in the
+	// first customer's firewall review.
+	//
+	// Default on (the feature is useless without it), opt-out for air-gapped setups —
+	// exactly like the BSI feed.
+	EOLCheckEnabled bool
 	// ForceSecureCookies forces the Secure attribute on all session/CSRF cookies
 	// regardless of the request's TLS state or X-Forwarded-Proto header. Default
 	// false (Secure is inferred from TLS/XFP). Set VAKT_FORCE_SECURE_COOKIES=true
@@ -287,11 +326,13 @@ func Load() (*Config, error) {
 		LicenseKey:             licenseKey,
 		LicenseToken:           getEnv("VAKT_LICENSE_TOKEN", ""),
 		LicenseRefreshURL:      getEnv("VAKT_LICENSE_REFRESH_URL", ""),
+		LicenseAutoRenew:       getEnv("VAKT_LICENSE_AUTORENEW", "true") == "true",
 		LicensePrivateKey:      getEnv("VAKT_LICENSE_PRIVATE_KEY", ""),
 		LexwareAPIKey:          getEnv("VAKT_LEXWARE_API_KEY", ""),
 		SMTPReplyTo:            getEnv("VAKT_SMTP_REPLY_TO", ""),
 		BillingBaseURL:         getEnv("VAKT_BILLING_BASE_URL", ""),
 		BillingNotifyEmail:     getEnv("VAKT_BILLING_NOTIFY_EMAIL", ""),
+		PortalBaseURL:          getEnv("VAKT_PORTAL_BASE_URL", "https://lizenz.norvikops.de"),
 		UpdateCheck:            getEnv("VAKT_UPDATE_CHECK", "false") == "true",
 		Staging:                getEnv("VAKT_STAGING", "false") == "true",
 		PromoteURL:             getEnv("VAKT_PROMOTE_URL", "http://host.docker.internal:9099/promote"),
@@ -304,6 +345,7 @@ func Load() (*Config, error) {
 		MetricsEnabled:     getEnv("VAKT_METRICS_DISABLED", "false") != "true",
 		EPSSEnabled:        getEnv("VAKT_EPSS_ENABLED", "false") == "true",
 		BSIFeedEnabled:     getEnv("VAKT_BSI_FEED_ENABLED", "true") == "true",
+		EOLCheckEnabled:    getEnv("VAKT_EOL_CHECK_ENABLED", "true") == "true",
 		ForceSecureCookies: getEnv("VAKT_FORCE_SECURE_COOKIES", "false") == "true",
 	}
 

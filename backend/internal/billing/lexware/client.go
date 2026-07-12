@@ -386,3 +386,65 @@ type WebhookEvent struct {
 	ResourceID     string `json:"resourceId"`
 	EventDate      string `json:"eventDate"`
 }
+
+// ── Reconciliation: what does Lexware think? ─────────────────────────────────
+
+// Voucher is one invoice as Lexware sees it.
+type Voucher struct {
+	ID            string  `json:"id"`
+	VoucherNumber string  `json:"voucherNumber"`
+	VoucherStatus string  `json:"voucherStatus"` // open | paid | voided | overdue | draft
+	TotalAmount   float64 `json:"totalAmount"`
+	Currency      string  `json:"currency"`
+	ContactName   string  `json:"contactName"`
+	VoucherDate   string  `json:"voucherDate"`
+}
+
+// Voided reports whether Lexware has cancelled this invoice. A storno never reaches
+// us as a payment event — that is the whole reason this call exists.
+func (v Voucher) Voided() bool { return v.VoucherStatus == "voided" }
+
+type voucherList struct {
+	Content       []Voucher `json:"content"`
+	TotalElements int       `json:"totalElements"`
+	Last          bool      `json:"last"`
+}
+
+// Invoices returns every invoice Lexware knows about.
+//
+// Vakt's own view is not enough, and the gap is not academic:
+//
+//   - A STORNO in Lexware produces no payment event. An invoice we recorded as paid,
+//     for which we already signed and mailed a licence key, can quietly become void —
+//     and nothing in our database would ever notice. (The very first test invoice,
+//     RE0003, was exactly this: voided in Lexware, "paid" with a key issued in Vakt.)
+//   - Invoices raised BY HAND in Lexware do not exist here at all, so every revenue
+//     figure in the panel is a partial truth without them.
+//
+// Neither is fixable by listening harder. It needs asking.
+func (c *Client) Invoices(ctx context.Context) ([]Voucher, error) {
+	var out []Voucher
+	for page := 0; page < 20; page++ { // 20 × 250 = 5000; a hard stop beats an endless loop
+		// NOT "overdue": Lexware rejects it in combination with other states
+		// ("voucherStatus filter 'overdue' cannot be used in combination with other
+		// states", HTTP 400). It is a sub-state of "open" anyway — an open invoice past
+		// its due date — so open,paid,voided is the complete set. Found by running it,
+		// not by reading: the call failed silently and the reconciliation page cheerfully
+		// reported "no drift" while a voided invoice sat right there.
+		path := fmt.Sprintf(
+			"/v1/voucherlist?voucherType=invoice&voucherStatus=open,paid,voided&size=250&page=%d", page)
+		body, err := c.do(ctx, http.MethodGet, path, nil, "application/json")
+		if err != nil {
+			return nil, fmt.Errorf("lexware: list invoices: %w", err)
+		}
+		var vl voucherList
+		if err := json.Unmarshal(body, &vl); err != nil {
+			return nil, fmt.Errorf("lexware: decode invoice list: %w", err)
+		}
+		out = append(out, vl.Content...)
+		if vl.Last || len(vl.Content) == 0 {
+			break
+		}
+	}
+	return out, nil
+}

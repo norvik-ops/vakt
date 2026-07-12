@@ -11,33 +11,42 @@ import (
 	"github.com/matharnica/vakt/internal/license"
 )
 
-// TestPlanExpiryMatchesLicense guards the invariant the whole billing cycle rests on.
+// TestKeyCoversExactlyWhatWasPaidFor pins the rule that makes licence control safe.
 //
-// A plan says the customer paid for PeriodDays and their key survives GraceDays
-// beyond that. license.KeyExpiry — a different package, written long before plans
-// existed — decides how long the signed key is ACTUALLY valid. If the two ever
-// disagree, one of two things happens to a paying customer:
+// A key must be valid through the period the customer PAID FOR, plus grace — and not
+// one day past it. Both failure modes were live in this codebase within an hour of
+// each other:
 //
-//	key shorter than period  -> their instance goes dark mid-period, having paid
-//	key longer than period   -> they keep Pro after cancelling
+//	too long   the key WAS the billing period (395 days), so "revoking" a licence took
+//	           a year to take effect. Control on paper only.
+//	too short  a fixed 90-day key that had to be renewed continuously. Same control —
+//	           but now OUR outage takes down a customer who paid a year in advance,
+//	           possibly mid-audit. The party that did everything right carried our risk.
 //
-// Neither shows up in any other test, because both packages are individually
-// correct. Only their relationship is wrong.
-//
-// If this fails, fix the numbers — not the test.
-func TestPlanExpiryMatchesLicense(t *testing.T) {
+// The rule below has neither failure mode, and it is easy to "simplify" back into
+// either. Nothing else in the suite would notice.
+func TestKeyCoversExactlyWhatWasPaidFor(t *testing.T) {
 	for key, p := range plans {
 		t.Run(key, func(t *testing.T) {
-			want := p.PeriodDays + p.GraceDays
-			expiry := license.KeyExpiry(p.Interval, "")
-			got := int(time.Until(expiry).Hours()/24 + 0.5)
-			if got != want {
-				t.Errorf("plan %s: PeriodDays+GraceDays = %d, but license.KeyExpiry gives %d days\n"+
-					"A paying customer's key would %s.",
-					key, want, got,
-					map[bool]string{true: "expire before the period they paid for ends", false: "outlive the period they paid for"}[got < want])
+			if p.GraceDays <= 0 {
+				t.Fatalf("plan %s has no grace — a transfer clearing one day late would "+
+					"lock out a paying customer", key)
+			}
+			// Grace must outlast the payment term, or the renewal invoice can still be
+			// inside its due date while the key is already dead.
+			if p.GraceDays+p.LeadDays < p.DueDays {
+				t.Errorf("plan %s: grace (%d) + lead (%d) < payment term (%d) — the key would "+
+					"die before the bill is even overdue",
+					key, p.GraceDays, p.LeadDays, p.DueDays)
 			}
 		})
+	}
+
+	// The pre-payment key is a bet on someone who has not paid. It must be short, and
+	// it must not be derived from the billing period.
+	trial := int(time.Until(license.TrialExpiry()).Hours()/24 + 0.5)
+	if trial != license.TrialLifetimeDays || trial > 60 {
+		t.Errorf("trial key lives %d days — issued before any money arrived, it must stay short", trial)
 	}
 }
 

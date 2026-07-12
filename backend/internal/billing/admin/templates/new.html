@@ -1,0 +1,72 @@
+{{define "content"}}
+<a href="/subscriptions" class="back">← Alle Abos</a>
+<h1>Neues Abo von Hand</h1>
+<p class="lede">Für Kunden, die anrufen statt das Formular zu benutzen.</p>
+
+{{if .Flash}}<div class="notice warn"><b>⚠</b><span>{{.Flash}}</span></div>{{end}}
+
+<div class="notice info">
+  <b>›</b>
+  <span>Es wird <strong>noch keine Rechnung</strong> erstellt. Das Abo landet auf „angefragt" —
+  erst der Knopf <strong>Freigeben</strong> auf der Detailseite legt den Lexware-Kontakt an,
+  erstellt die <strong>finalisierte</strong> Rechnung und verschickt sie mit einem 45-Tage-Schlüssel.
+  Das ist dann nicht mehr rückgängig zu machen.</span>
+</div>
+
+<form method="post" action="/new">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+
+  <div class="card pad" style="margin-bottom:14px">
+    <div class="row" style="margin-bottom:14px">
+      <div><label class="lbl">Firma *</label>
+        <input type="text" name="company_name" required maxlength="200" placeholder="Müller Maschinenbau GmbH"></div>
+      <div><label class="lbl">Ansprechpartner</label>
+        <input type="text" name="contact_name" maxlength="120" placeholder="Anna Müller"></div>
+    </div>
+    <div class="row">
+      <div><label class="lbl">E-Mail *</label>
+        <input type="email" name="email" required maxlength="200" placeholder="buchhaltung@mueller.de"></div>
+      <div><label class="lbl">USt-IdNr.</label>
+        <input type="text" name="vat_id" maxlength="30" placeholder="DE123456789"></div>
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:14px">
+    <div class="row" style="margin-bottom:14px">
+      <div style="flex:2"><label class="lbl">Straße</label>
+        <input type="text" name="street" maxlength="150" placeholder="Industriestr. 12"></div>
+      <div style="flex:0;min-width:110px"><label class="lbl">PLZ</label>
+        <input type="text" name="zip" maxlength="12" placeholder="12345"></div>
+      <div><label class="lbl">Ort</label>
+        <input type="text" name="city" maxlength="120" placeholder="Musterstadt"></div>
+      <div style="flex:0;min-width:90px"><label class="lbl">Land</label>
+        <input type="text" name="country_code" maxlength="2" value="DE"></div>
+    </div>
+    <p class="muted" style="margin:0;font-size:13px">
+      Die Adresse steht auf der Rechnung. Fehlt sie, stellt Lexware sie ohne — nachträglich
+      ändern geht bei einer finalisierten Rechnung nicht.
+    </p>
+  </div>
+
+  <div class="card pad" style="margin-bottom:14px">
+    <div class="row">
+      <div><label class="lbl">Tarif</label>
+        <select name="interval" style="background:#0d0d16;border:1px solid var(--line);border-radius:9px;padding:9px 12px;color:var(--text);width:100%;font:inherit">
+          <option value="year">Jahreslizenz — 2.990 €</option>
+          <option value="month">Monatslizenz — 299 €</option>
+        </select></div>
+      <div style="flex:0;min-width:140px"><label class="lbl">Anzahl Lizenzen</label>
+        <input type="number" name="quantity" min="1" max="500" value="1"
+               style="background:#0d0d16;border:1px solid var(--line);border-radius:9px;padding:9px 12px;color:var(--text);width:100%;font:inherit"></div>
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:18px">
+    <label class="lbl">Notiz (nur intern)</label>
+    <textarea name="notes" rows="3" maxlength="5000" placeholder="Will die Rechnung per Post. USt-ID kommt nach."
+      style="background:#0d0d16;border:1px solid var(--line);border-radius:9px;padding:10px 12px;color:var(--text);width:100%;font:inherit;resize:vertical"></textarea>
+  </div>
+
+  <button type="submit">Abo anlegen</button>
+</form>
+{{end}}

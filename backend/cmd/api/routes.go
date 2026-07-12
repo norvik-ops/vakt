@@ -22,8 +22,6 @@ import (
 
 	"github.com/matharnica/vakt/internal/admin"
 	"github.com/matharnica/vakt/internal/auth"
-	"github.com/matharnica/vakt/internal/billing/lexware"
-	"github.com/matharnica/vakt/internal/billing/licensing"
 	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/license"
 	"github.com/matharnica/vakt/internal/modules/vaktaware"
@@ -318,14 +316,32 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	// users can retrieve their own profile during the MFA setup flow.
 	protected.GET("/auth/me", authHandler.Me)
 
-	// License auto-refresh: when VAKT_LICENSE_TOKEN is set the instance polls
-	// api.norvikops.de every 24h and silently activates the latest key.
+	// Licence auto-renewal.
+	//
+	// ON BY DEFAULT for a Pro instance since 2026-07-12, and the word "default" is
+	// doing a lot of work there, so be precise about what it means:
+	//
+	// The instance contacts api.norvikops.de ONLY in the last quarter of its key's
+	// life (capped at a month) — a yearly customer roughly ONCE A YEAR, a monthly one
+	// a handful of times per renewal. Outside that window it makes no outbound call to
+	// us at all. It sends the licence's renewal token and nothing else: no org data,
+	// no user count, no compliance content, no instance identifier.
+	//
+	// That is a licence renewal, not a heartbeat, and the distinction is not
+	// wordplay — it is the difference between one call a year and 365. A daily
+	// check-in would have been telemetry wearing a different name, and no self-hosting
+	// buyer would have believed otherwise. Rightly.
+	//
+	// VAKT_LICENSE_AUTORENEW=false switches it off. Then Norvik mails the next key and
+	// the instance never speaks to us — a supported path, not a trap. The Community
+	// Edition has no key and never calls at all.
 	licHandler := license.RegisterRoutes(api, lic, auth.AuthMiddleware(pasetoKey, pool, rdb), pool, rdb)
-	if cfg.LicenseToken != "" {
+	if cfg.LicenseAutoRenew {
 		licHandler.WithAutoRenewal()
-		refresher := license.NewAutoRefresher(cfg.LicenseToken, cfg.LicenseRefreshURL, licHandler, pool, rdb)
+		refresher := license.NewAutoRefresher(cfg.LicenseToken, cfg.LicenseRefreshURL, true, licHandler, pool, rdb)
 		go refresher.Start(lifecycleCtx)
-		log.Info().Msg("license: auto-renewal active")
+	} else {
+		log.Info().Msg("license: auto-renewal disabled (VAKT_LICENSE_AUTORENEW=false) — this instance will never contact Norvik")
 	}
 	log.Info().Msg("license routes registered")
 
@@ -706,50 +722,18 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		log.Info().Msg("demo start route registered")
 	}
 
-	// Direct sale via invoice (Lexware Office) — billing instance only.
+	// Billing lives in its own process now (cmd/billing).
 	//
-	// This is the DACH-B2B path: quote request -> seller approves -> finalized
-	// invoice + 45-day key -> bank transfer -> full key. No merchant of record,
-	// no customer data leaving the EU, and our own B2B terms actually govern the
-	// contract (with Polar as reseller they did not).
+	// It was here until 2026-07-12, which meant VAKT_LICENSE_PRIVATE_KEY sat in the
+	// environment of THIS process — the one with ~919 routes. Anyone who can sign
+	// with that key can mint unlimited valid Pro licences, and they cannot be
+	// revoked: Vakt has no phone-home, by design. A single authorisation slip in any
+	// one of those routes would have made the product free, permanently, invisibly.
 	//
-	// Mounted on `api`, which carries no AuthMiddleware: the buyer's browser and
-	// Lexware's servers have no Vakt session.
-	if cfg.LexwareAPIKey != "" && cfg.LicensePrivateKey != "" {
-		smtpCfg := licensing.SMTPConfig{
-			Host: cfg.SMTPHost, Port: cfg.SMTPPort,
-			User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
-			ReplyTo: cfg.SMTPReplyTo,
-		}
-		lexClient := lexware.New(cfg.LexwareAPIKey)
-		lexHandler := lexware.NewHandler(
-			pool, lexClient, licensing.NewIssuer(cfg.LicensePrivateKey, smtpCfg),
-			smtpCfg, cfg.BillingBaseURL, cfg.BillingNotifyEmail,
-		)
-		lexware.Register(api, lexHandler)
-
-		// Re-register the payment webhook on every boot: rotating the Lexware API
-		// key silently deletes all subscriptions, and the key expires after 24
-		// months. Without this, paid invoices would stop issuing licences and
-		// nobody would find out until a customer complained.
-		if cfg.BillingBaseURL != "" {
-			go lexware.EnsureWebhook(lexClient, cfg.BillingBaseURL+"/api/v1/billing/lexware/webhook")
-		}
-
-		// Fallback: ask Lexware every 30 minutes whether an approved invoice has
-		// been paid. The webhook is the fast path, not the only one — if it ever
-		// goes quiet (key rotated, subscription dropped, Lexware hiccup), a paying
-		// customer would otherwise receive nothing and we would find out from them.
-		go lexHandler.PollPayments(context.Background(), 30*time.Minute)
-
-		// Recurring billing. Vakt Pro is sold monthly and yearly, so a subscription
-		// needs a follow-up invoice before its period runs out. Nothing did that
-		// until now: Approve() raised exactly one invoice, and a monthly customer's
-		// key simply expired on day 36. Six hours is far more often than needed
-		// (renewals are due once a month at most) and cheap — the query is indexed
-		// and hits nothing when nothing is due.
-		go lexHandler.RenewDue(context.Background(), 6*time.Hour)
-	}
+	// So the key moved to a process with six routes. Caddy sends /api/v1/billing/*
+	// to it; nothing else about the URL changed, because api.norvikops.de is
+	// compiled into every shipped instance (license/autorefresh.go) and can never
+	// move.
 
 	// S46-1: Prometheus metrics — IP-allowlisted (loopback + Docker-internal only).
 	// Optionally also token-gated via VAKT_METRICS_TOKEN.

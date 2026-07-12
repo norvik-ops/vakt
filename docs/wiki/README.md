@@ -67,7 +67,8 @@ Datenbankmigrationen laufen automatisch beim Start. Kein manueller Setup-Schritt
 
 ## Grundprinzipien
 
-- **Lokal first** — Keine Daten verlassen deinen Server. Kein Phone-home, kein Telemetry.
+- **Lokal first** — Keine Daten verlassen deinen Server. Keine Telemetrie, kein Usage-Tracking.
+  Die einzige Verbindung zu uns ist die Pro-Lizenz-Erneuerung: Läuft der Schlüssel ab, holt sich die Instanz einen neuen von `api.norvikops.de` (bei Jahreslizenz **etwa einmal pro Jahr**, dazwischen kein Aufruf). Übertragen wird **ausschließlich der Lizenz-Token** — keine Nutzungsdaten, keine Compliance-Inhalte. Abschaltbar mit `VAKT_LICENSE_AUTORENEW=false`; der Schlüssel kommt dann per Mail. **Die Community Edition ruft nie an.**
 - **Documentation-first** — Ziel ist auditreife Compliance-Evidenz, kein aktiver Sicherheitsbetrieb.
 - **Modular** — Jedes Modul kann einzeln aktiviert oder deaktiviert werden.
 - **Selbstgehostet** — `docker compose up -d` reicht. Kein Kubernetes erforderlich.

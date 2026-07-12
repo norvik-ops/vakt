@@ -1,0 +1,10 @@
+<svg width="280" height="44" viewBox="0 0 280 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    
+  </defs>
+  
+  <rect x="0" y="2" width="40" height="40" rx="10" fill="#0A0A0A"></rect>
+  <path d="M8,35 L8,9 L32,35 L32,9" stroke="white" stroke-width="3.5" stroke-linecap="butt" stroke-linejoin="miter"></path>
+  
+  <text x="52" y="31" font-family="&#39;Space Grotesk&#39;, system-ui, sans-serif" font-size="22" font-weight="600" fill="#0A0A0A" letter-spacing="-0.5">NorvikOps</text>
+</svg>

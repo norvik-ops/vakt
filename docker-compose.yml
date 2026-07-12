@@ -319,7 +319,7 @@ services:
   # qwen2.5:3b wechseln (VAKT_AI_MODEL=qwen2.5:3b, ~1.9 GB RAM).
   # Deaktivieren: VAKT_AI_PROVIDER=disabled in .env setzen.
   ollama:
-    image: ollama/ollama:${OLLAMA_TAG:-0.6}
+    image: ollama/ollama:${OLLAMA_TAG:-0.31.2}
     networks:
       - app-net
     volumes:
@@ -345,7 +345,7 @@ services:
   # Volume — wenn das Modell schon da ist, ist `ollama pull` ein No-Op.
   # Restart=no damit der Container nach erfolgreichem Pull beendet bleibt.
   ollama-init:
-    image: ollama/ollama:${OLLAMA_TAG:-0.6}
+    image: ollama/ollama:${OLLAMA_TAG:-0.31.2}
     networks:
       - app-net
     entrypoint: ["/bin/sh", "-c"]

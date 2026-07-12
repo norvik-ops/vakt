@@ -1,0 +1,202 @@
+{{define "content"}}
+<a href="/subscriptions" class="back">← Alle Abos</a>
+
+{{if .Flash}}<div class="notice info"><b>›</b><span>{{.Flash}}</span></div>{{end}}
+
+<h1>{{.Sub.Company}}</h1>
+<p class="lede">
+  {{.Sub.Email}} ·
+  <span class="pill brand">{{.Sub.Plan}}</span>
+  {{if gt .Sub.Quantity 1}} · {{.Sub.Quantity}} Lizenzen{{end}}
+</p>
+
+<div class="grid">
+  <div class="card pad">
+    <div class="lbl">Status</div>
+    <div class="stat sm">
+      {{if eq .Sub.Status "bezahlt"}}<span class="pill ok">bezahlt</span>
+      {{else if eq .Sub.Status "läuft aus"}}<span class="pill warn">läuft aus</span>
+      {{else if eq .Sub.Status "angefragt"}}<span class="pill neutral">angefragt</span>
+      {{else}}<span class="pill bad">{{.Sub.Status}}</span>{{end}}
+    </div>
+  </div>
+  <div class="card pad">
+    <div class="lbl">Nächste Rechnung</div>
+    <div class="stat sm num">{{.Sub.NextInvoice}}</div>
+  </div>
+  <div class="card pad">
+    <div class="lbl">Freie Plätze</div>
+    <div class="stat sm num">{{.SeatsLeft}}</div>
+    <div class="sub">{{.Sub.SeatsUsed}} von {{.Sub.Quantity}} vergeben</div>
+  </div>
+</div>
+
+{{if eq .Sub.Status "angefragt"}}
+<h2>Freigeben</h2>
+<div class="card pad">
+  <p class="dim" style="margin:0 0 16px;font-size:14px;line-height:1.7">
+    Prüfe kurz, ob das eine echte Firma ist. Danach: Lexware-Kontakt anlegen, eine
+    <strong>finalisierte</strong> Rechnung erstellen und sie zusammen mit einem 45-Tage-Schlüssel
+    verschicken. <strong>Eine finalisierte Rechnung lässt sich über die API nicht zurücknehmen</strong> —
+    nur in Lexware von Hand stornieren.
+  </p>
+  <form method="post" action="/subscriptions/{{.Sub.ID}}/approve"
+        onsubmit="return confirm('Rechnung für {{.Sub.Company}} erstellen?\n\nFinalisiert, nicht rückgängig zu machen.')">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <button type="submit">Rechnung erstellen und verschicken</button>
+  </form>
+</div>
+{{end}}
+
+<h2>Rechnungen</h2>
+<div class="card">
+  {{if .Invoices}}
+  <table>
+    <thead><tr><th>Zeitraum</th><th>Betrag</th><th>Lexware</th><th>Status</th><th>Bezahlt am</th><th></th></tr></thead>
+    <tbody>
+    {{range .Invoices}}
+      <tr>
+        <td data-l="Zeitraum" class="num">{{.Period}}</td>
+        <td data-l="Betrag" class="num name">{{.Amount}}</td>
+        <td data-l="Lexware"><a href="/invoices/{{.LexwareID}}/pdf" target="_blank">PDF ↗</a></td>
+        <td data-l="Status">
+          {{if .Paid}}<span class="pill ok">bezahlt</span>
+          {{else if .Overdue}}<span class="pill bad">überfällig</span>
+          {{else}}<span class="pill warn">offen</span>{{end}}
+        </td>
+        <td data-l="Bezahlt am" class="num">{{.PaidOn}}</td>
+        <td>
+          {{if not .Paid}}
+          <form method="post" action="/invoices/{{.LexwareID}}/remind" style="margin:0"
+                onsubmit="return confirm('Zahlungserinnerung schicken?')">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <input type="hidden" name="sub" value="{{$.Sub.ID}}">
+            <button type="submit" class="ghost sm">Erinnern</button>
+          </form>
+          {{end}}
+        </td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}<div class="empty">Noch keine Rechnung gestellt.</div>{{end}}
+</div>
+
+<h2>Ausgestellte Lizenzen</h2>
+<div class="card">
+  {{if .Licences}}
+  <table>
+    <thead><tr><th>Organisation</th><th>Status</th><th>Gültig bis</th><th>Zuletzt gesehen</th><th>Schlüssel</th><th></th></tr></thead>
+    <tbody>
+    {{range .Licences}}
+      <tr>
+        <td data-l="Organisation"><span class="name">{{.OrgName}}</span>
+          {{if .Note}}<div class="sublabel">{{.Note}}</div>{{end}}</td>
+        <td data-l="Status">
+          {{if .Revoked}}<span class="pill bad">gesperrt</span>
+          {{else if eq .Status "bezahlt"}}<span class="pill ok">bezahlt</span>
+          {{else if eq .Status "läuft aus"}}<span class="pill warn">läuft aus</span>
+          {{else}}<span class="pill bad">{{.Status}}</span>{{end}}
+        </td>
+        <td data-l="Gültig bis" class="num">
+          {{if .Expired}}<span class="pill bad">{{.Expires}}</span>{{else}}{{.Expires}}{{end}}
+        </td>
+        <td data-l="Zuletzt gesehen" class="num muted">{{.LastSeen}}</td>
+        <td data-l="Schlüssel"><code class="key">{{.Key}}</code></td>
+        <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <form method="post" action="/subscriptions/{{$.Sub.ID}}/resend" style="margin:0">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <input type="hidden" name="token" value="{{.Token}}">
+              <button type="submit" class="ghost sm" title="Denselben Schlüssel noch einmal mailen — es wird nichts neu ausgestellt">Erneut schicken</button>
+            </form>
+            {{if not .Revoked}}
+            <form method="post" action="/subscriptions/{{$.Sub.ID}}/revoke" style="margin:0"
+                  onsubmit="return confirm('Schlüssel für {{.OrgName}} sperren?\n\nEr wird NICHT sofort ungültig — er wird nur nicht mehr erneuert und läuft dann aus.')">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <input type="hidden" name="token" value="{{.Token}}">
+              <button type="submit" class="danger sm">Sperren</button>
+            </form>
+            {{end}}
+          </div>
+        </td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}<div class="empty">Noch kein Schlüssel ausgestellt.</div>{{end}}
+</div>
+
+{{if or (eq .Sub.Status "bezahlt") (eq .Sub.Status "läuft aus")}}
+<h2>Platz vergeben</h2>
+<div class="card pad">
+  <p class="dim" style="margin:0 0 16px;font-size:14px;line-height:1.7">
+    Der Name der Organisation wird <strong>in den Schlüssel signiert</strong> — er erscheint in der
+    Vakt-Instanz des Endkunden und lässt sich nachträglich nicht ändern. Wie viele Lizenzen wirklich
+    genutzt werden, kann Vakt nicht messen (kein Phone-Home): <strong>diese Liste ist die einzige
+    Wahrheit</strong>.
+  </p>
+  <form method="post" action="/subscriptions/{{.Sub.ID}}/seat">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="row">
+      <div>
+        <label class="lbl">Organisation des Endkunden</label>
+        <input type="text" name="org_name" required maxlength="200" placeholder="Müller Maschinenbau GmbH">
+      </div>
+      <div>
+        <label class="lbl">Schlüssel schicken an</label>
+        <input type="email" name="email" maxlength="200" placeholder="{{.Sub.Email}}">
+      </div>
+      <div style="flex:0"><button type="submit">Schlüssel ausstellen</button></div>
+    </div>
+  </form>
+</div>
+
+{{if gt .Sub.Quantity 1}}
+<h2>Lizenzportal des Kunden</h2>
+<div class="card pad">
+  <p class="dim" style="margin:0 0 16px;font-size:14px;line-height:1.7">
+    Der Kunde verwaltet seine {{.Sub.Quantity}} Plätze selbst — sehen, wie viele frei sind, und für einen
+    neuen Endkunden einen Schlüssel ausstellen, ohne uns zu schreiben. Der Link geht bei der Zahlung
+    automatisch raus. Hier erzeugst du einen neuen, falls er ihn verloren hat: <strong>der alte wird damit
+    ungültig</strong>. Er wird nur <em>einmal</em> angezeigt — wir speichern ausschließlich seinen Hash.
+  </p>
+  <form method="post" action="/subscriptions/{{.Sub.ID}}/portal">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <button type="submit" class="ghost">Neuen Portal-Link erzeugen</button>
+  </form>
+</div>
+{{end}}
+
+{{end}}
+
+<h2>Notiz</h2>
+<div class="card pad">
+  <p class="dim" style="margin:0 0 12px;font-size:14px">
+    Nur intern. Der Kunde sieht das nie. Hier landet, was sonst nirgends hinpasst —
+    „will die Rechnung per Post", „USt-ID kommt nach", „Ansprechpartner wechselt zum 1.9."
+  </p>
+  <form method="post" action="/subscriptions/{{.Sub.ID}}/notes">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <textarea name="notes" rows="4" maxlength="5000"
+      style="background:#0d0d16;border:1px solid var(--line);border-radius:9px;padding:10px 12px;color:var(--text);width:100%;font:inherit;resize:vertical;margin-bottom:12px"
+      placeholder="Noch keine Notiz.">{{.Sub.Notes}}</textarea>
+    <button type="submit" class="ghost">Notiz speichern</button>
+  </form>
+</div>
+
+<h2>Kündigen</h2>
+<div class="card pad">
+  <p class="dim" style="margin:0 0 16px;font-size:14px;line-height:1.7">
+    Beendet das Abo zum Ende des <strong>bezahlten</strong> Zeitraums. Keine Rückerstattung, kein Widerruf
+    des Schlüssels — es kommt nur keine Rechnung mehr, und der aktuelle Schlüssel läuft von allein aus.
+    Widerrufen ginge ohnehin nicht: Dafür bräuchte Vakt Phone-Home — und genau das nicht zu haben, ist die
+    halbe Kaufbegründung.
+  </p>
+  <form method="post" action="/subscriptions/{{.Sub.ID}}/cancel"
+        onsubmit="return confirm('Abo von {{.Sub.Company}} wirklich kündigen?')">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <button type="submit" class="danger">Abo kündigen</button>
+  </form>
+</div>
+{{end}}

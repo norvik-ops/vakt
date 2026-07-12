@@ -106,6 +106,12 @@ type License struct {
 	IssuedAt  time.Time
 	ExpiresAt *time.Time
 	Demo      bool
+
+	// RenewalToken is carried inside the signed key, so the instance can fetch its
+	// own next key when this one runs low without the customer configuring anything.
+	// Empty on keys signed before this existed, and on CLI-issued keys.
+	RenewalToken string
+
 	// Revoked is true when the org's subscription has been cancelled/refunded and
 	// found in ls_revoked_subscriptions. The license is downgraded to community but
 	// the frontend can use this flag to show a targeted cancellation message.
@@ -124,6 +130,19 @@ type payload struct {
 	Org      string   `json:"org"`
 	IssuedAt int64    `json:"iat"`
 	Exp      *int64   `json:"exp,omitempty"`
+
+	// RenewalToken lets the instance fetch its OWN next key when this one is about
+	// to run out — without the customer having to configure anything.
+	//
+	// It lives inside the signed key on purpose. The alternative was a second env
+	// var (VAKT_LICENSE_TOKEN), which meant renewal only worked for the customers who
+	// happened to read that part of the mail. Everyone else had to paste a new key by
+	// hand, forever. One paste, and it just works.
+	//
+	// This is signed along with everything else, so it cannot be swapped for someone
+	// else's token. Empty on old keys and on keys signed by the admin CLI — the
+	// instance then simply never calls, exactly as before.
+	RenewalToken string `json:"rt,omitempty"`
 }
 
 // Load parses a license key and returns the resulting License.
@@ -314,12 +333,13 @@ func parse(key string) (*License, error) {
 	}
 
 	return &License{
-		Tier:      p.Tier,
-		Features:  p.Features,
-		OrgName:   p.Org,
-		IssuedAt:  time.Unix(p.IssuedAt, 0).UTC(),
-		ExpiresAt: expiresAt,
-		Expired:   expired,
+		Tier:         p.Tier,
+		Features:     p.Features,
+		OrgName:      p.Org,
+		RenewalToken: p.RenewalToken,
+		IssuedAt:     time.Unix(p.IssuedAt, 0).UTC(),
+		ExpiresAt:    expiresAt,
+		Expired:      expired,
 	}, nil
 }
 
