@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -81,7 +82,7 @@ func applyMiddleware(e *echo.Echo, cfg *config.Config, log zerolog.Logger, lic *
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
 			log.Info().
 				Str("method", v.Method).
-				Str("uri", v.URI).
+				Str("uri", redactQuery(v.URI)).
 				Int("status", v.Status).
 				Dur("latency", v.Latency).
 				Msg("request")
@@ -145,4 +146,44 @@ func insecureWildcardCORS(origins []string, demoMode bool) bool {
 		return false
 	}
 	return len(origins) == 1 && origins[0] == "*"
+}
+
+// sensitiveQueryKeys are query parameters whose values must never reach a log.
+//
+// Query strings end up in the access log, and from there in Loki on another host.
+// A one-click approval link cannot avoid carrying its token in the URL — a mail
+// client will not POST — so the token is redacted on the way out instead.
+//
+// This was not theoretical: the billing approval token was hashed in the database
+// precisely so a leaked backup could not be used to approve invoices, and then the
+// access log printed the plaintext token on every click, undoing all of it.
+var sensitiveQueryKeys = map[string]bool{
+	"token":        true,
+	"access_token": true,
+	"api_key":      true,
+	"apikey":       true,
+	"key":          true,
+	"secret":       true,
+	"password":     true,
+	"code":         true, // OAuth/OIDC authorization codes
+	"state":        true,
+}
+
+// redactQuery replaces the values of sensitive query parameters with "***",
+// keeping the rest of the URI intact so the logs stay useful for debugging.
+func redactQuery(uri string) string {
+	i := strings.IndexByte(uri, '?')
+	if i < 0 {
+		return uri
+	}
+	path, query := uri[:i], uri[i+1:]
+
+	parts := strings.Split(query, "&")
+	for j, p := range parts {
+		k, _, found := strings.Cut(p, "=")
+		if found && sensitiveQueryKeys[strings.ToLower(k)] {
+			parts[j] = k + "=***"
+		}
+	}
+	return path + "?" + strings.Join(parts, "&")
 }
