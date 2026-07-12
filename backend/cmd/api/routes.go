@@ -22,6 +22,8 @@ import (
 
 	"github.com/matharnica/vakt/internal/admin"
 	"github.com/matharnica/vakt/internal/auth"
+	"github.com/matharnica/vakt/internal/billing/lexware"
+	"github.com/matharnica/vakt/internal/billing/licensing"
 	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/license"
 	"github.com/matharnica/vakt/internal/modules/vaktaware"
@@ -724,6 +726,37 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		}).WithDB(pool).WithRedis(rdb)
 		polarwebhook.Register(api, polarHandler)
 		log.Info().Msg("polar webhook registered at /api/v1/billing/webhook")
+	}
+
+	// Direct sale via invoice (Lexware Office) — billing instance only.
+	//
+	// This is the DACH-B2B path: quote request -> seller approves -> finalized
+	// invoice + 45-day key -> bank transfer -> full key. No merchant of record,
+	// no customer data leaving the EU, and our own B2B terms actually govern the
+	// contract (with Polar as reseller they did not).
+	//
+	// Mounted on `api`, which carries no AuthMiddleware: the buyer's browser and
+	// Lexware's servers have no Vakt session.
+	if cfg.LexwareAPIKey != "" && cfg.LicensePrivateKey != "" {
+		smtpCfg := licensing.SMTPConfig{
+			Host: cfg.SMTPHost, Port: cfg.SMTPPort,
+			User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
+			ReplyTo: cfg.SMTPReplyTo,
+		}
+		lexClient := lexware.New(cfg.LexwareAPIKey)
+		lexHandler := lexware.NewHandler(
+			pool, lexClient, licensing.NewIssuer(cfg.LicensePrivateKey, smtpCfg),
+			smtpCfg, cfg.BillingBaseURL, cfg.BillingNotifyEmail,
+		)
+		lexware.Register(api, lexHandler)
+
+		// Re-register the payment webhook on every boot: rotating the Lexware API
+		// key silently deletes all subscriptions, and the key expires after 24
+		// months. Without this, paid invoices would stop issuing licences and
+		// nobody would find out until a customer complained.
+		if cfg.BillingBaseURL != "" {
+			go lexware.EnsureWebhook(lexClient, cfg.BillingBaseURL+"/api/v1/billing/lexware/webhook")
+		}
 	}
 
 	// S46-1: Prometheus metrics — IP-allowlisted (loopback + Docker-internal only).

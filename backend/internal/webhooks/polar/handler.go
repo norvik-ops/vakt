@@ -100,26 +100,10 @@ func Register(g *echo.Group, h *Handler) {
 // proFeatures is the full set of features included in every issued Pro key.
 // TISAX, DORA, ISO 42001, and multi_framework are not offered publicly — gates
 // remain in code but no tier issues them via Polar.
-var proFeatures = []string{
-	features.FeatureEUAIAct,
-	features.FeatureCRA,
-	features.FeatureAIAdvisor,
-	features.FeatureAuditPDF,
-	features.FeatureSSO,
-	features.FeatureAPI,
-	features.FeatureSecReflex,
-	features.FeatureSecPulse,
-	features.FeatureSecVault,
-	features.FeatureSecPrivacy,
-	features.FeatureBSIGrundschutz,
-	features.FeatureGranularPermissions,
-	features.FeatureSupplierPortal,
-	features.FeatureNIS2Reporting,
-	features.FeatureSAMLAuth,
-	features.FeatureAgentWriteTools,
-	features.FeatureSCIMProvisioning,
-	features.FeatureSIEM,
-}
+// proFeatures is the Pro feature set. Single source of truth: features.ProTier —
+// a license issued by the CLI (direct/invoice sale) must unlock exactly the same
+// features as one issued by this webhook, otherwise the two paths drift apart.
+var proFeatures = features.ProTier
 
 // polarSubscription is the subscription object in Polar webhook payloads.
 type polarSubscription struct {

@@ -65,3 +65,23 @@ func signWith(privKey *ecdsa.PrivateKey, tier, org string, features []string, ex
 
 	return payloadB64 + "." + base64.RawURLEncoding.EncodeToString(sig), nil
 }
+
+// KeyExpiry returns the expiry date for a newly issued license key.
+//
+// Both the billing webhook and the admin CLI (direct/invoice sale) call this —
+// a key issued by invoice must expire on the same schedule as one bought by
+// card. The grace period is deliberate: a yearly key lives 395 days, so a
+// renewal that arrives a few weeks late does not lock the customer out of an
+// ISMS they may be mid-audit with.
+//
+// status "trialing" yields a 45-day key regardless of interval.
+func KeyExpiry(interval, status string) time.Time {
+	switch {
+	case status == "trialing":
+		return time.Now().Add(45 * 24 * time.Hour)
+	case interval == "year":
+		return time.Now().Add(395 * 24 * time.Hour)
+	default:
+		return time.Now().Add(35 * 24 * time.Hour)
+	}
+}

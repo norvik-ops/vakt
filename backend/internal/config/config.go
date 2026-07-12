@@ -75,6 +75,27 @@ type Config struct {
 	PolarWebhookSecret string
 	// ECDSA private key PEM for signing license keys on purchase (VAKT_LICENSE_PRIVATE_KEY).
 	LicensePrivateKey string
+
+	// ── Direct sale via Lexware Office (billing instance only) ──────────────
+	// A customer's self-hosted Vakt leaves all three empty and the direct-sale
+	// routes stay dark. Only api.norvikops.de sets them.
+
+	// SMTPReplyTo (VAKT_SMTP_REPLY_TO) — the address a customer reaches when they
+	// hit "Reply" on an invoice or license mail. The From address is bound to the
+	// SMTP login (Proton only sends as addresses that exist in the account), so
+	// Reply-To is the reliable way to be reachable without a new mailbox.
+	SMTPReplyTo string
+
+	// Lexware Office API key (VAKT_LEXWARE_API_KEY). Treat as a credential:
+	// it can read contacts and create invoices. Expires after 24 months, and
+	// rotating it DELETES all event subscriptions — they are re-created at boot.
+	LexwareAPIKey string
+	// Public base URL of this billing API (VAKT_BILLING_BASE_URL), e.g.
+	// https://api.norvikops.de. Used to build the approval link and the webhook
+	// callback URL that Lexware calls back on.
+	BillingBaseURL string
+	// Where "new quote request, approve?" mails go (VAKT_BILLING_NOTIFY_EMAIL).
+	BillingNotifyEmail string
 	// UpdateCheck — opt-in check against GitHub releases API once per day.
 	// Set VAKT_UPDATE_CHECK=true to enable. No data is sent; only a GET request to the public GitHub API.
 	UpdateCheck bool
@@ -273,6 +294,10 @@ func Load() (*Config, error) {
 		LSWebhookSecret:        getEnv("VAKT_LS_WEBHOOK_SECRET", ""),
 		PolarWebhookSecret:     getEnv("VAKT_POLAR_WEBHOOK_SECRET", ""),
 		LicensePrivateKey:      getEnv("VAKT_LICENSE_PRIVATE_KEY", ""),
+		LexwareAPIKey:          getEnv("VAKT_LEXWARE_API_KEY", ""),
+		SMTPReplyTo:            getEnv("VAKT_SMTP_REPLY_TO", ""),
+		BillingBaseURL:         getEnv("VAKT_BILLING_BASE_URL", ""),
+		BillingNotifyEmail:     getEnv("VAKT_BILLING_NOTIFY_EMAIL", ""),
 		UpdateCheck:            getEnv("VAKT_UPDATE_CHECK", "false") == "true",
 		Staging:                getEnv("VAKT_STAGING", "false") == "true",
 		PromoteURL:             getEnv("VAKT_PROMOTE_URL", "http://host.docker.internal:9099/promote"),
