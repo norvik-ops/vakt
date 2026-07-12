@@ -234,7 +234,6 @@ _DOC_EXCL = (
 ENV_DOC_EXEMPT = {
     "VAKT_TAG", "OLLAMA_TAG", "VAKT_STAGING",    # Docker-Image-Pins / Staging-Ops
     "VAKT_PROMOTE_URL", "VAKT_PROMOTE_SECRET",   # internes Promote-Deploy
-    "VAKT_LS_WEBHOOK_SECRET",                    # LemonSqueezy-Payment (intern)
     "VAKT_OPENVAS_URL", "VAKT_OPENVAS_USER", "VAKT_OPENVAS_PASS",  # → scanner-setup.md
     "VAKT_DB_URL_FILE", "VAKT_SECRET_KEY_FILE",  # → ADR-0049 / architecture.md
 }

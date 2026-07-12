@@ -39,6 +39,18 @@ func Register(g *echo.Group, h *Handler) {
 	g.GET("/billing/quote-request/:id/approve", h.Approve)
 	g.POST("/billing/lexware/webhook", h.Webhook)
 
+	// The endpoint behind VAKT_LICENSE_TOKEN: a customer's instance polls it once
+	// a day and swaps in the key it gets back, so a renewal needs no manual step.
+	// Guarded by the renewal token in the Authorization header, plus a rate limit —
+	// 60/h with a small burst is far above one poll a day and far below anything
+	// useful for guessing a UUID.
+	renewLimiter := middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
+		Store: middleware.NewRateLimiterMemoryStoreWithConfig(
+			middleware.RateLimiterMemoryStoreConfig{Rate: 60.0 / 3600.0, Burst: 5, ExpiresIn: 10 * time.Minute},
+		),
+	})
+	g.GET("/billing/license", h.GetLicense, renewLimiter)
+
 	// Lexware probes the callback URL with HEAD before it accepts a subscription.
 	// Without this the probe fell through to the catch-all and answered 401 —
 	// harmless today (the subscription registered anyway), but Lexware deletes
@@ -49,7 +61,7 @@ func Register(g *echo.Group, h *Handler) {
 		return c.NoContent(http.StatusOK)
 	})
 
-	log.Info().Msg("billing: direct-sale routes registered (quote-request, approve, lexware webhook)")
+	log.Info().Msg("billing: direct-sale routes registered (quote-request, approve, lexware webhook, license refresh)")
 }
 
 // EnsureWebhook registers the payment.changed subscription with Lexware at boot.

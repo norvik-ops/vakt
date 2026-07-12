@@ -57,6 +57,18 @@ type Request struct {
 	Email    string
 	Interval string // "year" or "month"
 	Trial    bool   // 45-day key issued at invoice time, before payment lands
+
+	// RenewalToken lets the customer's instance fetch its next key by itself.
+	//
+	// Without it the mail hands over a key that expires in 395 days and nothing
+	// else — the customer would have to paste a new one by hand, while
+	// .env.example and the docs promise "kein manueller Eingriff bei
+	// Verlängerungen". The token used to exist only for customers who bought
+	// through Polar; the invoice flow shipped without one.
+	//
+	// Empty is allowed (the admin CLI signs keys without a quote request behind
+	// them) — the mail then simply omits the auto-renewal section.
+	RenewalToken string
 }
 
 // Sign produces the license key without sending mail. Used by the CLI, and by
@@ -109,6 +121,21 @@ func (i *Issuer) sendMail(r Request, key string, pdf []byte, pdfName string) err
 			"Du musst dafür nichts tun."
 	}
 
+	// Auto-renewal. Only meaningful when the key came from a quote request — the
+	// CLI signs keys that have no row to renew against.
+	renewal := ""
+	if r.RenewalToken != "" {
+		renewal = fmt.Sprintf(`
+Damit sich die Lizenz künftig von selbst verlängert, trage zusätzlich ein:
+  VAKT_LICENSE_TOKEN=%s
+
+Deine Instanz holt sich damit einmal täglich den aktuellen Schlüssel. Bei einer
+Verlängerung musst du dann nichts mehr eintragen. Übertragen wird ausschließlich
+dieser Token — keine Daten aus deiner Instanz. Der Token ist optional; ohne ihn
+funktioniert alles wie gewohnt, nur der Schlüsselwechsel bleibt manuell.
+`, r.RenewalToken)
+	}
+
 	body := fmt.Sprintf(`Hallo,
 
 %s
@@ -123,13 +150,13 @@ So aktivierst du ihn:
 
 Alternativ per Umgebungsvariable in der .env deiner Instanz:
   VAKT_LICENSE_KEY=%s
-
+%s
 Fragen? Antworte einfach auf diese Mail.
 
 Viele Grüße
 Stefan
 Norvik Ops
-`, intro, key, key)
+`, intro, key, key, renewal)
 
 	// Every header value that can carry attacker- or customer-supplied text goes
 	// through mailhdr.Sanitize. The company name arrives from a public web form:

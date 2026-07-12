@@ -66,8 +66,6 @@ import (
 	"github.com/matharnica/vakt/internal/shared/setup"
 	"github.com/matharnica/vakt/internal/shared/updatecheck"
 	"github.com/matharnica/vakt/internal/shared/usermgmt"
-	lswebhook "github.com/matharnica/vakt/internal/webhooks/lemonsqueezy"
-	polarwebhook "github.com/matharnica/vakt/internal/webhooks/polar"
 )
 
 // readinessDBPinger / readinessRedisPinger are the minimal surfaces the
@@ -706,26 +704,6 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		demoStartHandler := demo.NewStartHandler(pool, cfg.SecretKey, authSvc)
 		demo.RegisterStart(api.Group("/demo", demoStartRateLimiter), demoStartHandler)
 		log.Info().Msg("demo start route registered")
-	}
-
-	// LemonSqueezy webhook — kept for backward compat, unauthenticated, signature-verified
-	if cfg.LSWebhookSecret != "" && cfg.LicensePrivateKey != "" {
-		lsHandler := lswebhook.NewHandler(cfg.LSWebhookSecret, cfg.LicensePrivateKey, lswebhook.SMTPConfig{
-			Host: cfg.SMTPHost, Port: cfg.SMTPPort,
-			User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
-		}).WithDB(pool).WithRedis(rdb)
-		lswebhook.Register(api, lsHandler)
-		log.Info().Msg("lemonsqueezy webhook registered")
-	}
-
-	// Polar.sh webhook — unauthenticated, signature-verified (POST /api/v1/billing/webhook)
-	if cfg.PolarWebhookSecret != "" && cfg.LicensePrivateKey != "" {
-		polarHandler := polarwebhook.NewHandler(cfg.PolarWebhookSecret, cfg.LicensePrivateKey, polarwebhook.SMTPConfig{
-			Host: cfg.SMTPHost, Port: cfg.SMTPPort,
-			User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
-		}).WithDB(pool).WithRedis(rdb)
-		polarwebhook.Register(api, polarHandler)
-		log.Info().Msg("polar webhook registered at /api/v1/billing/webhook")
 	}
 
 	// Direct sale via invoice (Lexware Office) — billing instance only.

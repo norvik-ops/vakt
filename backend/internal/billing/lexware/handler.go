@@ -191,12 +191,14 @@ func (h *Handler) Approve(c echo.Context) error {
 	var (
 		storedHash, status, company, contact, email, vatID string
 		street, zip, city, country, interval               string
+		renewalToken                                       string
 	)
 	err := h.db.QueryRow(ctx, `
 		SELECT approval_token_hash, status, company_name, contact_name, email, vat_id,
-		       street, zip, city, country_code, interval
+		       street, zip, city, country_code, interval, renewal_token
 		  FROM billing_quote_requests WHERE id = $1`, id).
-		Scan(&storedHash, &status, &company, &contact, &email, &vatID, &street, &zip, &city, &country, &interval)
+		Scan(&storedHash, &status, &company, &contact, &email, &vatID, &street, &zip, &city, &country,
+			&interval, &renewalToken)
 	if err != nil {
 		return c.String(http.StatusNotFound, "Anfrage nicht gefunden")
 	}
@@ -258,6 +260,7 @@ func (h *Handler) Approve(c echo.Context) error {
 	// way to sell software.
 	key, mailErr := h.issuer.Issue(licensing.Request{
 		OrgName: company, Email: email, Interval: interval, Trial: true,
+		RenewalToken: renewalToken,
 	}, pdf, "Rechnung-Vakt-Pro.pdf")
 
 	if _, dbErr := h.db.Exec(ctx, `
@@ -343,13 +346,13 @@ func (h *Handler) settle(ctx context.Context, invoiceID string) {
 	// pass the check and mail the customer two different license keys for the same
 	// invoice — confusing at best, and the second one silently replaces the first.
 	// A conditional UPDATE makes exactly one of them the winner.
-	var company, email, interval string
+	var company, email, interval, renewalToken string
 	err = h.db.QueryRow(ctx, `
 		UPDATE billing_quote_requests
 		   SET status = 'paid', paid_at = NOW()
 		 WHERE lexware_invoice_id = $1 AND status = 'approved'
-		RETURNING company_name, email, interval`, invoiceID).
-		Scan(&company, &email, &interval)
+		RETURNING company_name, email, interval, renewal_token`, invoiceID).
+		Scan(&company, &email, &interval, &renewalToken)
 	if err != nil {
 		// No row claimed: either already settled (webhook replay, poller overlap)
 		// or the invoice belongs to no quote request at all — someone paid a manual
@@ -359,6 +362,7 @@ func (h *Handler) settle(ctx context.Context, invoiceID string) {
 
 	key, mailErr := h.issuer.Issue(licensing.Request{
 		OrgName: company, Email: email, Interval: interval, Trial: false,
+		RenewalToken: renewalToken,
 	}, nil, "")
 	if key == "" {
 		log.Error().Err(mailErr).Str("invoice_id", invoiceID).
@@ -438,4 +442,43 @@ func (h *Handler) pollOnce(ctx context.Context) {
 		// atomically, so running it here is safe even while a webhook fires.
 		h.settle(ctx, id)
 	}
+}
+
+// GetLicense hands a customer's instance its current licence key.
+//
+// This is the endpoint behind VAKT_LICENSE_TOKEN: the instance calls it once a
+// day and swaps in whatever key it gets back, so a renewal needs no manual step.
+// It used to live in the Polar webhook package and read polar_subscriptions,
+// which meant it only ever worked for customers who bought through Polar. Invoice
+// customers received a key by e-mail and nothing else — their auto-renewal was
+// dead on arrival, while .env.example and the docs promised otherwise.
+//
+// The token travels in the Authorization header, not the query string: query
+// strings end up in access logs, and these are shipped to Loki on another host.
+// (redactQuery in cmd/api/middleware.go would mask it, but not relying on that is
+// cheaper than relying on it.)
+//
+// Not-found and wrong-token return the same 404 on purpose — a distinguishable
+// response would turn this into an oracle for guessing tokens.
+func (h *Handler) GetLicense(c echo.Context) error {
+	auth := c.Request().Header.Get("Authorization")
+	token := strings.TrimPrefix(auth, "Bearer ")
+	if token == "" || token == auth {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Authorization: Bearer <token> required"})
+	}
+	if h.db == nil {
+		return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "billing not configured"})
+	}
+
+	var key string
+	err := h.db.QueryRow(c.Request().Context(), `
+		SELECT license_key
+		  FROM billing_quote_requests
+		 WHERE renewal_token = $1::uuid
+		   AND status = 'paid'
+		   AND license_key IS NOT NULL`, token).Scan(&key)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "not found"})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"key": key})
 }

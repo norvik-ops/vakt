@@ -69,10 +69,6 @@ type Config struct {
 	// LicenseRefreshURL overrides the default refresh endpoint (https://api.norvikops.de).
 	// Only useful for testing.
 	LicenseRefreshURL string
-	// LemonSqueezy webhook signing secret (VAKT_LS_WEBHOOK_SECRET). Kept for backward compat.
-	LSWebhookSecret string
-	// Polar.sh webhook signing secret (VAKT_POLAR_WEBHOOK_SECRET).
-	PolarWebhookSecret string
 	// ECDSA private key PEM for signing license keys on purchase (VAKT_LICENSE_PRIVATE_KEY).
 	LicensePrivateKey string
 
@@ -291,8 +287,6 @@ func Load() (*Config, error) {
 		LicenseKey:             licenseKey,
 		LicenseToken:           getEnv("VAKT_LICENSE_TOKEN", ""),
 		LicenseRefreshURL:      getEnv("VAKT_LICENSE_REFRESH_URL", ""),
-		LSWebhookSecret:        getEnv("VAKT_LS_WEBHOOK_SECRET", ""),
-		PolarWebhookSecret:     getEnv("VAKT_POLAR_WEBHOOK_SECRET", ""),
 		LicensePrivateKey:      getEnv("VAKT_LICENSE_PRIVATE_KEY", ""),
 		LexwareAPIKey:          getEnv("VAKT_LEXWARE_API_KEY", ""),
 		SMTPReplyTo:            getEnv("VAKT_SMTP_REPLY_TO", ""),

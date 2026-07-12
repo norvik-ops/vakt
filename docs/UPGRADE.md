@@ -23,6 +23,35 @@ Vakt verwendet semantische Versionierung (SemVer). Datenbankmigrationen laufen a
    ```
    Der `migrate`-Service läuft automatisch vor der API und führt ausstehende Migrationen aus.
 
+## Wichtige Verhaltensänderungen
+
+### MFA wird zum echten zweiten Faktor (ab v0.42.35)
+
+Bis v0.42.34 war MFA **enrollment-only**: ein korrektes Passwort stellte sofort
+eine volle Session aus, und die Prüfung testete nur, *ob* TOTP eingerichtet ist —
+nicht, ob die aktuelle Anmeldung den Code eingegeben hat.
+
+Ab v0.42.35 gilt für Konten **mit** aktiviertem TOTP ein **zweistufiger Login**:
+
+1. E-Mail + Passwort → die Antwort enthält **keine Session**, nur ein
+   kurzlebiges `mfa_pending`-Token (5 Minuten).
+2. Der Nutzer gibt den 6-stelligen Authenticator-Code (oder einen Backup-/
+   Recovery-Code) ein → erst dann wird die echte Session ausgestellt.
+
+**Für Operatoren:**
+- Wer bereits TOTP eingerichtet hat, wird ab dem Upgrade nach dem Passwort nach
+  dem Code gefragt. Das ist gewollt — kommuniziere es vor dem Upgrade, wenn in
+  deiner Instanz TOTP-Nutzer existieren (`SELECT count(*) FROM totp_secrets
+  WHERE enabled = true;`).
+- Wer **kein** TOTP hat, merkt nichts: der Login bleibt einstufig, solange die
+  Org nicht `require_mfa=true` erzwingt.
+- **Recovery:** Verlorener Authenticator → der Backup-/Recovery-Code-Pfad
+  (`/auth/2fa/login-verify` mit `backup_code`) stellt die Session aus. Recovery-
+  Codes werden beim TOTP-Setup einmalig angezeigt — Nutzer müssen sie sichern.
+- Bei `require_mfa=true` reicht Enrollment allein nicht mehr: die Session muss den
+  Faktor bewiesen haben. Eine alte (Passwort-only-)Session wird auf geschützten
+  Routen mit `MFA_REQUIRED` abgelehnt und muss sich neu anmelden.
+
 4. **Verify:**
    ```bash
    docker compose ps
