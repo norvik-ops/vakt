@@ -15,6 +15,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/matharnica/vakt/internal/shared/logsafe"
+	"github.com/matharnica/vakt/internal/shared/mailhdr"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -328,7 +329,7 @@ func sendPasswordResetEmail(host, port, user, pass, from, to, resetLink, lang st
 
 	headers := fmt.Sprintf(
 		"From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n",
-		from, to, subject,
+		mailhdr.Sanitize(from), mailhdr.Sanitize(to), mailhdr.Sanitize(subject),
 	)
 	msg := []byte(headers + body)
 	addr := host + ":" + port

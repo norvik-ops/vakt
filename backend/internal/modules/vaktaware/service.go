@@ -25,6 +25,7 @@ import (
 	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/services/evidence_auto"
 	"github.com/matharnica/vakt/internal/shared/platform/events"
+	"github.com/matharnica/vakt/internal/shared/queuemetrics"
 )
 
 // Service handles SecReflex business logic.
@@ -494,6 +495,7 @@ func (s *Service) LaunchCampaign(ctx context.Context, orgID, campaignID string) 
 		})
 		task := asynq.NewTask(TaskSendCampaign, payload)
 		if _, err := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(Queue)); err != nil {
+			queuemetrics.RecordError(Queue)
 			log.Warn().Err(err).Str("campaign_id", campaignID).Msg("failed to enqueue send_campaign job")
 		}
 	}
@@ -652,7 +654,9 @@ func (s *Service) CompleteAssignment(ctx context.Context, orgID, assignmentID st
 	// Enqueue cross-module evidence for SecVitals awareness controls.
 	if s.asynqClient != nil && passed {
 		if task, taskErr := crossevidence.NewRecordEvidenceTask(events.TrainingCompleted(orgID, assignmentID)); taskErr == nil {
-			_, _ = s.asynqClient.EnqueueContext(ctx, task)
+			if _, enqErr := s.asynqClient.EnqueueContext(ctx, task); enqErr != nil {
+				queuemetrics.RecordError(crossevidence.Queue)
+			}
 		}
 	}
 
@@ -895,9 +899,12 @@ func buildMIMEMessage(fromName, fromEmail, to, subject, htmlBody, trackingToken,
 	return []byte(b.String())
 }
 
-// trackingURL builds the absolute URL embedded in campaign emails for click tracking.
+// trackingURL builds the absolute CLICK-tracking URL embedded in campaign emails.
+// S127-2 (D5): this must point to /t/ (TrackClick), NOT /track/ (TrackOpen, the
+// 1x1 pixel). It used to build /track/, so a click was recorded as an open —
+// invisible while everything 401'd (S127-1), doubly wrong once tracking works.
 func (c SMTPConfig) trackingURL(token string) string {
-	return c.AppURL + "/api/v1/vaktaware/track/" + token
+	return c.AppURL + "/api/v1/vaktaware/t/" + token
 }
 
 // from returns the configured From address or a safe default.

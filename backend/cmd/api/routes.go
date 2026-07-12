@@ -336,7 +336,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	log.Info().Msg("update check routes registered")
 
 	// Admin routes (also require Admin role)
-	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisOpt.Addr})
+	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisOpt.Addr, Password: redisOpt.Password})
 	adminSvc := admin.NewService(pool, cfg.ModulesEnabled)
 	adminSvc.WithNotifyService(notify.NewService(pool, cfg))
 	adminSvc.WithMasterKey(rawMasterKey)
@@ -347,7 +347,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	admin.Register(protected, adminHandler, adminHealth, pool, rdb)
 	internal.GET("/api/v1/internal/backup-config", adminHandler.GetInternalBackupConfig)
 	// Job queue stats — admin-only, same auth guard as other admin routes.
-	jobsHandler := admin.NewJobsHandler(redisOpt.Addr)
+	jobsHandler := admin.NewJobsHandler(redisOpt.Addr, redisOpt.Password)
 	protected.GET("/admin/jobs", jobsHandler.GetQueueStats, auth.RequireRole("Admin"), sharedmw.IPAllowlist())
 	// Admin-scoped auth management routes (password reset token generation without SMTP).
 	auth.RegisterAdminRoutes(protected, authHandler)
@@ -379,7 +379,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 
 	// Module routes — all behind auth middleware, sharing the same DB pool
 	if cfg.IsModuleEnabled("vaktscan") {
-		vbSvc := vaktscan.NewService(pool, asynq.RedisClientOpt{Addr: redisOpt.Addr})
+		vbSvc := vaktscan.NewService(pool, asynq.RedisClientOpt{Addr: redisOpt.Addr, Password: redisOpt.Password})
 		vbSvc.WithRedis(rdb)
 		vbSvc.WithWebhooks(webhookSvc)
 		vaktscan.Register(protected.Group("/vaktscan", auth.RequireModuleAccess(pool, "vaktscan", rdb), sharedmw.ValidateUUIDParams()), vaktscan.NewHandler(vbSvc))
@@ -447,16 +447,16 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		vaktcomply.Register(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb), sharedmw.ValidateUUIDParams()), ckHandler)
 		// Sprint 22 / S22-6: authentifizierter NIS2-Wizard-Migrate-Endpoint
 		// (POST /vaktcomply/nis2-assessment/migrate-from-anonymous).
-		nis2wizard.RegisterAuthenticated(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), nis2wizardHandler)
+		nis2wizard.RegisterAuthenticated(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb), sharedmw.ValidateUUIDParams()), nis2wizardHandler)
 		// Auditor portal uses URL token — exempt from Bearer auth; rate-limited to 30 req/min per IP
 		portalRateLimiter := sharedmw.IPRateLimitRedis(rdb, "portal", 30, time.Minute, false)
 		vaktcomply.RegisterPublic(api.Group("/vaktcomply", portalRateLimiter), ckHandler)
 		// Policy acceptance — public token routes (no Bearer auth), rate-limited
 		vaktcomply.RegisterPolicyAcceptPublic(api.Group("", portalRateLimiter), ckHandler)
 		// Audit package export
-		audit.RegisterExport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool)
+		audit.RegisterExport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb), sharedmw.ValidateUUIDParams()), pool)
 		// One-click audit report PDF
-		audit.RegisterReport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool)
+		audit.RegisterReport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb), sharedmw.ValidateUUIDParams()), pool)
 		// AI-generated reports via OpenAI-compatible provider.
 		// Sprint 15 (S15-1/2/3/5): Rate-Limit + Daily-Quota + Response-Cache
 		// + Streaming-SSE-Endpoint laufen über RegisterWithOptions, sofern
@@ -465,7 +465,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		if aiFailOpen {
 			log.Warn().Msg("ai: VAKT_AI_FAIL_OPEN_ON_OUTAGE=true — rate-limit + quota checks will fail open during Redis/Postgres outages (audit-relevant choice)")
 		}
-		ai.RegisterWithOptions(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool, cfg.AIProvider, cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel, ai.RegisterOptions{
+		ai.RegisterWithOptions(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb), sharedmw.ValidateUUIDParams()), pool, cfg.AIProvider, cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel, ai.RegisterOptions{
 			Redis:            rdb,
 			RateLimitRPM:     cfg.AIRateLimitRPM,
 			DailyTokenLimit:  cfg.AIDailyTokenLimit,
@@ -479,23 +479,36 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		// correctly for the auditor's org without a Paseto token in the request (S78-6c).
 		vaktcomply.RegisterAuditor(api.Group("/auditor/vaktcomply", auditorRateLimiter, auditor.AuditorAuth(pool), license.DBMiddleware(pool, lic, rdb)), ckHandler)
 		// Auto-evidence inbox — GitHub, SecReflex, SecPulse
-		evidence_auto.RegisterRoutes(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool)
+		evidence_auto.RegisterRoutes(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb), sharedmw.ValidateUUIDParams()), pool)
 		log.Info().Msg("vaktcomply routes registered")
 	}
 
 	if cfg.IsModuleEnabled("vaktvault") && cfg.SecretKey != "" {
 		soSvc := vaktvault.NewService(pool, vaultKey, asynqClient)
-		vaktvault.Register(protected.Group("/vaktvault", auth.RequireModuleAccess(pool, "vaktvault", rdb), sharedmw.ValidateUUIDParams()), vaktvault.NewHandler(soSvc))
-		log.Info().Msg("vaktvault routes registered")
+		vaultHandler := vaktvault.NewHandler(soSvc)
+		vaktvault.Register(protected.Group("/vaktvault", auth.RequireModuleAccess(pool, "vaktvault", rdb), sharedmw.ValidateUUIDParams()), vaultHandler)
+		// S127-3 (D6): public share-link consumer route. The external recipient has
+		// no session; the route is validated by the URL token (hash-stored) alone.
+		vaultShareRL := sharedmw.IPRateLimitRedis(rdb, "vaktvault_share", 30, time.Minute, false)
+		vaktvault.RegisterPublic(api.Group("/vaktvault", vaultShareRL), vaultHandler)
+		log.Info().Msg("vaktvault routes registered (protected + public share)")
 	}
 
 	if cfg.IsModuleEnabled("vaktaware") {
 		pgSvc := vaktaware.NewService(pool, vaktaware.SMTPConfig{
 			Host: cfg.SMTPHost, Port: cfg.SMTPPort,
 			User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
-		}, asynq.RedisClientOpt{Addr: redisOpt.Addr})
-		vaktaware.Register(protected.Group("/vaktaware", auth.RequireModuleAccess(pool, "vaktaware", rdb), sharedmw.ValidateUUIDParams()), vaktaware.NewHandler(pgSvc))
-		log.Info().Msg("vaktaware routes registered")
+		}, asynq.RedisClientOpt{Addr: redisOpt.Addr, Password: redisOpt.Password})
+		awareHandler := vaktaware.NewHandler(pgSvc)
+		vaktaware.Register(protected.Group("/vaktaware", auth.RequireModuleAccess(pool, "vaktaware", rdb), sharedmw.ValidateUUIDParams()), awareHandler)
+		// S127-1 (D4/D5): public tracking + phish-report. Mounted on the PUBLIC api
+		// group — the phishing target's mail client/browser has no session, so these
+		// MUST NOT sit behind auth/CSRF/license. Redis-backed IP rate limit (10/min,
+		// replica-safe, fail-open) replaces the old per-replica in-memory limiter.
+		// Depends on VAKT_TRUSTED_PROXIES for a correct c.RealIP() behind Caddy.
+		awareTrackRL := sharedmw.IPRateLimitRedis(rdb, "vaktaware_track", 10, time.Minute, false)
+		vaktaware.RegisterPublic(api.Group("/vaktaware", awareTrackRL), awareHandler)
+		log.Info().Msg("vaktaware routes registered (protected + public tracking)")
 	}
 
 	// External alerting & webhooks (cross-module) — created before modules that fire events.
@@ -517,7 +530,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	}
 
 	if cfg.IsModuleEnabled("vaktprivacy") {
-		poSvc := vaktprivacy.NewService(pool, asynq.RedisClientOpt{Addr: redisOpt.Addr})
+		poSvc := vaktprivacy.NewService(pool, asynq.RedisClientOpt{Addr: redisOpt.Addr, Password: redisOpt.Password})
 		tiaSvc := vaktprivacy.NewTIAService(pool)
 		poHandler := vaktprivacy.NewHandler(poSvc).WithDB(pool).WithTIA(tiaSvc)
 		if alertSvc != nil {
@@ -548,15 +561,20 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	account.RegisterLoginHistory(protected, account.NewLoginHistoryHandler(pool))
 	log.Info().Msg("account routes registered")
 
-	// GitHub integration — branch protection, PR review, dependency alert compliance checks
+	// GitHub integration — branch protection, PR review, dependency alert compliance checks.
+	// S122-B1 (MA-02): Admin-only. Creating an integration stores a GitHub PAT; a
+	// SecurityAnalyst was able to POST one and wire a repo to the org. Gate at the group
+	// mount, Admin-only (NOT Admin,SecurityAnalyst — the live PoC used a SecurityAnalyst).
 	if cfg.SecretKey != "" {
-		ghintegration.RegisterRoutes(protected.Group("/integrations/github"), pool, ghKey)
+		ghintegration.RegisterRoutes(protected.Group("/integrations/github", auth.RequireRole("Admin")), pool, ghKey)
 		log.Info().Msg("github integration routes registered")
 	}
 
-	// Cloud integrations — AWS + Azure automated evidence collection
+	// Cloud integrations — AWS + Azure automated evidence collection.
+	// S122-B1 (MA-01): Admin-only. These routes write cloud provider credentials
+	// (13 providers × PUT /config). A SecurityAnalyst could store AWS keys. Admin-only.
 	if cfg.SecretKey != "" {
-		cloudSvc := cloudintegration.RegisterRoutes(protected.Group("/integrations/cloud"), pool, cloudKey, cloudEvidence)
+		cloudSvc := cloudintegration.RegisterRoutes(protected.Group("/integrations/cloud", auth.RequireRole("Admin")), pool, cloudKey, cloudEvidence)
 		log.Info().Msg("cloud integration routes registered")
 
 		// Inject Personio secret provider into the HR handler so the webhook can verify HMAC sigs.
@@ -609,7 +627,9 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 
 	// Auditor portal — invite management (admin) + public accept route
 	// Public auditor accept route rate-limited to 30 req/min per IP.
-	auditor.RegisterRoutes(protected.Group("/auditor"), pool)
+	// S122-B1 (MA-03): Admin-only. POST /auditor/invites issues an external magic-link
+	// granting read access to the whole org; a SecurityAnalyst could mint one. Admin-only.
+	auditor.RegisterRoutes(protected.Group("/auditor", auth.RequireRole("Admin")), pool)
 	auditor.RegisterPublicRoutes(api.Group("/auditor", auditorAcceptRateLimiter), pool)
 	log.Info().Msg("auditor routes registered")
 

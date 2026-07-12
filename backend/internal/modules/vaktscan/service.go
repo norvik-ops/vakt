@@ -24,6 +24,7 @@ import (
 	"github.com/matharnica/vakt/internal/shared/notify"
 	"github.com/matharnica/vakt/internal/shared/platform/events"
 	"github.com/matharnica/vakt/internal/shared/platform/webhooks"
+	"github.com/matharnica/vakt/internal/shared/queuemetrics"
 	"github.com/matharnica/vakt/internal/shared/safego"
 )
 
@@ -301,6 +302,7 @@ func (s *Service) TriggerScan(ctx context.Context, orgID, assetID string, input 
 	if s.asynqClient != nil {
 		task := asynq.NewTask(taskType, payloadBytes)
 		if _, err := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(QueueScans)); err != nil {
+			queuemetrics.RecordError(QueueScans)
 			return nil, fmt.Errorf("enqueue scan task: %w", err)
 		}
 	}
@@ -352,6 +354,7 @@ func (s *Service) UpsertFinding(ctx context.Context, orgID string, f Finding) (*
 			events.FindingCreated(orgID, result.ID, result.Title, result.Severity),
 		); taskErr == nil {
 			if _, enqErr := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(crossevidence.Queue)); enqErr != nil {
+				queuemetrics.RecordError(crossevidence.Queue)
 				log.Warn().Err(enqErr).Str("finding_id", result.ID).Msg("vaktscan: finding-created event enqueue failed")
 			}
 		}
@@ -442,6 +445,7 @@ func (s *Service) UpdateFinding(ctx context.Context, orgID, findingID string, in
 		if marshalErr == nil {
 			task := asynq.NewTask(TaskAutoEvidence, payloadBytes)
 			if _, enqErr := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(crossevidence.Queue)); enqErr != nil {
+				queuemetrics.RecordError(crossevidence.Queue)
 				log.Warn().Err(enqErr).Str("finding_id", findingID).Msg("vaktscan: auto-evidence enqueue failed (evidence may be missed on Redis outage)")
 			}
 		}
@@ -463,6 +467,7 @@ func (s *Service) UpdateFinding(ctx context.Context, orgID, findingID string, in
 		if suggBytes, marshalErr := json.Marshal(suggPayload); marshalErr == nil {
 			suggTask := asynq.NewTask("vaktcomply:ai_evidence_suggestion", suggBytes, asynq.MaxRetry(1))
 			if _, enqErr := s.asynqClient.EnqueueContext(ctx, suggTask, asynq.Queue(crossevidence.Queue)); enqErr != nil {
+				queuemetrics.RecordError(crossevidence.Queue)
 				log.Warn().Err(enqErr).Str("finding_id", findingID).Msg("vaktscan: ai-suggestion enqueue failed (evidence may be missed on Redis outage)")
 			}
 		}
@@ -578,6 +583,7 @@ func (s *Service) GenerateReport(ctx context.Context, orgID, userID string, scop
 	if s.asynqClient != nil {
 		task := asynq.NewTask(TaskGenerateReport, payloadBytes)
 		if _, err := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(QueueScans)); err != nil {
+			queuemetrics.RecordError(QueueScans)
 			return nil, fmt.Errorf("enqueue report task: %w", err)
 		}
 	}

@@ -155,17 +155,35 @@ func TestMFAEnforce_OrgRequireMFAFalse_AllowsThrough(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
-// TestMFAEnforce_OrgRequiresMFA_UserHasTOTP_AllowsThrough verifies that a user
-// with TOTP enabled passes when the org requires MFA.
-func TestMFAEnforce_OrgRequiresMFA_UserHasTOTP_AllowsThrough(t *testing.T) {
+// TestMFAEnforce_OrgRequiresMFA_UserHasTOTP_Proven_AllowsThrough verifies that a
+// user with TOTP enabled AND a session that proved the second factor (mfa=true)
+// passes when the org requires MFA (S124-1).
+func TestMFAEnforce_OrgRequiresMFA_UserHasTOTP_Proven_AllowsThrough(t *testing.T) {
 	db := &fakeMFADB{
 		orgRow:  &fakeRow{val: true}, // require_mfa = true
 		totpRow: &fakeRow{val: true}, // totp enabled = true
 	}
 	c, rec := mfaRequest(t, "/api/v1/vaktcomply/controls", "org-1", "user-1")
+	c.Set("mfa", true) // S124-1: session proved the second factor
 	mw := auth.MFAEnforceMiddlewareForTest(db)
 	require.NoError(t, mw(okHandler)(c))
 	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+// TestMFAEnforce_OrgRequiresMFA_UserHasTOTP_NotProven_Returns403 is the S124-1
+// (SA14-01) core fix: a session that has NOT proved the second factor (mfa unset
+// / false) is rejected even though the user is enrolled — enrolment alone is not
+// enough. This is what makes a stolen password insufficient.
+func TestMFAEnforce_OrgRequiresMFA_UserHasTOTP_NotProven_Returns403(t *testing.T) {
+	db := &fakeMFADB{
+		orgRow:  &fakeRow{val: true}, // require_mfa = true
+		totpRow: &fakeRow{val: true}, // totp enabled = true
+	}
+	c, rec := mfaRequest(t, "/api/v1/vaktcomply/controls", "org-1", "user-1")
+	// note: no c.Set("mfa", true) — the session never proved the second factor
+	mw := auth.MFAEnforceMiddlewareForTest(db)
+	require.NoError(t, mw(okHandler)(c))
+	assert.Equal(t, http.StatusForbidden, rec.Code)
 }
 
 // TestMFAEnforce_OrgRequiresMFA_UserNoTOTP_Returns403 verifies that a user

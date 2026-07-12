@@ -93,6 +93,10 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  // S124-1: second-stage MFA. mfaToken is set once the password step returns
+  // mfa_required; the UI then asks for the TOTP/backup code.
+  const [mfaToken, setMfaToken] = useState<string | null>(null)
+  const [mfaCode, setMfaCode] = useState('')
 
   const emailValidation = useFieldValidation(email, [required, emailRule])
   const passwordValidation = useFieldValidation(password, [required, minLength(10)])
@@ -107,14 +111,43 @@ export default function Login() {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       })
-      setAuth(data.user)
-      if ('session_id' in data && typeof data.session_id === 'string') {
-        setSessionId(data.session_id)
+      // S124-1: two-stage login. When the account has MFA enabled the password
+      // yields no session — only a short-lived mfa_token. Switch to the code step.
+      if (data.mfa_required && data.mfa_token) {
+        setMfaToken(data.mfa_token)
+        setLoading(false)
+        return
       }
-      setCsrfToken(data.csrf_token)
-      navigate('/')
+      finishLogin(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : t('auth.loginFailed'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function finishLogin(data: LoginResponse) {
+    setAuth(data.user)
+    if ('session_id' in data && typeof data.session_id === 'string') {
+      setSessionId(data.session_id)
+    }
+    setCsrfToken(data.csrf_token)
+    navigate('/')
+  }
+
+  async function handleMfaSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (!mfaCode || !mfaToken) return
+    setError(null)
+    setLoading(true)
+    try {
+      const data = await apiFetch<LoginResponse>('/auth/2fa/login-verify', {
+        method: 'POST',
+        body: JSON.stringify({ mfa_token: mfaToken, code: mfaCode.trim() }),
+      })
+      finishLogin(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('auth.mfaInvalidCode'))
     } finally {
       setLoading(false)
     }
@@ -141,6 +174,41 @@ export default function Login() {
             <CardTitle>{t('auth.signIn')}</CardTitle>
           </CardHeader>
           <CardContent>
+            {mfaToken ? (
+              // S124-1: second-stage MFA prompt (shown after a correct password on
+              // an MFA-enabled account). No session exists until the code verifies.
+              <form onSubmit={(e) => { void handleMfaSubmit(e) }} className="space-y-4">
+                <p className="text-sm text-secondary">{t('auth.mfaPrompt')}</p>
+                <div className="space-y-1">
+                  <Label htmlFor="mfa-code">{t('auth.mfaCodeLabel')}</Label>
+                  <Input
+                    id="mfa-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={mfaCode}
+                    onChange={(e) => { setMfaCode(e.target.value) }}
+                    placeholder="123456"
+                    required
+                    autoFocus
+                    aria-invalid={!!error}
+                  />
+                </div>
+                {error && (
+                  <p id="login-error" role="alert" className="text-sm text-red-600">{error}</p>
+                )}
+                <Button type="submit" className="w-full" disabled={loading || !mfaCode}>
+                  {loading ? <Spinner /> : t('auth.mfaVerify')}
+                </Button>
+                <button
+                  type="button"
+                  className="text-xs text-secondary hover:underline w-full text-center"
+                  onClick={() => { setMfaToken(null); setMfaCode(''); setError(null) }}
+                >
+                  {t('auth.mfaBack')}
+                </button>
+              </form>
+            ) : (
             <form onSubmit={(e) => { void handleSubmit(e) }} className="space-y-4">
               {/* WCAG 3.3.2: required attribute + aria-required communicates required fields */}
               <div className="space-y-1">
@@ -187,8 +255,9 @@ export default function Login() {
                 {loading ? t('auth.signingIn') : t('auth.signIn')}
               </Button>
             </form>
+            )}
 
-            {ssoEnabled && (
+            {!mfaToken && ssoEnabled && (
               <>
                 <div className="relative my-4">
                   <div className="absolute inset-0 flex items-center">

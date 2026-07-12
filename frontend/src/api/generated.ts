@@ -2062,6 +2062,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vaktcomply/policies/export/xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export all policies as XLSX */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description XLSX file */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/vaktcomply/risks": {
         parameters: {
             query?: never;
@@ -10223,23 +10259,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vaktcomply/isms-scope/export-pdf": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Export the current ISMS scope as PDF (Pro) */
-        get: operations["exportISMSScopePDF"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/vaktcomply/isms-scope": {
         parameters: {
             query?: never;
@@ -10473,40 +10492,6 @@ export interface paths {
         };
         /** Get suggested BSI Bausteine for an asset type */
         get: operations["getBSIBausteinSuggestions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/vaktcomply/bsi-modeling/export-pdf": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Export BSI modeling matrix as PDF (Pro) */
-        get: operations["exportBSIModelingPDF"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/vaktcomply/bsi-modeling/export-xlsx": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Export BSI modeling matrix as XLSX (Pro) */
-        get: operations["exportBSIModelingXLSX"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11320,44 +11305,6 @@ export interface paths {
         head?: never;
         /** Update a pentest record */
         patch: operations["updatePentest"];
-        trace?: never;
-    };
-    "/vaktcomply/pentests/{id}/report": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Upload a pentest report file (Pro) */
-        post: operations["uploadPentestReport"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/vaktcomply/pentests/{id}/link-evidence": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Link a pentest record as evidence to a control */
-        post: operations["linkPentestAsEvidence"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/vaktcomply/kpi-dashboard/export-pdf": {
@@ -13919,12 +13866,16 @@ export interface components {
             password: string;
         };
         LoginResponse: {
+            /** @description True when the account has MFA enabled — no session is issued yet; POST mfa_token + a TOTP/backup code to /auth/2fa/login-verify. */
+            mfa_required?: boolean;
+            /** @description Short-lived mfa_pending token (only present when mfa_required). */
+            mfa_token?: string;
             /** @description Paseto v4 bearer token (lebt 1 Stunde) */
-            access_token: string;
+            access_token?: string;
             /** @description Opaque refresh token (lebt 30 Tage, in Redis hinterlegt) */
-            refresh_token: string;
+            refresh_token?: string;
             /** @description Access-Token-Lebenszeit in Sekunden */
-            expires_in: number;
+            expires_in?: number;
             user: components["schemas"]["User"];
             /**
              * Format: uuid
@@ -18221,33 +18172,6 @@ export interface operations {
             };
         };
     };
-    exportISMSScopePDF: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description PDF document */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/pdf": string;
-                };
-            };
-            /** @description Not implemented */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     getISMSScope: {
         parameters: {
             query?: never;
@@ -18671,42 +18595,6 @@ export interface operations {
                 content: {
                     "application/json": string[];
                 };
-            };
-        };
-    };
-    exportBSIModelingPDF: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Not implemented */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    exportBSIModelingXLSX: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Not implemented */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -20437,60 +20325,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Pentest"];
                 };
-            };
-        };
-    };
-    uploadPentestReport: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": {
-                    /** Format: binary */
-                    file?: string;
-                };
-            };
-        };
-        responses: {
-            /** @description Not implemented */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    linkPentestAsEvidence: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** Format: uuid */
-                    control_id: string;
-                };
-            };
-        };
-        responses: {
-            /** @description Not implemented */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

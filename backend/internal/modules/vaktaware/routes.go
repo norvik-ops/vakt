@@ -1,11 +1,7 @@
 package vaktaware
 
 import (
-	"net/http"
-	"time"
-
 	"github.com/labstack/echo/v4"
-	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/matharnica/vakt/internal/auth"
 	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
@@ -59,43 +55,23 @@ func Register(g *echo.Group, h *Handler) {
 
 	// --- Community: Basic assignment tracking ---
 	p.GET("/assignments", h.ListAssignments)
-	p.POST("/assignments/:id/complete", h.CompleteAssignment)
+	// S124-8 (D11): marking an assignment complete writes ISO-27001 A.6.3 awareness
+	// evidence that flows into Vakt Comply. It was ungated, so a Viewer or
+	// AuditorReadOnly could fabricate that evidence. Gated to writer roles (`rw` =
+	// Admin, SecurityAnalyst). NOTE: true per-employee self-service completion is
+	// deliberately NOT built here — awareness targets are email recipients, not
+	// necessarily Vakt users; department-wide assignments (TargetID == nil) have no
+	// single owner; and the caller's email is not in the token. An ownership-based
+	// self-service model belongs to a tokenized-completion-link flow (the S127
+	// public-route class), not this authenticated management endpoint.
+	p.POST("/assignments/:id/complete", h.CompleteAssignment, rw)
 	p.GET("/assignments/:id/certificate", h.GetAssignmentCertificate)
 
-	// Public tracking (no auth required) — rate-limited to 10 req/min per IP
-	// to prevent token enumeration attacks.
-	trackingRL := echomiddleware.RateLimiterWithConfig(echomiddleware.RateLimiterConfig{
-		Skipper: echomiddleware.DefaultSkipper,
-		Store: echomiddleware.NewRateLimiterMemoryStoreWithConfig(
-			echomiddleware.RateLimiterMemoryStoreConfig{
-				Rate:      10,
-				Burst:     10,
-				ExpiresIn: time.Minute,
-			},
-		),
-		IdentifierExtractor: func(c echo.Context) (string, error) {
-			return c.RealIP(), nil
-		},
-		ErrorHandler: func(c echo.Context, err error) error {
-			return c.JSON(http.StatusTooManyRequests, map[string]string{
-				"error": "too many requests",
-				"code":  "RATE_LIMIT_EXCEEDED",
-			})
-		},
-		DenyHandler: func(c echo.Context, identifier string, err error) error {
-			return c.JSON(http.StatusTooManyRequests, map[string]string{
-				"error": "too many requests",
-				"code":  "RATE_LIMIT_EXCEEDED",
-			})
-		},
-	})
-	tracking := g.Group("", trackingRL)
-	tracking.GET("/t/:token", h.TrackClick)
-	tracking.POST("/t/:token/submit", h.TrackFormSubmission)
-	tracking.GET("/track/:token", h.TrackOpen) // open-tracking pixel (1×1 GIF)
-
-	// Public phish-report webhook (no auth — validated via org_token in body)
-	g.POST("/phish-report", h.ReceivePhishReport)
+	// S127-1 (D4/D5/D6): the public tracking + phish-report routes used to be
+	// mounted HERE, under `protected` — so every recipient's mail client / browser
+	// (which has no Paseto token) got 401 and Vakt Aware recorded nothing. They now
+	// live in RegisterPublic below, mounted on a token-only PUBLIC group in
+	// cmd/api/routes.go. Do NOT re-add them here.
 
 	// --- Pro: Phish-report analytics and token management ---
 	p.GET("/phish-reports", h.ListPhishReports, features.Require(features.FeatureSecReflex))
@@ -118,4 +94,21 @@ func Register(g *echo.Group, h *Handler) {
 
 	// --- S65-4: BSI ORP.3 compliance status ---
 	p.GET("/bsi-orp3-status", h.GetORP3Status)
+}
+
+// RegisterPublic mounts the token-only tracking + phish-report routes that are
+// called by parties WITHOUT a session — the open-tracking pixel loaded by the
+// phishing target's mail client, the click link and landing-page form from the
+// target's browser, and the external phish-report webhook (S127-1, D4).
+//
+// The caller mounts this on a PUBLIC group (no AuthMiddleware, no CSRF, no
+// license gate) with an IP rate limiter, and ONLY when the vaktaware module is
+// enabled. Every handler here is already token-based (org resolved from the URL
+// token, not the session), so no handler change is needed — only the mount.
+func RegisterPublic(g *echo.Group, h *Handler) {
+	g.GET("/t/:token", h.TrackClick)
+	g.POST("/t/:token/submit", h.TrackFormSubmission)
+	g.GET("/track/:token", h.TrackOpen) // open-tracking pixel (1×1 GIF)
+	// Phish-report webhook — validated via org_token in the body, not a session.
+	g.POST("/phish-report", h.ReceivePhishReport)
 }

@@ -76,7 +76,9 @@ func (s *Service) GetBoardReportData(ctx context.Context, orgID string) (*BoardR
 	g.Go(func() error {
 		scoreRows, err := s.repo.GetBoardReportComplianceScoreRows(gctx, orgID)
 		if err != nil {
-			// Non-fatal: leave score at 0.
+			// S124-5 (TD-02): non-fatal (leave score at 0) but LOG — a silent 0
+			// reads as a clean compliance report when the query actually failed.
+			log.Warn().Err(err).Str("org_id", orgID).Msg("board-report: compliance score query failed — score shown as 0")
 			return nil //nolint:nilerr
 		}
 		for _, row := range scoreRows {
@@ -107,6 +109,8 @@ func (s *Service) GetBoardReportData(ctx context.Context, orgID string) (*BoardR
 	g.Go(func() error {
 		risks, _, err := s.Risk.ListRisksPaged(gctx, orgID, 0, 10_000)
 		if err != nil {
+			// S124-5 (TD-02): log — 0 open risks on a failed query is a false all-clear.
+			log.Warn().Err(err).Str("org_id", orgID).Msg("board-report: risk query failed — risks shown as 0")
 			return nil //nolint:nilerr
 		}
 		var openRisks, criticalRisks int
@@ -127,6 +131,8 @@ func (s *Service) GetBoardReportData(ctx context.Context, orgID string) (*BoardR
 	g.Go(func() error {
 		capas, err := s.ListCAPAs(gctx, orgID, "")
 		if err != nil {
+			// S124-5 (TD-02): log — 0 CAPAs on a failed query is a false all-clear.
+			log.Warn().Err(err).Str("org_id", orgID).Msg("board-report: CAPA query failed — CAPAs shown as 0")
 			return nil //nolint:nilerr
 		}
 		now := time.Now()

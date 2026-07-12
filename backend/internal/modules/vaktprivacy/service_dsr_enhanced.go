@@ -6,6 +6,7 @@ package vaktprivacy
 import (
 	"bytes"
 	"context"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"strings"
@@ -177,11 +178,25 @@ func (s *Service) GetDSRSummary(ctx context.Context, orgID string) (*DSRSummary,
 }
 
 // ExportDSRLogPDF generates an anonymised PDF audit log for the last N days.
-func (s *Service) ExportDSRLogPDF(ctx context.Context, orgID string, periodDays int) ([]byte, error) {
+// dsrLogRow is one row of the DSR audit log (Betroffenenrechte-Verzeichnis).
+// By design it holds NO requester personal data (Art. 5 DSGVO Datensparsamkeit) —
+// the PDF and CSV exports both render exactly these columns.
+type dsrLogRow struct {
+	ReceivedAt  time.Time
+	Type        string
+	Channel     string
+	Status      string
+	ReferenceID string
+	DueDate     string
+	CompletedAt string
+}
+
+// fetchDSRLogRows returns the DSR audit-log rows for the period. Shared by the
+// PDF and CSV exporters so the two formats can never drift in columns/scope.
+func (s *Service) fetchDSRLogRows(ctx context.Context, orgID string, periodDays int) ([]dsrLogRow, error) {
 	if periodDays <= 0 {
 		periodDays = 365
 	}
-
 	rows, err := s.db.Query(ctx, `
 		SELECT received_at, type, COALESCE(channel,''), status, COALESCE(reference_id,''),
 		       COALESCE(due_date::text,''), COALESCE(completed_at::text,'')
@@ -193,22 +208,71 @@ func (s *Service) ExportDSRLogPDF(ctx context.Context, orgID string, periodDays 
 	}
 	defer rows.Close()
 
-	type row struct {
-		ReceivedAt  time.Time
-		Type        string
-		Channel     string
-		Status      string
-		ReferenceID string
-		DueDate     string
-		CompletedAt string
-	}
-	var records []row
+	var records []dsrLogRow
 	for rows.Next() {
-		var r row
+		var r dsrLogRow
 		if err := rows.Scan(&r.ReceivedAt, &r.Type, &r.Channel, &r.Status, &r.ReferenceID, &r.DueDate, &r.CompletedAt); err != nil {
 			return nil, err
 		}
 		records = append(records, r)
+	}
+	return records, rows.Err()
+}
+
+// dsrLogTypeLabels / dsrLogStatusLabels map raw enum values to human labels.
+// Package-level so both PDF and CSV exports use identical wording.
+var dsrLogTypeLabels = map[string]string{
+	"access": "Auskunft (Art.15)", "rectification": "Berichtigung (Art.16)",
+	"erasure": "Löschung (Art.17)", "restriction": "Einschränkung (Art.18)",
+	"portability": "Portabilität (Art.20)", "objection": "Widerspruch (Art.21)",
+	"no_profiling": "Kein Profiling (Art.22)",
+}
+
+var dsrLogStatusLabels = map[string]string{
+	"open": "Offen", "in_progress": "In Bearbeitung", "completed": "Erledigt",
+	"rejected": "Abgelehnt", "extended": "Verlängert", "overdue": "Überfällig",
+}
+
+// ExportDSRLogCSV renders the DSR audit log as CSV (same rows/scope as the PDF).
+func (s *Service) ExportDSRLogCSV(ctx context.Context, orgID string, periodDays int) ([]byte, error) {
+	records, err := s.fetchDSRLogRows(ctx, orgID, periodDays)
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	// UTF-8 BOM so Excel opens the German umlauts correctly.
+	buf.WriteString("\xEF\xBB\xBF")
+	w := csv.NewWriter(&buf)
+	_ = w.Write([]string{"Eingangsdatum", "Art (DSGVO)", "Kanal", "Status", "Referenz-Nr.", "Frist", "Abgeschlossen"})
+	for _, r := range records {
+		label := dsrLogTypeLabels[r.Type]
+		if label == "" {
+			label = r.Type
+		}
+		slabel := dsrLogStatusLabels[r.Status]
+		if slabel == "" {
+			slabel = r.Status
+		}
+		_ = w.Write([]string{
+			r.ReceivedAt.Format("2006-01-02"), label, r.Channel, slabel,
+			r.ReferenceID, r.DueDate, r.CompletedAt,
+		})
+	}
+	w.Flush()
+	if err := w.Error(); err != nil {
+		return nil, fmt.Errorf("write dsr log csv: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
+func (s *Service) ExportDSRLogPDF(ctx context.Context, orgID string, periodDays int) ([]byte, error) {
+	if periodDays <= 0 {
+		periodDays = 365
+	}
+
+	records, err := s.fetchDSRLogRows(ctx, orgID, periodDays)
+	if err != nil {
+		return nil, err
 	}
 
 	pdf := fpdf.New("L", "mm", "A4", "")
@@ -247,22 +311,12 @@ func (s *Service) ExportDSRLogPDF(ctx context.Context, orgID string, periodDays 
 
 	pdf.SetFont("Helvetica", "", 8)
 	pdf.SetTextColor(30, 30, 30)
-	typeLabels := map[string]string{
-		"access": "Auskunft (Art.15)", "rectification": "Berichtigung (Art.16)",
-		"erasure": "Löschung (Art.17)", "restriction": "Einschränkung (Art.18)",
-		"portability": "Portabilität (Art.20)", "objection": "Widerspruch (Art.21)",
-		"no_profiling": "Kein Profiling (Art.22)",
-	}
-	statusLabels := map[string]string{
-		"open": "Offen", "in_progress": "In Bearbeitung", "completed": "Erledigt",
-		"rejected": "Abgelehnt", "extended": "Verlängert", "overdue": "Überfällig",
-	}
 	for _, r := range records {
-		label := typeLabels[r.Type]
+		label := dsrLogTypeLabels[r.Type]
 		if label == "" {
 			label = r.Type
 		}
-		slabel := statusLabels[r.Status]
+		slabel := dsrLogStatusLabels[r.Status]
 		if slabel == "" {
 			slabel = r.Status
 		}

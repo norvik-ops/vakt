@@ -23,6 +23,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
+	"github.com/matharnica/vakt/internal/shared/httputil"
+	"github.com/matharnica/vakt/internal/shared/mailhdr"
 	"github.com/matharnica/vakt/internal/shared/safego"
 )
 
@@ -48,8 +50,13 @@ func NewService(db *pgxpool.Pool, masterKey []byte, smtp SMTPConfig) *Service {
 	return &Service{
 		repo:      NewRepository(db),
 		masterKey: masterKey,
-		client:    &http.Client{Timeout: 10 * time.Second},
-		smtp:      smtp,
+		// S124-2 (SA15-01): GuardedClient re-resolves+dials the same IP so a
+		// customer-configured webhook host cannot DNS-rebind to an internal IP
+		// after the URL was validated at save. allowPrivate=true keeps legitimate
+		// on-prem webhook receivers working (self-hosted product) while still
+		// closing the rebinding TOCTOU.
+		client: httputil.GuardedClient(10*time.Second, true),
+		smtp:   smtp,
 	}
 }
 
@@ -376,6 +383,14 @@ func (s *Service) sendEmail(to, subject, body string) error {
 	if port == "" {
 		port = "25"
 	}
+	// S122-C5 (D10): strip CR/LF from every header field before assembly.
+	// `subject` embeds formatEventText(event, payload), so an attacker-controlled
+	// finding/incident title carrying "\r\n" could inject extra SMTP headers
+	// (Bcc:, a forged body, …). This is the exact CRLF header-injection class
+	// S120-3 closed in the form-handler; the variant here was never chased down.
+	from = mailhdr.Sanitize(from)
+	to = mailhdr.Sanitize(to)
+	subject = mailhdr.Sanitize(subject)
 	headers := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n", from, to, subject)
 	msg := []byte(headers + body)
 	addr := s.smtp.Host + ":" + port

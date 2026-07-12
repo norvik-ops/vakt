@@ -337,6 +337,110 @@ func (h *TotpHandler) Disable(c echo.Context) error {
 
 // ─── Verify ───────────────────────────────────────────────────────────────────
 
+// LoginVerify handles POST /auth/2fa/login-verify — the SECOND stage of the
+// two-stage login (S124-1/SA14-01). It is a PUBLIC route: the caller has no
+// session yet, only the short-lived mfa_pending token returned by /auth/login.
+// It validates that token plus a TOTP or backup code, then issues a full,
+// mfa=true token pair and sets the session cookies — exactly like /auth/login.
+func (h *TotpHandler) LoginVerify(c echo.Context) error {
+	var body struct {
+		MFAToken   string `json:"mfa_token"`
+		Code       string `json:"code"`
+		BackupCode string `json:"backup_code"`
+	}
+	if err := c.Bind(&body); err != nil || body.MFAToken == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "mfa_token is required", "code": "AUTH_BAD_REQUEST",
+		})
+	}
+	if body.Code == "" && body.BackupCode == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "code or backup_code is required", "code": "TOTP_BAD_REQUEST",
+		})
+	}
+	if h.svc == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "token issuance not configured", "code": "AUTH_INTERNAL_ERROR",
+		})
+	}
+
+	userID, orgID, err := h.svc.ParseMFAPending(body.MFAToken)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "invalid or expired MFA session — please log in again",
+			"code":  "AUTH_MFA_PENDING_INVALID",
+		})
+	}
+
+	ctx := c.Request().Context()
+	if err := h.validateSecondFactor(ctx, userID, body.Code, body.BackupCode); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
+			"error": "invalid code", "code": "TOTP_INVALID_CODE",
+		})
+	}
+
+	deviceHint := c.Request().Header.Get("User-Agent")
+	if len(deviceHint) > 120 {
+		deviceHint = deviceHint[:120]
+	}
+	resp, err := h.svc.CompleteMFALogin(ctx, userID, orgID, deviceHint)
+	if err != nil {
+		log.Error().Err(err).Str("user_id", userID).Msg("mfa login-verify: token issuance failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to issue tokens", "code": "AUTH_INTERNAL_ERROR",
+		})
+	}
+
+	// Set session cookies exactly like the primary login handler.
+	secure := CookieSecure(c)
+	c.SetCookie(&http.Cookie{ // nosemgrep: cookie-missing-secure -- Secure set via variable
+		Name: "access_token", Value: resp.AccessToken, HttpOnly: true, Secure: secure,
+		SameSite: http.SameSiteStrictMode, Path: "/api/v1", MaxAge: 3600,
+	})
+	csrfToken := GenerateCSRFToken()
+	SetCSRFCookie(c, csrfToken)
+	resp.CSRFToken = csrfToken
+	return c.JSON(http.StatusOK, resp)
+}
+
+// validateSecondFactor checks a TOTP code (with replay protection) or a backup
+// code for the user, consuming the backup code on success. Shared by LoginVerify.
+func (h *TotpHandler) validateSecondFactor(ctx context.Context, userID, code, backupCode string) error {
+	var encryptedSecret string
+	var enabled bool
+	var backupCodes []string
+	err := h.db.QueryRow(ctx, `
+		SELECT secret, enabled, backup_codes FROM totp_secrets WHERE user_id = $1::uuid
+	`, userID).Scan(&encryptedSecret, &enabled, &backupCodes)
+	if err != nil || !enabled {
+		return fmt.Errorf("2FA not enabled")
+	}
+
+	if backupCode != "" {
+		idx := CheckBackupCode(backupCode, backupCodes)
+		if idx < 0 {
+			return fmt.Errorf("invalid backup code")
+		}
+		newCodes := removeIndex(backupCodes, idx)
+		if uerr := h.updateBackupCodes(ctx, userID, newCodes); uerr != nil {
+			log.Error().Err(uerr).Msg("login-verify: failed to consume backup code")
+		}
+		return nil
+	}
+
+	secret, err := h.decryptSecret(encryptedSecret)
+	if err != nil {
+		return fmt.Errorf("decrypt secret: %w", err)
+	}
+	if !ValidateTOTP(secret, code) {
+		return fmt.Errorf("invalid TOTP code")
+	}
+	if err := h.checkAndMarkTOTPCode(ctx, userID, code); err != nil {
+		return fmt.Errorf("TOTP code replayed")
+	}
+	return nil
+}
+
 // Verify handles POST /auth/2fa/verify.
 // Accepts {"code": "123456"} or {"backup_code": "XXXX-XXXX"}.
 // Used as a second factor after primary login succeeds.
@@ -519,7 +623,7 @@ func (h *TotpHandler) RecoveryLogin(c echo.Context) error {
 		})
 	}
 
-	resp, err := h.svc.issueTokenPair(ctx, userID, orgID, []string{roleName}, "")
+	resp, err := h.svc.issueTokenPair(ctx, userID, orgID, []string{roleName}, "", true /* recovery code = 2nd factor */)
 	if err != nil {
 		log.Error().Err(err).Str("user_id", userID).Msg("recovery login: token issuance failed")
 		return c.JSON(http.StatusInternalServerError, map[string]string{

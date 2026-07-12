@@ -13,6 +13,7 @@ import (
 
 	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/shared/platform/events"
+	"github.com/matharnica/vakt/internal/shared/queuemetrics"
 )
 
 // GenerateTrainingMatrixReport builds the structured report for the given org and period.
@@ -107,6 +108,7 @@ func (s *Service) recordTrainingReportEvidence(ctx context.Context, orgID string
 	}
 	if task, err := crossevidence.NewRecordEvidenceTask(ev); err == nil {
 		if _, err := s.asynqClient.EnqueueContext(ctx, task); err != nil {
+			queuemetrics.RecordError(crossevidence.Queue)
 			log.Warn().Err(err).Str("org_id", orgID).Msg("training report evidence enqueue failed")
 		}
 	}
@@ -185,6 +187,7 @@ func (s *Service) RunORP3EvidenceSync(ctx context.Context, orgID string) error {
 		}
 		if task, err := crossevidence.NewRecordEvidenceTask(ev); err == nil {
 			if _, enqErr := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(Queue)); enqErr != nil {
+				queuemetrics.RecordError(Queue)
 				log.Warn().Err(enqErr).Str("req_id", req.ID).Msg("orp3 evidence enqueue failed")
 			}
 		}
@@ -199,8 +202,11 @@ func (s *Service) EnqueueORP3EvidenceSync(ctx context.Context, orgID string) err
 	}
 	data, _ := json.Marshal(ORP3EvidenceSyncPayload{OrgID: orgID})
 	task := asynq.NewTask(TaskORP3EvidenceSync, data)
-	_, err := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(Queue))
-	return err
+	if _, err := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(Queue)); err != nil {
+		queuemetrics.RecordError(Queue)
+		return err
+	}
+	return nil
 }
 
 // generateTrainingMatrixPDF renders the training matrix report as PDF using fpdf.

@@ -9,6 +9,8 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/queuemetrics"
 )
 
 const TaskAutoEnrollment = "aware:auto_enrollment"
@@ -51,7 +53,9 @@ func (s *Service) EnqueueAutoEnrollment(ctx context.Context, payload AutoEnrollm
 		return fmt.Errorf("marshal auto-enrollment payload: %w", err)
 	}
 	task := asynq.NewTask(TaskAutoEnrollment, data)
-	_, err = s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(Queue))
+	if _, err = s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(Queue)); err != nil {
+		queuemetrics.RecordError(Queue)
+	}
 	return err
 }
 

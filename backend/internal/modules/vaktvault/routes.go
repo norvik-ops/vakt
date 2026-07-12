@@ -41,9 +41,11 @@ func Register(g *echo.Group, h *Handler) {
 	// Health
 	g.GET("/projects/:project_id/health", h.GetProjectHealth, rw)
 
-	// Share links — admin only (creates an unauthenticated access URL)
+	// Share links — admin only (creates an unauthenticated access URL).
+	// S127-3 (D6): the CONSUMING route GET /share/:token is public (the external
+	// recipient has no session) and now lives in RegisterPublic — mounting it here
+	// under `protected` 401'd every external share link. Creation stays admin-gated.
 	g.POST("/projects/:project_id/envs/:env_id/secrets/:key/share", h.CreateShareLink, admin)
-	g.GET("/share/:token", h.UseShareLink) // public — validated by token only
 
 	// API tokens — Pro feature (FeatureAPI)
 	g.POST("/tokens", h.CreateToken, admin, features.Require(features.FeatureAPI))
@@ -74,4 +76,13 @@ func Register(g *echo.Group, h *Handler) {
 	g.POST("/access-reviews", h.CreateAccessReview, admin, vaultPro)
 	g.GET("/access-reviews/:id", h.GetAccessReview, rw, vaultPro)
 	g.POST("/access-reviews/:id/complete", h.CompleteAccessReview, admin, vaultPro)
+}
+
+// RegisterPublic mounts the token-only share-link consumer route (S127-3, D6).
+// The external recipient of a share link has no Vakt session; UseShareLink is
+// already validated by the URL token alone (vaktvault stores only its hash), so
+// the caller mounts this on a PUBLIC group (no auth/CSRF/license) with an IP
+// rate limiter.
+func RegisterPublic(g *echo.Group, h *Handler) {
+	g.GET("/share/:token", h.UseShareLink)
 }

@@ -23,7 +23,8 @@ WHERE org_id = $1 AND is_deleted = FALSE
 
 -- name: ListSPAssets :many
 SELECT id, org_id, name, type, criticality, tags, owner_id, external_url,
-       created_at, updated_at
+       created_at, updated_at,
+       COALESCE(classification, '')::text AS classification
 FROM vb_assets
 WHERE org_id = $1 AND is_deleted = FALSE
   AND (sqlc.narg('tag')::text IS NULL OR sqlc.narg('tag')::text = ANY(tags))
@@ -32,13 +33,15 @@ LIMIT $2 OFFSET $3;
 
 -- name: GetSPAsset :one
 SELECT id, org_id, name, type, criticality, tags, owner_id, external_url,
-       created_at, updated_at
+       created_at, updated_at,
+       COALESCE(classification, '')::text AS classification
 FROM vb_assets
 WHERE id = $1 AND org_id = $2 AND is_deleted = FALSE;
 
 -- name: GetSPAssetByName :one
 SELECT id, org_id, name, type, criticality, tags, owner_id, external_url,
-       created_at, updated_at
+       created_at, updated_at,
+       COALESCE(classification, '')::text AS classification
 FROM vb_assets
 WHERE org_id = $1 AND lower(name) = lower($2::text) AND is_deleted = FALSE
 LIMIT 1;

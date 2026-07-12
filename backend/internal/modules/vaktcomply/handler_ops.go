@@ -126,11 +126,6 @@ func (h *Handler) ApproveISMSScope(c echo.Context) error {
 	return c.JSON(http.StatusOK, scope)
 }
 
-// ExportISMSScopePDF handles GET /api/v1/vaktcomply/isms-scope/export-pdf.
-func (h *Handler) ExportISMSScopePDF(c echo.Context) error {
-	return c.JSON(http.StatusNotImplemented, map[string]string{"message": "PDF export coming soon"})
-}
-
 // ListCryptoKeys handles GET /api/v1/vaktcomply/crypto-keys.
 func (h *Handler) ListCryptoKeys(c echo.Context) error {
 	keys, err := h.service.ListCryptoKeys(c.Request().Context(), orgID(c))
@@ -260,24 +255,6 @@ func (h *Handler) DeletePentest(c echo.Context) error {
 		return errResp(c, http.StatusInternalServerError, "failed to delete pentest", "CK_DELETE_PENTEST_FAILED")
 	}
 	return c.NoContent(http.StatusNoContent)
-}
-
-// UploadPentestReport handles POST /api/v1/vaktcomply/pentests/:id/report.
-// Report file upload is not yet implemented.
-func (h *Handler) UploadPentestReport(c echo.Context) error {
-	return c.JSON(http.StatusNotImplemented, map[string]string{
-		"error": "report upload not yet implemented",
-		"code":  "CK_NOT_IMPLEMENTED",
-	})
-}
-
-// LinkPentestAsEvidence handles POST /api/v1/vaktcomply/pentests/:id/link-evidence.
-// Evidence linking is not yet implemented.
-func (h *Handler) LinkPentestAsEvidence(c echo.Context) error {
-	return c.JSON(http.StatusNotImplemented, map[string]string{
-		"error": "evidence linking not yet implemented",
-		"code":  "CK_NOT_IMPLEMENTED",
-	})
 }
 
 type InterestedParty struct {

@@ -10,7 +10,6 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -180,93 +179,35 @@ func (h *Handler) ExportControlsXLSX(c echo.Context) error {
 	return c.Blob(http.StatusOK, xlsxContentType, buf.Bytes())
 }
 
-func (h *Handler) CalendarDeadlines(c echo.Context) error {
+// ExportPoliciesXLSX handles GET /vaktcomply/policies/export/xlsx.
+// S124-4 (CB-01): the Policies page ExportButton posted here but no handler
+// existed (live 404). Mirrors ExportControlsXLSX (CSV body with the xlsx MIME).
+func (h *Handler) ExportPoliciesXLSX(c echo.Context) error {
 	ctx := c.Request().Context()
-	oid := orgID(c)
-	now := time.Now().UTC()
+	org := orgID(c)
 
-	type icalEvent struct {
-		uid         string
-		dtstart     string
-		summary     string
-		description string
-	}
-
-	var events []icalEvent
-
-	// S121-F6 (A3): deadline data now comes from the service layer, not h.q.*.
-	deadlines, err := h.service.ListICalDeadlines(ctx, oid)
+	// Export the full set (not a page); a high limit keeps one round-trip.
+	policies, _, err := h.service.ListPoliciesPaged(ctx, org, 0, 100000)
 	if err != nil {
-		log.Error().Err(err).Str("org_id", oid).Msg("ical: load deadlines")
-		return errResp(c, http.StatusInternalServerError, "failed to load deadlines", "CK_ICAL_ERROR")
+		log.Error().Err(err).Str("org_id", org).Msg("export policies xlsx")
+		return errResp(c, http.StatusInternalServerError, "export failed", "CK_EXPORT_ERROR")
 	}
 
-	// --- Source 1: Audit milestones ---
-	for _, m := range deadlines.Milestones {
-		events = append(events, icalEvent{
-			uid:         m.ID + "@vakt",
-			dtstart:     m.MilestoneDate.Time.Format("20060102"),
-			summary:     m.Title,
-			description: m.Description,
-		})
-	}
-
-	// --- Source 2: Open/in-progress CAPAs with due dates ---
-	for _, ca := range deadlines.CAPAs {
-		events = append(events, icalEvent{
-			uid:         ca.ID + "@vakt",
-			dtstart:     ca.DueDate.Time.Format("20060102"),
-			summary:     "CAPA fällig: " + ca.Title,
-			description: "Corrective and Preventive Action",
-		})
-	}
-
-	// --- Source 3: Evidence expiring within the future ---
-	for _, ev := range deadlines.Evidence {
-		events = append(events, icalEvent{
-			uid:         ev.ID + "@vakt",
-			dtstart:     ev.ExpiresAt.Time.UTC().Format("20060102"),
-			summary:     "Nachweis läuft ab: " + ev.Title,
-			description: "Compliance-Nachweis läuft ab",
-		})
-	}
-
-	// Build iCalendar output.
-	dtstamp := now.Format("20060102T150405Z")
-	var sb strings.Builder
-	sb.WriteString("BEGIN:VCALENDAR\r\n")
-	sb.WriteString("VERSION:2.0\r\n")
-	sb.WriteString("PRODID:-//Vakt//Compliance Calendar//DE\r\n")
-	sb.WriteString("CALSCALE:GREGORIAN\r\n")
-	sb.WriteString("X-WR-CALNAME:Vakt Compliance\r\n")
-
-	for _, ev := range events {
-		sb.WriteString("BEGIN:VEVENT\r\n")
-		fmt.Fprintf(&sb, "UID:%s\r\n", icalEscape(ev.uid))
-		fmt.Fprintf(&sb, "DTSTAMP:%s\r\n", dtstamp)
-		fmt.Fprintf(&sb, "DTSTART;VALUE=DATE:%s\r\n", ev.dtstart)
-		fmt.Fprintf(&sb, "SUMMARY:%s\r\n", icalEscape(ev.summary))
-		if ev.description != "" {
-			fmt.Fprintf(&sb, "DESCRIPTION:%s\r\n", icalEscape(ev.description))
+	var buf bytes.Buffer
+	buf.WriteString("\xEF\xBB\xBF") // UTF-8 BOM for Excel
+	w := csv.NewWriter(&buf)
+	_ = w.Write([]string{"Title", "Category", "Status", "Version", "Owner", "Next Review Due"})
+	for _, p := range policies {
+		nextReview := ""
+		if p.NextReviewDue != nil {
+			nextReview = *p.NextReviewDue
 		}
-		sb.WriteString("END:VEVENT\r\n")
+		_ = w.Write([]string{p.Title, p.Category, p.Status, p.Version, p.Owner, nextReview})
 	}
+	w.Flush()
 
-	sb.WriteString("END:VCALENDAR\r\n")
-
-	c.Response().Header().Set("Content-Type", "text/calendar; charset=utf-8")
-	c.Response().Header().Set("Content-Disposition", `attachment; filename="vakt-compliance.ics"`)
-	return c.String(http.StatusOK, sb.String())
-}
-
-// icalEscape escapes special characters in iCalendar text values per RFC 5545.
-func icalEscape(s string) string {
-	s = strings.ReplaceAll(s, `\`, `\\`)
-	s = strings.ReplaceAll(s, ";", `\;`)
-	s = strings.ReplaceAll(s, ",", `\,`)
-	s = strings.ReplaceAll(s, "\n", `\n`)
-	s = strings.ReplaceAll(s, "\r", "")
-	return s
+	c.Response().Header().Set("Content-Disposition", `attachment; filename="policies.xlsx"`)
+	return c.Blob(http.StatusOK, xlsxContentType, buf.Bytes())
 }
 
 func (h *Handler) logDocxExport(c echo.Context, resourceType, resourceName string, data []byte) {

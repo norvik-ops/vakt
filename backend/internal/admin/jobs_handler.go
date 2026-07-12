@@ -16,9 +16,12 @@ type JobsHandler struct {
 }
 
 // NewJobsHandler creates a JobsHandler.
-func NewJobsHandler(redisAddr string) *JobsHandler {
+// S122-B2 (NOAUTH): redisPassword must be threaded through — without it the
+// Asynq inspector cannot authenticate against a --requirepass Redis and every
+// queue-stats call errors, leaving the admin jobs panel blind.
+func NewJobsHandler(redisAddr, redisPassword string) *JobsHandler {
 	return &JobsHandler{
-		inspector: asynq.NewInspector(asynq.RedisClientOpt{Addr: redisAddr}),
+		inspector: asynq.NewInspector(asynq.RedisClientOpt{Addr: redisAddr, Password: redisPassword}),
 	}
 }
 

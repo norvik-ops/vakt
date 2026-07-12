@@ -10,11 +10,28 @@ import type {
 
 // ── Tasks ──────────────────────────────────────────────────────────────────────
 
+// S125 (FE-03): map the singular entity type to the exact backend path segment.
+// The old `${entityType}s` silently produced `policys` for `policy` (the backend
+// registers `policies`); naive pluralisation was a footgun waiting for the next
+// non-regular entity. Keep this in lock-step with the backend loop in
+// vaktcomply/routes.go (controls, risks, incidents, policies, audits).
+const ENTITY_PATH: Record<string, string> = {
+  control: 'controls',
+  risk: 'risks',
+  incident: 'incidents',
+  policy: 'policies',
+  audit: 'audits',
+}
+
+function entityPath(entityType: string): string {
+  return ENTITY_PATH[entityType] ?? `${entityType}s`
+}
+
 export function useTasks(entityType: string, entityId: string) {
   return useQuery<CollabTask[]>({
     queryKey: ['vaktcomply', entityType, entityId, 'collab-tasks'],
     queryFn: () =>
-      apiFetch<CollabTask[]>(`/vaktcomply/${entityType}s/${entityId}/collab-tasks`),
+      apiFetch<CollabTask[]>(`/vaktcomply/${entityPath(entityType)}/${entityId}/collab-tasks`),
     enabled: !!entityId && !!entityType,
     staleTime: 5 * 60 * 1000,
   })
@@ -24,7 +41,7 @@ export function useCreateTask(entityType: string, entityId: string) {
   const queryClient = useQueryClient()
   return useMutation<CollabTask, Error, CreateCollabTaskInput>({
     mutationFn: (input) =>
-      apiFetch<CollabTask>(`/vaktcomply/${entityType}s/${entityId}/collab-tasks`, {
+      apiFetch<CollabTask>(`/vaktcomply/${entityPath(entityType)}/${entityId}/collab-tasks`, {
         method: 'POST',
         body: JSON.stringify(input),
       }),
@@ -72,7 +89,7 @@ export function useComments(entityType: string, entityId: string) {
   return useQuery<CollabComment[]>({
     queryKey: ['vaktcomply', entityType, entityId, 'comments'],
     queryFn: () =>
-      apiFetch<CollabComment[]>(`/vaktcomply/${entityType}s/${entityId}/comments`),
+      apiFetch<CollabComment[]>(`/vaktcomply/${entityPath(entityType)}/${entityId}/comments`),
     enabled: !!entityId && !!entityType,
     staleTime: 2 * 60 * 1000,
   })
@@ -82,7 +99,7 @@ export function useCreateComment(entityType: string, entityId: string) {
   const queryClient = useQueryClient()
   return useMutation<CollabComment, Error, CreateCommentInput>({
     mutationFn: (input) =>
-      apiFetch<CollabComment>(`/vaktcomply/${entityType}s/${entityId}/comments`, {
+      apiFetch<CollabComment>(`/vaktcomply/${entityPath(entityType)}/${entityId}/comments`, {
         method: 'POST',
         body: JSON.stringify(input),
       }),

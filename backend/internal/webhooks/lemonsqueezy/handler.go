@@ -23,6 +23,7 @@ import (
 
 	"github.com/matharnica/vakt/internal/license"
 	"github.com/matharnica/vakt/internal/shared/logsafe"
+	"github.com/matharnica/vakt/internal/shared/mailhdr"
 	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
 
@@ -377,10 +378,10 @@ NorvikOps Team`,
 		key, key,
 	)
 
-	msg := "From: " + h.smtp.From + "\r\n" +
-		"To: " + to + "\r\n" +
+	msg := "From: " + mailhdr.Sanitize(h.smtp.From) + "\r\n" +
+		"To: " + mailhdr.Sanitize(to) + "\r\n" +
 		"Date: " + time.Now().UTC().Format(time.RFC1123Z) + "\r\n" +
-		"Subject: " + subject + "\r\n" +
+		"Subject: " + mailhdr.Sanitize(subject) + "\r\n" +
 		"Content-Type: text/plain; charset=UTF-8\r\n" +
 		"\r\n" +
 		strings.ReplaceAll(body, "\n", "\r\n")

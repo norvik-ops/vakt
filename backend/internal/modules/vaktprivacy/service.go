@@ -22,6 +22,7 @@ import (
 	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/shared/notify"
 	"github.com/matharnica/vakt/internal/shared/platform/events"
+	"github.com/matharnica/vakt/internal/shared/queuemetrics"
 )
 
 // Service handles PrivacyOps business logic.
@@ -476,7 +477,9 @@ func (s *Service) UpdateDSR(ctx context.Context, orgID, id string, in UpdateDSRI
 			// Enqueue cross-module evidence.
 			if s.asynqClient != nil {
 				if task, taskErr := crossevidence.NewRecordEvidenceTask(events.DSRCompleted(orgID, id)); taskErr == nil {
-					_, _ = s.asynqClient.EnqueueContext(ctx, task)
+					if _, enqErr := s.asynqClient.EnqueueContext(ctx, task); enqErr != nil {
+						queuemetrics.RecordError(crossevidence.Queue)
+					}
 				}
 			}
 			return dsr, nil
@@ -491,7 +494,9 @@ func (s *Service) UpdateDSR(ctx context.Context, orgID, id string, in UpdateDSRI
 	// Enqueue cross-module evidence when a DSR is completed.
 	if in.Status == "completed" && s.asynqClient != nil {
 		if task, taskErr := crossevidence.NewRecordEvidenceTask(events.DSRCompleted(orgID, id)); taskErr == nil {
-			_, _ = s.asynqClient.EnqueueContext(ctx, task)
+			if _, enqErr := s.asynqClient.EnqueueContext(ctx, task); enqErr != nil {
+				queuemetrics.RecordError(crossevidence.Queue)
+			}
 		}
 	}
 	return dsr, nil
@@ -860,6 +865,7 @@ func (s *Service) publishBreachCreated(ctx context.Context, b *Breach) {
 	if s.asynqClient != nil {
 		task := asynq.NewTask(TaskBreachIncidentCreate, data)
 		if _, err := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(Queue)); err != nil {
+			queuemetrics.RecordError(Queue)
 			log.Error().Err(err).Str("breach_id", b.ID).Msg("vaktprivacy: failed to enqueue breach incident job")
 		}
 	} else {

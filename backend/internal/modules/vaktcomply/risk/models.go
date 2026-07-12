@@ -37,6 +37,7 @@ type Risk struct {
 	RiskAcceptedBy              *string    `json:"risk_accepted_by,omitempty"`
 	RiskAcceptedAt              *time.Time `json:"risk_accepted_at,omitempty"`
 	RiskAcceptanceJustification string     `json:"risk_acceptance_justification"`
+	AINarrative                 string     `json:"ai_narrative,omitempty"` // S125 (DB-02): AI-generated risk narrative
 	CreatedAt                   time.Time  `json:"created_at"`
 	UpdatedAt                   time.Time  `json:"updated_at"`
 }

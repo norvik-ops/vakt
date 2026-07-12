@@ -255,6 +255,7 @@ func scanFromVbScans(r db.VbScans) Scan {
 // the mapping here.
 type assetFields struct {
 	ID, OrgID, Name, Type, Criticality, Environment string
+	Classification                                  string // S124-3 (DB-01): was written but never selected
 	Tags                                            []string
 	OwnerID                                         pgtype.UUID
 	ExternalUrl                                     pgtype.Text
@@ -267,17 +268,18 @@ func assetFromFields(f assetFields) Asset {
 		env = "prod"
 	}
 	return Asset{
-		ID:          f.ID,
-		OrgID:       f.OrgID,
-		Name:        f.Name,
-		Type:        f.Type,
-		Criticality: f.Criticality,
-		Environment: env,
-		Tags:        f.Tags,
-		OwnerID:     spUUIDPtr(f.OwnerID),
-		ExternalURL: spTextPtr(f.ExternalUrl),
-		CreatedAt:   spTsToTime(f.CreatedAt),
-		UpdatedAt:   spTsToTime(f.UpdatedAt),
+		ID:             f.ID,
+		OrgID:          f.OrgID,
+		Name:           f.Name,
+		Type:           f.Type,
+		Criticality:    f.Criticality,
+		Classification: f.Classification,
+		Environment:    env,
+		Tags:           f.Tags,
+		OwnerID:        spUUIDPtr(f.OwnerID),
+		ExternalURL:    spTextPtr(f.ExternalUrl),
+		CreatedAt:      spTsToTime(f.CreatedAt),
+		UpdatedAt:      spTsToTime(f.UpdatedAt),
 	}
 }
 

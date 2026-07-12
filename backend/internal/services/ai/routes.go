@@ -10,6 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/matharnica/vakt/internal/auth"
 	"github.com/matharnica/vakt/internal/license"
 )
 
@@ -108,10 +109,16 @@ func RegisterWithOptions(g *echo.Group, db *pgxpool.Pool, provider, baseURL, api
 	// Sprint 52 (S52-2): Gap-Explain SSE streaming per control.
 	g.POST("/ai/controls/:id/explain", h.GapExplain, aiLimit)
 	// Sprint 52 (S52-3): Risk narrative generation + persistence.
-	g.POST("/ai/risks/:id/narrative", h.RiskNarrative, aiLimit)
+	// S124-8 (N3): this route PERSISTS the generated narrative onto the risk, so
+	// unlike the pure-generation routes above (quota/license-gated by design, MA-04)
+	// it is a state-mutating write and must require a writer role. A Viewer must
+	// not be able to overwrite a risk's narrative.
+	aiWrite := auth.RequireRole("Admin", "SecurityAnalyst")
+	g.POST("/ai/risks/:id/narrative", h.RiskNarrative, aiLimit, aiWrite)
 	// Sprint 52 (S52-6): AI Insights list + dismiss.
 	g.GET("/ai/insights", h.ListInsights)
-	g.DELETE("/ai/insights/:id", h.DismissInsight)
+	// S124-8 (N3): dismiss DELETES an org insight — writer role required.
+	g.DELETE("/ai/insights/:id", h.DismissInsight, aiWrite)
 }
 
 // defaultOrgSettingsFn builds an OrgSettingsFunc backed by raw SQL so

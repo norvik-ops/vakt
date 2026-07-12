@@ -23,6 +23,7 @@ import (
 
 	db "github.com/matharnica/vakt/internal/db"
 	"github.com/matharnica/vakt/internal/shared/logsafe"
+	"github.com/matharnica/vakt/internal/shared/mailhdr"
 	"github.com/matharnica/vakt/internal/shared/safego"
 )
 
@@ -92,9 +93,9 @@ func sendAcceptanceEmail(cfg PolicyAcceptanceSMTPConfig, to, subject, body strin
 	}
 
 	var msg strings.Builder
-	fmt.Fprintf(&msg, "From: Vakt Compliance <%s>\r\n", from)
-	fmt.Fprintf(&msg, "To: %s\r\n", to)
-	fmt.Fprintf(&msg, "Subject: %s\r\n", subject)
+	fmt.Fprintf(&msg, "From: Vakt Compliance <%s>\r\n", mailhdr.Sanitize(from))
+	fmt.Fprintf(&msg, "To: %s\r\n", mailhdr.Sanitize(to))
+	fmt.Fprintf(&msg, "Subject: %s\r\n", mailhdr.Sanitize(subject))
 	msg.WriteString("MIME-Version: 1.0\r\n")
 	msg.WriteString("Content-Type: text/plain; charset=UTF-8\r\n")
 	msg.WriteString("\r\n")

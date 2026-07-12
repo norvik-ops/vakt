@@ -163,18 +163,6 @@ func (h *Handler) GetBSIBausteinSuggestions(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string][]string{"suggestions": suggestions})
 }
 
-// ExportBSIModelingPDF handles GET /api/v1/vaktcomply/bsi-modeling/export-pdf.
-// Not yet implemented — returns 501.
-func (h *Handler) ExportBSIModelingPDF(c echo.Context) error {
-	return errResp(c, http.StatusNotImplemented, "PDF export not yet implemented", "CK_BSI_PDF_NOT_IMPLEMENTED")
-}
-
-// ExportBSIModelingXLSX handles GET /api/v1/vaktcomply/bsi-modeling/export-xlsx.
-// Not yet implemented — returns 501.
-func (h *Handler) ExportBSIModelingXLSX(c echo.Context) error {
-	return errResp(c, http.StatusNotImplemented, "XLSX export not yet implemented", "CK_BSI_XLSX_NOT_IMPLEMENTED")
-}
-
 // GetBSIModelingStats handles GET /api/v1/vaktcomply/bsi-modeling/stats.
 func (h *Handler) GetBSIModelingStats(c echo.Context) error {
 	stats, err := h.service.BSI.GetBSIModelingStats(c.Request().Context(), orgID(c))

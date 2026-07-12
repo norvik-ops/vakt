@@ -2710,7 +2710,12 @@
     "passwordStrengthVeryWeak": "Sehr schwach",
     "passwordStrengthWeak": "Schwach",
     "passwordStrengthMedium": "Mittel",
-    "passwordStrengthStrong": "Stark"
+    "passwordStrengthStrong": "Stark",
+    "mfaPrompt": "Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein, um die Anmeldung abzuschließen.",
+    "mfaCodeLabel": "Authentifizierungscode",
+    "mfaVerify": "Bestätigen",
+    "mfaBack": "Zurück zur Anmeldung",
+    "mfaInvalidCode": "Ungültiger oder abgelaufener Code"
   },
   "settings": {
     "alerting": {

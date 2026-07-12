@@ -637,14 +637,31 @@ func (h *Handler) GetDSRSummary(c echo.Context) error {
 	return c.JSON(http.StatusOK, summary)
 }
 
-// ExportDSRLog handles GET /api/v1/vaktprivacy/dsr/export
+// ExportDSRLog handles GET /api/v1/vaktprivacy/dsr/export?format=pdf|csv.
+// S122-C3 (D7): the handler previously ignored ?format and always returned PDF,
+// so the frontend's "CSV" button downloaded a PDF renamed .csv. Both formats are
+// now honoured; the CSV carries the same audit-log scope (no requester PII).
 func (h *Handler) ExportDSRLog(c echo.Context) error {
-	data, err := h.service.ExportDSRLogPDF(c.Request().Context(), orgID(c), 365)
+	ctx := c.Request().Context()
+	date := time.Now().UTC().Format("2006-01-02")
+
+	if c.QueryParam("format") == "csv" {
+		data, err := h.service.ExportDSRLogCSV(ctx, orgID(c), 365)
+		if err != nil {
+			log.Error().Err(err).Msg("export dsr log csv")
+			return errResp(c, http.StatusInternalServerError, "export failed", "PO_DSR_EXPORT_FAILED")
+		}
+		filename := fmt.Sprintf("vakt-dsr-log-%s.csv", date)
+		c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, filename))
+		return c.Blob(http.StatusOK, "text/csv; charset=utf-8", data)
+	}
+
+	data, err := h.service.ExportDSRLogPDF(ctx, orgID(c), 365)
 	if err != nil {
 		log.Error().Err(err).Msg("export dsr log pdf")
 		return errResp(c, http.StatusInternalServerError, "export failed", "PO_DSR_EXPORT_FAILED")
 	}
-	filename := fmt.Sprintf("vakt-dsr-log-%s.pdf", time.Now().UTC().Format("2006-01-02"))
+	filename := fmt.Sprintf("vakt-dsr-log-%s.pdf", date)
 	c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, filename))
 	return c.Blob(http.StatusOK, "application/pdf", data)
 }

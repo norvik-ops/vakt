@@ -82,12 +82,17 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.POST("/frameworks/ISO27018/enable", h.enableFrameworkNamed("ISO27018"), rw, features.Require(features.FeatureMultiFramework))
 	g.POST("/frameworks/:name/enable", h.EnableFramework, rw)
 	// CRITICAL: dora/variant must be registered BEFORE /:id to avoid route collision.
-	g.PUT("/frameworks/dora/variant", h.SwitchDORAVariant, rw)
+	// S125 (D16): gate with FeatureDORA like every other DORA route. It was the
+	// only DORA sibling without the feature check — defense-in-depth (the handler
+	// 404s without DORA anyway) and removes the pattern inconsistency that the
+	// v0.42.24 casing-bypass grew out of.
+	g.PUT("/frameworks/dora/variant", h.SwitchDORAVariant, rw, features.Require(features.FeatureDORA))
 	g.DELETE("/frameworks/:id", h.DeleteFramework, rw)
 	// CRITICAL: overdue-reviews and export/xlsx are static paths and must be registered BEFORE /controls/:id
 	// to prevent Echo from matching them as param routes.
 	g.GET("/controls/overdue-reviews", h.ListOverdueControls)
 	g.GET("/controls/export/xlsx", h.ExportControlsXLSX)
+	g.GET("/policies/export/xlsx", h.ExportPoliciesXLSX) // S124-4 (CB-01)
 	// Bare /controls (org-wide, across all enabled frameworks) is a distinct
 	// path shape from /controls/:id — no collision. Existed as a handler
 	// (h.ListControlsAcrossFrameworks) with no route; DashboardWidgets.tsx's
@@ -479,7 +484,6 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	// must be registered BEFORE /isms-scope to avoid route conflicts.
 	g.GET("/isms-scope/versions", h.ListISMSScopeVersions)
 	g.POST("/isms-scope/approve", h.ApproveISMSScope, rw)
-	g.GET("/isms-scope/export-pdf", h.ExportISMSScopePDF)
 	g.GET("/isms-scope", h.GetISMSScope)
 	g.POST("/isms-scope", h.CreateOrUpdateISMSScope, rw)
 
@@ -490,8 +494,6 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/pentests/:id", h.GetPentest)
 	g.PATCH("/pentests/:id", h.UpdatePentest, rw)
 	g.DELETE("/pentests/:id", h.DeletePentest, rw)
-	g.POST("/pentests/:id/report", h.UploadPentestReport, rw)
-	g.POST("/pentests/:id/link-evidence", h.LinkPentestAsEvidence, rw)
 
 	// BSI Modeling (S61-5)
 	// CRITICAL: static paths before /:id to avoid route conflict.
@@ -503,8 +505,6 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.POST("/bsi-modeling", h.CreateBSIModeling, rw, bsiPro)
 	g.GET("/bsi-modeling/stats", h.GetBSIModelingStats, bsiPro)
 	g.GET("/bsi-modeling/suggestions", h.GetBSIBausteinSuggestions, bsiPro)
-	g.GET("/bsi-modeling/export-pdf", h.ExportBSIModelingPDF, bsiPro)
-	g.GET("/bsi-modeling/export-xlsx", h.ExportBSIModelingXLSX, bsiPro)
 	g.PATCH("/bsi-modeling/:id", h.UpdateBSIModeling, rw, bsiPro)
 	g.DELETE("/bsi-modeling/:id", h.DeleteBSIModeling, rw, bsiPro)
 

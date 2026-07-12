@@ -15,8 +15,8 @@ Alle Konfigurationswerte werden über Umgebungsvariablen gesetzt. In Docker-Depl
 **Beispiel:**
 
 ```env
-VAKT_DB_URL=postgres://vakt:sicherespasswort@postgres:5432/vakt?sslmode=disable
-POSTGRES_PASSWORD=sicherespasswort
+VAKT_DB_URL=postgres://vakt:<dein-db-passwort>@postgres:5432/vakt?sslmode=disable
+POSTGRES_PASSWORD=<dein-db-passwort>
 ```
 
 ### Pool-Sizing & Multi-Replica (PgBouncer) — wichtig ab 2 Replikas
@@ -54,8 +54,8 @@ mit Reserve für Migrationen/Admin-Zugriffe. Beispiel: 4 Replikas × 25 = **100*
 **Beispiel:**
 
 ```env
-VAKT_REDIS_URL=redis://:sicherespasswort@redis:6379
-REDIS_PASSWORD=sicherespasswort
+VAKT_REDIS_URL=redis://:<dein-redis-passwort>@redis:6379
+REDIS_PASSWORD=<dein-redis-passwort>
 ```
 
 ---
@@ -279,7 +279,7 @@ SSO wird über [Casdoor](https://casdoor.org) als OIDC/SAML-Proxy unterstützt. 
 ```env
 CASDOOR_URL=https://auth.meine-firma.de
 CASDOOR_CLIENT_ID=vakt-app
-CASDOOR_CLIENT_SECRET=geheimes-secret
+CASDOOR_CLIENT_SECRET=<dein-casdoor-client-secret>
 ```
 
 ---
@@ -354,7 +354,7 @@ VAKT_REDIS_URL=redis://redis:6379
 VAKT_SECRET_KEY=<openssl rand -hex 32>
 
 # ── Datenbank-Container ────────────────────────────────────────────────────────
-POSTGRES_PASSWORD=passwort
+POSTGRES_PASSWORD=<dein-db-passwort>
 
 # ── Anwendung ──────────────────────────────────────────────────────────────────
 VAKT_API_PORT=8080

@@ -16,6 +16,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -23,6 +24,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/config"
+	"github.com/matharnica/vakt/internal/shared/queuemetrics"
 )
 
 // Channel identifies the external delivery channel for a notification.
@@ -117,6 +119,7 @@ func (s *Service) Notify(ctx context.Context, msg Message) error {
 	if _, err := s.queue.EnqueueContext(ctx, task); err != nil {
 		// Enqueue failure is non-fatal: the record is already in the DB and
 		// can be retried by a sweep job.
+		queuemetrics.RecordError("default")
 		log.Error().Err(err).Str("org_id", msg.OrgID).Msg("failed to enqueue notification")
 	}
 
@@ -136,8 +139,16 @@ func SetPublisher(rdb *redis.Client) { pubClient = rdb }
 // It is intentionally non-fatal: any database error is logged via zerolog and
 // silently discarded so that callers (scanner workers, training completions,
 // breach events, etc.) are never blocked by a notification failure.
+//
+// S124-6 (E2E-03): Send detaches from the caller's context. It is best-effort
+// and frequently fired at the tail of a request handler; if it ran on the
+// request context, a client that already received its response (context
+// canceled) would spuriously fail the notification write with "context
+// canceled". The write is bounded by its own 5s timeout instead.
 func Send(ctx context.Context, db *pgxpool.Pool, orgID, title, body, notifType, module string) {
-	_, err := db.Exec(ctx,
+	sendCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	_, err := db.Exec(sendCtx,
 		`INSERT INTO user_notifications (org_id, title, body, type, module)
 		 VALUES ($1::uuid, $2, $3, $4, $5)`,
 		orgID, title, body, notifType, module)
@@ -148,7 +159,7 @@ func Send(ctx context.Context, db *pgxpool.Pool, orgID, title, body, notifType, 
 	// S98-5: push a wakeup to open SSE streams. Channel key MUST match
 	// dashboard.notifyChannel ("notify:<org_id>"). Best-effort.
 	if pubClient != nil {
-		if perr := pubClient.Publish(ctx, "notify:"+orgID, "1").Err(); perr != nil {
+		if perr := pubClient.Publish(sendCtx, "notify:"+orgID, "1").Err(); perr != nil {
 			log.Warn().Err(perr).Str("org_id", orgID).Msg("notify.Send: SSE publish failed")
 		}
 	}

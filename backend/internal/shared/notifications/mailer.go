@@ -6,6 +6,7 @@ import (
 	"net/smtp"
 
 	"github.com/matharnica/vakt/internal/config"
+	"github.com/matharnica/vakt/internal/shared/mailhdr"
 )
 
 // Mailer sends transactional notification emails using stdlib net/smtp.
@@ -40,7 +41,7 @@ func (m *Mailer) Send(to, subject, body string) error {
 
 	headers := fmt.Sprintf(
 		"From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n",
-		from, to, subject,
+		mailhdr.Sanitize(from), mailhdr.Sanitize(to), mailhdr.Sanitize(subject),
 	)
 	msg := []byte(headers + body)
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matharnica/vakt/internal/shared/logsafe"
+	"github.com/matharnica/vakt/internal/shared/mailhdr"
 	"github.com/rs/zerolog/log"
 )
 
@@ -438,7 +439,7 @@ func (s *DigestService) send(to, subject, htmlBody string) error {
 
 	headers := fmt.Sprintf(
 		"From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n",
-		s.smtp.From, to, subject,
+		mailhdr.Sanitize(s.smtp.From), mailhdr.Sanitize(to), mailhdr.Sanitize(subject),
 	)
 	msg := []byte(headers + htmlBody)
 

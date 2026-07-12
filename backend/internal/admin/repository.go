@@ -8,10 +8,12 @@ import (
 	"crypto/x509/pkix"
 	"database/sql"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -321,8 +323,13 @@ func (r *Repository) GetOrgSAMLConfigPublic(ctx context.Context, orgID string) (
 		`SELECT org_id::text, entity_id, acs_url, idp_metadata, cert_pem, enabled, jit_provisioning
 		 FROM org_saml_configs WHERE org_id = $1::uuid`, orgID,
 	).Scan(&c.OrgID, &c.EntityID, &c.ACSURL, &c.IDPMetadata, &c.CertPEM, &c.Enabled, &c.JITProvisioning)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil // no SAML config for this org — a normal, expected state
+	}
 	if err != nil {
-		return nil, nil //nolint:nilerr
+		// S124-5 (TD-01): a transient DB error must NOT be treated as "SSO not
+		// configured" — that fails open (SSO silently disabled). Propagate it.
+		return nil, fmt.Errorf("get org saml config: %w", err)
 	}
 	return &c, nil
 }
@@ -397,8 +404,12 @@ func (r *Repository) GetOrgOIDCConfig(ctx context.Context, orgID string) (*OrgOI
 		`SELECT org_id::text, provider_url, client_id, enabled, created_at, updated_at
 		 FROM org_oidc_configs WHERE org_id = $1::uuid`, orgID,
 	).Scan(&c.OrgID, &c.ProviderURL, &c.ClientID, &c.Enabled, &c.CreatedAt, &c.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil // no OIDC config for this org — a normal, expected state
+	}
 	if err != nil {
-		return nil, nil //nolint:nilerr
+		// S124-5 (TD-01): propagate a real DB error instead of failing open.
+		return nil, fmt.Errorf("get org oidc config: %w", err)
 	}
 	return &c, nil
 }

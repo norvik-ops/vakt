@@ -22,6 +22,20 @@ SELECT id::text, org_id::text, review_date::text, review_type, participant_ids,
        next_review_date::text, approved_by::text, approved_at, created_by::text, created_at, updated_at
 FROM ck_management_reviews`
 
+// managementReviewReturningCols is the RETURNING clause for UPDATE/INSERT so the
+// mutated row is read back in ONE statement. S124-7 (N2): the previous
+// `WITH upd AS (UPDATE … RETURNING id) SELECT … JOIN upd` pattern is broken —
+// every WITH sub-statement and the outer SELECT share one snapshot, so the outer
+// scan reads the PRE-update row (Approve returned status:"draft", approved_by:null
+// despite persisting correctly). RETURNING sees the post-update values directly.
+// Same column order as scanManagementReview / managementReviewSelectCols.
+const managementReviewReturningCols = ` RETURNING
+       id::text, org_id::text, review_date::text, review_type, participant_ids,
+       status, audit_findings_summary, incident_summary, risk_status_summary,
+       previous_actions_status, kpi_snapshot, context_changes, customer_feedback,
+       improvement_decisions, resource_decisions, isms_changes,
+       next_review_date::text, approved_by::text, approved_at, created_by::text, created_at, updated_at`
+
 // scanManagementReview scans a single row into a ManagementReview.
 func scanManagementReview(row pgx.Row) (ManagementReview, error) {
 	var mr ManagementReview
@@ -168,8 +182,7 @@ func (r *Repository) UpdateManagementReviewInputs(ctx context.Context, orgID, id
 		kpiSnapshot = nil
 	}
 
-	q := `WITH upd AS (
-    UPDATE ck_management_reviews SET
+	q := `UPDATE ck_management_reviews SET
         audit_findings_summary  = $3,
         incident_summary        = $4,
         risk_status_summary     = $5,
@@ -178,16 +191,7 @@ func (r *Repository) UpdateManagementReviewInputs(ctx context.Context, orgID, id
         context_changes         = $8,
         customer_feedback       = $9,
         updated_at              = NOW()
-    WHERE org_id = $1 AND id = $2::uuid
-    RETURNING id
-)
-SELECT mr.id::text, mr.org_id::text, mr.review_date::text, mr.review_type, mr.participant_ids,
-       mr.status, mr.audit_findings_summary, mr.incident_summary, mr.risk_status_summary,
-       mr.previous_actions_status, mr.kpi_snapshot, mr.context_changes, mr.customer_feedback,
-       mr.improvement_decisions, mr.resource_decisions, mr.isms_changes,
-       mr.next_review_date::text, mr.approved_by::text, mr.approved_at, mr.created_by::text, mr.created_at, mr.updated_at
-FROM ck_management_reviews mr
-JOIN upd ON mr.id = upd.id`
+    WHERE org_id = $1 AND id = $2::uuid` + managementReviewReturningCols
 
 	row := r.db.QueryRow(ctx, q, orgID, id,
 		in.AuditFindingsSummary, in.IncidentSummary, in.RiskStatusSummary,
@@ -215,23 +219,13 @@ func (r *Repository) UpdateManagementReviewOutputs(ctx context.Context, orgID, i
 		nextReviewDate = in.NextReviewDate
 	}
 
-	q := `WITH upd AS (
-    UPDATE ck_management_reviews SET
+	q := `UPDATE ck_management_reviews SET
         improvement_decisions = $3,
         resource_decisions    = $4,
         isms_changes          = $5,
         next_review_date      = $6::date,
         updated_at            = NOW()
-    WHERE org_id = $1 AND id = $2::uuid
-    RETURNING id
-)
-SELECT mr.id::text, mr.org_id::text, mr.review_date::text, mr.review_type, mr.participant_ids,
-       mr.status, mr.audit_findings_summary, mr.incident_summary, mr.risk_status_summary,
-       mr.previous_actions_status, mr.kpi_snapshot, mr.context_changes, mr.customer_feedback,
-       mr.improvement_decisions, mr.resource_decisions, mr.isms_changes,
-       mr.next_review_date::text, mr.approved_by::text, mr.approved_at, mr.created_by::text, mr.created_at, mr.updated_at
-FROM ck_management_reviews mr
-JOIN upd ON mr.id = upd.id`
+    WHERE org_id = $1 AND id = $2::uuid` + managementReviewReturningCols
 
 	row := r.db.QueryRow(ctx, q, orgID, id,
 		improvementDecisions, in.ResourceDecisions, in.ISMSChanges, nextReviewDate,
@@ -250,22 +244,12 @@ JOIN upd ON mr.id = upd.id`
 func (r *Repository) ApproveManagementReview(ctx context.Context, orgID, id, approverID string) (ManagementReview, error) {
 	now := time.Now().UTC()
 
-	q := `WITH upd AS (
-    UPDATE ck_management_reviews SET
+	q := `UPDATE ck_management_reviews SET
         status      = 'approved',
         approved_by = $3::uuid,
         approved_at = $4,
         updated_at  = NOW()
-    WHERE org_id = $1 AND id = $2::uuid
-    RETURNING id
-)
-SELECT mr.id::text, mr.org_id::text, mr.review_date::text, mr.review_type, mr.participant_ids,
-       mr.status, mr.audit_findings_summary, mr.incident_summary, mr.risk_status_summary,
-       mr.previous_actions_status, mr.kpi_snapshot, mr.context_changes, mr.customer_feedback,
-       mr.improvement_decisions, mr.resource_decisions, mr.isms_changes,
-       mr.next_review_date::text, mr.approved_by::text, mr.approved_at, mr.created_by::text, mr.created_at, mr.updated_at
-FROM ck_management_reviews mr
-JOIN upd ON mr.id = upd.id`
+    WHERE org_id = $1 AND id = $2::uuid` + managementReviewReturningCols
 
 	row := r.db.QueryRow(ctx, q, orgID, id, approverID, now)
 	mr, err := scanManagementReview(row)

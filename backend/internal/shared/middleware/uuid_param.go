@@ -20,6 +20,20 @@ var uuidParamNames = map[string]bool{
 	"cid": true, // control id
 	"fid": true, // framework id
 	"eid": true, // employee/entity id
+	// S125-7 (N5/D13): additional resource-UUID params that were unguarded, so a
+	// malformed value hit ::uuid and produced 500 instead of 400. All verified as
+	// resource IDs (never a slug/ref/name). Non-UUID params keep distinct names
+	// (see the doc comment above) and are deliberately excluded.
+	"project_id":  true, // vaktvault project id
+	"env_id":      true, // vaktvault environment id
+	"result_id":   true, // vaktscan scan-result id
+	"schedule_id": true, // vaktscan schedule id
+	"rid":         true, // vakthr role id
+	"control_id":  true, // vaktcomply control id (distinct from :control_ref)
+	"tid":         true, // task id
+	"mid":         true, // measure id
+	"qid":         true, // quiz question id
+	"aid":         true, // quiz answer id
 }
 
 // ValidateUUIDParams rejects a request whose UUID-typed path param (see

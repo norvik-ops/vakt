@@ -85,6 +85,9 @@ func asynqRedisOpt(redisURL string) asynq.RedisClientOpt {
 		}
 	}
 	// Bare host:port (no scheme) — pass through directly.
+	// redisauth-ok: a bare host:port carries no password by construction; an
+	// auth-protected Redis must be configured via the redis://:pass@host form
+	// (the shipped compose default), which takes the ParseURL branch above.
 	return asynq.RedisClientOpt{Addr: redisURL}
 }
 

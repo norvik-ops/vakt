@@ -439,7 +439,8 @@ func (q *Queries) GetLatestSPSBOM(ctx context.Context, arg GetLatestSPSBOMParams
 
 const getSPAsset = `-- name: GetSPAsset :one
 SELECT id, org_id, name, type, criticality, tags, owner_id, external_url,
-       created_at, updated_at
+       created_at, updated_at,
+       COALESCE(classification, '')::text AS classification
 FROM vb_assets
 WHERE id = $1 AND org_id = $2 AND is_deleted = FALSE
 `
@@ -450,16 +451,17 @@ type GetSPAssetParams struct {
 }
 
 type GetSPAssetRow struct {
-	ID          string             `json:"id"`
-	OrgID       string             `json:"org_id"`
-	Name        string             `json:"name"`
-	Type        string             `json:"type"`
-	Criticality string             `json:"criticality"`
-	Tags        []string           `json:"tags"`
-	OwnerID     pgtype.UUID        `json:"owner_id"`
-	ExternalUrl pgtype.Text        `json:"external_url"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID             string             `json:"id"`
+	OrgID          string             `json:"org_id"`
+	Name           string             `json:"name"`
+	Type           string             `json:"type"`
+	Criticality    string             `json:"criticality"`
+	Tags           []string           `json:"tags"`
+	OwnerID        pgtype.UUID        `json:"owner_id"`
+	ExternalUrl    pgtype.Text        `json:"external_url"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	Classification string             `json:"classification"`
 }
 
 func (q *Queries) GetSPAsset(ctx context.Context, arg GetSPAssetParams) (GetSPAssetRow, error) {
@@ -476,13 +478,15 @@ func (q *Queries) GetSPAsset(ctx context.Context, arg GetSPAssetParams) (GetSPAs
 		&i.ExternalUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Classification,
 	)
 	return i, err
 }
 
 const getSPAssetByName = `-- name: GetSPAssetByName :one
 SELECT id, org_id, name, type, criticality, tags, owner_id, external_url,
-       created_at, updated_at
+       created_at, updated_at,
+       COALESCE(classification, '')::text AS classification
 FROM vb_assets
 WHERE org_id = $1 AND lower(name) = lower($2::text) AND is_deleted = FALSE
 LIMIT 1
@@ -494,16 +498,17 @@ type GetSPAssetByNameParams struct {
 }
 
 type GetSPAssetByNameRow struct {
-	ID          string             `json:"id"`
-	OrgID       string             `json:"org_id"`
-	Name        string             `json:"name"`
-	Type        string             `json:"type"`
-	Criticality string             `json:"criticality"`
-	Tags        []string           `json:"tags"`
-	OwnerID     pgtype.UUID        `json:"owner_id"`
-	ExternalUrl pgtype.Text        `json:"external_url"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID             string             `json:"id"`
+	OrgID          string             `json:"org_id"`
+	Name           string             `json:"name"`
+	Type           string             `json:"type"`
+	Criticality    string             `json:"criticality"`
+	Tags           []string           `json:"tags"`
+	OwnerID        pgtype.UUID        `json:"owner_id"`
+	ExternalUrl    pgtype.Text        `json:"external_url"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	Classification string             `json:"classification"`
 }
 
 func (q *Queries) GetSPAssetByName(ctx context.Context, arg GetSPAssetByNameParams) (GetSPAssetByNameRow, error) {
@@ -520,6 +525,7 @@ func (q *Queries) GetSPAssetByName(ctx context.Context, arg GetSPAssetByNamePara
 		&i.ExternalUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Classification,
 	)
 	return i, err
 }
@@ -870,7 +876,8 @@ func (q *Queries) InsertSPComponent(ctx context.Context, arg InsertSPComponentPa
 
 const listSPAssets = `-- name: ListSPAssets :many
 SELECT id, org_id, name, type, criticality, tags, owner_id, external_url,
-       created_at, updated_at
+       created_at, updated_at,
+       COALESCE(classification, '')::text AS classification
 FROM vb_assets
 WHERE org_id = $1 AND is_deleted = FALSE
   AND ($4::text IS NULL OR $4::text = ANY(tags))
@@ -886,16 +893,17 @@ type ListSPAssetsParams struct {
 }
 
 type ListSPAssetsRow struct {
-	ID          string             `json:"id"`
-	OrgID       string             `json:"org_id"`
-	Name        string             `json:"name"`
-	Type        string             `json:"type"`
-	Criticality string             `json:"criticality"`
-	Tags        []string           `json:"tags"`
-	OwnerID     pgtype.UUID        `json:"owner_id"`
-	ExternalUrl pgtype.Text        `json:"external_url"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID             string             `json:"id"`
+	OrgID          string             `json:"org_id"`
+	Name           string             `json:"name"`
+	Type           string             `json:"type"`
+	Criticality    string             `json:"criticality"`
+	Tags           []string           `json:"tags"`
+	OwnerID        pgtype.UUID        `json:"owner_id"`
+	ExternalUrl    pgtype.Text        `json:"external_url"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	Classification string             `json:"classification"`
 }
 
 func (q *Queries) ListSPAssets(ctx context.Context, arg ListSPAssetsParams) ([]ListSPAssetsRow, error) {
@@ -923,6 +931,7 @@ func (q *Queries) ListSPAssets(ctx context.Context, arg ListSPAssetsParams) ([]L
 			&i.ExternalUrl,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Classification,
 		); err != nil {
 			return nil, err
 		}

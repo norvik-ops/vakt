@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/matharnica/vakt/internal/shared/httputil"
 	"net/http"
 	"time"
 )
@@ -50,7 +51,10 @@ func (e AuditEntry) toMap() map[string]any {
 }
 
 // httpClient is the shared HTTP client with a 10-second timeout.
-var httpClient = &http.Client{Timeout: 10 * time.Second}
+// S124-2 (SA15-01): GuardedClient closes the DNS-rebind TOCTOU (validate URL at
+// save, rebind at send). allowPrivate=true because an on-prem SIEM inside the
+// customer LAN is a legitimate, opted-in target for a self-hosted product.
+var httpClient = httputil.GuardedClient(10*time.Second, true)
 
 // ── Splunk HEC ────────────────────────────────────────────────────────────────
 

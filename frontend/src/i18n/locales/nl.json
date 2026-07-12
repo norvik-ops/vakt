@@ -2710,7 +2710,12 @@
     "passwordStrengthVeryWeak": "Zeer zwak",
     "passwordStrengthWeak": "Zwak",
     "passwordStrengthMedium": "Gemiddeld",
-    "passwordStrengthStrong": "Sterk"
+    "passwordStrengthStrong": "Sterk",
+    "mfaPrompt": "Voer de 6-cijferige code uit je authenticator-app in om het aanmelden te voltooien.",
+    "mfaCodeLabel": "Authenticatiecode",
+    "mfaVerify": "Verifiëren",
+    "mfaBack": "Terug naar aanmelden",
+    "mfaInvalidCode": "Ongeldige of verlopen code"
   },
   "settings": {
     "alerting": {

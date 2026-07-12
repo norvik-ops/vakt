@@ -275,6 +275,7 @@ func (r *Repository) GetRiskFull(ctx context.Context, orgID, id string) (*Risk, 
 		       treatment_status, residual_likelihood, residual_impact,
 		       inherent_likelihood, inherent_impact,
 		       risk_accepted_by, risk_accepted_at, risk_acceptance_justification,
+		       COALESCE(ai_narrative, ''),
 		       created_at, updated_at
 		FROM ck_risks
 		WHERE id = $1 AND org_id = $2`,
@@ -286,6 +287,7 @@ func (r *Repository) GetRiskFull(ctx context.Context, orgID, id string) (*Risk, 
 		&f.TreatmentStatus, &f.ResidualLikelihood, &f.ResidualImpact,
 		&f.InherentLikelihood, &f.InherentImpact,
 		&f.RiskAcceptedBy, &f.RiskAcceptedAt, &f.RiskAcceptanceJustification,
+		&f.AINarrative,
 		&f.CreatedAt, &f.UpdatedAt,
 	)
 	if err != nil {

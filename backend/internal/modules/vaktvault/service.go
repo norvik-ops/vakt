@@ -24,6 +24,7 @@ import (
 	"github.com/matharnica/vakt/internal/db"
 	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/shared/platform/events"
+	"github.com/matharnica/vakt/internal/shared/queuemetrics"
 )
 
 // Service handles SecVault business logic.
@@ -595,6 +596,7 @@ func (s *Service) RotateSecret(ctx context.Context, orgID, envID, key string, in
 	if s.queue != nil {
 		if task, taskErr := crossevidence.NewRecordEvidenceTask(events.SecretRotated(orgID, key)); taskErr == nil {
 			if _, enqErr := s.queue.EnqueueContext(ctx, task); enqErr != nil {
+				queuemetrics.RecordError(crossevidence.Queue)
 				log.Warn().Err(enqErr).Str("org_id", orgID).Msg("vaktvault: secret-rotation evidence enqueue failed (evidence may be missed on Redis outage)")
 			}
 		}
@@ -684,6 +686,7 @@ func (s *Service) TriggerGitScan(ctx context.Context, orgID string, input Trigge
 		payloadBytes, _ := json.Marshal(p)
 		task := asynq.NewTask(TaskGitScan, payloadBytes)
 		if _, err := s.queue.EnqueueContext(ctx, task); err != nil {
+			queuemetrics.RecordError("default")
 			return nil, fmt.Errorf("enqueue git scan: %w", err)
 		}
 	}

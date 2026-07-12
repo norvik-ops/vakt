@@ -21,6 +21,7 @@ import (
 	"github.com/matharnica/vakt/internal/modules/vaktaware"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/risk"
+	"github.com/matharnica/vakt/internal/shared/mailhdr"
 )
 
 // taskControlOwnerReminder is the Asynq task name for the daily control-owner reminder.
@@ -363,7 +364,7 @@ func handleControlOwnerReminder(cfg *config.Config, pool *pgxpool.Pool) asynq.Ha
 
 			headers := fmt.Sprintf(
 				"From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n",
-				cfg.SMTPFrom, r.Responsible, subject,
+				mailhdr.Sanitize(cfg.SMTPFrom), mailhdr.Sanitize(r.Responsible), mailhdr.Sanitize(subject),
 			)
 			msg := []byte(headers + buf.String())
 

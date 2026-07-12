@@ -16,6 +16,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/mailhdr"
 )
 
 // TaskProcessScheduledReports is the Asynq task type for the daily report cron.
@@ -442,9 +444,9 @@ func (s *Service) sendHTML(to, subject, htmlBody string) error {
 	headers := strings.Join([]string{
 		"MIME-Version: 1.0",
 		"Content-Type: text/html; charset=UTF-8",
-		"From: " + s.smtp.From,
-		"To: " + to,
-		"Subject: " + subject,
+		"From: " + mailhdr.Sanitize(s.smtp.From),
+		"To: " + mailhdr.Sanitize(to),
+		"Subject: " + mailhdr.Sanitize(subject),
 		"",
 		"",
 	}, "\r\n")
@@ -465,9 +467,9 @@ func (s *Service) sendWithAttachment(to, subject, htmlBody, filename string, dat
 	// Headers
 	fmt.Fprintf(&buf, "MIME-Version: 1.0\r\n")
 	fmt.Fprintf(&buf, "Content-Type: multipart/mixed; boundary=\"%s\"\r\n", boundary)
-	fmt.Fprintf(&buf, "From: %s\r\n", s.smtp.From)
-	fmt.Fprintf(&buf, "To: %s\r\n", to)
-	fmt.Fprintf(&buf, "Subject: %s\r\n", subject)
+	fmt.Fprintf(&buf, "From: %s\r\n", mailhdr.Sanitize(s.smtp.From))
+	fmt.Fprintf(&buf, "To: %s\r\n", mailhdr.Sanitize(to))
+	fmt.Fprintf(&buf, "Subject: %s\r\n", mailhdr.Sanitize(subject))
 	fmt.Fprintf(&buf, "\r\n")
 
 	// HTML part

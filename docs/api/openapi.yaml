@@ -240,8 +240,18 @@ components:
 
     LoginResponse:
       type: object
-      required: [access_token, refresh_token, expires_in, user]
+      # access_token/refresh_token/expires_in are absent in the two-stage MFA
+      # response (S124-1): when the account has TOTP enabled, login returns
+      # mfa_required=true + mfa_token instead of a session. Only user is always set.
+      required: [user]
       properties:
+        mfa_required:
+          type: boolean
+          description: True when the account has MFA enabled — no session is issued
+            yet; POST mfa_token + a TOTP/backup code to /auth/2fa/login-verify.
+        mfa_token:
+          type: string
+          description: Short-lived mfa_pending token (only present when mfa_required).
         access_token:
           type: string
           description: Paseto v4 bearer token (lebt 1 Stunde)
@@ -3564,6 +3574,19 @@ paths:
   /vaktcomply/controls/export/xlsx:
     get:
       summary: Export all controls as XLSX
+      tags: [vaktcomply]
+      responses:
+        '200':
+          description: XLSX file
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+
+  /vaktcomply/policies/export/xlsx:
+    get:
+      summary: Export all policies as XLSX
       tags: [vaktcomply]
       responses:
         '200':
@@ -9062,24 +9085,6 @@ paths:
         '403':
           description: Insufficient permissions
 
-  /vaktcomply/isms-scope/export-pdf:
-    get:
-      summary: Export the current ISMS scope as PDF (Pro)
-      operationId: exportISMSScopePDF
-      tags: [vaktcomply]
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: PDF document
-          content:
-            application/pdf:
-              schema:
-                type: string
-                format: binary
-        '501':
-          description: Not implemented
-
   /vaktcomply/isms-scope:
     get:
       summary: Get the current ISMS scope document
@@ -9464,28 +9469,6 @@ paths:
               schema:
                 type: array
                 items: { type: string, format: uuid }
-
-  /vaktcomply/bsi-modeling/export-pdf:
-    get:
-      summary: Export BSI modeling matrix as PDF (Pro)
-      operationId: exportBSIModelingPDF
-      tags: [vaktcomply]
-      security:
-        - BearerAuth: []
-      responses:
-        '501':
-          description: Not implemented
-
-  /vaktcomply/bsi-modeling/export-xlsx:
-    get:
-      summary: Export BSI modeling matrix as XLSX (Pro)
-      operationId: exportBSIModelingXLSX
-      tags: [vaktcomply]
-      security:
-        - BearerAuth: []
-      responses:
-        '501':
-          description: Not implemented
 
   /vaktcomply/bsi-modeling:
     get:
@@ -10802,57 +10785,6 @@ paths:
       responses:
         '204':
           description: Deleted
-
-  /vaktcomply/pentests/{id}/report:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string, format: uuid }
-    post:
-      summary: Upload a pentest report file (Pro)
-      operationId: uploadPentestReport
-      tags: [vaktcomply]
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file:
-                  type: string
-                  format: binary
-      responses:
-        '501':
-          description: Not implemented
-
-  /vaktcomply/pentests/{id}/link-evidence:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string, format: uuid }
-    post:
-      summary: Link a pentest record as evidence to a control
-      operationId: linkPentestAsEvidence
-      tags: [vaktcomply]
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [control_id]
-              properties:
-                control_id: { type: string, format: uuid }
-      responses:
-        '501':
-          description: Not implemented
 
   # ── Sprint 61: ISMS KPI Dashboard (S61-7) ─────────────────────────────────
 

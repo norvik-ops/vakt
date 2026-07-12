@@ -167,7 +167,7 @@ func (s *Service) OIDCLogin(ctx context.Context, cfg *config.Config, provider, c
 		return nil, fmt.Errorf("OIDC: provision user: %w", err)
 	}
 
-	authResp, tokenErr := s.issueTokenPair(ctx, userID, orgID, roles, deviceHint)
+	authResp, tokenErr := s.issueTokenPair(ctx, userID, orgID, roles, deviceHint, true /* SSO: IdP-authenticated */)
 	if tokenErr != nil {
 		return authResp, tokenErr
 	}
@@ -234,7 +234,7 @@ func (s *Service) SAMLLogin(ctx context.Context, cfg *config.Config, samlRespons
 		return nil, fmt.Errorf("SAML: provision user: %w", err)
 	}
 
-	authResp, tokErr := s.issueTokenPair(ctx, userID, orgID, roles, deviceHint)
+	authResp, tokErr := s.issueTokenPair(ctx, userID, orgID, roles, deviceHint, true /* SSO: IdP-authenticated */)
 	if tokErr == nil {
 		// S22-3: erfolgreicher SAML-Login.
 		s.recordLogin(ctx, orgID, userID, samlResp.Email, deviceHint, "saml", "ok")
@@ -252,7 +252,7 @@ func (s *Service) provisionSAMLUser(ctx context.Context, orgID, nameID, email, d
 		s.recordLogin(ctx, orgID, "", email, deviceHint, "saml_direct", "provision_failed")
 		return nil, err
 	}
-	authResp, tokErr := s.issueTokenPair(ctx, userID, resolvedOrgID, roles, deviceHint)
+	authResp, tokErr := s.issueTokenPair(ctx, userID, resolvedOrgID, roles, deviceHint, true /* SSO: IdP-authenticated */)
 	if tokErr == nil {
 		s.recordLogin(ctx, resolvedOrgID, userID, email, deviceHint, "saml_direct", "ok")
 	}

@@ -291,6 +291,16 @@ func (h *Handler) Login(c echo.Context) error {
 	// expires naturally without any explicit clear needed.
 	h.service.clearLoginFailures(c.Request().Context(), clientIP, body.Email)
 
+	// S124-1 (SA14-01): two-stage login. When the account has TOTP enabled, Login
+	// returns no session — only a short-lived mfa_pending token. The client must
+	// POST it plus a TOTP/backup code to /auth/2fa/login-verify. Do NOT set the
+	// access cookie here; a stolen password must not yield a session.
+	if resp.MFARequired {
+		// resp already carries {mfa_required, mfa_token, user}; the omitempty tags
+		// keep access_token/refresh_token/expires_in out of the body.
+		return c.JSON(http.StatusOK, resp)
+	}
+
 	// Set access token as httpOnly cookie (XSS protection).
 	// SameSite=Strict + double-submit CSRF token cookie prevent CSRF.
 	secure := CookieSecure(c)
@@ -635,11 +645,6 @@ func (h *Handler) SAMLMetadata(c echo.Context) error {
 	}
 
 	return c.Blob(http.StatusOK, "application/xml", xmlBody)
-}
-
-// SAMLACS handles POST /api/v1/auth/saml/acs (assertion consumer service, alias).
-func (h *Handler) SAMLACS(c echo.Context) error {
-	return h.SAMLCallback(c)
 }
 
 // RequestPasswordReset handles POST /api/v1/auth/password-reset/request.

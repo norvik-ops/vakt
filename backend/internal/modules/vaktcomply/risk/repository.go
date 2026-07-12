@@ -103,6 +103,7 @@ type riskFields struct {
 	RiskAcceptedBy              pgtype.UUID
 	RiskAcceptedAt              pgtype.Timestamptz
 	RiskAcceptanceJustification pgtype.Text
+	AINarrative                 string // S125 (DB-02): written by AI risk-narrative, was never read back
 	CreatedAt, UpdatedAt        pgtype.Timestamptz
 }
 
@@ -143,6 +144,7 @@ func riskFromFields(f riskFields) Risk {
 	if f.RiskAcceptanceJustification.Valid {
 		r.RiskAcceptanceJustification = f.RiskAcceptanceJustification.String
 	}
+	r.AINarrative = f.AINarrative
 	r.ComputeScores()
 	return r
 }

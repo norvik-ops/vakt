@@ -19,6 +19,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/matharnica/vakt/internal/shared/audit"
+	"github.com/matharnica/vakt/internal/shared/queuemetrics"
 )
 
 // Handler serves Prometheus-format metrics.
@@ -260,6 +261,22 @@ func (h *Handler) ServeMetrics(c echo.Context) error {
 	fmt.Fprintln(w, "# HELP vakt_audit_forward_failed Audit events that failed to deliver to the sink")
 	fmt.Fprintln(w, "# TYPE vakt_audit_forward_failed counter")
 	fmt.Fprintf(w, "vakt_audit_forward_failed %d\n", auditFailed)
+
+	// S122-B3 (INC-01): producer-side Asynq enqueue failures, keyed by queue.
+	// In-process (the failure is often "cannot reach Redis", so it cannot be
+	// recorded into Redis). A non-zero value means jobs were accepted by the API
+	// but never queued — the class the NOAUTH bug produced silently.
+	fmt.Fprintln(w, "# HELP vakt_asynq_enqueue_errors_total Asynq enqueue failures on the producer (API) side")
+	fmt.Fprintln(w, "# TYPE vakt_asynq_enqueue_errors_total counter")
+	enqErrs := queuemetrics.Snapshot()
+	if len(enqErrs) == 0 {
+		// Emit a zero series so the metric always exists and the Zabbix trigger
+		// has something to evaluate against before the first failure.
+		fmt.Fprintf(w, "vakt_asynq_enqueue_errors_total{queue=%q} 0\n", "default")
+	}
+	for queue, n := range enqErrs {
+		fmt.Fprintf(w, "vakt_asynq_enqueue_errors_total{queue=%q} %d\n", queue, n)
+	}
 
 	return nil
 }

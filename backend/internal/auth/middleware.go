@@ -127,6 +127,7 @@ func PasetoMiddleware(key paseto.V4SymmetricKey, db *pgxpool.Pool, rdb ...*redis
 			c.Set("user_id", claims.UserID)
 			c.Set("org_id", claims.OrgID)
 			c.Set("roles", claims.Roles)
+			c.Set("mfa", claims.MFA) // S124-1: proven-second-factor bit for MFAEnforce
 			c.Set("token_raw", tokenStr)
 			return next(c)
 		}
@@ -207,6 +208,7 @@ func AuthMiddleware(key paseto.V4SymmetricKey, db *pgxpool.Pool, rdb ...*redis.C
 			c.Set("user_id", claims.UserID)
 			c.Set("org_id", claims.OrgID)
 			c.Set("roles", claims.Roles)
+			c.Set("mfa", claims.MFA) // S124-1: proven-second-factor bit for MFAEnforce
 			c.Set("token_raw", tokenStr)
 			return next(c)
 		}
@@ -289,8 +291,21 @@ func mfaEnforceMiddleware(db mfaDB) echo.MiddlewareFunc {
 				`SELECT enabled FROM totp_secrets WHERE user_id = $1::uuid`, userID,
 			).Scan(&totpEnabled)
 			if err != nil || !totpEnabled {
+				// Not enrolled — the exempt paths (setup/confirm) let the user enrol.
 				return c.JSON(http.StatusForbidden, map[string]string{
 					"error": "MFA erforderlich",
+					"code":  "MFA_REQUIRED",
+				})
+			}
+
+			// S124-1 (SA14-01): enrolment alone is NOT enough. The CURRENT session
+			// must have proved the second factor (mfa=true claim from the two-stage
+			// login). A password-only session — e.g. from a stolen password against
+			// an account whose token predates MFA proof — has mfa=false and is
+			// rejected here, forcing it through /auth/2fa/login-verify.
+			if proven, _ := c.Get("mfa").(bool); !proven {
+				return c.JSON(http.StatusForbidden, map[string]string{
+					"error": "MFA verification required for this session",
 					"code":  "MFA_REQUIRED",
 				})
 			}

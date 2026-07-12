@@ -21,5 +21,9 @@ import "github.com/labstack/echo/v4"
 //	GET /api/v1/openapi.yaml — OpenAPI 3.0.3 YAML spec (includes BearerAuth securityScheme)
 func Register(e *echo.Echo) {
 	e.GET("/api/docs", ServeSwaggerUI)
+	// S124-8 (N1): the Swagger UI HTML references these two self-hosted assets,
+	// but they were never routed — so /api/docs rendered blank (unstyled, no JS).
+	e.GET("/api/docs/swagger-ui.css", ServeSwaggerCSS)
+	e.GET("/api/docs/swagger-ui-bundle.js", ServeSwaggerJS)
 	e.GET("/api/v1/openapi.yaml", ServeOpenAPISpec)
 }

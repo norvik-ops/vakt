@@ -2710,7 +2710,12 @@
     "passwordStrengthVeryWeak": "Très faible",
     "passwordStrengthWeak": "Faible",
     "passwordStrengthMedium": "Moyen",
-    "passwordStrengthStrong": "Fort"
+    "passwordStrengthStrong": "Fort",
+    "mfaPrompt": "Saisissez le code à 6 chiffres de votre application d'authentification pour terminer la connexion.",
+    "mfaCodeLabel": "Code d'authentification",
+    "mfaVerify": "Vérifier",
+    "mfaBack": "Retour à la connexion",
+    "mfaInvalidCode": "Code invalide ou expiré"
   },
   "settings": {
     "alerting": {

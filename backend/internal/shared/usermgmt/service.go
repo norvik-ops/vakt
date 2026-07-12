@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/matharnica/vakt/internal/shared/mailhdr"
 	"github.com/matharnica/vakt/internal/shared/password"
 )
 
@@ -416,7 +417,7 @@ Vakt Security Platform`, inviterEmail, link)
 
 	headers := fmt.Sprintf(
 		"From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n",
-		from, toEmail, subject,
+		mailhdr.Sanitize(from), mailhdr.Sanitize(toEmail), mailhdr.Sanitize(subject),
 	)
 	msg := []byte(headers + body)
 	addr := s.smtpCfg.Host + ":" + port

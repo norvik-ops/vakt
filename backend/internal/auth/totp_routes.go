@@ -25,6 +25,16 @@ func RegisterTOTP(g *echo.Group, db *pgxpool.Pool, masterKey []byte, authMiddlew
 	if len(rateLimiter) > 0 && rateLimiter[0] != nil {
 		middlewares = append(middlewares, rateLimiter[0])
 	}
+
+	// S124-1: /2fa/login-verify is the PUBLIC second stage of the two-stage login
+	// — the caller holds only an mfa_pending token, no session. It is NOT behind
+	// authMiddleware, but IS rate-limited (it is a TOTP brute-force surface).
+	var publicMW []echo.MiddlewareFunc
+	if len(rateLimiter) > 0 && rateLimiter[0] != nil {
+		publicMW = append(publicMW, rateLimiter[0])
+	}
+	g.POST("/2fa/login-verify", h.LoginVerify, publicMW...)
+
 	twoFA := g.Group("/2fa", middlewares...)
 	twoFA.GET("/status", h.Status)
 	twoFA.POST("/setup", h.Setup)

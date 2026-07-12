@@ -164,7 +164,7 @@ func (r *Repository) ListAssets(ctx context.Context, orgID string, page, limit i
 	for _, row := range rows {
 		out = append(out, assetFromFields(assetFields{
 			ID: row.ID, OrgID: row.OrgID, Name: row.Name, Type: row.Type,
-			Criticality: row.Criticality, Tags: row.Tags,
+			Criticality: row.Criticality, Classification: row.Classification, Tags: row.Tags,
 			OwnerID: row.OwnerID, ExternalUrl: row.ExternalUrl,
 			CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		}))
@@ -184,7 +184,7 @@ func (r *Repository) GetAsset(ctx context.Context, orgID, assetID string) (*Asse
 	}
 	tmp := []Asset{assetFromFields(assetFields{
 		ID: row.ID, OrgID: row.OrgID, Name: row.Name, Type: row.Type,
-		Criticality: row.Criticality, Tags: row.Tags,
+		Criticality: row.Criticality, Classification: row.Classification, Tags: row.Tags,
 		OwnerID: row.OwnerID, ExternalUrl: row.ExternalUrl,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	})}
@@ -204,7 +204,7 @@ func (r *Repository) GetAssetByName(ctx context.Context, orgID, name string) (*A
 	}
 	tmp := []Asset{assetFromFields(assetFields{
 		ID: row.ID, OrgID: row.OrgID, Name: row.Name, Type: row.Type,
-		Criticality: row.Criticality, Tags: row.Tags,
+		Criticality: row.Criticality, Classification: row.Classification, Tags: row.Tags,
 		OwnerID: row.OwnerID, ExternalUrl: row.ExternalUrl,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	})}

@@ -8,6 +8,8 @@ import (
 	"fmt"
 
 	"github.com/hibiken/asynq"
+
+	"github.com/matharnica/vakt/internal/shared/queuemetrics"
 )
 
 // Job type constants for SecPulse Asynq tasks.
@@ -81,7 +83,9 @@ func EnqueueSBOMGenerate(client *asynq.Client, payload SBOMGeneratePayload) erro
 		return fmt.Errorf("marshal SBOMGeneratePayload: %w", err)
 	}
 	task := asynq.NewTask(TaskSBOMGenerate, b)
-	_, err = client.Enqueue(task, asynq.Queue(QueueMaintenance))
+	if _, err = client.Enqueue(task, asynq.Queue(QueueMaintenance)); err != nil {
+		queuemetrics.RecordError(QueueMaintenance)
+	}
 	return err
 }
 
@@ -94,7 +98,9 @@ func EnqueueEOLCheck(client *asynq.Client, payload EOLCheckPayload) error {
 		return fmt.Errorf("marshal EOLCheckPayload: %w", err)
 	}
 	task := asynq.NewTask(TaskEOLCheck, b)
-	_, err = client.Enqueue(task, asynq.Queue(QueueMaintenance))
+	if _, err = client.Enqueue(task, asynq.Queue(QueueMaintenance)); err != nil {
+		queuemetrics.RecordError(QueueMaintenance)
+	}
 	return err
 }
 

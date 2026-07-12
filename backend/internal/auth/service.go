@@ -16,6 +16,7 @@ import (
 	"unicode"
 
 	"aidanwoods.dev/go-paseto"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matharnica/vakt/internal/shared/logsafe"
 	"github.com/redis/go-redis/v9"
@@ -133,6 +134,12 @@ type AuthResponse struct {
 	// ihn weiterhin korrekt mitsendet. Der Body-Wert ist von sowas unberührt
 	// und dient dem Frontend als zuverlässiger Fallback (client.ts).
 	CSRFToken string `json:"csrf_token,omitempty"`
+	// MFARequired signals the two-stage login (S124-1): the password was correct
+	// but the user has TOTP enabled, so no access/refresh token is issued yet.
+	// The client must POST MFAToken + a TOTP/backup code to /auth/2fa/login-verify.
+	MFARequired bool `json:"mfa_required,omitempty"`
+	// MFAToken is the short-lived mfa_pending token (only set when MFARequired).
+	MFAToken string `json:"mfa_token,omitempty"`
 }
 
 // AuthUser ist die minimal nötige User-Repräsentation für Frontend-State.
@@ -148,6 +155,9 @@ type refreshPayload struct {
 	UserID string   `json:"user_id"`
 	OrgID  string   `json:"org_id"`
 	Roles  []string `json:"roles"`
+	// MFA carries the proven-second-factor bit across refreshes so a session that
+	// completed MFA login keeps mfa=true after the 1h access token rotates (S124-1).
+	MFA bool `json:"mfa"`
 }
 
 // NewService constructs an auth Service.
@@ -284,7 +294,7 @@ func (s *Service) Register(ctx context.Context, input RegisterInput, deviceHint 
 	}
 
 	roles := []string{"Admin"}
-	resp, tokErr := s.issueTokenPair(ctx, userID, orgID, roles, deviceHint)
+	resp, tokErr := s.issueTokenPair(ctx, userID, orgID, roles, deviceHint, false)
 	if tokErr == nil {
 		// S22-3: Register-Flow = erfolgreicher Erst-Login.
 		s.recordLogin(ctx, orgID, userID, input.Email, deviceHint, "register", "ok")
@@ -381,7 +391,27 @@ func (s *Service) Login(ctx context.Context, email, password, deviceHint string)
 		log.Warn().Err(updateErr).Str("user_id", userID).Msg("failed to update last_login_at")
 	}
 
-	resp, err := s.issueTokenPair(ctx, userID, orgID, []string{roleName}, deviceHint)
+	// S124-1 (SA14-01): if the user has TOTP enabled, the correct password is only
+	// the FIRST factor. Do NOT issue a session yet — return a short-lived pending
+	// token; the client must complete /auth/2fa/login-verify with a TOTP/backup
+	// code to obtain a real (mfa=true) token pair. This is what makes a stolen
+	// password insufficient even when the account has MFA.
+	if enabled, mfaErr := s.userHasMFAEnabled(ctx, userID); mfaErr == nil && enabled {
+		pending, ptErr := IssueMFAPendingToken(s.key, userID, orgID)
+		if ptErr != nil {
+			return nil, fmt.Errorf("issue mfa pending token: %w", ptErr)
+		}
+		s.recordLogin(ctx, orgID, userID, email, deviceHint, "password", "mfa_pending")
+		return &AuthResponse{
+			MFARequired: true,
+			MFAToken:    pending,
+			User: AuthUser{
+				ID: userID, Email: email, DisplayName: displayName, Roles: []string{roleName},
+			},
+		}, nil
+	}
+
+	resp, err := s.issueTokenPair(ctx, userID, orgID, []string{roleName}, deviceHint, false)
 	if err != nil {
 		return nil, err
 	}
@@ -394,6 +424,56 @@ func (s *Service) Login(ctx context.Context, email, password, deviceHint string)
 	// Sprint 20 S20-6: Erfolgreichen Login persistieren.
 	s.recordLogin(ctx, orgID, userID, email, deviceHint, "password", "ok")
 	return resp, nil
+}
+
+// userHasMFAEnabled reports whether the user has a confirmed TOTP secret.
+func (s *Service) userHasMFAEnabled(ctx context.Context, userID string) (bool, error) {
+	var enabled bool
+	err := s.db.QueryRow(ctx,
+		`SELECT enabled FROM totp_secrets WHERE user_id = $1::uuid`, userID,
+	).Scan(&enabled)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return enabled, nil
+}
+
+// CompleteMFALogin finishes the two-stage login (S124-1): it validates the
+// mfa_pending token and issues a full, mfa=true token pair for that user. The
+// caller (TotpHandler.LoginVerify) is responsible for validating the TOTP/backup
+// code BEFORE calling this. deviceHint carries into the new session.
+func (s *Service) CompleteMFALogin(ctx context.Context, userID, orgID, deviceHint string) (*AuthResponse, error) {
+	var roleName string
+	err := s.db.QueryRow(ctx, `
+		SELECT r.name FROM org_members om
+		JOIN roles r ON r.id = om.role_id
+		WHERE om.user_id = $1::uuid AND om.org_id = $2::uuid
+		ORDER BY om.joined_at ASC LIMIT 1`,
+		userID, orgID,
+	).Scan(&roleName)
+	if err != nil {
+		return nil, fmt.Errorf("mfa login: role lookup: %w", err)
+	}
+	var email, displayName string
+	_ = s.db.QueryRow(ctx,
+		`SELECT email, COALESCE(display_name, email) FROM users WHERE id = $1::uuid`, userID,
+	).Scan(&email, &displayName)
+
+	resp, err := s.issueTokenPair(ctx, userID, orgID, []string{roleName}, deviceHint, true)
+	if err != nil {
+		return nil, err
+	}
+	resp.User = AuthUser{ID: userID, Email: email, DisplayName: displayName, Roles: []string{roleName}}
+	s.recordLogin(ctx, orgID, userID, email, deviceHint, "mfa", "ok")
+	return resp, nil
+}
+
+// ParseMFAPending validates an mfa_pending token using the service key.
+func (s *Service) ParseMFAPending(tokenStr string) (userID, orgID string, err error) {
+	return ParseMFAPendingToken(s.key, tokenStr)
 }
 
 // recordLogin schreibt einen login_history-Eintrag. Best-Effort — Fehler
@@ -457,7 +537,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*AuthRespon
 	// Remove old session row; the new one will be inserted by issueTokenPair.
 	_, _ = s.db.Exec(ctx, `DELETE FROM refresh_sessions WHERE token_hash = $1`, oldHash)
 
-	return s.issueTokenPair(ctx, payload.UserID, payload.OrgID, []string{roleName}, deviceHint)
+	return s.issueTokenPair(ctx, payload.UserID, payload.OrgID, []string{roleName}, deviceHint, payload.MFA)
 }
 
 // pwVersionKey returns the Redis key used to track a user's password version.
@@ -491,9 +571,9 @@ func sha256Hex(s string) string {
 // issueTokenPair generates an access + refresh token pair, stores the refresh
 // token in Redis, and records the session in refresh_sessions for per-device
 // revocation. deviceHint should be the User-Agent header truncated to 120 chars.
-func (s *Service) issueTokenPair(ctx context.Context, userID, orgID string, roles []string, deviceHint string) (*AuthResponse, error) {
+func (s *Service) issueTokenPair(ctx context.Context, userID, orgID string, roles []string, deviceHint string, mfa bool) (*AuthResponse, error) {
 	pwVersion := s.currentPwVersion(ctx, userID)
-	claims := Claims{UserID: userID, OrgID: orgID, Roles: roles, PwVersion: pwVersion}
+	claims := Claims{UserID: userID, OrgID: orgID, Roles: roles, PwVersion: pwVersion, MFA: mfa}
 
 	accessToken, err := IssueAccessToken(s.key, claims)
 	if err != nil {
@@ -505,7 +585,7 @@ func (s *Service) issueTokenPair(ctx context.Context, userID, orgID string, role
 		return nil, fmt.Errorf("issue refresh token: %w", err)
 	}
 
-	payload := refreshPayload{UserID: userID, OrgID: orgID, Roles: roles}
+	payload := refreshPayload{UserID: userID, OrgID: orgID, Roles: roles, MFA: mfa}
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("marshal refresh payload: %w", err)
@@ -663,18 +743,29 @@ func (s *Service) recordIPLoginFailure(ctx context.Context, ip string) {
 	log.Debug().Str("ip", ip).Int64("count", incrCmd.Val()).Msg("login: recorded IP failure")
 }
 
-// RevokeToken blacklists an access token in Redis so that AuthMiddleware will
-// reject it for the remainder of its natural lifetime (AccessTokenTTL).
-// If Redis is unavailable, the token hash is written to the PostgreSQL fallback
-// table (token_deny_list_fallback) so that revocation survives a Redis outage.
+// RevokeToken blacklists an access token so AuthMiddleware rejects it for the
+// remainder of its natural lifetime (AccessTokenTTL).
+//
+// S124-5 (SA14-02): the revocation is ALWAYS dual-written to Redis AND the
+// PostgreSQL fallback table — not only to PG when the Redis write fails. The old
+// behaviour left a fail-open window: if Redis accepted the write at logout but
+// was then unavailable when the token was later presented, checkDenyList fell
+// back to a PG table that had no record, so the revoked token was accepted for
+// up to AccessTokenTTL. Dual-writing closes that window; the PG write is
+// best-effort (revokeInFallback logs its own errors and no-ops without a db).
 func (s *Service) RevokeToken(ctx context.Context, rawToken string) error {
 	rCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	key := tokenDenyKey(rawToken)
+	expiresAt := time.Now().Add(AccessTokenTTL)
+
+	// Always persist to the PG fallback so a later Redis outage cannot resurrect
+	// the token.
+	s.denyFall.revokeInFallback(ctx, key, expiresAt)
+
 	if err := s.redis.Set(rCtx, key, "1", AccessTokenTTL).Err(); err != nil {
-		log.Warn().Err(err).Msg("RevokeToken: Redis unavailable — writing to PG fallback")
-		s.denyFall.revokeInFallback(ctx, key, time.Now().Add(AccessTokenTTL))
-		return nil
+		// PG already has the record above; Redis is the fast path, not the only one.
+		log.Warn().Err(err).Msg("RevokeToken: Redis write failed — revocation persisted in PG fallback")
 	}
 	return nil
 }
