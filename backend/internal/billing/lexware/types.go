@@ -83,6 +83,23 @@ type lineItem struct {
 
 type totalPrice struct {
 	Currency string `json:"currency"`
+	// TotalDiscountPercentage is Lexware's own rebate field — a discount on the whole
+	// voucher, which under our vatfree tax conditions applies to the net amount.
+	// Lexware has no per-line discount and rejects a negative unitPrice, so this is
+	// the only way to make a rebate VISIBLE on the paper: the line item carries the
+	// list price, and the customer sees what was taken off it.
+	//
+	// Deliberately NOT omitempty, and that is the whole point of this comment. The
+	// Lexware docs say: "A contact-specific default will be set if available and no
+	// total discount was send." So OMITTING the field is the dangerous case — a
+	// default rebate stored on the contact (in the Lexware web UI, where nothing in
+	// this codebase can see it) would silently price the invoice, and the amount we
+	// wrote to billing_invoices would be wrong while everything looked fine.
+	//
+	// Sending an explicit 0 keeps the amount OURS. If Lexware ever rejects a 0 here,
+	// it fails loudly at CreateInvoice and nothing is created — which is the failure
+	// we want, rather than a customer quietly billed an amount we never computed.
+	TotalDiscountPercentage float64 `json:"totalDiscountPercentage"`
 }
 
 // taxConditions carries the single most load-bearing field in this package.

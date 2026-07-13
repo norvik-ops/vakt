@@ -69,7 +69,14 @@ func (h *Handler) Reconcile(ctx context.Context) ([]Drift, error) {
 		           AND o.id <> i.id AND o.status = 'paid'
 		           AND o.period_end >= i.period_start)
 		  FROM billing_invoices i
-		  JOIN billing_quote_requests s ON s.id = i.subscription_id`)
+		  JOIN billing_quote_requests s ON s.id = i.subscription_id
+		 -- Freilizenzen haben KEINE Lexware-Belege, sondern synthetische 0-Euro-Zeilen
+		 -- (Praefix "free:", siehe free.go). Ohne diesen Ausschluss meldete Reconcile
+		 -- jede einzelne davon als "nur in Vakt" -- den schwerwiegenden Fall, der
+		 -- eigentlich "wir haben eine Rechnung erfunden" bedeutet. Der Bericht waere
+		 -- damit sofort unbrauchbar: Wer jede Woche fuenf falsche Alarme sieht, liest
+		 -- den sechsten, echten, nicht mehr.
+		 WHERE NOT s.is_free`)
 	if err != nil {
 		return nil, err
 	}

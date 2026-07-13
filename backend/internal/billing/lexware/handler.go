@@ -267,14 +267,16 @@ func (h *Handler) ApproveRequest(ctx context.Context, id, by string) ApproveResu
 	var (
 		status, company, contact, email, vatID        string
 		street, zip, city, country, interval, product string
-		quantity                                      int
+		quantity, discount                            int
+		isFree                                        bool
 	)
 	if err := h.db.QueryRow(ctx, `
 		SELECT status, company_name, contact_name, email, vat_id,
-		       street, zip, city, country_code, interval, product, quantity
+		       street, zip, city, country_code, interval, product, quantity, discount_percent,
+		       is_free
 		  FROM billing_quote_requests WHERE id = $1`, id).
 		Scan(&status, &company, &contact, &email, &vatID, &street, &zip, &city, &country,
-			&interval, &product, &quantity); err != nil {
+			&interval, &product, &quantity, &discount, &isFree); err != nil {
 		return ApproveResult{Message: "Anfrage nicht gefunden."}
 	}
 
@@ -283,6 +285,15 @@ func (h *Handler) ApproveRequest(ctx context.Context, id, by string) ApproveResu
 			Message: "Diese Anfrage wurde bereits bearbeitet (Status: " + status + "). Es wurde nichts erneut erstellt.",
 		}
 	}
+
+	// A free licence never touches Lexware: no contact, no invoice, no payment to wait
+	// for. It is checked BEFORE the Lexware guard below, because a billing instance
+	// without a Lexware key can still hand out free licences — and refusing to would be
+	// refusing the one thing that still works.
+	if isFree {
+		return h.approveFree(ctx, id, company, email, product, interval, quantity, by)
+	}
+
 	if !h.client.Enabled() || !h.issuer.Enabled() {
 		return ApproveResult{Message: "Billing ist auf dieser Instanz nicht konfiguriert."}
 	}
@@ -295,6 +306,16 @@ func (h *Handler) ApproveRequest(ctx context.Context, id, by string) ApproveResu
 		log.Error().Err(err).Str("request_id", id).Msg("billing: unknown plan")
 		return ApproveResult{Message: "FEHLER: Für diese Kombination gibt es keinen Tarif (" +
 			product + "/" + interval + "). Es wurde nichts erstellt."}
+	}
+
+	// Price the invoice ONCE, here, before anything irreversible happens. A discount
+	// out of range must stop the sale rather than produce a wrong invoice — a finalised
+	// Lexware invoice cannot be un-finalised.
+	charge, err := plan.Charge(quantity, discount)
+	if err != nil {
+		log.Error().Err(err).Str("request_id", id).Int("discount", discount).
+			Msg("billing: invalid discount")
+		return ApproveResult{Message: "FEHLER: " + err.Error() + ".\n\nEs wurde nichts erstellt."}
 	}
 
 	contactID, err := h.client.CreateContact(ctx, ContactInput{
@@ -312,7 +333,7 @@ func (h *Handler) ApproveRequest(ctx context.Context, id, by string) ApproveResu
 		Title:       plan.Title,
 		Intro:       "vielen Dank für Ihren Auftrag. Wir stellen Ihnen wie vereinbart in Rechnung:",
 		Description: plan.LineDesc(quantity),
-		NetAmount:   plan.TotalEUR(quantity),
+		Charge:      charge,
 		DueInDays:   plan.DueDays,
 	})
 	if err != nil {
@@ -377,9 +398,11 @@ func (h *Handler) ApproveRequest(ctx context.Context, id, by string) ApproveResu
 		if dbErr == nil {
 			_, dbErr = tx.Exec(ctx, `
 				INSERT INTO billing_invoices
-					(subscription_id, lexware_invoice_id, period_start, period_end, net_amount_cents, status)
-				VALUES ($1, $2, $3, $4, $5, 'open')`,
-				id, invoiceID, from, to, plan.TotalCents(quantity))
+					(subscription_id, lexware_invoice_id, period_start, period_end,
+					 net_amount_cents, list_amount_cents, discount_percent, status)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, 'open')`,
+				id, invoiceID, from, to,
+				charge.NetCents, charge.ListCents, charge.Percent)
 		}
 		if dbErr == nil {
 			dbErr = tx.Commit(ctx)
@@ -406,12 +429,22 @@ func (h *Handler) ApproveRequest(ctx context.Context, id, by string) ApproveResu
 	}
 
 	log.Info().Str("request_id", id).Str("invoice_id", invoiceID).Str("by", by).
+		Int("discount_percent", charge.Percent).Int64("net_cents", charge.NetCents).
 		Msg("billing: invoice sent, trial key issued")
 
+	// The amount is spelled out, not implied. This message is the last thing a human
+	// reads after an IRREVERSIBLE action, and "did that just go out at the right price?"
+	// is the one question it must not leave open.
+	amount := "über " + fmtEUR(charge.NetEUR())
+	if charge.Discounted() {
+		amount += " (" + fmtEUR(charge.ListEUR()) + " − " + fmt.Sprint(charge.Percent) +
+			" % Rabatt, dauerhaft — auch auf jede Verlängerung)"
+	}
+
 	return ApproveResult{OK: true, InvoiceID: invoiceID,
-		Message: "Erledigt. Rechnung " + invoiceID + " ist finalisiert und mit einem 45-Tage-Schlüssel " +
-			"an " + email + " raus. Sobald die Zahlung in Lexware zugeordnet ist, verschickt Vakt den " +
-			"Vollschlüssel automatisch."}
+		Message: "Erledigt. Rechnung " + invoiceID + " " + amount + " ist finalisiert und mit einem " +
+			"45-Tage-Schlüssel an " + email + " raus. Sobald die Zahlung in Lexware zugeordnet ist, " +
+			"verschickt Vakt den Vollschlüssel automatisch."}
 }
 
 // ── 3. Lexware webhook: payment landed ───────────────────────────────────────

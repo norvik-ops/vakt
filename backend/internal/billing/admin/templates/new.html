@@ -58,7 +58,31 @@
       <div style="flex:0;min-width:140px"><label class="lbl">Anzahl Lizenzen</label>
         <input type="number" name="quantity" min="1" max="500" value="1"
                style="background:#0d0d16;border:1px solid var(--line);border-radius:9px;padding:9px 12px;color:var(--text);width:100%;font:inherit"></div>
+      <div style="flex:0;min-width:140px"><label class="lbl">Rabatt (%)</label>
+        <input type="number" name="discount_percent" min="0" max="90" value="0"
+               style="background:#0d0d16;border:1px solid var(--line);border-radius:9px;padding:9px 12px;color:var(--text);width:100%;font:inherit"></div>
     </div>
+    <p class="muted" style="margin:10px 0 0;font-size:13px">
+      Der Rabatt gilt <strong>dauerhaft</strong> — auf diese Rechnung und auf jede Verlängerung.
+      Er steht als Nachlass auf der Rechnung, der Kunde sieht also den Listenpreis und was
+      abgezogen wurde. Höchstens 90 %: eine 0-€-Rechnung wird nie bezahlt, und ohne
+      Zahlungseingang stellt Vakt nie den Vollschlüssel aus. Für „gratis" gibt es
+      deshalb die Freilizenz — siehe unten.
+    </p>
+
+    <label style="display:flex;gap:10px;align-items:flex-start;margin-top:16px;padding-top:16px;border-top:1px solid var(--line);cursor:pointer">
+      <input type="checkbox" name="is_free" style="margin-top:3px">
+      <span>
+        <strong>Freilizenz — kostenlos, keine Rechnung</strong>
+        <span class="muted" style="display:block;font-size:13px;margin-top:4px">
+          Für Design-Partner, Referenzkunden, Verbände, Beta-Tester. Es wird <strong>kein
+          Lexware-Kontakt und keine Rechnung</strong> angelegt; der Kunde bekommt beim
+          Freigeben sofort einen vollen Schlüssel (kein 45-Tage-Test). Zählt nicht in die MRR.
+          Sie verlängert sich automatisch, bis du das Abo kündigst. Der Rabatt oben wird
+          dann ignoriert.
+        </span>
+      </span>
+    </label>
   </div>
 
   <div class="card pad" style="margin-bottom:18px">

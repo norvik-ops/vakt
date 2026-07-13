@@ -20,18 +20,20 @@ import (
 
 // NewSubscription is a sale that never went through the web form.
 type NewSubscription struct {
-	CompanyName string
-	ContactName string
-	Email       string
-	VATID       string
-	Street      string
-	Zip         string
-	City        string
-	CountryCode string
-	Product     string
-	Interval    string
-	Quantity    int
-	Notes       string
+	CompanyName     string
+	ContactName     string
+	Email           string
+	VATID           string
+	Street          string
+	Zip             string
+	City            string
+	CountryCode     string
+	Product         string
+	Interval        string
+	Quantity        int
+	DiscountPercent int
+	IsFree          bool // Freilizenz: keine Rechnung, kein Lexware-Kontakt (free.go)
+	Notes           string
 }
 
 // CreateSubscription records a customer who phoned instead of filling in the form.
@@ -62,6 +64,12 @@ func (h *Handler) CreateSubscription(ctx context.Context, in NewSubscription, by
 	if _, err := PlanFor(in.Product, in.Interval); err != nil {
 		return "", fmt.Errorf("kein Tarif für %s/%s", in.Product, in.Interval)
 	}
+	// Rejected here, at the door. The CHECK constraint on the column would catch it
+	// too, but as an opaque database error — and the reason a 100 % rebate is refused
+	// needs explaining, not a 23514.
+	if err := ValidateDiscount(in.DiscountPercent); err != nil {
+		return "", err
+	}
 
 	// An approval token even though nobody will click a link: the row must have the
 	// same shape as one from the form, or the next person to read this table finds two
@@ -76,19 +84,106 @@ func (h *Handler) CreateSubscription(ctx context.Context, in NewSubscription, by
 	err := h.db.QueryRow(ctx, `
 		INSERT INTO billing_quote_requests
 			(company_name, contact_name, email, vat_id, street, zip, city, country_code,
-			 note, notes, product, quantity, interval, approval_token_hash)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+			 note, notes, product, quantity, interval, discount_percent, is_free,
+			 approval_token_hash)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
 		RETURNING id`,
 		in.CompanyName, in.ContactName, in.Email, in.VATID, in.Street, in.Zip, in.City,
 		in.CountryCode, "von Hand im Panel angelegt", in.Notes,
-		in.Product, in.Quantity, in.Interval, hex.EncodeToString(sum[:])).Scan(&id)
+		in.Product, in.Quantity, in.Interval, in.DiscountPercent, in.IsFree,
+		hex.EncodeToString(sum[:])).Scan(&id)
 	if err != nil {
 		return "", err
 	}
 	log.Info().Str("subscription_id", id).Str("by", by).
+		Int("discount_percent", in.DiscountPercent).Bool("free", in.IsFree).
 		Str("email_redacted", logsafe.RedactEmail(in.Email)).
 		Msg("billing: subscription created by hand")
 	return id, nil
+}
+
+// SetDiscount grants or changes a customer's permanent rebate.
+//
+// The percentage lives on the SUBSCRIPTION, which is what makes it permanent: every
+// invoice — the first and every renewal — is priced from it. That is also why this
+// returns a sentence rather than nil: what the change actually DOES depends on where
+// the subscription stands, and getting that wrong costs real money in a real
+// customer's inbox.
+//
+//   - Still „angefragt": the rebate lands on the invoice that has not gone out yet.
+//   - Already approved or paid: invoices already raised are untouched (a finalised
+//     Lexware invoice cannot be changed, and rewriting our copy would make our books
+//     disagree with the customer's). It takes effect at the next renewal.
+//
+// Cancelled subscriptions are refused outright — they will never be invoiced again,
+// so a rebate on one is a silent no-op, and a silent no-op on a money field is how
+// somebody ends up believing a customer got a discount that they did not.
+func (h *Handler) SetDiscount(ctx context.Context, subID string, percent int, by string) (string, error) {
+	if err := ValidateDiscount(percent); err != nil {
+		return "", err
+	}
+
+	var status string
+	var cancelled *time.Time
+	var product, interval string
+	var quantity, old int
+	var isFree bool
+	if err := h.db.QueryRow(ctx, `
+		SELECT status, cancelled_at, product, interval, quantity, discount_percent, is_free
+		  FROM billing_quote_requests WHERE id = $1`, subID).
+		Scan(&status, &cancelled, &product, &interval, &quantity, &old, &isFree); err != nil {
+		return "", fmt.Errorf("Abo nicht gefunden")
+	}
+	// Ein Rabatt auf eine Freilizenz ist ein Rabatt auf null. Er waere kein Fehler,
+	// sondern schlimmer: eine stille Nulloperation auf einem Geldfeld — jemand setzt
+	// 20 %, es passiert nichts, und niemand erfaehrt es.
+	if isFree {
+		return "", fmt.Errorf("Das ist eine Freilizenz — es wird ohnehin nichts berechnet. " +
+			"Ein Rabatt darauf haette keine Wirkung")
+	}
+	if cancelled != nil {
+		return "", fmt.Errorf("Das Abo ist gekündigt — es wird nie wieder eine Rechnung gestellt. " +
+			"Ein Rabatt darauf hätte keine Wirkung")
+	}
+
+	plan, err := PlanFor(product, interval)
+	if err != nil {
+		return "", err
+	}
+	charge, err := plan.Charge(quantity, percent)
+	if err != nil {
+		return "", err
+	}
+
+	if _, err := h.db.Exec(ctx,
+		`UPDATE billing_quote_requests SET discount_percent = $2 WHERE id = $1`,
+		subID, percent); err != nil {
+		return "", fmt.Errorf("Rabatt konnte nicht gespeichert werden: %w", err)
+	}
+
+	log.Warn().Str("subscription_id", subID).Str("by", by).
+		Int("from_percent", old).Int("to_percent", percent).
+		Int64("net_cents", charge.NetCents).
+		Msg("billing: discount changed")
+
+	// Say what the next invoice will read, in euros. „20 % gespeichert" is not an
+	// answer to the question the person pressing this button actually has.
+	next := "Die nächste Rechnung lautet über " + fmtEUR(charge.NetEUR())
+	if charge.Discounted() {
+		next += " statt " + fmtEUR(charge.ListEUR())
+	}
+
+	switch {
+	case percent == 0:
+		return "Rabatt entfernt. " + next + " (Listenpreis).", nil
+	case status == "requested":
+		return fmt.Sprintf("Rabatt auf %d %% gesetzt. %s — er geht auf die Rechnung, die beim "+
+			"Freigeben erstellt wird, und auf jede Verlängerung.", percent, next), nil
+	default:
+		return fmt.Sprintf("Rabatt auf %d %% gesetzt. Bereits gestellte Rechnungen bleiben, wie "+
+			"sie sind — geändert werden können sie nur per Storno in Lexware. %s (ab der nächsten "+
+			"Verlängerung).", percent, next), nil
+	}
 }
 
 // SetNotes stores free text about a customer.

@@ -61,6 +61,8 @@ type dueSubscription struct {
 	product   string
 	interval  string
 	quantity  int
+	discount  int  // carried on the SUBSCRIPTION, so it survives into every renewal
+	isFree    bool // a licence with no invoice — see free.go
 	contactID string
 	periodEnd time.Time
 }
@@ -71,14 +73,17 @@ func (h *Handler) renewOnce(ctx context.Context) {
 
 	rows, err := h.db.Query(ctx, `
 		SELECT s.id, s.company_name, s.email, s.product, s.interval, s.quantity,
-		       s.lexware_contact_id,
+		       s.discount_percent, s.is_free, COALESCE(s.lexware_contact_id, ''),
 		       (SELECT MAX(bi.period_end) FROM billing_invoices bi WHERE bi.subscription_id = s.id)
 		  FROM billing_quote_requests s
 		 WHERE s.status = 'paid'
 		   AND s.cancelled_at IS NULL
 		   AND s.next_invoice_at IS NOT NULL
 		   AND s.next_invoice_at <= NOW()
-		   AND s.lexware_contact_id IS NOT NULL
+		   -- Eine Freilizenz hat keinen Lexware-Kontakt und braucht auch keinen. Ohne
+		   -- diese Ausnahme waere sie aus dem Sweep gefallen und nach der ersten Periode
+		   -- lautlos ausgelaufen — genau der Fehler, den dieser Sweep verhindern soll.
+		   AND (s.is_free OR s.lexware_contact_id IS NOT NULL)
 		   AND NOT EXISTS (
 		         SELECT 1 FROM billing_invoices bi
 		          WHERE bi.subscription_id = s.id AND bi.status = 'open')`)
@@ -91,7 +96,7 @@ func (h *Handler) renewOnce(ctx context.Context) {
 		var d dueSubscription
 		var end *time.Time
 		if err := rows.Scan(&d.id, &d.company, &d.email, &d.product, &d.interval, &d.quantity,
-			&d.contactID, &end); err != nil {
+			&d.discount, &d.isFree, &d.contactID, &end); err != nil {
 			log.Error().Err(err).Msg("billing: renewal sweep scan")
 			continue
 		}
@@ -110,6 +115,29 @@ func (h *Handler) renewOnce(ctx context.Context) {
 	if err := rows.Err(); err != nil {
 		log.Error().Err(err).Msg("billing: renewal sweep iterate")
 		return
+	}
+
+	// Der stille Ausfall, nach dem sonst niemand sucht.
+	//
+	// Die Sweep-Bedingung oben verlangt „gratis ODER Lexware-Kontakt". Ein Abo mit
+	// WEDER dem einen NOCH dem anderen ist faellig und faellt trotzdem heraus: es wird
+	// nie in Rechnung gestellt, nie verlaengert, und der Schluessel des Kunden laeuft
+	// irgendwann aus — ohne eine einzige Fehlermeldung. Genau dorthin fuehrt ein
+	// is_free = false, das jemand von Hand in der DB setzt (ConvertToPaid legt den
+	// Kontakt an, ein UPDATE in psql nicht).
+	//
+	// Eine Bedingung, die still ausschliesst, muss zaehlen, was sie ausschliesst.
+	var orphans int
+	if err := h.db.QueryRow(ctx, `
+		SELECT count(*) FROM billing_quote_requests s
+		 WHERE s.status = 'paid' AND s.cancelled_at IS NULL
+		   AND s.next_invoice_at IS NOT NULL AND s.next_invoice_at <= NOW()
+		   AND NOT s.is_free AND s.lexware_contact_id IS NULL`).Scan(&orphans); err == nil && orphans > 0 {
+		log.Error().Int("count", orphans).
+			Msg("billing: CRITICAL — faellige Abos ohne Lexware-Kontakt und ohne is_free. " +
+				"Sie werden NIE abgerechnet und laufen lautlos aus. Meist die Folge eines " +
+				"is_free=false von Hand: die Umwandlung gehoert ins Panel (ConvertToPaid), " +
+				"weil sie den Lexware-Kontakt mit anlegt")
 	}
 
 	for _, d := range due {
@@ -131,7 +159,22 @@ func (h *Handler) renewOnce(ctx context.Context) {
 // key is still valid for GraceDays past the period end, which is the whole point of
 // sending this LeadDays early.
 func (h *Handler) renewOne(ctx context.Context, d dueSubscription) error {
+	// A free licence is extended, not invoiced. Nothing below this line may run for one:
+	// it would create a real Lexware invoice for someone who was promised none.
+	if d.isFree {
+		return h.renewFree(ctx, d)
+	}
+
 	plan, err := PlanFor(d.product, d.interval)
+	if err != nil {
+		return err
+	}
+
+	// The discount is read from the SUBSCRIPTION, not copied from the last invoice.
+	// It is a property of the customer ("you get 20 % as long as you stay"), so it
+	// applies to this period too — and a rebate that quietly stopped at the first
+	// renewal would be a promise broken in the one place nobody looks.
+	charge, err := plan.Charge(d.quantity, d.discount)
 	if err != nil {
 		return err
 	}
@@ -144,7 +187,7 @@ func (h *Handler) renewOne(ctx context.Context, d dueSubscription) error {
 		Intro: fmt.Sprintf("hier ist die Rechnung für den nächsten Abrechnungszeitraum (%s – %s).",
 			from.Format("02.01.2006"), to.Format("02.01.2006")),
 		Description: plan.LineDesc(d.quantity),
-		NetAmount:   plan.TotalEUR(d.quantity),
+		Charge:      charge,
 		DueInDays:   plan.DueDays,
 	})
 	if err != nil {
@@ -156,9 +199,11 @@ func (h *Handler) renewOne(ctx context.Context, d dueSubscription) error {
 	// customer would never get their key.
 	if _, err := h.db.Exec(ctx, `
 		INSERT INTO billing_invoices
-			(subscription_id, lexware_invoice_id, period_start, period_end, net_amount_cents, status)
-		VALUES ($1, $2, $3, $4, $5, 'open')`,
-		d.id, invoiceID, from, to, plan.TotalCents(d.quantity)); err != nil {
+			(subscription_id, lexware_invoice_id, period_start, period_end,
+			 net_amount_cents, list_amount_cents, discount_percent, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, 'open')`,
+		d.id, invoiceID, from, to,
+		charge.NetCents, charge.ListCents, charge.Percent); err != nil {
 		return fmt.Errorf("persist invoice %s: %w", invoiceID, err)
 	}
 

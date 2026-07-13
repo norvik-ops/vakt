@@ -47,6 +47,8 @@ func Register(e *echo.Echo, h *Handler, cfg Config) {
 	g.POST("/new", h.CreateSubscription)
 	g.POST("/subscriptions/:id/approve", h.ApproveSubscription)
 	g.POST("/subscriptions/:id/notes", h.SaveNotes)
+	g.POST("/subscriptions/:id/discount", h.SetDiscount)
+	g.POST("/subscriptions/:id/convert", h.ConvertToPaid)
 	g.POST("/subscriptions/:id/resend", h.ResendKey)
 	g.POST("/invoices/:id/remind", h.SendReminder)
 	g.POST("/subscriptions/:id/cancel", h.CancelSubscription)
@@ -92,6 +94,8 @@ type subRow struct {
 	Status       string // bezahlt | läuft aus | abgelaufen | gekündigt | angefragt
 	NextInvoice  string
 	OpenInvoices int
+	Discount     int  // Prozent, dauerhaft — gilt auch fuer jede Verlaengerung
+	IsFree       bool // Freilizenz: keine Rechnung, kein Lexware-Kontakt
 	MRRCents     int64
 	Notes        string
 }
@@ -129,7 +133,7 @@ type licenceRow struct {
 func (h *Handler) loadSubs(c echo.Context) ([]subRow, error) {
 	rows, err := h.db.Query(c.Request().Context(), `
 		SELECT s.id, s.company_name, s.email, s.product, s.interval, s.quantity, s.status,
-		       s.next_invoice_at, s.cancelled_at, s.notes,
+		       s.discount_percent, s.is_free, s.next_invoice_at, s.cancelled_at, s.notes,
 		       (SELECT count(*) FROM billing_invoices bi
 		         WHERE bi.subscription_id = s.id AND bi.status = 'open'),
 		       -- DISTINCT: a normal customer gets TWO keys for ONE organisation (the
@@ -150,7 +154,8 @@ func (h *Handler) loadSubs(c echo.Context) ([]subRow, error) {
 		var product, interval string
 		var next, cancelled *time.Time
 		if err := rows.Scan(&r.ID, &r.Company, &r.Email, &product, &interval, &r.Quantity,
-			&r.Status, &next, &cancelled, &r.Notes, &r.OpenInvoices, &r.SeatsUsed); err != nil {
+			&r.Status, &r.Discount, &r.IsFree, &next, &cancelled, &r.Notes,
+			&r.OpenInvoices, &r.SeatsUsed); err != nil {
 			return nil, err
 		}
 		r.Plan = product + "/" + interval
@@ -171,12 +176,19 @@ func (h *Handler) loadSubs(c echo.Context) ([]subRow, error) {
 			// hat — nur seine Verlängerung steht aus. Ihn aus dem MRR zu nehmen, sobald
 			// die Folgerechnung raus ist, würde die Zahl jeden Monat kurz einbrechen
 			// lassen, ohne dass sich irgendetwas geändert hätte.
-			if p, err := lexware.PlanFor(product, interval); err == nil {
-				cents := p.TotalCents(r.Quantity)
-				if interval == "year" {
-					cents /= 12 // auf den Monat normalisiert, sonst läse ein Jahresplan als 2.990 € MRR
+			// Eine Freilizenz bringt 0 € — sie mitzuzaehlen waere ein Umsatz, den
+			// nie jemand ueberweist.
+			if p, err := lexware.PlanFor(product, interval); err == nil && !r.IsFree {
+				// Nach Rabatt — die MRR ist das, was der Kunde WIRKLICH zahlt. Den
+				// Listenpreis zu summieren hiesse, sich selbst Umsatz vorzurechnen,
+				// den nie jemand in Rechnung gestellt bekommen hat.
+				if ch, err := p.Charge(r.Quantity, r.Discount); err == nil {
+					cents := ch.NetCents
+					if interval == "year" {
+						cents /= 12 // auf den Monat normalisiert, sonst läse ein Jahresplan als 2.990 € MRR
+					}
+					r.MRRCents = cents
 				}
-				r.MRRCents = cents
 			}
 		case r.Status == "approved":
 			r.Status = "Rechnung raus"
@@ -395,6 +407,21 @@ type subDetail struct {
 	Invoices  []invoiceRow
 	Licences  []licenceRow
 	SeatsLeft int
+
+	// Was die naechste Rechnung sagen wird — in Euro, nicht in Prozent. Wer den
+	// Rabatt-Knopf drueckt, will „2.392 € statt 2.990 €" lesen, nicht „20 %" und
+	// dann selbst rechnen muessen.
+	NextNet  string
+	NextList string
+
+	// Rechnungsadresse — nur fuer die Umwandlung einer Freilizenz. Die hat oft gar
+	// keine, weil bei „gratis" nie jemand danach gefragt hat.
+	ContactName string
+	VATID       string
+	Street      string
+	Zip         string
+	City        string
+	CountryCode string
 }
 
 func (h *Handler) Subscription(c echo.Context) error {
@@ -417,6 +444,25 @@ func (h *Handler) Subscription(c echo.Context) error {
 		return c.String(http.StatusNotFound, "Abo nicht gefunden")
 	}
 	d.Title = d.Sub.Company
+
+	// Plan/Interval stecken in subRow nur noch als "pro/year" — hier wieder auftrennen,
+	// statt sie ein zweites Mal aus der DB zu holen: eine zweite Query waere eine zweite
+	// Wahrheit.
+	// Eine zweite, winzige Query statt loadSubs aufzublaehen: die Adresse braucht genau
+	// EINE Seite, und die Uebersicht laedt sie sonst fuer jede Zeile mit.
+	_ = h.db.QueryRow(ctx, `
+		SELECT COALESCE(contact_name,''), COALESCE(vat_id,''), COALESCE(street,''),
+		       COALESCE(zip,''), COALESCE(city,''), COALESCE(country_code,'DE')
+		  FROM billing_quote_requests WHERE id = $1`, id).
+		Scan(&d.ContactName, &d.VATID, &d.Street, &d.Zip, &d.City, &d.CountryCode)
+
+	if product, interval, ok := strings.Cut(d.Sub.Plan, "/"); ok {
+		if p, err := lexware.PlanFor(product, interval); err == nil {
+			if ch, err := p.Charge(d.Sub.Quantity, d.Sub.Discount); err == nil {
+				d.NextNet, d.NextList = eur(ch.NetCents), eur(ch.ListCents)
+			}
+		}
+	}
 
 	rows, err := h.db.Query(ctx, `
 		SELECT lexware_invoice_id, period_start, period_end, net_amount_cents, status,
@@ -631,19 +677,22 @@ func (h *Handler) CreateSubscription(c echo.Context) error {
 		return c.Redirect(http.StatusSeeOther, "/new?flash="+urlq("Billing ist nicht konfiguriert."))
 	}
 	qty, _ := strconv.Atoi(c.FormValue("quantity"))
+	discount, _ := strconv.Atoi(c.FormValue("discount_percent"))
 	id, err := h.billing.CreateSubscription(c.Request().Context(), lexware.NewSubscription{
-		CompanyName: c.FormValue("company_name"),
-		ContactName: c.FormValue("contact_name"),
-		Email:       c.FormValue("email"),
-		VATID:       c.FormValue("vat_id"),
-		Street:      c.FormValue("street"),
-		Zip:         c.FormValue("zip"),
-		City:        c.FormValue("city"),
-		CountryCode: c.FormValue("country_code"),
-		Product:     "pro",
-		Interval:    c.FormValue("interval"),
-		Quantity:    qty,
-		Notes:       c.FormValue("notes"),
+		CompanyName:     c.FormValue("company_name"),
+		ContactName:     c.FormValue("contact_name"),
+		Email:           c.FormValue("email"),
+		VATID:           c.FormValue("vat_id"),
+		Street:          c.FormValue("street"),
+		Zip:             c.FormValue("zip"),
+		City:            c.FormValue("city"),
+		CountryCode:     c.FormValue("country_code"),
+		Product:         "pro",
+		Interval:        c.FormValue("interval"),
+		Quantity:        qty,
+		DiscountPercent: discount,
+		IsFree:          c.FormValue("is_free") == "on",
+		Notes:           c.FormValue("notes"),
 	}, requestEmail(c))
 	if err != nil {
 		return c.Redirect(http.StatusSeeOther, "/new?flash="+urlq(err.Error()))
@@ -651,6 +700,57 @@ func (h *Handler) CreateSubscription(c echo.Context) error {
 	return redirect(c, id,
 		"Abo angelegt. Es steht auf „angefragt“ — es ist noch KEINE Rechnung erstellt. "+
 			"Mit „Freigeben“ geht die finalisierte Rechnung samt 45-Tage-Schlüssel raus.")
+}
+
+// SetDiscount grants or changes a customer's permanent rebate.
+//
+// It applies to every invoice that is raised FROM NOW ON — the first one, if the
+// subscription is still „angefragt", and every renewal after that. It deliberately
+// does NOT touch invoices that already exist: a finalised Lexware invoice cannot be
+// changed through the API, and rewriting our copy of it would make our books disagree
+// with the customer's. Correcting an invoice that is already out is a storno in
+// Lexware, by hand, on purpose.
+func (h *Handler) SetDiscount(c echo.Context) error {
+	id := c.Param("id")
+	if h.billing == nil {
+		return redirect(c, id, "nicht konfiguriert")
+	}
+	pct, err := strconv.Atoi(strings.TrimSpace(c.FormValue("discount_percent")))
+	if err != nil {
+		return redirect(c, id, "Rabatt muss eine ganze Zahl sein (0–90).")
+	}
+	msg, err := h.billing.SetDiscount(c.Request().Context(), id, pct, requestEmail(c))
+	if err != nil {
+		return redirect(c, id, err.Error())
+	}
+	return redirect(c, id, msg)
+}
+
+// ConvertToPaid turns a free licence into a paying subscription.
+//
+// Deliberately its own action rather than a checkbox on the discount form: it creates a
+// Lexware contact and may create a finalised invoice. That is not the kind of thing that
+// should be one stray click away from „Rabatt speichern".
+func (h *Handler) ConvertToPaid(c echo.Context) error {
+	id := c.Param("id")
+	if h.billing == nil {
+		return redirect(c, id, "nicht konfiguriert")
+	}
+	discount, _ := strconv.Atoi(c.FormValue("discount_percent"))
+	msg, err := h.billing.ConvertToPaid(c.Request().Context(), id, lexware.ConvertInput{
+		ContactName:     c.FormValue("contact_name"),
+		VATID:           c.FormValue("vat_id"),
+		Street:          c.FormValue("street"),
+		Zip:             c.FormValue("zip"),
+		City:            c.FormValue("city"),
+		CountryCode:     c.FormValue("country_code"),
+		DiscountPercent: discount,
+		InvoiceNow:      c.FormValue("invoice_now") == "on",
+	}, requestEmail(c))
+	if err != nil {
+		return redirect(c, id, err.Error())
+	}
+	return redirect(c, id, msg)
 }
 
 // ── Notizen, Erinnerung, Schlüssel erneut ────────────────────────────────────

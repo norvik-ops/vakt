@@ -8,6 +8,8 @@
   {{.Sub.Email}} ·
   <span class="pill brand">{{.Sub.Plan}}</span>
   {{if gt .Sub.Quantity 1}} · {{.Sub.Quantity}} Lizenzen{{end}}
+  {{if .Sub.IsFree}} · <span class="pill ok">Freilizenz — keine Rechnung</span>
+  {{else if gt .Sub.Discount 0}} · <span class="pill warn">−{{.Sub.Discount}} % Rabatt</span>{{end}}
 </p>
 
 <div class="grid">
@@ -34,6 +36,22 @@
 {{if eq .Sub.Status "angefragt"}}
 <h2>Freigeben</h2>
 <div class="card pad">
+  {{if .Sub.IsFree}}
+  {{/* Eine Freilizenz erstellt KEINE Rechnung. Der Knopf darf das nicht behaupten —
+       und die Warnung vor der Unumkehrbarkeit gilt hier nicht: es entsteht nichts
+       ausserhalb unserer eigenen Datenbank, ein Fehler ist mit „Kündigen" behoben. */}}
+  <p class="dim" style="margin:0 0 16px;font-size:14px;line-height:1.7">
+    <strong>Freilizenz.</strong> Es wird <strong>kein Lexware-Kontakt und keine Rechnung</strong>
+    angelegt. {{.Sub.Company}} bekommt sofort einen <strong>vollen</strong> Schlüssel per Mail
+    (keinen 45-Tage-Test — es wartet ja keine Zahlung). Die Lizenz verlängert sich von allein,
+    bis du das Abo kündigst. Verzählt? Kein Problem: Hier entsteht nichts ausserhalb unserer
+    eigenen Datenbank.
+  </p>
+  <form method="post" action="/subscriptions/{{.Sub.ID}}/approve">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <button type="submit">Freilizenz ausstellen und verschicken</button>
+  </form>
+  {{else}}
   <p class="dim" style="margin:0 0 16px;font-size:14px;line-height:1.7">
     Prüfe kurz, ob das eine echte Firma ist. Danach: Lexware-Kontakt anlegen, eine
     <strong>finalisierte</strong> Rechnung erstellen und sie zusammen mit einem 45-Tage-Schlüssel
@@ -41,9 +59,103 @@
     nur in Lexware von Hand stornieren.
   </p>
   <form method="post" action="/subscriptions/{{.Sub.ID}}/approve"
-        onsubmit="return confirm('Rechnung für {{.Sub.Company}} erstellen?\n\nFinalisiert, nicht rückgängig zu machen.')">
+        onsubmit="return confirm('Rechnung für {{.Sub.Company}} über {{.NextNet}} erstellen?\n\nFinalisiert, nicht rückgängig zu machen.')">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
-    <button type="submit">Rechnung erstellen und verschicken</button>
+    <button type="submit">Rechnung über {{.NextNet}} erstellen und verschicken</button>
+  </form>
+  {{end}}
+</div>
+{{end}}
+
+{{if and .Sub.IsFree (eq .Sub.Status "bezahlt")}}
+<h2>In zahlendes Abo umwandeln</h2>
+<div class="card pad">
+  <p class="dim" style="margin:0 0 16px;font-size:14px;line-height:1.7">
+    Aus dem Design-Partner wird ein Kunde. Das Abo bleibt <strong>dasselbe</strong> — der Kunde
+    behält seinen Schlüssel <strong>und seinen Renewal-Token</strong> und muss in seiner Instanz
+    nichts anfassen. (Ein neues Abo anzulegen und dieses zu kündigen sähe gleich aus, würde ihm
+    aber den Token unter den Füßen wegziehen: <code>VAKT_LICENSE_TOKEN</code> in seiner
+    <code>.env</code> hörte genau in dem Moment auf zu funktionieren, in dem er zusagt zu zahlen.)
+  </p>
+  <p class="dim" style="margin:0 0 16px;font-size:14px;line-height:1.7">
+    Lexware braucht eine <strong>Rechnungsadresse</strong> — bei „gratis" hat danach nie jemand
+    gefragt. Ohne Haken unten kommt die erste Rechnung automatisch, wenn der geschenkte Zeitraum
+    ausläuft; der Kunde behält also, was ihm zugesagt wurde.
+  </p>
+  <form method="post" action="/subscriptions/{{.Sub.ID}}/convert">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="row">
+      <div><label class="lbl">Ansprechpartner</label>
+        <input type="text" name="contact_name" maxlength="120" value="{{.ContactName}}"
+               style="background:#0d0d16;border:1px solid var(--line);border-radius:9px;padding:9px 12px;color:var(--text);width:100%;font:inherit"></div>
+      <div><label class="lbl">USt-IdNr.</label>
+        <input type="text" name="vat_id" maxlength="30" value="{{.VATID}}"
+               style="background:#0d0d16;border:1px solid var(--line);border-radius:9px;padding:9px 12px;color:var(--text);width:100%;font:inherit"></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div><label class="lbl">Straße</label>
+        <input type="text" name="street" required maxlength="150" value="{{.Street}}"
+               style="background:#0d0d16;border:1px solid var(--line);border-radius:9px;padding:9px 12px;color:var(--text);width:100%;font:inherit"></div>
+      <div style="flex:0;min-width:110px"><label class="lbl">PLZ</label>
+        <input type="text" name="zip" required maxlength="12" value="{{.Zip}}"
+               style="background:#0d0d16;border:1px solid var(--line);border-radius:9px;padding:9px 12px;color:var(--text);width:100%;font:inherit"></div>
+      <div><label class="lbl">Ort</label>
+        <input type="text" name="city" required maxlength="120" value="{{.City}}"
+               style="background:#0d0d16;border:1px solid var(--line);border-radius:9px;padding:9px 12px;color:var(--text);width:100%;font:inherit"></div>
+      <div style="flex:0;min-width:80px"><label class="lbl">Land</label>
+        <input type="text" name="country_code" maxlength="2" value="{{.CountryCode}}"
+               style="background:#0d0d16;border:1px solid var(--line);border-radius:9px;padding:9px 12px;color:var(--text);width:100%;font:inherit"></div>
+      <div style="flex:0;min-width:120px"><label class="lbl">Rabatt (%)</label>
+        <input type="number" name="discount_percent" min="0" max="90" value="0"
+               style="background:#0d0d16;border:1px solid var(--line);border-radius:9px;padding:9px 12px;color:var(--text);width:100%;font:inherit"></div>
+    </div>
+
+    <label style="display:flex;gap:10px;align-items:flex-start;margin-top:16px;cursor:pointer">
+      <input type="checkbox" name="invoice_now" style="margin-top:3px">
+      <span>
+        <strong>Sofort abrechnen</strong>
+        <span class="muted" style="display:block;font-size:13px;margin-top:4px">
+          Erstellt <strong>jetzt</strong> eine finalisierte Rechnung — nicht zurückzunehmen, nur
+          in Lexware zu stornieren. Die bezahlte Periode beginnt heute und <strong>überlappt den
+          geschenkten Rest</strong>. Ohne Haken passiert nichts Unumkehrbares: Das Abo wird nur
+          auf „zahlend“ gestellt, die Rechnung kommt automatisch zum Ende des Gratiszeitraums.
+        </span>
+      </span>
+    </label>
+
+    <button type="submit" style="margin-top:16px">In zahlendes Abo umwandeln</button>
+  </form>
+</div>
+{{end}}
+
+{{/* Bewusst AUSSERHALB des "angefragt"-Zweigs: Der Rabatt muss auch bei einem
+     laufenden Abo aenderbar sein — dort ist er sogar am wichtigsten, weil er ab
+     der naechsten Verlaengerung greift. Bei einer Freilizenz waere er dagegen ein
+     Rabatt auf null — das Formular gaebe es dann nur, um wirkungslos zu sein. */}}
+{{if not .Sub.IsFree}}
+<h2>Rabatt</h2>
+<div class="card pad">
+  <p class="dim" style="margin:0 0 16px;font-size:14px;line-height:1.7">
+    Gilt <strong>dauerhaft</strong>: auf jede Rechnung dieses Abos, auch auf jede Verlängerung.
+    Der Kunde sieht ihn auf der Rechnung als Nachlass vom Listenpreis.
+    {{if gt .Sub.Discount 0}}
+      Aktuell <strong>−{{.Sub.Discount}} %</strong> — die nächste Rechnung lautet über
+      <strong>{{.NextNet}}</strong> statt {{.NextList}}.
+    {{else}}
+      Aktuell kein Rabatt — die nächste Rechnung lautet über <strong>{{.NextNet}}</strong>.
+    {{end}}
+    <br>
+    Bereits <strong>gestellte</strong> Rechnungen ändert das nicht: eine finalisierte Rechnung
+    lässt sich nur in Lexware von Hand stornieren.
+  </p>
+  <form method="post" action="/subscriptions/{{.Sub.ID}}/discount" style="display:flex;gap:10px;align-items:flex-end">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div style="flex:0;min-width:140px">
+      <label class="lbl">Rabatt (%)</label>
+      <input type="number" name="discount_percent" min="0" max="90" value="{{.Sub.Discount}}"
+             style="background:#0d0d16;border:1px solid var(--line);border-radius:9px;padding:9px 12px;color:var(--text);width:100%;font:inherit">
+    </div>
+    <button type="submit">Speichern</button>
   </form>
 </div>
 {{end}}

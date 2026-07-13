@@ -120,8 +120,11 @@ func (h *Handler) RefreshMetrics(ctx context.Context, severe int, reconcileFaile
 	// subscription is a rate. Summing invoices would make MRR jump every time somebody
 	// pays.
 	rows, err := h.db.Query(ctx, `
-		SELECT product, interval, quantity FROM billing_quote_requests
-		 WHERE status = 'paid' AND cancelled_at IS NULL`)
+		SELECT product, interval, quantity, discount_percent FROM billing_quote_requests
+		 WHERE status = 'paid' AND cancelled_at IS NULL
+		   -- Freilizenzen bringen keinen Umsatz. Sie mitzuzaehlen hiesse, sich einen
+		   -- MRR vorzurechnen, den nie jemand ueberweist — und Zabbix alarmiert darauf.
+		   AND NOT is_free`)
 	if err != nil {
 		return
 	}
@@ -130,15 +133,24 @@ func (h *Handler) RefreshMetrics(ctx context.Context, severe int, reconcileFaile
 	var mrr int64
 	for rows.Next() {
 		var product, interval string
-		var qty int
-		if err := rows.Scan(&product, &interval, &qty); err != nil {
+		var qty, discount int
+		if err := rows.Scan(&product, &interval, &qty, &discount); err != nil {
 			continue
 		}
 		p, err := PlanFor(product, interval)
 		if err != nil {
 			continue
 		}
-		cents := p.TotalCents(qty)
+		// Net of the discount — this is REVENUE, and revenue is what is actually
+		// invoiced. Summing list prices would have reported money that no customer
+		// was ever asked for, and it would have done so on the dashboard Zabbix
+		// alerts on: a discounted customer would have looked like a full-price one
+		// forever.
+		charge, err := p.Charge(qty, discount)
+		if err != nil {
+			continue
+		}
+		cents := charge.NetCents
 		if interval == "year" {
 			cents /= 12
 		}

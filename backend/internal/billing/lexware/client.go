@@ -205,18 +205,24 @@ func (c *Client) CreateContact(ctx context.Context, in ContactInput) (string, er
 // ── Invoices ─────────────────────────────────────────────────────────────────
 
 // InvoiceInput describes one Vakt Pro subscription invoice.
+//
+// The amount is a Charge, not a bare number, and that is deliberate: the caller must
+// have priced the invoice through Plan.Charge(), which is the only place a discount
+// is applied. Passing a float here would let a call site quietly invoice a list price
+// to a customer who has a rebate — which is precisely the bug that would never be
+// noticed, because a too-HIGH invoice does not fail, it just gets paid.
 type InvoiceInput struct {
 	ContactID   string
 	Title       string
 	Intro       string
 	Description string // line item description
-	NetAmount   float64
+	Charge      Charge
 	DueInDays   int
 }
 
 // CreateInvoice creates a FINALIZED invoice (status "open") and returns its ID.
 //
-// Two things are load-bearing and were verified against the live account:
+// Three things are load-bearing and were verified against the live account:
 //
 //  1. `?finalize=true` — without it Lexware creates a draft, and a draft has no
 //     PDF, no invoice number, and cannot be paid. The status of an invoice
@@ -228,6 +234,12 @@ type InvoiceInput struct {
 //     rejected. taxTypeNote is deliberately omitted so Lexware inserts the
 //     organisation's stored § 19 wording; keeping that text in one place means
 //     it cannot drift out of sync with the legally required phrasing.
+//
+//  3. The discount goes on the TOTAL, not on the line. Lexware has no per-line
+//     rebate and rejects a negative unitPrice, so the line carries the LIST price
+//     and totalDiscountPercentage takes the rebate off the bottom. The customer
+//     therefore reads "2.990 € − 20 % = 2.392 €" instead of an unexplained 2.392 €,
+//     which is both the honest presentation and the one their bookkeeping expects.
 func (c *Client) CreateInvoice(ctx context.Context, in InvoiceInput) (string, error) {
 	if in.DueInDays <= 0 {
 		in.DueInDays = 14
@@ -244,12 +256,17 @@ func (c *Client) CreateInvoice(ctx context.Context, in InvoiceInput) (string, er
 			Quantity:    1,
 			UnitName:    "Stück",
 			UnitPrice: unitPrice{
-				Currency:          "EUR",
-				NetAmount:         in.NetAmount,
+				Currency: "EUR",
+				// The LIST price. The rebate is applied below, by Lexware, so that it is
+				// visible on the paper rather than baked into a smaller number.
+				NetAmount:         in.Charge.ListEUR(),
 				TaxRatePercentage: 0,
 			},
 		}},
-		TotalPrice:    totalPrice{Currency: "EUR"},
+		TotalPrice: totalPrice{
+			Currency:                "EUR",
+			TotalDiscountPercentage: float64(in.Charge.Percent),
+		},
 		TaxConditions: taxConditions{TaxType: "vatfree"},
 		PaymentConditions: paymentConditions{
 			PaymentTermLabel:    fmt.Sprintf("Zahlbar innerhalb von %d Tagen ohne Abzug.", in.DueInDays),

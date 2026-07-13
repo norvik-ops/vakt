@@ -166,22 +166,103 @@ func (p Plan) NextInvoiceAt(periodEnd time.Time) time.Time {
 // float.
 func (p Plan) Cents() int64 { return int64(p.NetEUR*100 + 0.5) }
 
-// TotalEUR is what actually goes on the invoice: one seat times the number bought.
-// An MSP buys ten; a direct customer buys one.
-func (p Plan) TotalEUR(quantity int) float64 {
-	if quantity < 1 {
-		quantity = 1
+// MaxDiscountPercent caps what may be granted, and 90 is not a round number picked
+// for looks.
+//
+// 100 % would be a 0 € invoice. The customer transfers nothing, so Lexware never
+// reports the voucher as "balanced", so settle() never runs — and settle() is the
+// ONLY place that issues the full licence key and sets next_invoice_at. The
+// customer's trial key would expire on day 45 and the subscription would be dead,
+// without a single error anywhere.
+//
+// Giving Vakt away is a legitimate thing to want, and it has its own path: a free
+// licence (is_free, see free.go) skips Lexware entirely — no contact, no invoice,
+// nothing to wait for. That is a different thing from charging someone nothing, and
+// conflating the two is what breaks.
+const MaxDiscountPercent = 90
+
+// ValidateDiscount is the one gate. Every entry point calls it — a percentage that
+// reaches the plan maths unchecked would either invoice a negative amount (>100) or
+// silently kill the subscription (=100).
+func ValidateDiscount(percent int) error {
+	if percent < 0 {
+		return fmt.Errorf("Rabatt kann nicht negativ sein (%d %%)", percent)
 	}
-	return p.NetEUR * float64(quantity)
+	if percent > MaxDiscountPercent {
+		return fmt.Errorf("Rabatt über %d %% ist nicht möglich (%d %% angefragt). "+
+			"Ein 100-%%-Rabatt wäre eine 0-€-Rechnung — die wird nie überwiesen, also meldet "+
+			"Lexware sie nie als bezahlt, also bekäme der Kunde nie einen Vollschlüssel. "+
+			"Wer gratis vergeben will, legt das Abo als FREILIZENZ an (Haken „Freilizenz“ "+
+			"beim Anlegen) — dann entsteht gar keine Rechnung",
+			MaxDiscountPercent, percent)
+	}
+	return nil
 }
 
-// TotalCents mirrors TotalEUR for storage.
-func (p Plan) TotalCents(quantity int) int64 {
+// Charge is what ONE invoice actually costs: list price, the discount granted, and
+// the net that ends up on the paper.
+//
+// It exists so the amount cannot be computed twice. Before, the figure sent to
+// Lexware came from TotalEUR (a float) and the figure written to billing_invoices
+// came from TotalCents (an integer), and the two agreed only because they were both
+// a plain multiplication. Put a percentage between them and they can round apart by
+// a cent — after which the panel shows one number, the customer's invoice another,
+// and nothing in the system considers that an error. Now there is one computation,
+// in cents, and the float handed to Lexware is derived FROM the cents.
+//
+// The identity ListCents = DiscountCents + NetCents holds by construction: the
+// discount is rounded, and the net is the remainder. It is never the other way
+// round.
+type Charge struct {
+	Quantity      int
+	Percent       int
+	ListCents     int64 // before discount — what the price page says
+	DiscountCents int64
+	NetCents      int64 // what is invoiced, and what the customer transfers
+}
+
+// Charge prices one invoice. Quantity below 1 is clamped rather than rejected: it is
+// an entitlement count, and the callers have already bounded it. The percentage is
+// NOT clamped — an out-of-range one is a bug at the call site and must have been
+// caught by ValidateDiscount, so we refuse to invent a price for it.
+func (p Plan) Charge(quantity, discountPercent int) (Charge, error) {
 	if quantity < 1 {
 		quantity = 1
 	}
-	return p.Cents() * int64(quantity)
+	if err := ValidateDiscount(discountPercent); err != nil {
+		return Charge{}, err
+	}
+
+	list := p.Cents() * int64(quantity)
+
+	// Integer maths, rounded half up. With whole-euro list prices and an integer
+	// percentage this is exact to the cent — no fraction ever arises, which is what
+	// lets our stored amount and the amount Lexware computes from
+	// totalDiscountPercentage agree without either of us trusting the other's
+	// rounding. TestChargeIsExactToTheCent pins that; if a future plan is priced at
+	// 299,50 €, it fails and says so.
+	discount := (list*int64(discountPercent) + 50) / 100
+
+	return Charge{
+		Quantity:      quantity,
+		Percent:       discountPercent,
+		ListCents:     list,
+		DiscountCents: discount,
+		NetCents:      list - discount,
+	}, nil
 }
+
+// NetEUR is the net amount as Lexware's JSON wants it. Derived from the cents, never
+// computed alongside them.
+func (c Charge) NetEUR() float64 { return float64(c.NetCents) / 100 }
+
+// ListEUR is the pre-discount total — this is what goes on the invoice LINE, with
+// the rebate applied by Lexware at the bottom, so the customer sees what they were
+// given instead of just a smaller number.
+func (c Charge) ListEUR() float64 { return float64(c.ListCents) / 100 }
+
+// Discounted reports whether there is anything to show the customer at all.
+func (c Charge) Discounted() bool { return c.Percent > 0 && c.DiscountCents > 0 }
 
 // LineDesc names what is being sold, so an MSP's invoice does not silently read
 // like a single licence at ten times the price.

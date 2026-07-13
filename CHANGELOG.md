@@ -6,6 +6,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+## [0.42.44] — 2026-07-13
+
+### Added
+
+- **Freilizenz — eine Lizenz ohne Rechnung** (Billing-Panel, Haken beim Anlegen). Für Design-Partner, Referenzkunden, Verbände, Beta-Tester: kein Lexware-Kontakt, keine Rechnung, sofort ein **voller** Schlüssel (kein 45-Tage-Test — es wartet ja keine Zahlung). Verlängert sich automatisch bis zur Kündigung, zählt nicht in die MRR. **Vorher gab es dafür schlicht keinen Weg:** Die gesamte Lizenz-Kette hängt an einer *bezahlten* Rechnung (`settle()` stellt den Vollschlüssel aus, `Entitlement()` liest bezahlte Perioden, `Seats.State` verlangt `status='paid'`) — „Platz vergeben" war ohne Zahlung nicht einmal erreichbar. Migration 241.
+- **Freilizenz → zahlendes Abo umwandeln** (Abo-Detailseite). Das Abo bleibt **dasselbe**, damit der Kunde seinen Schlüssel **und seinen Renewal-Token** behält: Der naheliegende Weg (kündigen + neu anlegen) hätte sein `VAKT_LICENSE_TOKEN` genau in dem Moment abgeschaltet, in dem er zusagt zu zahlen (`GetLicense` prüft `cancelled_at`). Ohne „Sofort abrechnen" entsteht **nichts Unumkehrbares** — die erste Rechnung geht automatisch raus, wenn der geschenkte Zeitraum ausläuft.
+- **Der Verlängerungs-Sweep meldet jetzt, was er stillschweigend ausschließt.** Seine Bedingung `(is_free OR lexware_contact_id IS NOT NULL)` lässt ein Abo, das weder das eine noch das andere hat, wortlos herausfallen: nie abgerechnet, nie verlängert, Schlüssel läuft lautlos aus. Genau dorthin führt ein `is_free = false` von Hand in der DB. Solche Waisen werden nun gezählt und als `CRITICAL` geloggt — eine Bedingung, die still ausschließt, muss zählen, was sie ausschließt.
+- **Rabatt pro Kunde** (Billing-Panel). Prozentual, dauerhaft — er gilt für die erste Rechnung **und für jede Verlängerung** — und wird von Hand vergeben, nicht per Code eingelöst: Der Verkauf läuft ohnehin über eine persönliche Freigabe, ein Code-Feld am öffentlichen Formular wäre eine Angriffsfläche ohne Gegenwert. Setzbar beim Anlegen und jederzeit am laufenden Abo (greift dann ab der nächsten Verlängerung); bereits **finalisierte** Rechnungen bleiben unangetastet, die ändert nur ein Storno in Lexware von Hand. Der Kunde sieht auf der Rechnung den **Listenpreis und den Abzug** (Lexware `totalDiscountPercentage`), nicht bloß eine kleinere Zahl. Migration 240.
+- **Das Billing-Panel hat erstmals Tests** (`internal/billing/admin/render_test.go`): Jede Seite wird mit einem befüllten Modell gerendert. `html/template` löst Feldnamen erst beim Ausführen auf — eine Seite, die `{{.Sub.Discount}}` gegen ein Struct ohne dieses Feld liest, parst sauber und wirft dann einen 500 bei der ersten Ansicht. Das ist das Panel, mit dem Rechnungen freigegeben werden.
+
+### Fixed
+
+- **Der Preis wurde an vier Stellen unabhängig voneinander aus dem Plan-Katalog abgeleitet** (Erstrechnung, Verlängerung, MRR-Metrik für Zabbix, Panel-Übersicht) — und der Betrag für Lexware kam aus einer anderen Funktion (`TotalEUR`, float) als der für die Datenbank (`TotalCents`, int). Solange beide nur multiplizierten, stimmten sie zufällig überein; mit einem Prozentsatz dazwischen können sie um einen Cent auseinanderlaufen, und **nichts im System hätte das als Fehler betrachtet** — der Kunde überweist den einen Betrag, die Bücher nennen den anderen. Jetzt rechnet genau eine Funktion (`Plan.Charge`), in Cent, und der Euro-Wert für Lexware wird daraus abgeleitet.
+- **`docs/dev/billing-admin.md` behauptete, Rechnungsfreigabe sei „bewusst **nicht**" im Panel** — seit `6c520da` („Freigeben im Panel") ist sie es. Die Zeile war seit dem Panel-Umbau falsch.
+
 ## [0.42.43] — 2026-07-12
 
 ### Fixed
