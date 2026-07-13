@@ -6,6 +6,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+### Fixed
+
+- **Der Release-Workflow committete auf `main` — und dieser Commit lief durch kein einziges Gate.** `release.yml` bumpte Helm-/OpenAPI-Version **nach** dem Tag und pushte das selbst. Ein Push, den ein Workflow mit dem `GITHUB_TOKEN` macht, löst per GitHub-Loop-Schutz **keine weiteren Workflows** aus — der Commit lag also ungeprüft auf `main`, bis zufällig jemand anderes pushte. Ausgerechnet dieser `sed` hat in [0.42.42] den **Ollama-Tag mit der Vakt-Version überschrieben**, wodurch `docker compose up` 22 Releases lang für jeden Neukunden tot war. **Die Richtung ist jetzt umgedreht:** Der Bump ist ein normaler Commit **vor** dem Tag (`scripts/release-prep.sh vX.Y.Z`), läuft durch CI wie jeder andere, und der Tag sitzt auf ihm. Der Workflow committet nichts mehr, er **prüft** nur noch — im `test`-Job, also **bevor** ein einziges Image gebaut ist. Die Prüfung fängt ausdrücklich auch den Ollama-Fall (Fremd-Image mit Vakt-Version); verifiziert, indem der Tag im Test vergiftet wurde. Damit ist auch **S123-G9** („Release-Tag auf den Bump-Commit") erstmals wirklich erfüllt — vorher war es strukturell unmöglich und stand trotzdem als erledigt im Ledger.
+
 ## [0.42.44] — 2026-07-13
 
 ### Added
