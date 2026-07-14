@@ -13,13 +13,14 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/httputil"
 )
 
 // ErrNotConfigured is returned when a scanner is not configured in the environment.
@@ -156,6 +157,19 @@ type nucleiResult struct {
 	MatchedAt string `json:"matched-at"`
 }
 
+// failScan schließt einen Scan als gescheitert ab und gibt den Grund zurück.
+//
+// Der Status wird ganz zu Beginn auf "running" gesetzt. Jeder Ausstieg danach MUSS
+// ihn wieder verlassen — sonst bleibt der Scan in der Oberfläche für immer am
+// Laufen, und der Grund seiner Ablehnung steht nur im Log, wo ihn niemand sucht.
+func failScan(ctx context.Context, repo *Repository, scanID string, startedAt time.Time, cause error) error {
+	_ = repo.UpdateScanStatus(ctx, scanID, "failed",
+		WithErrorMessage(cause.Error()),
+		WithDurationMs(time.Since(startedAt).Milliseconds()),
+		WithCompletedAt(time.Now()))
+	return cause
+}
+
 // RunTrivyScan executes trivy against the scan target, normalises findings into
 // vb_findings, and updates the vb_scans record accordingly.
 func RunTrivyScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) error {
@@ -178,8 +192,14 @@ func RunTrivyScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) er
 	}
 
 	// Reject argument-injection patterns in asset name targets.
+	//
+	// Ein abgelehntes Ziel BEENDET den Scan (failed), es lässt ihn nicht hängen.
+	// Der Status steht oben bereits auf "running"; ohne den Abschluss hier bliebe er
+	// dort für immer stehen, und die Oberfläche zeigte einen Scan, der ewig läuft —
+	// niemand sähe, dass er abgelehnt wurde und warum (2026-07-14).
 	if strings.HasPrefix(target, "-") || strings.ContainsAny(target, `/\`) {
-		return fmt.Errorf("trivy: invalid scan target %q", target)
+		return failScan(ctx, repo, payload.ScanID, startedAt,
+			fmt.Errorf("trivy: invalid scan target %q", target))
 	}
 
 	// Block scans against private/loopback addresses to prevent SSRF-style
@@ -188,7 +208,8 @@ func RunTrivyScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) er
 	if os.Getenv("VAKT_SCAN_ALLOW_PRIVATE") == "true" {
 		log.Info().Str("scan_id", payload.ScanID).Msg("trivy: VAKT_SCAN_ALLOW_PRIVATE=true — private/loopback targets permitted")
 	} else if isPrivateOrLoopback(target) {
-		return fmt.Errorf("scan target %q is in a private or loopback range — configure VAKT_SCAN_ALLOW_PRIVATE=true to allow internal scans", target)
+		return failScan(ctx, repo, payload.ScanID, startedAt,
+			fmt.Errorf("scan target %q is in a private or loopback range — configure VAKT_SCAN_ALLOW_PRIVATE=true to allow internal scans", target))
 	}
 
 	args := []string{"image", "--format", "json", "--quiet", target}
@@ -196,7 +217,7 @@ func RunTrivyScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) er
 		args = []string{"fs", "--format", "json", "--quiet", payload.TargetIP}
 	}
 
-	out, runErr := exec.CommandContext(ctx, "trivy", args...).Output()
+	out, runErr := runScanner(ctx, "trivy", args...)
 	durationMs := time.Since(startedAt).Milliseconds()
 
 	if runErr != nil {
@@ -207,53 +228,13 @@ func RunTrivyScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) er
 		return fmt.Errorf("trivy exec: %w", runErr)
 	}
 
-	var trivyOut trivyOutput
-	if err := json.Unmarshal(out, &trivyOut); err != nil {
+	findings, parseErr := findingsFromTrivy(out, payload)
+	if parseErr != nil {
 		_ = repo.UpdateScanStatus(ctx, payload.ScanID, "failed",
-			WithErrorMessage("failed to parse trivy output: "+err.Error()),
+			WithErrorMessage("failed to parse trivy output: "+parseErr.Error()),
 			WithDurationMs(durationMs),
 			WithCompletedAt(time.Now()))
-		return fmt.Errorf("parse trivy output: %w", err)
-	}
-
-	scanIDPtr := &payload.ScanID
-	var findings []Finding
-	for _, result := range trivyOut.Results {
-		for _, vuln := range result.Vulnerabilities {
-			severity := strings.ToLower(vuln.Severity)
-			if severity == "" {
-				severity = "info"
-			}
-
-			var cvss *float64
-			if vuln.CVSS.NVD.V3Score > 0 {
-				v := vuln.CVSS.NVD.V3Score
-				cvss = &v
-			}
-
-			var cveIDPtr *string
-			if vuln.VulnerabilityID != "" {
-				cveID := vuln.VulnerabilityID
-				cveIDPtr = &cveID
-			}
-
-			f := Finding{
-				OrgID:       payload.OrgID,
-				AssetID:     payload.AssetID,
-				ScanID:      scanIDPtr,
-				CVEID:       cveIDPtr,
-				Title:       vuln.Title,
-				Description: vuln.Description,
-				Severity:    severity,
-				CVSSScore:   cvss,
-				Scanner:     "trivy",
-				Sources:     []string{"trivy"},
-				Status:      "open",
-				LastSeenAt:  time.Now(),
-			}
-			ComputeRiskScore(&f)
-			findings = append(findings, f)
-		}
+		return parseErr
 	}
 	count, _ := repo.BatchUpsertFindings(ctx, payload.OrgID, findings)
 
@@ -290,8 +271,11 @@ func RunNucleiScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) e
 	}
 
 	// Reject argument-injection patterns in asset name targets.
+	// Wie bei trivy: ein abgelehntes Ziel beendet den Scan, statt ihn auf "running"
+	// hängen zu lassen.
 	if strings.HasPrefix(target, "-") || strings.ContainsAny(target, `/\`) {
-		return fmt.Errorf("nuclei: invalid scan target %q", target)
+		return failScan(ctx, repo, payload.ScanID, startedAt,
+			fmt.Errorf("nuclei: invalid scan target %q", target))
 	}
 
 	// Block scans against private/loopback addresses to prevent SSRF-style
@@ -300,14 +284,15 @@ func RunNucleiScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) e
 	if os.Getenv("VAKT_SCAN_ALLOW_PRIVATE") == "true" {
 		log.Info().Str("scan_id", payload.ScanID).Msg("nuclei: VAKT_SCAN_ALLOW_PRIVATE=true — private/loopback targets permitted")
 	} else if isPrivateOrLoopback(target) {
-		return fmt.Errorf("scan target %q is in a private or loopback range — configure VAKT_SCAN_ALLOW_PRIVATE=true to allow internal scans", target)
+		return failScan(ctx, repo, payload.ScanID, startedAt,
+			fmt.Errorf("scan target %q is in a private or loopback range — configure VAKT_SCAN_ALLOW_PRIVATE=true to allow internal scans", target))
 	}
 
-	out, runErr := exec.CommandContext(ctx, "nuclei",
+	out, runErr := runScanner(ctx, "nuclei",
 		"-target", target,
 		"-json",
 		"-silent",
-	).Output()
+	)
 	durationMs := time.Since(startedAt).Milliseconds()
 
 	if runErr != nil {
@@ -318,35 +303,7 @@ func RunNucleiScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) e
 		return fmt.Errorf("nuclei exec: %w", runErr)
 	}
 
-	scanIDPtr := &payload.ScanID
-	var findings []Finding
-	decoder := json.NewDecoder(bytes.NewReader(out))
-	for decoder.More() {
-		var r nucleiResult
-		if err := decoder.Decode(&r); err != nil {
-			continue
-		}
-
-		severity := strings.ToLower(r.Info.Severity)
-		if severity == "" {
-			severity = "info"
-		}
-
-		f := Finding{
-			OrgID:      payload.OrgID,
-			AssetID:    payload.AssetID,
-			ScanID:     scanIDPtr,
-			Title:      r.Info.Name,
-			Severity:   severity,
-			Scanner:    "nuclei",
-			TemplateID: r.TemplateID,
-			Sources:    []string{"nuclei"},
-			Status:     "open",
-			LastSeenAt: time.Now(),
-		}
-		ComputeRiskScore(&f)
-		findings = append(findings, f)
-	}
+	findings := findingsFromNuclei(out, payload)
 	count, _ := repo.BatchUpsertFindings(ctx, payload.OrgID, findings)
 
 	_ = repo.UpdateScanStatus(ctx, payload.ScanID, "completed",
@@ -395,7 +352,11 @@ func newGVMClient() (*gvmClient, error) {
 		baseURL: strings.TrimRight(baseURL, "/"),
 		user:    getEnv("VAKT_OPENVAS_USER"),
 		pass:    getEnv("VAKT_OPENVAS_PASS"),
-		http:    &http.Client{Timeout: 30 * time.Second},
+		// GuardedClient: VAKT_OPENVAS_URL ist ein konfigurierter Host, also eine
+		// Fläche für DNS-Rebinding (die geprüfte Adresse ist nicht die verbundene).
+		// allowPrivate=true, weil ein OpenVAS im eigenen Netz des Kunden der
+		// Normalfall ist — wie beim SIEM-Forwarder und beim Alerting.
+		http: httputil.GuardedClient(30*time.Second, true),
 	}, nil
 }
 
@@ -688,7 +649,10 @@ func UpdateEPSSScores(ctx context.Context, db *pgxpool.Pool, orgID string) error
 
 	// 2. Process in batches of 100 (FIRST API limit).
 	const batchSize = 100
-	httpClient := &http.Client{Timeout: 30 * time.Second}
+	// GuardedClient: Die EPSS-API ist ein fester, öffentlicher Vendor-Host. Löst er
+	// plötzlich auf eine private Adresse auf, ist das kein Feature, sondern ein
+	// Rebind — deshalb allowPrivate=false.
+	httpClient := httputil.GuardedClient(30*time.Second, false)
 
 	for i := 0; i < len(cveIDs); i += batchSize {
 		end := i + batchSize

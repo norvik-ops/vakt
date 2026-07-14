@@ -131,7 +131,7 @@ func (r *Repository) UpsertFinding(ctx context.Context, orgID string, f Finding)
 		          last_seen_at, sla_due_at, created_at, updated_at`,
 		orgID, f.AssetID, f.ScanID, f.CVEID, f.Title, f.Description, f.Severity,
 		f.CVSSScore, f.EPSSScore, f.EPSSPercentile, f.RiskScore,
-		f.Status, f.Scanner, f.RawID, sources, f.TemplateID,
+		f.Status, f.Scanner, dedupKey(f.RawID), sources, dedupKey(f.TemplateID),
 		f.AssignedTo, f.Justification,
 	).Scan(
 		&inserted.ID, &inserted.OrgID, &inserted.AssetID,

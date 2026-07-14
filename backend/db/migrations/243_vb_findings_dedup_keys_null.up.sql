@@ -1,0 +1,35 @@
+-- Vakt Scan: ein Leerstring ist kein fehlender Wert. (2026-07-14)
+--
+-- Migration 120 legt drei PARTIELLE Unique-Indexe auf vb_findings an und schreibt
+-- selbst dazu: „Partial, weil die jeweiligen Spalten NULL sein duerfen (cve_id /
+-- template_id / raw_id) und mehrere NULL-Werte erlaubt sein muessen."
+--
+-- Der Go-Code hat aber nie NULL geschrieben. Finding.TemplateID und Finding.RawID
+-- sind `string`; fehlt der Wert, ist er '' — und '' ist in PostgreSQL NOT NULL. Die
+-- partiellen Indexe griffen damit fuer JEDEN Fund, mit identischem Schluessel:
+--
+--   idx_vb_findings_dedup_template (org, asset, scanner, template_id):
+--     zwei Trivy-Funde auf demselben Asset teilen sich (org, asset, 'trivy', '')
+--     -> Unique-Verletzung beim zweiten.
+--
+--   idx_vb_findings_dedup_rawid (org, raw_id, scanner) — OHNE das Asset:
+--     mit raw_id = '' konnte eine Organisation genau EINEN Trivy-Fund halten,
+--     ueber alle Assets hinweg.
+--
+-- Und weil pgx einen Batch in eine implizite Transaktion legt, riss die eine
+-- kollidierende Zeile den ganzen Batch mit. BatchUpsertFindings loggte sie, zaehlte
+-- die Zeilen davor als Erfolg und gab einen positiven Zaehler zurueck — waehrend in
+-- der Datenbank NICHTS ankam. Ein Trivy-Scan mit zwei Funden meldete „abgeschlossen,
+-- 1 Fund" und speicherte null. Vakt Scan hat damit nie mehr als einen Fund pro
+-- Organisation und Scanner behalten.
+--
+-- Der Code schreibt jetzt NULL (dedup_keys.go). Diese Migration raeumt die Altdaten
+-- nach: Bestehende ''-Werte werden zu NULL, damit sie nicht weiter als Kollisions-
+-- schluessel wirken und damit die Dedup-Indexe endlich das tun, wofuer sie da sind.
+--
+-- Datenverlust: keiner. '' und NULL bedeuten hier dasselbe („kein Schluessel"), nur
+-- dass Postgres sie verschieden behandelt. Betroffen sind ohnehin hoechstens wenige
+-- Zeilen — mehr als eine pro Schluessel liess der Unique-Index gar nicht zu.
+UPDATE vb_findings SET template_id = NULL WHERE template_id = '';
+UPDATE vb_findings SET raw_id      = NULL WHERE raw_id      = '';
+UPDATE vb_findings SET cve_id      = NULL WHERE cve_id      = '';

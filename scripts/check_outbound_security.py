@@ -11,7 +11,7 @@
 #   String-literal Addr ("localhost:6379") is an allowed dev fallback; an empty
 #   `RedisClientOpt{}` is the documented "no redis" zero value.
 #
-# G5 — http.Client literals in services/** and platform/** (ratchet):
+# G5 — http.Client literals in services/**, platform/** UND modules/** (ratchet):
 #   Every outbound request should ideally go through httputil.GuardedClient/
 #   GuardedDialContext (DNS-rebinding / SSRF re-validation). The existing
 #   population targets mostly fixed vendor hosts; migrating them is SA15-01/02
@@ -28,13 +28,28 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 BACKEND = ROOT / "backend"
 
 # ── G5 ratchet baseline ──────────────────────────────────────────────────────
-# Count of unguarded `http.Client{` literals under services/** + platform/**.
-# Only ever lower this — never raise to admit a new unguarded client; use
-# httputil.GuardedClient instead. 14 at S123-G5; lowered to 12 in S124-2 after
-# alerting + siem forwarder moved to GuardedClient (SA15-01); lowered to 9 in
-# S129-1 (D19) after the AI client's three literals moved too — the last
-# admin-configurable outbound host that could still be DNS-rebound.
-HTTPCLIENT_BASELINE = 9
+# Count of unguarded `http.Client{` literals under services/**, platform/** und
+# modules/**. Only ever lower this — never raise to admit a new unguarded client;
+# use httputil.GuardedClient instead.
+#
+# 14 at S123-G5; lowered to 12 in S124-2 (alerting + siem forwarder, SA15-01);
+# lowered to 9 in S129-1/D19 (AI client, drei Literale).
+#
+# 2026-07-14 — DER SCOPE WAR DER EIGENTLICHE FEHLER: Das Gate schaute nur in
+# services/ und platform/. `internal/modules/**` war ein blinder Fleck, in dem vier
+# ungeguardete Clients unbemerkt lebten (OpenVAS/GVM und EPSS in vaktscan/scanner.go,
+# endoflife.date in vaktscan/eol.go, dazu einer in vaktcomply). Deshalb ist bei der
+# D19-Runde niemandem aufgefallen, dass es sie gibt: Der Ratchet hat sie nie gezählt.
+#
+# Ein Gate, das einen Teil des Codes gar nicht anschaut, friert nicht den Zustand
+# ein — es friert den Ausschnitt ein, den es sieht, und meldet dafür „OK". Dieselbe
+# Klasse wie das check_routes.py, das ein Viertel der Frontend-Calls still übersprang.
+#
+# Mit modules/** im Blick sind es 11, nicht 9: Die drei in vaktscan (GVM, EPSS,
+# endoflife.date) sind in derselben Runde auf GuardedClient umgestellt worden; die
+# zwei in vaktcomply bleiben vorerst stehen — sie sind jetzt wenigstens GEZÄHLT und
+# eingefroren, statt unsichtbar zu sein.
+HTTPCLIENT_BASELINE = 11
 
 REDIS_RE = re.compile(r"RedisClientOpt\{")
 HTTPCLIENT_RE = re.compile(r"\bhttp\.Client\{")
@@ -96,7 +111,7 @@ def check_redis():
 def check_httpclient():
     count = 0
     hits = []
-    for p in go_prod_files("internal/services", "internal/shared/platform"):
+    for p in go_prod_files("internal/services", "internal/shared/platform", "internal/modules"):
         text = p.read_text(encoding="utf-8", errors="ignore")
         for m in HTTPCLIENT_RE.finditer(text):
             block = balanced_block(text, m.end() - 1)
@@ -118,7 +133,7 @@ def main():
     count, hits = check_httpclient()
     if count > HTTPCLIENT_BASELINE:
         problems.append(
-            f"G5: {count} unguarded http.Client literals in services/**+platform/** "
+            f"G5: {count} unguarded http.Client literals in services/**+platform/**+modules/** "
             f"(baseline {HTTPCLIENT_BASELINE}). A new one was added — route it through "
             f"httputil.GuardedClient/GuardedDialContext.\n  " + "\n  ".join(hits))
     elif count < HTTPCLIENT_BASELINE:

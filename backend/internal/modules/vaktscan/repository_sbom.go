@@ -203,7 +203,7 @@ func (r *Repository) BatchUpsertFindings(ctx context.Context, orgID string, find
 				      updated_at       = NOW()`,
 				orgID, f.AssetID, f.ScanID, f.CVEID, f.Title, f.Description, f.Severity,
 				f.CVSSScore, f.EPSSScore, f.EPSSPercentile, f.RiskScore,
-				f.Status, f.Scanner, f.RawID, sources, f.TemplateID,
+				f.Status, f.Scanner, dedupKey(f.RawID), sources, dedupKey(f.TemplateID),
 				f.AssignedTo, f.Justification,
 			)
 		} else if f.TemplateID != "" {
@@ -234,7 +234,7 @@ func (r *Repository) BatchUpsertFindings(ctx context.Context, orgID string, find
 				      updated_at       = NOW()`,
 				orgID, f.AssetID, f.ScanID, f.CVEID, f.Title, f.Description, f.Severity,
 				f.CVSSScore, f.EPSSScore, f.EPSSPercentile, f.RiskScore,
-				f.Status, f.Scanner, f.RawID, sources, f.TemplateID,
+				f.Status, f.Scanner, dedupKey(f.RawID), sources, dedupKey(f.TemplateID),
 				f.AssignedTo, f.Justification,
 			)
 		} else {
@@ -252,7 +252,7 @@ func (r *Repository) BatchUpsertFindings(ctx context.Context, orgID string, find
 				   $17::uuid, $18, 0, 1, NOW())`,
 				orgID, f.AssetID, f.ScanID, f.CVEID, f.Title, f.Description, f.Severity,
 				f.CVSSScore, f.EPSSScore, f.EPSSPercentile, f.RiskScore,
-				f.Status, f.Scanner, f.RawID, sources, f.TemplateID,
+				f.Status, f.Scanner, dedupKey(f.RawID), sources, dedupKey(f.TemplateID),
 				f.AssignedTo, f.Justification,
 			)
 		}

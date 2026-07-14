@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
+	"github.com/matharnica/vakt/internal/shared/httputil"
 	"github.com/matharnica/vakt/internal/shared/safego"
 )
 
@@ -78,6 +79,24 @@ func (e *eolValue) UnmarshalJSON(raw []byte) error {
 	return nil
 }
 
+// MarshalJSON schreibt den Wert in der Form der API zurück, nicht in unserer.
+//
+// Ohne diese Methode serialisiert Go die Struktur — aus `"2022-05-24"` wurde
+// `{"IsEOL":true,"Date":"2022-05-24"}`, und das eigene UnmarshalJSON konnte es
+// nicht mehr lesen. Genau das ist passiert (fetchEOL, 2026-07-14): Ein Round-Trip
+// durch JSON zerstörte den Wert lautlos, und weil der Fehler beim Aufrufer nur ein
+// log.Warn war, hat das EOL-Tracking jahrelang nichts gemeldet.
+//
+// Ein Typ mit eigenem UnmarshalJSON braucht ein passendes MarshalJSON — sonst ist
+// er nur in eine Richtung ein Typ, und die andere Richtung ist eine Falle, die
+// keinen Compiler-Fehler erzeugt.
+func (e eolValue) MarshalJSON() ([]byte, error) {
+	if e.Date != "" {
+		return json.Marshal(e.Date)
+	}
+	return json.Marshal(e.IsEOL)
+}
+
 // eolCycle is one entry returned by the endoflife.date API.
 type eolCycle struct {
 	Cycle             string   `json:"cycle"`
@@ -86,16 +105,44 @@ type eolCycle struct {
 }
 
 // EOLChecker checks components against the endoflife.date API and stores results.
+//
+// httpClient ist zugleich die Test-Naht: Ein Test im Paket hängt hier einen Client
+// ein, der auf einen httptest.Server zeigt, und fährt damit den echten Weg
+// (Anfrage, Antwort, Parsen, Cache) ohne endoflife.date zu behelligen.
 type EOLChecker struct {
 	db         *pgxpool.Pool
 	httpClient *http.Client
+
+	// baseURL ist die Test-Naht. Produktion lässt sie leer und bekommt
+	// endoflife.date; ein Test zeigt sie auf einen httptest.Server und fährt damit
+	// den echten Weg — Anfrage, Statuscodes, Parsen, Cache — ohne einen fremden
+	// Dienst zu befragen (und ohne von ihm abzuhängen, wenn er mal weg ist).
+	baseURL string
+}
+
+// eolAPIBaseURL ist die öffentliche EOL-Datenbank. Konstante, nicht konfigurierbar:
+// Es gibt keinen Grund, warum eine Kundeninstanz woanders hinfragen sollte, und
+// jede Konfigurierbarkeit wäre eine weitere Fläche für Datenabfluss.
+const eolAPIBaseURL = "https://endoflife.date/api"
+
+// api liefert die Basis-URL für Anfragen — die Naht, wenn gesetzt, sonst die echte.
+func (c *EOLChecker) api() string {
+	if c.baseURL != "" {
+		return c.baseURL
+	}
+	return eolAPIBaseURL
 }
 
 // NewEOLChecker creates a new EOLChecker backed by the given database pool.
+//
+// GuardedClient: endoflife.date ist ein fester, öffentlicher Host. Löst er auf eine
+// private Adresse auf, ist das kein Sonderfall, sondern ein DNS-Rebind — deshalb
+// allowPrivate=false. Der Guard löst den Namen auf und wählt die aufgelöste IP, so
+// dass die geprüfte Adresse auch die verbundene ist.
 func NewEOLChecker(db *pgxpool.Pool) *EOLChecker {
 	return &EOLChecker{
 		db:         db,
-		httpClient: &http.Client{Timeout: 10 * time.Second},
+		httpClient: httputil.GuardedClient(10*time.Second, false),
 	}
 }
 
@@ -217,7 +264,7 @@ func (c *EOLChecker) CheckComponents(ctx context.Context, orgID, sbomID string) 
 // fetchEOL fetches EOL data from endoflife.date for the given product/cycle and
 // returns (status, eolDate, rawPayload, error). rawPayload is nil on 404.
 func (c *EOLChecker) fetchEOL(ctx context.Context, product, cycle string) (string, *string, []byte, error) {
-	url := fmt.Sprintf("https://endoflife.date/api/%s.json", product)
+	url := fmt.Sprintf("%s/%s.json", c.api(), product)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return "unknown", nil, nil, fmt.Errorf("build request: %w", err)
@@ -241,16 +288,41 @@ func (c *EOLChecker) fetchEOL(ctx context.Context, product, cycle string) (strin
 		return "unknown", nil, nil, fmt.Errorf("read body: %w", err)
 	}
 
-	var cycles []eolCycle
-	if err := json.Unmarshal(body, &cycles); err != nil {
+	// Die Einträge bleiben als ROHE Bytes erhalten, statt geparst und wieder
+	// zurückserialisiert zu werden.
+	//
+	// ── Warum das kein Stilfrage ist (2026-07-14) ─────────────────────────────
+	//
+	// Vorher stand hier `payload, _ := json.Marshal(cycles[i])`, also die
+	// Rück-Serialisierung des geparsten Zyklus. `eolValue` hat aber nur ein
+	// UnmarshalJSON und KEIN MarshalJSON: Aus dem API-Wert `"2022-05-24"` wurde
+	// beim Zurückschreiben `{"IsEOL":true,"Date":"2022-05-24"}` — unsere interne
+	// Struktur statt der API-Form. Die Zeile direkt darunter las das wieder ein
+	// und scheiterte („expected bool or string").
+	//
+	// Folge: fetchEOL gab für JEDEN Zyklus, den endoflife.date tatsächlich kennt,
+	// einen Fehler zurück. Der Aufrufer behandelt einen Fetch-Fehler mit
+	// `log.Warn` + `return nil` — die Komponente fiel also **still heraus**, nicht
+	// einmal als „unbekannt". Das EOL-Tracking hat damit nie eine einzige
+	// veraltete Komponente gemeldet; sichtbar war es nur als WARN im Log.
+	//
+	// Die Bytes der API sind ohnehin das, was `rawPayload` verspricht und was der
+	// Cache speichern soll. Alte, kaputt gecachte Einträge heilen sich selbst: Sie
+	// scheitern beim Lesen, gelten als Cache-Miss und werden neu geholt.
+	var entries []json.RawMessage
+	if err := json.Unmarshal(body, &entries); err != nil {
 		return "unknown", nil, nil, fmt.Errorf("parse endoflife.date response: %w", err)
 	}
 
-	for i := range cycles {
-		if normaliseCycle(cycles[i].Cycle) == normaliseCycle(cycle) {
-			payload, _ := json.Marshal(cycles[i])
-			status, eolDate, err := parseEOLPayload(payload)
-			return status, eolDate, payload, err
+	for _, entry := range entries {
+		var parsed eolCycle
+		if err := json.Unmarshal(entry, &parsed); err != nil {
+			// Ein unlesbarer Eintrag kostet diesen Eintrag, nicht die Abfrage.
+			continue
+		}
+		if normaliseCycle(parsed.Cycle) == normaliseCycle(cycle) {
+			status, eolDate, err := parseEOLPayload(entry)
+			return status, eolDate, entry, err
 		}
 	}
 

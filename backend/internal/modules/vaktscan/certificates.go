@@ -54,6 +54,32 @@ type CertInfo struct {
 
 // ScanTLSCertificate dials domain:443, reads the leaf certificate metadata and returns it.
 // It does NOT verify the chain — we only need metadata (expiry, issuer, SANs).
+//
+// ── Warum hier KEIN isPrivateOrLoopback steht, obwohl der Scanner es hat ──────
+//
+// RunTrivyScan/RunNucleiScan blocken private und Loopback-Ziele und verlangen
+// VAKT_SCAN_ALLOW_PRIVATE=true. Diese Funktion tut das bewusst NICHT — und das ist
+// eine Entscheidung, kein vergessener Guard (2026-07-14, geprüft und so gewollt).
+//
+// Der Unterschied liegt im Zweck, nicht in der Technik. Ein Schwachstellen-Scan
+// gegen eine interne Adresse ist ein Scan fremder Infrastruktur; ein Blick auf das
+// eigene interne TLS-Zertifikat ist der **Normalfall** eines self-hosted ISMS. Wer
+// sein internes Wildcard-Zertifikat überwachen will, damit es nicht unbemerkt
+// abläuft, tut genau das, wofür dieses Feature existiert — und soll dafür keine
+// Env-Var setzen müssen.
+//
+// Was dabei bewusst in Kauf genommen wird: Ein Admin oder SecurityAnalyst kann
+// Vakt dazu bringen, eine interne Adresse auf Port 443 anzuwählen, und sieht
+// danach die Zertifikats-Metadaten (Aussteller, Subject, SANs). Das ist eine
+// schmale Aufklärungsfläche für eine Rolle, die in einem self-hosted Produkt
+// ohnehin die Konfiguration bestimmt. Der Verbindung wird nichts entlockt außer
+// dem Zertifikat: kein Antwort-Body, kein Port-Scan (nur 443), kein Umschreiben.
+//
+// Wer das enger haben will, blockt es NICHT hier, sondern im Netz — das ist die
+// Stelle, an der „darf dieser Container interne Adressen erreichen" hingehört.
+// Wird die Entscheidung je gedreht, muss sie es mit einer Migrationsansage tun:
+// Ein Kunde, der heute interne Zertifikate überwacht, verlöre sie beim Upgrade
+// ohne eigenes Zutun.
 func ScanTLSCertificate(domain string) (*CertInfo, error) {
 	host := domain
 	if !strings.Contains(host, ":") {

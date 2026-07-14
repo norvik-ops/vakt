@@ -6,6 +6,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+### Fixed
+
+- **🔴 Vakt Scan konnte pro Organisation genau EINEN Fund speichern — jeder Scan mit zwei Funden speicherte gar nichts (Migration 243).** `vb_findings` hat drei **partielle** Unique-Indexe, und die Migration, die sie anlegt, schreibt selbst dazu: „partiell, weil die Spalten NULL sein dürfen und mehrere NULL-Werte erlaubt sein müssen". Der Code schrieb aber nie `NULL`, sondern den **Leerstring** — und `''` ist in PostgreSQL **NOT NULL**. Die Indexe griffen damit für jeden Fund mit demselben Schlüssel: Zwei Trivy-Funde auf demselben Asset kollidierten (`org, asset, 'trivy', ''`), und der `raw_id`-Index läuft sogar **ohne das Asset** — eine Organisation konnte über alle Assets hinweg genau einen Trivy-Fund halten. Weil pgx einen Batch in **eine** implizite Transaktion legt, riss die kollidierende Zeile den ganzen Batch mit: Der Scan meldete „abgeschlossen, 1 Fund" und speicherte **null**. Der gemeldete Zähler war eine Behauptung, kein Ergebnis. Aufgefallen, als der Scan-Weg zum ersten Mal von einem Test durchlaufen wurde — vorher konnte ihn keiner aufrufen (Unterprozess + Datenbank), und der Demo-Seed füllt die Fund-Tabelle direkt, sodass Vakt Scan in der Demo funktionierte.
+
+- **🔴 Das EOL-Tracking hat nie eine einzige veraltete Komponente gemeldet.** `fetchEOL` serialisierte den geparsten Zyklus zurück, um ihn zwischenzuspeichern — aber der Typ für das `eol`-Feld hatte nur ein `UnmarshalJSON` und **kein** `MarshalJSON`. Aus dem API-Wert `"2022-05-24"` wurde damit die interne Struktur `{"IsEOL":true,…}`, die die Zeile direkt darunter wieder einzulesen versuchte — und daran scheiterte. Der Aufrufer behandelt diesen Fehler mit einer Log-Warnung und **verwirft die Komponente**: nicht einmal als „unbekannt". Jede Komponente, die endoflife.date tatsächlich kennt, fiel also still heraus. Ein Typ mit eigenem `UnmarshalJSON` braucht ein passendes `MarshalJSON` — sonst ist er nur in eine Richtung ein Typ, und die andere ist eine Falle ohne Compiler-Fehler.
+
+- **🟠 Eine unvollständige Nuclei-Ausgabezeile hängte den Worker dauerhaft auf.** Die Parse-Schleife nutzte `json.Decoder.More()` und übersprang Decode-Fehler mit `continue` — aber `More()` bleibt nach einem gescheiterten `Decode` auf `true`: Der Decoder kommt über das kaputte Byte nicht hinweg. Das ist eine **Endlosschleife** bei 100 % CPU. Eine halb geschriebene Zeile (abgebrochener Prozess, volle Platte) genügte. Jetzt zeilenweise geparst: Eine kaputte Zeile kostet eine Zeile.
+
+- **🟠 Ein abgelehnter Scan blieb für immer auf „läuft".** Der Status wird zu Beginn auf `running` gesetzt; lehnte der SSRF-Guard das Ziel danach ab, kehrte die Funktion zurück, **ohne** den Status wieder zu verlassen. In der Oberfläche drehte sich ein Spinner ohne Ende, und der Grund stand nur im Log. Ein abgelehnter Scan wird jetzt als gescheitert abgeschlossen — mit dem Grund am Scan.
+
+### Security
+
+- **Der Outbound-Guard hatte einen blinden Fleck: `internal/modules/**`.** Das Gate, das ungeguardete HTTP-Clients einfriert, schaute nur in `services/` und `platform/`. In den Modulen lebten dadurch vier ungeguardete Clients unbemerkt — OpenVAS/GVM und die EPSS-API in Vakt Scan, endoflife.date, dazu einer in Vakt Comply. Genau deshalb ist bei der letzten SSRF-Runde niemandem aufgefallen, dass es sie gibt: Der Ratchet hat sie nie gezählt. Ein Gate, das einen Teil des Codes gar nicht anschaut, friert nicht den Zustand ein, sondern den Ausschnitt, den es sieht — und meldet dafür „OK". Die drei Clients in Vakt Scan laufen jetzt über den `GuardedClient` (DNS-Rebinding-Schutz), das Gate sieht alle Module.
+
+
 ## [0.42.45] — 2026-07-14
 
 ### Security
