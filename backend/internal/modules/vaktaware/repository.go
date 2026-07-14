@@ -566,14 +566,52 @@ func (r *Repository) GetCampaignStats(ctx context.Context, orgID, campaignID str
 			stats.TotalTargets = int(n)
 		}
 	}
+	// EmailsSent was declared in CampaignStats from the start and never assigned
+	// by anyone — every campaign reported 0 mails sent. It is a count of `sent`
+	// events now that those exist (S126, migration 242).
+	stats.EmailsSent, _ = r.countEventsByType(ctx, campaignID, "sent")
+
+	// No `sent` events means this campaign predates migration 242: its tracking
+	// tokens were never stored, so nothing it received could be recorded. Its
+	// zeroes are the absence of measurement, not a measurement of zero.
+	stats.TrackingMeasured = stats.EmailsSent > 0
 	stats.Opens, _ = r.countEventsByType(ctx, campaignID, "open")
 	stats.Clicks, _ = r.countEventsByType(ctx, campaignID, "click")
 	stats.FormSubmissions, _ = r.countEventsByType(ctx, campaignID, "form_submission")
 	if stats.TotalTargets > 0 {
+		// All three rates share the same denominator (everyone the campaign was
+		// aimed at), so they can be read against each other. OpenRate was the
+		// third rate that never got computed.
+		stats.OpenRate = float64(stats.Opens) / float64(stats.TotalTargets) * 100
 		stats.ClickRate = float64(stats.Clicks) / float64(stats.TotalTargets) * 100
 		stats.SubmissionRate = float64(stats.FormSubmissions) / float64(stats.TotalTargets) * 100
 	}
 	return &stats, nil
+}
+
+// FindSentEvent returns the target attribution recorded when the campaign mail
+// carrying this token went out: the target it was addressed to (nil in
+// betriebsrat_mode, deliberately) and their department.
+//
+// This is what lets a later click be attributed without the recipient ever
+// identifying themselves — the token was minted for exactly one person, so the
+// token IS the identity, and the `sent` event is the only record of it.
+//
+// Scoped by org even though the token alone would find the row: a lookup that
+// crosses tenants because its key happened to be unique is one schema change away
+// from not being.
+func (r *Repository) FindSentEvent(ctx context.Context, orgID, token string) (*string, string, error) {
+	var targetID *string
+	var department string
+	err := r.db.QueryRow(ctx, `
+		SELECT target_id::text, COALESCE(department, '')
+		FROM sr_events
+		WHERE org_id = $1::uuid AND tracking_token = $2 AND type = 'sent'
+		LIMIT 1`, orgID, token).Scan(&targetID, &department)
+	if err != nil {
+		return nil, "", fmt.Errorf("no sent event for tracking token: %w", err)
+	}
+	return targetID, department, nil
 }
 
 func (r *Repository) countEventsByType(ctx context.Context, campaignID, eventType string) (int, error) {

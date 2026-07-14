@@ -45,10 +45,18 @@ const phishingClickWindowDays = 365
 //
 // Denominator: the recipients of those campaigns (targets of the campaign's
 // group — the same derivation vaktaware uses for its per-campaign rate).
-// Numerator: DISTINCT (campaign, target) click events, so a recipient clicking
-// twice cannot push the rate above 100 %. Returns nil (unknown) when the org ran
-// no completed campaign with recipients in the window — the dashboard then hides
-// the KPI rather than showing a misleading 0 %.
+// Numerator: DISTINCT tracking tokens with a click. A token is minted per
+// recipient per campaign, so distinct tokens are distinct people who clicked and
+// someone clicking twice cannot push the rate above 100 %. Returns nil (unknown)
+// when the org ran no completed campaign with recipients in the window — the
+// dashboard then hides the KPI rather than showing a misleading 0 %.
+//
+// The numerator used to count DISTINCT (campaign, target_id) and skip rows whose
+// target_id was NULL — which was every row, because vaktaware wrote click events
+// with a nil target (fixed in S126). The KPI was therefore structurally 0 %.
+// Counting tokens instead is also what makes the KPI work under betriebsrat_mode,
+// where the target is deliberately not recorded: the token identifies the click as
+// distinct without identifying the person who made it.
 func calcPhishingClickRate(ctx context.Context, db *pgxpool.Pool, orgID string) *float64 {
 	if db == nil {
 		return nil
@@ -64,15 +72,21 @@ func calcPhishingClickRate(ctx context.Context, db *pgxpool.Pool, orgID string) 
 			WHERE c.org_id = $1::uuid
 			  AND c.status = 'completed'
 			  AND c.completed_at >= NOW() - make_interval(days => $2::int)
+			  -- Only campaigns whose tracking was actually recorded. One sent before
+			  -- migration 242 never stored its tracking tokens, so every click it got
+			  -- was rejected and nothing was measured. Counting its recipients in the
+			  -- denominator would dilute the rate towards zero with people whose
+			  -- behaviour nobody observed — a wrong number that looks like a good one.
+			  AND EXISTS (SELECT 1 FROM sr_events e
+			               WHERE e.campaign_id = c.id AND e.type = 'sent')
 		)
 		SELECT CASE WHEN COALESCE(SUM(camp.recipients), 0) > 0
 			THEN ROUND(100.0 * (
-				SELECT COUNT(DISTINCT (e.campaign_id, e.target_id))
+				SELECT COUNT(DISTINCT e.tracking_token)
 				FROM sr_events e
 				JOIN camp ON camp.id = e.campaign_id
 				WHERE e.org_id = $1::uuid
 				  AND e.type = 'click'
-				  AND e.target_id IS NOT NULL
 			)::numeric / SUM(camp.recipients), 2)
 			ELSE NULL END
 		FROM camp`, orgID, phishingClickWindowDays).Scan(&val)

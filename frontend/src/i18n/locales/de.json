@@ -5046,7 +5046,8 @@
       "launching": "Wird gestartet…",
       "launch": "Starten",
       "aborting": "Wird abgebrochen…",
-      "abort": "Abbrechen"
+      "abort": "Abbrechen",
+      "trackingUnmeasured": "Diese Kampagne wurde vor der Tracking-Korrektur versendet. Öffnungen und Klicks konnten damals nicht aufgezeichnet werden — die Nullen unten sind keine Messwerte, sondern eine fehlende Messung."
     },
     "campaignsPage": {
       "title": "Kampagnen",

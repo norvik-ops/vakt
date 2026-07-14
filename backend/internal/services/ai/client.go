@@ -33,7 +33,27 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/matharnica/vakt/internal/shared/httputil"
 )
+
+// aiAllowsPrivateTargets is why every client below passes `true`.
+//
+// The AI provider is an admin-configurable outbound host — the base URL can be
+// overridden per organisation from the database (ai/routes.go: BaseURLOverride) —
+// which is exactly the DNS-rebinding surface httputil.GuardedClient exists to
+// close: it resolves the hostname and dials the resolved IP in one step, so the
+// address that was checked is the address that gets connected to.
+//
+// But it must still ALLOW private targets, because the default AI provider is a
+// local Ollama container at http://ollama:11434 — a private address by
+// construction. Refusing private IPs here would not harden anything; it would
+// switch the AI features off for every default installation. The same reasoning
+// (and the same `true`) applies to the SIEM forwarder and the alerting service:
+// in a self-hosted product, the target being inside the customer's own network is
+// the normal case, not the attack. Each such dial is logged at WARN, so the
+// exception stays auditable.
+const aiAllowsPrivateTargets = true
 
 // AIClient speaks the OpenAI-compatible chat completions API.
 // Works with: OpenAI, Mistral, Groq, Together, Ollama (/v1), LM Studio, vLLM, etc.
@@ -49,7 +69,7 @@ func NewAIClient(baseURL, apiKey, model string) *AIClient {
 		baseURL: strings.TrimRight(baseURL, "/"),
 		apiKey:  apiKey,
 		model:   model,
-		client:  &http.Client{Timeout: 120 * time.Second},
+		client:  httputil.GuardedClient(120*time.Second, aiAllowsPrivateTargets),
 	}
 }
 
@@ -201,7 +221,9 @@ func (c *AIClient) StreamGenerate(ctx context.Context, system, userPrompt string
 	streamCtx, streamCancel := context.WithTimeout(ctx, 90*time.Second)
 	defer streamCancel()
 	req = req.WithContext(streamCtx)
-	stream := &http.Client{Timeout: 0}
+	// Timeout 0: the stream must not be cut off mid-answer; streamCtx above
+	// carries the 90 s ceiling.
+	stream := httputil.GuardedClient(0, aiAllowsPrivateTargets)
 	resp, err := stream.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("stream request: %w", err)
@@ -264,7 +286,7 @@ func (c *AIClient) IsAvailable(ctx context.Context) bool {
 	if c.apiKey != "" {
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	}
-	check := &http.Client{Timeout: 5 * time.Second}
+	check := httputil.GuardedClient(5*time.Second, aiAllowsPrivateTargets)
 	resp, err := check.Do(req)
 	if err != nil {
 		return false

@@ -5046,7 +5046,8 @@
       "launching": "Lancement…",
       "launch": "Lancer",
       "aborting": "Annulation…",
-      "abort": "Annuler"
+      "abort": "Annuler",
+      "trackingUnmeasured": "Cette campagne a été envoyée avant la correction du suivi. Les ouvertures et les clics ne pouvaient pas être enregistrés à l'époque — les zéros ci-dessous ne sont pas des mesures, mais l'absence de mesure."
     },
     "campaignsPage": {
       "title": "Campagnes",

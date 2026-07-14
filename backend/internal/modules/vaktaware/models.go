@@ -190,6 +190,10 @@ type TrackingEvent struct {
 }
 
 // CampaignStats aggregates metrics for a campaign.
+//
+// All three rates are PERCENTAGES (0–100), not fractions, and all three share the
+// same denominator: everyone the campaign was aimed at. They can therefore be read
+// against each other.
 type CampaignStats struct {
 	TotalTargets    int     `json:"total_targets"`
 	EmailsSent      int     `json:"emails_sent"`
@@ -199,6 +203,20 @@ type CampaignStats struct {
 	OpenRate        float64 `json:"open_rate"`
 	ClickRate       float64 `json:"click_rate"`
 	SubmissionRate  float64 `json:"submission_rate"`
+
+	// TrackingMeasured says whether these numbers were measured at all.
+	//
+	// Campaigns sent before migration 242 carry no `sent` events, because the
+	// tracking token was never stored — so every click they received was rejected
+	// as an invalid token and none of it was recorded. Their zeroes are not
+	// measurements; they are the absence of measurement, and the two look
+	// identical in a bar chart.
+	//
+	// A 0% click rate that nobody explains is a false audit finding: it is
+	// indistinguishable from a workforce no phishing mail could fool. A 0% that
+	// declares itself unmeasured is an honest gap. This flag is what lets the UI
+	// and the Comply KPI tell them apart.
+	TrackingMeasured bool `json:"tracking_measured"`
 }
 
 // SMTPConfig holds SMTP connection settings for sending campaign emails.

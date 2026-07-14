@@ -23,14 +23,43 @@ import pathlib
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BACKEND = ROOT / "backend"
 
-# Freeze at the count measured on 2026-07-11 (S121-F6). Only ever lower this.
-BASELINE = 518
+# Freeze at the count measured on 2026-07-13 (S126), AFTER the counter stopped
+# reading comments. Only ever lower this.
+#
+# It was 518 on 2026-07-11, but ~106 of those were prose: the counter ran a
+# `\bany\b` regex over the raw file, so every English "any" in a doc comment
+# ("any caller", "any package", "in any case") counted as an untyped interface.
+# The gate could therefore be satisfied by deleting the word "any" from a comment
+# while adding a real `any` type — it measured writing style, not type safety.
+# Stripping comments and string literals first leaves the 412 real ones.
+BASELINE = 412
 
-# `interface{}` (old syntax) and the `any` keyword used as a type. We match
-# `any` only where it is a type token (word-boundary), which is what the Go
-# compiler treats as the interface alias.
+# `interface{}` (old syntax) and the `any` keyword used as a type.
 INTERFACE_RE = re.compile(r"interface\s*\{\s*\}")
 ANY_RE = re.compile(r"\bany\b")
+
+# Go comments and string/rune literals. Order matters: a `//` inside a string is
+# not a comment, and a quote inside a comment does not open a string — so the
+# alternation is scanned left to right in one pass and each match is consumed
+# whole.
+CODE_ONLY_RE = re.compile(
+    r"""
+      //[^\n]*                 # line comment
+    | /\*.*?\*/                # block comment
+    | `[^`]*`                  # raw string literal
+    | "(?:\\.|[^"\\\n])*"      # interpreted string literal
+    | '(?:\\.|[^'\\\n])*'      # rune literal
+    """,
+    re.VERBOSE | re.DOTALL,
+)
+
+
+def code_only(text: str) -> str:
+    """Blank out comments and literals so only Go code is counted.
+
+    Replaced with a space rather than deleted, so token boundaries survive.
+    """
+    return CODE_ONLY_RE.sub(" ", text)
 
 
 def is_excluded(path: pathlib.Path) -> bool:
@@ -53,7 +82,7 @@ def count() -> int:
     for f in BACKEND.rglob("*.go"):
         if is_excluded(f):
             continue
-        text = f.read_text(encoding="utf-8", errors="ignore")
+        text = code_only(f.read_text(encoding="utf-8", errors="ignore"))
         total += len(INTERFACE_RE.findall(text))
         total += len(ANY_RE.findall(text))
     return total

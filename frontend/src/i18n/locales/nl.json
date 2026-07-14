@@ -5046,7 +5046,8 @@
       "launching": "Starten…",
       "launch": "Starten",
       "aborting": "Afbreken…",
-      "abort": "Afbreken"
+      "abort": "Afbreken",
+      "trackingUnmeasured": "Deze campagne is verzonden vóór de tracking-correctie. Openingen en kliks konden destijds niet worden vastgelegd — de nullen hieronder zijn geen meetwaarden, maar het ontbreken van een meting."
     },
     "campaignsPage": {
       "title": "Campagnes",

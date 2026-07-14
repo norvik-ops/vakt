@@ -250,15 +250,23 @@ func CollectGitHubGHASAlerts(
 // CollectSecReflexEvidence is called after a training campaign completes.
 // Creates evidence: "Sicherheitsschulung abgeschlossen — <campaign name>"
 // with participant count in description.
+//
+// "Teilnehmer" is the number of people the campaign was aimed at, taken from the
+// campaign's target group. It used to be COUNT(DISTINCT e.id) over sr_events —
+// i.e. the number of *interactions*, which counted the same employee twice for
+// opening and then clicking, counted nobody at all for a campaign nobody reacted
+// to, and (after S126 added `sent` events) would have silently changed meaning
+// again. An evidence record that states a participant count has to state the
+// count of participants.
 func CollectSecReflexEvidence(ctx context.Context, db *pgxpool.Pool, orgID, campaignID string) error {
 	var campaignName string
 	var participantCount int
 	err := db.QueryRow(ctx, `
-		SELECT c.name, COUNT(DISTINCT e.id)
+		SELECT c.name,
+		       COALESCE((SELECT COUNT(*) FROM sr_targets t
+		                  WHERE t.group_id = c.group_id AND t.org_id = c.org_id), 0)
 		FROM sr_campaigns c
-		LEFT JOIN sr_events e ON e.campaign_id = c.id
-		WHERE c.id = $1 AND c.org_id = $2
-		GROUP BY c.name`,
+		WHERE c.id = $1 AND c.org_id = $2`,
 		campaignID, orgID,
 	).Scan(&campaignName, &participantCount)
 	if err != nil {

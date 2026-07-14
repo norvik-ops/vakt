@@ -26,12 +26,21 @@ export interface CreateCampaignInput {
 }
 
 export interface CampaignStats {
-  campaign_id: string
   total_targets: number
   emails_sent: number
+  opens: number
+  clicks: number
+  form_submissions: number
+  /** Percentages (0–100), NOT fractions. All three share the same denominator: everyone the campaign was aimed at. */
   open_rate: number
   click_rate: number
   submission_rate: number
+  /**
+   * False for campaigns sent before migration 242: their tracking tokens were never
+   * stored, so every click was rejected and nothing was recorded. Their zeroes are the
+   * absence of measurement, not a measurement of zero — and the two look identical.
+   */
+  tracking_measured: boolean
 }
 
 export interface Template {

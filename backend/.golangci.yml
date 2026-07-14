@@ -64,7 +64,19 @@ linters:
         # ST1003: Naming-Konventionen (RedisUrl → RedisURL) — bestehende
         # öffentliche Struct-Felder umzubenennen wäre ein Breaking Change
         - "-ST1003"
-        # ST1005: Kapitalisierte Error-Strings — unkritisch
+        # ST1005: Kapitalisierte Error-Strings.
+        #
+        # Die Regel ist eine ENGLISCHE Konvention: Kleinschreibung, damit sich
+        # Fehler verketten lassen ("failed to save: connection refused"). Alle 25
+        # Treffer in diesem Repo sind aber deutsche, NUTZERSICHTBARE Meldungen —
+        # "Abo nicht gefunden", "Azure nicht konfiguriert", "Firma und E-Mail sind
+        # Pflicht". Sie stehen im Billing-Panel und in der Integrations-UI. Auf
+        # Kleinschreibung umzustellen hieße, falsches Deutsch auszuliefern, damit
+        # ein englischer Stil-Linter schweigt (S129-2, am Code enumeriert).
+        #
+        # Gleiche Begründung wie beim deaktivierten misspell oben. Wenn hier je ein
+        # ENGLISCHER Error-String auftaucht, gilt die Regel — dann bitte klein
+        # schreiben, statt die Ausnahme auszuweiten.
         - "-ST1005"
 
   exclusions:

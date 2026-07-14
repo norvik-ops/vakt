@@ -12,12 +12,20 @@ import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const statusVariant = campaignStatusVariant
 
+// StatCard shows one number and, optionally, the rate it represents.
+//
+// `pct` is a PERCENTAGE (0–100), exactly as the API sends it — it is not
+// multiplied by 100 here. It used to be, and the value beside it was computed as
+// `rate * emails_sent`, which treated the same field as a fraction. Both were
+// wrong, and both were invisible while emails_sent was stuck at 0 (anything times
+// zero is zero, and so is 0 × 100). The moment the send count became real, the
+// card would have claimed "5000.0%" and "50 clicked" out of one mail sent.
 function StatCard({ label, value, pct }: { label: string; value: number; pct?: number }) {
   return (
     <div className="text-center p-4 bg-surface border border-border rounded-lg">
       <div className="text-2xl font-bold text-primary">{value}</div>
       {pct != null && (
-        <div className="text-sm font-medium text-brand">{(pct * 100).toFixed(1)}%</div>
+        <div className="text-sm font-medium text-brand">{pct.toFixed(1)}%</div>
       )}
       <div className="text-xs text-secondary mt-1">{label}</div>
     </div>
@@ -120,12 +128,21 @@ export default function CampaignDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
+              {!stats.tracking_measured && campaign.status !== 'draft' && (
+                <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+                  {t('vaktaware.campaignDetail.trackingUnmeasured')}
+                </div>
+              )}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 <StatCard label={t('vaktaware.campaignDetail.statTargets')} value={stats.total_targets} />
                 <StatCard label={t('vaktaware.campaignDetail.statSent')} value={stats.emails_sent} />
-                <StatCard label={t('vaktaware.campaignDetail.statOpened')} value={Math.round(stats.open_rate * stats.emails_sent)} pct={stats.open_rate} />
-                <StatCard label={t('vaktaware.campaignDetail.statClicked')} value={Math.round(stats.click_rate * stats.emails_sent)} pct={stats.click_rate} />
-                <StatCard label={t('vaktaware.campaignDetail.statSubmitted')} value={Math.round(stats.submission_rate * stats.emails_sent)} pct={stats.submission_rate} />
+                {/* The counts come from the API. They used to be derived as
+                    `rate × emails_sent`, which is not a count and, with a
+                    percentage on the left of that multiplication, not even the
+                    right order of magnitude. */}
+                <StatCard label={t('vaktaware.campaignDetail.statOpened')} value={stats.opens} pct={stats.open_rate} />
+                <StatCard label={t('vaktaware.campaignDetail.statClicked')} value={stats.clicks} pct={stats.click_rate} />
+                <StatCard label={t('vaktaware.campaignDetail.statSubmitted')} value={stats.form_submissions} pct={stats.submission_rate} />
               </div>
             </CardContent>
           </Card>

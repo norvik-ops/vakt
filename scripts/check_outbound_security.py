@@ -31,8 +31,10 @@ BACKEND = ROOT / "backend"
 # Count of unguarded `http.Client{` literals under services/** + platform/**.
 # Only ever lower this — never raise to admit a new unguarded client; use
 # httputil.GuardedClient instead. 14 at S123-G5; lowered to 12 in S124-2 after
-# alerting + siem forwarder moved to GuardedClient (SA15-01).
-HTTPCLIENT_BASELINE = 12
+# alerting + siem forwarder moved to GuardedClient (SA15-01); lowered to 9 in
+# S129-1 (D19) after the AI client's three literals moved too — the last
+# admin-configurable outbound host that could still be DNS-rebound.
+HTTPCLIENT_BASELINE = 9
 
 REDIS_RE = re.compile(r"RedisClientOpt\{")
 HTTPCLIENT_RE = re.compile(r"\bhttp\.Client\{")

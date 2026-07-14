@@ -5046,7 +5046,8 @@
       "launching": "Launching…",
       "launch": "Launch",
       "aborting": "Aborting…",
-      "abort": "Abort"
+      "abort": "Abort",
+      "trackingUnmeasured": "This campaign was sent before the tracking fix. Opens and clicks could not be recorded at the time — the zeroes below are not measurements, they are the absence of one."
     },
     "campaignsPage": {
       "title": "Campaigns",

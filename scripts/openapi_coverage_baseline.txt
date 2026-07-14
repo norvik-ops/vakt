@@ -1,0 +1,4 @@
+# Routes that exist in the backend and are NOT in openapi.yaml (S128-2 / G7).
+# Generated: python3 scripts/check_openapi_coverage.py --update-baseline
+# This list may only ever get SHORTER. See the script header for why.
+

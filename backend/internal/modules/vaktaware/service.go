@@ -5,13 +5,10 @@ import (
 	"bytes"
 	"context"
 	cryptorand "crypto/rand"
-	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"net"
-	"net/smtp"
 	"regexp"
 	"strings"
 	"time"
@@ -34,15 +31,26 @@ type Service struct {
 	db          *pgxpool.Pool
 	smtpCfg     SMTPConfig
 	asynqClient *asynq.Client
+	mail        MailSender
 }
 
 // NewService creates a new SecReflex service.
 func NewService(db *pgxpool.Pool, smtpCfg SMTPConfig, asynqOpt ...asynq.RedisClientOpt) *Service {
 	svc := &Service{repo: NewRepository(db), db: db, smtpCfg: smtpCfg}
+	svc.mail = &smtpSender{cfg: smtpCfg}
 	if len(asynqOpt) > 0 && asynqOpt[0].Addr != "" {
 		svc.asynqClient = asynq.NewClient(asynqOpt[0])
 	}
 	return svc
+}
+
+// WithMailSender swaps the SMTP transport (S126). Mirrors vaktscan's
+// WithWebhooks/WithRedis: the constructor keeps taking concrete config, and a
+// test injects a fake afterwards to drive the campaign flow without a mail
+// server. Production code never calls this.
+func (s *Service) WithMailSender(m MailSender) *Service {
+	s.mail = m
+	return s
 }
 
 // presetTemplates returns the curated DACH-specific phishing-simulation template
@@ -534,7 +542,8 @@ func (s *Service) RecordEvent(ctx context.Context, token, eventType, ip, ua stri
 		return "", fmt.Errorf("invalid tracking token")
 	}
 	storeIP, storeUA := anonymizeForBetriebsrat(campaign.BetriebsratMode, ip, ua)
-	if err := s.repo.CreateTrackingEvent(ctx, campaign.OrgID, campaign.ID, nil, "", token, eventType, storeIP, storeUA); err != nil {
+	targetID, department := s.attribution(ctx, campaign.OrgID, token)
+	if err := s.repo.CreateTrackingEvent(ctx, campaign.OrgID, campaign.ID, targetID, department, token, eventType, storeIP, storeUA); err != nil {
 		log.Warn().Err(err).Msg("failed to record tracking event")
 	}
 	lp, err := s.repo.GetLandingPageForCampaign(ctx, campaign.ID)
@@ -552,9 +561,35 @@ func (s *Service) RecordOpen(ctx context.Context, token, ip, ua string) {
 		return
 	}
 	storeIP, storeUA := anonymizeForBetriebsrat(campaign.BetriebsratMode, ip, ua)
-	if err := s.repo.CreateTrackingEvent(ctx, campaign.OrgID, campaign.ID, nil, "", token, "open", storeIP, storeUA); err != nil {
+	targetID, department := s.attribution(ctx, campaign.OrgID, token)
+	if err := s.repo.CreateTrackingEvent(ctx, campaign.OrgID, campaign.ID, targetID, department, token, "open", storeIP, storeUA); err != nil {
 		log.Warn().Err(err).Msg("failed to record open event")
 	}
+}
+
+// attribution recovers who a tracking token was issued to, by reading the `sent`
+// event written when the mail went out (S126).
+//
+// The recipient never identifies themselves — they just fetch a URL — so the
+// token is the only thing linking a click back to a person, and the sent event
+// is the only place that link is recorded. Before S126, click and open events
+// were written with a nil target and an empty department, which is why
+// calcPhishingClickRate (which counts DISTINCT (campaign, target) clicks and
+// skips NULL targets) could only ever return 0 %.
+//
+// The Betriebsrat decision is made once, at send time, and everything downstream
+// inherits it: in betriebsrat_mode the sent event carries no target_id, so there
+// is nothing here to recover and the click stays anonymous. That is the point —
+// an anonymity guarantee that depends on every later call site remembering to
+// re-check a flag is not a guarantee.
+func (s *Service) attribution(ctx context.Context, orgID, token string) (*string, string) {
+	targetID, department, err := s.repo.FindSentEvent(ctx, orgID, token)
+	if err != nil {
+		// A pre-S126 campaign has no sent event. The click still counts; it just
+		// cannot be attributed.
+		return nil, ""
+	}
+	return targetID, department
 }
 
 // ── Training modules ──────────────────────────────────────────────────────────
@@ -697,11 +732,7 @@ func (s *Service) SendCampaignEmails(ctx context.Context, orgID, campaignID stri
 		return fmt.Errorf("parse template body: %w", err)
 	}
 
-	type pendingMsg struct {
-		from, to string
-		body     []byte
-	}
-	var msgs []pendingMsg
+	var msgs []OutboundMail
 	failed := 0
 
 	for _, target := range targets {
@@ -733,28 +764,42 @@ func (s *Service) SendCampaignEmails(ctx context.Context, orgID, campaignID stri
 			fromEmail = s.smtpCfg.from()
 		}
 
+		// Record the token BEFORE the mail leaves the machine (S126).
+		//
+		// The token is the only thing that can resolve a later click back to this
+		// campaign — GetCampaignByTrackingToken looks it up in sr_events — so
+		// until this row exists, the mail is untrackable. Writing it afterwards
+		// would lose the race against a recipient who clicks immediately, and not
+		// writing it at all is what made every click in every campaign fail with
+		// "invalid tracking token" until now.
+		//
+		// betriebsrat_mode: no target_id. The token would otherwise be a join key
+		// from a click straight back to a named employee (§87 BetrVG, DSGVO
+		// Art. 22). The department is kept — that is what the aggregate report
+		// needs, and it identifies nobody on its own.
+		var eventTarget *string
+		if !campaign.BetriebsratMode {
+			id := target.ID
+			eventTarget = &id
+		}
+		if err := s.repo.CreateTrackingEvent(ctx, orgID, campaignID, eventTarget, target.Department, trackingToken, "sent", "", ""); err != nil {
+			// An untrackable mail is worse than an unsent one: it lands, the
+			// recipient clicks, nothing is counted, and the campaign reports a 0%
+			// click rate that reads like a well-trained workforce.
+			log.Error().Err(err).Str("target", target.Email).Msg("could not record sent event, skipping target — the mail would be untrackable")
+			failed++
+			continue
+		}
+
 		body := buildMIMEMessage(fromName, fromEmail, target.Email, subject, bodyBuf.String(), trackingToken, s.smtpCfg.AppURL, campaign.TrackOpens)
-		msgs = append(msgs, pendingMsg{from: fromEmail, to: target.Email, body: body})
+		msgs = append(msgs, OutboundMail{From: fromEmail, To: target.Email, Body: body})
 	}
 
-	// Send all messages over a single SMTP connection.
-	sent := 0
-	if len(msgs) > 0 {
-		client, closeClient, err := s.openSMTPClient(msgs[0].from)
-		if err != nil {
-			log.Error().Err(err).Str("campaign_id", campaignID).Msg("smtp open failed")
-			failed += len(msgs)
-		} else {
-			for _, m := range msgs {
-				if err := sendViaClient(client, m.from, m.to, m.body); err != nil {
-					log.Warn().Err(err).Str("target", m.to).Msg("smtp send failed")
-					failed++
-				} else {
-					sent++
-				}
-			}
-			closeClient()
-		}
+	// Send all messages over a single connection.
+	sent, sendErr := s.mail.Send(ctx, msgs)
+	failed += len(msgs) - sent
+	if sendErr != nil {
+		log.Error().Err(sendErr).Str("campaign_id", campaignID).Int("failed", len(msgs)-sent).Msg("campaign delivery had failures")
 	}
 
 	log.Info().
@@ -772,100 +817,6 @@ func (s *Service) SendCampaignEmails(ctx context.Context, orgID, campaignID stri
 		log.Error().Err(autoErr).Str("campaign_id", campaignID).Msg("evidence_auto: vaktaware collection failed")
 	}
 	return nil
-}
-
-// openSMTPClient opens an authenticated SMTP connection and returns the client
-// plus a close function. The caller must call close() when done.
-func (s *Service) openSMTPClient(from string) (*smtp.Client, func(), error) {
-	addr := net.JoinHostPort(s.smtpCfg.Host, s.smtpCfg.Port)
-
-	var client *smtp.Client
-
-	switch s.smtpCfg.Port {
-	case "587": // STARTTLS
-		conn, err := smtp.Dial(addr)
-		if err != nil {
-			return nil, nil, fmt.Errorf("smtp dial: %w", err)
-		}
-		if err := conn.StartTLS(&tls.Config{ServerName: s.smtpCfg.Host, MinVersion: tls.VersionTLS12}); err != nil {
-			_ = conn.Close()
-			return nil, nil, fmt.Errorf("starttls: %w", err)
-		}
-		if s.smtpCfg.User != "" {
-			auth := smtp.PlainAuth("", s.smtpCfg.User, s.smtpCfg.Pass, s.smtpCfg.Host)
-			if err := conn.Auth(auth); err != nil {
-				_ = conn.Close()
-				return nil, nil, fmt.Errorf("smtp auth: %w", err)
-			}
-		}
-		client = conn
-
-	case "465": // implicit TLS
-		tlsConn, err := tls.Dial("tcp", addr, &tls.Config{ServerName: s.smtpCfg.Host, MinVersion: tls.VersionTLS12})
-		if err != nil {
-			return nil, nil, fmt.Errorf("smtp tls dial: %w", err)
-		}
-		c, err := smtp.NewClient(tlsConn, s.smtpCfg.Host)
-		if err != nil {
-			_ = tlsConn.Close()
-			return nil, nil, fmt.Errorf("smtp client: %w", err)
-		}
-		if s.smtpCfg.User != "" {
-			auth := smtp.PlainAuth("", s.smtpCfg.User, s.smtpCfg.Pass, s.smtpCfg.Host)
-			if err := c.Auth(auth); err != nil {
-				_ = c.Close()
-				return nil, nil, fmt.Errorf("smtp auth: %w", err)
-			}
-		}
-		client = c
-
-	default: // plain / port 25 (Mailpit dev)
-		// smtp.SendMail handles the full lifecycle; wrap in a minimal client.
-		conn, err := smtp.Dial(addr)
-		if err != nil {
-			return nil, nil, fmt.Errorf("smtp dial: %w", err)
-		}
-		if s.smtpCfg.User != "" {
-			auth := smtp.PlainAuth("", s.smtpCfg.User, s.smtpCfg.Pass, s.smtpCfg.Host)
-			if err := conn.Auth(auth); err != nil {
-				_ = conn.Close()
-				return nil, nil, fmt.Errorf("smtp auth: %w", err)
-			}
-		}
-		client = conn
-	}
-
-	return client, func() { client.Quit() }, nil //nolint:errcheck
-}
-
-// sendViaClient delivers a single message through an already-open SMTP client.
-// Each call issues MAIL FROM / RCPT TO / DATA against the existing connection.
-func sendViaClient(client *smtp.Client, from, to string, msg []byte) error {
-	if err := client.Mail(from); err != nil {
-		return fmt.Errorf("smtp MAIL: %w", err)
-	}
-	if err := client.Rcpt(to); err != nil {
-		return fmt.Errorf("smtp RCPT: %w", err)
-	}
-	wc, err := client.Data()
-	if err != nil {
-		return fmt.Errorf("smtp DATA: %w", err)
-	}
-	if _, err := wc.Write(msg); err != nil {
-		return fmt.Errorf("smtp write: %w", err)
-	}
-	return wc.Close()
-}
-
-// sendSMTP opens a connection, delivers one message, and closes. Used for
-// single-recipient sends (training reminders, test emails).
-func (s *Service) sendSMTP(from, to string, msg []byte) error {
-	client, close, err := s.openSMTPClient(from)
-	if err != nil {
-		return err
-	}
-	defer close()
-	return sendViaClient(client, from, to, msg)
 }
 
 // sanitizeHeader removes CR and LF characters from an email header value to
@@ -960,7 +911,7 @@ func (s *Service) RegeneratePhishToken(ctx context.Context, orgID string) (strin
 
 // SendTrainingReminderEmail sends a single reminder email to an employee who has
 // not completed their training in the last 14 days. The email is built inline
-// and delivered through the service's configured SMTP transport.
+// and delivered through the service's configured mail transport.
 func (s *Service) SendTrainingReminderEmail(ctx context.Context, orgID, email, firstName string) error {
 	if s.smtpCfg.Host == "" {
 		return fmt.Errorf("SMTP not configured")
@@ -978,7 +929,8 @@ Bitte melde dich in der Vakt-Plattform an und schließe dein zugewiesenes Traini
 <p>Dein IT-Sicherheitsteam</p>`, greeting)
 
 	msg := buildMIMEMessage("Security Awareness", s.smtpCfg.from(), email, subject, htmlBody, "", s.smtpCfg.AppURL, false)
-	return s.sendSMTP(s.smtpCfg.from(), email, msg)
+	_, err := s.mail.Send(ctx, []OutboundMail{{From: s.smtpCfg.from(), To: email, Body: msg}})
+	return err
 }
 
 // GetAssignmentCertificate generates a PDF training certificate for a completed assignment.

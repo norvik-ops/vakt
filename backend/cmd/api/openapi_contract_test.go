@@ -92,6 +92,20 @@ var contractCases = []contractCase{
 	// Migration 232: backup dest — no auth → 401
 	{name: "admin_backup_dest_get", method: http.MethodGet,
 		realPath: "/api/v1/admin/org/backup-dest", specPath: "/api/v1/admin/org/backup-dest"},
+
+	// S128-1 (D14/D15): four routes that were live, frontend-consumed, and absent
+	// from the spec entirely — a `grep` for them returned nothing. The frontend
+	// generates its types from this document, so an endpoint missing here is an
+	// endpoint the client is typing by hand and nothing is checking.
+	{name: "vaktprivacy_dsr_portal_settings_get", method: http.MethodGet,
+		realPath: "/api/v1/vaktprivacy/dsr-portal-settings", specPath: "/api/v1/vaktprivacy/dsr-portal-settings"},
+	{name: "vaktcomply_policy_templates", method: http.MethodGet,
+		realPath: "/api/v1/vaktcomply/policy-templates", specPath: "/api/v1/vaktcomply/policy-templates"},
+	{name: "vaktcomply_db_templates", method: http.MethodGet,
+		realPath: "/api/v1/vaktcomply/templates", specPath: "/api/v1/vaktcomply/templates"},
+	{name: "vaktcomply_db_template_by_id", method: http.MethodGet,
+		realPath: "/api/v1/vaktcomply/templates/00000000-0000-0000-0000-000000000001",
+		specPath: "/api/v1/vaktcomply/templates/{id}"},
 }
 
 // TestOpenAPIContract spins up the same Echo instance the production binary
@@ -242,33 +256,34 @@ func TestOpenAPIReverseContract(t *testing.T) {
 		// S121-F7: controls sub-resource param drift resolved — spec now uses {id}
 		// to match routes.go (:id). No allowlist entries needed.
 
-		// Protection needs — code registers /protection-needs/assessments/{id} path.
-		// Spec uses shorter /protection-needs/{id}. TODO: align paths in one direction.
-		"GET /api/v1/vaktcomply/protection-needs":                "path mismatch: code uses /assessments/ prefix, TODO align",
-		"POST /api/v1/vaktcomply/protection-needs":               "path mismatch: code uses /assessments/ prefix, TODO align",
-		"GET /api/v1/vaktcomply/protection-needs/{id}":           "path mismatch: code uses /assessments/ prefix, TODO align",
-		"PUT /api/v1/vaktcomply/protection-needs/{id}":           "path mismatch: code uses /assessments/ prefix, TODO align",
-		"DELETE /api/v1/vaktcomply/protection-needs/{id}":        "path mismatch: code uses /assessments/ prefix, TODO align",
-		"POST /api/v1/vaktcomply/protection-needs/{id}/finalize": "path mismatch: code uses /assessments/ prefix, TODO align",
-
-		// CCM checks — spec has PUT /{id} + GET /{id} but code only has PATCH /{id}/toggle.
-		"PUT /api/v1/vaktcomply/ccm/checks/{id}": "spec has PUT, code has PATCH /toggle; TODO align",
-		"GET /api/v1/vaktcomply/ccm/checks/{id}": "spec-ahead, no single-check GET handler yet; TODO",
-
-		// Policies — spec has DELETE /{id} but code only has PATCH /{id}.
-		"DELETE /api/v1/vaktcomply/policies/{id}": "spec-ahead, no DELETE policy handler yet; TODO",
-
-		// Controls measures — spec has PUT with {controlId}, code has PATCH with :id.
-		"PUT /api/v1/vaktcomply/controls/{controlId}/measures/{mid}": "spec has PUT, code has PATCH/:id (method + param mismatch); TODO align",
-
 		// S121-F7: the spec-only POST /bcp/plans/{id}/link-evidence op was removed
 		// (the backend links BCP evidence via /evidence; the dead FE hook went in
 		// F2/C3), so no allowlist entry is needed.
 		// S121-D2 (D4): board-report route is now registered — no allowlist entry
 		// needed; the reverse-contract gate actively verifies it.
+		//
+		// The eleven "spec-ahead / TODO align" entries that used to live here are
+		// gone (S128 follow-up). They were not endpoints waiting to be built — they
+		// were spec entries for endpoints that never existed under those names:
+		// /protection-needs/{id} (the code has always used the /assessments/ prefix),
+		// PUT /ccm/checks/{id} (the code has PATCH /{id}/toggle), DELETE
+		// /policies/{id}, PUT /controls/{controlId}/measures/{mid}, GET /dsr/{id}.
+		//
+		// Once the spec covered every real route (S128-3), keeping them made the
+		// document actively misleading: a client generating from it would type
+		// against six protection-needs endpoints that answer 404. A spec entry with
+		// no route behind it is not a promise, it is a lie with a TODO next to it —
+		// so the entries were deleted rather than aged. The real routes are all
+		// documented under their real paths.
 
-		// DSR single GET — only PUT /{id} registered, no GET /{id} handler yet.
-		"GET /api/v1/vaktprivacy/dsr/{id}": "GET single DSR not yet registered, TODO",
+		// S128-3: conditionally registered, exactly like /demo/start above. The
+		// routes are real and the spec entries are correct — they simply are not
+		// mounted on an instance built with the default test config, so this
+		// reverse check cannot see them.
+		"GET /api/v1/feedback":               "registered only when cfg.DemoSeed is set (routes.go: if cfg.DemoSeed)",
+		"POST /api/v1/feedback":              "registered only when cfg.DemoSeed is set (routes.go: if cfg.DemoSeed)",
+		"GET /api/v1/admin/staging/info":     "registered only when cfg.Staging is set (routes.go: if cfg.Staging)",
+		"POST /api/v1/admin/staging/promote": "registered only when cfg.Staging is set (routes.go: if cfg.Staging)",
 	}
 
 	serverURL := "/api/v1" // must match openapi.yaml servers[0].url

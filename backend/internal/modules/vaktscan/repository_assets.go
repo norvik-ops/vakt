@@ -416,8 +416,21 @@ func (r *Repository) GetSLADashboard(ctx context.Context, orgID string) ([]slaDa
 	return result, nil
 }
 
-// BulkCreateAssets inserts multiple assets in a single transaction and returns
-// the number inserted, the number of errors, and a slice of error messages.
+// BulkCreateAssets inserts multiple assets and returns the number inserted, the
+// number of rows rejected, and one message per rejected row.
+//
+// Each row gets its own savepoint (S126). Without one, a single bad row took the
+// whole import down: in Postgres the first failing statement aborts the
+// transaction, so every subsequent row failed with 25P02 and COMMIT came back as
+// "commit unexpectedly resulted in rollback". A CSV with 500 good rows and one
+// typo imported nothing, reported all 501 rows as failed, and handed the user a
+// single error message about a rollback instead of the row to fix. The intent was
+// always partial import — the per-row error collection and the (inserted, errored,
+// errs) signature say so — the transaction just made it impossible.
+//
+// A savepoint keeps that intent and the atomicity that matters: a bad row rolls
+// back to just before itself and the good rows around it still commit, while a
+// genuine infrastructure failure still rolls the whole thing back.
 func (r *Repository) BulkCreateAssets(ctx context.Context, orgID string, rows []CSVAssetRow) (int, int, []string) {
 	var inserted, errored int
 	var errs []string
@@ -429,14 +442,20 @@ func (r *Repository) BulkCreateAssets(ctx context.Context, orgID string, rows []
 	defer func() {
 		_ = tx.Rollback(ctx) // no-op when Commit succeeded
 	}()
-	qtx := r.q.WithTx(tx)
 
 	for i, row := range rows {
 		tags := row.Tags
 		if tags == nil {
 			tags = []string{}
 		}
-		_, scanErr := qtx.CreateSPAsset(ctx, db.CreateSPAssetParams{
+
+		// A nested Begin on a pgx transaction is a SAVEPOINT.
+		sp, spErr := tx.Begin(ctx)
+		if spErr != nil {
+			return 0, len(rows), []string{fmt.Sprintf("savepoint: %s", spErr)}
+		}
+
+		_, rowErr := r.q.WithTx(sp).CreateSPAsset(ctx, db.CreateSPAssetParams{
 			OrgID:       orgID,
 			Name:        row.Name,
 			Type:        row.Type,
@@ -445,12 +464,18 @@ func (r *Repository) BulkCreateAssets(ctx context.Context, orgID string, rows []
 			OwnerID:     pgtype.UUID{}, // bulk import has no owner
 			ExternalUrl: spOptText(row.ExternalURL),
 		})
-		if scanErr != nil {
+		if rowErr != nil {
+			_ = sp.Rollback(ctx) // ROLLBACK TO SAVEPOINT — the outer tx stays usable
 			errored++
-			errs = append(errs, fmt.Sprintf("row %d (%q): %s", i+1, row.Name, scanErr))
-		} else {
-			inserted++
+			errs = append(errs, fmt.Sprintf("row %d (%q): %s", i+1, row.Name, rowErr))
+			continue
 		}
+		if spErr := sp.Commit(ctx); spErr != nil {
+			errored++
+			errs = append(errs, fmt.Sprintf("row %d (%q): %s", i+1, row.Name, spErr))
+			continue
+		}
+		inserted++
 	}
 
 	if err = tx.Commit(ctx); err != nil {
