@@ -156,6 +156,7 @@ def check_links() -> None:
     tracked = subprocess.run(
         ["git", "ls-files", "*.md"], capture_output=True, text=True
     ).stdout.split()
+    repo_root = os.path.abspath(ROOT)
     for f in tracked:
         if any(x in f for x in _EXCL):
             continue
@@ -165,7 +166,20 @@ def check_links() -> None:
                 target = mm.group(1)
                 if target.startswith(("http://", "https://", "mailto:")):
                     continue
-                if not os.path.exists(os.path.normpath(os.path.join(base, target))):
+                resolved = os.path.abspath(os.path.join(repo_root, base, target))
+
+                # A relative link that climbs out of the repository (../../../other-repo/…)
+                # is broken for everyone except the person who happens to have the sibling
+                # checkout on their disk. It resolved locally and failed in CI — which is
+                # the worst kind of gate, one that is green where it is read and red where
+                # it counts. Judge the link by the repository, not by the author's laptop.
+                if os.path.commonpath([resolved, repo_root]) != repo_root:
+                    err(f"{f}:{lineno}: Link zeigt aus dem Repository heraus → {target} "
+                        f"(löst nur auf, wer das Nachbar-Repo daneben liegen hat — in CI und "
+                        f"im Public Mirror ist er tot)")
+                    continue
+
+                if not os.path.exists(resolved):
                     err(f"{f}:{lineno}: kaputter interner Link → {target}")
 
 
