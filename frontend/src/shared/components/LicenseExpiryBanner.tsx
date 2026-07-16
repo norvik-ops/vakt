@@ -15,7 +15,6 @@ interface LicenseInfo {
   org_name: string
   expires_at: string | null
   demo: boolean
-  revoked: boolean
   auto_renewal_enabled: boolean
 }
 

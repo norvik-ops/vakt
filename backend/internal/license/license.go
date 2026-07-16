@@ -112,10 +112,6 @@ type License struct {
 	// Empty on keys signed before this existed, and on CLI-issued keys.
 	RenewalToken string
 
-	// Revoked is true when the org's subscription has been cancelled/refunded and
-	// found in ls_revoked_subscriptions. The license is downgraded to community but
-	// the frontend can use this flag to show a targeted cancellation message.
-	Revoked bool
 	// Expired is true when the license key has passed its ExpiresAt timestamp.
 	// Unlike a community license, an expired Pro/Enterprise license retains read
 	// access to Pro-module data (GET routes succeed); write operations return 402.

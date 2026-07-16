@@ -37,7 +37,7 @@ describe('LicenseExpiryBanner', () => {
     vi.mocked(apiFetch).mockResolvedValue({
       tier: 'community', is_pro: false, features: [],
       org_name: 'Test', expires_at: null, demo: false,
-      revoked: false, auto_renewal_enabled: false,
+      auto_renewal_enabled: false,
     })
 
     const { container } = renderWithProviders(<LicenseExpiryBanner />)
@@ -50,7 +50,7 @@ describe('LicenseExpiryBanner', () => {
     vi.mocked(apiFetch).mockResolvedValue({
       tier: 'pro', is_pro: true, features: ['audit_pdf'],
       org_name: 'Test', expires_at: makeExpiry(5), demo: false,
-      revoked: false, auto_renewal_enabled: true,
+      auto_renewal_enabled: true,
     })
 
     const { container } = renderWithProviders(<LicenseExpiryBanner />)
@@ -62,7 +62,7 @@ describe('LicenseExpiryBanner', () => {
     vi.mocked(apiFetch).mockResolvedValue({
       tier: 'pro', is_pro: true, features: ['audit_pdf'],
       org_name: 'Test', expires_at: makeExpiry(15), demo: false,
-      revoked: false, auto_renewal_enabled: false,
+      auto_renewal_enabled: false,
     })
 
     renderWithProviders(<LicenseExpiryBanner />)
@@ -75,7 +75,7 @@ describe('LicenseExpiryBanner', () => {
     vi.mocked(apiFetch).mockResolvedValue({
       tier: 'pro', is_pro: true, features: ['audit_pdf'],
       org_name: 'Test', expires_at: makeExpiry(3), demo: false,
-      revoked: false, auto_renewal_enabled: false,
+      auto_renewal_enabled: false,
     })
 
     renderWithProviders(<LicenseExpiryBanner />)

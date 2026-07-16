@@ -18011,8 +18011,6 @@ paths:
                     nullable: true
                   demo:
                     type: boolean
-                  revoked:
-                    type: boolean
                   auto_renewal_enabled:
                     type: boolean
                 required:
@@ -18022,7 +18020,6 @@ paths:
                 - org_name
                 - expires_at
                 - demo
-                - revoked
                 - auto_renewal_enabled
         '401':
           description: Unauthorized
@@ -18067,8 +18064,6 @@ paths:
                     nullable: true
                   demo:
                     type: boolean
-                  revoked:
-                    type: boolean
                   auto_renewal_enabled:
                     type: boolean
                 required:
@@ -18078,7 +18073,6 @@ paths:
                 - org_name
                 - expires_at
                 - demo
-                - revoked
                 - auto_renewal_enabled
         '400':
           description: Invalid body or missing key

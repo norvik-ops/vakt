@@ -2329,7 +2329,6 @@
     "trustCenterDesc": "Openbare nalevingspagina voor klanten, partners en auditors.",
     "trustCenterConfigure": "Trustcenter configureren",
     "licenseTitle": "Licentie",
-    "licenseRevoked": "Uw Pro-abonnement is opgezegd. Uw toegang verloopt aan het einde van de huidige factureringsperiode.",
     "licenseExpiringSoon": "Uw abonnement verloopt over {{days}} dagen.",
     "licenseExpired": "Uw abonnement is al verlopen.",
     "renewLicense": "Licentie verlengen →",

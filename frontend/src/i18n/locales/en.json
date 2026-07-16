@@ -2329,7 +2329,6 @@
     "trustCenterDesc": "Public compliance page for customers, partners, and auditors.",
     "trustCenterConfigure": "Configure Trust Center",
     "licenseTitle": "License",
-    "licenseRevoked": "Your Pro subscription has been cancelled. Your access expires at the end of the current billing period.",
     "licenseExpiringSoon": "Your subscription expires in {{days}} days.",
     "licenseExpired": "Your subscription has already expired.",
     "renewLicense": "Renew licence →",

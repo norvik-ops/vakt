@@ -64,7 +64,6 @@ type licenseCache struct {
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 	Demo      bool       `json:"demo"`
 	Community bool       `json:"community"` // true → downgraded; skip DB key lookup
-	Revoked   bool       `json:"revoked"`   // true → org is in ls_revoked_subscriptions
 	Expired   bool       `json:"expired"`   // true → key past ExpiresAt; read-only mode
 }
 
@@ -77,7 +76,6 @@ func licenseToCache(l *License, community bool) licenseCache {
 		ExpiresAt: l.ExpiresAt,
 		Demo:      l.Demo,
 		Community: community,
-		Revoked:   l.Revoked,
 		Expired:   l.Expired,
 	}
 }
@@ -90,7 +88,6 @@ func cacheToLicense(c licenseCache) *License {
 		IssuedAt:  c.IssuedAt,
 		ExpiresAt: c.ExpiresAt,
 		Demo:      c.Demo,
-		Revoked:   c.Revoked,
 		Expired:   c.Expired,
 	}
 }
@@ -111,16 +108,15 @@ func InvalidateLicenseCache(ctx context.Context, rdb *redis.Client, orgID string
 	}
 }
 
-// DBMiddleware returns an Echo middleware that:
-//  1. Checks whether the org's subscription has been revoked (cancelled/refunded).
-//  2. Loads the per-org license key from the database (if one was activated via the API).
+// DBMiddleware returns an Echo middleware that loads the per-org license key from
+// the database (if one was activated via the API) and puts it on the context.
 //
 // If rdb is non-nil the result is cached in Redis for licenceCacheTTL (60 s) to avoid
-// 2 DB round-trips on every authenticated request.
+// a DB round-trip on every authenticated request.
 //
 // If a DB key is found and is valid it overwrites the static license on the context.
-// If the org is in the revocation blocklist the license is downgraded to Community.
 // The middleware is a no-op when org_id is not present on the context (e.g. public routes).
+// It does not check any revocation blocklist — see the comment at the DB-query step.
 func DBMiddleware(db *pgxpool.Pool, staticLic *License, rdb ...*redis.Client) echo.MiddlewareFunc {
 	var redisClient *redis.Client
 	if len(rdb) > 0 {
@@ -144,9 +140,7 @@ func DBMiddleware(db *pgxpool.Pool, staticLic *License, rdb ...*redis.Client) ec
 					var lc licenseCache
 					if jsonErr := json.Unmarshal([]byte(cached), &lc); jsonErr == nil {
 						if lc.Community {
-							comm := communityLicense()
-							comm.Revoked = lc.Revoked
-							c.Set("license", comm)
+							c.Set("license", communityLicense())
 						} else {
 							c.Set("license", cacheToLicense(lc))
 						}
@@ -156,28 +150,16 @@ func DBMiddleware(db *pgxpool.Pool, staticLic *License, rdb ...*redis.Client) ec
 			}
 
 			// --- DB queries (cache miss) ---
-
-			// Check revocation blocklist first.
-			var revokedCount int
-			if err := db.QueryRow(ctx,
-				`SELECT COUNT(*) FROM ls_revoked_subscriptions WHERE org_id = $1::uuid`,
-				orgID,
-			).Scan(&revokedCount); err != nil {
-				log.Warn().Err(err).Str("org_id", orgID).Msg("license: could not check revocation blocklist")
-			}
-			if revokedCount > 0 {
-				log.Debug().Str("org_id", orgID).Msg("license: org is in revocation blocklist — downgrading to community")
-				comm := communityLicense()
-				comm.Revoked = true
-				c.Set("license", comm)
-				if redisClient != nil {
-					lc := licenseToCache(comm, true)
-					if b, err := json.Marshal(lc); err == nil {
-						_ = redisClient.Set(ctx, licenseCacheKey(orgID), b, licenceCacheTTL).Err()
-					}
-				}
-				return next(c)
-			}
+			//
+			// There is deliberately NO revocation-blocklist lookup here. ADR-0052
+			// settled that key expiry is the only revocation mechanism for
+			// self-hosted instances: Norvik cannot write to a customer's database,
+			// so a push-based blocklist was never workable. The old
+			// ls_revoked_subscriptions probe outlived its Polar/LemonSqueezy
+			// webhook, kept querying a table migration 235 had dropped (SQLSTATE
+			// 42P01 on every cache miss), swallowed the error and fell through —
+			// i.e. it could never have blocked anyone. Revocation now works by not
+			// renewing the key; it lapses within its validity window.
 
 			// Check for a DB-persisted license key (activated via /api/v1/license/activate).
 			var keyValue string

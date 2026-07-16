@@ -293,7 +293,6 @@ interface LicenseInfo {
   org_name: string
   expires_at: string | null
   demo: boolean
-  revoked: boolean
   auto_renewal_enabled: boolean
 }
 
@@ -372,11 +371,6 @@ function LicenseSection() {
   return (
     <SectionCard title={t('settingsPage.licenseTitle')} icon={Sparkles}>
       <div className="space-y-4">
-        {lic?.revoked && (
-          <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-3">
-            {t('settingsPage.licenseRevoked')}
-          </div>
-        )}
         <div className="flex items-center gap-3">
           <Badge variant={isPro ? 'success' : 'secondary'} className="text-xs px-2.5 py-1">
             {isPro ? (lic?.demo ? 'Pro (Demo)' : 'Pro') : 'Community'}

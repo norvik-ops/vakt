@@ -2329,7 +2329,6 @@
     "trustCenterDesc": "Page de conformité publique pour les clients, partenaires et auditeurs.",
     "trustCenterConfigure": "Configurer le centre de confiance",
     "licenseTitle": "Licence",
-    "licenseRevoked": "Votre abonnement Pro a été annulé. Votre accès expire à la fin de la période de facturation en cours.",
     "licenseExpiringSoon": "Votre abonnement expire dans {{days}} jours.",
     "licenseExpired": "Votre abonnement a déjà expiré.",
     "renewLicense": "Renouveler la licence →",

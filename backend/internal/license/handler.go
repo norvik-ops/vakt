@@ -22,7 +22,6 @@ type licenseResponse struct {
 	OrgName            string     `json:"org_name"`
 	ExpiresAt          *time.Time `json:"expires_at"`
 	Demo               bool       `json:"demo"`
-	Revoked            bool       `json:"revoked"`
 	AutoRenewalEnabled bool       `json:"auto_renewal_enabled"`
 }
 
@@ -63,10 +62,10 @@ func (h *Handler) WithAutoRenewal() *Handler {
 
 // Get returns the current license state.
 // It prefers the per-request license set by DBMiddleware (which carries the
-// Revoked flag) and falls back to the in-memory static license.
+// org-specific DB key) and falls back to the in-memory static license.
 func (h *Handler) Get(c echo.Context) error {
 	// DBMiddleware places the org-specific license on the Echo context; use that
-	// when available so that Revoked and other per-org overrides are reflected.
+	// when available so that per-org overrides are reflected.
 	lic, _ := c.Get("license").(*License)
 	if lic == nil {
 		h.mu.RLock()
@@ -87,7 +86,6 @@ func (h *Handler) Get(c echo.Context) error {
 		OrgName:            lic.OrgName,
 		ExpiresAt:          lic.ExpiresAt,
 		Demo:               lic.Demo,
-		Revoked:            lic.Revoked,
 		AutoRenewalEnabled: h.autoRenewalEnabled,
 	})
 }
@@ -193,7 +191,6 @@ func (h *Handler) Activate(c echo.Context) error {
 		OrgName:            lic.OrgName,
 		ExpiresAt:          lic.ExpiresAt,
 		Demo:               lic.Demo,
-		Revoked:            lic.Revoked,
 		AutoRenewalEnabled: h.autoRenewalEnabled,
 	})
 }

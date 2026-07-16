@@ -2329,7 +2329,6 @@
     "trustCenterDesc": "Öffentliche Compliance-Seite für Kunden, Partner und Auditoren.",
     "trustCenterConfigure": "Trust Center konfigurieren",
     "licenseTitle": "Lizenz",
-    "licenseRevoked": "Ihr Pro-Abonnement wurde gekündigt. Ihr Zugang läuft mit dem Ende des aktuellen Abrechnungszeitraums aus.",
     "licenseExpiringSoon": "Ihr Abonnement läuft in {{days}} Tagen ab.",
     "licenseExpired": "Ihr Abonnement ist bereits abgelaufen.",
     "renewLicense": "Lizenz verlängern →",

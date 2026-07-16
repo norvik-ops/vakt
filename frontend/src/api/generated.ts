@@ -20566,7 +20566,6 @@ export interface paths {
                             /** Format: date-time */
                             expires_at: string | null;
                             demo: boolean;
-                            revoked: boolean;
                             auto_renewal_enabled: boolean;
                         };
                     };
@@ -20627,7 +20626,6 @@ export interface paths {
                             /** Format: date-time */
                             expires_at: string | null;
                             demo: boolean;
-                            revoked: boolean;
                             auto_renewal_enabled: boolean;
                         };
                     };
