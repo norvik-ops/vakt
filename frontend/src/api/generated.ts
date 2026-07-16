@@ -20567,6 +20567,8 @@ export interface paths {
                             expires_at: string | null;
                             demo: boolean;
                             auto_renewal_enabled: boolean;
+                            /** @description True while auto-renewal is armed, the key has entered its renewal window and the last attempt did not yield a newer key (open invoice, cancelled subscription, missing renewal token or an unreachable renewal server). The key will lapse unless someone acts. Always false while renewal is not yet due. */
+                            renewal_failing: boolean;
                         };
                     };
                 };
@@ -20627,6 +20629,8 @@ export interface paths {
                             expires_at: string | null;
                             demo: boolean;
                             auto_renewal_enabled: boolean;
+                            /** @description True while auto-renewal is armed, the key has entered its renewal window and the last attempt did not yield a newer key (open invoice, cancelled subscription, missing renewal token or an unreachable renewal server). The key will lapse unless someone acts. Always false while renewal is not yet due. */
+                            renewal_failing: boolean;
                         };
                     };
                 };

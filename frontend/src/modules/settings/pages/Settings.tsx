@@ -294,6 +294,8 @@ interface LicenseInfo {
   expires_at: string | null
   demo: boolean
   auto_renewal_enabled: boolean
+  /** Auto-renewal is armed but the last attempt produced no newer key. */
+  renewal_failing: boolean
 }
 
 const FEATURE_LABELS: Record<string, string> = {
@@ -401,11 +403,16 @@ function LicenseSection() {
           </p>
         )}
 
-        {lic?.expires_at && !lic.auto_renewal_enabled && daysUntilExpiry(lic.expires_at) < 30 && (
+        {/* Warn when auto-renewal is off and expiry is near, OR whenever auto-renewal
+            is armed but failing — in that case the key lapses silently otherwise. */}
+        {lic?.expires_at
+          && (lic.renewal_failing || (!lic.auto_renewal_enabled && daysUntilExpiry(lic.expires_at) < 30)) && (
           <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
-            {daysUntilExpiry(lic.expires_at) === 0
-              ? t('settingsPage.licenseExpired')
-              : t('settingsPage.licenseExpiringSoon', { days: daysUntilExpiry(lic.expires_at) })}
+            {lic.renewal_failing
+              ? t('settingsPage.licenseRenewalFailing', { date: formatDate(lic.expires_at) })
+              : daysUntilExpiry(lic.expires_at) === 0
+                ? t('settingsPage.licenseExpired')
+                : t('settingsPage.licenseExpiringSoon', { days: daysUntilExpiry(lic.expires_at) })}
           </div>
         )}
 

@@ -2331,6 +2331,7 @@
     "licenseTitle": "Licentie",
     "licenseExpiringSoon": "Uw abonnement verloopt over {{days}} dagen.",
     "licenseExpired": "Uw abonnement is al verlopen.",
+    "licenseRenewalFailing": "De automatische verlenging lukt niet — meestal door een openstaande factuur. Schrijftoegang eindigt op {{date}}.",
     "renewLicense": "Licentie verlengen →",
     "proFeatures": "Pro ontgrendelt:",
     "proKeyActivate": "Pro-sleutel activeren",

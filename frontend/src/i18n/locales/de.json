@@ -2331,6 +2331,7 @@
     "licenseTitle": "Lizenz",
     "licenseExpiringSoon": "Ihr Abonnement läuft in {{days}} Tagen ab.",
     "licenseExpired": "Ihr Abonnement ist bereits abgelaufen.",
+    "licenseRenewalFailing": "Die automatische Verlängerung greift nicht — häufigste Ursache: eine offene Rechnung. Der Schreibzugriff endet am {{date}}.",
     "renewLicense": "Lizenz verlängern →",
     "proFeatures": "Pro schaltet frei:",
     "proKeyActivate": "Pro-Key aktivieren",

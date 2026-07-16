@@ -18013,6 +18013,14 @@ paths:
                     type: boolean
                   auto_renewal_enabled:
                     type: boolean
+                  renewal_failing:
+                    type: boolean
+                    description: >-
+                      True while auto-renewal is armed, the key has entered its renewal
+                      window and the last attempt did not yield a newer key (open invoice,
+                      cancelled subscription, missing renewal token or an unreachable
+                      renewal server). The key will lapse unless someone acts. Always false
+                      while renewal is not yet due.
                 required:
                 - tier
                 - is_pro
@@ -18021,6 +18029,7 @@ paths:
                 - expires_at
                 - demo
                 - auto_renewal_enabled
+                - renewal_failing
         '401':
           description: Unauthorized
 
@@ -18066,6 +18075,14 @@ paths:
                     type: boolean
                   auto_renewal_enabled:
                     type: boolean
+                  renewal_failing:
+                    type: boolean
+                    description: >-
+                      True while auto-renewal is armed, the key has entered its renewal
+                      window and the last attempt did not yield a newer key (open invoice,
+                      cancelled subscription, missing renewal token or an unreachable
+                      renewal server). The key will lapse unless someone acts. Always false
+                      while renewal is not yet due.
                 required:
                 - tier
                 - is_pro
@@ -18074,6 +18091,7 @@ paths:
                 - expires_at
                 - demo
                 - auto_renewal_enabled
+                - renewal_failing
         '400':
           description: Invalid body or missing key
           content:

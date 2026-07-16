@@ -2331,6 +2331,7 @@
     "licenseTitle": "Licence",
     "licenseExpiringSoon": "Votre abonnement expire dans {{days}} jours.",
     "licenseExpired": "Votre abonnement a déjà expiré.",
+    "licenseRenewalFailing": "Le renouvellement automatique n'aboutit pas — le plus souvent en raison d'une facture impayée. L'accès en écriture prend fin le {{date}}.",
     "renewLicense": "Renouveler la licence →",
     "proFeatures": "Pro débloque :",
     "proKeyActivate": "Activer la clé Pro",

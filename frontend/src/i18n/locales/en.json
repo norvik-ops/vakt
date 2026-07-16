@@ -2331,6 +2331,7 @@
     "licenseTitle": "License",
     "licenseExpiringSoon": "Your subscription expires in {{days}} days.",
     "licenseExpired": "Your subscription has already expired.",
+    "licenseRenewalFailing": "Automatic renewal is not going through — an unpaid invoice is the usual cause. Write access ends on {{date}}.",
     "renewLicense": "Renew licence →",
     "proFeatures": "Pro unlocks:",
     "proKeyActivate": "Activate Pro Key",

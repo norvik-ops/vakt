@@ -162,10 +162,18 @@ func (r *AutoRefresher) Start(ctx context.Context) {
 // distinction is the whole design, so it lives in one obvious place.
 func (r *AutoRefresher) check(ctx context.Context) {
 	if !r.due() {
+		// Outside the window there is nothing to renew, so nothing can be failing.
+		// Clearing here is what makes the flag self-healing: a successful renewal
+		// pushes expiry out, the key leaves the window, and the warning disappears
+		// on its own without anyone resetting it.
+		r.handler.setRenewalFailing(false)
 		return
 	}
 	if r.currentToken() == "" {
 		log.Warn().Msg("license: key is expiring but carries no renewal token — a new key must be entered by hand")
+		// Expiring with no token: the automatic path cannot even be attempted.
+		// That is precisely a case the admin must be told about.
+		r.handler.setRenewalFailing(true)
 		return
 	}
 	r.tryRefresh(ctx)
@@ -178,12 +186,14 @@ func (r *AutoRefresher) tryRefresh(ctx context.Context) {
 		// permission check, and an outage on our side must never take a paying
 		// customer down.
 		log.Warn().Err(err).Msg("license: renewal fetch failed — keeping the current licence")
+		r.handler.setRenewalFailing(true)
 		return
 	}
 
 	lic, err := parse(key)
 	if err != nil {
 		log.Warn().Err(err).Msg("license: auto-refresh key invalid — keeping current license")
+		r.handler.setRenewalFailing(true)
 		return
 	}
 
@@ -194,10 +204,17 @@ func (r *AutoRefresher) tryRefresh(ctx context.Context) {
 		!lic.ExpiresAt.After(*current.ExpiresAt) {
 		r.handler.mu.Unlock()
 		log.Debug().Msg("license: auto-refresh key not newer — no update")
+		// We are inside the window and the server did not grant a later expiry —
+		// e.g. the invoice is still open. The key will run out unless someone acts.
+		r.handler.setRenewalFailing(true)
 		return
 	}
 	r.handler.lic = lic
 	r.handler.mu.Unlock()
+
+	// A newer key is in hand: renewal works. Must come after the Unlock above —
+	// setRenewalFailing takes the same mutex.
+	r.handler.setRenewalFailing(false)
 
 	// Persist to DB so DBMiddleware serves the refreshed key per-org.
 	// Resolve the org_id once (lazy) — scopes the UPDATE to the org that

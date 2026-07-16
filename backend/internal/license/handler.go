@@ -23,17 +23,41 @@ type licenseResponse struct {
 	ExpiresAt          *time.Time `json:"expires_at"`
 	Demo               bool       `json:"demo"`
 	AutoRenewalEnabled bool       `json:"auto_renewal_enabled"`
+	// RenewalFailing is true while auto-renewal is armed, the key has entered its
+	// renewal window, and the last attempt did not produce a newer key — i.e. the
+	// automatic path is not going to save this instance and someone has to act.
+	// It is the signal the UI needs: with auto-renewal on, a key drifting towards
+	// expiry IS the failure, because a working renewal would have replaced it.
+	// Always false while renewal is not due, so it cannot nag a healthy instance.
+	RenewalFailing bool `json:"renewal_failing"`
 }
 
 // Handler serves the /api/v1/license endpoint.
-// mu guards h.lic against concurrent reads and writes (e.g. Activate updating
-// h.lic while Get is reading it in another goroutine).
+// mu guards h.lic and h.renewalFailing against concurrent reads and writes (e.g.
+// Activate or the AutoRefresher updating them while Get reads in another goroutine).
 type Handler struct {
 	mu                 sync.RWMutex
 	lic                *License
 	db                 *pgxpool.Pool
 	rdb                *redis.Client
 	autoRenewalEnabled bool
+	renewalFailing     bool
+}
+
+// setRenewalFailing records the outcome of the most recent renewal attempt.
+// Called by the AutoRefresher; guarded by the same mutex as h.lic.
+func (h *Handler) setRenewalFailing(failing bool) {
+	h.mu.Lock()
+	h.renewalFailing = failing
+	h.mu.Unlock()
+}
+
+// RenewalFailing reports whether the last renewal attempt left the instance
+// without a newer key. Exported for tests and callers outside this package.
+func (h *Handler) RenewalFailing() bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.renewalFailing
 }
 
 // NewHandler creates a Handler bound to the given License.
@@ -87,6 +111,7 @@ func (h *Handler) Get(c echo.Context) error {
 		ExpiresAt:          lic.ExpiresAt,
 		Demo:               lic.Demo,
 		AutoRenewalEnabled: h.autoRenewalEnabled,
+		RenewalFailing:     h.RenewalFailing(),
 	})
 }
 
@@ -192,5 +217,6 @@ func (h *Handler) Activate(c echo.Context) error {
 		ExpiresAt:          lic.ExpiresAt,
 		Demo:               lic.Demo,
 		AutoRenewalEnabled: h.autoRenewalEnabled,
+		RenewalFailing:     h.RenewalFailing(),
 	})
 }
