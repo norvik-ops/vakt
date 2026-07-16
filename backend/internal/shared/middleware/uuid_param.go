@@ -34,6 +34,12 @@ var uuidParamNames = map[string]bool{
 	"mid":         true, // measure id
 	"qid":         true, // quiz question id
 	"aid":         true, // quiz answer id
+	// 2026-07-16: found by re-probing with the now-complete OpenAPI (133 GET-{id}
+	// routes instead of 80). These three sit outside the module groups the guard
+	// was originally mounted on, or use a name the set did not know — all 500'd.
+	"user_id":  true, // admin user id
+	"policyId": true, // trust-center policy id
+	"reportId": true, // vaktcomply incident-report id
 }
 
 // ValidateUUIDParams rejects a request whose UUID-typed path param (see

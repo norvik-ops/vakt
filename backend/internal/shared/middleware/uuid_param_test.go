@@ -27,6 +27,10 @@ func TestValidateUUIDParams(t *testing.T) {
 	e.GET("/soa/entries/:control_ref", handlerHit)
 	e.GET("/bsi/reports/:type", handlerHit)
 	e.GET("/employees/:eid", handlerHit)
+	// 2026-07-16: these three 500'd until the guard learned their names.
+	e.GET("/admin/users/:user_id/permissions", handlerHit)
+	e.GET("/trust/policies/:policyId/publish", handlerHit)
+	e.GET("/incident-reports/:reportId/pdf", handlerHit)
 
 	cases := []struct {
 		name string
@@ -36,6 +40,10 @@ func TestValidateUUIDParams(t *testing.T) {
 		{"malformed uuid in :id is rejected", "/controls/not-a-uuid/measures", http.StatusBadRequest},
 		{"valid uuid in :id passes", "/controls/3f2504e0-4f89-11d3-9a0c-0305e82c3301/measures", http.StatusOK},
 		{"malformed uuid in :eid is rejected", "/employees/nope", http.StatusBadRequest},
+		{"malformed uuid in :user_id is rejected", "/admin/users/nope/permissions", http.StatusBadRequest},
+		{"malformed uuid in :policyId is rejected", "/trust/policies/nope/publish", http.StatusBadRequest},
+		{"malformed uuid in :reportId is rejected", "/incident-reports/nope/pdf", http.StatusBadRequest},
+		{"valid uuid in :reportId passes", "/incident-reports/3f2504e0-4f89-11d3-9a0c-0305e82c3301/pdf", http.StatusOK},
 		{"non-uuid :name param is untouched", "/frameworks/CRA/enable", http.StatusOK},
 		{"non-uuid :control_ref param is untouched", "/soa/entries/A.5.1", http.StatusOK},
 		{"non-uuid :type param is untouched", "/bsi/reports/A1", http.StatusOK},

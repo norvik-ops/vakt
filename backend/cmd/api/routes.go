@@ -280,7 +280,11 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	log.Info().Msg("auth routes registered")
 
 	// All subsequent routes require a valid Paseto token
-	protected := api.Group("", auth.AuthMiddleware(pasetoKey, pool, rdb))
+	// ValidateUUIDParams sits on the whole protected tree, not on individual module
+	// groups: a malformed UUID path param otherwise reaches a ::uuid cast and
+	// Postgres 22P02 turns into a 500. Mounting per-group left admin/alerting/
+	// account/integrations/webhooks unguarded — one choke point cannot drift.
+	protected := api.Group("", auth.AuthMiddleware(pasetoKey, pool, rdb), sharedmw.ValidateUUIDParams())
 
 	// CSRF protection: double-submit-cookie pattern on state-changing methods.
 	// API-key requests (Bearer sk_/vakt_) are exempt because they are not
@@ -398,7 +402,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		vbSvc := vaktscan.NewService(pool, asynq.RedisClientOpt{Addr: redisOpt.Addr, Password: redisOpt.Password})
 		vbSvc.WithRedis(rdb)
 		vbSvc.WithWebhooks(webhookSvc)
-		vaktscan.Register(protected.Group("/vaktscan", auth.RequireModuleAccess(pool, "vaktscan", rdb), sharedmw.ValidateUUIDParams()), vaktscan.NewHandler(vbSvc))
+		vaktscan.Register(protected.Group("/vaktscan", auth.RequireModuleAccess(pool, "vaktscan", rdb)), vaktscan.NewHandler(vbSvc))
 		log.Info().Msg("vaktscan routes registered")
 	}
 
@@ -460,19 +464,19 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		}
 		efSvc := vaktcomply.NewEvidenceFileService(ckSvc.Repo(), cfg.UploadDir)
 		ckHandler.WithEvidenceFileService(efSvc)
-		vaktcomply.Register(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb), sharedmw.ValidateUUIDParams()), ckHandler)
+		vaktcomply.Register(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), ckHandler)
 		// Sprint 22 / S22-6: authentifizierter NIS2-Wizard-Migrate-Endpoint
 		// (POST /vaktcomply/nis2-assessment/migrate-from-anonymous).
-		nis2wizard.RegisterAuthenticated(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb), sharedmw.ValidateUUIDParams()), nis2wizardHandler)
+		nis2wizard.RegisterAuthenticated(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), nis2wizardHandler)
 		// Auditor portal uses URL token — exempt from Bearer auth; rate-limited to 30 req/min per IP
 		portalRateLimiter := sharedmw.IPRateLimitRedis(rdb, "portal", 30, time.Minute, false)
 		vaktcomply.RegisterPublic(api.Group("/vaktcomply", portalRateLimiter), ckHandler)
 		// Policy acceptance — public token routes (no Bearer auth), rate-limited
 		vaktcomply.RegisterPolicyAcceptPublic(api.Group("", portalRateLimiter), ckHandler)
 		// Audit package export
-		audit.RegisterExport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb), sharedmw.ValidateUUIDParams()), pool)
+		audit.RegisterExport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool)
 		// One-click audit report PDF
-		audit.RegisterReport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb), sharedmw.ValidateUUIDParams()), pool)
+		audit.RegisterReport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool)
 		// AI-generated reports via OpenAI-compatible provider.
 		// Sprint 15 (S15-1/2/3/5): Rate-Limit + Daily-Quota + Response-Cache
 		// + Streaming-SSE-Endpoint laufen über RegisterWithOptions, sofern
@@ -481,7 +485,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		if aiFailOpen {
 			log.Warn().Msg("ai: VAKT_AI_FAIL_OPEN_ON_OUTAGE=true — rate-limit + quota checks will fail open during Redis/Postgres outages (audit-relevant choice)")
 		}
-		ai.RegisterWithOptions(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb), sharedmw.ValidateUUIDParams()), pool, cfg.AIProvider, cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel, ai.RegisterOptions{
+		ai.RegisterWithOptions(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool, cfg.AIProvider, cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel, ai.RegisterOptions{
 			Redis:            rdb,
 			RateLimitRPM:     cfg.AIRateLimitRPM,
 			DailyTokenLimit:  cfg.AIDailyTokenLimit,
@@ -495,14 +499,14 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		// correctly for the auditor's org without a Paseto token in the request (S78-6c).
 		vaktcomply.RegisterAuditor(api.Group("/auditor/vaktcomply", auditorRateLimiter, auditor.AuditorAuth(pool), license.DBMiddleware(pool, lic, rdb)), ckHandler)
 		// Auto-evidence inbox — GitHub, SecReflex, SecPulse
-		evidence_auto.RegisterRoutes(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb), sharedmw.ValidateUUIDParams()), pool)
+		evidence_auto.RegisterRoutes(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool)
 		log.Info().Msg("vaktcomply routes registered")
 	}
 
 	if cfg.IsModuleEnabled("vaktvault") && cfg.SecretKey != "" {
 		soSvc := vaktvault.NewService(pool, vaultKey, asynqClient)
 		vaultHandler := vaktvault.NewHandler(soSvc)
-		vaktvault.Register(protected.Group("/vaktvault", auth.RequireModuleAccess(pool, "vaktvault", rdb), sharedmw.ValidateUUIDParams()), vaultHandler)
+		vaktvault.Register(protected.Group("/vaktvault", auth.RequireModuleAccess(pool, "vaktvault", rdb)), vaultHandler)
 		// S127-3 (D6): public share-link consumer route. The external recipient has
 		// no session; the route is validated by the URL token (hash-stored) alone.
 		vaultShareRL := sharedmw.IPRateLimitRedis(rdb, "vaktvault_share", 30, time.Minute, false)
@@ -516,7 +520,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 			User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
 		}, asynq.RedisClientOpt{Addr: redisOpt.Addr, Password: redisOpt.Password})
 		awareHandler := vaktaware.NewHandler(pgSvc)
-		vaktaware.Register(protected.Group("/vaktaware", auth.RequireModuleAccess(pool, "vaktaware", rdb), sharedmw.ValidateUUIDParams()), awareHandler)
+		vaktaware.Register(protected.Group("/vaktaware", auth.RequireModuleAccess(pool, "vaktaware", rdb)), awareHandler)
 		// S127-1 (D4/D5): public tracking + phish-report. Mounted on the PUBLIC api
 		// group — the phishing target's mail client/browser has no session, so these
 		// MUST NOT sit behind auth/CSRF/license. Redis-backed IP rate limit (10/min,
@@ -552,7 +556,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		if alertSvc != nil {
 			poHandler.WithAlerting(alertSvc.Fire)
 		}
-		vaktprivacy.Register(protected.Group("/vaktprivacy", auth.RequireModuleAccess(pool, "vaktprivacy", rdb), sharedmw.ValidateUUIDParams()), poHandler)
+		vaktprivacy.Register(protected.Group("/vaktprivacy", auth.RequireModuleAccess(pool, "vaktprivacy", rdb)), poHandler)
 		// DSR portal uses URL slug/token — exempt from Bearer auth; rate-limited to 30 req/min per IP
 		dsrPortalRateLimiter := sharedmw.IPRateLimitRedis(rdb, "dsr_portal", 30, time.Minute, false)
 		vaktprivacy.RegisterPublic(api.Group("/vaktprivacy", dsrPortalRateLimiter), poHandler)
@@ -566,7 +570,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 			WithEvidenceWriter(hrEvidence).
 			WithAccessReviewTrigger(hrAccessReview)
 		hrHandler = vakthr.NewHandler(hrSvc)
-		vakthr.Register(protected.Group("/vakthr", auth.RequireModuleAccess(pool, "vakthr", rdb), sharedmw.ValidateUUIDParams()), hrHandler)
+		vakthr.Register(protected.Group("/vakthr", auth.RequireModuleAccess(pool, "vakthr", rdb)), hrHandler)
 		log.Info().Msg("vakthr routes registered")
 	}
 
