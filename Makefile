@@ -65,10 +65,37 @@ lint:
 	cd backend && golangci-lint run ./...
 	cd frontend && npm run lint
 
+# Setzt core.hooksPath, statt einzelne Dateien nach .git/hooks/ zu kopieren.
+#
+# Die alte Fassung kopierte NUR scripts/hooks/pre-commit und liess .githooks/pre-push
+# unberuehrt — PROCESS.md verwies aber genau darauf ("aktivieren mit make install-hooks").
+# Der pre-push-Hook lief damit bei niemandem, auch nicht auf der Maschine des Autors.
+# Zwei Hook-Verzeichnisse nebeneinander waren die Ursache; jetzt gibt es nur noch eines.
+#
+# core.hooksPath statt cp hat einen zweiten Vorteil: Ein spaeter hinzugefuegter Hook ist
+# sofort aktiv, ohne dass jemand install-hooks erneut aufruft. Ein kopierter Hook driftet
+# still vom Repo weg — dieselbe Klasse wie server-lokale Ops-Skripte.
 install-hooks:
-	cp scripts/hooks/pre-commit .git/hooks/pre-commit
-	chmod +x .git/hooks/pre-commit
-	@echo "Git hooks installed."
+	git config core.hooksPath .githooks
+	chmod +x .githooks/*
+	@echo "Hooks aktiv (core.hooksPath=.githooks): $$(ls .githooks | tr '\n' ' ')"
+	@echo "Deaktivieren: git config --unset core.hooksPath"
+
+# Die DoD-Kette aus PROCESS.md P7, in EINEM Befehl — genau das, was .githooks/pre-push
+# aufruft. Vorher rief der Hook `make check` gegen ein Target, das es nicht gab: Er haette
+# jeden Push mit einem Make-Fehler blockiert, waere er je gelaufen.
+#
+# Bewusst OHNE `make lint`: golangci-lint ist nicht auf jeder Maschine installiert, und ein
+# Hook, der an einem fehlenden Werkzeug scheitert, wird abgeschaltet statt gefixt. Lint
+# laeuft in CI und ist dort Merge-Bedingung.
+check:
+	cd backend && go build ./...
+	cd backend && go vet ./...
+	@cd backend && u=$$(gofmt -l . | grep -v '^spike/' || true); \
+	  if [ -n "$$u" ]; then echo "gofmt noetig:"; echo "$$u" | sed 's/^/  /'; exit 1; fi
+	cd backend && go test ./...
+	cd frontend && npm run build
+	@echo "✓ DoD gruen"
 
 build:
 	cd backend && go build ./...
