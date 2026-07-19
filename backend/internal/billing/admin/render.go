@@ -27,7 +27,11 @@ type Renderer struct {
 
 func NewRenderer() (*Renderer, error) {
 	r := &Renderer{pages: map[string]*template.Template{}}
-	for _, page := range []string{"dashboard.html", "subscriptions.html", "invoices.html", "licences.html", "lexware.html", "subscription.html", "new.html"} {
+	// Diese Liste ist die Registrierung. Eine Datei unter templates/ allein genuegt
+	// NICHT — sie waere vorhanden, eingebettet und trotzdem nicht aufrufbar
+	// ("no such page"). Wer hier eine Seite ergaenzt, ergaenzt sie auch in
+	// TestEveryPageRenders; genau der Test hat das Fehlen von tax.html gefangen.
+	for _, page := range []string{"dashboard.html", "subscriptions.html", "invoices.html", "licences.html", "lexware.html", "subscription.html", "new.html", "tax.html"} {
 		t, err := template.New(page).ParseFS(files, "templates/layout.html", "templates/"+page)
 		if err != nil {
 			return nil, fmt.Errorf("billing admin: parse %s: %w", page, err)

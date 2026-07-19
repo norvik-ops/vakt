@@ -188,6 +188,8 @@
         {{if .N.Licences}}<span class="count">{{.N.Licences}}</span>{{end}}</a>
       <a href="/lexware"       class="{{if eq .Nav "lexware"}}on{{end}}">Abgleich
         <span class="count" title="Vergleicht Vakts Rechnungen mit dem, was Lexware wirklich sagt">↔</span></a>
+      <a href="/steuern"       class="{{if eq .Nav "tax"}}on{{end}}">Steuern
+        <span class="count" title="Was Lexware melden wird — zum Gegenlesen vor der Übermittlung">§</span></a>
     </nav>
 
     <div class="who"><b>Angemeldet</b>{{.Who}}</div>

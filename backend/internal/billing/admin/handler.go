@@ -40,6 +40,7 @@ func Register(e *echo.Echo, h *Handler, cfg Config) {
 	g.GET("/invoices", h.Invoices)
 	g.GET("/licences", h.Licences)
 	g.GET("/lexware", h.LexwareCheck)
+	g.GET("/steuern", h.TaxOverview)
 	g.GET("/subscriptions/:id", h.Subscription)
 	g.GET("/new", h.NewSubscriptionForm)
 	g.GET("/invoices/:id/pdf", h.InvoicePDF)

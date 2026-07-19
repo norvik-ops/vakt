@@ -1,0 +1,94 @@
+{{define "content"}}
+<h1>Steuern</h1>
+<p class="lede">Was Lexware melden wird — zum Gegenlesen, bevor es übermittelt ist.</p>
+
+<div class="card pad" style="margin-bottom:24px">
+  <p class="dim" style="margin:0;font-size:14px;line-height:1.7">
+    Diese Seite erzeugt <strong>keine</strong> Umsatzsteuer-Voranmeldung und
+    <strong>keine</strong> Zusammenfassende Meldung. Beides macht Lexware Office und
+    übermittelt es direkt ans Finanzamt bzw. ans BZSt. Eine zweite Meldungserzeugung
+    hier wäre eine zweite Quelle der Wahrheit neben der Buchhaltung.
+    <br><br>
+    Sie zeigt, <strong>was übermittelt werden wird</strong>. Ein Auslandskunde ohne
+    geprüfte USt-IdNr. oder eine Rechnung mit falscher Steuerart fällt hier auf — nicht
+    erst in einer Korrekturmeldung.
+  </p>
+</div>
+
+{{if .Warnings}}
+<div class="card pad" style="margin-bottom:24px;border-color:#7f1d1d">
+  <div class="lbl" style="color:#fca5a5">{{.Warnings}} Zeile{{if ne .Warnings 1}}n{{end}} zum Nachsehen</div>
+  <div class="sub">Unten rot markiert. Sie sind nicht automatisch falsch — sie sind das,
+    was ein Mensch angesehen haben sollte, bevor die Meldung rausgeht.</div>
+</div>
+{{end}}
+
+{{if .NoInvoice}}
+<div class="card pad">
+  <p class="dim" style="margin:0">
+    Noch keine berechneten Rechnungen. Freilizenzen sind hier bewusst ausgeblendet —
+    sie tragen keine Umsatzsteuer und würden jede Summe verwässern.
+  </p>
+</div>
+{{end}}
+
+{{range .Quarters}}
+<h2>{{.Label}}{{if .Warnings}} <span class="pill bad">{{.Warnings}}</span>{{end}}</h2>
+
+<div class="card" style="margin-bottom:14px">
+  <table>
+    <thead><tr><th>Steuerart</th><th>Belege</th><th>Netto</th><th>Umsatzsteuer</th><th>Brutto</th></tr></thead>
+    <tbody>
+    {{range .Buckets}}
+      <tr>
+        <td data-l="Steuerart"><span class="name">{{.Label}}</span>
+            <div class="sublabel">{{.TaxType}}</div></td>
+        <td data-l="Belege" class="num dim">{{.Count}}</td>
+        <td data-l="Netto" class="num">{{.Net}}</td>
+        <td data-l="Umsatzsteuer" class="num">{{.Tax}}</td>
+        <td data-l="Brutto" class="num name">{{.Gross}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td class="name">Summe</td>
+        <td class="num dim">{{len .Rows}}</td>
+        <td class="num name">{{.Net}}</td>
+        <td class="num name">{{.Tax}}</td>
+        <td class="num name">{{.Gross}}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<div class="card" style="margin-bottom:32px">
+  <table>
+    <thead><tr><th>Firma</th><th>Land</th><th>USt-IdNr.</th><th>Steuerart</th><th>Satz</th><th>Netto</th><th>Brutto</th></tr></thead>
+    <tbody>
+    {{range .Rows}}
+      <tr>
+        <td data-l="Firma"><span class="name">{{.Company}}</span>
+            <div class="sublabel">{{.Invoice}} · {{.Period}}</div>
+            {{if .Warn}}<div class="sublabel" style="color:{{if .Severe}}#fca5a5{{else}}#fbbf24{{end}}">{{.Warn}}</div>{{end}}</td>
+        <td data-l="Land" class="num">{{.Country}}</td>
+        <td data-l="USt-IdNr." class="num dim">{{if .VATID}}{{.VATID}}{{else}}—{{end}}</td>
+        <td data-l="Steuerart" class="num dim">{{.TaxType}}</td>
+        <td data-l="Satz" class="num">{{.Rate}}</td>
+        <td data-l="Netto" class="num">{{.Net}}</td>
+        <td data-l="Brutto" class="num name">{{.Gross}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}
+
+{{if .Hidden}}
+<p class="dim" style="font-size:13px">
+  {{.Hidden}} ältere Quartal{{if ne .Hidden 1}}e{{end}} werden nicht angezeigt.
+  Die Zahl steht hier, damit die Seite nicht wie eine vollständige Übersicht aussieht,
+  wenn sie keine ist.
+</p>
+{{end}}
+{{end}}

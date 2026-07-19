@@ -49,6 +49,18 @@ func TestEveryPageRenders(t *testing.T) {
 		"licences.html":      licencesData{Licences: []licenceRow{{OrgName: "Müller", Status: "aktiv"}}},
 		"subscription.html":  detail,
 		"new.html":           newSubData{},
+		"tax.html": taxData{
+			Quarters: []taxQuarter{{
+				Label:   "2026 Q3",
+				Buckets: []taxBucket{{TaxType: "net", Label: "Inland, steuerpflichtig", Count: 1, Net: "2.990,00 €", Tax: "568,10 €", Gross: "3.558,10 €"}},
+				Rows: []taxRow{{
+					Company: "Müller GmbH", Country: "DE", Invoice: "abc",
+					Period: "01.08.2026 – 01.08.2027", TaxType: "net", Rate: "19 %",
+					Net: "2.990,00 €", Tax: "568,10 €", Gross: "3.558,10 €",
+				}},
+				Net: "2.990,00 €", Tax: "568,10 €", Gross: "3.558,10 €",
+			}},
+		},
 	}
 
 	for name, data := range pages {
@@ -183,5 +195,78 @@ func TestDiscountIsEditableOnALiveSubscription(t *testing.T) {
 	if !strings.Contains(buf.String(), `action="/subscriptions/7/discount"`) {
 		t.Fatal("ein BEZAHLTES Abo zeigt kein Rabatt-Formular — genau dort wird der Rabatt " +
 			"gebraucht, er greift ab der nächsten Verlängerung")
+	}
+}
+
+// TestTaxAnomalyCatchesTheExpensiveCases haelt fest, WOFUER die Steueruebersicht da ist.
+//
+// Sie ist eine Kontrollansicht: Sie kann einen falschen Beleg nicht mehr verhindern, aber
+// sie kann verhindern, dass er unbemerkt in eine Meldung wandert. Wenn diese Faelle nicht
+// mehr auffallen, ist die Seite Dekoration.
+func TestTaxAnomalyCatchesTheExpensiveCases(t *testing.T) {
+	tests := []struct {
+		name       string
+		country    string
+		taxType    string
+		rate       float64
+		vatValid   bool
+		wantWarn   bool
+		wantSevere bool
+	}{
+		{
+			// Der teuerste Fall: Steuer geschuldet, aber nicht ausgewiesen (§ 14c UStG).
+			// Kein Fehler, kein Log — nur ein falscher Beleg.
+			name: "net bei 0 Prozent", country: "DE", taxType: "net", rate: 0,
+			wantWarn: true, wantSevere: true,
+		},
+		{
+			// Ohne gueltige USt-IdNr. traegt Reverse Charge nicht, und die nicht
+			// berechnete Steuer bleibt bei uns haengen.
+			name: "EU-Ausland ohne gepruefte USt-IdNr", country: "AT",
+			taxType: "externalService13b", rate: 0, vatValid: false,
+			wantWarn: true, wantSevere: true,
+		},
+		{
+			name: "EU-Ausland MIT gepruefter USt-IdNr", country: "AT",
+			taxType: "externalService13b", rate: 0, vatValid: true,
+			wantWarn: false,
+		},
+		{
+			name: "Inland korrekt", country: "DE", taxType: "net", rate: 19,
+			wantWarn: false,
+		},
+		{
+			// Drittland braucht keine USt-IdNr. — VIES kennt die Schweiz nicht.
+			// Ein Warnhinweis hier waere ein Fehlalarm, und Fehlalarme machen die
+			// Seite unbrauchbar: Wer jede Woche fuenf falsche sieht, liest den
+			// sechsten, echten, nicht mehr.
+			name: "Schweiz ohne USt-IdNr ist korrekt", country: "CH",
+			taxType: "thirdPartyCountryService", rate: 0, vatValid: false,
+			wantWarn: false,
+		},
+		{
+			name: "Norwegen ist Drittland, kein EU-Fehlalarm", country: "NO",
+			taxType: "thirdPartyCountryService", rate: 0, vatValid: false,
+			wantWarn: false,
+		},
+		{
+			// Nach dem Wechsel in die Regelbesteuerung erklaerungsbeduerftig,
+			// aber kein Defekt — deshalb Hinweis ohne Severe.
+			name: "vatfree wird milde markiert", country: "DE",
+			taxType: "vatfree", rate: 0,
+			wantWarn: true, wantSevere: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			warn, severe := taxAnomaly(tc.country, tc.taxType, tc.rate, tc.vatValid)
+			if (warn != "") != tc.wantWarn {
+				t.Errorf("Warnung = %q, erwartet warn=%v", warn, tc.wantWarn)
+			}
+			if severe != tc.wantSevere {
+				t.Errorf("Severe = %v, erwartet %v (Warnung: %q)", severe, tc.wantSevere, warn)
+			}
+		})
 	}
 }

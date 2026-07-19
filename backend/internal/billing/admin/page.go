@@ -18,7 +18,7 @@ import (
 // fill it in and no page can silently render without navigation.
 type page struct {
 	Title string
-	Nav   string // overview | subs | invoices | licences
+	Nav   string // overview | subs | invoices | licences | lexware | tax
 	Who   string
 	CSRF  string
 	Flash string

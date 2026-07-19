@@ -94,6 +94,16 @@ var euCountries = map[string]bool{
 	"SE": true, "SI": true, "SK": true,
 }
 
+// IsEUCountry sagt, ob ein Ländercode zur EU gehört.
+//
+// Exportiert, weil das Billing-Panel dieselbe Frage stellt — und sie MUSS dieselbe
+// Antwort bekommen. Eine zweite Länderliste im Panel wäre der Weg, auf dem die
+// Kontrollansicht einen Fall für unauffällig hält, den die Rechnungsstellung anders
+// einordnet: Der Zweck der Ansicht ist gerade, solche Abweichungen zu zeigen.
+func IsEUCountry(countryCode string) bool {
+	return euCountries[strings.ToUpper(strings.TrimSpace(countryCode))]
+}
+
 // taxTreatmentFor ordnet einen Verkauf steuerlich ein.
 //
 // Reihenfolge der Prüfungen ist bedeutsam: Der Kleinunternehmer-Fall kommt ZUERST und
