@@ -77,8 +77,6 @@ type taxData struct {
 	Quarters  []taxQuarter
 	Warnings  int
 	Hidden    int // ältere Quartale, die nicht gezeigt werden
-	SmallBiz  bool
-	VATID     string
 	NoInvoice bool
 }
 
