@@ -414,6 +414,17 @@ type subDetail struct {
 	NextNet  string
 	NextList string
 
+	// NextGross ist der Betrag, den der Kunde überweist — und damit der, über den der
+	// Mensch am Freigabeknopf tatsächlich entscheidet. Unter § 19 UStG identisch mit
+	// NextNet; ab der Regelbesteuerung weichen sie ab, und dann wäre eine Nettozahl im
+	// Bestätigungsdialog einer UNUMKEHRBAREN Aktion schlicht die falsche Information.
+	//
+	// NextTaxNote nennt den Grund, wenn keine Umsatzsteuer anfällt (Reverse Charge,
+	// Drittland, § 19). Leer, wenn Steuer ausgewiesen wird — dann sagt die Differenz
+	// zwischen Netto und Brutto schon alles.
+	NextGross   string
+	NextTaxNote string
+
 	// Rechnungsadresse — nur fuer die Umwandlung einer Freilizenz. Die hat oft gar
 	// keine, weil bei „gratis" nie jemand danach gefragt hat.
 	ContactName string
@@ -460,6 +471,26 @@ func (h *Handler) Subscription(c echo.Context) error {
 		if p, err := lexware.PlanFor(product, interval); err == nil {
 			if ch, err := p.Charge(d.Sub.Quantity, d.Sub.Discount); err == nil {
 				d.NextNet, d.NextList = eur(ch.NetCents), eur(ch.ListCents)
+
+				// Aus DERSELBEN Funktion, die auch die Rechnung baut. Eine hier
+				// nachgebaute Berechnung wäre genau der Weg, auf dem Panel und Beleg
+				// auseinanderlaufen — und der Fehler fiele erst auf, wenn ein Kunde
+				// einen anderen Betrag überweist als den bestätigten.
+				//
+				// vatVerified=false: Die Vorschau darf keinen Nachweis behaupten, den
+				// es noch nicht gibt. Für einen EU-Auslandskunden schlägt die Einordnung
+				// deshalb fehl — und genau das soll das Panel zeigen, statt eine Zahl zu
+				// nennen, die so nie zustande käme.
+				amounts, taxErr := h.billing.InvoiceAmountsFor(ch.NetCents, d.CountryCode, false)
+				if taxErr != nil {
+					d.NextGross = d.NextNet
+					d.NextTaxNote = "Steuerliche Einordnung nicht möglich: " + taxErr.Error()
+				} else {
+					d.NextGross = eur(amounts.GrossCents)
+					if amounts.TaxCents == 0 {
+						d.NextTaxNote = "ohne Umsatzsteuer (" + amounts.TaxType + ")"
+					}
+				}
 			}
 		}
 	}

@@ -51,6 +51,16 @@ type Client struct {
 	apiKey string
 	http   *http.Client
 	lim    *rate.Limiter
+
+	// smallBusiness spiegelt § 19 UStG. Default true = Zustand vor S130: jede Rechnung
+	// geht als "vatfree" raus, ohne Fallunterscheidung nach Land.
+	//
+	// Bewusst Konfiguration und nicht aus Lexwares Profile() gelesen, obwohl das Profil
+	// den Wert kennt: Die Steuerbehandlung einer Rechnung darf nicht davon abhängen, ob
+	// ein API-Aufruf gerade durchkommt. Ein Aussetzer würde sonst still das Steuerregime
+	// wechseln. Stattdessen prüft VerifyTaxStatus() beim Start gegen das Profil und
+	// meldet eine Abweichung laut — siehe dort.
+	smallBusiness bool
 }
 
 func New(apiKey string) *Client {
@@ -58,7 +68,46 @@ func New(apiKey string) *Client {
 		apiKey: apiKey,
 		http:   &http.Client{Timeout: 20 * time.Second},
 		lim:    rate.NewLimiter(rate.Limit(rateLimitPerSecond), 1),
+		// Default = heutiges Verhalten. Wer die Regelbesteuerung will, muss sie
+		// ausdrücklich einschalten; kein stiller Wechsel durch ein fehlendes Flag.
+		smallBusiness: true,
 	}
+}
+
+// WithSmallBusiness schaltet zwischen § 19 UStG und Regelbesteuerung um.
+//
+// false bedeutet: Ab jetzt entscheidet das Land des Kunden über die Steuerbehandlung
+// (siehe tax.go). Das ist der Schalter aus S130 — die Umstellung ist damit eine
+// Konfigurations- und keine Code-Änderung.
+func (c *Client) WithSmallBusiness(b bool) *Client {
+	c.smallBusiness = b
+	return c
+}
+
+// VerifyTaxStatus vergleicht unsere Konfiguration mit dem, was Lexware über den
+// Mandanten weiß, und gibt eine Abweichung als Fehler zurück.
+//
+// Warum das nötig ist: Die beiden Zustände können unabhängig voneinander wechseln.
+// Wird der Mandant in Lexware auf Regelbesteuerung umgestellt, während der Dienst noch
+// smallBusiness=true fährt, gehen weiter "vatfree"-Rechnungen raus — Umsatzsteuer wird
+// geschuldet, aber nicht ausgewiesen (§ 14c UStG). Umgekehrt schickte der Dienst
+// "net"/19 an einen Mandanten, der noch als Kleinunternehmer geführt wird.
+//
+// Beides ist still. Deshalb wird es beim Start einmal aktiv geprüft, statt darauf zu
+// hoffen, dass jemand daran denkt.
+func (c *Client) VerifyTaxStatus(ctx context.Context) error {
+	prof, err := c.Profile(ctx)
+	if err != nil {
+		return fmt.Errorf("lexware: Steuerstatus nicht prüfbar: %w", err)
+	}
+	if prof.SmallBusiness != c.smallBusiness {
+		return fmt.Errorf(
+			"lexware: Steuerstatus weicht ab — Lexware führt den Mandanten mit smallBusiness=%v, "+
+				"dieser Dienst rechnet mit smallBusiness=%v. Bis das übereinstimmt, ist jede "+
+				"Rechnung steuerlich falsch (§ 14c UStG). Konfiguration oder Mandant angleichen",
+			prof.SmallBusiness, c.smallBusiness)
+	}
+	return nil
 }
 
 // Enabled reports whether an API key is configured. Every caller must check
@@ -218,6 +267,16 @@ type InvoiceInput struct {
 	Description string // line item description
 	Charge      Charge
 	DueInDays   int
+
+	// CountryCode und VATIDVerified entscheiden über die Steuerbehandlung, sobald die
+	// Regelbesteuerung greift (siehe tax.go). Unter § 19 UStG werden sie ignoriert.
+	//
+	// VATIDVerified heißt QUALIFIZIERT GEPRÜFT (VIES, mit Name und Anschrift), nicht
+	// "der Kunde hat etwas ins Feld getippt". Wer hier true einsetzt, ohne geprüft zu
+	// haben, verlagert die Steuerschuld auf einen Kunden, der sie womöglich nicht trägt —
+	// und die Nachforderung landet bei uns.
+	CountryCode   string
+	VATIDVerified bool
 }
 
 // CreateInvoice creates a FINALIZED invoice (status "open") and returns its ID.
@@ -244,6 +303,20 @@ func (c *Client) CreateInvoice(ctx context.Context, in InvoiceInput) (string, er
 	if in.DueInDays <= 0 {
 		in.DueInDays = 14
 	}
+
+	// Einordnung VOR dem Request-Bau und vor allem vor dem finalisierenden POST: Ein
+	// EU-Auslandsverkauf ohne geprüfte USt-IdNr. muss hier scheitern, nicht auf dem
+	// Papier landen. Eine finalisierte Lexware-Rechnung ist über die API nicht
+	// zurückzunehmen — der einzige sichere Moment zum Abbrechen ist dieser hier.
+	tax, err := taxTreatmentFor(TaxContext{
+		CountryCode:   in.CountryCode,
+		VATIDVerified: in.VATIDVerified,
+		SmallBusiness: c.smallBusiness,
+	})
+	if err != nil {
+		return "", err
+	}
+
 	now := time.Now().Format(lexwareTime)
 
 	req := invoiceRequest{
@@ -260,14 +333,14 @@ func (c *Client) CreateInvoice(ctx context.Context, in InvoiceInput) (string, er
 				// The LIST price. The rebate is applied below, by Lexware, so that it is
 				// visible on the paper rather than baked into a smaller number.
 				NetAmount:         in.Charge.ListEUR(),
-				TaxRatePercentage: 0,
+				TaxRatePercentage: tax.RatePct,
 			},
 		}},
 		TotalPrice: totalPrice{
 			Currency:                "EUR",
 			TotalDiscountPercentage: float64(in.Charge.Percent),
 		},
-		TaxConditions: taxConditions{TaxType: "vatfree"},
+		TaxConditions: taxConditions{TaxType: tax.Type, TaxTypeNote: tax.Note},
 		PaymentConditions: paymentConditions{
 			PaymentTermLabel:    fmt.Sprintf("Zahlbar innerhalb von %d Tagen ohne Abzug.", in.DueInDays),
 			PaymentTermDuration: in.DueInDays,
@@ -290,6 +363,30 @@ func (c *Client) CreateInvoice(ctx context.Context, in InvoiceInput) (string, er
 		return "", fmt.Errorf("lexware: decode invoice: %w", err)
 	}
 	return out.ID, nil
+}
+
+// InvoiceAmountsFor sagt dem Aufrufer, welche Betraege eine Rechnung mit diesen Daten
+// tragen wird — bevor sie erstellt wird.
+//
+// Getrennt von CreateInvoice, statt dessen Signatur zu aendern: Die Betraege werden an
+// zwei Stellen gebraucht (Erstverkauf und Verlaengerung), und beide muessen sie SPEICHERN,
+// nachdem Lexware bestaetigt hat. Ein zweiter Rueckgabewert haette die Aufrufer gezwungen,
+// ihn auch dort entgegenzunehmen, wo sie ihn wegwerfen.
+//
+// Wichtig: Es ist DIESELBE Funktion, die CreateInvoice intern verwendet. Eine zweite
+// Rechnung an anderer Stelle waere genau der Weg, auf dem Beleg und Buchhaltung
+// auseinanderlaufen — das Muster steckt schon einmal in diesem Paket (TotalEUR/TotalCents,
+// siehe CLAUDE.md).
+func (c *Client) InvoiceAmountsFor(netCents int64, countryCode string, vatIDVerified bool) (InvoiceAmounts, error) {
+	tax, err := taxTreatmentFor(TaxContext{
+		CountryCode:   countryCode,
+		VATIDVerified: vatIDVerified,
+		SmallBusiness: c.smallBusiness,
+	})
+	if err != nil {
+		return InvoiceAmounts{}, err
+	}
+	return amountsFor(netCents, tax), nil
 }
 
 // InvoicePDF fetches the rendered invoice.

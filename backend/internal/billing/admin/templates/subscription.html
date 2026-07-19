@@ -59,9 +59,12 @@
     nur in Lexware von Hand stornieren.
   </p>
   <form method="post" action="/subscriptions/{{.Sub.ID}}/approve"
-        onsubmit="return confirm('Rechnung für {{.Sub.Company}} über {{.NextNet}} erstellen?\n\nFinalisiert, nicht rückgängig zu machen.')">
+        onsubmit="return confirm('Rechnung für {{.Sub.Company}} über {{.NextGross}} erstellen?\n\nFinalisiert, nicht rückgängig zu machen.')">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
-    <button type="submit">Rechnung über {{.NextNet}} erstellen und verschicken</button>
+    <button type="submit">Rechnung über {{.NextGross}} erstellen und verschicken</button>
+    {{if .NextTaxNote}}
+    <p class="dim" style="margin:8px 0 0;font-size:13px">{{.NextTaxNote}}</p>
+    {{end}}
   </form>
   {{end}}
 </div>
@@ -139,10 +142,13 @@
     Gilt <strong>dauerhaft</strong>: auf jede Rechnung dieses Abos, auch auf jede Verlängerung.
     Der Kunde sieht ihn auf der Rechnung als Nachlass vom Listenpreis.
     {{if gt .Sub.Discount 0}}
-      Aktuell <strong>−{{.Sub.Discount}} %</strong> — die nächste Rechnung lautet über
-      <strong>{{.NextNet}}</strong> statt {{.NextList}}.
+      {{/* Der Rabatt-Vergleich bleibt in NETTO: Er erklaert den Nachlass vom
+           Listenpreis, und der wird auf den Nettobetrag gewaehrt. Der Rechnungs-
+           betrag daneben ist BRUTTO — das ist die Zahl, die ueberwiesen wird. */}}
+      Aktuell <strong>−{{.Sub.Discount}} %</strong> — netto <strong>{{.NextNet}}</strong>
+      statt {{.NextList}}, Rechnungsbetrag <strong>{{.NextGross}}</strong>.
     {{else}}
-      Aktuell kein Rabatt — die nächste Rechnung lautet über <strong>{{.NextNet}}</strong>.
+      Aktuell kein Rabatt — die nächste Rechnung lautet über <strong>{{.NextGross}}</strong>.
     {{end}}
     <br>
     Bereits <strong>gestellte</strong> Rechnungen ändert das nicht: eine finalisierte Rechnung

@@ -125,13 +125,14 @@ func (h *Handler) SetDiscount(ctx context.Context, subID string, percent int, by
 
 	var status string
 	var cancelled *time.Time
-	var product, interval string
+	var product, interval, country string
 	var quantity, old int
 	var isFree bool
 	if err := h.db.QueryRow(ctx, `
-		SELECT status, cancelled_at, product, interval, quantity, discount_percent, is_free
+		SELECT status, cancelled_at, product, interval, quantity, discount_percent, is_free,
+		       country_code
 		  FROM billing_quote_requests WHERE id = $1`, subID).
-		Scan(&status, &cancelled, &product, &interval, &quantity, &old, &isFree); err != nil {
+		Scan(&status, &cancelled, &product, &interval, &quantity, &old, &isFree, &country); err != nil {
 		return "", fmt.Errorf("Abo nicht gefunden")
 	}
 	// Ein Rabatt auf eine Freilizenz ist ein Rabatt auf null. Er waere kein Fehler,
@@ -168,9 +169,23 @@ func (h *Handler) SetDiscount(ctx context.Context, subID string, percent int, by
 
 	// Say what the next invoice will read, in euros. „20 % gespeichert" is not an
 	// answer to the question the person pressing this button actually has.
-	next := "Die nächste Rechnung lautet über " + fmtEUR(charge.NetEUR())
+	//
+	// Der genannte Betrag ist der RECHNUNGSBETRAG (brutto) — das ist die Zahl, die der
+	// Kunde überweist. Der Rabattvergleich daneben bleibt netto, weil der Nachlass auf
+	// den Nettobetrag gewährt wird. Unter § 19 UStG sind beide identisch; ab der
+	// Regelbesteuerung wäre eine Nettozahl hier eine Antwort auf eine Frage, die niemand
+	// gestellt hat.
+	//
+	// vatVerified=false: Diese Vorschau darf keinen Nachweis behaupten, den es nicht
+	// gibt. Für einen EU-Auslandskunden scheitert die Einordnung deshalb — dann wird der
+	// Nettobetrag genannt und der Grund dazu, statt eine erfundene Zahl.
+	betrag := fmtEUR(charge.NetEUR())
+	if amounts, taxErr := h.client.InvoiceAmountsFor(charge.NetCents, country, false); taxErr == nil {
+		betrag = fmtEUR(float64(amounts.GrossCents) / 100)
+	}
+	next := "Die nächste Rechnung lautet über " + betrag
 	if charge.Discounted() {
-		next += " statt " + fmtEUR(charge.ListEUR())
+		next += " (netto " + fmtEUR(charge.NetEUR()) + " statt " + fmtEUR(charge.ListEUR()) + ")"
 	}
 
 	switch {

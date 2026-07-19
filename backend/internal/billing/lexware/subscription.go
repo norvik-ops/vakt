@@ -65,6 +65,16 @@ type dueSubscription struct {
 	isFree    bool // a licence with no invoice — see free.go
 	contactID string
 	periodEnd time.Time
+
+	// Land und USt-IdNr. bestimmen die Steuerbehandlung (tax.go). Sie stehen auf
+	// derselben Zeile wie alles andere — die Subscription IST die Quote-Request-Zeile
+	// (Migration 236) —, wurden bis S130 aber nicht selektiert.
+	//
+	// Ohne sie hätte die Verlängerung eines AT- oder CH-Kunden die Steuerbehandlung gar
+	// nicht bestimmen können: die Erstrechnung korrekt, jede Folgerechnung still falsch.
+	// Genau die Klasse Fehler, die niemand bemerkt, weil niemand Verlängerungen ansieht.
+	country string
+	vatID   string
 }
 
 func (h *Handler) renewOnce(ctx context.Context) {
@@ -74,6 +84,7 @@ func (h *Handler) renewOnce(ctx context.Context) {
 	rows, err := h.db.Query(ctx, `
 		SELECT s.id, s.company_name, s.email, s.product, s.interval, s.quantity,
 		       s.discount_percent, s.is_free, COALESCE(s.lexware_contact_id, ''),
+		       s.country_code, s.vat_id,
 		       (SELECT MAX(bi.period_end) FROM billing_invoices bi WHERE bi.subscription_id = s.id)
 		  FROM billing_quote_requests s
 		 WHERE s.status = 'paid'
@@ -96,7 +107,7 @@ func (h *Handler) renewOnce(ctx context.Context) {
 		var d dueSubscription
 		var end *time.Time
 		if err := rows.Scan(&d.id, &d.company, &d.email, &d.product, &d.interval, &d.quantity,
-			&d.discount, &d.isFree, &d.contactID, &end); err != nil {
+			&d.discount, &d.isFree, &d.contactID, &d.country, &d.vatID, &end); err != nil {
 			log.Error().Err(err).Msg("billing: renewal sweep scan")
 			continue
 		}
@@ -181,6 +192,14 @@ func (h *Handler) renewOne(ctx context.Context, d dueSubscription) error {
 
 	from, to := plan.Period(d.periodEnd)
 
+	// Betraege aus derselben Funktion wie die Rechnung selbst. Scheitert die Einordnung,
+	// wird KEINE Rechnung gestellt — eine Verlaengerung mit falscher Steuerbehandlung
+	// waere schlimmer als eine, die auffaellt und nachgeholt wird.
+	amounts, err := h.client.InvoiceAmountsFor(charge.NetCents, d.country, false)
+	if err != nil {
+		return fmt.Errorf("steuerliche Einordnung fuer Abo %s: %w", d.id, err)
+	}
+
 	invoiceID, err := h.client.CreateInvoice(ctx, InvoiceInput{
 		ContactID: d.contactID,
 		Title:     plan.Title,
@@ -189,6 +208,18 @@ func (h *Handler) renewOne(ctx context.Context, d dueSubscription) error {
 		Description: plan.LineDesc(d.quantity),
 		Charge:      charge,
 		DueInDays:   plan.DueDays,
+		CountryCode: d.country,
+
+		// VATIDVerified bleibt false, bis AP2 (VIES) steht — und das ist die richtige
+		// Richtung: Ohne Prüfung KEIN Reverse Charge. Unter § 19 UStG ist der Wert
+		// ohnehin bedeutungslos (taxTreatmentFor kürzt vorher ab), mit Regelbesteuerung
+		// schlägt eine EU-Auslandsverlängerung damit hörbar fehl, statt still eine
+		// falsche Rechnung zu erzeugen.
+		//
+		// Wichtig für AP2: Die Prüfung gehört HIER erneut ausgeführt, nicht aus der
+		// Erstbestellung kopiert. Reverse Charge verlangt eine zum Zeitpunkt DES
+		// UMSATZES gültige USt-IdNr.; eine ein Jahr alte Bestätigung belegt das nicht.
+		VATIDVerified: false,
 	})
 	if err != nil {
 		return fmt.Errorf("create invoice: %w", err)
@@ -200,10 +231,12 @@ func (h *Handler) renewOne(ctx context.Context, d dueSubscription) error {
 	if _, err := h.db.Exec(ctx, `
 		INSERT INTO billing_invoices
 			(subscription_id, lexware_invoice_id, period_start, period_end,
-			 net_amount_cents, list_amount_cents, discount_percent, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, 'open')`,
+			 net_amount_cents, list_amount_cents, discount_percent, status,
+			 gross_amount_cents, tax_amount_cents, tax_rate_pct, tax_type)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, 'open', $8, $9, $10, $11)`,
 		d.id, invoiceID, from, to,
-		charge.NetCents, charge.ListCents, charge.Percent); err != nil {
+		charge.NetCents, charge.ListCents, charge.Percent,
+		amounts.GrossCents, amounts.TaxCents, amounts.TaxRatePct, amounts.TaxType); err != nil {
 		return fmt.Errorf("persist invoice %s: %w", invoiceID, err)
 	}
 

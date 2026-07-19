@@ -31,7 +31,7 @@ func TestEveryPageRenders(t *testing.T) {
 		MRRCents: 19933, Notes: "Rechnung per Post.",
 	}
 	detail := subDetail{
-		Sub: sub, SeatsLeft: 2, NextNet: "2.392,00 €", NextList: "2.990,00 €",
+		Sub: sub, SeatsLeft: 2, NextNet: "2.392,00 €", NextList: "2.990,00 €", NextGross: "2.846,48 €",
 		Invoices: []invoiceRow{{
 			LexwareID: "abc", Period: "01.08.2026 – 01.08.2027", Amount: "2.392,00 €",
 			Paid: true, PaidOn: "03.08.2026",
@@ -82,7 +82,8 @@ func TestSubscriptionPageShowsTheRebateInEuros(t *testing.T) {
 			ID: "1", Company: "Rabatt AG", Plan: "pro/year", Quantity: 1,
 			Status: "angefragt", Discount: 20,
 		},
-		NextNet: "2.392,00 €", NextList: "2.990,00 €",
+		// Netto 2.392 € nach 20 % Rabatt, brutto mit 19 % USt: 2.846,48 €.
+		NextNet: "2.392,00 €", NextList: "2.990,00 €", NextGross: "2.846,48 €",
 	}, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -90,19 +91,26 @@ func TestSubscriptionPageShowsTheRebateInEuros(t *testing.T) {
 	html := buf.String()
 
 	for _, want := range []string{
-		"2.392,00", // was berechnet wird
+		"2.392,00", // der Nettobetrag, auf den der Rabatt wirkt
 		"2.990,00", // wovon es abgezogen wurde
 		"20",       // der Rabatt selbst
+		"2.846,48", // was der Kunde ueberweist
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("die Abo-Seite nennt %q nicht — wer freigibt, sieht nicht, was er berechnet", want)
 		}
 	}
 
-	// Der Freigabe-Knopf muss den Betrag tragen, nicht nur "Rechnung erstellen".
-	if !strings.Contains(html, "Rechnung über 2.392,00 € erstellen") {
-		t.Error("der Freigabe-Knopf nennt den Betrag nicht — die Aktion ist unumkehrbar, " +
-			"der Betrag gehört auf den Knopf")
+	// Der Freigabe-Knopf muss den BRUTTObetrag tragen, nicht nur "Rechnung erstellen"
+	// und nicht den Nettobetrag: Bestaetigt wird eine unumkehrbare Rechnung ueber die
+	// Summe, die der Kunde ueberweist. Unter § 19 UStG sind beide gleich, ab der
+	// Regelbesteuerung nicht mehr — und dann waere Netto hier schlicht die falsche Zahl.
+	if !strings.Contains(html, "Rechnung über 2.846,48 € erstellen") {
+		t.Error("der Freigabe-Knopf nennt den Rechnungsbetrag nicht — die Aktion ist " +
+			"unumkehrbar, der Betrag gehört auf den Knopf")
+	}
+	if strings.Contains(html, "Rechnung über 2.392,00 € erstellen") {
+		t.Error("der Freigabe-Knopf nennt den NETTObetrag — der Kunde überweist aber brutto")
 	}
 }
 
@@ -124,7 +132,7 @@ func TestConversionFormOnlyAppearsOnAFreeLicence(t *testing.T) {
 	render := func(sub subRow) string {
 		var buf bytes.Buffer
 		if err := r.Render(&buf, "subscription.html", subDetail{
-			Sub: sub, NextNet: "2.990,00 €", NextList: "2.990,00 €", CountryCode: "DE",
+			Sub: sub, NextNet: "2.990,00 €", NextList: "2.990,00 €", NextGross: "3.558,10 €", CountryCode: "DE",
 		}, nil); err != nil {
 			t.Fatal(err)
 		}
@@ -166,7 +174,7 @@ func TestDiscountIsEditableOnALiveSubscription(t *testing.T) {
 	var buf bytes.Buffer
 	err = r.Render(&buf, "subscription.html", subDetail{
 		Sub:     subRow{ID: "7", Company: "Bezahlt GmbH", Plan: "pro/month", Quantity: 1, Status: "bezahlt"},
-		NextNet: "299,00 €", NextList: "299,00 €",
+		NextNet: "299,00 €", NextList: "299,00 €", NextGross: "355,81 €",
 	}, nil)
 	if err != nil {
 		t.Fatal(err)

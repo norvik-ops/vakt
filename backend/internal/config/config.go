@@ -108,6 +108,25 @@ type Config struct {
 	// Where "new quote request, approve?" mails go (VAKT_BILLING_NOTIFY_EMAIL).
 	BillingNotifyEmail string
 
+	// BillingSmallBusiness (VAKT_BILLING_SMALL_BUSINESS, default true) spiegelt
+	// § 19 UStG. true = jede Rechnung geht als "vatfree" raus, ohne Fallunterscheidung
+	// nach Land. false = das Land des Kunden entscheidet (Inland 19 %, EU-Ausland
+	// Reverse Charge, Drittland nicht steuerbar) — siehe internal/billing/lexware/tax.go.
+	//
+	// Der Wert MUSS zu dem passen, wie Lexware den Mandanten führt. Live geprüft
+	// (2026-07-19): Ein als Kleinunternehmer geführter Mandant lehnt JEDEN anderen
+	// taxType mit HTTP 406 ab — ein einseitiges Umlegen erzeugt also keine falschen
+	// Rechnungen, sondern gar keine. VerifyTaxStatus() prüft das beim Start.
+	BillingSmallBusiness bool
+
+	// BillingVATID (VAKT_BILLING_VAT_ID) ist die EIGENE USt-IdNr.
+	//
+	// Zwei Dinge hängen daran, und beide erst ab der Regelbesteuerung: Sie gehört als
+	// Pflichtangabe auf jede Reverse-Charge-Rechnung, und sie ist Voraussetzung, um bei
+	// VIES QUALIFIZIERT anfragen zu dürfen (mit Name/Anschrift — nur das trägt als
+	// Nachweis). Leer = nur die einfache Gültigkeitsprüfung ist möglich.
+	BillingVATID string
+
 	// PortalBaseURL (VAKT_PORTAL_BASE_URL) is where a customer's licence portal lives.
 	//
 	// A separate host from the API on purpose: a HUMAN opens this link, and
@@ -332,11 +351,15 @@ func Load() (*Config, error) {
 		SMTPReplyTo:            getEnv("VAKT_SMTP_REPLY_TO", ""),
 		BillingBaseURL:         getEnv("VAKT_BILLING_BASE_URL", ""),
 		BillingNotifyEmail:     getEnv("VAKT_BILLING_NOTIFY_EMAIL", ""),
-		PortalBaseURL:          getEnv("VAKT_PORTAL_BASE_URL", "https://lizenz.norvikops.de"),
-		UpdateCheck:            getEnv("VAKT_UPDATE_CHECK", "false") == "true",
-		Staging:                getEnv("VAKT_STAGING", "false") == "true",
-		PromoteURL:             getEnv("VAKT_PROMOTE_URL", "http://host.docker.internal:9099/promote"),
-		PromoteSecret:          getEnv("VAKT_PROMOTE_SECRET", ""),
+		// Default "true" mit Absicht: Ein fehlendes oder vertipptes Flag darf NIE zur
+		// Regelbesteuerung führen. Der teure Fehler liegt in der anderen Richtung.
+		BillingSmallBusiness: getEnv("VAKT_BILLING_SMALL_BUSINESS", "true") == "true",
+		BillingVATID:         getEnv("VAKT_BILLING_VAT_ID", ""),
+		PortalBaseURL:        getEnv("VAKT_PORTAL_BASE_URL", "https://lizenz.norvikops.de"),
+		UpdateCheck:          getEnv("VAKT_UPDATE_CHECK", "false") == "true",
+		Staging:              getEnv("VAKT_STAGING", "false") == "true",
+		PromoteURL:           getEnv("VAKT_PROMOTE_URL", "http://host.docker.internal:9099/promote"),
+		PromoteSecret:        getEnv("VAKT_PROMOTE_SECRET", ""),
 		// Sprint 15 S15-11: Prometheus-Metrics default-on. Vorher war
 		// VAKT_METRICS_ENABLED=false der Default — Operatoren mussten erst
 		// einen Schalter umlegen. Jetzt ist der Endpoint immer aktiv (IP-

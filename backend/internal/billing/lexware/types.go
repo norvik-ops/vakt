@@ -68,7 +68,13 @@ type contactRequest struct {
 type unitPrice struct {
 	Currency  string  `json:"currency"`
 	NetAmount float64 `json:"netAmount"`
-	// TaxRatePercentage is 0 and must stay 0 — §19 UStG, no VAT is charged.
+	// TaxRatePercentage kommt seit S130 aus taxTreatmentFor() und wird NIE einzeln
+	// gesetzt — immer zusammen mit taxConditions.TaxType aus demselben Aufruf.
+	//
+	// Vorher stand hier "is 0 and must stay 0 — §19 UStG". Das galt, solange es nur
+	// einen Fall gab. Der gefährliche Zustand ist ein Typ "net" bei Satz 0: Die
+	// Umsatzsteuer wird geschuldet, aber nicht ausgewiesen (§ 14c UStG), und zwar ohne
+	// Fehler und ohne Log. Deshalb fallen beide Werte nur gemeinsam an — siehe tax.go.
 	TaxRatePercentage float64 `json:"taxRatePercentage"`
 }
 

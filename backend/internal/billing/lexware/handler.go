@@ -10,6 +10,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/mail"
@@ -41,6 +42,29 @@ type Handler struct {
 	// the portal package imports THIS one for Seats, so importing it back would be
 	// a cycle.
 	portalLink func(context.Context, string) (string, error)
+
+	// vies prüft USt-IdNrn. von EU-Auslandskunden. Nil = keine Prüfung möglich; ein
+	// EU-Auslandsverkauf wird dann abgelehnt statt ungeprüft durchgelassen.
+	vies *VIESClient
+}
+
+// InvoiceAmountsFor reicht die Betragsberechnung an das Billing-Panel durch.
+//
+// Das Panel muss dieselbe Zahl zeigen, die auf der Rechnung stehen wird — und zwar aus
+// derselben Quelle, nicht aus einer nachgebauten zweiten Rechnung. Es geht hier um einen
+// Bestätigungsdialog vor einer UNUMKEHRBAREN Aktion: Wer dort eine andere Zahl liest als
+// die, die der Kunde überwiesen bekommt, entscheidet über etwas anderes, als er glaubt.
+func (h *Handler) InvoiceAmountsFor(netCents int64, countryCode string, vatIDVerified bool) (InvoiceAmounts, error) {
+	return h.client.InvoiceAmountsFor(netCents, countryCode, vatIDVerified)
+}
+
+// WithVIES hängt die USt-IdNr.-Prüfung ein.
+//
+// Getrennt vom Konstruktor, weil sie nur für den Auslandsverkauf gebraucht wird: Eine
+// Instanz, die ausschließlich im Inland verkauft, funktioniert ohne sie vollständig.
+func (h *Handler) WithVIES(v *VIESClient) *Handler {
+	h.vies = v
+	return h
 }
 
 // WithPortalLink wires the MSP portal link generator.
@@ -102,8 +126,25 @@ func (h *Handler) RequestQuote(c echo.Context) error {
 	if in.Interval != "month" {
 		in.Interval = "year"
 	}
+
+	// Das Land entscheidet nach dem Wechsel zur Regelbesteuerung über die steuerliche
+	// Behandlung des Belegs. Bis dahin ist es reine Stammdatenpflege: unter § 19 UStG
+	// gibt es überhaupt keine Steuerlogik, deshalb ist ein falsches Land heute folgenlos
+	// und morgen ein falscher Beleg.
+	//
+	// Der Fallback auf DE bleibt, damit ein direkter API-Aufruf ohne Land nicht scheitert —
+	// er wird aber protokolliert. Genau dieses stille "DE" war der Fehler: Das Bestellformular
+	// hatte bis 2026-07-18 kein Land-Feld, also lag JEDER darüber bestellende Kunde in
+	// Lexware als deutscher Kunde, auch der aus Wien oder Zürich.
+	in.CountryCode = strings.ToUpper(strings.TrimSpace(in.CountryCode))
 	if in.CountryCode == "" {
 		in.CountryCode = "DE"
+		log.Warn().
+			Str("email_redacted", logsafe.RedactEmail(in.Email)).
+			Msg("billing: quote request without country_code, defaulting to DE")
+	}
+	if !isAlpha2(in.CountryCode) {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid country_code"})
 	}
 
 	// The approval token is only ever stored hashed. A leaked database backup
@@ -166,6 +207,109 @@ func (h *Handler) RequestQuote(c echo.Context) error {
 		Msg("billing: quote requested")
 
 	return c.JSON(http.StatusOK, map[string]bool{"ok": true})
+}
+
+// verifyVATID prüft die USt-IdNr. eines EU-Auslandskunden und hält das Ergebnis fest.
+//
+// Rückgabe: (geprüft-und-gültig, Abbruchmeldung). Eine nicht leere Meldung heißt, dass
+// die Freigabe NICHT weiterlaufen darf — sie wird dem Menschen angezeigt, der gerade
+// geklickt hat, und nennt den Grund und den nächsten Schritt.
+//
+// Drei Fälle, drei Verhalten:
+//
+//	Inland / Drittland   Keine Prüfung nötig. VIES kennt nur EU-Mitgliedstaaten; für
+//	                     einen CH-Kunden gibt es dort schlicht nichts abzufragen, und
+//	                     Reverse Charge greift dort ohnehin nicht.
+//	EU-Ausland, gültig   Weiter. Der Nachweis wird gespeichert.
+//	EU-Ausland, sonst    ABBRUCH — auch bei "Dienst nicht erreichbar".
+//
+// Der letzte Fall ist der wichtige und bewusst hart: Ohne nachgewiesene
+// Unternehmereigenschaft greift kein Reverse Charge, und die Umsatzsteuer, die wir dann
+// nicht berechnet haben, schulden WIR. Ein Ausfall bei der EU-Kommission ist ärgerlich,
+// aber die Alternative wäre, im Zweifel eine unumkehrbare Rechnung zu stellen und die
+// Haftung zu übernehmen. Warten kostet nichts.
+//
+// Unter § 19 UStG ist all das folgenlos — es gibt nichts zu verlagern. Trotzdem wird
+// geprüft und gespeichert: Der Nachweis kostet nichts und ist am Tag der Umstellung
+// bereits vorhanden, statt rückwirkend nicht mehr erhebbar zu sein.
+func (h *Handler) verifyVATID(ctx context.Context, subscriptionID, country, vatID string) (bool, string) {
+	cc := strings.ToUpper(strings.TrimSpace(country))
+	if cc == "" || cc == "DE" || !euCountries[cc] {
+		return false, "" // kein EU-Auslandsfall — nichts zu prüfen, kein Abbruch
+	}
+
+	if strings.TrimSpace(vatID) == "" {
+		return false, "ABBRUCH: " + cc + " ist EU-Ausland, aber es liegt keine " +
+			"USt-IdNr. vor.\n\nOhne sie ist kein Reverse Charge möglich — die Umsatzsteuer " +
+			"würde bei uns hängenbleiben. Es wurde NICHTS erstellt.\n\nNächster Schritt: " +
+			"USt-IdNr. beim Kunden erfragen und in der Anfrage nachtragen."
+	}
+
+	if h.vies == nil {
+		return false, "ABBRUCH: EU-Auslandsverkauf, aber die USt-IdNr.-Prüfung ist auf " +
+			"dieser Instanz nicht konfiguriert. Es wurde NICHTS erstellt."
+	}
+
+	res, err := h.vies.Check(ctx, vatID)
+	h.recordVATCheck(ctx, subscriptionID, res)
+
+	if errors.Is(err, ErrVIESUnavailable) {
+		log.Warn().Err(err).Str("request_id", subscriptionID).Msg("billing: VIES nicht erreichbar")
+		return false, "ABBRUCH: Der VIES-Prüfdienst der EU-Kommission ist gerade nicht " +
+			"erreichbar.\n\nDie USt-IdNr. konnte deshalb weder bestätigt noch widerlegt " +
+			"werden. Es wurde NICHTS erstellt — bitte später erneut freigeben.\n\n" +
+			"(Das ist Absicht: Ohne Nachweis greift kein Reverse Charge, und die " +
+			"Umsatzsteuer bliebe bei uns.)"
+	}
+	if err != nil || !res.Valid {
+		log.Warn().Err(err).Str("request_id", subscriptionID).
+			Msg("billing: USt-IdNr. ungueltig")
+		return false, "ABBRUCH: Die USt-IdNr. „" + vatID + "\" ist laut VIES nicht gültig.\n\n" +
+			"Es wurde NICHTS erstellt. Bitte die Nummer beim Kunden prüfen lassen — ohne " +
+			"gültige Nummer ist kein Reverse Charge möglich."
+	}
+
+	return true, ""
+}
+
+// recordVATCheck speichert den Nachweis — auch den negativen.
+//
+// Gerade der negative ist der wertvolle: Er belegt, dass geprüft und deshalb NICHT mit
+// Reverse Charge abgerechnet wurde. Ohne ihn sieht ein abgebrochener Verkauf aus wie
+// einer, der nie stattgefunden hat.
+//
+// Ein Fehler beim Speichern bricht die Freigabe NICHT ab: Der Nachweis ist wichtig, aber
+// er ist nicht der Verkauf. Er wird laut geloggt statt den Vorgang zu stoppen.
+func (h *Handler) recordVATCheck(ctx context.Context, subscriptionID string, res VIESResult) {
+	if h.db == nil {
+		return
+	}
+	if _, err := h.db.Exec(ctx, `
+		INSERT INTO billing_vat_checks
+			(subscription_id, vat_id, country_code, valid, qualified,
+			 trader_name, trader_address, raw_status, request_identifier, checked_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+		subscriptionID, res.CountryCode+res.VATNumber, res.CountryCode, res.Valid,
+		res.Qualified, res.TraderName, res.TraderAddr, res.RawStatus,
+		res.RequestIdentifier, res.CheckedAt,
+	); err != nil {
+		log.Error().Err(err).Str("request_id", subscriptionID).
+			Msg("billing: VIES-Nachweis nicht gespeichert — Pruefung lief, Beleg fehlt")
+	}
+}
+
+// isAlpha2 prüft die FORM eines ISO-3166-1-alpha-2-Codes, nicht seine Mitgliedschaft in
+// der Länderliste. Zwei Großbuchstaben ist, was Lexwares countryCode-Feld annimmt.
+//
+// Bewusst keine Positivliste: Die stünde als zweite Kopie neben der Auswahlliste im
+// Bestellformular (sites/vakt/src/pages/angebot.astro) und würde von ihr wegdriften —
+// die Liste dort ist die Quelle der Wahrheit dafür, an wen wir verkaufen. Hier geht es
+// nur darum, dass kein Freitext in den Beleg wandert.
+func isAlpha2(s string) bool {
+	if len(s) != 2 {
+		return false
+	}
+	return s[0] >= 'A' && s[0] <= 'Z' && s[1] >= 'A' && s[1] <= 'Z'
 }
 
 func (h *Handler) notifySeller(id, token string, in quoteRequestInput) error {
@@ -318,6 +462,25 @@ func (h *Handler) ApproveRequest(ctx context.Context, id, by string) ApproveResu
 		return ApproveResult{Message: "FEHLER: " + err.Error() + ".\n\nEs wurde nichts erstellt."}
 	}
 
+	// USt-IdNr. prüfen, BEVOR irgendetwas in Lexware entsteht.
+	//
+	// Die Reihenfolge ist der Punkt: Ein EU-Auslandsverkauf ohne gültige Nummer darf
+	// nicht mit einem angelegten Kontakt und einer finalisierten Rechnung enden, die
+	// niemand mehr zurücknehmen kann. Der Abbruch gehört vor den ersten Schreibzugriff.
+	vatVerified, vatMsg := h.verifyVATID(ctx, id, country, vatID)
+	if vatMsg != "" {
+		return ApproveResult{Message: vatMsg}
+	}
+
+	// Die Betraege VOR dem Anlegen ausrechnen, aus derselben Funktion, die auch
+	// CreateInvoice benutzt. Scheitert die Einordnung (z. B. EU-Ausland ohne geprüfte
+	// USt-IdNr.), bricht es hier ab — bevor ein Kontakt entsteht.
+	amounts, err := h.client.InvoiceAmountsFor(charge.NetCents, country, vatVerified)
+	if err != nil {
+		log.Error().Err(err).Str("request_id", id).Msg("billing: steuerliche Einordnung")
+		return ApproveResult{Message: "FEHLER: " + err.Error() + "\n\nEs wurde NICHTS erstellt."}
+	}
+
 	contactID, err := h.client.CreateContact(ctx, ContactInput{
 		CompanyName: company, VATID: vatID, ContactName: contact, Email: email,
 		Street: street, Zip: zip, City: city, CountryCode: country,
@@ -329,12 +492,14 @@ func (h *Handler) ApproveRequest(ctx context.Context, id, by string) ApproveResu
 	}
 
 	invoiceID, err := h.client.CreateInvoice(ctx, InvoiceInput{
-		ContactID:   contactID,
-		Title:       plan.Title,
-		Intro:       "vielen Dank für Ihren Auftrag. Wir stellen Ihnen wie vereinbart in Rechnung:",
-		Description: plan.LineDesc(quantity),
-		Charge:      charge,
-		DueInDays:   plan.DueDays,
+		ContactID:     contactID,
+		Title:         plan.Title,
+		Intro:         "vielen Dank für Ihren Auftrag. Wir stellen Ihnen wie vereinbart in Rechnung:",
+		Description:   plan.LineDesc(quantity),
+		Charge:        charge,
+		DueInDays:     plan.DueDays,
+		CountryCode:   country,
+		VATIDVerified: vatVerified,
 	})
 	if err != nil {
 		log.Error().Err(err).Str("request_id", id).Msg("billing: create lexware invoice")
@@ -399,10 +564,12 @@ func (h *Handler) ApproveRequest(ctx context.Context, id, by string) ApproveResu
 			_, dbErr = tx.Exec(ctx, `
 				INSERT INTO billing_invoices
 					(subscription_id, lexware_invoice_id, period_start, period_end,
-					 net_amount_cents, list_amount_cents, discount_percent, status)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, 'open')`,
+					 net_amount_cents, list_amount_cents, discount_percent, status,
+					 gross_amount_cents, tax_amount_cents, tax_rate_pct, tax_type)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, 'open', $8, $9, $10, $11)`,
 				id, invoiceID, from, to,
-				charge.NetCents, charge.ListCents, charge.Percent)
+				charge.NetCents, charge.ListCents, charge.Percent,
+				amounts.GrossCents, amounts.TaxCents, amounts.TaxRatePct, amounts.TaxType)
 		}
 		if dbErr == nil {
 			dbErr = tx.Commit(ctx)

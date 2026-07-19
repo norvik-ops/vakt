@@ -383,7 +383,22 @@ VAKT_LICENSE_TOKEN=550e8400-e29b-41d4-a716-446655440000
 
 **Datenschutz-Hinweis zu `VAKT_EPSS_ENABLED`:** **Standardmäßig aus.** Wenn auf `true` gesetzt, reichert Vakt Findings mit EPSS-Scores (Exploit Prediction Scoring System) aus einer externen API an — eine ausgehende Verbindung. Bewusst opt-in, um das No-Phone-Home-Versprechen nicht zu unterlaufen. In Air-Gap-/strikten Egress-Umgebungen auf `false` (Default) belassen.
 
-> **Hinweis:** Die Variablen `VAKT_LICENSE_PRIVATE_KEY`, `VAKT_LEXWARE_API_KEY`, `VAKT_BILLING_BASE_URL`, `VAKT_BILLING_NOTIFY_EMAIL`, `VAKT_PORTAL_BASE_URL` sowie `VAKT_BILLING_ADMIN_MODE` / `VAKT_BILLING_ADMIN_PORT` / `VAKT_BILLING_ADMIN_CF_TEAM` / `VAKT_BILLING_ADMIN_CF_AUD` sind ausschließlich für den Norvik-eigenen Billing-Dienst — sie gehören **nicht** in die Kunden-Konfiguration.
+> **Hinweis:** Die Variablen `VAKT_LICENSE_PRIVATE_KEY`, `VAKT_LEXWARE_API_KEY`, `VAKT_BILLING_BASE_URL`, `VAKT_BILLING_NOTIFY_EMAIL`, `VAKT_BILLING_SMALL_BUSINESS`, `VAKT_BILLING_VAT_ID`, `VAKT_PORTAL_BASE_URL` sowie `VAKT_BILLING_ADMIN_MODE` / `VAKT_BILLING_ADMIN_PORT` / `VAKT_BILLING_ADMIN_CF_TEAM` / `VAKT_BILLING_ADMIN_CF_AUD` sind ausschließlich für den Norvik-eigenen Billing-Dienst — sie gehören **nicht** in die Kunden-Konfiguration.
+
+### Umsatzsteuer im Billing-Dienst (nur Norvik)
+
+| Variable | Default | Bedeutung |
+|---|---|---|
+| `VAKT_BILLING_SMALL_BUSINESS` | `true` | `true` = § 19 UStG: jede Rechnung geht als `vatfree` raus, ohne Fallunterscheidung nach Land. `false` = Regelbesteuerung: das Land des Kunden entscheidet (Inland 19 %, EU-Ausland Reverse Charge, Drittland nicht steuerbar). |
+| `VAKT_BILLING_VAT_ID` | leer | Die **eigene** USt-IdNr. Pflichtangabe auf jeder Reverse-Charge-Rechnung und Voraussetzung für die **qualifizierte** VIES-Abfrage (mit Name/Anschrift). Leer = nur einfache Gültigkeitsprüfung. |
+
+Zwei Dinge, die man dazu wissen muss:
+
+**Der Wert von `VAKT_BILLING_SMALL_BUSINESS` muss zu dem passen, wie Lexware den Mandanten führt.** Live geprüft am 2026-07-19: Ein als Kleinunternehmer geführter Mandant lehnt **jeden** anderen `taxType` mit HTTP 406 ab. Ein einseitiges Umlegen erzeugt also keine falschen Rechnungen, sondern **gar keine** — jede Freigabe scheitert. `VerifyTaxStatus()` gleicht beides beim Start ab und protokolliert eine Abweichung.
+
+**Der Default ist mit Absicht `true`.** Ein fehlendes oder vertipptes Flag darf nie zur Regelbesteuerung führen: Der teure Fehler liegt in der anderen Richtung — Umsatzsteuer, die geschuldet, aber nicht ausgewiesen wird (§ 14c UStG), fällt weder durch einen Fehler noch durch ein Log auf.
+
+Die Zuordnung Land → Steuerbehandlung steht vollständig in `backend/internal/billing/lexware/tax.go` — eine reine Funktion, damit `taxType` und Steuersatz nie getrennt voneinander gesetzt werden können.
 
 ---
 
