@@ -4,7 +4,37 @@ All notable user-facing changes to Vakt are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
-## [Unreleased]
+## [0.42.46] — 2026-07-19
+
+### Added
+
+- **Umsatzsteuer für DACH: Inland, EU-Ausland mit Reverse Charge, Drittland.** Bis hierhin standen `taxType: "vatfree"` und Steuersatz 0 **fest im Code** — es gab keine Verzweigung nach Land, weil es unter § 19 UStG keine brauchte. Die Zuordnung liegt jetzt in **einer reinen Funktion**, die Steuerart, Satz und Pflichthinweis **gemeinsam** liefert: Damit ist der teuerste Fehler nicht mehr formulierbar — Steuerart `net` bei 0 % bedeutet Umsatzsteuer, die geschuldet, aber nicht ausgewiesen wird (§ 14c UStG), und zwar ohne Fehler und ohne Log. Der Wechsel selbst ist eine **Konfigurationsänderung** (`VAKT_BILLING_SMALL_BUSINESS`, Default `true` = bisheriges Verhalten), keine Code-Änderung; ein Regressionstest hält fest, dass der ausgehende Payload in der Vorgabestellung **byte-identisch** bleibt. `VerifyTaxStatus()` gleicht die Einstellung beim Start gegen Lexware ab, weil eine Abweichung sonst in **beide** Richtungen still ist. Live gegen den echten Mandanten belegt: Mandant § 19 + `net` → HTTP 406, Mandant Regelbesteuerung + `vatfree` → HTTP 406. Ein Auseinanderlaufen erzeugt also **keine falsche Rechnung, sondern gar keine**.
+
+- **USt-IdNr.-Prüfung gegen VIES, mit Nachweis.** Bei Reverse Charge geht die Steuerschuld nur bei nachgewiesener Unternehmereigenschaft über — ist die Nummer des Kunden ungültig, schuldet **der Verkäufer** die Umsatzsteuer, die er nie berechnet hat. Ein Freitextfeld trägt das nicht. Die Prüfung ist deshalb **blockierend** für EU-Auslandsverkäufe und **fail-closed**: Auch „Prüfdienst nicht erreichbar" führt zum Abbruch, nicht zum Durchwinken. Jede Prüfung wird mit Zeitstempel und Ergebnis gespeichert — eine Zeile je Prüfung, nicht je Kunde, weil Reverse Charge eine zum Zeitpunkt **des Umsatzes** gültige Nummer verlangt und jede Verlängerung eine eigene braucht. Auch das negative Ergebnis wird festgehalten: Es belegt, dass geprüft und deshalb *nicht* mit Reverse Charge abgerechnet wurde.
+
+- **Land im Bestellformular — und der Rechnungsbetrag vor dem Klick.** Das Formular hatte **kein Land-Feld**; das Backend nahm bei leerem Wert stumm `DE` an. Jeder darüber bestellende Kunde lag damit als deutscher Kunde in der Buchhaltung, auch der aus Wien oder Zürich — unter § 19 folgenlos, mit Regelbesteuerung ein falscher Beleg. Jetzt Pflichtfeld mit Auswahlliste (DACH vorangestellt, dann EU-27 plus LI, NO, GB), und darunter die steuerliche Vorschau: Netto, gegebenenfalls Umsatzsteuer, Rechnungsbetrag — abhängig vom gewählten Land. Der Kunde sieht **vor** dem Klick, was er überweisen wird.
+
+- **Steuerübersicht im Billing-Panel** (`/steuern`) — je Quartal die Summen nach Steuerart und darunter jede Rechnung mit Land, USt-IdNr., Steuerart und Satz. Erzeugt ausdrücklich **keine** Meldung: Umsatzsteuer-Voranmeldung und Zusammenfassende Meldung macht Lexware Office selbst. Der Zweck ist die **Anomalie-Spalte** — Steuerart `net` bei 0 %, EU-Ausland ohne gültige Prüfung, Inlandsrechnung ohne Steuer. Bewusst **keine** Warnung bei Drittland ohne USt-IdNr.: VIES kennt die Schweiz nicht, ein Hinweis dort wäre ein Fehlalarm, und Fehlalarme machen so eine Seite unbrauchbar.
+
+### Changed
+
+- **Freigabe-Knopf und Benachrichtigungen nennen den Rechnungsbetrag statt des Nettobetrags.** Bestätigt wird eine **unumkehrbare** Rechnung — eine finalisierte Lexware-Rechnung lässt sich über die API nicht zurücknehmen. Unter § 19 UStG waren beide Zahlen identisch; ab der Regelbesteuerung ist es der Unterschied zwischen 2.392 € und 2.846,48 €. Beträge kommen aus **derselben** Funktion, die auch die Rechnung baut; der Bruttobetrag wird als Netto + Steuer **gebildet**, nie unabhängig gerechnet.
+
+- **Rechnungen tragen Brutto, Steuerbetrag, Satz und Steuerart** (Migration 244). Bisher stand nur ein Betrag in den Büchern. Damit fehlte, was der Kunde tatsächlich überweist — die einzige Zahl, die zu einem Kontoeingang passt — und der Nachweis, unter welchem Steuerregime eine Rechnung entstand. Letzterer ist nachträglich **nicht rekonstruierbar**. Ein `CHECK` erzwingt `brutto = netto + steuer`.
+
+- **AGB § 4.1 korrigiert.** Die Klausel sagte „Gesamtpreise" und „Umsatzsteuer fällt nicht an, da der Unternehmer als Kleinunternehmer umsatzsteuerbefreit ist" — beides seit dem Verzicht nach § 19 Abs. 3 UStG unwahr, und „Gesamtpreise" heißt brutto, während netto zuzüglich Steuer verkauft wird. Bewusst eine **Faktenkorrektur, keine Neufassung**: Der Text ist ein eingefrorener Kanzlei-Snapshot, Struktur und Sprache bleiben.
+
+### Fixed
+
+- **🔴 Die USt-IdNr.-Prüfung hätte jede gültige Nummer abgewiesen.** Der VIES-Client las das JSON-Feld `valid`, die EU-Kommission liefert **`isValid`** — der Wert blieb damit konstant `false`. Fail-closed, also nicht gefährlich, aber vollständig funktionslos. Die Unit-Tests fingen es nicht, weil sie mit **derselben erfundenen JSON-Form** gefüttert waren wie der Code: Ein Test, der den eigenen Wunschvertrag prüft, bestätigt den Irrtum, statt ihn zu finden. Die Fixtures sind jetzt wörtliche Antworten der echten API. Aufgefallen an einem konkreten Fall — die **Wirtschafts-Identifikationsnummer** (§ 139c AO) hat exakt die Form einer USt-IdNr., steht aber nicht in VIES und trägt kein Reverse Charge.
+
+- **🔴 Die Verlängerung hätte die Steuerbehandlung nie bestimmen können.** Der Datensatz, aus dem der Verlängerungslauf seine Rechnung baut, kannte weder Land noch USt-IdNr. — die Erstrechnung an einen österreichischen Kunden wäre korrekt gewesen, **jede Folgerechnung still falsch**. Keine Migration nötig: Die Spalten standen längst auf derselben Zeile, die Abfrage hat sie nur nicht gelesen.
+
+- **Jeder reine Doku- oder Website-PR war unmergebar.** Das Branch-Ruleset fordert fünf Status-Checks; vier davon liefern ein Workflow, der wegen seines Pfadfilters bei Änderungen außerhalb von `backend/`, `frontend/` und `scripts/` **gar nicht startete**. Ein Check, der nie startet, meldet auch nie etwas — der PR blieb blockiert, obwohl nichts fehlgeschlagen war. Der Pfadfilter ist vom `pull_request`-Trigger entfernt; ein *übersprungener* Job innerhalb eines gelaufenen Workflows blockiert nicht.
+
+### Removed
+
+- **Ein überholter AGB-Entwurf im Repository.** Er blieb beim Umzug in den Seitenordner liegen — die eigene README des Ordners führte ihn seit dem 03.07. als „live" und den Ordner als „aktuell leer". Kein harmloses Duplikat: Er trug noch die Klauseln aus der Vorlage für **proprietäre** Software („der Quellcode ist nicht Teil der bereitgestellten Software", „zeitlich unbegrenztes, übertragbares Recht") — das Gegenteil dessen, was die Elastic License 2.0 einräumt, und genau das, was in der Live-Fassung bereits bereinigt war. Ein Rechtstext-Zwilling mit widerrufenen Klauseln ist eine Falle, kein Backup.
 
 ### Fixed
 
