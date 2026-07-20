@@ -124,11 +124,13 @@ The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key requi
 
 | | **Community** | **Pro** |
 |---|:---:|:---:|
-| **Price** | Free | €299/month · €2,990/year |
+| **Price** | Free | €299/month · €2,990/year (net\*) |
 | **Hosted by** | You | You |
 | **Self-hosted** | ✅ | ✅ |
 | **No telemetry** | ✅ | ✅ |
 | **Unlimited users** | ✅ | ✅ |
+
+\* Net prices for businesses. Tax treatment depends on your country of establishment and is shown at checkout: German customers are charged 19 % VAT, EU businesses with a verified VAT ID are invoiced under the reverse-charge mechanism, and no German VAT applies outside the EU.
 
 ### Compliance Frameworks
 

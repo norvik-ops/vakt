@@ -10,9 +10,11 @@ Vakt gibt es in zwei Editionen:
 
 **Community Edition (CE)** — kostenlos, für immer. Alle 6 Module in der Basis nutzbar (inkl. KI-Berater lokal via Ollama, NIS2 & ISO 27001, VVT/AVV/DSR, Secrets-Speicher, On-/Offboarding). Kein Ablaufdatum, keine Kreditkarte, keine Registrierung. Einzige Voraussetzung: eigener Server.
 
-**Pro** — 299 €/Monat oder 2.990 €/Jahr (zzgl. MwSt.). Schaltet spezialisierte Frameworks und erweiterte Workflows frei: BSI IT-Grundschutz (Modellierung, Grundschutz-Check, 200-3-Risiken, Cockpit, Berichte), EU AI Act, CRA, Audit-PDF-Export, NIS2-Meldungsassistent, Lieferantenportal, erweiterte Scan-/Aware-/Vault-/Privacy-Workflows (Reports & Importe, Phishing-Kampagnen, Secret-Rotation & Access Reviews, DPIA & TIA), SSO (OIDC/SAML), SCIM-Provisionierung, SIEM-Export, granulare Berechtigungen und API-Zugang. Nach dem Kauf erhältst du automatisch einen Lizenzschlüssel per E-Mail.
+**Pro** — 299 €/Monat oder 2.990 €/Jahr, jeweils netto\*. Schaltet spezialisierte Frameworks und erweiterte Workflows frei: BSI IT-Grundschutz (Modellierung, Grundschutz-Check, 200-3-Risiken, Cockpit, Berichte), EU AI Act, CRA, Audit-PDF-Export, NIS2-Meldungsassistent, Lieferantenportal, erweiterte Scan-/Aware-/Vault-/Privacy-Workflows (Reports & Importe, Phishing-Kampagnen, Secret-Rotation & Access Reviews, DPIA & TIA), SSO (OIDC/SAML), SCIM-Provisionierung, SIEM-Export, granulare Berechtigungen und API-Zugang. Nach dem Kauf erhältst du automatisch einen Lizenzschlüssel per E-Mail.
 
 Nicht erlaubt: Vakt als gehosteten oder verwalteten Service an Dritte verkaufen (mehr dazu unter [Was ist ELv2?](#was-ist-elv2)).
+
+\* Alle Preise sind Nettopreise für Unternehmen; die steuerliche Behandlung richtet sich nach deinem Sitzland und wird bei der Bestellung ausgewiesen. Für Kunden aus Deutschland kommen 19 % Umsatzsteuer hinzu; bei Unternehmen aus dem EU-Ausland mit geprüfter USt-IdNr. greift Reverse Charge, bei Kunden außerhalb der EU fällt keine deutsche Umsatzsteuer an.
 
 ---
 
@@ -71,7 +73,7 @@ Die wichtigsten Unterschiede:
 | | Vakt | Vanta / Drata |
 |---|---|---|
 | **Hosting** | Selbst gehostet, eigene Infrastruktur | Cloud, Daten beim Anbieter |
-| **Preis** | CE kostenlos · Pro ab 299 €/Monat | keine öffentliche Preisliste (Contact Sales) — Median laut Vertragsdaten* ~20.000 $/Jahr (Vanta), ~24.900 $/Jahr (Drata) |
+| **Preis** | CE kostenlos · Pro ab 299 €/Monat netto, zzgl. USt. nach Sitzland | keine öffentliche Preisliste (Contact Sales) — Median laut Vertragsdaten* ~20.000 $/Jahr (Vanta), ~24.900 $/Jahr (Drata) |
 | **Datenhoheit** | Vollständig bei dir | Beim Cloud-Anbieter |
 | **DSGVO** | Keine Drittübermittlung | Datenexport in US-Cloud |
 | **Anpassbarkeit** | Quellcode zugänglich | Closed Source |

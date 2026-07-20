@@ -11,6 +11,12 @@
  * the product, where nobody was looking.
  *
  * Sales now run through the quote form, which issues a Lexware invoice.
+ *
+ * Note (2026-07-19): the "no VAT" above describes the state until that date only.
+ * NorvikOps waived the small-business rule (§ 19 (3) UStG), so German customers are
+ * now charged 19 % on top of the net price. Prices are still not hardcoded here —
+ * the quote form derives the tax from the customer's country, which is the whole
+ * reason this constant points at a page instead of a number.
  */
 export const VAKT_PRO_CHECKOUT_URL = 'https://vakt.norvikops.de/angebot'
 

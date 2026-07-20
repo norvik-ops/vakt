@@ -582,6 +582,112 @@ def check_price_catalog() -> None:
                 )
 
 
+# ── 6c. Preis trägt seine Steuerkennzeichnung ────────────────────────────────
+# Seit dem Verzicht nach § 19 Abs. 3 UStG (2026-07-19) ist ein nackter Preis eine
+# Angabe, die 19 % unter dem liegt, was ein deutscher Kunde überweist. Unter § 19
+# war derselbe String harmlos — deshalb stand er auf zwölf Flächen in fünf
+# Formulierungen ("netto", "zzgl. MwSt.", gar nichts), und deshalb ist Disziplin
+# hier nachweislich die falsche Durchsetzung.
+#
+# Geprüft wird NICHT der Wortlaut (das wäre Schreibstil-Messung, siehe die
+# any-Ratchet-Lektion), sondern nur, dass ein Preis nicht ohne Marker dasteht.
+# Quelle der Wahrheit für den Wortlaut: docs/marketing/preise.md
+#
+# Bewusst NUR aktuelle, kundenwirksame Flächen. Historie (Sprints, Stories, ADRs,
+# CHANGELOG, Reports) hält absichtlich alte Stände fest — ein Marker dort wäre eine
+# Fälschung des Protokolls, kein Fix.
+_TAX_SURFACES = (
+    "sites/vakt/src/",
+    "docs/wiki/",
+    "docs/marketing/",
+    "docs/business/",
+    "docs/managed-hosting/",
+    "docs/legal/",
+    "README.md",
+    "OVERVIEW.md",
+)
+_TAX_SURFACES_EXCL = ("node_modules/", "/dist/", "docs/marketing/competitor-pricing.md")
+# Preis-Token mit Währung. Bare "2990" (schema.org) faellt bewusst NICHT darunter:
+# dort erzwingt die Regel priceSpecification, nicht ein Wort im Text.
+_TAX_PRICE_RE = re.compile(r"(?:€\s?\d[\d.,]*|\d[\d.,]*\s?(?:€|EUR\b))")
+_TAX_MARKER_RE = re.compile(r"netto|Netto|\bnet\b|Nettopreis|Reverse Charge|USt|Umsatzsteuer")
+# Nur eigene Preise. Fremdpreise in Vergleichen tragen ihre eigene Quellen-Fussnote.
+_TAX_OWN_PRICE_RE = re.compile(r"(?:2[.,]990|\b299\b)")
+
+
+def check_price_tax_marking() -> int:
+    # Getrackte UND noch nicht getrackte (aber nicht ignorierte) Dateien.
+    #
+    # Nur 'git ls-files' zu nehmen macht den lokalen Lauf gruen, waehrend CI rot
+    # wird: Eine neue Doku-Datei ist lokal untracked und damit unsichtbar, im
+    # CI-Checkout aber getrackt. Genau das ist hier passiert — diese Datei selbst
+    # (docs/marketing/preise.md) rutschte lokal durch und fiel erst in CI auf.
+    # Ein Gate, das dort gruen ist, wo es gelesen wird, und dort rot, wo es zaehlt,
+    # ist schlimmer als eines, das immer rot ist.
+    scope = ["sites", "docs", "README.md", "OVERVIEW.md"]
+    checked = subprocess.run(
+        ["git", "ls-files", *scope], capture_output=True, text=True
+    ).stdout.split()
+    checked += subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard", *scope],
+        capture_output=True, text=True,
+    ).stdout.split()
+    n = 0
+    for f in checked:
+        if not any(f.startswith(x) or f == x for x in _TAX_SURFACES):
+            continue
+        if any(x in f for x in _TAX_SURFACES_EXCL):
+            continue
+        try:
+            lines = open(f, encoding="utf-8", errors="ignore").read().splitlines()
+        except OSError:
+            continue
+        hits = [
+            i for i, line in enumerate(lines, 1)
+            if _TAX_OWN_PRICE_RE.search(line) and _TAX_PRICE_RE.search(line)
+        ]
+        if not hits:
+            continue
+        n += 1
+
+        # Zwei Schaerfegrade, und der Grund dafuer ist kein Kompromiss, sondern die
+        # Frage, ob eine Zeile ueberhaupt eine abgeschlossene Aussage IST.
+        #
+        # Markdown: ja. Eine Tabellenzeile oder ein Absatz traegt seine Aussage
+        # vollstaendig, also MUSS jede Preiszeile ihren Marker selbst tragen (oder
+        # per '*' auf eine Fussnote verweisen). Nur so faellt auf, wenn EINE von
+        # mehreren Preisstellen in einer sonst korrekt markierten Datei ihren Marker
+        # verliert — ein reiner Datei-Check ist dort gruen ueber einer Teilmenge.
+        #
+        # Astro/JSX: nein. Der Preis steht in einem <span>, das "netto" im naechsten;
+        # eine Fussnote steht 60 Zeilen tiefer am Seitenende. Zeilenweise zu pruefen
+        # faerbt dort korrekte Seiten rot, und ein Gate, das bei gesundem Repo rot
+        # wird, wird abgeschaltet statt gefixt. Deshalb nur pro Datei — mit der
+        # bewussten Luecke, dass eine einzelne unmarkierte Preisstelle in einer sonst
+        # markierten Komponente durchrutscht.
+        if f.endswith(".md"):
+            for i in hits:
+                line = lines[i - 1]
+                # Fussnoten-Verweis ist NUR das escapte '\*' — das Hauszeichen in
+                # diesen Dateien. Auf ein nacktes '*' zu pruefen waere wirkungslos:
+                # Jede Markdown-Fettschrift (**Pro**) enthaelt eines, die Ausnahme
+                # haette also immer gegriffen und das Gate ueber allem gruen gemeldet.
+                if _TAX_MARKER_RE.search(line) or r"\*" in line:
+                    continue
+                err(
+                    f"{f}:{i}: Preiszeile ohne Steuerkennzeichnung — 'netto' "
+                    f"anfügen oder per '*' auf eine Fußnote verweisen "
+                    f"(Wortlaut: docs/marketing/preise.md)"
+                )
+        elif not _TAX_MARKER_RE.search("\n".join(lines)):
+            err(
+                f"{f}:{hits[0]}: nennt einen Vakt-Preis, aber nirgends dessen "
+                f"Steuerbasis ({len(hits)} Preisstelle(n)) — Wortlaut aus "
+                f"docs/marketing/preise.md übernehmen"
+            )
+    return n
+
+
 _TYPO_EXCL = (
     "docs/stories/",
     "docs/sprints/",
@@ -655,8 +761,14 @@ def main() -> int:
     check_volume_backup()
     check_prices()
     check_price_catalog()
+    n_tax = check_price_tax_marking()
     check_typos()
     check_compose_parity()
+    # Nenner ausweisen: Ein Gate, das still nichts geprueft hat, meldet sonst Erfolg
+    # fuer Arbeit, die es nicht getan hat.
+    print(f"  Preis-Steuerkennzeichnung: {n_tax} Datei(en) mit Vakt-Preisen geprüft")
+    if n_tax == 0:
+        print("  ⚠️  keine einzige Datei mit Preisen gefunden — Muster oder Flächenliste prüfen")
     if errors:
         print("Doku-Drift gefunden:\n")
         for e in errors:
