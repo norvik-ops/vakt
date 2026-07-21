@@ -100,7 +100,7 @@ VAKT_FORCE_SECURE_COOKIES=true            # Produktion hinter HTTPS-Proxy
 | `AUTO_MIGRATE` | — | `false` | Wenn `true`, führt der API-Container beim Start automatisch ausstehende Datenbankmigrationen aus. |
 | `VAKT_DEMO` | — | `false` | Wenn `true`: Beispieldaten + öffentlich erreichbarer `/api/v1/demo/start`-Endpoint. **Nur für Test-/Demo-Umgebungen — niemals mit echten Compliance-Daten.** |
 | `VAKT_FRONTEND_URL` | — | `http://localhost:5173` | Öffentlich erreichbare URL des Frontends. Wird für E-Mail-Links in Benachrichtigungen, Vakt-Aware-Kampagnen und Policy-Akzeptanz-E-Mails verwendet. In Produktion auf die echte Domain setzen. |
-| `VAKT_UPLOAD_DIR` | — | `/app/data/uploads` | Verzeichnis für hochgeladene Dateien (Evidence-Anhänge). Im Docker-Compose-Stack als Volume `uploads_data` gemountet — nicht als Host-Pfad ändern. |
+| `VAKT_UPLOAD_DIR` | — | `/data/uploads` | Verzeichnis für hochgeladene Dateien (Evidence-Anhänge). Im Docker-Compose-Stack als Volume `uploads_data` gemountet — nicht als Host-Pfad ändern. |
 | `VAKT_WORKER_CONCURRENCY` | — | `8` | Anzahl paralleler Asynq-Hintergrund-Jobs im Worker-Container. Bei vielen gleichzeitigen Scans/Reports ggf. erhöhen, auf kleinen VMs senken. |
 | `WORKER_HEALTH_PORT` | — | `9090` | Port des Worker-internen Health-Endpoints (`/health`, `/health/ready`, `/metrics`). Nur im Docker-Netzwerk erreichbar — nicht extern exponiert. |
 | `WORKER_REPLICAS` | — | `1` | Anzahl Worker-Replicas für horizontale Skalierung (`deploy.replicas` in docker-compose.yml). Jede Replica benötigt ~200 MB RAM. Redis `maxclients` muss ≥ `VAKT_WORKER_CONCURRENCY` × `WORKER_REPLICAS` sein. Asynq stellt sicher, dass Tasks exakt einmal ausgeführt werden. |
@@ -113,7 +113,7 @@ APP_VERSION=1.0.0
 VAKT_MODULES_ENABLED=vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,vakthr
 AUTO_MIGRATE=false
 VAKT_FRONTEND_URL=https://vakt.meine-firma.de
-VAKT_UPLOAD_DIR=/app/data/uploads
+VAKT_UPLOAD_DIR=/data/uploads
 ```
 
 > **`VAKT_DEMO=true` nur für Test-/Demo-Umgebungen:** Aktiviert Beispieldaten und
@@ -419,7 +419,7 @@ APP_VERSION=1.0.0
 VAKT_MODULES_ENABLED=vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,vakthr
 AUTO_MIGRATE=false
 VAKT_FRONTEND_URL=https://vakt.meine-firma.de
-VAKT_UPLOAD_DIR=/app/data/uploads
+VAKT_UPLOAD_DIR=/data/uploads
 # VAKT_UPDATE_CHECK=false   # opt-in: täglicher Check auf neue Versionen via GitHub API
 
 # ── SMTP ────────────────────────────────────────────────────────────────────────

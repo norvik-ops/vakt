@@ -341,16 +341,22 @@ func Load() (*Config, error) {
 		LDAPUserFilter:         getEnv("VAKT_LDAP_USER_FILTER", "(objectClass=person)"),
 		LDAPGroupFilter:        getEnv("VAKT_LDAP_GROUP_FILTER", "(objectClass=group)"),
 		LDAPTLS:                getEnv("VAKT_LDAP_TLS", "false") == "true",
-		UploadDir:              getEnv("VAKT_UPLOAD_DIR", "./data/uploads"),
-		LicenseKey:             licenseKey,
-		LicenseToken:           getEnv("VAKT_LICENSE_TOKEN", ""),
-		LicenseRefreshURL:      getEnv("VAKT_LICENSE_REFRESH_URL", ""),
-		LicenseAutoRenew:       getEnv("VAKT_LICENSE_AUTORENEW", "true") == "true",
-		LicensePrivateKey:      getEnv("VAKT_LICENSE_PRIVATE_KEY", ""),
-		LexwareAPIKey:          getEnv("VAKT_LEXWARE_API_KEY", ""),
-		SMTPReplyTo:            getEnv("VAKT_SMTP_REPLY_TO", ""),
-		BillingBaseURL:         getEnv("VAKT_BILLING_BASE_URL", ""),
-		BillingNotifyEmail:     getEnv("VAKT_BILLING_NOTIFY_EMAIL", ""),
+		// Absolute, not "./data/uploads": the distroless final image sets no WORKDIR
+		// (CWD is "/"), so a relative default resolved to /data/uploads while the
+		// named volume was mounted at /app/data/uploads — uploads went to the
+		// ephemeral image layer and vanished on every container recreation/upgrade
+		// (R-C04/S131-E1). The image chowns /data to the nonroot UID; the volume now
+		// mounts at /data/uploads to match.
+		UploadDir:          getEnv("VAKT_UPLOAD_DIR", "/data/uploads"),
+		LicenseKey:         licenseKey,
+		LicenseToken:       getEnv("VAKT_LICENSE_TOKEN", ""),
+		LicenseRefreshURL:  getEnv("VAKT_LICENSE_REFRESH_URL", ""),
+		LicenseAutoRenew:   getEnv("VAKT_LICENSE_AUTORENEW", "true") == "true",
+		LicensePrivateKey:  getEnv("VAKT_LICENSE_PRIVATE_KEY", ""),
+		LexwareAPIKey:      getEnv("VAKT_LEXWARE_API_KEY", ""),
+		SMTPReplyTo:        getEnv("VAKT_SMTP_REPLY_TO", ""),
+		BillingBaseURL:     getEnv("VAKT_BILLING_BASE_URL", ""),
+		BillingNotifyEmail: getEnv("VAKT_BILLING_NOTIFY_EMAIL", ""),
 		// Default "true" mit Absicht: Ein fehlendes oder vertipptes Flag darf NIE zur
 		// Regelbesteuerung führen. Der teure Fehler liegt in der anderen Richtung.
 		BillingSmallBusiness: getEnv("VAKT_BILLING_SMALL_BUSINESS", "true") == "true",

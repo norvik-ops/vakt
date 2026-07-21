@@ -67,18 +67,33 @@
         mode: "0750"
 
     - name: Create pre-update database backup
+      # pipefail: without it `pg_dump | gzip` reports gzip's exit status, so a failed
+      # pg_dump writes a ~20-byte empty gzip and still succeeds — the exact class that
+      # let the ISMS backup ship empty dumps for a week (R-M12/S131-E1). The size gate
+      # rejects an empty stream, and this backup blocks the update if it fails.
       ansible.builtin.shell: |
+        set -o pipefail
+        out="{{ backup_dir }}/pre-update-$(date +%Y%m%d_%H%M%S).sql.gz"
         docker compose -f {{ vakt_dir }}/{{ compose_file }} exec -T postgres \
-          pg_dump -U vakt vakt | \
-          gzip > {{ backup_dir }}/pre-update-$(date +%Y%m%d_%H%M%S).sql.gz
+          pg_dump -U vakt vakt | gzip > "$out"
+        size=$(stat -c%s "$out" 2>/dev/null || echo 0)
+        if [ "$size" -lt 1000 ]; then
+          echo "pre-update backup is only ${size}B (< 1KB) — pg_dump likely failed" >&2
+          rm -f "$out"
+          exit 1
+        fi
       args:
         chdir: "{{ vakt_dir }}"
+        executable: /bin/bash
       register: backup_result
       failed_when: false
 
-    - name: Warn if backup failed
-      ansible.builtin.debug:
-        msg: "WARNING: Database backup failed on {{ inventory_hostname }}. Proceeding anyway."
+    - name: Abort update if the pre-update backup failed
+      # Proceeding with an update after a failed backup is exactly the "empty backup
+      # is worse than a failed one" trap — an unrecoverable schema change with no way
+      # back. Stop here instead of the previous "Proceeding anyway" (R-M12/S131-E1).
+      ansible.builtin.fail:
+        msg: "Pre-update database backup FAILED on {{ inventory_hostname }} — aborting the update. Fix the backup before retrying."
       when: backup_result.rc != 0
 
     - name: Pull latest container images

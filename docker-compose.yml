@@ -135,7 +135,7 @@ services:
     logging: *default-logging
     volumes:
       - scanner_bins:/usr/local/bin:ro
-      - uploads_data:/app/data/uploads
+      - uploads_data:/data/uploads
     depends_on:
       postgres:
         condition: service_healthy
