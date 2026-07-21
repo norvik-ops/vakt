@@ -61,9 +61,10 @@ func ValidateUUIDParams() echo.MiddlewareFunc {
 					continue
 				}
 				v := values[i]
-				if v == "" {
-					continue
-				}
+				// An empty UUID param (a "//" in the path Caddy did not normalise,
+				// e.g. /vaktcomply/controls//measures) previously fell through here
+				// and reached a ::uuid cast → 22P02 → 500 (R-H02/S131-D5). Empty is
+				// not a valid UUID, so it is a 400 like any other malformed value.
 				if _, err := uuid.Parse(v); err != nil {
 					return c.JSON(http.StatusBadRequest, map[string]string{
 						"error": "invalid id: must be a UUID",

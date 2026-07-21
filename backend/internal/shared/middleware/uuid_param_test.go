@@ -57,9 +57,11 @@ func TestValidateUUIDParams(t *testing.T) {
 	}
 }
 
-// TestValidateUUIDParams_EmptyParamPasses ensures an empty value (never produced
-// by Echo for a matched segment, but defensive) does not 400.
-func TestValidateUUIDParams_EmptyParamPasses(t *testing.T) {
+// TestValidateUUIDParams_EmptyParamRejected: an empty UUID segment IS produced by
+// Echo for a "//" in the path (Caddy does not normalise it), and previously fell
+// through to a ::uuid cast → 22P02 → 500 (R-H02/S131-D5). Empty is not a valid UUID,
+// so the middleware now returns 400 like any other malformed value.
+func TestValidateUUIDParams_EmptyParamRejected(t *testing.T) {
 	mw := ValidateUUIDParams()
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -69,5 +71,5 @@ func TestValidateUUIDParams_EmptyParamPasses(t *testing.T) {
 	c.SetParamValues("")
 	err := mw(func(c echo.Context) error { return c.NoContent(http.StatusOK) })(c)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
