@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/matharnica/vakt/internal/db"
+	shareddb "github.com/matharnica/vakt/internal/shared/db"
 )
 
 // Repository handles PrivacyOps data access. VVT uses sqlc (see ADR-0005 / the
@@ -774,7 +775,7 @@ func (r *Repository) DeleteDSR(ctx context.Context, orgID, id string) error {
 // (h.service.db.Exec), breaking the handler→service→repository layering rule.
 // The SQL now sits in the repository like every other DSR mutation.
 func (r *Repository) AssignDSR(ctx context.Context, orgID, id, assignedTo string) error {
-	_, err := r.db.Exec(ctx,
+	tag, err := r.db.Exec(ctx,
 		// S121 (live write-sweep): assigned_to is uuid, so NULLIF($1,'') (text) must
 		// be cast — the un-cast query 500'd with SQLSTATE 42804 (born-broken; AssignDSR
 		// never worked).
@@ -782,7 +783,7 @@ func (r *Repository) AssignDSR(ctx context.Context, orgID, id, assignedTo string
 		 WHERE org_id = $2 AND id = $3`,
 		assignedTo, orgID, id,
 	)
-	return err
+	return shareddb.MustAffect(tag, err)
 }
 
 // GetDSR returns a single DSR by ID, scoped to the organisation.

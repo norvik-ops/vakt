@@ -594,6 +594,9 @@ func (h *Handler) UpdateEnrollmentRuleActive(c echo.Context) error {
 		return errJSON(c, http.StatusBadRequest, "invalid body", "SR_BAD_REQUEST")
 	}
 	if err := h.service.UpdateEnrollmentRuleActive(c.Request().Context(), orgID, c.Param("id"), body.IsActive); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) { // S131-A1: 0 rows = rule does not exist → 404, not silent 200
+			return errJSON(c, http.StatusNotFound, "enrollment rule not found", "SR_NOT_FOUND")
+		}
 		return errJSON(c, http.StatusInternalServerError, "update failed", "SR_ERROR")
 	}
 	return c.JSON(http.StatusOK, map[string]bool{"is_active": body.IsActive})
@@ -603,6 +606,9 @@ func (h *Handler) UpdateEnrollmentRuleActive(c echo.Context) error {
 func (h *Handler) DeleteEnrollmentRule(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
 	if err := h.service.DeleteEnrollmentRule(c.Request().Context(), orgID, c.Param("id")); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) { // S131-A1: 0 rows = rule does not exist → 404, not silent 204
+			return errJSON(c, http.StatusNotFound, "enrollment rule not found", "SR_NOT_FOUND")
+		}
 		return errJSON(c, http.StatusInternalServerError, "delete failed", "SR_ERROR")
 	}
 	return c.NoContent(http.StatusNoContent)

@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/matharnica/vakt/internal/db"
+	shareddb "github.com/matharnica/vakt/internal/shared/db"
 )
 
 func incidentFromCreateRow(row db.CreateCKIncidentRow) Incident {
@@ -246,15 +247,21 @@ func (r *Repository) UpdateIncidentReportability(
 	gdprRequired bool,
 	answersJSON []byte,
 ) error {
-	if err := r.q.UpdateCKIncidentReportability(ctx, db.UpdateCKIncidentReportabilityParams{
-		ID:                       incidentID,
-		OrgID:                    orgID,
-		ReportingObligation:      obligation,
-		NotificationAuthority:    ckOptText(authority),
-		GdprNotificationRequired: gdprRequired,
-		ReportabilityAnswers:     answersJSON,
-	}); err != nil {
-		return fmt.Errorf("update incident reportability: %w", err)
+	// Raw Exec (not the generated :exec) so the CommandTag is available: assessing
+	// reportability for an incident that does not exist affected zero rows and still
+	// returned 200 with a full assessment for a phantom (R-H18/S131-A1). MustAffect
+	// turns the zero-rows case into pgx.ErrNoRows → 404.
+	tag, err := r.db.Exec(ctx, `
+		UPDATE ck_incidents SET
+		  reporting_obligation       = $3,
+		  notification_authority     = NULLIF($4,''),
+		  gdpr_notification_required = $5,
+		  reportability_answers      = $6,
+		  updated_at                 = NOW()
+		WHERE id = $1 AND org_id = $2`,
+		incidentID, orgID, obligation, authority, gdprRequired, answersJSON)
+	if err := shareddb.MustAffect(tag, err); err != nil {
+		return err
 	}
 	return nil
 }

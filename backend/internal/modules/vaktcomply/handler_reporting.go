@@ -257,6 +257,9 @@ func (h *Handler) UpdateSoAApplicability(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.service.UpdateSoAApplicability(c.Request().Context(), orgID(c), c.Param("control_id"), in.Applicable, in.JustificationApplicable, in.JustificationNotApplicable); err != nil {
+		if isNotFound(err) { // S131-A1: 0 rows = control does not exist → 404 (sibling /controls/:id/soa already did this)
+			return errResp(c, http.StatusNotFound, "control not found", "CK_CONTROL_NOT_FOUND")
+		}
 		log.Error().Err(err).Msg("update soa applicability")
 		return errResp(c, http.StatusInternalServerError, "failed to update SoA", "CK_SOA_FAILED")
 	}

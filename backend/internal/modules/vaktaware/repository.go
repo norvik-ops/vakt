@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/matharnica/vakt/internal/db"
+	shareddb "github.com/matharnica/vakt/internal/shared/db"
 )
 
 // Repository handles Vakt Aware (SecReflex) data access via sqlc-generated
@@ -1065,16 +1066,16 @@ func (r *Repository) CreateEnrollmentRule(ctx context.Context, orgID string, inp
 
 // UpdateEnrollmentRuleActive toggles the is_active flag.
 func (r *Repository) UpdateEnrollmentRuleActive(ctx context.Context, orgID, ruleID string, active bool) error {
-	_, err := r.db.Exec(ctx, `
+	tag, err := r.db.Exec(ctx, `
 		UPDATE sr_enrollment_rules SET is_active = $1, updated_at = NOW()
 		WHERE id = $2 AND org_id = $3`, active, ruleID, orgID)
-	return err
+	return shareddb.MustAffect(tag, err)
 }
 
 // DeleteEnrollmentRule removes an enrollment rule belonging to the org.
 func (r *Repository) DeleteEnrollmentRule(ctx context.Context, orgID, ruleID string) error {
-	_, err := r.db.Exec(ctx, `DELETE FROM sr_enrollment_rules WHERE id = $1 AND org_id = $2`, ruleID, orgID)
-	return err
+	tag, err := r.db.Exec(ctx, `DELETE FROM sr_enrollment_rules WHERE id = $1 AND org_id = $2`, ruleID, orgID)
+	return shareddb.MustAffect(tag, err)
 }
 
 // IsEnrolledInCampaign checks whether an employeeID is already enrolled in the given campaign.

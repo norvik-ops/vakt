@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+
+	shareddb "github.com/matharnica/vakt/internal/shared/db"
 )
 
 // GetRetentionInfo returns the retention columns for a processing activity.
@@ -41,7 +43,7 @@ func (r *Repository) GetRetentionInfo(ctx context.Context, orgID, activityID str
 
 // UpdateRetentionInfo updates the retention columns for a processing activity.
 func (r *Repository) UpdateRetentionInfo(ctx context.Context, orgID, activityID string, in UpdateRetentionInfoInput) error {
-	_, err := r.db.Exec(ctx, `
+	tag, err := r.db.Exec(ctx, `
 		UPDATE po_processing_activities SET
 			retention_period_months     = $1,
 			retention_type              = NULLIF($2,''),
@@ -55,7 +57,7 @@ func (r *Repository) UpdateRetentionInfo(ctx context.Context, orgID, activityID 
 		in.RetentionMaxPeriodMonths, in.DeletionMethod, in.RetentionLegalBasis,
 		orgID, activityID,
 	)
-	return err
+	return shareddb.MustAffect(tag, err)
 }
 
 // GetRetentionSummary returns aggregate stats.
@@ -148,7 +150,7 @@ func (r *Repository) CreateDeletionReminder(ctx context.Context, orgID string, i
 
 // CompleteDeletionReminder marks a reminder as done.
 func (r *Repository) CompleteDeletionReminder(ctx context.Context, orgID, id, completedByUserID string, in CompleteDeletionReminderInput) error {
-	_, err := r.db.Exec(ctx, `
+	tag, err := r.db.Exec(ctx, `
 		UPDATE po_deletion_reminders SET
 			completed_at     = NOW(),
 			completed_by     = NULLIF($1,'')::uuid,
@@ -156,7 +158,7 @@ func (r *Repository) CompleteDeletionReminder(ctx context.Context, orgID, id, co
 		WHERE org_id = $3 AND id = $4`,
 		completedByUserID, in.CompletionNotes, orgID, id,
 	)
-	return err
+	return shareddb.MustAffect(tag, err)
 }
 
 // ListRetentionTemplates returns all system retention templates.

@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	db "github.com/matharnica/vakt/internal/db"
+	shareddb "github.com/matharnica/vakt/internal/shared/db"
 )
 
 // CreateProtectionNeedAssessment inserts a new Schutzbedarfsfeststellung record.
@@ -107,17 +108,19 @@ func protectionNeedFromRow(row db.CkProtectionNeedAssessments) ProtectionNeedAss
 }
 
 // LinkAssetToPNA sets or clears the vb_asset_id soft-link on a PNA record.
-// Pass assetID = nil to unlink. Also sets the reverse link (protection_need_id) on
-// vb_assets — both are best-effort and never block the main response.
+// Pass assetID = nil to unlink. The PNA-side update is effect-checked (a non-existent
+// PNA → pgx.ErrNoRows → 404); the reverse link (protection_need_id) on vb_assets is
+// best-effort and never blocks the response.
 func (r *Repository) LinkAssetToPNA(ctx context.Context, orgID, pnaID string, assetID *string) error {
-	// Update PNA side.
-	_, err := r.db.Exec(ctx,
+	// Update PNA side. Effect-checked: linking an asset to a non-existent assessment
+	// returned 200 for a phantom (R-H18/S131-A1); zero rows → pgx.ErrNoRows → 404.
+	tag, err := r.db.Exec(ctx,
 		`UPDATE ck_protection_need_assessments SET vb_asset_id = $1, updated_at = NOW()
 		 WHERE id = $2::uuid AND org_id = $3::uuid`,
 		assetID, pnaID, orgID,
 	)
-	if err != nil {
-		return fmt.Errorf("link asset to pna: %w", err)
+	if err := shareddb.MustAffect(tag, err); err != nil {
+		return err
 	}
 
 	// Update reverse link on vb_assets (best-effort, different module prefix).

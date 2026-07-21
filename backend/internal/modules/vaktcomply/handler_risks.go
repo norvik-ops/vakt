@@ -632,6 +632,9 @@ func (h *Handler) LinkPNAAsset(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.service.Risk.LinkAssetToPNA(c.Request().Context(), orgID(c), id, body.VBAssetID); err != nil {
+		if isNotFound(err) { // S131-A1: 0 rows = assessment does not exist → 404, not silent 200
+			return errResp(c, http.StatusNotFound, "protection need assessment not found", "CK_PNA_NOT_FOUND")
+		}
 		log.Error().Err(err).Str("id", id).Msg("link asset to pna")
 		return errResp(c, http.StatusInternalServerError, "failed to link asset", "CK_LINK_ASSET_FAILED")
 	}

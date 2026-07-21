@@ -621,6 +621,9 @@ func (h *Handler) AssignDSR(c echo.Context) error {
 	}
 	// S121-D5 (A2): delegate to the service layer instead of running raw SQL here.
 	if err := h.service.AssignDSR(c.Request().Context(), orgID(c), c.Param("id"), in.AssignedTo); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) { // S131-A1: 0 rows = DSR does not exist → 404, not silent 204
+			return errResp(c, http.StatusNotFound, "DSR not found", "PO_DSR_NOT_FOUND")
+		}
 		log.Error().Err(err).Msg("assign dsr")
 		return errResp(c, http.StatusInternalServerError, "failed to assign DSR", "PO_ASSIGN_DSR_FAILED")
 	}
@@ -688,6 +691,9 @@ func (h *Handler) UpdateRetentionInfo(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
 	if err := h.service.UpdateRetentionInfo(c.Request().Context(), orgID(c), c.Param("id"), in); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) { // S131-A1: 0 rows = activity does not exist → 404, not silent 204
+			return errResp(c, http.StatusNotFound, "processing activity not found", "PO_ACTIVITY_NOT_FOUND")
+		}
 		log.Error().Err(err).Msg("update retention info")
 		return errResp(c, http.StatusInternalServerError, "failed to update retention info", "PO_RETENTION_UPDATE_FAILED")
 	}
@@ -739,6 +745,9 @@ func (h *Handler) CompleteDeletionReminder(c echo.Context) error {
 	}
 	userUID, _ := c.Get("user_id").(string)
 	if err := h.service.CompleteDeletionReminder(c.Request().Context(), orgID(c), c.Param("id"), userUID, in); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) { // S131-A1: 0 rows = reminder does not exist → 404, not silent 204
+			return errResp(c, http.StatusNotFound, "deletion reminder not found", "PO_DELETION_REMINDER_NOT_FOUND")
+		}
 		log.Error().Err(err).Msg("complete deletion reminder")
 		return errResp(c, http.StatusInternalServerError, "failed to complete reminder", "PO_DELETION_REMINDER_COMPLETE_FAILED")
 	}

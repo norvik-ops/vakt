@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/matharnica/vakt/internal/db"
+	shareddb "github.com/matharnica/vakt/internal/shared/db"
 )
 
 // --- Controls ---
@@ -201,13 +202,17 @@ func (r *Repository) GetSoAEntries(ctx context.Context, orgID string) ([]SoAEntr
 
 // UpdateSoAApplicability sets the applicability and justification for a control.
 func (r *Repository) UpdateSoAApplicability(ctx context.Context, orgID, controlID string, applicable bool, justYes, justNo string) error {
-	return r.q.UpdateCKSoAApplicability(ctx, db.UpdateCKSoAApplicabilityParams{
-		Applicable: applicable,
-		JustYes:    ckOptText(justYes),
-		JustNo:     ckOptText(justNo),
-		ID:         controlID,
-		OrgID:      orgID,
-	})
+	// Raw Exec (not the generated :exec) so the CommandTag is available: PATCH
+	// /soa/:control_id returned 204 for a non-existent control while its sibling
+	// PATCH /controls/:id/soa (same operation) correctly returned 404 (R-H18/S131-A1).
+	tag, err := r.db.Exec(ctx, `
+		UPDATE ck_controls
+		SET soa_applicable        = $1,
+		    soa_justification_yes = NULLIF($2,''),
+		    soa_justification_no  = NULLIF($3,'')
+		WHERE id = $4::uuid AND org_id = $5::uuid`,
+		applicable, justYes, justNo, controlID, orgID)
+	return shareddb.MustAffect(tag, err)
 }
 
 // GetUserDisplayName returns the display_name (falling back to email) for a user.
