@@ -6,6 +6,7 @@ package cloud
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -54,15 +55,20 @@ func (c *PrometheusCollector) Collect(ctx context.Context, orgID string, cfg Pro
 	monitoringControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"monitoring", "alerting", "observability"})
 
 	total := 0
+	// F3/R-H20: accumulate sub-collector failures so a total failure surfaces as
+	// last_sync_status='error' instead of a false 'success' with zero evidence.
+	var errs []error
 
 	if n, err := c.collectUptime(ctx, client, orgID, cfg, availabilityControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("prometheus_collector: uptime collection failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectTargetHealth(ctx, client, orgID, cfg, monitoringControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("prometheus_collector: target health failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
@@ -70,17 +76,25 @@ func (c *PrometheusCollector) Collect(ctx context.Context, orgID string, cfg Pro
 	if cfg.AlertmanagerURL != "" {
 		if n, err := c.collectAlerts(ctx, client, orgID, cfg, monitoringControls); err != nil {
 			log.Warn().Err(err).Str("org_id", orgID).Msg("prometheus_collector: alerts collection failed")
+			errs = append(errs, err)
 		} else {
 			total += n
 		}
 
 		if n, err := c.collectAlertmanagerStatus(ctx, client, orgID, cfg, monitoringControls); err != nil {
 			log.Warn().Err(err).Str("org_id", orgID).Msg("prometheus_collector: alertmanager status failed")
+			errs = append(errs, err)
 		} else {
 			total += n
 		}
 	}
 
+	// Only a TOTAL failure (zero evidence despite sub-collector errors) is reported as
+	// an error → last_sync_status='error' (the D14-08 case: all sub-collectors failed).
+	// A partial collection still produced evidence and counts as a (partial) success.
+	if total == 0 && len(errs) > 0 {
+		return 0, errors.Join(errs...)
+	}
 	return total, nil
 }
 

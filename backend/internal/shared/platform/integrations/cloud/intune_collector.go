@@ -12,6 +12,7 @@ package cloud
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -120,17 +121,28 @@ func (c *IntuneCollector) Collect(ctx context.Context, orgID string, cfg IntuneC
 	configControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"configuration", "hardening", "compliance", "cyber hygiene"})
 
 	total := 0
+	// F3/R-H20: accumulate sub-collector failures so a total failure surfaces as
+	// last_sync_status='error' instead of a false 'success' with zero evidence.
+	var errs []error
 	title := fmt.Sprintf("Intune Device-Compliance: %.0f%% compliant (%d/%d Geräte)", posture.CompliancePct, posture.Compliant, posture.Total)
 	if err := c.evidence.AddCollectorEvidence(ctx, orgID, firstControlID(endpointControls), "", intuneSource, title, mustMarshal(posture)); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("intune_collector: endpoint evidence failed")
+		errs = append(errs, err)
 	} else {
 		total++
 	}
 	encTitle := fmt.Sprintf("Intune Geräteverschlüsselung: %.0f%% (%d/%d)", posture.EncryptionPct, posture.Encrypted, posture.Total)
 	if err := c.evidence.AddCollectorEvidence(ctx, orgID, firstControlID(configControls), "", intuneSource, encTitle, mustMarshal(posture)); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("intune_collector: config evidence failed")
+		errs = append(errs, err)
 	} else {
 		total++
+	}
+	// Only a TOTAL failure (zero evidence despite sub-collector errors) is reported as
+	// an error → last_sync_status='error' (the D14-08 case: all sub-collectors failed).
+	// A partial collection still produced evidence and counts as a (partial) success.
+	if total == 0 && len(errs) > 0 {
+		return 0, errors.Join(errs...)
 	}
 	return total, nil
 }

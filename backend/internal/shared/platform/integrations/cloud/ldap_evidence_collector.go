@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -49,37 +50,51 @@ func (c *LDAPEvidenceCollector) Collect(ctx context.Context, orgID string, cfg L
 	adminControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"privileged", "admin", "access"})
 
 	total := 0
+	// F3/R-H20: accumulate sub-collector failures so a total failure surfaces as
+	// last_sync_status='error' instead of a false 'success' with zero evidence.
+	var errs []error
 
 	if n, err := c.collectInactiveUsers(ctx, orgID, conn, cfg, accessControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("ldap_collector: inactive users failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectPasswordNeverExpires(ctx, orgID, conn, cfg, authControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("ldap_collector: password never expires failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectPrivilegedGroups(ctx, orgID, conn, cfg, adminControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("ldap_collector: privileged groups failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectDisabledUsers(ctx, orgID, conn, cfg, accessControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("ldap_collector: disabled users failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectActiveUserCount(ctx, orgID, conn, cfg, accessControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("ldap_collector: active user count failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
+	// Only a TOTAL failure (zero evidence despite sub-collector errors) is reported as
+	// an error → last_sync_status='error' (the D14-08 case: all sub-collectors failed).
+	// A partial collection still produced evidence and counts as a (partial) success.
+	if total == 0 && len(errs) > 0 {
+		return 0, errors.Join(errs...)
+	}
 	return total, nil
 }
 

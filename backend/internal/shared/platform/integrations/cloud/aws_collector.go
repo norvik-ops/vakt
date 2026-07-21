@@ -114,7 +114,13 @@ func (c *AWSCollector) Collect(ctx context.Context, orgID string, cfg AWSConfig)
 		total += n
 	}
 
-	return total, errors.Join(errs...)
+	// Only a TOTAL failure (zero evidence despite sub-collector errors) is reported as
+	// an error → last_sync_status='error' (the D14-08 case: all sub-collectors failed).
+	// A partial collection still produced evidence and counts as a (partial) success.
+	if total == 0 && len(errs) > 0 {
+		return 0, errors.Join(errs...)
+	}
+	return total, nil
 }
 
 // firstControlID returns the ID of the first control or "" if empty.

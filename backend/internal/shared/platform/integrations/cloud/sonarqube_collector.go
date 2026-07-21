@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -116,6 +117,8 @@ func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg Sona
 	assetControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"asset", "inventory", "software"})
 
 	total := 0
+	// F3/R-H20: accumulate sub-collector failures (see cloud collector comment).
+	var errs []error
 
 	// Inventory
 	invDetails := map[string]any{
@@ -134,6 +137,7 @@ func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg Sona
 		status, err := c.getQualityGateStatus(ctx, client, cfg, p.Key)
 		if err != nil {
 			log.Warn().Err(err).Str("project", p.Key).Msg("sonarqube_collector: quality gate status failed")
+			errs = append(errs, err)
 			continue
 		}
 		switch status {
@@ -172,6 +176,7 @@ func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg Sona
 	hotspotCount, err := c.collectSecurityHotspots(ctx, client, orgID, cfg)
 	if err != nil {
 		log.Warn().Err(err).Msg("sonarqube_collector: hotspot collection failed")
+		errs = append(errs, err)
 	} else {
 		total += hotspotCount
 	}
@@ -180,6 +185,7 @@ func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg Sona
 	vulnCount, err := c.collectVulnerabilities(ctx, client, orgID, cfg)
 	if err != nil {
 		log.Warn().Err(err).Msg("sonarqube_collector: vulnerability collection failed")
+		errs = append(errs, err)
 	} else {
 		total += vulnCount
 	}
@@ -196,6 +202,9 @@ func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg Sona
 		}
 	}
 
+	if total == 0 && len(errs) > 0 {
+		return 0, errors.Join(errs...)
+	}
 	return total, nil
 }
 

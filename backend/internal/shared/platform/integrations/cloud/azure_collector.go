@@ -6,6 +6,7 @@ package cloud
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -56,25 +57,37 @@ func (c *AzureCollector) Collect(ctx context.Context, orgID string, cfg AzureCon
 	}
 
 	total := 0
+	// F3/R-H20: accumulate sub-collector failures so a total failure surfaces as
+	// last_sync_status='error' instead of a false 'success' with zero evidence.
+	var errs []error
 
 	if n, err := c.collectSecureScore(ctx, orgID, cfg.SubscriptionID, token, securityControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("azure_collector: secure score collection failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectSecurityAssessments(ctx, orgID, cfg.SubscriptionID, token, securityControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("azure_collector: security assessments collection failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectPolicyCompliance(ctx, orgID, cfg.SubscriptionID, token, policyControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("azure_collector: policy compliance collection failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
+	// Only a TOTAL failure (zero evidence despite sub-collector errors) is reported as
+	// an error → last_sync_status='error' (the D14-08 case: all sub-collectors failed).
+	// A partial collection still produced evidence and counts as a (partial) success.
+	if total == 0 && len(errs) > 0 {
+		return 0, errors.Join(errs...)
+	}
 	return total, nil
 }
 

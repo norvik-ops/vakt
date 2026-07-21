@@ -6,6 +6,7 @@ package cloud
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -63,42 +64,57 @@ func (c *KeycloakCollector) Collect(ctx context.Context, orgID string, cfg Keycl
 	accessControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"privileged", "admin", "access", "rights"})
 
 	total := 0
+	// F3/R-H20: accumulate sub-collector failures so a total failure surfaces as
+	// last_sync_status='error' instead of a false 'success' with zero evidence.
+	var errs []error
 
 	users, err := c.getAllUsers(ctx, client, cfg, token)
 	if err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("keycloak_collector: could not load users")
+		errs = append(errs, err)
 	}
 
 	if n, err := c.collectMFAStatus(ctx, client, orgID, baseURL, token, users, identityControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("keycloak_collector: mfa status failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectPasswordPolicy(ctx, client, orgID, baseURL, token, identityControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("keycloak_collector: password policy failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectInactiveUsers(ctx, orgID, users, accessControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("keycloak_collector: inactive users failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectAdminRoles(ctx, client, orgID, baseURL, token, users, accessControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("keycloak_collector: admin roles failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectSessionPolicy(ctx, client, orgID, baseURL, token, identityControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("keycloak_collector: session policy failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
+	// Only a TOTAL failure (zero evidence despite sub-collector errors) is reported as
+	// an error → last_sync_status='error' (the D14-08 case: all sub-collectors failed).
+	// A partial collection still produced evidence and counts as a (partial) success.
+	if total == 0 && len(errs) > 0 {
+		return 0, errors.Join(errs...)
+	}
 	return total, nil
 }
 

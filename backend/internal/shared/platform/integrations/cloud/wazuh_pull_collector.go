@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -78,10 +79,13 @@ func (c *WazuhPullCollector) Collect(ctx context.Context, orgID string, cfg Wazu
 	monitorControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"monitoring", "logging", "fim", "integrity"})
 
 	total := 0
+	// F3/R-H20: accumulate sub-collector failures (see cloud collector comment).
+	var errs []error
 
 	// Asset inventory evidence (one per agent)
 	if n, err := c.collectAgentInventory(ctx, orgID, agents, inventoryControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("wazuh_collector: agent inventory failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
@@ -93,23 +97,29 @@ func (c *WazuhPullCollector) Collect(ctx context.Context, orgID string, cfg Wazu
 		}
 		if n, err := c.collectVulnerabilities(ctx, httpClient, cfg.BaseURL, token, orgID, agent, vulnControls); err != nil {
 			log.Warn().Err(err).Str("agent", agent.Name).Msg("wazuh_collector: vuln collection failed")
+			errs = append(errs, err)
 		} else {
 			total += n
 		}
 
 		if n, err := c.collectSCA(ctx, httpClient, cfg.BaseURL, token, orgID, agent, configControls); err != nil {
 			log.Warn().Err(err).Str("agent", agent.Name).Msg("wazuh_collector: sca collection failed")
+			errs = append(errs, err)
 		} else {
 			total += n
 		}
 
 		if n, err := c.collectFIM(ctx, httpClient, cfg.BaseURL, token, orgID, agent, monitorControls); err != nil {
 			log.Warn().Err(err).Str("agent", agent.Name).Msg("wazuh_collector: fim collection failed")
+			errs = append(errs, err)
 		} else {
 			total += n
 		}
 	}
 
+	if total == 0 && len(errs) > 0 {
+		return 0, errors.Join(errs...)
+	}
 	return total, nil
 }
 

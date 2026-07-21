@@ -6,6 +6,7 @@ package cloud
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -61,10 +62,14 @@ func (c *IONOSCollector) Collect(ctx context.Context, orgID string, cfg IONOSCon
 	}
 
 	total := 0
+	// F3/R-H20: accumulate sub-collector failures so a total failure surfaces as
+	// last_sync_status='error' instead of a false 'success' with zero evidence.
+	var errs []error
 
 	for _, dc := range dcs {
 		if n, err := c.collectServers(ctx, cfg, orgID, dc.ID, dc.Name, inventoryControls); err != nil {
 			log.Warn().Err(err).Str("dc", dc.Name).Msg("ionos_collector: server collection failed")
+			errs = append(errs, err)
 		} else {
 			total += n
 		}
@@ -72,17 +77,25 @@ func (c *IONOSCollector) Collect(ctx context.Context, orgID string, cfg IONOSCon
 
 	if n, err := c.collectSSHKeys(ctx, cfg, orgID, accessControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("ionos_collector: ssh key collection failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectSnapshots(ctx, cfg, orgID, backupControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("ionos_collector: snapshot collection failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
 	_ = networkControls // Firewall collection requires per-server/NIC traversal; evidence covered by server summary
+	// Only a TOTAL failure (zero evidence despite sub-collector errors) is reported as
+	// an error → last_sync_status='error' (the D14-08 case: all sub-collectors failed).
+	// A partial collection still produced evidence and counts as a (partial) success.
+	if total == 0 && len(errs) > 0 {
+		return 0, errors.Join(errs...)
+	}
 	return total, nil
 }
 

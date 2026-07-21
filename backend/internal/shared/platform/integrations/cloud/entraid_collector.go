@@ -6,6 +6,7 @@ package cloud
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -54,37 +55,51 @@ func (c *EntraIDCollector) Collect(ctx context.Context, orgID string, cfg EntraI
 	monitoringControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"monitoring", "risk", "incident"})
 
 	total := 0
+	// F3/R-H20: accumulate sub-collector failures so a total failure surfaces as
+	// last_sync_status='error' instead of a false 'success' with zero evidence.
+	var errs []error
 
 	if n, err := c.collectMFAEnrollment(ctx, orgID, token, identityControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("entraid_collector: mfa enrollment failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectConditionalAccess(ctx, orgID, token, accessControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("entraid_collector: conditional access failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectRiskyUsers(ctx, orgID, token, monitoringControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("entraid_collector: risky users failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectAdminRoles(ctx, orgID, token, accessControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("entraid_collector: admin roles failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectInactiveUsers(ctx, orgID, token, accessControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("entraid_collector: inactive users failed")
+		errs = append(errs, err)
 	} else {
 		total += n
 	}
 
+	// Only a TOTAL failure (zero evidence despite sub-collector errors) is reported as
+	// an error → last_sync_status='error' (the D14-08 case: all sub-collectors failed).
+	// A partial collection still produced evidence and counts as a (partial) success.
+	if total == 0 && len(errs) > 0 {
+		return 0, errors.Join(errs...)
+	}
 	return total, nil
 }
 

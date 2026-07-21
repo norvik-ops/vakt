@@ -6,6 +6,7 @@ package cloud
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -99,6 +100,8 @@ func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabC
 	assetControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"asset", "inventory", "software"})
 
 	total := 0
+	// F3/R-H20: accumulate sub-collector failures (see cloud collector comment).
+	var errs []error
 
 	unprotectedBranches := []string{}
 	noApprovalProjects := []string{}
@@ -109,6 +112,7 @@ func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabC
 		protected, err := c.collectBranchProtection(ctx, client, cfg, p)
 		if err != nil {
 			log.Warn().Err(err).Int("project_id", p.ID).Msg("gitlab_collector: branch protection failed")
+			errs = append(errs, err)
 		} else {
 			if !protected {
 				unprotectedBranches = append(unprotectedBranches, p.PathWithNamespace)
@@ -119,6 +123,7 @@ func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabC
 		hasApproval, err := c.collectMRApprovals(ctx, client, cfg, p)
 		if err != nil {
 			log.Warn().Err(err).Int("project_id", p.ID).Msg("gitlab_collector: mr approvals failed")
+			errs = append(errs, err)
 		} else {
 			if !hasApproval {
 				noApprovalProjects = append(noApprovalProjects, p.PathWithNamespace)
@@ -129,6 +134,7 @@ func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabC
 		hasSAST, err := c.collectSASTPresence(ctx, client, cfg, p)
 		if err != nil {
 			log.Warn().Err(err).Int("project_id", p.ID).Msg("gitlab_collector: sast presence failed")
+			errs = append(errs, err)
 		} else if hasSAST {
 			sastProjects = append(sastProjects, p.PathWithNamespace)
 		}
@@ -137,6 +143,7 @@ func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabC
 		n, err := c.collectVulnerabilityFindings(ctx, client, orgID, cfg, p)
 		if err != nil {
 			log.Warn().Err(err).Int("project_id", p.ID).Msg("gitlab_collector: vuln findings failed")
+			errs = append(errs, err)
 		} else {
 			total += n
 		}
@@ -150,6 +157,7 @@ func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabC
 	}
 	if err := c.addEvidence(ctx, orgID, firstControlID(assetControls), "GitLab Projekt-Inventar", invDetails); err != nil {
 		log.Warn().Err(err).Msg("gitlab_collector: write inventory evidence")
+		errs = append(errs, err)
 	} else {
 		total++
 	}
@@ -206,6 +214,9 @@ func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabC
 		total++
 	}
 
+	if total == 0 && len(errs) > 0 {
+		return 0, errors.Join(errs...)
+	}
 	return total, nil
 }
 
