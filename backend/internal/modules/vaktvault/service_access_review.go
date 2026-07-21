@@ -61,7 +61,7 @@ func (s *Service) CreateAccessReview(ctx context.Context, orgID string) (*Access
 	if err := s.db.QueryRow(ctx, `
 		SELECT COUNT(DISTINCT sk.key)
 		FROM so_secrets sk
-		JOIN so_environments e ON e.id = sk.env_id
+		JOIN so_environments e ON e.id = sk.environment_id
 		JOIN so_projects p ON p.id = e.project_id
 		WHERE p.org_id = $1`, orgID,
 	).Scan(&total); err != nil {
@@ -73,7 +73,7 @@ func (s *Service) CreateAccessReview(ctx context.Context, orgID string) (*Access
 	if err := s.db.QueryRow(ctx, `
 		SELECT COUNT(DISTINCT sk.key)
 		FROM so_secrets sk
-		JOIN so_environments e ON e.id = sk.env_id
+		JOIN so_environments e ON e.id = sk.environment_id
 		JOIN so_projects p ON p.id = e.project_id
 		WHERE p.org_id = $1
 		  AND (sk.last_accessed_at IS NULL OR sk.last_accessed_at < NOW() - INTERVAL '90 days')`,
@@ -131,10 +131,10 @@ func (s *Service) GetAccessReview(ctx context.Context, orgID, reviewID string) (
 
 	// Load stale items
 	itemRows, err := s.db.Query(ctx, `
-		SELECT sk.key, sk.env_id, p.name as project_name, sk.last_accessed_at,
+		SELECT sk.key, sk.environment_id, p.name as project_name, sk.last_accessed_at,
 			(sk.last_accessed_at IS NULL OR sk.last_accessed_at < NOW() - INTERVAL '90 days') as is_stale
 		FROM so_secrets sk
-		JOIN so_environments e ON e.id = sk.env_id
+		JOIN so_environments e ON e.id = sk.environment_id
 		JOIN so_projects p ON p.id = e.project_id
 		WHERE p.org_id = $1
 		ORDER BY is_stale DESC, sk.last_accessed_at ASC NULLS FIRST`,
@@ -167,7 +167,7 @@ func (s *Service) CompleteAccessReview(ctx context.Context, orgID, reviewID, rev
 			DELETE FROM so_secrets sk
 			USING so_environments e
 			JOIN so_projects p ON p.id = e.project_id
-			WHERE sk.env_id = e.id AND sk.key = $1 AND e.id = $2 AND p.org_id = $3`,
+			WHERE sk.environment_id = e.id AND sk.key = $1 AND e.id = $2 AND p.org_id = $3`,
 			d.SecretKey, d.EnvID, orgID,
 		)
 		if err == nil && ct.RowsAffected() > 0 {
@@ -180,8 +180,7 @@ func (s *Service) CompleteAccessReview(ctx context.Context, orgID, reviewID, rev
 			status          = 'completed',
 			reviewed_by     = $3,
 			completed_at    = NOW(),
-			revoked_entries = revoked_entries + $4,
-			updated_at      = NOW()
+			revoked_entries = revoked_entries + $4
 		WHERE org_id = $1 AND id = $2
 		RETURNING id, org_id, period_label, status, reviewed_by, completed_at, total_entries, stale_entries, revoked_entries, created_at`,
 		orgID, reviewID, reviewerID, revokedCount,

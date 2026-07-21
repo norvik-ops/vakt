@@ -267,9 +267,13 @@ func (s *Service) DeleteUserAccount(ctx context.Context, userID, suppliedPasswor
 	`, anonEmail, userID); err != nil {
 		return fmt.Errorf("anonymise user: %w", err)
 	}
-	// Revoke sessions + api keys (failure is non-fatal — already in tx).
+	// Revoke sessions + api keys. refresh_sessions carries no revoked_at column —
+	// the canonical revoke everywhere else (logout, password reset, service.go) is a
+	// DELETE, and no refresh path checks a revoked flag, so a soft-revoke would be a
+	// silent no-op. It also matters that this stays valid SQL: a 42703 here poisons
+	// the whole tx and Commit below fails, so the account is never actually deleted.
 	if _, err := tx.Exec(ctx,
-		`UPDATE refresh_sessions SET revoked_at = NOW() WHERE user_id = $1::uuid AND revoked_at IS NULL`,
+		`DELETE FROM refresh_sessions WHERE user_id = $1::uuid`,
 		userID,
 	); err != nil {
 		log.Warn().Err(err).Msg("delete: revoke sessions")
@@ -400,29 +404,33 @@ func queryByOrgAndEmail(ctx context.Context, db *pgxpool.Pool, orgID, email, que
 }
 
 func queryCommentsByUser(ctx context.Context, db *pgxpool.Pool, userID, userEmail string) ([]byte, error) {
+	// ck_comments has no author_id column and keys the target as entity_type/entity_id
+	// (not resource_type/resource_id). All three were 42703 → this Art. 20 export of a
+	// user's comments was born-broken. Author is only identifiable by e-mail here.
+	_ = userID
 	// orgid-lint: global — GDPR Art. 20 data export: fetches a user's own comments across all orgs they belong to
 	rows, err := db.Query(ctx, `
-		SELECT id::text, resource_type, resource_id, author_email, body, created_at
+		SELECT id::text, entity_type, entity_id, author_email, body, created_at
 		FROM ck_comments
-		WHERE author_id = $1::uuid OR author_email = $2
+		WHERE author_email = $1
 		ORDER BY created_at
-	`, userID, userEmail)
+	`, userEmail)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	type comment struct {
-		ID           string    `json:"id"`
-		ResourceType string    `json:"resource_type"`
-		ResourceID   string    `json:"resource_id"`
-		AuthorEmail  string    `json:"author_email"`
-		Body         string    `json:"body"`
-		CreatedAt    time.Time `json:"created_at"`
+		ID          string    `json:"id"`
+		EntityType  string    `json:"entity_type"`
+		EntityID    string    `json:"entity_id"`
+		AuthorEmail string    `json:"author_email"`
+		Body        string    `json:"body"`
+		CreatedAt   time.Time `json:"created_at"`
 	}
 	out := []comment{}
 	for rows.Next() {
 		var c comment
-		if err := rows.Scan(&c.ID, &c.ResourceType, &c.ResourceID, &c.AuthorEmail, &c.Body, &c.CreatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.EntityType, &c.EntityID, &c.AuthorEmail, &c.Body, &c.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, c)

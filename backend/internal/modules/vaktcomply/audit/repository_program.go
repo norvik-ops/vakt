@@ -312,7 +312,7 @@ func (r *Repository) CreateAuditFinding(ctx context.Context, orgID, auditID stri
 func (r *Repository) CreateCAPAFromAuditFinding(ctx context.Context, orgID, findingID, title, severity string) (string, error) {
 	var capaID string
 	err := r.db.QueryRow(ctx, `
-		INSERT INTO ck_capas (org_id, title, nc_classification, source, source_ref, status)
+		INSERT INTO ck_capas (org_id, title, nc_classification, source_type, source_id, status)
 		VALUES ($1, $2, $3, 'internal_audit', $4, 'open')
 		RETURNING id`,
 		orgID, "Audit-Befund: "+title, severity, findingID,

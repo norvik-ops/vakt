@@ -482,6 +482,13 @@ func RunOpenVASScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) 
 	// internal infrastructure scanning unless the operator has explicitly
 	// opted in via VAKT_SCAN_ALLOW_PRIVATE=true.
 	if os.Getenv("VAKT_SCAN_ALLOW_PRIVATE") != "true" && isPrivateOrLoopback(target) {
+		// The status was already set to "running" above; a bare return here would
+		// leave the scan spinning forever (the 2026-07-14 lesson — trivy/nuclei were
+		// fixed, OpenVAS was the variant-miss). Mark it failed with the reason.
+		_ = repo.UpdateScanStatus(ctx, payload.ScanID, "failed",
+			WithErrorMessage(fmt.Sprintf("openvas: scan target %q is in a private or loopback range — set VAKT_SCAN_ALLOW_PRIVATE=true to allow", target)),
+			WithDurationMs(time.Since(startedAt).Milliseconds()),
+			WithCompletedAt(time.Now()))
 		return fmt.Errorf("openvas: scan target %q is in a private or loopback range — set VAKT_SCAN_ALLOW_PRIVATE=true to allow", target)
 	}
 

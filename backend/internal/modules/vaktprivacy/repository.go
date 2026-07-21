@@ -926,9 +926,11 @@ func (r *Repository) ExecuteErasure(ctx context.Context, orgID, id string) (*DSR
 			return nil, fmt.Errorf("execute erasure: anonymise user: %w", execErr)
 		}
 		usersAnonymised = tag.RowsAffected()
-		// Revoke sessions + API keys (non-fatal if either table doesn't exist yet).
+		// Revoke sessions + API keys. refresh_sessions has no revoked_at column and is
+		// revoked by DELETE everywhere else; a 42703 here would poison the tx and abort
+		// the entire erasure (Art. 17 would silently never run).
 		_, _ = tx.Exec(ctx,
-			`UPDATE refresh_sessions SET revoked_at = NOW() WHERE user_id = $1::uuid AND revoked_at IS NULL`,
+			`DELETE FROM refresh_sessions WHERE user_id = $1::uuid`,
 			anonUserID,
 		)
 		_, _ = tx.Exec(ctx,

@@ -793,7 +793,7 @@ RETURNING control_id, requested_status;
 
 -- name: ApplyCKApprovedControlStatus :exec
 UPDATE ck_controls
-SET not_applicable = $3, manual_status = $4, updated_at = NOW()
+SET not_applicable = $3, manual_status = $4
 WHERE id = $1 AND org_id = $2;
 
 -- name: CountCKPendingApprovals :one
@@ -913,7 +913,7 @@ ORDER BY date ASC;
 
 -- name: BulkUpdateCKControlStatus :exec
 UPDATE ck_controls
-SET manual_status = $1, updated_at = NOW()
+SET manual_status = $1
 WHERE id = ANY(sqlc.arg('ids')::uuid[]) AND org_id = $2;
 
 -- ── Collaborative Tasks ─────────────────────────────────────────────────────
@@ -1008,7 +1008,7 @@ WHERE id = $1 AND org_id = sqlc.arg('org_id')::uuid;
 -- Supplier-Update zurück. Wird vom Repo in einer TX mit Update-Supplier
 -- kombiniert.
 UPDATE ck_supplier_assessments
-SET status = 'reviewed', updated_at = NOW()
+SET status = 'reviewed'
 WHERE id = $1 AND org_id = $2 AND status = 'submitted'
 RETURNING supplier_id;
 

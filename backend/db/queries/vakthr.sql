@@ -114,25 +114,34 @@ FROM hr_run_events
 WHERE org_id = $1 AND run_id = $2
 ORDER BY completed_at ASC;
 
+-- HR-Offboarding: alle drei Queries waren born-broken (users.org_id, users.status und
+-- sessions.revoked_at existieren nicht — 42703 bei jedem Aufruf, Offboarding entzog also
+-- NIE Zugriff). users↔org laeuft ueber org_members; refresh_sessions und api_keys tragen
+-- org_id direkt. Alle drei jetzt org-scoped ueber die E-Mail des Mitarbeiters.
+
 -- name: HRRevokeUserSessions :exec
-UPDATE sessions SET revoked_at = NOW()
-FROM users
-WHERE sessions.user_id = users.id
-  AND users.org_id    = $1::uuid
-  AND users.email     = $2
-  AND sessions.revoked_at IS NULL;
+DELETE FROM refresh_sessions rs
+USING users u
+WHERE rs.user_id = u.id
+  AND rs.org_id  = $1::uuid
+  AND u.email    = $2;
 
 -- name: HRDisableUser :exec
-UPDATE users SET status = 'disabled'
-WHERE org_id = $1::uuid AND email = $2;
+-- Offboarding aus EINER Org entzieht die Mitgliedschaft in dieser Org (Multi-Org: der
+-- globale Account und andere Orgs bleiben unberuehrt) — das RBAC-System liest org_members.
+DELETE FROM org_members om
+USING users u
+WHERE om.user_id = u.id
+  AND om.org_id  = $1::uuid
+  AND u.email    = $2;
 
 -- name: HRRevokeUserAPIKeys :exec
-UPDATE api_keys SET revoked_at = NOW()
-FROM users
-WHERE api_keys.created_by = users.id
-  AND users.org_id        = $1::uuid
-  AND users.email         = $2
-  AND api_keys.revoked_at IS NULL;
+UPDATE api_keys ak SET revoked_at = NOW()
+FROM users u
+WHERE ak.created_by = u.id
+  AND ak.org_id     = $1::uuid
+  AND u.email       = $2
+  AND ak.revoked_at IS NULL;
 
 
 -- ── Berechtigungskonzept (S60) ────────────────────────────────────────────────

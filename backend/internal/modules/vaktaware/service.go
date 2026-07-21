@@ -515,6 +515,12 @@ func (s *Service) AbortCampaign(ctx context.Context, orgID, campaignID string) e
 }
 
 func (s *Service) GetCampaignStats(ctx context.Context, orgID, campaignID string) (*CampaignStats, error) {
+	// repo.GetCampaignStats keys only on campaignID (its orgID param is dead) — any
+	// authenticated user could read another org's campaign stats by id (R-H25,
+	// CROSS_ORG_LEAK). Gate on the org-scoped GetCampaign first, like /report does.
+	if _, err := s.repo.GetCampaign(ctx, orgID, campaignID); err != nil {
+		return nil, err
+	}
 	return s.repo.GetCampaignStats(ctx, orgID, campaignID)
 }
 
@@ -702,6 +708,31 @@ func (s *Service) ListAssignments(ctx context.Context, orgID, status string) ([]
 	return s.repo.ListAssignments(ctx, orgID, status)
 }
 
+// mailPlaceholderPattern matches {{ token }} with optional surrounding whitespace.
+var mailPlaceholderPattern = regexp.MustCompile(`\{\{\s*([a-zA-Z_]+)\s*\}\}`)
+
+// mailPlaceholderFields maps the snake_case tokens used in campaign presets and the
+// template editor to the struct fields the renderer populates per target.
+var mailPlaceholderFields = map[string]string{
+	"first_name":   ".FirstName",
+	"last_name":    ".LastName",
+	"email":        ".Email",
+	"tracking_url": ".TrackingURL",
+}
+
+// normaliseMailPlaceholders rewrites known snake_case placeholders ({{first_name}})
+// to Go template field syntax ({{.FirstName}}). Unknown tokens are left untouched so
+// a genuinely malformed template still surfaces as a parse error.
+func normaliseMailPlaceholders(body string) string {
+	return mailPlaceholderPattern.ReplaceAllStringFunc(body, func(m string) string {
+		token := mailPlaceholderPattern.FindStringSubmatch(m)[1]
+		if field, ok := mailPlaceholderFields[strings.ToLower(token)]; ok {
+			return "{{" + field + "}}"
+		}
+		return m
+	})
+}
+
 // SendCampaignEmails sends phishing simulation emails to all targets in the campaign group.
 // Each email is personalised with the target's name and a unique tracking token.
 func (s *Service) SendCampaignEmails(ctx context.Context, orgID, campaignID string) error {
@@ -726,8 +757,14 @@ func (s *Service) SendCampaignEmails(ctx context.Context, orgID, campaignID stri
 		return fmt.Errorf("list targets: %w", err)
 	}
 
-	// Parse once; re-execute per target.
-	bodyTmpl, err := template.New("body").Parse(tmpl.HTMLBody)
+	// Parse once; re-execute per target. All 50 shipped presets (and the editor's
+	// placeholder hints) use snake_case tokens like {{first_name}}. html/template
+	// reads {{first_name}} as a call to an undefined function, so Parse failed and
+	// EVERY campaign send returned an error before a single mail left — the core
+	// Vakt Aware feature was born-broken. normaliseMailPlaceholders rewrites the
+	// known snake_case tokens to Go field syntax so both existing DB presets and
+	// the seed render without a data migration.
+	bodyTmpl, err := template.New("body").Parse(normaliseMailPlaceholders(tmpl.HTMLBody))
 	if err != nil {
 		return fmt.Errorf("parse template body: %w", err)
 	}

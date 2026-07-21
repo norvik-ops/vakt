@@ -31,18 +31,20 @@ func (r *BSIReportRenderer) RenderA1(ctx context.Context) ([]byte, error) {
 	pdf := newBSIPDF("A1 — Geltungsbereich / Informationsverbund", r.orgID)
 
 	// Fetch ISMS scope.
-	var scopeTitle, scopeDesc, orgName string
+	// ck_isms_scope has no title/description; the scope content lives in
+	// scope_definition, and status carries draft/approved.
+	var scopeStatus, scopeDesc, orgName string
 	_ = r.db.QueryRow(ctx,
-		`SELECT COALESCE(s.title,''), COALESCE(s.description,''), COALESCE(o.name,'')
+		`SELECT COALESCE(s.status,''), COALESCE(s.scope_definition,''), COALESCE(o.name,'')
 		 FROM organizations o
 		 LEFT JOIN ck_isms_scope s ON s.org_id = o.id
 		 WHERE o.id=$1 ORDER BY s.version DESC LIMIT 1`, r.orgID).
-		Scan(&scopeTitle, &scopeDesc, &orgName)
+		Scan(&scopeStatus, &scopeDesc, &orgName)
 
 	pdf.AddPage()
 	bsiSectionHeader(pdf, "1. Geltungsbereich")
-	bsiTextRow(pdf, "Scope-Titel", scopeTitle)
 	bsiTextRow(pdf, "Organisation", orgName)
+	bsiTextRow(pdf, "Scope-Status", scopeStatus)
 	bsiParagraph(pdf, scopeDesc)
 
 	bsiSectionHeader(pdf, "2. Normative Grundlage")
@@ -135,13 +137,13 @@ func (r *BSIReportRenderer) RenderA4(ctx context.Context) ([]byte, error) {
 	pdf.AddPage()
 
 	rows, err := r.db.Query(ctx, `
-		SELECT COALESCE(t.name, 'ohne Zielobjekt'), m.baustein_id,
+		SELECT COALESCE(t.name, 'ohne Zielobjekt'), COALESCE(c.control_id, ''),
 		       COALESCE(c.title,'')
 		FROM ck_bsi_modeling m
 		LEFT JOIN ck_bsi_target_objects t ON t.id = m.target_object_id
 		LEFT JOIN ck_controls c ON c.id = m.control_id
 		WHERE m.org_id=$1
-		ORDER BY t.name, m.baustein_id`, r.orgID)
+		ORDER BY t.name, c.control_id`, r.orgID)
 	if err != nil {
 		return nil, err
 	}

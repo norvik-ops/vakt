@@ -180,7 +180,7 @@ func (q *Queries) AppendCKControlChange(ctx context.Context, arg AppendCKControl
 
 const applyCKApprovedControlStatus = `-- name: ApplyCKApprovedControlStatus :exec
 UPDATE ck_controls
-SET not_applicable = $3, manual_status = $4, updated_at = NOW()
+SET not_applicable = $3, manual_status = $4
 WHERE id = $1 AND org_id = $2
 `
 
@@ -265,7 +265,7 @@ func (q *Queries) BulkUpdateCKCAPAStatus(ctx context.Context, arg BulkUpdateCKCA
 const bulkUpdateCKControlStatus = `-- name: BulkUpdateCKControlStatus :exec
 
 UPDATE ck_controls
-SET manual_status = $1, updated_at = NOW()
+SET manual_status = $1
 WHERE id = ANY($3::uuid[]) AND org_id = $2
 `
 
@@ -7355,7 +7355,7 @@ func (q *Queries) ListCKTasks(ctx context.Context, arg ListCKTasksParams) ([]CkT
 
 const markCKAssessmentReviewed = `-- name: MarkCKAssessmentReviewed :one
 UPDATE ck_supplier_assessments
-SET status = 'reviewed', updated_at = NOW()
+SET status = 'reviewed'
 WHERE id = $1 AND org_id = $2 AND status = 'submitted'
 RETURNING supplier_id
 `

@@ -345,7 +345,7 @@ func (r *Repository) SyncSoAImplementationStatus(ctx context.Context, orgID, con
 	r.db.QueryRow(ctx, `
 		SELECT COUNT(*) FROM ck_evidence
 		WHERE org_id = $1 AND control_id = $2
-		  AND (evidence_status IS NULL OR evidence_status != 'stale')`,
+		  AND (expires_at IS NULL OR expires_at > NOW())`,
 		orgID, controlID,
 	).Scan(&evidenceCount) //nolint:errcheck
 

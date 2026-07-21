@@ -179,7 +179,7 @@ func (t *addControlNoteTool) Execute(ctx context.Context, orgID string, args jso
 		return nil, fmt.Errorf("control_id and note required")
 	}
 	_, err := t.db.Exec(ctx, `
-		UPDATE ck_controls SET notes = COALESCE(notes, '') || $1
+		UPDATE ck_controls SET review_note = COALESCE(review_note, '') || $1
 		WHERE id::text = $2 AND org_id = $3::uuid`,
 		"\n[Agent] "+a.Note, a.ControlID, orgID)
 	if err != nil {

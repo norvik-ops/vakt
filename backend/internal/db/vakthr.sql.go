@@ -621,12 +621,11 @@ func (q *Queries) UpdateHREmployee(ctx context.Context, arg UpdateHREmployeePara
 }
 
 const hRRevokeUserSessions = `-- name: HRRevokeUserSessions :exec
-UPDATE sessions SET revoked_at = NOW()
-FROM users
-WHERE sessions.user_id = users.id
-  AND users.org_id    = $1::uuid
-  AND users.email     = $2
-  AND sessions.revoked_at IS NULL
+DELETE FROM refresh_sessions rs
+USING users u
+WHERE rs.user_id = u.id
+  AND rs.org_id  = $1::uuid
+  AND u.email    = $2
 `
 
 type HRRevokeUserSessionsParams struct {
@@ -640,8 +639,11 @@ func (q *Queries) HRRevokeUserSessions(ctx context.Context, arg HRRevokeUserSess
 }
 
 const hRDisableUser = `-- name: HRDisableUser :exec
-UPDATE users SET status = 'disabled'
-WHERE org_id = $1::uuid AND email = $2
+DELETE FROM org_members om
+USING users u
+WHERE om.user_id = u.id
+  AND om.org_id  = $1::uuid
+  AND u.email    = $2
 `
 
 type HRDisableUserParams struct {
@@ -655,12 +657,12 @@ func (q *Queries) HRDisableUser(ctx context.Context, arg HRDisableUserParams) er
 }
 
 const hRRevokeUserAPIKeys = `-- name: HRRevokeUserAPIKeys :exec
-UPDATE api_keys SET revoked_at = NOW()
-FROM users
-WHERE api_keys.created_by = users.id
-  AND users.org_id        = $1::uuid
-  AND users.email         = $2
-  AND api_keys.revoked_at IS NULL
+UPDATE api_keys ak SET revoked_at = NOW()
+FROM users u
+WHERE ak.created_by = u.id
+  AND ak.org_id     = $1::uuid
+  AND u.email       = $2
+  AND ak.revoked_at IS NULL
 `
 
 type HRRevokeUserAPIKeysParams struct {

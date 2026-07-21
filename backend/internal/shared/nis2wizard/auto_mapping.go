@@ -57,8 +57,7 @@ func AutoMapToControls(ctx context.Context, pool *pgxpool.Pool, orgID string, an
 		// Substring-Match auf description ODER control_id für NIS2-Ref.
 		tag, err := pool.Exec(ctx, `
 			UPDATE ck_controls c
-			SET manual_status = $1,
-			    updated_at = NOW()
+			SET manual_status = $1
 			FROM ck_frameworks f
 			WHERE c.framework_id = f.id
 			  AND c.org_id = $2::uuid

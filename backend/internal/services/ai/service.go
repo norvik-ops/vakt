@@ -86,7 +86,9 @@ func GatherContext(ctx context.Context, db *pgxpool.Pool, orgID string) (*Compli
 	}
 
 	// Active frameworks
-	rows, err := db.Query(ctx, `SELECT name FROM ck_frameworks WHERE org_id = $1::uuid AND is_active = true ORDER BY name`, orgID)
+	// ck_frameworks has no is_active column; a row exists per org for each framework
+	// the org has enabled, so the org's frameworks are its active ones.
+	rows, err := db.Query(ctx, `SELECT name FROM ck_frameworks WHERE org_id = $1::uuid ORDER BY name`, orgID)
 	if err == nil {
 		defer rows.Close()
 		for rows.Next() {

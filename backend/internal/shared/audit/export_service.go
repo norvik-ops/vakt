@@ -131,7 +131,7 @@ func writeEvidenceCSV(ctx context.Context, db *pgxpool.Pool, orgID string, zw *z
 	w := csv.NewWriter(f)
 	_ = w.Write([]string{"Control-ID", "Typ", "Titel", "Quelle", "Erstellt am"})
 	rows, err := db.Query(ctx, `
-		SELECT c.control_id, e.evidence_type, e.title, COALESCE(e.source, ''), e.created_at
+		SELECT c.control_id, c.evidence_type, e.title, COALESCE(e.source, ''), e.created_at
 		FROM ck_evidence e
 		JOIN ck_controls c ON c.id = e.control_id
 		WHERE e.org_id = $1::uuid
@@ -186,7 +186,7 @@ func writeRisksCSV(ctx context.Context, db *pgxpool.Pool, orgID string, zw *zip.
 	_ = w.Write([]string{"ID", "Titel", "Kategorie", "Status", "Wahrscheinlichkeit", "Auswirkung", "Risiko-Score", "Behandlung"})
 	rows, err := db.Query(ctx, `
 		SELECT id, title, category, status, likelihood, impact, likelihood*impact,
-		       COALESCE(treatment_strategy, '')
+		       COALESCE(treatment_option, '')
 		FROM ck_risks
 		WHERE org_id = $1::uuid
 		ORDER BY likelihood*impact DESC`, orgID)
