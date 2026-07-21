@@ -2,6 +2,8 @@ module github.com/matharnica/vakt
 
 go 1.26.4
 
+toolchain go1.26.5
+
 require (
 	aidanwoods.dev/go-paseto v1.6.0
 	github.com/aws/aws-sdk-go-v2 v1.42.0
