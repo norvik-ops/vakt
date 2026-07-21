@@ -116,6 +116,13 @@ func applyMiddleware(e *echo.Echo, cfg *config.Config, log zerolog.Logger, lic *
 	e.Use(middleware.BodyLimit("10MB"))
 	e.Use(middleware.ContextTimeoutWithConfig(middleware.ContextTimeoutConfig{
 		Timeout: 30 * time.Second,
+		// LLM-backed routes (/…/ai/…) legitimately run up to VAKT_AI_REPORT_TIMEOUT
+		// (default 120s) and stream; the 30s global timeout cancelled their request
+		// context and killed every AI report at 30s (R-H09/S131-F4). The AI client
+		// enforces its own timeout, so skipping the global one here is safe.
+		Skipper: func(c echo.Context) bool {
+			return strings.Contains(c.Path(), "/ai/")
+		},
 		ErrorHandler: func(err error, c echo.Context) error {
 			if err != nil && errors.Is(err, context.DeadlineExceeded) {
 				return c.JSON(http.StatusServiceUnavailable, map[string]string{

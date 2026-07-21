@@ -6,6 +6,7 @@ package cloud
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -39,32 +40,39 @@ func (c *HetznerCollector) Collect(ctx context.Context, orgID string, cfg Hetzne
 	backupControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"backup", "snapshot", "recovery"})
 
 	total := 0
+	// Accumulate sub-collector failures so a total failure surfaces as
+	// last_sync_status='error' instead of a false 'success' (D14-08/R-H20/S131-F3).
+	var errs []error
 
 	if n, err := c.collectServers(ctx, client, orgID, cfg.Location, inventoryControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("hetzner_collector: server collection failed")
+		errs = append(errs, fmt.Errorf("servers: %w", err))
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectFirewalls(ctx, client, orgID, networkControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("hetzner_collector: firewall collection failed")
+		errs = append(errs, fmt.Errorf("firewalls: %w", err))
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectSSHKeys(ctx, client, orgID, accessControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("hetzner_collector: ssh key collection failed")
+		errs = append(errs, fmt.Errorf("ssh keys: %w", err))
 	} else {
 		total += n
 	}
 
 	if n, err := c.collectSnapshots(ctx, client, orgID, backupControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("hetzner_collector: snapshot collection failed")
+		errs = append(errs, fmt.Errorf("snapshots: %w", err))
 	} else {
 		total += n
 	}
 
-	return total, nil
+	return total, errors.Join(errs...)
 }
 
 // CountServers returns the current server count for a given org + token (used by GetHetznerStatus).

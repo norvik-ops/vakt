@@ -150,8 +150,10 @@ func TestHetznerCollector_InvalidToken(t *testing.T) {
 		clientOpts: []hcloud.ClientOption{hcloud.WithEndpoint(srv.URL)},
 	}
 
-	// All sub-collectors should fail and log warnings; Collect itself returns (0, nil)
+	// All sub-collectors fail on an invalid token. Collect must now surface that as an
+	// error so SyncHetzner records last_sync_status='error', not a false 'success' with
+	// zero evidence (D14-08/R-H20/S131-F3). The old test asserted the buggy (0, nil).
 	n, err := collector.Collect(context.Background(), "org-1", HetznerConfig{APIToken: "bad-token"})
-	assert.NoError(t, err, "Collect swallows sub-errors and returns (0, nil)")
+	assert.Error(t, err, "total sub-collector failure must propagate, not be swallowed")
 	assert.Equal(t, 0, n, "no evidence expected on auth failure")
 }

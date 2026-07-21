@@ -6,6 +6,7 @@ package cloud
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -66,10 +67,17 @@ func (c *AWSCollector) Collect(ctx context.Context, orgID string, cfg AWSConfig)
 	}
 
 	total := 0
+	// Sub-collector failures were previously log.Warn'd and discarded, so Collect
+	// always returned nil and SyncAWS reported last_sync_status='success' even when
+	// every sub-collector failed and zero evidence was written — a false-green that
+	// flows into Vakt Comply as audit evidence (D14-08/R-H20/S131-F3). Accumulate and
+	// return them so the caller records 'error' with the reason.
+	var errs []error
 
 	// IAM password policy
 	if n, err := c.collectPasswordPolicy(ctx, orgID, awsCfg, iamControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("aws_collector: password policy collection failed")
+		errs = append(errs, fmt.Errorf("password policy: %w", err))
 	} else {
 		total += n
 	}
@@ -77,6 +85,7 @@ func (c *AWSCollector) Collect(ctx context.Context, orgID string, cfg AWSConfig)
 	// IAM MFA status
 	if n, err := c.collectMFAStatus(ctx, orgID, awsCfg, iamControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("aws_collector: mfa status collection failed")
+		errs = append(errs, fmt.Errorf("mfa status: %w", err))
 	} else {
 		total += n
 	}
@@ -84,6 +93,7 @@ func (c *AWSCollector) Collect(ctx context.Context, orgID string, cfg AWSConfig)
 	// IAM credential report
 	if n, err := c.collectCredentialReport(ctx, orgID, awsCfg, iamControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("aws_collector: credential report collection failed")
+		errs = append(errs, fmt.Errorf("credential report: %w", err))
 	} else {
 		total += n
 	}
@@ -91,6 +101,7 @@ func (c *AWSCollector) Collect(ctx context.Context, orgID string, cfg AWSConfig)
 	// CloudTrail configuration
 	if n, err := c.collectCloudTrail(ctx, orgID, awsCfg, cloudtrailControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("aws_collector: cloudtrail collection failed")
+		errs = append(errs, fmt.Errorf("cloudtrail: %w", err))
 	} else {
 		total += n
 	}
@@ -98,11 +109,12 @@ func (c *AWSCollector) Collect(ctx context.Context, orgID string, cfg AWSConfig)
 	// S3 encryption + versioning
 	if n, err := c.collectS3(ctx, orgID, awsCfg, storageControls); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("aws_collector: s3 collection failed")
+		errs = append(errs, fmt.Errorf("s3: %w", err))
 	} else {
 		total += n
 	}
 
-	return total, nil
+	return total, errors.Join(errs...)
 }
 
 // firstControlID returns the ID of the first control or "" if empty.
