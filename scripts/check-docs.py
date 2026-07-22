@@ -612,7 +612,18 @@ _TAX_SURFACES_EXCL = ("node_modules/", "/dist/", "docs/marketing/competitor-pric
 _TAX_PRICE_RE = re.compile(r"(?:€\s?\d[\d.,]*|\d[\d.,]*\s?(?:€|EUR\b))")
 _TAX_MARKER_RE = re.compile(r"netto|Netto|\bnet\b|Nettopreis|Reverse Charge|USt|Umsatzsteuer")
 # Nur eigene Preise. Fremdpreise in Vergleichen tragen ihre eigene Quellen-Fussnote.
-_TAX_OWN_PRICE_RE = re.compile(r"(?:2[.,]990|\b299\b)")
+#
+# Die erste Fassung kannte NUR 299/2.990 — und uebersah damit jeden abgeleiteten
+# Vakt-Preis: Managed (599/5.990) und die MSP-Pro-Pack-Bundles (2.392/2.243 je
+# Instanz, 7.176/11.215 gesamt, = 20 %/25 % Rabatt auf 2.990). Genau die Klasse
+# "ein Gate ist nur so gut wie seine Vollstaendigkeit". Alle Werte sind gegen
+# competitor-pricing.md + marktanalyse geprueft: KEINE Kollision mit einem
+# Fremdpreis (verinice 2.500, Hugo 3.588, secjur 10.000 …), deshalb zahlbasiert
+# sicher. GRENZE: aendert sich Listenpreis ODER Rabattsatz, driften die
+# Bundle-Werte — dann hier UND in plans.go/pricing-roadmap.md nachziehen.
+_TAX_OWN_PRICE_RE = re.compile(
+    r"(?:2[.,]990|\b299\b|\b599\b|5[.,]990|2[.,]392|2[.,]243|7[.,]176|11[.,]215)"
+)
 
 
 def check_price_tax_marking() -> int:
