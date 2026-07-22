@@ -66,9 +66,11 @@ type CampaignSummary struct {
 	Type           string  `json:"type"`
 	RecipientCount int     `json:"recipient_count"`
 	ClickRate      float64 `json:"click_rate"`
-	CompletionRate float64 `json:"completion_rate"`
-	StartedAt      string  `json:"started_at,omitempty"`
-	CompletedAt    string  `json:"completed_at,omitempty"`
+	// completion_rate was removed (S131-G2/R-M02): a phishing campaign has no schema
+	// path to training completions (sr_assignments key module→target, not campaign), so
+	// the field was permanently 0 — a misleading "0% completed" in the audit report.
+	StartedAt   string `json:"started_at,omitempty"`
+	CompletedAt string `json:"completed_at,omitempty"`
 }
 
 // AwareStats aggregates awareness training KPIs for the reporting period.

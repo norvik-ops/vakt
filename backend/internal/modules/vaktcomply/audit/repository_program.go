@@ -347,6 +347,13 @@ func (r *Repository) GetAuditProgramSummary(ctx context.Context, orgID string) (
 		JOIN ck_audit_program_audits a ON a.id = f.audit_id
 		WHERE f.org_id = $1 AND f.capa_id IS NULL`, orgID,
 	).Scan(&s.OpenFindings) //nolint:errcheck
+	// OverdueCAPAsFromAudits: CAPAs raised from an internal audit that are past due
+	// and not yet closed. Previously never assigned → constant 0 (S131-G2/R-M02).
+	r.db.QueryRow(ctx, `
+		SELECT COUNT(*) FROM ck_capas
+		WHERE org_id = $1 AND source_type = 'internal_audit'
+		  AND status <> 'closed' AND due_date IS NOT NULL AND due_date < CURRENT_DATE`, orgID,
+	).Scan(&s.OverdueCAPAsFromAudits) //nolint:errcheck
 	return &s, nil
 }
 

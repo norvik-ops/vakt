@@ -80,10 +80,10 @@ func (s *Service) ExportTrainingMatrixCSV(ctx context.Context, orgID string, fro
 		return nil, err
 	}
 	var buf bytes.Buffer
-	buf.WriteString("Kampagne,Zeitraum Start,Zeitraum Ende,Teilnehmer,Klickrate,Abschlussrate\n")
+	buf.WriteString("Kampagne,Zeitraum Start,Zeitraum Ende,Teilnehmer,Klickrate\n")
 	for _, c := range report.Campaigns {
-		fmt.Fprintf(&buf, "%q,%s,%s,%d,%.2f,%.2f\n",
-			c.Name, c.StartedAt, c.CompletedAt, c.RecipientCount, c.ClickRate, c.CompletionRate)
+		fmt.Fprintf(&buf, "%q,%s,%s,%d,%.2f\n",
+			c.Name, c.StartedAt, c.CompletedAt, c.RecipientCount, c.ClickRate)
 	}
 	s.recordTrainingReportEvidence(ctx, orgID, report)
 	return buf.Bytes(), nil
@@ -309,8 +309,8 @@ func generateTrainingMatrixPDF(r *TrainingMatrixReport) ([]byte, error) {
 	pdf.SetFillColor(37, 99, 235)
 	pdf.SetTextColor(255, 255, 255)
 	pdf.SetFont("Helvetica", "B", 8)
-	colW := []float64{60, 40, 22, 22, 22, 14}
-	headers := []string{"Kampagne", "Abgeschlossen", "Teilnehmer", "Klickrate", "Abschluss-Rate", ""}
+	colW := []float64{70, 45, 30, 35}
+	headers := []string{"Kampagne", "Abgeschlossen", "Teilnehmer", "Klickrate"}
 	for i, h := range headers {
 		pdf.CellFormat(colW[i], 6, h, "1", 0, "C", true, 0, "")
 	}
@@ -340,9 +340,7 @@ func generateTrainingMatrixPDF(r *TrainingMatrixReport) ([]byte, error) {
 		pdf.CellFormat(colW[0], 6, name, "1", 0, "L", fill, 0, "")
 		pdf.CellFormat(colW[1], 6, completed, "1", 0, "C", fill, 0, "")
 		pdf.CellFormat(colW[2], 6, fmt.Sprintf("%d", c.RecipientCount), "1", 0, "C", fill, 0, "")
-		pdf.CellFormat(colW[3], 6, fmt.Sprintf("%.1f%%", c.ClickRate), "1", 0, "C", fill, 0, "")
-		pdf.CellFormat(colW[4], 6, fmt.Sprintf("%.1f%%", c.CompletionRate), "1", 0, "C", fill, 0, "")
-		pdf.CellFormat(colW[5], 6, "", "1", 1, "C", fill, 0, "")
+		pdf.CellFormat(colW[3], 6, fmt.Sprintf("%.1f%%", c.ClickRate), "1", 1, "C", fill, 0, "")
 		fill = !fill
 	}
 	if len(r.Campaigns) == 0 {

@@ -38750,7 +38750,6 @@ export interface components {
                 name?: string;
                 recipient_count?: number;
                 click_rate?: number;
-                completion_rate?: number;
                 started_at?: string;
                 completed_at?: string;
             }[];

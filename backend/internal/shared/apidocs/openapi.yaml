@@ -913,7 +913,6 @@ components:
               name: {type: string}
               recipient_count: {type: integer}
               click_rate: {type: number}
-              completion_rate: {type: number}
               started_at: {type: string}
               completed_at: {type: string}
         total_stats:
