@@ -470,9 +470,9 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		nis2wizard.RegisterAuthenticated(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), nis2wizardHandler)
 		// Auditor portal uses URL token — exempt from Bearer auth; rate-limited to 30 req/min per IP
 		portalRateLimiter := sharedmw.IPRateLimitRedis(rdb, "portal", 30, time.Minute, false)
-		vaktcomply.RegisterPublic(api.Group("/vaktcomply", portalRateLimiter), ckHandler)
+		vaktcomply.RegisterPublic(api.Group("/vaktcomply"), ckHandler, portalRateLimiter)
 		// Policy acceptance — public token routes (no Bearer auth), rate-limited
-		vaktcomply.RegisterPolicyAcceptPublic(api.Group("", portalRateLimiter), ckHandler)
+		vaktcomply.RegisterPolicyAcceptPublic(api.Group(""), ckHandler, portalRateLimiter)
 		// Audit package export
 		audit.RegisterExport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool)
 		// One-click audit report PDF
@@ -510,7 +510,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		// S127-3 (D6): public share-link consumer route. The external recipient has
 		// no session; the route is validated by the URL token (hash-stored) alone.
 		vaultShareRL := sharedmw.IPRateLimitRedis(rdb, "vaktvault_share", 30, time.Minute, false)
-		vaktvault.RegisterPublic(api.Group("/vaktvault", vaultShareRL), vaultHandler)
+		vaktvault.RegisterPublic(api.Group("/vaktvault"), vaultHandler, vaultShareRL)
 		log.Info().Msg("vaktvault routes registered (protected + public share)")
 	}
 
@@ -527,7 +527,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		// replica-safe, fail-open) replaces the old per-replica in-memory limiter.
 		// Depends on VAKT_TRUSTED_PROXIES for a correct c.RealIP() behind Caddy.
 		awareTrackRL := sharedmw.IPRateLimitRedis(rdb, "vaktaware_track", 10, time.Minute, false)
-		vaktaware.RegisterPublic(api.Group("/vaktaware", awareTrackRL), awareHandler)
+		vaktaware.RegisterPublic(api.Group("/vaktaware"), awareHandler, awareTrackRL)
 		log.Info().Msg("vaktaware routes registered (protected + public tracking)")
 	}
 
@@ -559,7 +559,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		vaktprivacy.Register(protected.Group("/vaktprivacy", auth.RequireModuleAccess(pool, "vaktprivacy", rdb)), poHandler)
 		// DSR portal uses URL slug/token — exempt from Bearer auth; rate-limited to 30 req/min per IP
 		dsrPortalRateLimiter := sharedmw.IPRateLimitRedis(rdb, "dsr_portal", 30, time.Minute, false)
-		vaktprivacy.RegisterPublic(api.Group("/vaktprivacy", dsrPortalRateLimiter), poHandler)
+		vaktprivacy.RegisterPublic(api.Group("/vaktprivacy"), poHandler, dsrPortalRateLimiter)
 		log.Info().Msg("vaktprivacy routes registered")
 	}
 

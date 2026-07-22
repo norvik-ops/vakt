@@ -105,10 +105,16 @@ func Register(g *echo.Group, h *Handler) {
 // license gate) with an IP rate limiter, and ONLY when the vaktaware module is
 // enabled. Every handler here is already token-based (org resolved from the URL
 // token, not the session), so no handler change is needed — only the mount.
-func RegisterPublic(g *echo.Group, h *Handler) {
-	g.GET("/t/:token", h.TrackClick)
-	g.POST("/t/:token/submit", h.TrackFormSubmission)
-	g.GET("/track/:token", h.TrackOpen) // open-tracking pixel (1×1 GIF)
+// RegisterPublic wires the token-authenticated public tracking routes. The rate
+// limiter MUST be applied per-route, not on the group: Echo runs group middleware
+// for UNREGISTERED paths under the prefix too, so a limiter on the group let 8
+// unauthenticated 404s to /vaktaware/anything drain the 10/min budget the tracking
+// pixel and click link of a live campaign need — the campaign then silently reports
+// 0% and the false rate flows into Vakt Comply as evidence (R-H15/S131-C2).
+func RegisterPublic(g *echo.Group, h *Handler, rl echo.MiddlewareFunc) {
+	g.GET("/t/:token", h.TrackClick, rl)
+	g.POST("/t/:token/submit", h.TrackFormSubmission, rl)
+	g.GET("/track/:token", h.TrackOpen, rl) // open-tracking pixel (1×1 GIF)
 	// Phish-report webhook — validated via org_token in the body, not a session.
-	g.POST("/phish-report", h.ReceivePhishReport)
+	g.POST("/phish-report", h.ReceivePhishReport, rl)
 }

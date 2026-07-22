@@ -179,8 +179,8 @@ Bei Datenverlust in der Queue: Vakt-Scan-Jobs und Reporting-Jobs können manuell
 
 ## Monitoring
 
-Zabbix-Item `vakt.redis.ping` löst einen Alert aus, wenn Redis nicht erreichbar ist. Grafana-Dashboard "Vakt Worker" zeigt Queue-Tiefe (`asynq.queue.size`). Bei wiederholten Ausfällen → HA-Setup prüfen: [`redis-ha.md`](redis-ha.md).
+Zabbix-Item `vakt.redis.ping` löst einen Alert aus, wenn Redis nicht erreichbar ist. Die Queue-Tiefe (`asynq.queue.size`) zeigt das Dashboard „Vakt Worker" aus dem **optionalen** Observability-Stack (`docker compose --profile observability up`) — ohne dieses Profil gibt es kein Grafana. Bei wiederholten Ausfällen → HA-Setup prüfen: [`redis-ha.md`](redis-ha.md).
 
 ---
 
-*Stand: 2026-06-26*
+*Stand: 2026-07-22*

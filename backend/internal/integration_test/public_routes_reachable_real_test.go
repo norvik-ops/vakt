@@ -17,6 +17,11 @@ import (
 	"github.com/matharnica/vakt/internal/modules/vaktvault"
 )
 
+// passThroughMW is a no-op echo.MiddlewareFunc for wiring RegisterPublic in tests:
+// the per-route rate limiter (R-H15/S131-C2) is production-only; the test just needs
+// the routes registered.
+var passThroughMW echo.MiddlewareFunc = func(next echo.HandlerFunc) echo.HandlerFunc { return next }
+
 // TestPublicRoutesReachableWithoutToken is the S127-5 (G10) gate — the counter to
 // rbaccov, which only proves write⇒403. This proves the OTHER direction for the
 // deliberately-public routes: they MUST be reachable WITHOUT a token.
@@ -41,8 +46,8 @@ func TestPublicRoutesReachableWithoutToken(t *testing.T) {
 
 	e := echo.New()
 	// Mount exactly as cmd/api/routes.go does for the public groups — NO auth mw.
-	vaktaware.RegisterPublic(e.Group("/api/v1/vaktaware"), vaktaware.NewHandler(awareSvc))
-	vaktvault.RegisterPublic(e.Group("/api/v1/vaktvault"), vaktvault.NewHandler(vaultSvc))
+	vaktaware.RegisterPublic(e.Group("/api/v1/vaktaware"), vaktaware.NewHandler(awareSvc), passThroughMW)
+	vaktvault.RegisterPublic(e.Group("/api/v1/vaktvault"), vaktvault.NewHandler(vaultSvc), passThroughMW)
 
 	publicRoutes := []struct{ method, path string }{
 		{http.MethodGet, "/api/v1/vaktaware/track/sometoken"},     // open pixel

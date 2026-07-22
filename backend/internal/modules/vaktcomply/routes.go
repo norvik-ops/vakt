@@ -24,22 +24,27 @@ func Register(g *echo.Group, h ...*Handler) {
 	registerRoutes(g, handler)
 }
 
-// RegisterPublic wires the token-based auditor and supplier portal routes that require no Bearer auth.
-func RegisterPublic(g *echo.Group, h *Handler) {
-	g.GET("/auditor/:token", h.AuditorView)
-	g.GET("/auditor/:token/export", h.AuditorExportBundle)
+// RegisterPublic wires the token-based, no-Bearer-auth auditor + supplier-portal
+// routes. The limiter is applied per-route (not on the group): a group limiter also
+// fires for unregistered paths under the prefix, so 404 noise drains the portal
+// budget (R-H15/S131-C2).
+func RegisterPublic(g *echo.Group, h *Handler, rl echo.MiddlewareFunc) {
+	g.GET("/auditor/:token", h.AuditorView, rl)
+	g.GET("/auditor/:token/export", h.AuditorExportBundle, rl)
 	// Supplier portal routes (Story 29.3) — public, no auth required.
-	g.GET("/supplier/:token", h.PortalGetAssessment)
-	g.POST("/supplier/:token/save", h.PortalSaveAnswers)
-	g.POST("/supplier/:token/submit", h.PortalSubmitAssessment)
-	g.POST("/supplier/:token/upload", h.PortalUploadFile)
+	g.GET("/supplier/:token", h.PortalGetAssessment, rl)
+	g.POST("/supplier/:token/save", h.PortalSaveAnswers, rl)
+	g.POST("/supplier/:token/submit", h.PortalSubmitAssessment, rl)
+	g.POST("/supplier/:token/upload", h.PortalUploadFile, rl)
 }
 
-// RegisterPolicyAcceptPublic wires the policy acceptance routes that require no Bearer auth.
-// Call this on the top-level api group (e.g. /api/v1) with a rate limiter.
-func RegisterPolicyAcceptPublic(g *echo.Group, h *Handler) {
-	g.GET("/policy-accept/:token", h.GetAcceptanceInfo)
-	g.POST("/policy-accept/:token", h.AcceptPolicy)
+// RegisterPolicyAcceptPublic wires the no-Bearer-auth policy-acceptance routes. The
+// limiter is applied per-route, not on the group: this group sits on the empty prefix,
+// so a group limiter registered a RouteNotFound catch-all over the WHOLE api root and
+// every 404 there drained the budget (R-H15 variant, S131-C2).
+func RegisterPolicyAcceptPublic(g *echo.Group, h *Handler, rl echo.MiddlewareFunc) {
+	g.GET("/policy-accept/:token", h.GetAcceptanceInfo, rl)
+	g.POST("/policy-accept/:token", h.AcceptPolicy, rl)
 }
 
 // registerRoutes is the internal wiring function — testable without public API churn.

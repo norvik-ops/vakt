@@ -78,11 +78,12 @@ func Register(g *echo.Group, h *Handler) {
 	g.POST("/access-reviews/:id/complete", h.CompleteAccessReview, admin, vaultPro)
 }
 
-// RegisterPublic mounts the token-only share-link consumer route (S127-3, D6).
-// The external recipient of a share link has no Vakt session; UseShareLink is
-// already validated by the URL token alone (vaktvault stores only its hash), so
-// the caller mounts this on a PUBLIC group (no auth/CSRF/license) with an IP
-// rate limiter.
-func RegisterPublic(g *echo.Group, h *Handler) {
-	g.GET("/share/:token", h.UseShareLink)
+// RegisterPublic mounts the token-only share-link consumer route (S127-3, D6). The
+// external recipient has no Vakt session; UseShareLink is validated by the URL token
+// alone (vaktvault stores only its hash), so this mounts on a PUBLIC group (no
+// auth/CSRF/license) with an IP rate limiter. The limiter is applied per-route, not on
+// the group: a group limiter also fires for unregistered paths under the prefix, so
+// 404 noise would drain the share-link budget (R-H15/S131-C2).
+func RegisterPublic(g *echo.Group, h *Handler, rl echo.MiddlewareFunc) {
+	g.GET("/share/:token", h.UseShareLink, rl)
 }

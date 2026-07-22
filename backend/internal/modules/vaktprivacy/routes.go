@@ -17,11 +17,13 @@ func Register(g *echo.Group, h ...*Handler) {
 	registerRoutes(g, handler)
 }
 
-// RegisterPublic wires unauthenticated DSR portal routes (no Bearer auth required).
-func RegisterPublic(g *echo.Group, h *Handler) {
-	g.GET("/dsr-portal/status/:token", h.PortalGetDSRStatus)
-	g.GET("/dsr-portal/:slug/info", h.PortalGetInfo)
-	g.POST("/dsr-portal/:slug/submit", h.PortalSubmitDSR)
+// RegisterPublic wires the unauthenticated DSR-portal routes. The limiter is applied per-route
+// (not on the group): a group limiter also fires for unregistered paths under the
+// prefix, so 404 noise drains the portal budget (R-H15/S131-C2).
+func RegisterPublic(g *echo.Group, h *Handler, rl echo.MiddlewareFunc) {
+	g.GET("/dsr-portal/status/:token", h.PortalGetDSRStatus, rl)
+	g.GET("/dsr-portal/:slug/info", h.PortalGetInfo, rl)
+	g.POST("/dsr-portal/:slug/submit", h.PortalSubmitDSR, rl)
 }
 
 func registerRoutes(g *echo.Group, h *Handler) {

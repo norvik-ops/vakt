@@ -100,7 +100,7 @@ func TestVaktaware_E2E_MailpitToClickRate(t *testing.T) {
 		From:   "it-security@acme.test",
 		AppURL: srv.URL,
 	})
-	vaktaware.RegisterPublic(e.Group("/api/v1/vaktaware"), vaktaware.NewHandler(svc))
+	vaktaware.RegisterPublic(e.Group("/api/v1/vaktaware"), vaktaware.NewHandler(svc), passThroughMW)
 
 	// ── A campaign, sent for real ─────────────────────────────────────────────
 	campaignID, _ := seedCampaign(t, ctx, pool, repo, orgID, userID, true, false)
