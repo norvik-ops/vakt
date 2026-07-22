@@ -1,11 +1,14 @@
 package admin
 
 import (
+	"net"
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
+	sharedmw "github.com/matharnica/vakt/internal/shared/middleware"
 	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
 
@@ -205,6 +208,42 @@ func (h *Handler) UpdateOrgIPAllowlist(c echo.Context) error {
 	var in UpdateOrgIPAllowlistInput
 	if err := c.Bind(&in); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid input", "code": "ADMIN_BAD_REQUEST"})
+	}
+	// Validate every CIDR at save time. Without this, an all-invalid allowlist made
+	// the enforcing middleware fail OPEN at request time — the admin believed the org
+	// was IP-restricted while it was not (D14-03/R-H17). Reject bad input here instead.
+	// NormalizeCIDR handles the IPv6 /128 case (a bare IPv6 must not widen to /32).
+	for _, entry := range strings.Split(in.AllowList, ",") {
+		if strings.TrimSpace(entry) == "" {
+			continue
+		}
+		if _, _, err := net.ParseCIDR(sharedmw.NormalizeCIDR(entry)); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"error": "invalid CIDR/IP in allowlist: " + strings.TrimSpace(entry),
+				"code":  "ADMIN_INVALID_CIDR",
+			})
+		}
+	}
+	// Self-lockout prevention: a non-empty allowlist that excludes the admin's CURRENT
+	// IP would lock them out of every /admin route — including THIS endpoint, the only
+	// in-product way to fix it (recovery would then need direct DB access:
+	// UPDATE organizations SET admin_ip_allowlist = NULL WHERE id = '<org>'). Refuse to
+	// save an allowlist the caller is not themselves in.
+	if nets := sharedmw.ParseAllowlistCIDRs(in.AllowList); len(nets) > 0 {
+		clientIP := net.ParseIP(c.RealIP())
+		inList := false
+		for _, n := range nets {
+			if clientIP != nil && n.Contains(clientIP) {
+				inList = true
+				break
+			}
+		}
+		if !inList {
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"error": "this allowlist would lock you out — your current IP (" + c.RealIP() + ") is not included",
+				"code":  "ADMIN_ALLOWLIST_SELF_LOCKOUT",
+			})
+		}
 	}
 	if err := h.service.repo.SetOrgIPAllowlist(c.Request().Context(), orgID, in.AllowList); err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Msg("update org ip allowlist failed")

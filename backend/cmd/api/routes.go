@@ -284,7 +284,11 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	// groups: a malformed UUID path param otherwise reaches a ::uuid cast and
 	// Postgres 22P02 turns into a 500. Mounting per-group left admin/alerting/
 	// account/integrations/webhooks unguarded — one choke point cannot drift.
-	protected := api.Group("", auth.AuthMiddleware(pasetoKey, pool, rdb), sharedmw.ValidateUUIDParams())
+	// OrgIPAllowlist runs after AuthMiddleware (needs org_id) and enforces the
+	// org's admin IP allowlist — mounted once here so every /admin route, across
+	// all ~6 admin sub-groups and any added later, is covered without a variant-miss
+	// (S131-C2/R-H17). The middleware itself no-ops for non-/admin paths.
+	protected := api.Group("", auth.AuthMiddleware(pasetoKey, pool, rdb), sharedmw.ValidateUUIDParams(), sharedmw.OrgIPAllowlist(pool))
 
 	// CSRF protection: double-submit-cookie pattern on state-changing methods.
 	// API-key requests (Bearer sk_/vakt_) are exempt because they are not

@@ -469,6 +469,17 @@ Die folgenden Integrationen werden **pro Organisation** in der Vakt-Oberfläche 
 | **IP-Allowlist für Admin-Endpunkte** | Pro | Admin → Sicherheit → IP-Allowlist → CIDR-Einträge |
 | **MFA für sensitive API-Calls** | Pro | Admin → Sicherheit → MFA-Enforcement |
 
+> **IP-Allowlist — Aussperr-Recovery (S131-C2/R-H17):** Die org-weite Admin-IP-Allowlist
+> (DB-Spalte `admin_ip_allowlist`) wird auf allen `/admin`-Routen durchgesetzt. Das Speichern
+> lehnt eine Allowlist ab, die die **aktuelle** IP des Admins ausschließt (`ADMIN_ALLOWLIST_SELF_LOCKOUT`).
+> Sperrt sich ein Admin trotzdem aus (z. B. weil sich die IP später ändert), gibt es **keinen
+> In-Product-Weg zurück** — Recovery nur direkt in der DB:
+> `UPDATE organizations SET admin_ip_allowlist = NULL WHERE id = '<org-uuid>';`.
+> Voraussetzung, dass die Allowlist real greift: korrekt gesetzte `VAKT_TRUSTED_PROXIES` (sonst
+> sieht die API hinter dem Proxy nur die Proxy-IP). **Bewusste Grenze:** Admin-rollen-Routen auf
+> Nicht-`/admin`-Pfaden (`/trust-center/*`, `/integrations/*`) sind — wie bei `VAKT_ADMIN_ALLOWED_IPS` —
+> nicht IP-beschränkt.
+
 Ausführliche Setup-Anleitungen: `docs/wiki/enterprise-sso.md`
 
 ---
