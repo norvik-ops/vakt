@@ -15,14 +15,25 @@ x-logging: &default-logging
 # app-net: application layer (api, worker, redis, frontend, caddy, ollama).
 # api and worker join both networks to reach pgbouncer.
 # edge:   non-internal, Caddy-only — the frontdoor needs egress for ACME/
-#         Let's-Encrypt and publishes 80/443. api/db stay internal; Caddy
-#         bridges edge↔app-net, so the segmentation above is not loosened.
+#         Let's-Encrypt and publishes 80/443.
+# egress: non-internal, OUTBOUND only for api/worker/ollama (S131-A4/ADR-0076) —
+#         model pull, EPSS/CERT-Bund, campaign SMTP, opt-in licence renewal. The data
+#         stores (postgres, pgbouncer, redis) stay internal:true with no path out.
 networks:
   db-net:
     internal: true
   app-net:
     internal: true
   edge: {}
+  # egress: controlled OUTBOUND internet for the services that legitimately need it
+  # (S131-A4/R-C01, ADR-0076). The former "everything internal:true" broke the model
+  # pull, EPSS/CERT-Bund enrichment, campaign SMTP and opt-in licence renewal — and
+  # ollama-init reported success on an impossible pull, /health lied "ai:ok". None of
+  # these send CUSTOMER DATA out (model pull + CERT-Bund/EPSS are read-only fetches;
+  # SMTP is the customer's own server; licence renewal is opt-in, token only), so they
+  # do not breach the self-hosted invariant. Attached ONLY to api/worker/ollama; the
+  # data stores (postgres, pgbouncer, redis) stay internal:true — no path out.
+  egress: {}
 
 services:
   frontend:
@@ -121,6 +132,7 @@ services:
     networks:
       - app-net
       - db-net
+      - egress   # opt-in licence renewal (token only) + guarded outbound (S131-A4)
     env_file: .env
     environment:
       VAKT_DB_URL: "postgres://vakt:${POSTGRES_PASSWORD:?}@pgbouncer:5432/vakt?sslmode=disable"
@@ -174,6 +186,7 @@ services:
     networks:
       - app-net
       - db-net
+      - egress   # EPSS/CERT-Bund enrichment, scanner DB updates, campaign SMTP (S131-A4)
     env_file: .env
     environment:
       VAKT_DB_URL: "postgres://vakt:${POSTGRES_PASSWORD:?}@pgbouncer:5432/vakt?sslmode=disable"
@@ -322,6 +335,7 @@ services:
     image: ollama/ollama:${OLLAMA_TAG:-0.31.2}
     networks:
       - app-net
+      - egress   # pulls the model from registry.ollama.ai (no customer data) (S131-A4)
     volumes:
       - ollama_models:/root/.ollama
     restart: unless-stopped
@@ -349,13 +363,21 @@ services:
     networks:
       - app-net
     entrypoint: ["/bin/sh", "-c"]
+    # Literal block (|), NOT folded (>): a folded scalar keeps a more-indented
+    # continuation line as a real newline, which fed sh a line starting with `||`
+    # (syntax error on the happy path). Literal preserves newlines as statement
+    # separators, so this is a normal multi-line script.
     command:
-      - >
-        echo 'Pre-pulling default model ${VAKT_AI_MODEL:-qwen2.5:7b} (one-time)...';
-        OLLAMA_HOST=http://ollama:11434 ollama pull ${VAKT_AI_MODEL:-qwen2.5:7b};
-        echo 'Warming up model (loads into RAM)...';
-        OLLAMA_HOST=http://ollama:11434 ollama run ${VAKT_AI_MODEL:-qwen2.5:7b} '' 2>/dev/null || true;
-        echo 'Model ready and loaded.'
+      - |
+        set -e
+        echo "Pre-pulling default model ${VAKT_AI_MODEL:-qwen2.5:7b} (one-time)..."
+        if ! OLLAMA_HOST=http://ollama:11434 ollama pull ${VAKT_AI_MODEL:-qwen2.5:7b}; then
+          echo "ERROR: model pull failed — the ollama service needs outbound access to registry.ollama.ai (egress network). Not exiting 0 on an impossible pull (S131-A4/R-C01)." >&2
+          exit 1
+        fi
+        echo "Warming up model (loads into RAM)..."
+        OLLAMA_HOST=http://ollama:11434 ollama run ${VAKT_AI_MODEL:-qwen2.5:7b} "" 2>/dev/null || true
+        echo "Model ready and loaded."
     depends_on:
       ollama:
         condition: service_healthy

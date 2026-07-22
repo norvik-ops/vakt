@@ -8,6 +8,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -18,6 +19,7 @@ import (
 	"github.com/matharnica/vakt/internal/admin"
 	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/license"
+	"github.com/matharnica/vakt/internal/services/ai"
 )
 
 // ── S46-3: /health response types ────────────────────────────────────────────
@@ -43,6 +45,42 @@ type healthResponse struct {
 	Demo       bool             `json:"demo"`
 	SSOEnabled bool             `json:"sso_enabled"`
 	Components healthComponents `json:"components"`
+}
+
+// aiHealthCache memoises the AI-provider probe. /health is public and scraped every
+// 30s; without the cache a flood of /health hits would each open a (guarded, 3s)
+// outbound connection to the AI provider — a mild amplification surface (R-H09-review).
+// The cache bounds it to at most one probe per aiHealthTTL regardless of request rate.
+var (
+	aiHealthMu  sync.Mutex
+	aiHealthAt  time.Time
+	aiHealthRes componentStatus
+)
+
+const aiHealthTTL = 10 * time.Second
+
+func cachedAIHealth(ctx context.Context, cfg *config.Config) componentStatus {
+	aiHealthMu.Lock()
+	if !aiHealthAt.IsZero() && time.Since(aiHealthAt) < aiHealthTTL {
+		res := aiHealthRes
+		aiHealthMu.Unlock()
+		return res
+	}
+	aiHealthMu.Unlock()
+
+	aiCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	start := time.Now()
+	ok := ai.NewAIClient(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel).IsAvailable(aiCtx)
+	cancel()
+	res := componentStatus{Status: "error", LatencyMs: time.Since(start).Milliseconds()}
+	if ok {
+		res.Status = "ok"
+	}
+
+	aiHealthMu.Lock()
+	aiHealthAt, aiHealthRes = time.Now(), res
+	aiHealthMu.Unlock()
+	return res
 }
 
 // healthHandler builds the /health response. db and rdb may be nil when called
@@ -102,11 +140,15 @@ func healthHandler(c echo.Context, cfg *config.Config, db *pgxpool.Pool, rdb *re
 		resp.Components.Redis = componentStatus{Status: "disabled"}
 	}
 
-	// AI component check
+	// AI component check. ai:ok must mean the provider actually answers, not merely
+	// that one is configured (R-C01/G13/S131-A4): the egress-null network made the
+	// model un-pullable while /health still reported "ok". IsAvailable probes the
+	// provider's /v1/models via the SSRF-guarded client. AI is optional, so a failure
+	// marks only this component "error" — it does not degrade the overall status.
 	if cfg.AIProvider == "" || cfg.AIProvider == "disabled" {
 		resp.Components.AI = componentStatus{Status: "disabled"}
 	} else {
-		resp.Components.AI = componentStatus{Status: "ok"}
+		resp.Components.AI = cachedAIHealth(c.Request().Context(), cfg)
 	}
 
 	// Determine HTTP status code
