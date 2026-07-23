@@ -772,7 +772,20 @@ func (s *Service) RevokeToken(ctx context.Context, rawToken string) error {
 
 // RevokeAllSessions deletes all refresh sessions for the user from both the
 // refresh_sessions table and the corresponding Redis keys, ensuring that a
-// stolen refresh token cannot be used after the user logs out (AUTH-001).
+// stolen refresh token cannot be used after the user logs out (AUTH-001), AND
+// bumps the user's pw_version so the stateless Paseto access tokens are rejected
+// on the very next request.
+//
+// S131-C1 (R-H21/D21-01): deleting refresh sessions alone left the access token
+// valid until natural expiry (TTL 1h) — so a role downgrade, RemoveUser, or SCIM
+// deprovision did not actually revoke access for up to an hour. The pw_version
+// bump is the only mechanism that invalidates the stateless access token; it is
+// checked per-request by AuthMiddleware / PasetoMiddleware (checkPwVersion) and
+// was previously wired only into password reset. Bumping here fixes ALL callers
+// (logout, UpdateUserRole, RemoveUser, SCIM) at the root and future-proofs any
+// new offboarding path. Logout already deletes every refresh session (logout
+// everywhere), so making the access-token kill immediate is consistent, not a
+// regression.
 func (s *Service) RevokeAllSessions(ctx context.Context, userID string) error {
 	if s.db == nil {
 		return fmt.Errorf("revoke sessions: db not available")
@@ -793,13 +806,60 @@ func (s *Service) RevokeAllSessions(ctx context.Context, userID string) error {
 			keys = append(keys, "refresh:"+h)
 		}
 	}
+	// Return the pooled connection before bumpPwVersion acquires another (avoids
+	// holding one conn while checking out a second). pgx auto-closes on drained
+	// Next(), so this is defensive hygiene; rows.Err() surfaces a mid-iteration
+	// failure instead of silently skipping the revoke.
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("revoke sessions: %w", err)
+	}
 
 	if s.redis != nil && len(keys) > 0 {
 		rCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 		defer cancel()
 		_ = s.redis.Del(rCtx, keys...) // best-effort
 	}
+
+	s.bumpPwVersion(ctx, userID)
 	return nil
+}
+
+// bumpPwVersion increments the user's password-version counter in PostgreSQL
+// (durable source of truth) and mirrors it into Redis (hot path). Every access
+// token carrying a stale pw_version is rejected per-request by AuthMiddleware /
+// PasetoMiddleware (checkPwVersion) — this is the only way to invalidate the
+// stateless Paseto access tokens. Best-effort with logging, matching the password
+// reset path (S87-6): PG is the durable truth, checkPwVersion falls back to the PG
+// value if the Redis mirror is stale, so a Redis outage does not un-revoke a token.
+func (s *Service) bumpPwVersion(ctx context.Context, userID string) {
+	if s.db == nil {
+		return
+	}
+	pgCtx, pgCancel := context.WithTimeout(ctx, 2*time.Second)
+	defer pgCancel()
+	var newPwVersion int64
+	if pgErr := s.db.QueryRow(pgCtx,
+		`UPDATE users SET pw_version = pw_version + 1 WHERE id = $1::uuid RETURNING pw_version`,
+		userID,
+	).Scan(&newPwVersion); pgErr != nil {
+		log.Error().Err(pgErr).Str("user_id", userID).Msg("bump pw_version: PostgreSQL update failed")
+	}
+	if s.redis == nil {
+		return
+	}
+	incrCtx, incrCancel := context.WithTimeout(ctx, 2*time.Second)
+	defer incrCancel()
+	if newPwVersion > 0 {
+		// Keep Redis in lockstep with PG so the hot path returns the same value.
+		if setErr := s.redis.Set(incrCtx, pwVersionKey(userID), newPwVersion, 0).Err(); setErr != nil {
+			log.Error().Err(setErr).Str("user_id", userID).Msg("bump pw_version: Redis mirror failed")
+		}
+	} else if incrErr := s.redis.Incr(incrCtx, pwVersionKey(userID)).Err(); incrErr != nil {
+		// PG update failed — fall back to the legacy Redis-only increment so the
+		// revocation still invalidates tokens on the hot path.
+		log.Error().Err(incrErr).Str("user_id", userID).Msg("bump pw_version: Redis increment failed")
+	}
 }
 
 // tokenDenyKey returns the Redis key used to blacklist an access token.
