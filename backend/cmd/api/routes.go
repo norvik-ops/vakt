@@ -295,9 +295,11 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	// browser-driven. Webhook deliveries from external systems are also exempt
 	// (they authenticate via HMAC signature, not cookie). Auth routes that
 	// establish a session sit outside `protected` and therefore aren't gated.
-	protected.Use(auth.CSRFMiddleware(
-		"/api/v1/webhooks/receive",
-	))
+	// S131-R-L05: the former "/api/v1/webhooks/receive" exemption was dead — no
+	// such route exists (outbound webhook management lives under /api/v1/webhooks
+	// and DOES need CSRF; the inbound HMAC-verified Personio webhook is mounted on
+	// a public group without this middleware). Removed to close the prefix trap.
+	protected.Use(auth.CSRFMiddleware())
 
 	// Org-wide MFA enforcement: if the org has require_mfa=true and the user has
 	// not completed TOTP setup, return 403 MFA_REQUIRED on all protected routes

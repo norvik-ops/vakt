@@ -104,7 +104,17 @@ func ClearCSRFCookie(c echo.Context) {
 //
 // All other state-changing requests must present both a csrf_token cookie
 // AND a matching X-CSRF-Token request header (constant-time compare).
-func CSRFMiddleware(exemptPathPrefixes ...string) echo.MiddlewareFunc {
+// CSRFMiddleware enforces double-submit CSRF on unsafe methods. exemptPaths are
+// matched EXACTLY, not by prefix.
+//
+// S131-R-L05: the matcher used strings.HasPrefix, so an exemption for
+// "/api/v1/webhooks/receive" also silently exempted "/api/v1/webhooks/receive/abc"
+// and any future sibling — a latent prefix trap. Exact matching means an exemption
+// can never widen its own scope; a route that genuinely needs exemption must be
+// listed by its exact path. (Inbound webhooks that must bypass CSRF are mounted on
+// public groups without this middleware — e.g. the HMAC-verified Personio webhook —
+// so they need no exemption here at all.)
+func CSRFMiddleware(exemptPaths ...string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			method := c.Request().Method
@@ -119,8 +129,8 @@ func CSRFMiddleware(exemptPathPrefixes ...string) echo.MiddlewareFunc {
 			}
 
 			path := c.Request().URL.Path
-			for _, p := range exemptPathPrefixes {
-				if strings.HasPrefix(path, p) {
+			for _, p := range exemptPaths {
+				if path == p {
 					return next(c)
 				}
 			}

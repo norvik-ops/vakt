@@ -59,13 +59,32 @@ func TestCSRF_ExemptPath(t *testing.T) {
 	mw := CSRFMiddleware("/api/v1/webhooks/receive")
 	e := echo.New()
 
+	// The EXACT exempt path bypasses CSRF.
+	req := httptest.NewRequest("POST", "/api/v1/webhooks/receive", strings.NewReader(`{}`))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	if err := mw(passThrough)(c); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	assert.Equal(t, http.StatusOK, rec.Code, "exact exempt path must bypass CSRF")
+}
+
+// TestCSRF_ExemptPath_NoPrefixOvermatch is the S131-R-L05 regression guard: a
+// path that merely has the exempt path as a PREFIX must NOT bypass CSRF. The old
+// strings.HasPrefix matcher would have exempted /receive/abc as well — a latent
+// trap where a future sibling route silently loses CSRF protection.
+func TestCSRF_ExemptPath_NoPrefixOvermatch(t *testing.T) {
+	mw := CSRFMiddleware("/api/v1/webhooks/receive")
+	e := echo.New()
+
 	req := httptest.NewRequest("POST", "/api/v1/webhooks/receive/abc", strings.NewReader(`{}`))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	if err := mw(passThrough)(c); err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, http.StatusForbidden, rec.Code,
+		"a sibling of the exempt path must still be CSRF-protected (no prefix over-match)")
 }
 
 // TestCSRF_MissingTokens — POST without cookie or header is 403.
