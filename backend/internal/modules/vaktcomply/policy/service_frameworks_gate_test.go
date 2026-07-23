@@ -24,3 +24,15 @@ func TestEnableFramework_RejectsRemovedFrameworks(t *testing.T) {
 			"framework %q must be rejected as draft, got: %v", name, err)
 	}
 }
+
+// S131-R-M01: enabling a name that is not in the canonical catalogue must be
+// rejected with ErrFrameworkUnknown (→ 404), not silently create a junk framework.
+// The catalogue check runs before any DB access, so a nil-pool Service suffices.
+func TestEnableFramework_RejectsUnknownFramework(t *testing.T) {
+	s := NewService(nil)
+	for _, name := range []string{"BOGUS", "ISO9999", "", "nis3", "iso27001x"} {
+		_, err := s.EnableFramework(context.Background(), "org-test", name, "")
+		require.ErrorIs(t, err, ErrFrameworkUnknown,
+			"enabling unknown framework %q must return ErrFrameworkUnknown, got: %v", name, err)
+	}
+}

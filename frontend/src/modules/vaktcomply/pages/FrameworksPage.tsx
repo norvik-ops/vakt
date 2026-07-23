@@ -119,6 +119,45 @@ const FRAMEWORK_CATALOGUE: Array<{
     controls: 'PII-Cloud-Controls',
     color: 'text-teal-500',
   },
+  // S131-G1/V08-D (Produktentscheidung 2026-07-23): die vier zuvor ungegateten
+  // Zusatz-Frameworks sind jetzt Pro (FeatureMultiFramework, siehe handler.go) und
+  // im Katalog sichtbar wie CRA/EUAIACT — Community bekommt beim Aktivieren 402.
+  {
+    key: 'DSGVO-TOM',
+    name: 'DSGVO Art. 32 TOM',
+    fullName: 'DSGVO Art. 32 — Technische und organisatorische Maßnahmen',
+    description: 'Technische und organisatorische Maßnahmen nach Art. 32 DSGVO, abgeleitet aus ISO 27001 — Nachweis angemessener Sicherheit der Verarbeitung.',
+    category: 'EU-Recht / Datenschutz',
+    controls: 'Art. 32 TOMs',
+    color: 'text-blue-400',
+  },
+  {
+    key: 'CIS',
+    name: 'CIS Controls v8',
+    fullName: 'CIS Controls v8 — Center for Internet Security',
+    description: '18 Kontrollgruppen des Center for Internet Security. IG1-Safeguards als Mindestanforderung für alle Organisationen.',
+    category: 'International',
+    controls: '18 Kontrollgruppen',
+    color: 'text-emerald-500',
+  },
+  {
+    key: 'KRITIS',
+    name: 'KRITIS-DachG',
+    fullName: 'KRITIS-Dachgesetz — Kritische Infrastrukturen',
+    description: 'Resilienzanforderungen für Betreiber kritischer Anlagen in Deutschland (§§ 8, 12, 13, 16, 18, 20 KRITIS-DachG).',
+    category: 'Deutschland / KRITIS',
+    controls: 'Resilienz-Controls',
+    color: 'text-rose-500',
+  },
+  {
+    key: 'C5',
+    name: 'BSI C5:2020',
+    fullName: 'BSI C5:2020 — Cloud Computing Compliance Criteria Catalogue',
+    description: 'Prüfgrundlage des BSI für die Sicherheit von Cloud-Diensten in Deutschland (Hetzner, IONOS, AWS-DE, Azure-DE).',
+    category: 'Deutschland / Cloud',
+    controls: 'Cloud-Kriterien',
+    color: 'text-violet-500',
+  },
   {
     key: 'CRA',
     name: 'EU CRA',

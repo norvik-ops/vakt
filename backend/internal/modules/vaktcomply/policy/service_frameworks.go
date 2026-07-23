@@ -23,6 +23,10 @@ import (
 // rejection, not an internal failure.
 var ErrFrameworkDraft = errors.New("framework is in draft status and cannot be enabled yet")
 
+// ErrFrameworkUnknown is returned when an enable request names a framework that is
+// not in the canonical built-in catalogue (S131-R-M01).
+var ErrFrameworkUnknown = errors.New("unknown framework")
+
 // --- Frameworks ---
 
 // ListFrameworks returns all frameworks enabled for the given organisation.
@@ -49,11 +53,23 @@ func (s *Service) EnableFramework(ctx context.Context, orgID, name, variant stri
 		variant = "full"
 	}
 
-	// Reject enabling of draft frameworks.
+	// S131-R-M01: validate the name against the canonical catalogue. EnableFramework
+	// only handles built-ins (custom frameworks go through InstallFrameworkPlugin) —
+	// without this check a typo'd or bogus name silently created a junk framework
+	// (isBuiltin=false, version "1.0", zero controls). Draft frameworks are rejected
+	// in the same pass.
+	known := false
 	for _, b := range builtinAvailable {
-		if strings.EqualFold(b.name, name) && b.status == "draft" {
-			return nil, fmt.Errorf("%s: %w", name, ErrFrameworkDraft)
+		if strings.EqualFold(b.name, name) {
+			known = true
+			if b.status == "draft" {
+				return nil, fmt.Errorf("%s: %w", name, ErrFrameworkDraft)
+			}
+			break
 		}
+	}
+	if !known {
+		return nil, fmt.Errorf("%s: %w", name, ErrFrameworkUnknown)
 	}
 
 	exists, err := s.repo.FrameworkExists(ctx, orgID, name)

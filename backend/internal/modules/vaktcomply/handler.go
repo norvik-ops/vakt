@@ -402,6 +402,14 @@ var frameworkFeatureGate = map[string]features.Feature{
 	"ISO42001": features.FeatureISO42001,
 	"ISO27017": features.FeatureMultiFramework,
 	"ISO27018": features.FeatureMultiFramework,
+	// S131-G1/V08-D (Produktentscheidung 2026-07-23): die zuvor ungegateten
+	// Zusatz-Frameworks werden wie die übrigen „weiteren Frameworks" hinter
+	// FeatureMultiFramework (Pro) gestellt. Enforcement keyed auf den normalisierten
+	// Namen (case-insensitiv), unabhängig von der treffenden Route.
+	"DSGVO-TOM": features.FeatureMultiFramework,
+	"CIS":       features.FeatureMultiFramework,
+	"KRITIS":    features.FeatureMultiFramework,
+	"C5":        features.FeatureMultiFramework,
 }
 
 // EnableFramework handles POST /api/v1/vaktcomply/frameworks/:name/enable.
@@ -433,6 +441,9 @@ func (h *Handler) EnableFramework(c echo.Context) error {
 	if err != nil {
 		if errors.Is(err, policy.ErrFrameworkDraft) {
 			return errResp(c, http.StatusForbidden, "framework is in draft status and not yet available", "CK_FRAMEWORK_DRAFT")
+		}
+		if errors.Is(err, policy.ErrFrameworkUnknown) {
+			return errResp(c, http.StatusNotFound, "unknown framework", "CK_FRAMEWORK_UNKNOWN")
 		}
 		log.Error().Err(err).Str("name", name).Msg("enable framework")
 		return errResp(c, http.StatusInternalServerError, "failed to enable framework", "CK_ENABLE_FRAMEWORK_FAILED")
