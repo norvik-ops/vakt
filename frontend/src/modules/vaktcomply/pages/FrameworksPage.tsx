@@ -97,6 +97,28 @@ const FRAMEWORK_CATALOGUE: Array<{
     controls: '16 Controls',
     color: 'text-cyan-500',
   },
+  // S131-G5 (R-M08/V08-E): ISO 27017/27018 sind FeatureMultiFramework-gegatete
+  // Pro-Frameworks, die serverseitig (plugins.go) existieren, aber im hartkodierten
+  // Katalog fehlten — bezahlte Funktionalität ohne UI-Aktivierungspfad. Enable→402
+  // für Community wird vom bestehenden Flow gehandhabt (wie CRA/EUAIACT/ISO42001).
+  {
+    key: 'ISO27017',
+    name: 'ISO 27017',
+    fullName: 'ISO/IEC 27017:2015',
+    description: 'Code of Practice für Informationssicherheit in Cloud-Diensten (CSP & CSC). Ergänzt ISO 27001 um 7 Cloud-spezifische Controls.',
+    category: 'International / Cloud',
+    controls: '7 Cloud-Controls',
+    color: 'text-sky-500',
+  },
+  {
+    key: 'ISO27018',
+    name: 'ISO 27018',
+    fullName: 'ISO/IEC 27018:2019',
+    description: 'Schutz personenbezogener Daten (PII) in Public Clouds — für Auftragsverarbeiter nach Art. 28 DSGVO.',
+    category: 'International / Cloud',
+    controls: 'PII-Cloud-Controls',
+    color: 'text-teal-500',
+  },
   {
     key: 'CRA',
     name: 'EU CRA',
