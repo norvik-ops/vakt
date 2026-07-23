@@ -361,6 +361,19 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	updateSvc.StartBackgroundRefresh(lifecycleCtx)
 	log.Info().Msg("update check routes registered")
 
+	// S131-R-H24: step-up MFA for sensitive WRITE routes. The middleware is a
+	// no-op unless the org set require_mfa_sensitive_calls=true; it skips safe
+	// methods (reads never demand a TOTP) and exempts the toggle-off path. Mounted
+	// on the three "keys to the kingdom" owners (org security config, user
+	// management, API keys) — before this it existed with ZERO mounts (D15-04:
+	// config stored, never enforced = security theater).
+	//
+	// The TOTP secret is encrypted at enrol time with deriveKey("vakt-totp-v1")
+	// (see RegisterTOTP below, totpKey) — NOT the raw master key. The middleware
+	// MUST decrypt with the same derived key, or every decryption fails and the
+	// org is locked out of all sensitive writes while the toggle is on.
+	mfaSensitive := sharedmw.RequireMFASensitive(pool, totpKey, auth.ValidateTOTP)
+
 	// Admin routes (also require Admin role)
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisOpt.Addr, Password: redisOpt.Password})
 	adminSvc := admin.NewService(pool, cfg.ModulesEnabled)
@@ -370,7 +383,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	adminHandler := admin.NewHandler(adminSvc)
 	// S90-4: wire Redis so permission changes invalidate the module-permission cache.
 	adminHandler.Permissions.WithRedis(rdb)
-	admin.Register(protected, adminHandler, adminHealth, pool, rdb)
+	admin.Register(protected, adminHandler, adminHealth, pool, rdb, mfaSensitive)
 	internal.GET("/api/v1/internal/backup-config", adminHandler.GetInternalBackupConfig)
 	// Job queue stats — admin-only, same auth guard as other admin routes.
 	jobsHandler := admin.NewJobsHandler(redisOpt.Addr, redisOpt.Password)
@@ -631,7 +644,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	log.Info().Msg("scheduled reports routes registered")
 
 	// API key management — personal keys for programmatic access (Pro feature)
-	apikeys.Register(protected, pool)
+	apikeys.Register(protected, pool, mfaSensitive)
 	log.Info().Msg("api key routes registered")
 
 	// Shared comments — threaded discussion on findings and controls
@@ -667,7 +680,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		Host: cfg.SMTPHost, Port: cfg.SMTPPort,
 		User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
 	}, cfg.FrontendURL).WithSessionRevoker(authSvc) // S78-1: revoke sessions on remove/demote
-	usermgmt.RegisterRoutes(protected.Group("/admin"), api.Group("/invite", inviteRateLimiter), umSvc, pool)
+	usermgmt.RegisterRoutes(protected.Group("/admin"), api.Group("/invite", inviteRateLimiter), umSvc, pool, mfaSensitive)
 	log.Info().Msg("user management routes registered")
 
 	// Onboarding wizard status and dismiss

@@ -2190,6 +2190,8 @@
     "labelDisplayName": "Display Name",
     "mfaTitle": "Require Two-Factor Authentication",
     "mfaDesc": "All members must have 2FA enabled to log in.",
+    "mfaSensitiveTitle": "Confirm sensitive actions with 2FA",
+    "mfaSensitiveDesc": "Security-critical writes (API keys, user roles, security settings) additionally require a fresh 2FA code.",
     "mfaEnabled": "2FA requirement enabled.",
     "mfaDisabled": "2FA requirement disabled.",
     "approvalTitle": "Four-Eyes Principle for Control Changes",

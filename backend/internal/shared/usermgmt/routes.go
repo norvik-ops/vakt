@@ -14,11 +14,15 @@ import (
 // role='admin' in the users table.
 //
 // publicGroup must NOT be behind any authentication middleware.
-func RegisterRoutes(adminGroup *echo.Group, publicGroup *echo.Group, svc *Service, db *pgxpool.Pool) {
+//
+// mfaSensitive enforces a TOTP step-up on write routes (role change, delete,
+// reset-mfa) when the org opted into require_mfa_sensitive_calls (S131-R-H24).
+// It skips safe methods, so the admin user-list GET is unaffected.
+func RegisterRoutes(adminGroup *echo.Group, publicGroup *echo.Group, svc *Service, db *pgxpool.Pool, mfaSensitive echo.MiddlewareFunc) {
 	h := newHandler(svc)
 
 	// Admin routes — require the caller to be an admin.
-	admin := adminGroup.Group("", requireAdmin(db))
+	admin := adminGroup.Group("", requireAdmin(db), mfaSensitive)
 	admin.GET("/users", h.ListUsers)
 	admin.PATCH("/users/:id/role", h.UpdateUserRole)
 	admin.DELETE("/users/:id", h.RemoveUser)

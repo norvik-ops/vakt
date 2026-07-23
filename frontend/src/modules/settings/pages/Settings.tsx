@@ -195,6 +195,10 @@ interface OrgSecurity {
   require_mfa: boolean
 }
 
+interface OrgSecurityExt {
+  require_mfa_sensitive_calls: boolean
+}
+
 interface ModuleStatus {
   name: string
   enabled: boolean
@@ -234,6 +238,28 @@ function useUpdateOrgSecurity() {
         body: JSON.stringify(input),
       }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['admin', 'org', 'security'] }),
+  })
+}
+
+// S131-R-H24: require_mfa_sensitive_calls lives on a separate endpoint
+// (/admin/org/security-ext GET, /admin/org/mfa-sensitive PUT) from require_mfa.
+function useOrgSecurityExt() {
+  return useQuery<OrgSecurityExt>({
+    queryKey: ['admin', 'org', 'security-ext'],
+    queryFn: () => apiFetch<OrgSecurityExt>('/admin/org/security-ext'),
+    retry: false,
+  })
+}
+
+function useUpdateMFASensitive() {
+  const qc = useQueryClient()
+  return useMutation<undefined, Error, boolean>({
+    mutationFn: (value) =>
+      apiFetch<undefined>('/admin/org/mfa-sensitive', {
+        method: 'PUT',
+        body: JSON.stringify({ require_mfa_sensitive_calls: value }),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['admin', 'org', 'security-ext'] }),
   })
 }
 
@@ -501,6 +527,10 @@ function OrgSection() {
   const updateSecurity = useUpdateOrgSecurity()
   const [mfaChecked, setMfaChecked] = useState(false)
 
+  const { data: securityExt } = useOrgSecurityExt()
+  const updateMfaSensitive = useUpdateMFASensitive()
+  const [mfaSensitiveChecked, setMfaSensitiveChecked] = useState(false)
+
   const { data: approvalSetting, isLoading: approvalLoading } = useApprovalSetting()
   const updateApprovalSetting = useUpdateApprovalSetting()
   const [approvalChecked, setApprovalChecked] = useState(false)
@@ -508,6 +538,10 @@ function OrgSection() {
   useEffect(() => {
     if (security) setMfaChecked(security.require_mfa)
   }, [security])
+
+  useEffect(() => {
+    if (securityExt) setMfaSensitiveChecked(securityExt.require_mfa_sensitive_calls)
+  }, [securityExt])
 
   useEffect(() => {
     if (approvalSetting) setApprovalChecked(approvalSetting.approval_required)
@@ -518,6 +552,11 @@ function OrgSection() {
   function handleMfaToggle(value: boolean) {
     setMfaChecked(value)
     updateSecurity.mutate({ require_mfa: value })
+  }
+
+  function handleMfaSensitiveToggle(value: boolean) {
+    setMfaSensitiveChecked(value)
+    updateMfaSensitive.mutate(value)
   }
 
   function handleApprovalToggle(value: boolean) {
@@ -568,6 +607,29 @@ function OrgSection() {
                 <p className="text-[11px] text-green-600 dark:text-green-400 mt-1">
                   {mfaChecked ? t('settingsPage.mfaEnabled') : t('settingsPage.mfaDisabled')}
                 </p>
+              )}
+            </div>
+
+            {/* S131-R-H24: step-up MFA for sensitive writes */}
+            <div className="border-t border-border pt-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-primary">
+                    {t('settingsPage.mfaSensitiveTitle')}
+                  </p>
+                  <p className="text-[11px] text-secondary leading-relaxed">
+                    {t('settingsPage.mfaSensitiveDesc')}
+                  </p>
+                </div>
+                <Switch
+                  checked={mfaSensitiveChecked}
+                  onCheckedChange={handleMfaSensitiveToggle}
+                  disabled={updateMfaSensitive.isPending}
+                  aria-label={t('settingsPage.mfaSensitiveTitle')}
+                />
+              </div>
+              {updateMfaSensitive.isError && (
+                <p className="text-[11px] text-red-500 mt-1">{t('settingsPage.saveError')}</p>
               )}
             </div>
 
@@ -2290,7 +2352,7 @@ function BackupDestSection() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">{t('settingsPage.backupDestAccessKeyLabel')}</Label>
-                <Input className="h-8 text-sm font-mono text-xs" placeholder="AKIAIOSFODNN7EXAMPLE" value={accessKey} onChange={(e) => { setAccessKey(e.target.value) }} />
+                <Input className="h-8 text-sm font-mono text-xs" placeholder="AKIA... (Access Key ID)" value={accessKey} onChange={(e) => { setAccessKey(e.target.value) }} />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">{t('settingsPage.backupDestSecretKeyLabel')}</Label>

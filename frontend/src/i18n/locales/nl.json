@@ -2190,6 +2190,8 @@
     "labelDisplayName": "Weergavenaam",
     "mfaTitle": "Tweefactorauthenticatie verplichten",
     "mfaDesc": "Alle leden moeten 2FA hebben ingeschakeld om in te loggen.",
+    "mfaSensitiveTitle": "Gevoelige acties bevestigen met 2FA",
+    "mfaSensitiveDesc": "Beveiligingskritieke wijzigingen (API-sleutels, gebruikersrollen, beveiligingsinstellingen) vereisen daarnaast een verse 2FA-code.",
     "mfaEnabled": "2FA-verplichting ingeschakeld.",
     "mfaDisabled": "2FA-verplichting uitgeschakeld.",
     "approvalTitle": "Vierogenprincipe voor beheersmaatregelwijzigingen",

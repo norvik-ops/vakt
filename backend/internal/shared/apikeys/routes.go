@@ -14,11 +14,14 @@ import (
 // Register mounts the API key routes under the given protected group.
 // All routes require a valid Paseto token (enforced by the caller) and the
 // api_access Pro feature.
-func Register(g *echo.Group, db *pgxpool.Pool) {
+func Register(g *echo.Group, db *pgxpool.Pool, mfaSensitive echo.MiddlewareFunc) {
 	svc := NewService(db)
 	h := NewHandler(svc)
 
-	keys := g.Group("/api-keys", features.Require(features.FeatureAPI))
+	// mfaSensitive (S131-R-H24): TOTP step-up on key writes when the org opted
+	// into require_mfa_sensitive_calls. Skips safe methods → GET /api-keys is
+	// unaffected; minting/revoking/rotating a key demands a fresh TOTP.
+	keys := g.Group("/api-keys", features.Require(features.FeatureAPI), mfaSensitive)
 	// S120-4: key management is a write path — Viewer/AuditorReadOnly/
 	// InternalAuditor must not mint keys (a personal key acts with the
 	// creator's role, so an ungated create would be privilege escalation).

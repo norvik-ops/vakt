@@ -2190,6 +2190,8 @@
     "labelDisplayName": "Nom d'affichage",
     "mfaTitle": "Exiger l'authentification à deux facteurs",
     "mfaDesc": "Tous les membres doivent avoir la 2FA activée pour se connecter.",
+    "mfaSensitiveTitle": "Confirmer les actions sensibles avec la 2FA",
+    "mfaSensitiveDesc": "Les modifications critiques (clés API, rôles utilisateurs, paramètres de sécurité) exigent en plus un code 2FA récent.",
     "mfaEnabled": "Exigence 2FA activée.",
     "mfaDisabled": "Exigence 2FA désactivée.",
     "approvalTitle": "Principe des quatre yeux pour les modifications de contrôle",

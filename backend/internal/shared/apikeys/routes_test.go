@@ -30,7 +30,8 @@ func newTestServer(role string) *echo.Echo {
 			return next(c)
 		}
 	})
-	Register(g, nil)
+	// no-op step-up middleware — this RBAC test does not exercise MFA.
+	Register(g, nil, func(next echo.HandlerFunc) echo.HandlerFunc { return next })
 	return e
 }
 

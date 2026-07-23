@@ -2190,6 +2190,8 @@
     "labelDisplayName": "Anzeigename",
     "mfaTitle": "2-Faktor-Authentifizierung vorschreiben",
     "mfaDesc": "Alle Mitglieder müssen 2FA aktiviert haben um sich einzuloggen.",
+    "mfaSensitiveTitle": "Sensible Aktionen mit 2FA bestätigen",
+    "mfaSensitiveDesc": "Sicherheitskritische Schreibaktionen (API-Schlüssel, Nutzerrollen, Sicherheitseinstellungen) verlangen zusätzlich einen aktuellen 2FA-Code.",
     "mfaEnabled": "2FA-Pflicht aktiviert.",
     "mfaDisabled": "2FA-Pflicht deaktiviert.",
     "approvalTitle": "4-Augen-Prinzip für Control-Änderungen",

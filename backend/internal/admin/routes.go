@@ -12,8 +12,12 @@ import (
 )
 
 // Register mounts admin routes under g.  All routes require the "Admin" role.
-func Register(g *echo.Group, h *Handler, health *HealthHandler, db *pgxpool.Pool, rdb *redis.Client) {
-	admin := g.Group("/admin", auth.RequireRole("Admin"), sharedmw.IPAllowlist())
+//
+// mfaSensitive enforces a TOTP step-up on write routes when the org opted into
+// require_mfa_sensitive_calls (S131-R-H24). It skips safe methods, so admin GETs
+// are unaffected; pass a no-op if step-up is not wired.
+func Register(g *echo.Group, h *Handler, health *HealthHandler, db *pgxpool.Pool, rdb *redis.Client, mfaSensitive echo.MiddlewareFunc) {
+	admin := g.Group("/admin", auth.RequireRole("Admin"), sharedmw.IPAllowlist(), mfaSensitive)
 	admin.GET("/health", health.HandleHealth)
 	admin.GET("/audit-logs", h.ListAuditLogs)
 

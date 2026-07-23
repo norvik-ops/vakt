@@ -67,6 +67,17 @@ export class MFARequiredError extends Error {
   }
 }
 
+// MFAStepUpError is thrown when a sensitive WRITE needs a fresh TOTP (org opted
+// into require_mfa_sensitive_calls) and the user cancelled the challenge or no
+// challenge UI is mounted. Distinct from MFARequiredError (login-time enrolment):
+// this is a per-action step-up and must NOT log the user out.
+export class MFAStepUpError extends Error {
+  constructor() {
+    super('MFA_STEP_UP_CANCELLED')
+    this.name = 'MFAStepUpError'
+  }
+}
+
 export class RateLimitedError extends Error {
   constructor(public readonly retryAfterSeconds: number) {
     super(`Zu viele Anfragen — bitte ${retryAfterSeconds.toString()} Sekunden warten`)
@@ -131,6 +142,18 @@ export function registerUnauthorizedHandler(fn: () => void): void {
   onUnauthorized = fn
 }
 
+// onMFAChallenge is invoked by apiFetch when a sensitive write returns
+// MFA_TOKEN_REQUIRED / MFA_TOKEN_INVALID. It must resolve with the 6-digit TOTP
+// code the user entered, or null if they cancelled. Wired by MFAChallengeProvider.
+// `invalid` is true when the previous code was rejected (so the UI can say so).
+let onMFAChallenge: ((invalid: boolean) => Promise<string | null>) | null = null
+export function registerMFAChallengeHandler(
+  fn: (invalid: boolean) => Promise<string | null>,
+): void {
+  onMFAChallenge = fn
+}
+const MAX_MFA_PROMPTS = 3
+
 export async function apiFetch<T>(
   path: string,
   options?: Omit<RequestInit, 'headers'> & { headers?: Record<string, string> },
@@ -166,6 +189,12 @@ export async function apiFetch<T>(
   const sessionId = getSessionId()
   if (sessionId) sessionHeader['X-Vakt-Session-Id'] = sessionId
 
+  // Step-up MFA (S131-R-H24): filled after the server asks for a TOTP on a
+  // sensitive write; re-sent on the retry. mfaPrompts caps the challenge loop so
+  // repeated wrong codes cannot spin forever.
+  let mfaToken = ''
+  let mfaPrompts = 0
+
   let lastError: unknown = null
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     let res: Response
@@ -184,6 +213,8 @@ export async function apiFetch<T>(
           ...csrfHeader,
           ...sessionHeader,
           ...(options?.headers ?? {}),
+          // After ...options so a step-up token is never clobbered by a caller.
+          ...(mfaToken ? { 'X-MFA-Token': mfaToken } : {}),
         },
       })
     } catch (err) {
@@ -198,6 +229,27 @@ export async function apiFetch<T>(
     }
 
     if (res.status === 401) {
+      // Step-up MFA on a sensitive write returns 401 with an MFA code — this is
+      // NOT a session-expiry logout. Prompt for a TOTP and retry with the token.
+      const mfaBody = (await res
+        .clone()
+        .json()
+        .catch(() => ({}))) as { code?: string }
+      if (mfaBody.code === 'MFA_TOKEN_REQUIRED' || mfaBody.code === 'MFA_TOKEN_INVALID') {
+        if (onMFAChallenge && mfaPrompts < MAX_MFA_PROMPTS) {
+          mfaPrompts++
+          const code = await onMFAChallenge(mfaBody.code === 'MFA_TOKEN_INVALID')
+          if (code) {
+            mfaToken = code
+            attempt-- // the step-up re-submit must not consume a network-retry
+            continue
+          }
+        }
+        // Cancelled, no UI mounted, or too many wrong tries — surface as a
+        // step-up error. Crucially: do NOT log the user out.
+        throw new MFAStepUpError()
+      }
+
       onUnauthorized?.()
       setSessionId(null)
       // S90-8 (#10): a full-page navigation (not react-router `navigate`) is

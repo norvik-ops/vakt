@@ -6,7 +6,8 @@ import { router } from './router'
 import { useThemeStore } from './shared/stores/theme'
 import { useAuthStore } from './shared/stores/auth'
 import { ErrorBoundary } from './shared/components/ErrorBoundary'
-import { FeatureLockedError, MFARequiredError } from './api/client'
+import { MFAChallengeProvider } from './shared/components/MFAChallengeProvider'
+import { FeatureLockedError, MFARequiredError, MFAStepUpError } from './api/client'
 import { toast } from './shared/hooks/useToast'
 import './i18n'
 import './index.css'
@@ -28,6 +29,8 @@ const queryClient = new QueryClient({
       // Pro-gate and auth errors are handled by ProGate / redirect — skip toast.
       if (error instanceof FeatureLockedError) return
       if (error instanceof MFARequiredError) return
+      // Step-up cancelled: the user closed the TOTP prompt — not an error to toast.
+      if (error instanceof MFAStepUpError) return
       if (error instanceof Error && error.message === 'Unauthorized') return
       const msg = error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten.'
       toast(msg, 'error')
@@ -42,7 +45,9 @@ createRoot(rootElement).render(
   <StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+        <MFAChallengeProvider>
+          <RouterProvider router={router} />
+        </MFAChallengeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   </StrictMode>,
