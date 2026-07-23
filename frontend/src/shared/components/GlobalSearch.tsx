@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import {
   Search, Shield, AlertTriangle, FileText, Siren, ClipboardCheck,
   Server, Bug, Users, Clock, Loader2, LayoutDashboard, ShieldAlert,
-  BookOpen, Eye,
+  BookOpen,
 } from 'lucide-react'
 import { useSearch, SearchResult } from '../../hooks/useSearch'
 import { useDebounce } from '../../hooks/useDebounce'
@@ -23,7 +23,10 @@ const QUICK_NAV: QuickNavItem[] = [
   { label: 'Vorfälle',      path: '/vaktcomply/incidents',    icon: <Siren className="w-3.5 h-3.5 text-red-500 shrink-0" /> },
   { label: 'Richtlinien',   path: '/vaktcomply/policies',     icon: <BookOpen className="w-3.5 h-3.5 text-blue-500 shrink-0" /> },
   { label: 'Findings',      path: '/vaktscan/findings',      icon: <Bug className="w-3.5 h-3.5 text-orange-500 shrink-0" /> },
-  { label: 'Board-Bericht', path: '/vaktcomply/board-report', icon: <Eye className="w-3.5 h-3.5 text-purple-500 shrink-0" /> },
+  // S131-G4 (D28-02): the "Board-Bericht" entry pointed at /vaktcomply/board-report,
+  // a route that does not exist — the catch-all silently redirected every click to
+  // the Comply overview. There is no board-report SPA page (only the scheduled-report
+  // backend type), so the dead quick-link is removed rather than bouncing the user.
 ]
 
 const ENTITY_ICONS: Record<string, React.ReactNode> = {

@@ -111,13 +111,17 @@ function TemplateCategoryTab({ category }: { category: Category }) {
   function handleUseTemplate(t: DBTemplate) {
     const dest = CATEGORY_DESTINATIONS[category]
     if (category === 'policy') {
+      // /vaktcomply/policies/new is a real route (policies/:id treats "new" as create).
       navigate(`${dest}/new?template=${t.id}`)
+      toast(`Vorlage "${t.name}" ausgewählt`, 'success')
     } else {
-      // For DPIA / AVV, navigate to the create page with template param.
-      // The target page can optionally prefill from the template content.
-      navigate(`${dest}/new?template=${t.id}`)
+      // S131-G4 (D28-03): DPIA/AVV have NO /new route — the old /new target hit the
+      // catch-all and silently bounced the user to the /vaktprivacy overview, losing
+      // the template. Land on the module's list page instead, where the create dialog
+      // lives (AVV even has its own template picker). URL-prefill is a follow-up.
+      navigate(dest)
+      toast(`Öffne ${category.toUpperCase()} — Vorlage im „Neu"-Dialog auswählen`, 'info')
     }
-    toast(`Vorlage "${t.name}" ausgewählt`, 'success')
   }
 
   return (
