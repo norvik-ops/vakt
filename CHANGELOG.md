@@ -4,9 +4,9 @@ All notable user-facing changes to Vakt are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
-## [Unreleased]
+## [0.42.48] — 2026-07-23
 
-Auf `main`, noch nicht getaggt (kommt mit dem nächsten Release). Sprint 131 Phase 3.
+Sprint 131 Phase 3: die zuletzt offenen Zugriffs-/2FA-Härtungen aus dem Codeaudit v4.
 
 ### Added
 - **Schrittweise 2FA-Bestätigung für sicherheitskritische Aktionen.** Organisationen können in den Einstellungen verlangen, dass sensible Schreibaktionen (API-Schlüssel anlegen/widerrufen, Nutzerrollen ändern, Sicherheitseinstellungen) zusätzlich mit einem aktuellen Authenticator-Code bestätigt werden. Lesen und normale Nutzung bleiben unberührt; das Abschalten des Schalters bleibt jederzeit möglich (kein Selbst-Aussperren).
