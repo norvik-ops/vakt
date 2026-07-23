@@ -4,6 +4,19 @@ All notable user-facing changes to Vakt are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [Unreleased]
+
+Auf `main`, noch nicht getaggt (kommt mit dem nächsten Release). Sprint 131 Phase 3.
+
+### Added
+- **Schrittweise 2FA-Bestätigung für sicherheitskritische Aktionen.** Organisationen können in den Einstellungen verlangen, dass sensible Schreibaktionen (API-Schlüssel anlegen/widerrufen, Nutzerrollen ändern, Sicherheitseinstellungen) zusätzlich mit einem aktuellen Authenticator-Code bestätigt werden. Lesen und normale Nutzung bleiben unberührt; das Abschalten des Schalters bleibt jederzeit möglich (kein Selbst-Aussperren).
+- **MFA-Zurücksetzen für Admins (Break-Glass).** Ein Admin kann die 2FA eines ausgesperrten Mitglieds zurücksetzen, damit es sich neu einrichten kann — mit Audit-Eintrag und sofortiger Sitzungs-Invalidierung.
+- **Weitere Frameworks im Katalog** (Pro): DSGVO Art. 32 TOM, CIS Controls v8, KRITIS-DachG, BSI C5:2020.
+
+### Fixed
+- Der Framework-Aktivierungs-Endpoint lehnt unbekannte Framework-Namen jetzt sauber mit `404` ab, statt einen leeren Datensatz anzulegen.
+
+---
 ## [0.42.47] — 2026-07-23
 
 Härtungs-Release aus dem Codeaudit v4 (Sprint 131): born-broken Kernfunktionen, der Neukunden-Pfad und die Zugriffsentzug-Kette geschlossen. Der Großteil der Änderungen sind interne Korrekturen und Tests — hier stehen die user-sichtbaren.
