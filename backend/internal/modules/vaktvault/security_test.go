@@ -15,51 +15,15 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Org isolation — service-layer documentation + pure-unit tests
+// Org isolation — pure crypto/model unit tests below.
 //
-// The service routes all DB access through Repository methods that embed
-// org_id in every WHERE clause (e.g. `WHERE id = $1::uuid AND org_id = $2::uuid`).
-// Because those queries require a live PostgreSQL connection, the org-isolation
-// guarantee can only be *fully* verified in integration tests.
-//
-// The tests below cover the pure crypto and model surface — parts testable
-// without a DB. Each test that requires a real DB is marked with
-//   t.Skip("SECURITY GAP: can only be integration-tested")
-// so Vera's audit has a machine-readable record of every gap.
+// The DB-level org-isolation guarantee (GetSecret / SetSecret / GetProject all
+// embed `WHERE org_id = $N::uuid`) is now VERIFIED against a live Postgres by
+// TestCrossOrgIsolation_VaultAndHR in internal/integration_test/
+// org_isolation_real_test.go — S131-G6/R-L07 replaced the former
+// t.Skip("SECURITY GAP: ... can only be integration-tested") placeholders with
+// a real two-org cross-access test (org B cannot read or write org A's data).
 // ---------------------------------------------------------------------------
-
-// TestSecretOrgIsolation_Read_RequiresIntegrationTest documents that the
-// read path (GetSecret) enforces org_id in the SQL WHERE clause inside
-// repo.GetSecretRaw. A wrong orgID will return pgx.ErrNoRows.
-//
-// SECURITY: can only be integration-tested
-func TestSecretOrgIsolation_Read_RequiresIntegrationTest(t *testing.T) {
-	t.Skip("SECURITY GAP: org isolation for GetSecret is enforced via " +
-		"SQL WHERE org_id = $N::uuid in repo.GetSecretRaw — requires a " +
-		"live PostgreSQL connection to verify. Add to integration test suite.")
-}
-
-// TestSecretOrgIsolation_Write_RequiresIntegrationTest documents that the
-// write path (SetSecret / UpsertSecret) enforces org_id via the environment
-// look-up: getProjectIDForEnv uses `WHERE id = $1::uuid AND org_id = $2::uuid`,
-// so a wrong orgID causes the env lookup to fail before any write occurs.
-//
-// SECURITY: can only be integration-tested
-func TestSecretOrgIsolation_Write_RequiresIntegrationTest(t *testing.T) {
-	t.Skip("SECURITY GAP: org isolation for SetSecret is enforced via " +
-		"SQL WHERE org_id = $N::uuid in getProjectIDForEnv — requires a " +
-		"live PostgreSQL connection to verify. Add to integration test suite.")
-}
-
-// TestSecretOrgIsolation_GetProject_RequiresIntegrationTest documents the
-// project-level read (GetProject) which embeds org_id in the WHERE clause.
-//
-// SECURITY: can only be integration-tested
-func TestSecretOrgIsolation_GetProject_RequiresIntegrationTest(t *testing.T) {
-	t.Skip("SECURITY GAP: org isolation for GetProject is enforced via " +
-		"SQL WHERE org_id = $N::uuid — requires a live PostgreSQL connection. " +
-		"Add to integration test suite.")
-}
 
 // ---------------------------------------------------------------------------
 // Secret.Value omission — model surface (no DB required)

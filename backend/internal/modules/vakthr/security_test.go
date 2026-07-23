@@ -16,70 +16,25 @@ import (
 //
 // The HR service delegates all DB access to the Repository, which embeds
 // org_id in every WHERE clause (e.g. `WHERE org_id = $1::uuid AND id = $2::uuid`).
-// Because verifying this requires a live PostgreSQL connection, the
-// integration-layer gaps are documented with t.Skip. Pure-Go validation
-// (model invariants, input sanitisation, JSON shape) is tested directly.
+// Pure-Go validation (model invariants, input sanitisation, JSON shape) is
+// tested directly below.
+//
+// The DB-level org-isolation guarantee is now VERIFIED against a live Postgres
+// by TestCrossOrgIsolation_VaultAndHR in internal/integration_test/
+// org_isolation_real_test.go — S131-G6/R-L07 replaced the former
+// t.Skip("SECURITY GAP: ... can only be integration-tested") placeholders
+// (GetEmployee / UpdateEmployee / GetChecklistRun / UpdateChecklistRun) with a
+// real two-org cross-access test (org B cannot read or write org A's data).
 //
 // Security model:
-//   - Every employee record is scoped to an org_id — cross-org IDOR not
-//     possible without the correct orgID.
-//   - Every checklist run is scoped to an org_id — a user cannot complete
-//     another user's checklist run without the correct run ID AND org_id.
+//   - Every employee record and checklist run is scoped to an org_id — cross-org
+//     IDOR is not possible without the correct orgID.
 //   - Non-admin access control is enforced at the handler layer via RBAC
 //     middleware, not the service layer (handler reads Paseto claims).
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// 1. Checklist isolation — service-layer documentation
-// ---------------------------------------------------------------------------
-
-// TestChecklistRunIsolation_CompleteOtherUsersRun_RequiresIntegrationTest
-// documents that UpdateChecklistRun scopes its UPDATE to `org_id` and the
-// run `id` — a caller with a run ID from org-B cannot modify a run in org-A.
-//
-// SECURITY: can only be integration-tested
-func TestChecklistRunIsolation_CompleteOtherUsersRun_RequiresIntegrationTest(t *testing.T) {
-	t.Skip("SECURITY GAP: checklist run isolation enforced by " +
-		"SQL WHERE org_id = $1::uuid AND id = $2::uuid in repo.UpdateChecklistRun. " +
-		"A wrong orgID causes pgx.ErrNoRows — requires live PostgreSQL to verify. " +
-		"Add to integration test suite: attempt to complete runB using orgA context.")
-}
-
-// TestChecklistRunIsolation_ReadOtherUsersRun_RequiresIntegrationTest
-// documents that GetChecklistRun scopes the SELECT to org_id.
-//
-// SECURITY: can only be integration-tested
-func TestChecklistRunIsolation_ReadOtherUsersRun_RequiresIntegrationTest(t *testing.T) {
-	t.Skip("SECURITY GAP: GetChecklistRun uses WHERE org_id = $1::uuid AND id = $2::uuid — " +
-		"a wrong orgID returns no rows. Requires live PostgreSQL to verify. " +
-		"Add to integration test suite.")
-}
-
-// ---------------------------------------------------------------------------
-// 2. Employee record access — service-layer documentation
-// ---------------------------------------------------------------------------
-
-// TestEmployeeIsolation_CrossOrgRead_RequiresIntegrationTest documents that
-// GetEmployee is scoped to org_id so cross-org reads return nothing.
-//
-// SECURITY: can only be integration-tested
-func TestEmployeeIsolation_CrossOrgRead_RequiresIntegrationTest(t *testing.T) {
-	t.Skip("SECURITY GAP: GetEmployee uses WHERE org_id = $1::uuid AND id = $2::uuid — " +
-		"passing a wrong orgID returns pgx.ErrNoRows. Requires live PostgreSQL. " +
-		"Add to integration test suite: create employee in org-A, attempt read with org-B context.")
-}
-
-// TestEmployeeIsolation_CrossOrgUpdate_RequiresIntegrationTest documents that
-// UpdateEmployee is scoped to org_id.
-//
-// SECURITY: can only be integration-tested
-func TestEmployeeIsolation_CrossOrgUpdate_RequiresIntegrationTest(t *testing.T) {
-	t.Skip("SECURITY GAP: UpdateEmployee uses WHERE org_id = $1::uuid AND id = $2::uuid — " +
-		"passing a wrong orgID returns pgx.ErrNoRows. Requires live PostgreSQL.")
-}
-
-// ---------------------------------------------------------------------------
-// 3. Model invariants — pure-Go (no DB required)
+// Model invariants — pure-Go (no DB required)
 // ---------------------------------------------------------------------------
 
 // TestEmployee_StatusField_AllowedValues documents the valid status enum values
@@ -230,22 +185,12 @@ func TestStartChecklistRunInput_NoOrgIDField(t *testing.T) {
 		"StartChecklistRunInput must not accept org_id from the request body")
 }
 
-// ---------------------------------------------------------------------------
-// 6. Checklist template — org isolation documentation
-// ---------------------------------------------------------------------------
-
-// TestChecklistTemplate_OrgIsolation_RequiresIntegrationTest documents that
-// CreateChecklist, ListChecklists, and DeleteChecklist all scope to org_id.
-//
-// SECURITY: can only be integration-tested
-func TestChecklistTemplate_OrgIsolation_RequiresIntegrationTest(t *testing.T) {
-	t.Skip("SECURITY GAP: checklist template CRUD uses WHERE org_id = $1::uuid. " +
-		"A wrong orgID will return no rows / affect no rows. " +
-		"Requires live PostgreSQL to verify. Add to integration test suite.")
-}
+// Checklist template org-isolation (GetChecklist / ListChecklists) is verified
+// by TestCrossOrgIsolation_VaultAndHR (S131-G6/R-L07), replacing the former
+// t.Skip placeholder.
 
 // ---------------------------------------------------------------------------
-// 7. Employee notes — sensitive data in JSON
+// Employee notes — sensitive data in JSON
 // ---------------------------------------------------------------------------
 
 // TestEmployee_NotesField_OmittedWhenEmpty verifies that the notes field is
