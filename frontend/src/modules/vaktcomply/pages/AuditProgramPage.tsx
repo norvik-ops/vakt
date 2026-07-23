@@ -149,7 +149,11 @@ interface FindingForm {
 export default function AuditProgramPage() {
   const { t } = useTranslation()
   const { data: summary } = useAuditSummary()
-  const { data: audits = [], isLoading } = useAuditProgram()
+  // S131-D3 (D18-02): `?? []` (not the `= []` destructuring default) so a null
+  // response can never reach `audits.length`. The backend now returns [] at the
+  // root; this is defense-in-depth against the react-query null-vs-undefined trap.
+  const { data: auditsData, isLoading } = useAuditProgram()
+  const audits = auditsData ?? []
   const createMut = useCreateAudit()
   const completeMut = useCompleteAudit()
   const createFindingMut = useCreateFinding()

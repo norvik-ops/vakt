@@ -112,7 +112,11 @@ func (r *Repository) ListAuditProgramAudits(ctx context.Context, orgID string) (
 	}
 	defer rows.Close()
 
-	var audits []AuditProgramAudit
+	// S131-D3 (R-H26/D18-02): initialise to a non-nil empty slice so the JSON
+	// response is [] and never null on the empty-state — react-query's `= []`
+	// destructuring default catches undefined, NOT null, so a nil slice crashed
+	// AuditProgramPage (`audits.length` on null) for every new customer.
+	audits := []AuditProgramAudit{}
 	for rows.Next() {
 		a, err := scanAuditProgramAudit(rows)
 		if err != nil {

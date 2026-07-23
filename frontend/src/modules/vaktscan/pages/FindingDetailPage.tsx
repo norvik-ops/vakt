@@ -25,7 +25,7 @@ function EvidenceSuggestionBanner({ findingId }: { findingId: string }) {
   const { t } = useTranslation()
   const { data } = useAIInsights()
   const dismiss = useDismissInsight()
-  const suggestions = data?.items.filter(
+  const suggestions = data?.filter(
     (i) => i.type === 'evidence_suggestion' && i.finding_id === findingId
   ) ?? []
 

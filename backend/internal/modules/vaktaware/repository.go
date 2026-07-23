@@ -1120,7 +1120,10 @@ func (r *Repository) ListCampaignSummariesForReport(ctx context.Context, orgID s
 		return nil, fmt.Errorf("list campaign summaries: %w", err)
 	}
 	defer rows.Close()
-	var out []CampaignSummary
+	// S131-D3 (R-H27/D18-03): non-nil empty slice so TrainingMatrixReport.Campaigns
+	// serialises as [] not null — TrainingReportPage crashed on `report.campaigns.length`
+	// when no campaigns existed (the default report state for a new customer).
+	out := []CampaignSummary{}
 	for rows.Next() {
 		var cs CampaignSummary
 		var startedAt, completedAt pgtype.Timestamptz

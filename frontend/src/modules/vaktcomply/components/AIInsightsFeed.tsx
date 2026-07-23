@@ -22,7 +22,7 @@ export function AIInsightsFeed() {
   const dismiss = useDismissInsight()
   const navigate = useNavigate()
 
-  const items = data?.items ?? []
+  const items = data ?? []
 
   if (isLoading) return null
   if (items.length === 0) return null

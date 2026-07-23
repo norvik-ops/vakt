@@ -138,8 +138,9 @@ export default function TrainingReportPage() {
               </Card>
             )}
 
-            {/* Campaign table */}
-            {report && report.campaigns.length > 0 && (
+            {/* Campaign table — S131-D3 (D18-03): guard campaigns against a null
+                field (backend now returns [] at the root; this is defense-in-depth). */}
+            {report && (report.campaigns ?? []).length > 0 && (
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
@@ -158,7 +159,7 @@ export default function TrainingReportPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {report.campaigns.map((c) => (
+                      {(report.campaigns ?? []).map((c) => (
                         <TableRow key={c.id}>
                           <TableCell className="font-medium">{c.name}</TableCell>
                           <TableCell className="text-sm text-secondary">{formatDate(c.completed_at)}</TableCell>
@@ -172,7 +173,7 @@ export default function TrainingReportPage() {
               </Card>
             )}
 
-            {report && report.campaigns.length === 0 && (
+            {report && (report.campaigns ?? []).length === 0 && (
               <div className="text-center py-16 text-secondary text-sm">
                 {t('vaktaware.trainingReport.noCampaigns')}
               </div>
