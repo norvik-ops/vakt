@@ -135,7 +135,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	})
 
 	// Trust Center — public, no auth
-	trustcenter.Register(e, pool)
+	trustcenter.Register(api, pool)
 	log.Info().Msg("trust center routes registered")
 
 	// Early Redis init — used by pre-auth rate limiters (nis2/setup) via IPRateLimitRedis

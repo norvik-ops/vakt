@@ -38002,6 +38002,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/trust/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Public Trust Center page data (public — no authentication)
+         * @description Data behind an organisation's public Trust Center page, keyed by its `slug`.
+         *     S131-D4: mounted on a public group under /api/v1 (no auth, no CSRF) so Caddy
+         *     proxies it — the human-facing /trust/{slug} URL stays an SPA route that renders
+         *     the page and then fetches this. Returns 404 when the slug is unknown or the
+         *     Trust Center is disabled.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Trust center page data */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            org_name: string;
+                            description?: string;
+                            contact?: string;
+                            logo_url?: string;
+                            frameworks?: Record<string, never>[];
+                            certificates?: Record<string, never>[];
+                            public_policies?: Record<string, never>[];
+                            subprocessors_md?: string;
+                            show_frameworks: boolean;
+                            show_policies: boolean;
+                            show_certs: boolean;
+                            /** Format: date-time */
+                            published_at: string;
+                            powered_by: string;
+                        };
+                    };
+                };
+                /** @description Trust center not found or disabled */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/vaktvault/share/{token}": {
         parameters: {
             query?: never;

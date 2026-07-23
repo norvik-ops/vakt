@@ -31534,6 +31534,47 @@ paths:
         '422':
           description: Validation error, or more than 500 secrets (IMPORT_LIMIT_EXCEEDED)
 
+  /trust/{slug}:
+    get:
+      summary: Public Trust Center page data (public — no authentication)
+      description: |
+        Data behind an organisation's public Trust Center page, keyed by its `slug`.
+        S131-D4: mounted on a public group under /api/v1 (no auth, no CSRF) so Caddy
+        proxies it — the human-facing /trust/{slug} URL stays an SPA route that renders
+        the page and then fetches this. Returns 404 when the slug is unknown or the
+        Trust Center is disabled.
+      tags: [vaktcomply]
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Trust center page data
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [org_name, show_frameworks, show_policies, show_certs, published_at, powered_by]
+                properties:
+                  org_name: { type: string }
+                  description: { type: string }
+                  contact: { type: string }
+                  logo_url: { type: string }
+                  frameworks: { type: array, items: { type: object } }
+                  certificates: { type: array, items: { type: object } }
+                  public_policies: { type: array, items: { type: object } }
+                  subprocessors_md: { type: string }
+                  show_frameworks: { type: boolean }
+                  show_policies: { type: boolean }
+                  show_certs: { type: boolean }
+                  published_at: { type: string, format: date-time }
+                  powered_by: { type: string }
+        '404':
+          description: Trust center not found or disabled
+
   /vaktvault/share/{token}:
     get:
       summary: Redeem a one-time secret share link (public — no authentication)

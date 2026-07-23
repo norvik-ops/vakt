@@ -111,7 +111,7 @@ interface AnswerInput {
 // ---------------------------------------------------------------------------
 
 async function fetchAssessment(token: string): Promise<AssessmentResponse> {
-  const res = await fetch(`/supplier/${token}`, {
+  const res = await fetch(`/api/v1/vaktcomply/supplier/${token}`, {
     headers: { Accept: 'application/json' },
   })
   if (res.status === 410) {
@@ -124,7 +124,7 @@ async function fetchAssessment(token: string): Promise<AssessmentResponse> {
 }
 
 async function saveAnswers(token: string, answers: AnswerInput[]): Promise<void> {
-  const res = await fetch(`/supplier/${token}/save`, {
+  const res = await fetch(`/api/v1/vaktcomply/supplier/${token}/save`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ answers }),
@@ -134,7 +134,7 @@ async function saveAnswers(token: string, answers: AnswerInput[]): Promise<void>
 }
 
 async function submitAnswers(token: string, answers: AnswerInput[]): Promise<void> {
-  const res = await fetch(`/supplier/${token}/submit`, {
+  const res = await fetch(`/api/v1/vaktcomply/supplier/${token}/submit`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ answers }),
@@ -146,7 +146,7 @@ async function submitAnswers(token: string, answers: AnswerInput[]): Promise<voi
 async function uploadFile(token: string, file: File): Promise<string> {
   const form = new FormData()
   form.append('file', file)
-  const res = await fetch(`/supplier/${token}/upload`, {
+  const res = await fetch(`/api/v1/vaktcomply/supplier/${token}/upload`, {
     method: 'POST',
     body: form,
   })

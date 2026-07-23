@@ -15,6 +15,7 @@ import (
 
 	"github.com/matharnica/vakt/internal/modules/vaktaware"
 	"github.com/matharnica/vakt/internal/modules/vaktvault"
+	"github.com/matharnica/vakt/internal/shared/platform/trustcenter"
 )
 
 // passThroughMW is a no-op echo.MiddlewareFunc for wiring RegisterPublic in tests:
@@ -48,6 +49,9 @@ func TestPublicRoutesReachableWithoutToken(t *testing.T) {
 	// Mount exactly as cmd/api/routes.go does for the public groups — NO auth mw.
 	vaktaware.RegisterPublic(e.Group("/api/v1/vaktaware"), vaktaware.NewHandler(awareSvc), passThroughMW)
 	vaktvault.RegisterPublic(e.Group("/api/v1/vaktvault"), vaktvault.NewHandler(vaultSvc), passThroughMW)
+	// S131-D4 (R-H13/D18-06): the public Trust Center data route must live under
+	// /api/v1 (Caddy only proxies /api/*), reachable without a token.
+	trustcenter.Register(e.Group("/api/v1"), pool)
 
 	publicRoutes := []struct{ method, path string }{
 		{http.MethodGet, "/api/v1/vaktaware/track/sometoken"},     // open pixel
@@ -55,6 +59,7 @@ func TestPublicRoutesReachableWithoutToken(t *testing.T) {
 		{http.MethodPost, "/api/v1/vaktaware/t/sometoken/submit"}, // form submit
 		{http.MethodPost, "/api/v1/vaktaware/phish-report"},       // phish-report webhook
 		{http.MethodGet, "/api/v1/vaktvault/share/sometoken"},     // vault share link
+		{http.MethodGet, "/api/v1/trust/some-org-slug"},           // public trust center page data
 	}
 
 	for _, rt := range publicRoutes {
