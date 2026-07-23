@@ -154,3 +154,60 @@ func (s *Service) Revoke(ctx context.Context, orgID, userID, keyID string) error
 
 // ErrNotFound is returned when the key does not exist or does not belong to the caller.
 var ErrNotFound = fmt.Errorf("apikeys: key not found")
+
+// APIKeyWithOwner is an API key plus the email of the user who created it, for
+// the admin org-wide view (S131-D15-08).
+type APIKeyWithOwner struct {
+	APIKey
+	CreatedByEmail string `json:"created_by_email"`
+}
+
+// ListOrg returns every non-revoked API key in the org together with its owner's
+// email. S131-D15-08: the per-user List/Revoke are scoped to created_by, so an
+// admin could neither see nor revoke another user's key — a hole in the offboarding
+// story (a departed user's key stayed invisible and unrevocable outside the HR
+// offboarding flow). This admin view is org-scoped, NOT created_by-scoped.
+func (s *Service) ListOrg(ctx context.Context, orgID string) ([]APIKeyWithOwner, error) {
+	const q = `
+		SELECT ak.id, ak.name, ak.key_prefix, ak.scopes, ak.last_used_at, ak.last_used_ip,
+		       ak.expires_at, ak.created_at, ak.rotated_at, u.email
+		FROM api_keys ak
+		JOIN users u ON u.id = ak.created_by
+		WHERE ak.org_id = $1::uuid
+		  AND ak.revoked_at IS NULL
+		ORDER BY ak.created_at DESC`
+	rows, err := s.db.Query(ctx, q, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("apikeys: list org query failed: %w", err)
+	}
+	defer rows.Close()
+	out := []APIKeyWithOwner{}
+	for rows.Next() {
+		var k APIKeyWithOwner
+		if err := rows.Scan(&k.ID, &k.Name, &k.KeyPrefix, &k.Scopes, &k.LastUsedAt, &k.LastUsedIP,
+			&k.ExpiresAt, &k.CreatedAt, &k.RotatedAt, &k.CreatedByEmail); err != nil {
+			return nil, fmt.Errorf("apikeys: scan org key: %w", err)
+		}
+		out = append(out, k)
+	}
+	return out, rows.Err()
+}
+
+// RevokeOrg revokes any key in the org by id, regardless of who created it —
+// admin-only (S131-D15-08). Org-scoped so it can never touch another org's key.
+func (s *Service) RevokeOrg(ctx context.Context, orgID, keyID string) error {
+	const q = `
+		UPDATE api_keys
+		SET revoked_at = NOW()
+		WHERE id = $1::uuid
+		  AND org_id = $2::uuid
+		  AND revoked_at IS NULL`
+	tag, err := s.db.Exec(ctx, q, keyID, orgID)
+	if err != nil {
+		return fmt.Errorf("apikeys: revoke org failed: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}

@@ -26,6 +26,12 @@ func Register(g *echo.Group, db *pgxpool.Pool) {
 	keys.POST("", h.CreateKey, writeGate)
 	keys.GET("", h.ListKeys)
 	keys.DELETE("/:id", h.RevokeKey, writeGate)
+	// S131-D15-08: admin org-wide view + revoke of ANY user's key (per-user
+	// List/Revoke above are created_by-scoped, so an admin could not see or revoke
+	// a departed user's key outside the HR offboarding flow). Admin-only.
+	adminGate := auth.RequireRole("Admin")
+	keys.GET("/all", h.ListOrgKeys, adminGate)
+	keys.DELETE("/all/:id", h.RevokeOrgKey, adminGate)
 	// Sprint 20 S20-2: Key-Rotation mit 24-h-Grace-Period. Beide Keys
 	// (alter + neuer) sind während der Grace gültig — CI-Pipeline kann
 	// kontrolliert switchen ohne Down-Time.

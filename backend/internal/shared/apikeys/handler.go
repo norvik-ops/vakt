@@ -125,6 +125,46 @@ func (h *Handler) RevokeKey(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+// ListOrgKeys handles GET /api-keys/all — admin org-wide view of every user's
+// keys (S131-D15-08). Admin-gated at the route.
+func (h *Handler) ListOrgKeys(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	keys, err := h.service.ListOrg(c.Request().Context(), orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("list org api keys failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to list API keys",
+			"code":  "APIKEYS_LIST_ERROR",
+		})
+	}
+	// Typed wrapper (not map[string]any) to keep the untyped-interface ratchet flat.
+	return c.JSON(http.StatusOK, struct {
+		Data []APIKeyWithOwner `json:"data"`
+	}{Data: keys})
+}
+
+// RevokeOrgKey handles DELETE /api-keys/all/:id — admin revoke of any user's key
+// in the org (S131-D15-08). Admin-gated at the route.
+func (h *Handler) RevokeOrgKey(c echo.Context) error {
+	orgID, _ := c.Get("org_id").(string)
+	keyID := c.Param("id")
+	err := h.service.RevokeOrg(c.Request().Context(), orgID, keyID)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return c.JSON(http.StatusNotFound, map[string]string{
+				"error": "API key not found",
+				"code":  "APIKEYS_NOT_FOUND",
+			})
+		}
+		log.Error().Err(err).Str("org_id", orgID).Str("key_id", keyID).Msg("revoke org api key failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to revoke API key",
+			"code":  "APIKEYS_REVOKE_ERROR",
+		})
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
 // RotateKey handles POST /api-keys/:id/rotate.
 // Sprint 20 S20-2: rotates the key with a 24h grace-period where both
 // old + new hash are valid. Returns the new raw key (one-shot).
