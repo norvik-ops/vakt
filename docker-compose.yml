@@ -77,7 +77,17 @@ services:
       api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:2019/config/ >/dev/null 2>&1 || exit 1"]
+      # S131-E3 (R-M09): the old check hit Caddy's admin API on :2019, but the
+      # admin endpoint is not enabled in the Caddyfile → connection refused →
+      # the container was PERMANENTLY unhealthy on a fully working proxy, so
+      # `docker compose up --wait` never returned for a new customer. Check the
+      # serving capability instead: --spider on the HTTP port returns rc=0 when
+      # Caddy answers (a 308 HTTP→HTTPS redirect for a domain/localhost config,
+      # or a 200 proxied from /health for a plain :80 config) and rc≠0 only when
+      # Caddy is actually down. Works across every VAKT_DOMAIN config; busybox
+      # wget in caddy:2-alpine has no --no-check-certificate, so we deliberately
+      # do not follow the redirect to the self-signed HTTPS listener.
+      test: ["CMD-SHELL", "wget -q -T 3 --spider http://localhost/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
