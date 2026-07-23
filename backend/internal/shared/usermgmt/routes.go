@@ -26,6 +26,8 @@ func RegisterRoutes(adminGroup *echo.Group, publicGroup *echo.Group, svc *Servic
 	admin.GET("/users", h.ListUsers)
 	admin.PATCH("/users/:id/role", h.UpdateUserRole)
 	admin.DELETE("/users/:id", h.RemoveUser)
+	// S131-R-H23: MFA break-glass — admin clears a locked-out member's TOTP + recovery codes.
+	admin.POST("/users/:id/reset-mfa", h.ResetUserMFA)
 	admin.GET("/invitations", h.ListInvitations)
 	admin.POST("/invitations", h.CreateInvitation)
 	admin.DELETE("/invitations/:id", h.RevokeInvitation)

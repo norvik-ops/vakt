@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/smtp"
 
@@ -149,6 +150,40 @@ func (s *Service) RemoveUser(ctx context.Context, orgID, userID string) error {
 		if rErr := s.sessionRevoker.RevokeAllSessions(ctx, userID); rErr != nil {
 			_ = rErr // best-effort; user is already removed from org_members
 		}
+	}
+	return nil
+}
+
+// ErrUserNotInOrg is returned when a target user is not a member of the caller's org.
+var ErrUserNotInOrg = errors.New("user not found in organisation")
+
+// ResetUserMFA is the MFA break-glass (S131-R-H23): an admin clears a member's
+// TOTP secret and recovery codes so a user who lost BOTH their authenticator AND
+// their recovery codes can log in with their password and re-enrol. If the org
+// requires MFA, MFAEnforceMiddleware forces re-enrolment on the (exempt)
+// /auth/2fa/setup path. Org-scoped — an admin can only reset members of their own
+// org (verified before any delete). The user's sessions are revoked (+ pw_version
+// bumped via the revoker) so a still-logged-in user cannot skip the re-enrolment.
+func (s *Service) ResetUserMFA(ctx context.Context, orgID, userID string) error {
+	var member bool
+	if err := s.db.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM org_members WHERE org_id = $1::uuid AND user_id = $2::uuid)`,
+		orgID, userID).Scan(&member); err != nil {
+		return fmt.Errorf("reset mfa: membership check: %w", err)
+	}
+	if !member {
+		return ErrUserNotInOrg
+	}
+	// idempotent: break-glass reset is delete-if-exists — a user with no TOTP (0 rows) is success, not not-found.
+	if _, err := s.db.Exec(ctx, `DELETE FROM totp_secrets WHERE user_id = $1::uuid`, userID); err != nil {
+		return fmt.Errorf("reset mfa: delete totp: %w", err)
+	}
+	// idempotent: same — recovery codes may already be absent; 0 rows is success.
+	if _, err := s.db.Exec(ctx, `DELETE FROM auth_recovery_codes WHERE user_id = $1::uuid`, userID); err != nil {
+		return fmt.Errorf("reset mfa: delete recovery codes: %w", err)
+	}
+	if s.sessionRevoker != nil {
+		_ = s.sessionRevoker.RevokeAllSessions(ctx, userID)
 	}
 	return nil
 }

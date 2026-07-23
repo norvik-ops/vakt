@@ -16741,6 +16741,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/users/{id}/reset-mfa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * MFA break-glass — clear a member's TOTP + recovery codes (admin) — S131-R-H23
+         * @description Admin-only. Clears the target member's TOTP secret and recovery codes so a
+         *     user who lost BOTH their authenticator and their recovery codes can log in
+         *     with their password and re-enrol. Org-scoped: an admin can only reset members
+         *     of their own organisation. The user's sessions are revoked. Audited.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description MFA reset — the member can re-enrol at next login */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Admin role required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description User not found in organisation */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/users/{id}/role": {
         parameters: {
             query?: never;

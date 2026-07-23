@@ -15349,6 +15349,33 @@ paths:
         '403':
           description: Admin role required
 
+  /admin/users/{id}/reset-mfa:
+    post:
+      summary: MFA break-glass — clear a member's TOTP + recovery codes (admin) — S131-R-H23
+      description: |
+        Admin-only. Clears the target member's TOTP secret and recovery codes so a
+        user who lost BOTH their authenticator and their recovery codes can log in
+        with their password and re-enrol. Org-scoped: an admin can only reset members
+        of their own organisation. The user's sessions are revoked. Audited.
+      tags:
+      - admin
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: MFA reset — the member can re-enrol at next login
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin role required
+        '404':
+          description: User not found in organisation
+
   /admin/users/{id}/role:
     patch:
       summary: Change a user's role (revokes their sessions)

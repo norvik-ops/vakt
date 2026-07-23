@@ -1,11 +1,14 @@
 package usermgmt
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/audit"
 )
 
 // Handler handles HTTP requests for user-management endpoints.
@@ -81,6 +84,39 @@ func (h *Handler) RemoveUser(c echo.Context) error {
 		log.Warn().Err(err).Str("user_id", userID).Msg("remove user")
 		return errResp(c, http.StatusBadRequest, "Benutzer konnte nicht entfernt werden", "USERMGMT_REMOVE_FAILED")
 	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+// ResetUserMFA handles POST /admin/users/:id/reset-mfa — the MFA break-glass
+// (S131-R-H23). Admin-only; clears the target member's TOTP + recovery codes so a
+// user locked out of MFA (lost authenticator AND recovery codes) can re-enrol.
+func (h *Handler) ResetUserMFA(c echo.Context) error {
+	orgID := contextOrgID(c)
+	callerID := contextUserID(c)
+	callerEmail, _ := c.Get("user_email").(string)
+	userID := c.Param("id")
+	if userID == "" {
+		return errResp(c, http.StatusBadRequest, "user id is required", "USERMGMT_BAD_REQUEST")
+	}
+
+	if err := h.svc.ResetUserMFA(c.Request().Context(), orgID, userID); err != nil {
+		if errors.Is(err, ErrUserNotInOrg) {
+			return errResp(c, http.StatusNotFound, "user not found in organisation", "USERMGMT_NOT_FOUND")
+		}
+		log.Warn().Err(err).Str("user_id", userID).Msg("reset user mfa")
+		return errResp(c, http.StatusInternalServerError, "MFA-Reset fehlgeschlagen", "USERMGMT_MFA_RESET_FAILED")
+	}
+
+	// Security-sensitive break-glass — record who reset whose MFA.
+	audit.Write(c.Request().Context(), h.svc.db, audit.WriteEntry{
+		OrgID:        orgID,
+		UserID:       callerID,
+		UserEmail:    callerEmail,
+		Action:       "reset_mfa",
+		ResourceType: "auth/mfa",
+		ResourceID:   userID,
+		IPAddress:    c.RealIP(),
+	})
 	return c.NoContent(http.StatusNoContent)
 }
 
