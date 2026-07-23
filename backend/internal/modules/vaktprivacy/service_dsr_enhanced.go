@@ -108,6 +108,10 @@ func (s *Service) ResolveDSR(ctx context.Context, orgID, id, resolvedByUserID st
 		DueDate                                                       *string
 		ReceivedAt, CreatedAt, UpdatedAt                              time.Time
 		CompletedAt, ExtensionDueAt                                   *time.Time
+		// S131-G3/D27-04: read back the two fields this UPDATE just wrote, so the
+		// resolve/extend response honours them instead of returning them empty.
+		ResolvedBy      *string
+		ExtensionReason string
 	}
 	err := s.db.QueryRow(ctx, `
 		UPDATE po_dsr SET
@@ -119,13 +123,16 @@ func (s *Service) ResolveDSR(ctx context.Context, orgID, id, resolvedByUserID st
 			completed_at     = CASE WHEN $1 IN ('completed','rejected','extended') THEN NOW() ELSE completed_at END,
 			updated_at       = NOW()
 		WHERE org_id = $6 AND id = $7
-		RETURNING id, org_id, requester_name, requester_email, type, status, notes,
+		RETURNING id, org_id, requester_name, requester_email, type, status,
+		          COALESCE(notes, ''),
 		          to_char(due_date, 'YYYY-MM-DD'), received_at, completed_at,
-		          extension_due_at, created_at, updated_at`,
+		          extension_due_at, created_at, updated_at,
+		          resolved_by::text, COALESCE(extension_reason, '')`,
 		newStatus, in.ResolutionNotes, in.ExtensionReason, extDueAt, resolvedByUserID, orgID, id,
 	).Scan(
 		&row.ID, &row.OrgID, &row.RequesterName, &row.RequesterEmail, &row.Type, &row.Status, &row.Notes,
 		&row.DueDate, &row.ReceivedAt, &row.CompletedAt, &row.ExtensionDueAt, &row.CreatedAt, &row.UpdatedAt,
+		&row.ResolvedBy, &row.ExtensionReason,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("resolve dsr: %w", err)
@@ -138,6 +145,7 @@ func (s *Service) ResolveDSR(ctx context.Context, orgID, id, resolvedByUserID st
 		DueDate: row.DueDate, ReceivedAt: row.ReceivedAt, CompletedAt: row.CompletedAt,
 		ExtensionDueAt: row.ExtensionDueAt,
 		CreatedAt:      row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		ResolvedBy: row.ResolvedBy, ExtensionReason: row.ExtensionReason,
 	}
 	return dsr, nil
 }

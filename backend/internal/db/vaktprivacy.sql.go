@@ -821,7 +821,7 @@ const getPPDSR = `-- name: GetPPDSR :one
 SELECT id, org_id, requester_name, requester_email, type, description,
        status, due_date, received_at, completed_at, notes,
        token_hash, source, portal_locale, submitted_ip, verify_token_hash,
-       created_at, updated_at
+       created_at, updated_at, resolved_by::text, extension_reason
 FROM po_dsr
 WHERE id = $1 AND org_id = $2
 `
@@ -850,6 +850,8 @@ type GetPPDSRRow struct {
 	VerifyTokenHash pgtype.Text        `json:"verify_token_hash"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	ResolvedBy      pgtype.Text        `json:"resolved_by"`
+	ExtensionReason pgtype.Text        `json:"extension_reason"`
 }
 
 func (q *Queries) GetPPDSR(ctx context.Context, arg GetPPDSRParams) (GetPPDSRRow, error) {
@@ -874,6 +876,8 @@ func (q *Queries) GetPPDSR(ctx context.Context, arg GetPPDSRParams) (GetPPDSRRow
 		&i.VerifyTokenHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ResolvedBy,
+		&i.ExtensionReason,
 	)
 	return i, err
 }

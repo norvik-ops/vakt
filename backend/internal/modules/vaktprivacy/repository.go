@@ -657,24 +657,39 @@ type dsrFields struct {
 	Description, Notes                                     pgtype.Text
 	DueDate                                                pgtype.Date
 	ReceivedAt, CompletedAt, CreatedAt, UpdatedAt          pgtype.Timestamptz
+	// S131-G3/R-L03: resolved_by + extension_reason were written by the resolve/extend
+	// path but never selected in any read → who resolved/extended a DSR was not
+	// retrievable via the API. Zero-value on reads that do not select them.
+	ResolvedBy, ExtensionReason pgtype.Text
 }
 
 func dsrFromFields(f dsrFields) DSR {
 	return DSR{
-		ID:             f.ID,
-		OrgID:          f.OrgID,
-		RequesterName:  f.RequesterName,
-		RequesterEmail: f.RequesterEmail,
-		Type:           f.Type,
-		Description:    textOrEmpty(f.Description),
-		Status:         f.Status,
-		DueDate:        dateOrYMD(f.DueDate),
-		ReceivedAt:     tsToTime(f.ReceivedAt),
-		CompletedAt:    tsToTimePtr(f.CompletedAt),
-		Notes:          textOrEmpty(f.Notes),
-		CreatedAt:      tsToTime(f.CreatedAt),
-		UpdatedAt:      tsToTime(f.UpdatedAt),
+		ID:              f.ID,
+		OrgID:           f.OrgID,
+		RequesterName:   f.RequesterName,
+		RequesterEmail:  f.RequesterEmail,
+		Type:            f.Type,
+		Description:     textOrEmpty(f.Description),
+		Status:          f.Status,
+		DueDate:         dateOrYMD(f.DueDate),
+		ReceivedAt:      tsToTime(f.ReceivedAt),
+		CompletedAt:     tsToTimePtr(f.CompletedAt),
+		Notes:           textOrEmpty(f.Notes),
+		CreatedAt:       tsToTime(f.CreatedAt),
+		UpdatedAt:       tsToTime(f.UpdatedAt),
+		ResolvedBy:      textPtr(f.ResolvedBy),
+		ExtensionReason: textOrEmpty(f.ExtensionReason),
 	}
+}
+
+// textPtr renders a NULLable pgtype.Text as *string, nil when NULL or empty.
+func textPtr(t pgtype.Text) *string {
+	if !t.Valid || t.String == "" {
+		return nil
+	}
+	s := t.String
+	return &s
 }
 
 // dateOrYMD renders a NULLable pgtype.Date as *string in YYYY-MM-DD format —
@@ -689,23 +704,34 @@ func dateOrYMD(d pgtype.Date) *string {
 }
 
 // ListDSRs returns all DSRs for the given organisation, newest first.
+//
+// S131-G3/D27-04: raw read (not the generated ListPPDSRs) so the offset-mode
+// list of GET /vaktprivacy/dsr returns the same shape as the cursor mode —
+// including resolved_by/extension_reason. Otherwise the two modes of the same
+// endpoint would disagree on which fields are present.
 func (r *Repository) ListDSRs(ctx context.Context, orgID string) ([]DSR, error) {
-	rows, err := r.q.ListPPDSRs(ctx, orgID)
+	rows, err := r.db.Query(ctx,
+		`SELECT id, org_id, requester_name, requester_email, type, description,
+		        status, due_date, received_at, completed_at, notes,
+		        created_at, updated_at, resolved_by::text, extension_reason
+		 FROM po_dsr
+		 WHERE org_id = $1
+		 ORDER BY received_at DESC`, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("list dsrs: %w", err)
 	}
-	out := make([]DSR, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, dsrFromFields(dsrFields{
-			ID: row.ID, OrgID: row.OrgID,
-			RequesterName: row.RequesterName, RequesterEmail: row.RequesterEmail,
-			Type: row.Type, Description: row.Description, Status: row.Status,
-			DueDate: row.DueDate, ReceivedAt: row.ReceivedAt,
-			CompletedAt: row.CompletedAt, Notes: row.Notes,
-			CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
-		}))
+	defer rows.Close()
+	out := []DSR{}
+	for rows.Next() {
+		var f dsrFields
+		if err := rows.Scan(&f.ID, &f.OrgID, &f.RequesterName, &f.RequesterEmail, &f.Type, &f.Description,
+			&f.Status, &f.DueDate, &f.ReceivedAt, &f.CompletedAt, &f.Notes,
+			&f.CreatedAt, &f.UpdatedAt, &f.ResolvedBy, &f.ExtensionReason); err != nil {
+			return nil, fmt.Errorf("scan dsr row: %w", err)
+		}
+		out = append(out, dsrFromFields(f))
 	}
-	return out, nil
+	return out, rows.Err()
 }
 
 // CreateDSR inserts a new data subject request and automatically sets due_date
@@ -742,25 +768,19 @@ func (r *Repository) UpdateDSR(ctx context.Context, orgID, id string, in UpdateD
 	if in.Status == "completed" || in.Status == "rejected" {
 		completedAt = pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true}
 	}
-	row, err := r.q.UpdatePPDSR(ctx, db.UpdatePPDSRParams{
+	if _, err := r.q.UpdatePPDSR(ctx, db.UpdatePPDSRParams{
 		ID:          id,
 		OrgID:       orgID,
 		Status:      in.Status,
 		Notes:       optText(in.Notes),
 		CompletedAt: completedAt,
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, fmt.Errorf("update dsr %s: %w", id, err)
 	}
-	d := dsrFromFields(dsrFields{
-		ID: row.ID, OrgID: row.OrgID,
-		RequesterName: row.RequesterName, RequesterEmail: row.RequesterEmail,
-		Type: row.Type, Description: row.Description, Status: row.Status,
-		DueDate: row.DueDate, ReceivedAt: row.ReceivedAt,
-		CompletedAt: row.CompletedAt, Notes: row.Notes,
-		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
-	})
-	return &d, nil
+	// S131-G3/D27-04: NC-aware-analog re-read so the generic update response carries
+	// resolved_by/extension_reason (the generated UpdatePPDSR RETURNING omits them) —
+	// symmetric with UpdateCAPA→GetCAPA, so PATCH and GET can never disagree on shape.
+	return r.GetDSR(ctx, orgID, id)
 }
 
 // DeleteDSR permanently removes a DSR record. Callers should only invoke this
@@ -799,6 +819,7 @@ func (r *Repository) GetDSR(ctx context.Context, orgID, id string) (*DSR, error)
 		DueDate: row.DueDate, ReceivedAt: row.ReceivedAt,
 		CompletedAt: row.CompletedAt, Notes: row.Notes,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		ResolvedBy: row.ResolvedBy, ExtensionReason: row.ExtensionReason,
 	})
 	return &d, nil
 }
@@ -1108,7 +1129,7 @@ func (r *Repository) ListDSRsCursor(ctx context.Context, orgID string, cursorID 
 	args := []any{orgID}
 	q := `SELECT id, org_id, requester_name, requester_email, type, description,
 	             status, due_date, received_at, completed_at, notes,
-	             created_at, updated_at
+	             created_at, updated_at, resolved_by::text, extension_reason
 	      FROM po_dsr
 	      WHERE org_id = $1`
 	if !cursorTS.IsZero() {
@@ -1127,7 +1148,7 @@ func (r *Repository) ListDSRsCursor(ctx context.Context, orgID string, cursorID 
 		var f dsrFields
 		if err := rows.Scan(&f.ID, &f.OrgID, &f.RequesterName, &f.RequesterEmail, &f.Type, &f.Description,
 			&f.Status, &f.DueDate, &f.ReceivedAt, &f.CompletedAt, &f.Notes,
-			&f.CreatedAt, &f.UpdatedAt); err != nil {
+			&f.CreatedAt, &f.UpdatedAt, &f.ResolvedBy, &f.ExtensionReason); err != nil {
 			return nil, fmt.Errorf("scan dsr cursor row: %w", err)
 		}
 		out = append(out, dsrFromFields(f))

@@ -301,7 +301,7 @@ LIMIT 500;
 SELECT id, org_id, requester_name, requester_email, type, description,
        status, due_date, received_at, completed_at, notes,
        token_hash, source, portal_locale, submitted_ip, verify_token_hash,
-       created_at, updated_at
+       created_at, updated_at, resolved_by::text, extension_reason
 FROM po_dsr
 WHERE id = $1 AND org_id = $2;
 
