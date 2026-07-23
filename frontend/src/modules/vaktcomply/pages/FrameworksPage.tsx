@@ -14,6 +14,7 @@ import { useFrameworks, useEnableFramework, useDeleteFramework, useSwitchDORAVar
 import { FrameworkSetupWizard } from '../components/FrameworkSetupWizard'
 import type { Framework } from '../types'
 import { formatLocale } from '../../../shared/utils/locale'
+import { downloadBlob } from '../../../shared/utils/downloadBlob'
 
 // Pre-defined compliance frameworks users can enable with one click
 const FRAMEWORK_CATALOGUE: Array<{
@@ -224,20 +225,12 @@ export default function FrameworksPage() {
   const enabledKeys = new Set((frameworks ?? []).map((f) => f.name.split(' ')[0].toUpperCase()))
 
   function handleExport() {
-    void fetch('/api/v1/vaktcomply/export/audit-package', {
-      credentials: 'include',
-    })
-      .then((r) => r.blob())
-      .then((blob) => {
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `audit-paket-${new Date().toISOString().slice(0, 10)}.zip`
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        URL.revokeObjectURL(url)
-      })
+    // S131-D1 (D18-04): downloadBlob checks res.ok before saving — otherwise a
+    // 500 error body was downloaded as a corrupt .zip with no error shown.
+    void downloadBlob(
+      '/api/v1/vaktcomply/export/audit-package',
+      `audit-paket-${new Date().toISOString().slice(0, 10)}.zip`,
+    )
   }
 
   function handleEnable(key: string) {

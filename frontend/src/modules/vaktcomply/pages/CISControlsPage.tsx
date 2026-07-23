@@ -19,6 +19,7 @@ import { PageHeader } from '../../../shared/components/PageHeader'
 import { cn } from '../../../lib/utils'
 import { useFrameworks, useFrameworkControls } from '../hooks/useFrameworks'
 import type { Control } from '../types'
+import { downloadBlob } from '../../../shared/utils/downloadBlob'
 
 // ── Implementation Group filter ───────────────────────────────────────────────
 
@@ -293,18 +294,8 @@ export default function CISControlsPage() {
   function handleExportPDF() {
     if (!frameworkId) return
     const url = `/api/v1/vaktcomply/frameworks/${frameworkId}/export-pdf`
-    void fetch(url, { credentials: 'include' })
-      .then((r) => r.blob())
-      .then((blob) => {
-        const objectUrl = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = objectUrl
-        a.download = `cis-controls-readiness-${new Date().toISOString().slice(0, 10)}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        URL.revokeObjectURL(objectUrl)
-      })
+    // S131-D1: downloadBlob checks res.ok before saving.
+    void downloadBlob(url, `cis-controls-readiness-${new Date().toISOString().slice(0, 10)}.pdf`)
   }
 
   return (

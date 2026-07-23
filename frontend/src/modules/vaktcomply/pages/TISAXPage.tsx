@@ -28,6 +28,7 @@ import { apiFetch } from '../../../api/client'
 import { ProGate } from '../../../shared/components/ProGate'
 import type { Control } from '../types'
 import { maturityLabel, maturityColor } from '../utils/tisax'
+import { downloadBlob } from '../../../shared/utils/downloadBlob'
 
 // ── Protection level types ────────────────────────────────────────────────────
 
@@ -122,19 +123,8 @@ export default function TISAXPage() {
 
   function handleExportReport() {
     const url = `/api/v1/vaktcomply/frameworks/${frameworkId}/tisax-report-pdf?protection_level=${protectionLevel}&assessment_level=${assessmentLevel}`
-    // Use fetch with credentials cookie and trigger browser download
-    void fetch(url, { credentials: 'include' })
-      .then((r) => r.blob())
-      .then((blob) => {
-        const objectUrl = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = objectUrl
-        a.download = `tisax-bereitschaftsbericht-${new Date().toISOString().slice(0, 10)}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        URL.revokeObjectURL(objectUrl)
-      })
+    // S131-D1: downloadBlob checks res.ok before saving (no error-body-as-file).
+    void downloadBlob(url, `tisax-bereitschaftsbericht-${new Date().toISOString().slice(0, 10)}.pdf`)
   }
 
   const { data: controls, isLoading, isError, error } = useQuery<Control[]>({
