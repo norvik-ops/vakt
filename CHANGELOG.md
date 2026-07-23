@@ -4,6 +4,41 @@ All notable user-facing changes to Vakt are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [0.42.47] — 2026-07-23
+
+Härtungs-Release aus dem Codeaudit v4 (Sprint 131): born-broken Kernfunktionen, der Neukunden-Pfad und die Zugriffsentzug-Kette geschlossen. Der Großteil der Änderungen sind interne Korrekturen und Tests — hier stehen die user-sichtbaren.
+
+### Fixed
+
+- **Drei Seiten crashten in eine Fehlerseite und sind wieder benutzbar.** Die Audit-Programm- und die Trainings-Report-Seite crashten im **Leerzustand** — also für jeden neuen Kunden, bis der erste Datensatz existierte; die Fund-Detailseite crashte bei jedem Öffnen. Ursache war jeweils eine leere Liste, die als `null` statt `[]` ankam. Die Handler liefern jetzt `[]`, und die Seiten sind zusätzlich gegen den Fall gehärtet.
+
+- **Der Audit-Paket-Export lädt keine getarnte Fehlermeldung mehr herunter.** Bei einem Serverfehler wurde die Fehlerantwort als `audit-paket-<datum>.zip` gespeichert — eine als ZIP getarnte JSON-Fehlermeldung, ohne jede Warnung; ein Nutzer hätte Müll beim Auditor einreichen können. Der Download prüft jetzt die Antwort und zeigt bei einem Fehler eine Meldung, statt eine Datei zu speichern.
+
+- **Trust Center und Lieferanten-Portal sind wieder erreichbar.** Beide öffentlichen Seiten zeigten hinter dem Reverse Proxy immer „nicht gefunden" bzw. konnten den Fragebogen nicht laden, weil ihre Daten-Route am Proxy vorbeilief. Beide sind jetzt korrekt unter `/api/v1` geroutet.
+
+- **`docker compose up --wait` kehrt bei einer frischen Installation wieder zurück.** Der Caddy-Container meldete sich bei voll funktionierendem Proxy dauerhaft als „unhealthy" (der Healthcheck fragte eine nicht aktivierte Admin-Schnittstelle ab), sodass der Start-Befehl nie zurückkam. Der Healthcheck prüft jetzt die tatsächliche Proxy-Fähigkeit.
+
+- **Der lokale KI-Berater funktioniert auf einer frischen Installation.** Das Feature „Local AI" war auf jeder Neuinstallation tot — das Modell konnte mangels ausgehender Verbindung nicht geladen werden, und der Fehler wurde als „gesund" gemeldet. Jetzt gibt es einen kontrollierten Egress für den Modell-Pull, und `/health` spiegelt die echte KI-Verfügbarkeit.
+
+- **NC-/Wirksamkeits-Felder an Korrekturmaßnahmen und „bearbeitet von"/„Fristverlängerung" an Betroffenenanfragen bleiben nach dem Speichern erhalten.** Sie wurden geschrieben, aber von keinem Read zurückgelesen — nach dem Speichern waren sie in der Oberfläche wieder leer.
+
+- **ISO 27017 und ISO 27018 sind im Framework-Katalog aktivierbar.** Beide (Pro) existierten serverseitig, hatten aber keinen Aktivieren-Knopf.
+
+- **Zwei ins Leere führende UI-Aktionen korrigiert.** Der „Board-Bericht"-Eintrag der globalen Suche und der „Vorlage verwenden"-Knopf für DPIA/AVV-Vorlagen leiteten still auf eine Übersichtsseite um und verwarfen die Absicht.
+
+- **Weitere Korrekturen:** Cloud-Collector melden echten statt Phantom-Erfolg, Kampagnen-Versand-Vorlagen und OpenVAS-Scan-Status korrigiert, eine fehlerhaft geformte ID in der URL gibt jetzt `400` statt `500`.
+
+### Changed / Security
+
+- **Zugriffsentzug greift sofort.** Ein Rollen-Downgrade, das Entfernen eines Nutzers, eine SCIM-Deprovisionierung oder eine HR-Kündigung invalidiert das Access-Token des Nutzers jetzt **sofort** — vorher galt das zustandslose Token bis zu einer Stunde weiter. Zusätzlich können Administratoren die API-Keys jedes Nutzers ihrer Organisation sehen und widerrufen.
+
+- **Die globale Suche respektiert die organisationsweite MFA-Pflicht** — sie lief bisher an der MFA-Durchsetzung vorbei, die jede andere authentifizierte Route erzwingt.
+
+- **Acht Endpunkte melden einen Fehler ehrlich statt still einen Erfolg.** Sie gaben `2xx` für eine Aktion ohne Wirkung zurück — u. a. lieferte die NIS2-Meldepflicht-Bewertung eine vollständige Bewertung für einen nicht existierenden Vorfall. Sie geben jetzt `404`.
+
+- **Rechnungen: die `gross`-Backfill-Absicherung aus Migration 244 nachgezogen** (Migration 246, idempotent).
+
+---
 ## [0.42.46] — 2026-07-19
 
 ### Added
