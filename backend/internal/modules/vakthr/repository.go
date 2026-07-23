@@ -405,13 +405,37 @@ func (r *Repository) ListRunEvents(ctx context.Context, orgID, runID string) ([]
 	return out, nil
 }
 
+// PlatformUserIDByEmail resolves the platform user id for an employee email
+// within the org, scoped through org_members. Returns (id, true, nil) when a
+// member exists, ("", false, nil) when there is no platform account for that
+// email in this org (e.g. an HR-only record). Used on termination to drive the
+// full session+token revoke BEFORE DisableUser removes the org_members row.
+func (r *Repository) PlatformUserIDByEmail(ctx context.Context, orgID, email string) (string, bool, error) {
+	var id string
+	err := r.db.QueryRow(ctx,
+		`SELECT u.id::text
+		   FROM users u
+		   JOIN org_members om ON om.user_id = u.id
+		  WHERE om.org_id = $1::uuid AND u.email = $2`,
+		orgID, email).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("resolve platform user by email: %w", err)
+	}
+	return id, true, nil
+}
+
 // RevokeUserSessions revokes all active sessions for the platform user
 // matching the given email within the org.
 func (r *Repository) RevokeUserSessions(ctx context.Context, orgID, email string) error {
 	return r.q.HRRevokeUserSessions(ctx, db.HRRevokeUserSessionsParams{OrgID: orgID, Email: email})
 }
 
-// DisableUser sets the platform user's status to 'disabled'.
+// DisableUser removes the platform user's membership in this org (DELETE FROM
+// org_members) — the RBAC system reads org_members, so this revokes org-scoped
+// authorization. The global account and other orgs are untouched (multi-org).
 func (r *Repository) DisableUser(ctx context.Context, orgID, email string) error {
 	return r.q.HRDisableUser(ctx, db.HRDisableUserParams{OrgID: orgID, Email: email})
 }

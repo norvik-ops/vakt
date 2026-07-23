@@ -185,6 +185,14 @@ func (s *Service) UpdateContractor(ctx context.Context, orgID, id string, in Upd
 	); err != nil {
 		return nil, fmt.Errorf("update contractor: %w", err)
 	}
+
+	// S131-C1 (R-H21): if a contractor with a platform login is terminated, cut
+	// their access too. revokeUserAccess resolves the platform user by email and
+	// no-ops (refresh-only fallback) for the common case of an account-less
+	// contractor, so this is safe and cheap.
+	if c.Status == "terminated" && c.Email != "" {
+		s.revokeUserAccess(ctx, orgID, c.Email)
+	}
 	return &c, nil
 }
 

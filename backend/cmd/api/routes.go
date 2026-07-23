@@ -572,7 +572,8 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	if cfg.IsModuleEnabled("vakthr") {
 		hrSvc := vakthr.NewService(vakthr.NewRepository(pool)).
 			WithEvidenceWriter(hrEvidence).
-			WithAccessReviewTrigger(hrAccessReview)
+			WithAccessReviewTrigger(hrAccessReview).
+			WithSessionRevoker(authSvc) // S131-C1: offboarding must kill the access token (pw_version), not just refresh sessions
 		hrHandler = vakthr.NewHandler(hrSvc)
 		vakthr.Register(protected.Group("/vakthr", auth.RequireModuleAccess(pool, "vakthr", rdb)), hrHandler)
 		log.Info().Msg("vakthr routes registered")

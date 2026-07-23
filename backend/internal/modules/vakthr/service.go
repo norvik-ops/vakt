@@ -27,10 +27,23 @@ type Actor struct {
 
 // Service handles HR business logic.
 type Service struct {
-	repo         *Repository
-	db           *pgxpool.Pool
-	evidence     EvidenceWriter
-	accessReview AccessReviewTrigger
+	repo           *Repository
+	db             *pgxpool.Pool
+	evidence       EvidenceWriter
+	accessReview   AccessReviewTrigger
+	sessionRevoker SessionRevoker
+}
+
+// SessionRevoker fully revokes a platform user's access: it deletes the refresh
+// sessions AND bumps pw_version so the stateless Paseto access token is rejected
+// on the next request. Satisfied by *auth.Service.RevokeAllSessions.
+//
+// S131-C1 (R-H21): without this, HR offboarding deleted the refresh sessions but
+// left the terminated employee's access token valid for up to the 1h TTL — vakthr's
+// core promise ("audit-ready evidence that access revocation occurred") was false
+// for that window.
+type SessionRevoker interface {
+	RevokeAllSessions(ctx context.Context, userID string) error
 }
 
 // audit is the single point where the HR service writes audit-log entries.
@@ -68,6 +81,15 @@ func (s *Service) WithEvidenceWriter(w EvidenceWriter) *Service {
 	} else {
 		s.evidence = w
 	}
+	return s
+}
+
+// WithSessionRevoker injects the auth session revoker used on termination so the
+// offboarded user's access token dies immediately (pw_version bump), not just
+// their refresh sessions. When nil, revokeUserAccess falls back to the
+// refresh-only repo query (degraded but non-fatal).
+func (s *Service) WithSessionRevoker(sr SessionRevoker) *Service {
+	s.sessionRevoker = sr
 	return s
 }
 
@@ -126,19 +148,53 @@ func (s *Service) UpdateEmployee(ctx context.Context, actor Actor, id string, in
 	return emp, nil
 }
 
+// Termination paths that revoke platform access (pw_version bump + session
+// delete via revokeUserAccess): UpdateEmployee(status=terminated) and
+// UpdateContractor(status=terminated).
+//
+// S131-C1 — gefunden, bewusst NICHT gebaut (Produktentscheidung, P13): the
+// Personio `employee.departed` webhook (TriggerPersonioOffboarding) and
+// StartOffboarding set status to 'offboarding', NOT 'terminated' — they start the
+// offboarding *process* (a checklist for the admin), which is not the same as an
+// immediate access cut. Whether an automated Personio departure should revoke
+// access instantly (security-first) or only when offboarding completes to
+// 'terminated' (process-first) is a product decision, not a wiring bug. The
+// pw_version revoke fires on the 'terminated' transition regardless of how it is
+// reached. Documented so the chain stays visible.
+
 // revokeUserAccess revokes all active sessions and API keys for the platform user
 // matching the given email within the org. Errors are logged but do not fail the call —
 // the HR record update is already committed and must not be rolled back due to a
 // transient auth-DB issue.
 func (s *Service) revokeUserAccess(ctx context.Context, orgID, email string) {
-	if err := s.repo.RevokeUserSessions(ctx, orgID, email); err != nil {
-		log.Error().Err(err).Str("email_redacted", logsafe.RedactEmail(email)).Msg("hr: revoke sessions on termination")
+	redacted := logsafe.RedactEmail(email)
+
+	// Resolve the platform user BEFORE DisableUser removes the org_members row
+	// (the lookup joins through org_members). S131-C1: a full RevokeAllSessions
+	// deletes the refresh sessions AND bumps pw_version, so the terminated
+	// employee's stateless access token dies immediately instead of living ≤1h.
+	userID, found, err := s.repo.PlatformUserIDByEmail(ctx, orgID, email)
+	if err != nil {
+		log.Error().Err(err).Str("email_redacted", redacted).Msg("hr: resolve platform user on termination")
 	}
+	switch {
+	case found && s.sessionRevoker != nil:
+		if err := s.sessionRevoker.RevokeAllSessions(ctx, userID); err != nil {
+			log.Error().Err(err).Str("email_redacted", redacted).Msg("hr: revoke sessions+token on termination")
+		}
+	default:
+		// No platform account for this email, or no revoker wired (tests): fall
+		// back to the refresh-only delete so at least the refresh tokens are gone.
+		if err := s.repo.RevokeUserSessions(ctx, orgID, email); err != nil {
+			log.Error().Err(err).Str("email_redacted", redacted).Msg("hr: revoke sessions on termination")
+		}
+	}
+
 	if err := s.repo.DisableUser(ctx, orgID, email); err != nil {
-		log.Error().Err(err).Str("email_redacted", logsafe.RedactEmail(email)).Msg("hr: disable user on termination")
+		log.Error().Err(err).Str("email_redacted", redacted).Msg("hr: disable user on termination")
 	}
 	if err := s.repo.RevokeUserAPIKeys(ctx, orgID, email); err != nil {
-		log.Error().Err(err).Str("email_redacted", logsafe.RedactEmail(email)).Msg("hr: revoke api keys on termination")
+		log.Error().Err(err).Str("email_redacted", redacted).Msg("hr: revoke api keys on termination")
 	}
 }
 
