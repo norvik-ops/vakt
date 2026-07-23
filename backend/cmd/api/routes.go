@@ -685,7 +685,9 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	log.Info().Msg("dashboard routes registered")
 
 	// Global search — cross-module text search
-	search.Register(api, pool, auth.AuthMiddleware(pasetoKey, pool, rdb))
+	// S131-C2 (R-H22): mount on `protected`, not the bare `api` group, so /search
+	// inherits org-wide MFA enforcement (and auth/allowlist) instead of bypassing it.
+	search.Register(protected, pool)
 
 	// Retention config API — data-pruning settings per org.
 	// S121-B5 (R5): mounted on `protected` for CSRF; UpdateConfig is Admin-gated.

@@ -28,6 +28,7 @@ import (
 	"github.com/matharnica/vakt/internal/license"
 	shareddb "github.com/matharnica/vakt/internal/shared/db"
 	sharedmw "github.com/matharnica/vakt/internal/shared/middleware"
+	"github.com/matharnica/vakt/internal/shared/search"
 )
 
 // TestMiddlewareChain_EndToEnd is the S90-9 acceptance test: it wires the full
@@ -127,6 +128,9 @@ func TestMiddlewareChain_EndToEnd(t *testing.T) {
 	ok := func(c echo.Context) error { return c.NoContent(http.StatusOK) }
 	// MFA-exempt path (no module-permission gate — matches real wiring).
 	protected.GET("/auth/me", ok)
+	// S131-C2 (R-H22): /search must sit UNDER the MFA-enforcing protected group,
+	// not on the bare api group. Register it the way cmd/api/routes.go now does.
+	search.Register(protected, pool)
 	// Module-gated routes.
 	mod := protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb))
 	mod.GET("/x", ok)
@@ -176,6 +180,10 @@ func TestMiddlewareChain_EndToEnd(t *testing.T) {
 	//     …but 200 on the MFA-exempt /auth/me path.
 	recDExempt := do(http.MethodGet, "/api/v1/auth/me", opt{bearer: userTok})
 	assert.Equal(t, http.StatusOK, recDExempt.Code, "MFA-exempt path must remain reachable")
+	//     R-H22: /search must ALSO be blocked (it used to bypass MFA on the api group).
+	recDSearch := do(http.MethodGet, "/api/v1/search?q=x", opt{bearer: userTok})
+	assert.Equal(t, http.StatusForbidden, recDSearch.Code, "MFA-required user without TOTP must be blocked on /search")
+	assert.Contains(t, recDSearch.Body.String(), "MFA_REQUIRED", "/search must enforce MFA, not bypass it")
 
 	// (e) DB outage → the chain fails closed end-to-end (503). Closing the pool
 	//     makes the first DB-dependent stage (MFA-enforce) fail closed; the
