@@ -1,9 +1,7 @@
 package vaktcomply
 
 import (
-	"bytes"
 	"crypto/sha256"
-	"encoding/csv"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -157,26 +155,23 @@ func (h *Handler) ExportControlsXLSX(c echo.Context) error {
 		return errResp(c, http.StatusInternalServerError, "export failed", "CK_EXPORT_ERROR")
 	}
 
-	var buf bytes.Buffer
-	w := csv.NewWriter(&buf)
-	_ = w.Write([]string{"Title", "Framework", "Status", "Owner", "Due Date"})
-	for _, ctrl := range controls {
+	rows := make([][]string, len(controls))
+	for i, ctrl := range controls {
 		dueDate := ""
 		if ctrl.NextReviewDue != nil {
 			dueDate = ctrl.NextReviewDue.Format(time.DateOnly)
 		}
-		_ = w.Write([]string{
-			ctrl.Title,
-			ctrl.FrameworkID,
-			ctrl.Status,
-			ctrl.LastReviewedBy,
-			dueDate,
-		})
+		rows[i] = []string{ctrl.Title, ctrl.FrameworkID, ctrl.Status, ctrl.LastReviewedBy, dueDate}
 	}
-	w.Flush()
+
+	data, err := xlsxexport.RenderSimpleTable("Controls", []string{"Title", "Framework", "Status", "Owner", "Due Date"}, rows)
+	if err != nil {
+		log.Error().Err(err).Msg("export controls xlsx: render")
+		return errResp(c, http.StatusInternalServerError, "export failed", "CK_EXPORT_ERROR")
+	}
 
 	c.Response().Header().Set("Content-Disposition", `attachment; filename="controls.xlsx"`)
-	return c.Blob(http.StatusOK, xlsxContentType, buf.Bytes())
+	return c.Blob(http.StatusOK, xlsxContentType, data)
 }
 
 // ExportPoliciesXLSX handles GET /vaktcomply/policies/export/xlsx.
@@ -193,21 +188,23 @@ func (h *Handler) ExportPoliciesXLSX(c echo.Context) error {
 		return errResp(c, http.StatusInternalServerError, "export failed", "CK_EXPORT_ERROR")
 	}
 
-	var buf bytes.Buffer
-	buf.WriteString("\xEF\xBB\xBF") // UTF-8 BOM for Excel
-	w := csv.NewWriter(&buf)
-	_ = w.Write([]string{"Title", "Category", "Status", "Version", "Owner", "Next Review Due"})
-	for _, p := range policies {
+	rows := make([][]string, len(policies))
+	for i, p := range policies {
 		nextReview := ""
 		if p.NextReviewDue != nil {
 			nextReview = *p.NextReviewDue
 		}
-		_ = w.Write([]string{p.Title, p.Category, p.Status, p.Version, p.Owner, nextReview})
+		rows[i] = []string{p.Title, p.Category, p.Status, p.Version, p.Owner, nextReview}
 	}
-	w.Flush()
+
+	data, err := xlsxexport.RenderSimpleTable("Policies", []string{"Title", "Category", "Status", "Version", "Owner", "Next Review Due"}, rows)
+	if err != nil {
+		log.Error().Err(err).Msg("export policies xlsx: render")
+		return errResp(c, http.StatusInternalServerError, "export failed", "CK_EXPORT_ERROR")
+	}
 
 	c.Response().Header().Set("Content-Disposition", `attachment; filename="policies.xlsx"`)
-	return c.Blob(http.StatusOK, xlsxContentType, buf.Bytes())
+	return c.Blob(http.StatusOK, xlsxContentType, data)
 }
 
 func (h *Handler) logDocxExport(c echo.Context, resourceType, resourceName string, data []byte) {

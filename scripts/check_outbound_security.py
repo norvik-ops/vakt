@@ -11,7 +11,8 @@
 #   String-literal Addr ("localhost:6379") is an allowed dev fallback; an empty
 #   `RedisClientOpt{}` is the documented "no redis" zero value.
 #
-# G5 — http.Client literals in services/**, platform/** UND modules/** (ratchet):
+# G5 — http.Client literals in services/**, platform/**, modules/**, auth/**,
+#   license/** UND cmd/** (ratchet):
 #   Every outbound request should ideally go through httputil.GuardedClient/
 #   GuardedDialContext (DNS-rebinding / SSRF re-validation). The existing
 #   population targets mostly fixed vendor hosts; migrating them is SA15-01/02
@@ -28,9 +29,9 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 BACKEND = ROOT / "backend"
 
 # ── G5 ratchet baseline ──────────────────────────────────────────────────────
-# Count of unguarded `http.Client{` literals under services/**, platform/** und
-# modules/**. Only ever lower this — never raise to admit a new unguarded client;
-# use httputil.GuardedClient instead.
+# Count of unguarded `http.Client{` literals under services/**, platform/**,
+# modules/**, auth/**, license/** und cmd/**. Only ever lower this — never
+# raise to admit a new unguarded client; use httputil.GuardedClient instead.
 #
 # 14 at S123-G5; lowered to 12 in S124-2 (alerting + siem forwarder, SA15-01);
 # lowered to 9 in S129-1/D19 (AI client, drei Literale).
@@ -49,7 +50,15 @@ BACKEND = ROOT / "backend"
 # endoflife.date) sind in derselben Runde auf GuardedClient umgestellt worden; die
 # zwei in vaktcomply bleiben vorerst stehen — sie sind jetzt wenigstens GEZÄHLT und
 # eingefroren, statt unsichtbar zu sein.
-HTTPCLIENT_BASELINE = 11
+#
+# 2026-07-24 (S13/D24-4, G-04) — Scope erweitert um internal/auth, internal/license
+# und cmd/** (derselbe blinde-Fleck-Fehler wie 2026-07-14, nur diesmal vorher
+# gefunden statt durch einen Live-Audit): internal/auth hatte drei ungeguardete
+# Clients (OIDC-Discovery/-Token, SAML), internal/license einen (autorefresh —
+# holt den nächsten Pro-Key von api.norvikops.de). cmd/** fügt null neue Treffer
+# hinzu (geprüft, keine Annahme) — bleibt drin, weil ein Gate, das einen Teil des
+# Codes nie anschaut, nur seinen Ausschnitt einfriert, nicht den Zustand.
+HTTPCLIENT_BASELINE = 15
 
 REDIS_RE = re.compile(r"RedisClientOpt\{")
 HTTPCLIENT_RE = re.compile(r"\bhttp\.Client\{")
@@ -82,10 +91,12 @@ def balanced_block(text, open_idx):
 
 def check_redis():
     violations = []
+    scanned = 0
     # Scan all production Go (Redis clients live in cmd/ and internal/).
     for p in list(go_prod_files("internal")) + [
         f for f in (BACKEND / "cmd").rglob("*.go") if not f.name.endswith("_test.go")
     ]:
+        scanned += 1
         text = p.read_text(encoding="utf-8", errors="ignore")
         lines = text.splitlines()
         for m in REDIS_RE.finditer(text):
@@ -105,13 +116,22 @@ def check_redis():
             violations.append(f"{p.relative_to(ROOT)}:{line_no}: RedisClientOpt with a "
                               f"variable Addr but no Password (NOAUTH class). Add "
                               f"`Password: ...` or an inline `// redisauth-ok: <reason>`.")
-    return violations
+    return violations, scanned
 
 
 def check_httpclient():
     count = 0
     hits = []
-    for p in go_prod_files("internal/services", "internal/shared/platform", "internal/modules"):
+    scanned = 0
+    for p in go_prod_files(
+        "internal/services",
+        "internal/shared/platform",
+        "internal/modules",
+        "internal/auth",
+        "internal/license",
+        "cmd",
+    ):
+        scanned += 1
         text = p.read_text(encoding="utf-8", errors="ignore")
         for m in HTTPCLIENT_RE.finditer(text):
             block = balanced_block(text, m.end() - 1)
@@ -121,19 +141,30 @@ def check_httpclient():
             count += 1
             line_no = text[: m.start()].count("\n") + 1
             hits.append(f"{p.relative_to(ROOT)}:{line_no}")
-    return count, hits
+    return count, hits, scanned
 
 
 def main():
     problems = []
 
-    redis_violations = check_redis()
+    redis_violations, redis_scanned = check_redis()
     problems.extend(redis_violations)
 
-    count, hits = check_httpclient()
+    count, hits, http_scanned = check_httpclient()
+
+    # G-07: both scans walking zero files means BACKEND (or its subdirs) is
+    # unreachable from this working directory — that would otherwise report a
+    # deceptively clean "0 violations" / "count dropped to 0" instead of the
+    # scan simply never having looked at anything.
+    if redis_scanned == 0 or http_scanned == 0:
+        print(f"❌ Outbound-security gate FAILED — scanned 0 Go files "
+              f"(redis_scanned={redis_scanned}, http_scanned={http_scanned}); "
+              f"non-vacuity guard (G-07). Check the working directory / BACKEND path.")
+        sys.exit(2)
     if count > HTTPCLIENT_BASELINE:
         problems.append(
-            f"G5: {count} unguarded http.Client literals in services/**+platform/**+modules/** "
+            f"G5: {count} unguarded http.Client literals in "
+            f"services/**+platform/**+modules/**+auth/**+license/**+cmd/** "
             f"(baseline {HTTPCLIENT_BASELINE}). A new one was added — route it through "
             f"httputil.GuardedClient/GuardedDialContext.\n  " + "\n  ".join(hits))
     elif count < HTTPCLIENT_BASELINE:
@@ -147,8 +178,12 @@ def main():
             print(" - " + p)
         sys.exit(1)
 
+    # The denominator belongs on the SUCCESS path too: the person reading a green
+    # CI is exactly the person who needs to know how much was actually looked at.
+    # Printing it only on failure means "OK" never has to justify itself.
     print(f"✓ Outbound-security OK — Redis clients authenticated; "
-          f"{count}/{HTTPCLIENT_BASELINE} unguarded http.Client literals (frozen).")
+          f"{count}/{HTTPCLIENT_BASELINE} unguarded http.Client literals (frozen); "
+          f"scanned {redis_scanned} file(s) for Redis clients, {http_scanned} for http.Client.")
 
 
 if __name__ == "__main__":

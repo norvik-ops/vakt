@@ -3,15 +3,13 @@ package vaktcomply
 import (
 	"encoding/json"
 	"errors"
-	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/audit"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/bsi"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/risk"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 type Incident struct {
@@ -1190,48 +1188,32 @@ var (
 	ErrInvalidOptions       = errors.New("multiple_choice question requires non-empty options")
 )
 
-// isNotFound returns true for any "resource does not exist" error — either the
-// service-layer ErrNotFound sentinel or a raw pgx.ErrNoRows from the repository.
+// isNotFound returns true for any "resource does not exist" error. The generic
+// classification (canonical sentinel, pgx.ErrNoRows, and the HasSuffix "not
+// found" safety net) lives in the shared apperr package (S4, D13-B) so every
+// module agrees on the 4xx-vs-5xx boundary. The explicit errors.Is checks below
+// are a fast path that also documents which sub-package sentinels exist — each
+// vaktcomply sub-package defines its own ErrNotFound. They are belt-and-braces:
+// their message is literally "not found", so apperr.IsNotFound already matches.
 func isNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
-	// S121 (live sweep): each vaktcomply sub-package defines its own ErrNotFound
-	// sentinel, so all of them must be listed here.
 	if errors.Is(err, ErrNotFound) || errors.Is(err, bsi.ErrNotFound) ||
 		errors.Is(err, audit.ErrNotFound) || errors.Is(err, risk.ErrNotFound) ||
-		errors.Is(err, policy.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+		errors.Is(err, policy.ErrNotFound) {
 		return true
 	}
-	// NB: a malformed UUID/int in a path param (SQLSTATE 22P02) is deliberately
-	// NOT treated as not-found here — it is a client input error. The
-	// ValidateUUIDParams middleware rejects it with 400 at the module group up
-	// front, and isBadParam classifies it where a handler still needs to.
-	// Safety net: the live write-sweep found ~30 handlers returning 500 because a
-	// repository returned a raw fmt.Errorf("X not found") (no sentinel), which the
-	// isNotFound checks above cannot match. A message ENDING in "not found" is that
-	// pattern — treat it as a 404. HasSuffix (not Contains) is deliberate: it will
-	// NOT swallow a genuine schema error like `column "x" does not exist`, so real
-	// query bugs still surface as 500 for the next sweep to catch.
-	return strings.HasSuffix(err.Error(), "not found")
+	return apperr.IsNotFound(err)
 }
 
 // isBadParam returns true when an error is caused by malformed caller input that
-// reached Postgres — a bad UUID/number in a path param surfaces as SQLSTATE
-// 22P02 (invalid_text_representation). S121-F3 (P4): lets handlers answer 400
-// instead of leaking a 500 for a client mistake. Also matches the BSI
-// unknown-report-type sentinel, which is likewise a bad-input case.
+// reached Postgres (SQLSTATE 22P02 and friends — see apperr.IsBadParam). S121-F3
+// (P4): lets handlers answer 400 instead of leaking a 500 for a client mistake.
+// Also matches the BSI unknown-report-type sentinel, which is likewise bad input.
 func isBadParam(err error) bool {
 	if errors.Is(err, bsi.ErrUnknownReportType) {
 		return true
 	}
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		switch pgErr.Code {
-		case "22P02", // invalid_text_representation (bad UUID / int)
-			"22003": // numeric_value_out_of_range
-			return true
-		}
-	}
-	return false
+	return apperr.IsBadParam(err)
 }

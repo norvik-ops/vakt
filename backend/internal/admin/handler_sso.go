@@ -268,8 +268,12 @@ func (h *Handler) FetchSAMLMetadata(c echo.Context) error {
 
 	xml, err := fetchMetadataFromURL(c.Request().Context(), in.URL)
 	if err != nil {
-		return c.JSON(http.StatusBadGateway, map[string]string{
-			"error": err.Error(),
+		log.Error().Err(err).Msg("saml metadata fetch failed")
+		// SA14-06: an unreachable/invalid IdP metadata URL is the admin's input
+		// problem → 422, not 502; the raw fetch error (which may carry the
+		// resolved internal IP the SSRF guard rejected) is never echoed.
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
+			"error": "IdP-Metadaten konnten nicht geladen werden — URL prüfen (Details im Server-Log)",
 			"code":  "ADMIN_SAML_FETCH_ERROR",
 		})
 	}

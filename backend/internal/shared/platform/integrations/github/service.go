@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/services/evidence_auto"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 	sharedcrypto "github.com/matharnica/vakt/internal/shared/crypto"
 )
 
@@ -85,7 +86,7 @@ func (s *Service) DeleteIntegration(ctx context.Context, orgID, id string) error
 		return fmt.Errorf("delete integration: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("integration not found")
+		return fmt.Errorf("integration %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -123,6 +124,7 @@ func (s *Service) SyncIntegration(ctx context.Context, orgID, id string) error {
 
 	if runErr != nil {
 		// Mark as error but continue with whatever partial results we have
+		// orgid-lint: global — UPDATE by PK; id is the already-fetched, org-verified integration's own id
 		_, _ = s.db.Exec(ctx, `
 			UPDATE integrations_github
 			SET sync_status = 'error', sync_error = $1, last_synced_at = $2, updated_at = $2
@@ -146,6 +148,7 @@ func (s *Service) SyncIntegration(ctx context.Context, orgID, id string) error {
 	}
 
 	// Update sync status
+	// orgid-lint: global — UPDATE by PK; id is the already-fetched, org-verified integration's own id
 	_, err = s.db.Exec(ctx, `
 		UPDATE integrations_github
 		SET sync_status = 'ok', sync_error = NULL, last_synced_at = $1, updated_at = $1

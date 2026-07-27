@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/auth"
+	"github.com/matharnica/vakt/internal/shared/httputil"
 )
 
 // Handler handles HTTP requests for scheduled reports.
@@ -124,7 +125,8 @@ func (h *Handler) RunNow(c echo.Context) error {
 	id := c.Param("id")
 	if err := h.svc.RunNow(c.Request().Context(), id, orgID(c)); err != nil {
 		log.Error().Err(err).Str("id", id).Msg("run scheduled report")
-		return errResp(c, http.StatusInternalServerError, "failed to run report", "SR_RUN_ERROR")
+		// S4: a missing scheduled report is a 404, not a 500.
+		return httputil.RespondError(c, err, "failed to run report", "SR_RUN_ERROR")
 	}
 	return c.JSON(http.StatusAccepted, map[string]string{"message": "report is being delivered"})
 }

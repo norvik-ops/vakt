@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 	"github.com/rs/zerolog/log"
 )
 
@@ -267,7 +268,7 @@ func (s *Service) GetBackupJob(ctx context.Context, orgID, id string) (BackupJob
 			return j, nil
 		}
 	}
-	return BackupJob{}, fmt.Errorf("backup job not found")
+	return BackupJob{}, fmt.Errorf("backup job %w", apperr.ErrNotFound)
 }
 
 func (s *Service) UpdateBackupJob(ctx context.Context, orgID, id string, in BackupJobInput) (BackupJob, error) {
@@ -297,7 +298,7 @@ func (s *Service) UpdateBackupJob(ctx context.Context, orgID, id string, in Back
 		return BackupJob{}, fmt.Errorf("update backup job: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return BackupJob{}, fmt.Errorf("backup job not found")
+		return BackupJob{}, fmt.Errorf("backup job %w", apperr.ErrNotFound)
 	}
 	return s.GetBackupJob(ctx, orgID, id)
 }
@@ -308,7 +309,7 @@ func (s *Service) DeleteBackupJob(ctx context.Context, orgID, id string) error {
 		return fmt.Errorf("delete backup job: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("backup job not found")
+		return fmt.Errorf("backup job %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -349,7 +350,7 @@ func (s *Service) CreateRestoreTest(ctx context.Context, orgID, jobID string, in
 		return BackupRestoreTest{}, fmt.Errorf("verify job: %w", err)
 	}
 	if !exists {
-		return BackupRestoreTest{}, fmt.Errorf("backup job not found")
+		return BackupRestoreTest{}, fmt.Errorf("backup job %w", apperr.ErrNotFound)
 	}
 	tested, err := time.Parse("2006-01-02", in.TestedAt)
 	if err != nil {

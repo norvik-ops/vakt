@@ -50,6 +50,7 @@ func SCIMAuthMiddleware(db *pgxpool.Pool) echo.MiddlewareFunc {
 			// DB write survives after the response is sent, while still inheriting
 			// the trace context for observability.
 			safego.Run(context.WithoutCancel(c.Request().Context()), "scim.update_last_used", func(ctx context.Context) error {
+				// orgid-lint: global — scoped by token_hash, a globally-unique auth credential
 				_, err := db.Exec(ctx,
 					`UPDATE scim_tokens SET last_used_at = NOW() WHERE token_hash = $1`,
 					tokenHash,

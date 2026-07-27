@@ -12,7 +12,6 @@ import (
 	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
 
-// CreateManagedOrg handles POST /api/v1/admin/organizations.
 // GetCurrentOrg handles GET /api/v1/admin/org.
 // Returns the caller's own organisation record, including trust center settings.
 func (h *Handler) GetCurrentOrg(c echo.Context) error {

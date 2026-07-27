@@ -35,6 +35,24 @@ type writeRoute struct {
 	path   string
 }
 
+// G-06 (Sprint 132, SG): every router built below is a Nachbau — it calls the
+// real package Register()/RegisterRoutes() functions, but decides for itself
+// where to mount them and with which middleware, by reading cmd/api/routes.go
+// and copying the shape ("Mount exactly as cmd/api/routes.go does", below and
+// in s122_integrations_rbac_test.go). That copy can drift from the real mount
+// silently: a group moved, a middleware dropped or reordered in routes.go
+// itself would NOT turn this file red, because this file never asks routes.go
+// what it actually did.
+//
+// This package cannot fix that on its own: the real tree comes from
+// setupEcho()/registerRoutes() in cmd/api, both unexported in package main —
+// and package main cannot be imported by any other package, so there is no
+// Go-legal way to call the real tree from here. The other half of G-06 is
+// cmd/api/rbac_matrix_test.go, which runs the same Viewer/SecurityAnalyst/
+// Admin matrix against the ACTUAL setupEcho() tree (skips without a live DB +
+// Redis, same as uuid_param_coverage_test.go). A regression in the real mount
+// that this Nachbau cannot see goes red there.
+
 // sharedWriteRoutes enumerates every mutating route across the seven shared
 // platform packages that S121 Epic B gated. Each entry must return 403 for a
 // Viewer token and something other than 403 for an Admin token. Paths are the

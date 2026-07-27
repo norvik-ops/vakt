@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 // ---------------------------------------------------------------------------
@@ -244,7 +245,7 @@ func (r *Repository) DeleteFinding(ctx context.Context, orgID, findingID string)
 		return fmt.Errorf("delete finding: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("finding not found")
+		return fmt.Errorf("finding %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -322,7 +323,7 @@ func (r *Repository) DeleteSuppressionRule(ctx context.Context, orgID, ruleID st
 		return fmt.Errorf("delete suppression rule: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("suppression rule not found")
+		return fmt.Errorf("suppression rule %w", apperr.ErrNotFound)
 	}
 	return nil
 }

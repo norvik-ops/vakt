@@ -1,10 +1,33 @@
 # Vakt frontdoor / reverse proxy.
 #
-# Set VAKT_DOMAIN in .env to your public domain (e.g. vakt.example.com): Caddy
-# then obtains and auto-renews a Let's-Encrypt certificate (ports 80 + 443 must
-# be reachable from the internet). The default "localhost" serves HTTPS with a
-# locally-trusted cert for testing. To run plain HTTP behind your own TLS
-# terminator, set VAKT_DOMAIN to ":80" (or "http://your.domain").
+# VAKT_DOMAIN controls certificate generation and HTTPS behavior:
+#
+# 1. VAKT_DOMAIN=vakt.example.com (production, recommended)
+#    → Caddy obtains and auto-renews a Let's-Encrypt certificate
+#    → Accessible via HTTPS from any browser without warnings
+#    → Requires: public domain + ports 80/443 reachable from the internet
+#
+# 2. VAKT_DOMAIN=localhost (default, development only)
+#    → Caddy serves HTTPS using its own INTERNAL CA (a locally-trusted cert,
+#      not a "self-signed" one — the distinction matters: Caddy installs its
+#      root into the local trust store, so localhost works without warnings)
+#    → Safe for local testing only
+#    → ⚠️  REMOTE TRAP: the site address below is a HOST MATCHER. With the
+#       default it matches only the name "localhost", so a request to the
+#       server's IP does not match this site at all. The symptom is NOT a
+#       certificate warning you can click through — measured against caddy:2:
+#         http://server-ip   → HTTP 200 with Content-Length: 0. A BLANK PAGE,
+#                              no error, no status code to search for. This is
+#                              the confusing one: nothing looks broken.
+#         https://server-ip  → no certificate exists for that name, so the TLS
+#                              handshake is aborted by the server (alert 80,
+#                              "internal error"). The browser shows ERR_SSL_*;
+#                              there is no "add exception" page to accept.
+#       Always set a real domain for remote deployments.
+#
+# 3. VAKT_DOMAIN=:80 (behind your own TLS terminator)
+#    → Caddy serves plain HTTP; upstream proxy (nginx, HAProxy, etc.)
+#      handles HTTPS. Useful if you already have centralized TLS.
 {$VAKT_DOMAIN:localhost} {
 	# Backend API + health check → api service.
 	# flush_interval -1 keeps SSE streams (AI chat, control explanations)

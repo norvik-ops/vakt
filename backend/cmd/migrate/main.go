@@ -7,6 +7,8 @@
 package main
 
 import (
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -20,6 +22,9 @@ func main() {
 	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
 	dbURL := readEnvOrFile("VAKT_DB_URL", "VAKT_DB_URL_FILE", log)
+	if dbURL == "" {
+		dbURL = buildDBURLFromComponents(log)
+	}
 	if dbURL == "" {
 		log.Fatal().Msg("VAKT_DB_URL or VAKT_DB_URL_FILE is required")
 	}
@@ -35,6 +40,33 @@ func main() {
 		log.Fatal().Err(err).Msg("migration failed")
 	}
 	log.Info().Msg("all migrations applied successfully")
+}
+
+// buildDBURLFromComponents assembles a postgres DSN from VAKT_DB_PASSWORD_FILE
+// plus non-secret host/port/user/dbname parts — mirrors internal/config's
+// buildDBURLFromComponents. Needed because migrate doesn't import
+// internal/config (see readEnvOrFile above) yet must support the same
+// Docker-secret-mounted password as api/worker (S13/G-04).
+func buildDBURLFromComponents(log zerolog.Logger) string {
+	password := readEnvOrFile("VAKT_DB_PASSWORD", "VAKT_DB_PASSWORD_FILE", log)
+	if password == "" {
+		return ""
+	}
+	dsn := url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(getEnv("VAKT_DB_USER", "vakt"), password),
+		Host:     net.JoinHostPort(getEnv("VAKT_DB_HOST", "localhost"), getEnv("VAKT_DB_PORT", "5432")),
+		Path:     "/" + getEnv("VAKT_DB_NAME", "vakt"),
+		RawQuery: "sslmode=" + getEnv("VAKT_DB_SSLMODE", "disable"),
+	}
+	return dsn.String()
+}
+
+func getEnv(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
 }
 
 func readEnvOrFile(envKey, fileKey string, log zerolog.Logger) string {

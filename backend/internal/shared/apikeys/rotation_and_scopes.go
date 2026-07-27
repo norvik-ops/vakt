@@ -153,6 +153,7 @@ type LoginHistoryEntry struct {
 // ListLoginHistoryForUser lädt die letzten 50 Login-Versuche eines Users.
 // Sprint 20 S20-7.
 func (s *Service) ListLoginHistoryForUser(ctx context.Context, userID string) ([]LoginHistoryEntry, error) {
+	// orgid-lint: global — caller's own login history, scoped by user_id from the auth token
 	rows, err := s.db.Query(ctx, `
 		SELECT ts, ip, user_agent, source, result
 		FROM login_history

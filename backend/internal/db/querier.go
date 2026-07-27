@@ -715,6 +715,30 @@ type Querier interface {
 	InsertHRAccessConceptVersion(ctx context.Context, arg InsertHRAccessConceptVersionParams) (HrAccessConceptVersions, error)
 	ListHRAccessConceptVersions(ctx context.Context, arg ListHRAccessConceptVersionsParams) ([]ListHRAccessConceptVersionsRow, error)
 	GetHRAccessConceptVersion(ctx context.Context, arg GetHRAccessConceptVersionParams) (HrAccessConceptVersions, error)
+	// ── S86: BIA Processes ────────────────────────────────────────────────────────
+	CreateCKBIAProcess(ctx context.Context, arg CreateCKBIAProcessParams) (CkBiaProcesses, error)
+	ListCKBIAProcesses(ctx context.Context, orgID string) ([]CkBiaProcesses, error)
+	GetCKBIAProcess(ctx context.Context, arg GetCKBIAProcessParams) (CkBiaProcesses, error)
+	UpdateCKBIAProcess(ctx context.Context, arg UpdateCKBIAProcessParams) (CkBiaProcesses, error)
+	DeleteCKBIAProcess(ctx context.Context, arg DeleteCKBIAProcessParams) (int64, error)
+	GetCKBIASummary(ctx context.Context, orgID string) (GetCKBIASummaryRow, error)
+	// ── S86: Recovery Plans ───────────────────────────────────────────────────────
+	CreateCKRecoveryPlan(ctx context.Context, arg CreateCKRecoveryPlanParams) (CkRecoveryPlans, error)
+	ListCKRecoveryPlans(ctx context.Context, orgID string) ([]ListCKRecoveryPlansRow, error)
+	ListCKRecoveryPlansByBIAProcess(ctx context.Context, arg ListCKRecoveryPlansByBIAProcessParams) ([]ListCKRecoveryPlansRow, error)
+	GetCKRecoveryPlan(ctx context.Context, arg GetCKRecoveryPlanParams) (ListCKRecoveryPlansRow, error)
+	UpdateCKRecoveryPlan(ctx context.Context, arg UpdateCKRecoveryPlanParams) (CkRecoveryPlans, error)
+	DeleteCKRecoveryPlan(ctx context.Context, arg DeleteCKRecoveryPlanParams) (int64, error)
+	CountCKRecoveryPlansTested(ctx context.Context, orgID string) (int32, error)
+	CountCKRecoveryPlansActive(ctx context.Context, orgID string) (int32, error)
+	CountCKRecoveryPlansForHighCriticality(ctx context.Context, orgID string) (int32, error)
+	CountCKHighCriticalityBIAProcesses(ctx context.Context, orgID string) (int32, error)
+	// ── S86: Emergency Contacts ───────────────────────────────────────────────────
+	CreateCKEmergencyContact(ctx context.Context, arg CreateCKEmergencyContactParams) (CkEmergencyContacts, error)
+	ListCKEmergencyContacts(ctx context.Context, orgID string) ([]CkEmergencyContacts, error)
+	UpdateCKEmergencyContact(ctx context.Context, arg UpdateCKEmergencyContactParams) (CkEmergencyContacts, error)
+	DeleteCKEmergencyContact(ctx context.Context, arg DeleteCKEmergencyContactParams) (int64, error)
+	CountCKEmergencyContacts(ctx context.Context, orgID string) (int32, error)
 }
 
 var _ Querier = (*Queries)(nil)

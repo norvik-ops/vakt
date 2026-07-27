@@ -11,17 +11,32 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/matharnica/vakt/internal/db"
+	sharedevents "github.com/matharnica/vakt/internal/shared/events"
 )
 
 // Repository provides risk-domain database operations.
 type Repository struct {
 	db *pgxpool.Pool
 	q  *db.Queries
+	// assetLinker writes the reverse protection_need_id link on vb_assets.
+	// vaktcomply must not write the vb_ prefix directly (module isolation,
+	// ADR-0079); this is injected from cmd/api and defaults to a no-op so the
+	// forward link (ck_ side) still works in tests and the worker.
+	assetLinker sharedevents.AssetProtectionLinker
 }
 
 // NewRepository creates a new risk-domain repository.
 func NewRepository(pool *pgxpool.Pool) *Repository {
-	return &Repository{db: pool, q: db.New(pool)}
+	return &Repository{db: pool, q: db.New(pool), assetLinker: sharedevents.NoopAssetProtectionLinker{}}
+}
+
+// WithAssetProtectionLinker injects the vaktscan-backed writer for the reverse
+// protection_need_id link on vb_assets. Passing nil leaves the no-op in place.
+func (r *Repository) WithAssetProtectionLinker(l sharedevents.AssetProtectionLinker) *Repository {
+	if l != nil {
+		r.assetLinker = l
+	}
+	return r
 }
 
 // --- shared pgtype helpers (duplicated from the parent vaktcomply package) ---

@@ -41,6 +41,7 @@ func (h *SessionHandler) ListSessions(c echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
 
+	// orgid-lint: global — caller's own sessions, scoped by user_id from the auth token
 	rows, err := h.db.Query(c.Request().Context(), `
 		SELECT id::text, device_hint, last_used, created_at, expires_at
 		FROM refresh_sessions
@@ -86,6 +87,7 @@ func (h *SessionHandler) RevokeSession(c echo.Context) error {
 	sessionID := c.Param("id")
 
 	// Delete the row and return token_hash so we can remove it from Redis.
+	// orgid-lint: global — caller's own session, scoped by (id, user_id) from the auth token
 	var tokenHash string
 	err := h.db.QueryRow(c.Request().Context(), `
 		DELETE FROM refresh_sessions
@@ -123,9 +125,11 @@ func (h *SessionHandler) RevokeAllOtherSessions(c echo.Context) error {
 	// Ohne Header → revoke ALL (Panic-Button-Pfad), inklusive der aktuellen Session.
 	currentSessionID := c.Request().Header.Get("X-Vakt-Session-Id")
 	if currentSessionID != "" {
+		// orgid-lint: global — caller's own sessions, scoped by user_id from the auth token
 		query = `DELETE FROM refresh_sessions WHERE user_id = $1::uuid AND id != $2::uuid RETURNING token_hash`
 		args = []any{userID, currentSessionID}
 	} else {
+		// orgid-lint: global — caller's own sessions, scoped by user_id from the auth token
 		query = `DELETE FROM refresh_sessions WHERE user_id = $1::uuid RETURNING token_hash`
 		args = []any{userID}
 	}

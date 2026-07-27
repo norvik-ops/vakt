@@ -8,17 +8,12 @@ import (
 	"fmt"
 	"sort"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 // Sprint 28 / S28-4: Multi-Framework-Assessment-Service.
 //
-// Nutzt dieselbe nis2_anonymous_runs-Tabelle wie der NIS2-Only-Wizard, aber
-// mit framework_mode = 'multi' (gespeichert im JSONB-Feld meta).
+// Nutzt dieselbe nis2_anonymous_runs-Tabelle wie der NIS2-Only-Wizard.
 // So bleiben bestehende NIS2-Flows vollständig unberührt.
-
-const frameworkModeMulti = "multi"
 
 // MultiRun ist der API-View eines Multi-Framework-Runs.
 type MultiRun struct {
@@ -47,13 +42,15 @@ type MultiGap struct {
 	Score     int    `json:"score"`
 }
 
-// runMeta wird im JSONB-meta-Feld der nis2_anonymous_runs-Tabelle gespeichert,
-// um framework_mode = 'multi' zu kennzeichnen, ohne das Schema zu ändern.
-type runMeta struct {
-	FrameworkMode string `json:"framework_mode,omitempty"`
-}
-
 // StartMultiRun legt einen neuen Multi-Framework-Run an. Analog zu StartRun.
+//
+// SA23-V1: dies insertete früher zusätzlich in ein JSONB-meta-Feld, das
+// nis2_anonymous_runs nie besaß (Migration 125) — der Primär-Insert schlug
+// bei JEDEM Aufruf mit 42703 fehl und fiel auf einen zweiten Insert ohne
+// meta zurück, der denselben Effekt hatte wie dieser hier direkt. Das Feld
+// (framework_mode) wurde nirgends gelesen — kein Konsument unterscheidet
+// Multi- von Single-Framework-Runs anhand davon. Toter Primär-Insert entfernt
+// statt einer Migration für ein Feld, das niemand liest.
 func (s *Service) StartMultiRun(ctx context.Context, referrer, userAgent, ipHash string) (*MultiRun, error) {
 	tokenBytes := make([]byte, 16)
 	if _, err := rand.Read(tokenBytes); err != nil {
@@ -62,24 +59,13 @@ func (s *Service) StartMultiRun(ctx context.Context, referrer, userAgent, ipHash
 	token := hex.EncodeToString(tokenBytes)
 	expires := time.Now().UTC().Add(7 * 24 * time.Hour)
 
-	metaJSON, _ := json.Marshal(runMeta{FrameworkMode: frameworkModeMulti})
-
 	if _, err := s.db.Exec(ctx, `
 		INSERT INTO nis2_anonymous_runs
-		  (token, answers, referrer, user_agent, ip_hash, expires_at, meta)
-		VALUES ($1, '{}'::jsonb, NULLIF($2, ''), NULLIF($3, ''), NULLIF($4, ''), $5, $6)`,
-		token, referrer, userAgent, ipHash, expires, metaJSON,
+		  (token, answers, referrer, user_agent, ip_hash, expires_at)
+		VALUES ($1, '{}'::jsonb, NULLIF($2, ''), NULLIF($3, ''), NULLIF($4, ''), $5)`,
+		token, referrer, userAgent, ipHash, expires,
 	); err != nil {
-		// Fallback: Tabelle hat möglicherweise noch keine meta-Spalte — insert ohne meta.
-		if _, err2 := s.db.Exec(ctx, `
-			INSERT INTO nis2_anonymous_runs
-			  (token, answers, referrer, user_agent, ip_hash, expires_at)
-			VALUES ($1, '{}'::jsonb, NULLIF($2, ''), NULLIF($3, ''), NULLIF($4, ''), $5)`,
-			token, referrer, userAgent, ipHash, expires,
-		); err2 != nil {
-			return nil, fmt.Errorf("insert multi run: %w", err2)
-		}
-		log.Warn().Err(err).Msg("nis2wizard.multi: meta column not available, inserted without meta")
+		return nil, fmt.Errorf("insert multi run: %w", err)
 	}
 
 	return &MultiRun{Token: token, Answers: map[string]AnswerEntry{}, ExpiresAt: expires}, nil

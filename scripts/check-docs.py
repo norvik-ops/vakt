@@ -736,6 +736,17 @@ def check_typos() -> None:
 # infra `VAKT_X` ODER die Secret-File-Variante `VAKT_X_FILE` setzt.
 _COMPOSE_PARITY_EXEMPT = {
     "VAKT_DOMAIN",  # Root-Caddy nutzt VAKT_DOMAIN; im ISMS-Stack macht Caddy im sites-Compose das Routing.
+    # S13/D24-4 (G-04, ADR-0049 Nachtrag): isms-api hat kein pgbouncer und bekommt
+    # eine fertige VAKT_DB_URL_FILE direkt von Ops — diese Komponenten-Vars bauen
+    # die DSN nur im Root-Stack zusammen, weil Compose kein Secret in ein anderes
+    # interpolieren kann.
+    #
+    # VAKT_DB_PASSWORD_FILE ist mit ausgenommen (Pfad auf ein Root-Stack-Secret,
+    # das der ISMS-Stack nicht kennt). VAKT_DB_PASSWORD — die Klartext-Variante —
+    # steht bewusst NICHT hier: taucht sie je im Root-Compose auf, soll die
+    # Paritätsprüfung anschlagen.
+    "VAKT_DB_HOST", "VAKT_DB_PORT", "VAKT_DB_USER", "VAKT_DB_NAME", "VAKT_DB_SSLMODE",
+    "VAKT_DB_PASSWORD_FILE",
 }
 
 
@@ -779,7 +790,12 @@ def main() -> int:
     # fuer Arbeit, die es nicht getan hat.
     print(f"  Preis-Steuerkennzeichnung: {n_tax} Datei(en) mit Vakt-Preisen geprüft")
     if n_tax == 0:
-        print("  ⚠️  keine einzige Datei mit Preisen gefunden — Muster oder Flächenliste prüfen")
+        # G-07: Ein leerer Nenner ist ein Werkzeugfehler, kein sauberes Repo.
+        # Als blosse Warnung mit exit 0 meldet das Gate Erfolg fuer Arbeit, die es
+        # nicht getan hat — genau die Klasse, gegen die derselbe Sprint antritt.
+        print("  ❌ keine einzige Datei mit Preisen gefunden — Muster oder Flächenliste "
+              "kaputt (Nicht-Vakuitäts-Guard, G-07).")
+        return 2
     if errors:
         print("Doku-Drift gefunden:\n")
         for e in errors:

@@ -103,6 +103,7 @@ func TestResetPassword_RevocationNonFatalOnRedisFailure(t *testing.T) {
 func TestResetPassword_SessionRevokeSQL(t *testing.T) {
 	// The SQL used in ResetPassword — kept here as a living contract test.
 	// If the query changes, this test must be updated with justification.
+	// orgid-lint: global — scoped by user_id (global users table); see password_reset.go
 	const expectedSQL = `DELETE FROM refresh_sessions WHERE user_id = $1::uuid RETURNING token_hash`
 
 	// Verify structural properties of the query string.

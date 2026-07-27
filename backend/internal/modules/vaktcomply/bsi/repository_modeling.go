@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 // bsiModelingJoinCols is the column list for queries that JOIN vb_assets and ck_controls.
@@ -134,7 +135,7 @@ func (r *Repository) UpdateBSIModeling(ctx context.Context, orgID, id string, in
 		return BSIModelingEntry{}, fmt.Errorf("update bsi modeling: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return BSIModelingEntry{}, fmt.Errorf("bsi modeling entry not found")
+		return BSIModelingEntry{}, fmt.Errorf("bsi modeling entry %w", apperr.ErrNotFound)
 	}
 
 	e, err := r.fetchBSIModelingByID(ctx, orgID, id)
@@ -155,7 +156,7 @@ func (r *Repository) DeleteBSIModeling(ctx context.Context, orgID, id string) er
 		return fmt.Errorf("delete bsi modeling: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return fmt.Errorf("bsi modeling entry not found")
+		return fmt.Errorf("bsi modeling entry %w", apperr.ErrNotFound)
 	}
 	return nil
 }

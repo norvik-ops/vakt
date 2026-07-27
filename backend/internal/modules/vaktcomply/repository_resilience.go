@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 // --- Resilience Tests (DORA Art. 24-27) ---
@@ -101,7 +102,7 @@ func (r *Repository) DeleteResilienceTest(ctx context.Context, orgID, id string)
 		return fmt.Errorf("delete resilience test: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("resilience test not found")
+		return fmt.Errorf("resilience test %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -117,7 +118,7 @@ func (r *Repository) UpdateResilienceTestAttachment(ctx context.Context, orgID, 
 		return fmt.Errorf("update resilience test attachment: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("resilience test not found")
+		return fmt.Errorf("resilience test %w", apperr.ErrNotFound)
 	}
 	return nil
 }

@@ -133,6 +133,7 @@ func TestCleanupLoginHistory_DeletesOldEntries(t *testing.T) {
 
 	// Alter Eintrag weg, frischer bleibt.
 	var remaining []string
+	// orgid-lint: global — tests CleanupLoginHistory, itself an intentionally-global retention job
 	rows, err := pool.Query(ctx, `SELECT email FROM login_history ORDER BY email`)
 	require.NoError(t, err)
 	defer rows.Close()

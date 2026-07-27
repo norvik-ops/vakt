@@ -272,6 +272,7 @@ func (c *SonarQubeCollector) collectSecurityHotspots(ctx context.Context, client
 
 	baseURLHash := sonarURLHash(cfg.BaseURL)
 	count := 0
+	assetCache := map[string]string{}
 
 	for _, h := range resp.Hotspots {
 		rawID := fmt.Sprintf("sonarqube:%s:%s:%s:%s", baseURLHash, h.Project, h.RuleKey, h.Component)
@@ -280,16 +281,22 @@ func (c *SonarQubeCollector) collectSecurityHotspots(ctx context.Context, client
 			title = title[:200]
 		}
 
-		_, err := c.db.Exec(ctx, `
+		assetID, err := c.cachedAssetID(ctx, assetCache, orgID, h.Project)
+		if err != nil {
+			log.Warn().Err(err).Str("project", h.Project).Msg("sonarqube_collector: resolve asset for hotspot")
+			continue
+		}
+
+		_, err = c.db.Exec(ctx, `
 			INSERT INTO vb_findings
 				(org_id, asset_id, title, description, severity, status, scanner, raw_id, sources, last_seen_at)
 			VALUES
-				($1::uuid, '', $2, $3, 'high', 'open', 'sonarqube', $4, ARRAY['sonarqube'], NOW())
+				($1::uuid, $2::uuid, $3, $4, 'high', 'open', 'sonarqube', $5, ARRAY['sonarqube'], NOW())
 			ON CONFLICT (org_id, raw_id, scanner) WHERE raw_id IS NOT NULL
 			DO UPDATE SET last_seen_at = NOW()`,
-			orgID, title,
+			orgID, assetID, title,
 			fmt.Sprintf("Kategorie: %s — %s in %s", h.SecurityCategory, h.Message, h.Component),
-			rawID,
+			dedupKey(rawID),
 		)
 		if err != nil {
 			log.Warn().Err(err).Str("raw_id", rawID).Msg("sonarqube_collector: upsert hotspot finding")
@@ -317,6 +324,7 @@ func (c *SonarQubeCollector) collectVulnerabilities(ctx context.Context, client 
 
 	baseURLHash := sonarURLHash(cfg.BaseURL)
 	count := 0
+	assetCache := map[string]string{}
 
 	for _, issue := range resp.Issues {
 		rawID := fmt.Sprintf("sonarqube:%s:%s:%s:%s:%d", baseURLHash, issue.Project, issue.Rule, issue.Component, issue.Line)
@@ -332,16 +340,22 @@ func (c *SonarQubeCollector) collectVulnerabilities(ctx context.Context, client 
 			title = fmt.Sprintf("SonarQube Vulnerability: %s", issue.Rule)
 		}
 
-		_, err := c.db.Exec(ctx, `
+		assetID, err := c.cachedAssetID(ctx, assetCache, orgID, issue.Project)
+		if err != nil {
+			log.Warn().Err(err).Str("project", issue.Project).Msg("sonarqube_collector: resolve asset for vulnerability")
+			continue
+		}
+
+		_, err = c.db.Exec(ctx, `
 			INSERT INTO vb_findings
 				(org_id, asset_id, title, description, severity, status, scanner, raw_id, sources, last_seen_at)
 			VALUES
-				($1::uuid, '', $2, $3, $4, 'open', 'sonarqube', $5, ARRAY['sonarqube'], NOW())
+				($1::uuid, $2::uuid, $3, $4, $5, 'open', 'sonarqube', $6, ARRAY['sonarqube'], NOW())
 			ON CONFLICT (org_id, raw_id, scanner) WHERE raw_id IS NOT NULL
 			DO UPDATE SET last_seen_at = NOW()`,
-			orgID, title,
+			orgID, assetID, title,
 			fmt.Sprintf("Rule: %s — %s in %s", issue.Rule, issue.Message, issue.Component),
-			severity, rawID,
+			severity, dedupKey(rawID),
 		)
 		if err != nil {
 			log.Warn().Err(err).Str("raw_id", rawID).Msg("sonarqube_collector: upsert vuln finding")
@@ -390,6 +404,22 @@ func sonarURLHash(baseURL string) string {
 	return fmt.Sprintf("%x", h[:4])
 }
 
+// cachedAssetID wraps resolveRepoAssetID with a per-run cache keyed by
+// SonarQube project. Hotspots and issues from the same project are resolved
+// once instead of once per finding — hotspots/issues.search responses can
+// span hundreds of findings across a handful of projects.
+func (c *SonarQubeCollector) cachedAssetID(ctx context.Context, cache map[string]string, orgID, project string) (string, error) {
+	if id, ok := cache[project]; ok {
+		return id, nil
+	}
+	id, err := resolveRepoAssetID(ctx, c.db, orgID, fmt.Sprintf("SonarQube: %s", project))
+	if err != nil {
+		return "", err
+	}
+	cache[project] = id
+	return id, nil
+}
+
 // CountQualityGateFailed returns the number of projects with a failed Quality Gate.
 func (c *SonarQubeCollector) CountQualityGateFailed(ctx context.Context, cfg SonarQubeConfig) (projectCount, failedCount int, err error) {
 	client := c.clientFor(cfg.AllowPrivateTarget)
@@ -408,4 +438,23 @@ func (c *SonarQubeCollector) CountQualityGateFailed(ctx context.Context, cfg Son
 		}
 	}
 	return len(projects), failedCount, nil
+}
+
+// CountHotspots returns the number of unreviewed security hotspots for the status
+// endpoint (used by GetSonarQubeStatus). Read-only — unlike collectSecurityHotspots,
+// it does not write findings into vb_findings.
+func (c *SonarQubeCollector) CountHotspots(ctx context.Context, cfg SonarQubeConfig) (int, error) {
+	client := c.clientFor(cfg.AllowPrivateTarget)
+	apiURL := fmt.Sprintf("%s/api/hotspots/search?status=TO_REVIEW&ps=1",
+		strings.TrimRight(cfg.BaseURL, "/"))
+
+	body, err := c.sonarRequest(ctx, client, cfg.Token, apiURL)
+	if err != nil {
+		return 0, err
+	}
+	var resp sonarHotspotsResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return 0, err
+	}
+	return resp.Paging.Total, nil
 }

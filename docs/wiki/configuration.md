@@ -12,6 +12,42 @@ Alle Konfigurationswerte werden über Umgebungsvariablen gesetzt. In Docker-Depl
 | `VAKT_DB_MAX_CONNS` | — | `25` | Maximale Größe des PostgreSQL-Connection-Pools. Bei mehreren API-/Worker-Replikas ggf. anheben (PgBouncer-Limits beachten). |
 | `POSTGRES_PASSWORD` | — | `vakt` | Passwort für den PostgreSQL-Container (wird von `docker-compose.yml` ausgelesen). Muss mit dem Passwort in `VAKT_DB_URL` übereinstimmen. |
 
+### DSN aus Komponenten (Secret-Mount statt Klartext)
+
+Wer das DB-Passwort **nicht** im Klartext in `environment:` stehen haben will,
+setzt statt `VAKT_DB_URL` die Einzelteile. Der Grund: Docker Compose kann ein
+Secret nicht in eine andere Variable interpolieren — eine fertige `VAKT_DB_URL`
+mit eingebettetem Passwort lässt sich also nicht aus einem Secret zusammenbauen.
+Ist `VAKT_DB_URL` gesetzt, gewinnt sie; die Komponenten werden dann ignoriert.
+
+| Variable | Pflicht | Default | Beschreibung |
+|----------|---------|---------|--------------|
+| `VAKT_DB_HOST` | — | `postgres` | Hostname des PostgreSQL-Servers. |
+| `VAKT_DB_PORT` | — | `5432` | Port. |
+| `VAKT_DB_USER` | — | `vakt` | Benutzername. |
+| `VAKT_DB_NAME` | — | `vakt` | Datenbankname. |
+| `VAKT_DB_SSLMODE` | — | `disable` | `disable`, `require`, `verify-full` … |
+| `VAKT_DB_PASSWORD` | — | — | Passwort als Klartext-Variable. **Nur für Entwicklung** — landet in `docker inspect`. |
+| `VAKT_DB_PASSWORD_FILE` | — | — | Pfad auf eine Datei mit dem Passwort (z. B. `/run/secrets/db_password`). Hat Vorrang vor `VAKT_DB_PASSWORD`. |
+| `VAKT_SECRET_KEY_FILE` | — | — | Pfad auf eine Datei mit dem Master-Key, alternativ zu `VAKT_SECRET_KEY`. Gleiche Begründung: kein Schlüssel im Klartext-Environment. |
+
+**Beispiel (Docker-Secret):**
+
+```yaml
+services:
+  api:
+    environment:
+      VAKT_DB_HOST: postgres
+      VAKT_DB_PASSWORD_FILE: /run/secrets/db_password
+      VAKT_SECRET_KEY_FILE: /run/secrets/vakt_secret_key
+    secrets: [db_password, vakt_secret_key]
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  vakt_secret_key:
+    file: ./secrets/vakt_secret_key.txt
+```
+
 **Beispiel:**
 
 ```env

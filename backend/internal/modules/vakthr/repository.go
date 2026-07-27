@@ -722,6 +722,64 @@ func (r *Repository) ListMoverTemplates(ctx context.Context, orgID string) ([]Mo
 		}
 		out = append(out, t)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// S9/CZ-3: MoverTemplate.Items was declared but never populated — every
+	// template listed empty, so a template's checklist content was invisible
+	// until the mover event actually ran against it.
+	//
+	// Fetched in ONE query rather than one per template: a per-row loop is an N+1,
+	// and — worse — letting a single item query abort the whole call turned a
+	// previously working list into an error response. The list is the more
+	// important guarantee here.
+	if len(out) > 0 {
+		ids := make([]string, 0, len(out))
+		for i := range out {
+			ids = append(ids, out[i].ID)
+		}
+		byTemplate, itemsErr := r.listMoverTemplateItemsBatch(ctx, ids)
+		if itemsErr != nil {
+			return nil, fmt.Errorf("list mover template items: %w", itemsErr)
+		}
+		for i := range out {
+			out[i].Items = byTemplate[out[i].ID]
+		}
+	}
+	return out, nil
+}
+
+// listMoverTemplateItemsBatch loads the items for many templates in one round
+// trip, keyed by template id. Templates without items are simply absent from the
+// map, which yields a nil slice — the same result the per-template query gave.
+func (r *Repository) listMoverTemplateItemsBatch(ctx context.Context, templateIDs []string) (map[string][]MoverTemplateItem, error) {
+	// orgid-lint: global — hr_mover_template_items is scoped by template_id FK into system-level templates
+	// Ordering mirrors ListMoverTemplateItems (section, sort_order) so the batch
+	// path and the single path return items in the same order.
+	rows, err := r.db.Query(ctx, `
+		SELECT id::text, template_id::text, section, title,
+		       COALESCE(description,''), COALESCE(responsible_role,''), sort_order
+		FROM hr_mover_template_items
+		WHERE template_id = ANY($1::uuid[])
+		ORDER BY section, sort_order`,
+		templateIDs,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query mover template items: %w", err)
+	}
+	defer rows.Close()
+
+	out := make(map[string][]MoverTemplateItem, len(templateIDs))
+	for rows.Next() {
+		var it MoverTemplateItem
+		var templateID string
+		if scanErr := rows.Scan(&it.ID, &templateID, &it.Section, &it.Title,
+			&it.Description, &it.ResponsibleRole, &it.SortOrder); scanErr != nil {
+			return nil, fmt.Errorf("scan mover template item: %w", scanErr)
+		}
+		out[templateID] = append(out[templateID], it)
+	}
 	return out, rows.Err()
 }
 

@@ -236,7 +236,19 @@ func RunTrivyScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) er
 			WithCompletedAt(time.Now()))
 		return parseErr
 	}
-	count, _ := repo.BatchUpsertFindings(ctx, payload.OrgID, findings)
+	count, upsertErr := repo.BatchUpsertFindings(ctx, payload.OrgID, findings)
+	if upsertErr != nil {
+		// GB-2: pgx runs a batch inside one implicit transaction, so a single
+		// failing row rolls the WHOLE batch back — nothing was stored. Swallowing
+		// this and stamping "completed" would report a scan that found something
+		// and saved none of it, which is the precise lie GB-2 exists to kill
+		// (Migration 243 lesson). Fail the scan loudly instead.
+		_ = repo.UpdateScanStatus(ctx, payload.ScanID, "failed",
+			WithErrorMessage("failed to store findings: "+upsertErr.Error()),
+			WithDurationMs(durationMs),
+			WithCompletedAt(time.Now()))
+		return upsertErr
+	}
 
 	_ = repo.UpdateScanStatus(ctx, payload.ScanID, "completed",
 		WithFindingCount(count),
@@ -304,7 +316,19 @@ func RunNucleiScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) e
 	}
 
 	findings := findingsFromNuclei(out, payload)
-	count, _ := repo.BatchUpsertFindings(ctx, payload.OrgID, findings)
+	count, upsertErr := repo.BatchUpsertFindings(ctx, payload.OrgID, findings)
+	if upsertErr != nil {
+		// GB-2: pgx runs a batch inside one implicit transaction, so a single
+		// failing row rolls the WHOLE batch back — nothing was stored. Swallowing
+		// this and stamping "completed" would report a scan that found something
+		// and saved none of it, which is the precise lie GB-2 exists to kill
+		// (Migration 243 lesson). Fail the scan loudly instead.
+		_ = repo.UpdateScanStatus(ctx, payload.ScanID, "failed",
+			WithErrorMessage("failed to store findings: "+upsertErr.Error()),
+			WithDurationMs(durationMs),
+			WithCompletedAt(time.Now()))
+		return upsertErr
+	}
 
 	_ = repo.UpdateScanStatus(ctx, payload.ScanID, "completed",
 		WithFindingCount(count),
@@ -568,7 +592,19 @@ func RunOpenVASScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) 
 		ComputeRiskScore(&f)
 		findings = append(findings, f)
 	}
-	count, _ := repo.BatchUpsertFindings(ctx, payload.OrgID, findings)
+	count, upsertErr := repo.BatchUpsertFindings(ctx, payload.OrgID, findings)
+	if upsertErr != nil {
+		// GB-2: pgx runs a batch inside one implicit transaction, so a single
+		// failing row rolls the WHOLE batch back — nothing was stored. Swallowing
+		// this and stamping "completed" would report a scan that found something
+		// and saved none of it, which is the precise lie GB-2 exists to kill
+		// (Migration 243 lesson). Fail the scan loudly instead.
+		_ = repo.UpdateScanStatus(ctx, payload.ScanID, "failed",
+			WithErrorMessage("failed to store findings: "+upsertErr.Error()),
+			WithDurationMs(durationMs),
+			WithCompletedAt(time.Now()))
+		return upsertErr
+	}
 
 	_ = repo.UpdateScanStatus(ctx, payload.ScanID, "completed",
 		WithFindingCount(count),

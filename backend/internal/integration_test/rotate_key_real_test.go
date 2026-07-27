@@ -220,6 +220,7 @@ func TestRotateKey_EndToEnd(t *testing.T) {
 	// 3. notification_channels
 	newAlert, _ := sharedcrypto.DeriveServiceKey(newMaster, "vakt-alert-v1")
 	var rotURL, rotHMAC []byte
+	// orgid-lint: global — tests cmd/rotate-key's cross-org master-key rotation; chanID from setup above
 	require.NoError(t, pool.QueryRow(ctx,
 		`SELECT url_encrypted, hmac_secret_encrypted FROM notification_channels WHERE id=$1::uuid`, chanID,
 	).Scan(&rotURL, &rotHMAC))
@@ -233,6 +234,7 @@ func TestRotateKey_EndToEnd(t *testing.T) {
 	// 4. github (hex-encoded)
 	newGH, _ := sharedcrypto.DeriveServiceKey(newMaster, "vakt-github-v1")
 	var ghHex string
+	// orgid-lint: global — tests cmd/rotate-key's cross-org master-key rotation
 	require.NoError(t, pool.QueryRow(ctx, `SELECT access_token FROM integrations_github`).Scan(&ghHex))
 	ghBytes, err := hex.DecodeString(ghHex)
 	require.NoError(t, err)
@@ -260,6 +262,7 @@ func TestRotateKey_EndToEnd(t *testing.T) {
 	// 6. webhooks.secret — value must decrypt under new webhook key.
 	newWebhook, _ := sharedcrypto.DeriveServiceKey(newMaster, "vakt-webhook-v1")
 	var rotatedWhStored string
+	// orgid-lint: global — tests cmd/rotate-key's cross-org master-key rotation; whID from setup above
 	require.NoError(t, pool.QueryRow(ctx, `SELECT secret FROM webhooks WHERE id = $1::uuid`, whID).Scan(&rotatedWhStored))
 	assert.True(t, strings.HasPrefix(rotatedWhStored, "enc:v1:"), "rotated webhook secret must keep the enc:v1: prefix")
 	whB64 := rotatedWhStored[len("enc:v1:"):]

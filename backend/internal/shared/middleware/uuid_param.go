@@ -10,54 +10,64 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// uuidParamNames lists the path-param names that ALWAYS carry a resource UUID
-// across the six business modules. Non-UUID identifiers deliberately use other
-// names (:name for framework names, :control_ref for "A.5.1"-style refs, :type
-// for report types, :token for share tokens, :slug, :report, :v for version
-// ints) and are intentionally NOT validated here.
-var uuidParamNames = map[string]bool{
-	"id":  true,
-	"cid": true, // control id
-	"fid": true, // framework id
-	"eid": true, // employee/entity id
-	// S125-7 (N5/D13): additional resource-UUID params that were unguarded, so a
-	// malformed value hit ::uuid and produced 500 instead of 400. All verified as
-	// resource IDs (never a slug/ref/name). Non-UUID params keep distinct names
-	// (see the doc comment above) and are deliberately excluded.
-	"project_id":  true, // vaktvault project id
-	"env_id":      true, // vaktvault environment id
-	"result_id":   true, // vaktscan scan-result id
-	"schedule_id": true, // vaktscan schedule id
-	"rid":         true, // vakthr role id
-	"control_id":  true, // vaktcomply control id (distinct from :control_ref)
-	"tid":         true, // task id
-	"mid":         true, // measure id
-	"qid":         true, // quiz question id
-	"aid":         true, // quiz answer id
-	// 2026-07-16: found by re-probing with the now-complete OpenAPI (133 GET-{id}
-	// routes instead of 80). These three sit outside the module groups the guard
-	// was originally mounted on, or use a name the set did not know — all 500'd.
-	"user_id":  true, // admin user id
-	"policyId": true, // trust-center policy id
-	"reportId": true, // vaktcomply incident-report id
+// nonUUIDParamNames is a curated DENYLIST of path-param names that are
+// deliberately NOT resource UUIDs, across the six business modules and shared
+// packages. Everything else is validated by default (see ValidateUUIDParams) —
+// S3/D13-A inverted this from an allowlist (uuidParamNames) after finding that
+// an allowlist silently exempts every new nested param (:itemId, :depId,
+// :riskId, :taskId, :controlId, ...) until someone remembers to add it, which
+// is the exact same subset trap as v0.42.25/26/27's route-wiring gaps. A
+// denylist fails CLOSED instead: an unrecognised new param gets validated,
+// and a legitimately non-UUID param has to be added here explicitly, with a
+// reason, or the guard breaks it.
+var nonUUIDParamNames = map[string]bool{
+	// Echo's catch-all. Group.Use() auto-registers RouteNotFound("", …) and
+	// RouteNotFound("/*", …) for every group that has middleware — WITH the full
+	// group chain, so `/api/v1/*` runs through this guard. Its param is "*" and
+	// its value is the unmatched rest-path.
+	//
+	// Without this entry every 404 under /api/v1 becomes "400 invalid id: must be
+	// a UUID" for an authenticated request to any unknown path. That is not a
+	// cosmetic mislabel: the live 404 is the diagnostic signal this project uses
+	// to find its recurring "handler without route" class (v0.42.25/26/27), and
+	// frontend hooks that turn 404 into [] would start seeing 400 instead. G4
+	// cannot catch it — the coverage test skips paths without ":" and only
+	// asserts != 500.
+	"*":             true,
+	"name":          true, // framework/catalog/group names
+	"control_ref":   true, // "A.5.1"-style ISO/BSI control reference
+	"type":          true, // report/entity type enum
+	"token":         true, // hex-encoded opaque tokens (invite/session/share/portal) — not UUIDs
+	"slug":          true,
+	"stage":         true, // NIS2 report stage enum (early_warning|full_report|final_report)
+	"key":           true, // vaktvault secret key name (user-chosen string)
+	"code":          true, // physical-control template code ("PHY-01"-style)
+	"email":         true, // admin/password-reset lookups by email address
+	"severity":      true, // vaktscan SLA policy severity enum
+	"v":             true, // policy version number (int, validated by the handler itself)
+	"step_id":       true, // vakthr checklist step id — TEXT column, JSON item key, not UUID
+	"bausteinId":    true, // BSI Baustein reference ("APP.1.1"-style)
+	"anforderungId": true, // BSI Anforderung reference ("APP.1.1.A1"-style)
 }
 
-// ValidateUUIDParams rejects a request whose UUID-typed path param (see
-// uuidParamNames) is syntactically not a UUID, returning 400 before the handler
-// runs. Without it, a malformed id reaches a query that casts it to ::uuid and
-// Postgres raises SQLSTATE 22P02; handlers that do not special-case that error
-// map it to 500. A crafted "/vaktcomply/controls/not-a-uuid/measures" is the
-// only way to hit it — the SPA always sends real UUIDs from list responses — so
-// this is defence-in-depth against malformed input, turning a spurious 500 into
-// a correct 400. Params carrying a valid UUID, or params not in the set, pass
-// through untouched.
+// ValidateUUIDParams rejects a request whose UUID-typed path param is
+// syntactically not a UUID, returning 400 before the handler runs. Without it,
+// a malformed id reaches a query that casts it to ::uuid and Postgres raises
+// SQLSTATE 22P02; handlers that do not special-case that error map it to 500.
+// A crafted "/vaktcomply/controls/not-a-uuid/measures" (or a nested
+// "/controls/:id/tasks/not-a-uuid") is the only way to hit it — the SPA always
+// sends real UUIDs from list responses — so this is defence-in-depth against
+// malformed input, turning a spurious 500 into a correct 400.
+//
+// Every path param is validated EXCEPT those in nonUUIDParamNames (see its
+// doc comment for why a denylist, not an allowlist).
 func ValidateUUIDParams() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			names := c.ParamNames()
 			values := c.ParamValues()
 			for i, name := range names {
-				if !uuidParamNames[name] {
+				if nonUUIDParamNames[name] {
 					continue
 				}
 				v := values[i]

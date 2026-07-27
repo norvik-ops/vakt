@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 type supplierFields struct {
@@ -565,7 +566,7 @@ func (r *Repository) GetQuestionnaire(ctx context.Context, orgID, id string) (*Q
 	row, err := r.q.GetCKQuestionnaireBase(ctx, db.GetCKQuestionnaireBaseParams{ID: id, OrgID: orgID})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("questionnaire not found")
+			return nil, fmt.Errorf("questionnaire %w", apperr.ErrNotFound)
 		}
 		return nil, fmt.Errorf("get questionnaire: %w", err)
 	}
@@ -606,7 +607,7 @@ func (r *Repository) UpdateQuestionnaire(ctx context.Context, orgID, id, name, d
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("questionnaire not found")
+			return nil, fmt.Errorf("questionnaire %w", apperr.ErrNotFound)
 		}
 		return nil, fmt.Errorf("update questionnaire: %w", err)
 	}
@@ -621,7 +622,7 @@ func (r *Repository) DeleteQuestionnaire(ctx context.Context, orgID, id string) 
 		return fmt.Errorf("delete questionnaire: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("questionnaire not found")
+		return fmt.Errorf("questionnaire %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -661,7 +662,7 @@ func (r *Repository) GetQuestion(ctx context.Context, questionnaireID, questionI
 	row, err := r.q.GetCKQuestion(ctx, db.GetCKQuestionParams{ID: questionID, QuestionnaireID: questionnaireID})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("question not found")
+			return nil, fmt.Errorf("question %w", apperr.ErrNotFound)
 		}
 		return nil, fmt.Errorf("get question: %w", err)
 	}
@@ -690,7 +691,7 @@ func (r *Repository) UpdateQuestion(ctx context.Context, questionnaireID, questi
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("question not found")
+			return nil, fmt.Errorf("question %w", apperr.ErrNotFound)
 		}
 		return nil, fmt.Errorf("update question: %w", err)
 	}
@@ -705,7 +706,7 @@ func (r *Repository) DeleteQuestion(ctx context.Context, questionnaireID, questi
 		return fmt.Errorf("delete question: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("question not found")
+		return fmt.Errorf("question %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -798,7 +799,7 @@ func (r *Repository) GetAssessmentByTokenHash(ctx context.Context, hash string) 
 	row, err := r.q.GetCKAssessmentByTokenHash(ctx, hash)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("assessment not found")
+			return nil, fmt.Errorf("assessment %w", apperr.ErrNotFound)
 		}
 		return nil, fmt.Errorf("get assessment: %w", err)
 	}
@@ -862,7 +863,7 @@ func (r *Repository) GetAssessmentWithQuestionnaire(ctx context.Context, id stri
 	row, err := r.q.GetCKAssessmentBase(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("assessment not found")
+			return nil, fmt.Errorf("assessment %w", apperr.ErrNotFound)
 		}
 		return nil, fmt.Errorf("get assessment: %w", err)
 	}

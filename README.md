@@ -79,6 +79,8 @@ Free-to-self-host alternative to Vanta, Drata, or DataGuard. Those vendors don't
 
 ## Quick Start
 
+### Local (development / testing)
+
 ```bash
 git clone https://github.com/norvik-ops/vakt
 cd vakt
@@ -94,6 +96,17 @@ Open [http://localhost](http://localhost) in your browser.
 
 > **First login (without demo mode):** Open [http://localhost/setup](http://localhost/setup) to create your first admin account.
 > With `VAKT_DEMO=true` the login screen shows auto-generated credentials instead.
+
+### Remote deployment (production)
+
+For a server with a public domain, set `VAKT_DOMAIN` in your `.env` before starting:
+
+```bash
+echo 'VAKT_DOMAIN=vakt.example.com' >> .env
+docker compose up -d
+```
+
+Caddy will automatically fetch a Let's Encrypt certificate for your domain (ports 80 and 443 must be reachable from the internet). **Without `VAKT_DOMAIN`, Caddy only answers to the name `localhost`.** Reaching the server by IP then does not work — and not with a click-through certificate warning. Measured: `http://server-ip` returns an empty `200` (a blank page, nothing that looks like an error), and `https://server-ip` has no certificate for that address, so the TLS handshake is aborted (`ERR_SSL_*`). Expect a blank page or a connection error, never a security prompt you can accept. Always use a real domain for production. See [Deployment Guide](docs/setup.md) for details.
 
 **Just want to try it out first?** Run with demo mode — no user account setup needed:
 

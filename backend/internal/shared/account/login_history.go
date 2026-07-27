@@ -44,6 +44,7 @@ func (h *LoginHistoryHandler) List(c echo.Context) error {
 	if userID == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
+	// orgid-lint: global — caller's own login history, scoped by user_id from the auth token
 	rows, err := h.db.Query(c.Request().Context(), `
 		SELECT ts, ip, user_agent, source, result
 		FROM login_history

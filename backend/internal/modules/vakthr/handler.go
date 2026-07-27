@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
+	"github.com/matharnica/vakt/internal/shared/httputil"
 	"github.com/matharnica/vakt/internal/shared/pagination"
 )
 
@@ -62,6 +63,14 @@ func orgID(c echo.Context) string {
 // errResp writes a consistent JSON error response.
 func errResp(c echo.Context, code int, msg, errCode string) error {
 	return c.JSON(code, map[string]string{"error": msg, "code": errCode})
+}
+
+// dbErr classifies a repository/service error at the 4xx-vs-5xx boundary (S4):
+// not-found → 404, unique → 409, check/not-null/fk → 422, malformed input → 400,
+// else the 500 fallback (msg/errCode). Use it in a write handler's DB-error
+// branch instead of a hardcoded 500 so a missing row is a 404, not a server error.
+func dbErr(c echo.Context, err error, msg, errCode string) error {
+	return httputil.RespondError(c, err, msg, errCode)
 }
 
 // --- Employees ---

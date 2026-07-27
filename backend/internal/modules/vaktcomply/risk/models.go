@@ -84,7 +84,7 @@ type UpdateRiskTreatmentInput struct {
 	TreatmentOption    string  `json:"treatment_option"    validate:"omitempty,oneof=accept mitigate transfer avoid"`
 	TreatmentPlan      string  `json:"treatment_plan"      validate:"max=5000"`
 	TreatmentOwner     string  `json:"treatment_owner"     validate:"max=200"`
-	TreatmentDueDate   *string `json:"treatment_due_date"`
+	TreatmentDueDate   *string `json:"treatment_due_date" validate:"omitempty,datetime=2006-01-02"`
 	TreatmentStatus    string  `json:"treatment_status"    validate:"omitempty,oneof=pending in_progress implemented verified"`
 	ResidualLikelihood *int    `json:"residual_likelihood" validate:"omitempty,min=1,max=5"`
 	ResidualImpact     *int    `json:"residual_impact"     validate:"omitempty,min=1,max=5"`
@@ -142,7 +142,7 @@ type CreateCAPAInput struct {
 	Title         string  `json:"title"          validate:"required,min=3,max=300"`
 	Description   string  `json:"description"    validate:"max=3000"`
 	AssigneeEmail string  `json:"assignee_email" validate:"omitempty,email"`
-	DueDate       *string `json:"due_date"`
+	DueDate       *string `json:"due_date" validate:"omitempty,datetime=2006-01-02"`
 	Priority      string  `json:"priority"       validate:"omitempty,oneof=low medium high critical"`
 }
 
@@ -153,7 +153,7 @@ type UpdateCAPAInput struct {
 	RootCause        *string `json:"root_cause"        validate:"omitempty,max=3000"`
 	ActionPlan       *string `json:"action_plan"       validate:"omitempty,max=5000"`
 	AssigneeEmail    *string `json:"assignee_email"    validate:"omitempty,email"`
-	DueDate          *string `json:"due_date"`
+	DueDate          *string `json:"due_date" validate:"omitempty,datetime=2006-01-02"`
 	Priority         *string `json:"priority"          validate:"omitempty,oneof=low medium high critical"`
 	Status           *string `json:"status"            validate:"omitempty,oneof=open in_progress implemented verified closed"`
 	VerificationNote *string `json:"verification_note" validate:"omitempty,max=3000"`

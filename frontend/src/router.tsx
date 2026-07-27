@@ -45,7 +45,6 @@ const VeriniceImportPage         = lazy(() => import('./modules/settings/pages/V
 const AuditLogPage               = lazy(() => import('./pages/AuditLogPage'))
 const ApiKeysPage                = lazy(() => import('./pages/ApiKeysPage'))
 const AdminHealthPage            = lazy(() => import('./pages/AdminHealthPage'))
-const AdminTenantsPage           = lazy(() => import('./pages/AdminTenantsPage'))
 const AdminSecurityPage          = lazy(() => import('./pages/AdminSecurityPage'))
 const AdminHubPage               = lazy(() => import('./pages/AdminHubPage'))
 const WebhooksPage               = lazy(() => import('./pages/WebhooksPage'))
@@ -218,7 +217,6 @@ export const router = createBrowserRouter([
           { path: '/settings/license', element: <Navigate to="/settings" replace /> },
           { path: '/admin', element: <AdminHubPage /> },
           { path: '/admin/health', element: <AdminHealthPage /> },
-          { path: '/admin/tenants', element: <AdminTenantsPage /> },
           { path: '/admin/security', element: <AdminSecurityPage /> },
           {
             path: '/vaktscan/*',

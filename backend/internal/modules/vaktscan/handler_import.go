@@ -7,6 +7,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 // ImportFindings handles POST /api/v1/vaktscan/findings/import
@@ -105,11 +107,13 @@ func (h *Handler) ImportFindings(c echo.Context) error {
 	})
 }
 
-// isNotFoundError checks whether the error message indicates a missing asset.
+// isNotFoundError checks whether the error message indicates a missing (or
+// out-of-org, i.e. "not accessible") asset. Not-found classification is delegated
+// to the shared apperr helper (S4) so it stays consistent with every other
+// module; the "not accessible" suffix is a vaktscan-specific alias kept here.
 func isNotFoundError(err error) bool {
 	if err == nil {
 		return false
 	}
-	msg := err.Error()
-	return strings.Contains(msg, "asset not found") || strings.Contains(msg, "not accessible")
+	return apperr.IsNotFound(err) || strings.HasSuffix(err.Error(), "not accessible")
 }

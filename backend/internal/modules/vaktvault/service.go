@@ -23,6 +23,7 @@ import (
 
 	"github.com/matharnica/vakt/internal/db"
 	"github.com/matharnica/vakt/internal/services/crossevidence"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 	"github.com/matharnica/vakt/internal/shared/platform/events"
 	"github.com/matharnica/vakt/internal/shared/queuemetrics"
 )
@@ -332,7 +333,7 @@ func (s *Service) UseShareLink(ctx context.Context, rawToken string) (string, er
 
 	sl, err := s.repo.GetShareLink(ctx, tokenHash)
 	if err != nil {
-		return "", fmt.Errorf("share link not found")
+		return "", fmt.Errorf("share link %w", apperr.ErrNotFound)
 	}
 
 	if sl.UsedAt != nil {
@@ -524,31 +525,43 @@ func (s *Service) ImportSecrets(ctx context.Context, orgID, projectID, envName, 
 	}
 	result := &ImportResult{}
 	for key, value := range pairs {
-		if _, err := s.SetSecret(ctx, orgID, envID, "", key, value); err != nil {
+		sec, err := s.SetSecret(ctx, orgID, envID, "", key, value)
+		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("failed to import %s: %v", key, err))
-		} else {
-			result.Imported++
+			continue
+		}
+		result.Imported++
+		// S9/CZ-4: Versioned was declared but never assigned. SetSecret upserts, so
+		// Version > 1 means this key already existed and just received a new version.
+		if sec.Version > 1 {
+			result.Versioned++
 		}
 	}
 	return result, nil
 }
 
-// ExportSecrets returns secrets in dotenv format for shell eval.
-func (s *Service) ExportSecrets(ctx context.Context, orgID, projectID, envID string) (string, error) {
+// ExportSecrets returns secrets in dotenv format. If a secret fails to
+// decrypt, it is skipped (logged, not fatal to the export) and counted in
+// failedCount so the caller can report a partial-success response instead of
+// silently returning fewer lines than secrets exist.
+func (s *Service) ExportSecrets(ctx context.Context, orgID, projectID, envID string) (content string, failedCount int, err error) {
 	secrets, err := s.repo.ListSecretKeys(ctx, orgID, envID)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 
 	var sb strings.Builder
 	for _, sec := range secrets {
-		plain, err := s.GetSecret(ctx, orgID, envID, sec.Key, "export", "")
-		if err != nil {
+		plain, decErr := s.GetSecret(ctx, orgID, envID, sec.Key, "export", "")
+		if decErr != nil {
+			log.Error().Err(decErr).Str("org_id", orgID).Str("env_id", envID).Str("key", sec.Key).
+				Msg("ExportSecrets: failed to decrypt secret, skipping")
+			failedCount++
 			continue
 		}
 		fmt.Fprintf(&sb, "%s=%s\n", sec.Key, plain.Value)
 	}
-	return sb.String(), nil
+	return sb.String(), failedCount, nil
 }
 
 // --- Rotation ---

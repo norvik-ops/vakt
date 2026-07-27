@@ -212,6 +212,55 @@ func (c *EntraIDCollector) addEvidence(ctx context.Context, orgID, controlID, ti
 	return c.evidence.AddCollectorEvidence(ctx, orgID, controlID, "", entraidSource, title, data)
 }
 
+// CountMFARiskyInactive returns the MFA enrollment percentage, risky user count and
+// inactive user count for the status endpoint (used by GetEntraIDStatus). Read-only
+// variant of collectMFAEnrollment/collectRiskyUsers/collectInactiveUsers.
+func (c *EntraIDCollector) CountMFARiskyInactive(ctx context.Context, cfg EntraIDConfig) (mfaPct float64, risky, inactive int, err error) {
+	token, err := c.getAccessToken(ctx, cfg)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	items, err := c.graphGetAll(ctx, token, c.graphBaseURL+"/v1.0/reports/credentialUserRegistrationDetails")
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	total := len(items)
+	mfaEnabled := 0
+	for _, raw := range items {
+		var user struct {
+			IsMFARegistered bool `json:"isMfaRegistered"`
+		}
+		if json.Unmarshal(raw, &user) == nil && user.IsMFARegistered {
+			mfaEnabled++
+		}
+	}
+	if total > 0 {
+		mfaPct = float64(mfaEnabled) / float64(total) * 100
+	}
+
+	q := url.Values{}
+	q.Set("$filter", "riskLevel eq 'high' or riskLevel eq 'medium'")
+	// graphGetAll, not graphGet: Graph pages this collection, so counting only
+	// the first page caps the figure at the default page size. That was tolerable
+	// while the value merely seeded an evidence title, but S9/CZ-1 promotes it to
+	// a KPI in the API response — and an undercount is wrong in the flattering
+	// direction, which is the worst way for a security number to be wrong.
+	if items, riskErr := c.graphGetAll(ctx, token, c.graphBaseURL+"/v1.0/identityProtection/riskyUsers?"+q.Encode()); riskErr == nil {
+		risky = len(items)
+	}
+
+	threshold := time.Now().UTC().AddDate(0, 0, -90).Format(time.RFC3339)
+	iq := url.Values{}
+	iq.Set("$select", "id,displayName,userPrincipalName,signInActivity")
+	iq.Set("$filter", "signInActivity/lastSignInDateTime lt "+threshold)
+	if inactiveItems, inactiveErr := c.graphGetAll(ctx, token, c.graphBaseURL+"/v1.0/users?"+iq.Encode()); inactiveErr == nil {
+		inactive = len(inactiveItems)
+	}
+
+	return mfaPct, risky, inactive, nil
+}
+
 // collectMFAEnrollment collects MFA registration stats via credentialUserRegistrationDetails.
 func (c *EntraIDCollector) collectMFAEnrollment(ctx context.Context, orgID, token string, controls []ControlMatch) (int, error) {
 	items, err := c.graphGetAll(ctx, token,

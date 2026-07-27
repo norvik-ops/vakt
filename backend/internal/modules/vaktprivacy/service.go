@@ -20,6 +20,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/services/crossevidence"
+	sharedevents "github.com/matharnica/vakt/internal/shared/events"
 	"github.com/matharnica/vakt/internal/shared/notify"
 	"github.com/matharnica/vakt/internal/shared/platform/events"
 	"github.com/matharnica/vakt/internal/shared/queuemetrics"
@@ -44,6 +45,22 @@ func NewService(db *pgxpool.Pool, asynqOpt asynq.RedisClientOpt) *Service {
 		repo:        NewRepository(db),
 		asynqClient: client,
 	}
+}
+
+// WithSubjectErasers injects the module-owned PII erasers used by the Art. 17
+// erasure path (ExecuteErasure). Order does NOT matter — cross-module
+// identifiers are pre-resolved (see WithSubjectResolver). Wired from cmd/api;
+// see ADR-0079.
+func (s *Service) WithSubjectErasers(erasers ...sharedevents.SubjectErasure) *Service {
+	s.repo.WithSubjectErasers(erasers...)
+	return s
+}
+
+// WithSubjectResolver injects the resolver that looks up identifiers owned by
+// another module (hr_employees ids) before any eraser runs. Wired from cmd/api.
+func (s *Service) WithSubjectResolver(res sharedevents.SubjectResolver) *Service {
+	s.repo.WithSubjectResolver(res)
+	return s
 }
 
 // --- VVT ---

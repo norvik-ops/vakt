@@ -6,11 +6,68 @@ package license
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
+
+// TestRequireCSRF_S132S11 is the S132-S11/D24-2 regression guard for
+// POST /license/activate. RegisterRoutes mounts /license on the bare `api`
+// group in cmd/api/routes.go — not on `protected` — so it never inherited
+// protected's auth.CSRFMiddleware. requireCSRF() closes that gap.
+func TestRequireCSRF_S132S11(t *testing.T) {
+	next := func(c echo.Context) error { return c.NoContent(http.StatusNoContent) }
+	handler := requireCSRF()(next)
+
+	t.Run("missing token is 403", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodPost, "/license/activate", strings.NewReader(`{}`))
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		assert.NoError(t, handler(c))
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+		assert.Contains(t, rec.Body.String(), "CSRF_MISSING")
+	})
+
+	t.Run("mismatched cookie/header is 403", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodPost, "/license/activate", strings.NewReader(`{}`))
+		req.AddCookie(&http.Cookie{Name: csrfCookieName, Value: "cookie-token"})
+		req.Header.Set(csrfHeaderName, "different-token")
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		assert.NoError(t, handler(c))
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+		assert.Contains(t, rec.Body.String(), "CSRF_MISMATCH")
+	})
+
+	t.Run("matching cookie/header reaches the handler", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodPost, "/license/activate", strings.NewReader(`{}`))
+		req.AddCookie(&http.Cookie{Name: csrfCookieName, Value: "matching-token"})
+		req.Header.Set(csrfHeaderName, "matching-token")
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		assert.NoError(t, handler(c))
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+	})
+
+	t.Run("API key bypasses CSRF", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodPost, "/license/activate", strings.NewReader(`{}`))
+		req.Header.Set("Authorization", "Bearer sk_deadbeef")
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		assert.NoError(t, handler(c))
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+	})
+}
 
 // TestRequireAdminRole_RoleNameMatchesDBSeed verifies the fix for audit
 // finding F10. The middleware MUST accept the PascalCase role name "Admin"

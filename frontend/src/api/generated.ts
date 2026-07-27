@@ -999,7 +999,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Invalidate existing recovery codes and issue 8 new ones */
+        /**
+         * Invalidate existing recovery codes and issue 8 new ones
+         * @description Requires a currently valid TOTP code (S132-S11/D24-2): regenerating recovery codes invalidates every existing one, so possession of the session alone must not be enough. The code is also consumed for replay protection, i.e. it cannot be reused within its 90-second window.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -1007,7 +1010,17 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Current 6-digit TOTP code from the authenticator app.
+                         * @example 123456
+                         */
+                        code: string;
+                    };
+                };
+            };
             responses: {
                 /** @description New recovery codes */
                 200: {
@@ -1020,8 +1033,15 @@ export interface paths {
                         };
                     };
                 };
-                /** @description 2FA not enabled */
+                /** @description 2FA not enabled, or `code` missing from the request body */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description TOTP code invalid (TOTP_INVALID_CODE) or already used (TOTP_CODE_REPLAYED) */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2141,10 +2161,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Export all controls as XLSX */
+        /**
+         * Export the controls of one framework as XLSX
+         * @description `framework_id` is REQUIRED (S134-S14/A20-2): an org can have several frameworks enabled, and an unscoped export mixed them into one sheet. Omitting it returns 400 CK_MISSING_PARAM.
+         */
         get: {
             parameters: {
-                query?: never;
+                query: {
+                    /** @description Framework whose controls to export. */
+                    framework_id: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -2159,6 +2185,13 @@ export interface paths {
                     content: {
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
                     };
+                };
+                /** @description framework_id missing (CK_MISSING_PARAM) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };
@@ -10446,82 +10479,6 @@ export interface paths {
         get: operations["exportAIDocumentationPDF"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/supplier/{token}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                token: string;
-            };
-            cookie?: never;
-        };
-        /** Get supplier portal assessment by token (public) */
-        get: operations["portalGetAssessment"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/supplier/{token}/save": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                token: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Save (draft) supplier portal answers (public) */
-        post: operations["portalSaveAnswers"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/supplier/{token}/submit": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                token: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Submit final supplier portal answers (public) */
-        post: operations["portalSubmitAssessment"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/supplier/{token}/upload": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                token: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Upload a file in the supplier portal (public) */
-        post: operations["portalUploadFile"];
         delete?: never;
         options?: never;
         head?: never;
@@ -42081,122 +42038,6 @@ export interface operations {
                 };
                 content: {
                     "application/pdf": string;
-                };
-            };
-        };
-    };
-    portalGetAssessment: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                token: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Supplier portal assessment data */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        supplier_name?: string;
-                        questionnaire_title?: string;
-                        /** Format: date-time */
-                        expires_at?: string;
-                        questions?: Record<string, never>[];
-                        answers?: Record<string, never>[];
-                    };
-                };
-            };
-        };
-    };
-    portalSaveAnswers: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                token: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    answers?: Record<string, never>[];
-                };
-            };
-        };
-        responses: {
-            /** @description Answers saved */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    portalSubmitAssessment: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                token: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    answers?: Record<string, never>[];
-                };
-            };
-        };
-        responses: {
-            /** @description Assessment submitted */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    portalUploadFile: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                token: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": {
-                    /** Format: binary */
-                    file: string;
-                    /** Format: uuid */
-                    question_id?: string;
-                };
-            };
-        };
-        responses: {
-            /** @description File uploaded */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** Format: uuid */
-                        file_id?: string;
-                        filename?: string;
-                    };
                 };
             };
         };

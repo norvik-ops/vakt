@@ -234,11 +234,15 @@ func (s *Service) Register(ctx context.Context, input RegisterInput, deviceHint 
 		}
 	}()
 
-	// Insert user.
+	// Insert user. role='admin' explicitly: self-registration founds a brand-new org
+	// and makes this user its Admin (Admin org_members role below). The users.role
+	// default is 'viewer' since migration 249, so relying on it would leave the org
+	// founder unable to reach the admin surface (usermgmt.requireAdmin reads
+	// users.role) — the D24-1 split-brain.
 	var userID string
 	err = tx.QueryRow(ctx, `
-		INSERT INTO users (email, password_hash, display_name)
-		VALUES ($1, $2, $3)
+		INSERT INTO users (email, password_hash, display_name, role)
+		VALUES ($1, $2, $3, 'admin')
 		RETURNING id::text`,
 		input.Email, string(hash), input.Name,
 	).Scan(&userID)
@@ -526,6 +530,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*AuthRespon
 	// Look up device hint from the session row so it carries forward to the new token.
 	oldHash := sha256Hex(refreshToken)
 	var deviceHint string
+	// orgid-lint: global — scoped by token_hash, a globally-unique auth credential
 	_ = s.db.QueryRow(ctx,
 		`SELECT device_hint FROM refresh_sessions WHERE token_hash = $1`, oldHash,
 	).Scan(&deviceHint)
@@ -535,6 +540,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*AuthRespon
 		log.Warn().Err(err).Msg("failed to delete old refresh token")
 	}
 	// Remove old session row; the new one will be inserted by issueTokenPair.
+	// orgid-lint: global — scoped by token_hash, a globally-unique auth credential
 	_, _ = s.db.Exec(ctx, `DELETE FROM refresh_sessions WHERE token_hash = $1`, oldHash)
 
 	return s.issueTokenPair(ctx, payload.UserID, payload.OrgID, []string{roleName}, deviceHint, payload.MFA)
@@ -790,6 +796,8 @@ func (s *Service) RevokeAllSessions(ctx context.Context, userID string) error {
 	if s.db == nil {
 		return fmt.Errorf("revoke sessions: db not available")
 	}
+	// orgid-lint: global — scoped by user_id (global users table); "logout everywhere" is
+	// intentionally cross-org (see comment above)
 	rows, err := s.db.Query(ctx,
 		`DELETE FROM refresh_sessions WHERE user_id = $1::uuid RETURNING token_hash`,
 		userID,

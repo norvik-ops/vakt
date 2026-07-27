@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 // milestoneFromRow maps a sqlc milestone row (shared column layout) to the
@@ -198,7 +199,7 @@ func (r *Repository) DeleteMilestone(ctx context.Context, orgID, milestoneID str
 		return fmt.Errorf("delete milestone: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("milestone not found")
+		return fmt.Errorf("milestone %w", apperr.ErrNotFound)
 	}
 	return nil
 }

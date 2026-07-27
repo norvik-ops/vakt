@@ -358,9 +358,13 @@ func (s *Service) createOIDCUser(ctx context.Context, oidcSubject, provider, ema
 	}()
 
 	var userID string
+	// role is set to the least-privilege 'viewer' explicitly (V24-a): SSO users get
+	// the Viewer org_members role below, and users.role must match — the default is
+	// 'viewer' since migration 249, but relying on the default is the exact D24-1
+	// trap, so every insert states the role.
 	err = tx.QueryRow(ctx, `
-		INSERT INTO users (email, display_name, avatar_url, oidc_subject, oidc_provider, is_active)
-		VALUES ($1, $2, NULLIF($3,''), $4, $5, TRUE)
+		INSERT INTO users (email, display_name, avatar_url, oidc_subject, oidc_provider, is_active, role)
+		VALUES ($1, $2, NULLIF($3,''), $4, $5, TRUE, 'viewer')
 		RETURNING id::text`,
 		email, displayName, avatarURL, oidcSubject, provider,
 	).Scan(&userID)

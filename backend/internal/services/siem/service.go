@@ -209,6 +209,7 @@ func (s *Service) forwardOrgPending(ctx context.Context, orgID string, cfg OrgSI
 	// Mark forwarded.
 	now := time.Now().UTC()
 	for _, id := range ids {
+		// orgid-lint: global — UPDATE by PK; id came from an org-scoped query earlier in this call chain
 		if _, err := s.db.Exec(ctx,
 			`UPDATE audit_log SET forwarded_to_siem = $1 WHERE id = $2::uuid`,
 			now, id,

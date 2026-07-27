@@ -96,7 +96,8 @@ func (h *Handler) TestConnection(c echo.Context) error {
 	users, err := syncer.ListUsers(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("ldap connection test failed")
-		return c.JSON(http.StatusBadGateway, map[string]string{
+		// SA14-06: unreachable customer-configured directory → 422, not 502.
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
 			"error": "LDAP connection failed — check server logs for details",
 			"code":  "LDAP_CONNECTION_ERROR",
 		})
@@ -124,7 +125,8 @@ func (h *Handler) Sync(c echo.Context) error {
 	users, err := syncer.ListUsers(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("ldap sync failed")
-		return c.JSON(http.StatusBadGateway, map[string]string{
+		// SA14-06: unreachable customer-configured directory → 422, not 502.
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
 			"error": "LDAP sync failed — check server logs for details",
 			"code":  "LDAP_SYNC_ERROR",
 		})

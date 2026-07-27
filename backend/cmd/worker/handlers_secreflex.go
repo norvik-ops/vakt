@@ -169,98 +169,6 @@ func syncAwarenessRisk(ctx context.Context, pool *pgxpool.Pool, orgID, campaignN
 		Msg("vaktaware→vaktcomply: awareness risk synced from campaign")
 }
 
-// handleTrainingReminder handles vaktaware:training_reminder jobs.
-// It queries members who have not completed any training in the last 14 days
-// and sends them a reminder email via the configured SMTP server.
-func handleTrainingReminder(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
-	return func(ctx context.Context, t *asynq.Task) error {
-		var payload struct {
-			OrgID string `json:"org_id"`
-		}
-		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
-			return fmt.Errorf("parse training_reminder payload: %w", err)
-		}
-
-		// Query targets that have an overdue assignment and have not completed
-		// any training in the last 14 days.
-		type reminderTarget struct {
-			Email     string
-			FirstName string
-		}
-
-		rows, err := pool.Query(ctx, `
-			SELECT DISTINCT t.email, t.first_name
-			FROM sr_targets t
-			JOIN sr_assignments a ON a.target_id = t.id AND a.org_id = $1
-			WHERE t.org_id = $1
-			  AND t.is_bounced = false
-			  AND NOT EXISTS (
-			    SELECT 1 FROM sr_completions c
-			    WHERE c.assignment_id = a.id
-			      AND c.completed_at >= NOW() - INTERVAL '14 days'
-			  )
-		`, payload.OrgID)
-		if err != nil {
-			return fmt.Errorf("training_reminder: query targets: %w", err)
-		}
-		defer rows.Close()
-
-		var targets []reminderTarget
-		for rows.Next() {
-			var rt reminderTarget
-			if err := rows.Scan(&rt.Email, &rt.FirstName); err != nil {
-				continue
-			}
-			targets = append(targets, rt)
-		}
-		if err := rows.Err(); err != nil {
-			return fmt.Errorf("training_reminder: scan rows: %w", err)
-		}
-
-		if len(targets) == 0 {
-			log.Info().Str("org_id", payload.OrgID).Msg("training_reminder: no pending reminders")
-			return nil
-		}
-
-		if cfg == nil || cfg.SMTPHost == "" {
-			log.Warn().Str("org_id", payload.OrgID).
-				Int("targets", len(targets)).
-				Msg("training_reminder: SMTP not configured, skipping send")
-			return nil
-		}
-
-		smtpCfg := vaktaware.SMTPConfig{
-			Host:   cfg.SMTPHost,
-			Port:   cfg.SMTPPort,
-			User:   cfg.SMTPUser,
-			Pass:   cfg.SMTPPass,
-			From:   cfg.SMTPFrom,
-			AppURL: cfg.FrontendURL,
-		}
-		svc := vaktaware.NewService(pool, smtpCfg)
-
-		sent := 0
-		for _, target := range targets {
-			if err := svc.SendTrainingReminderEmail(ctx, payload.OrgID, target.Email, target.FirstName); err != nil {
-				log.Warn().Err(err).
-					Str("org_id", payload.OrgID).
-					Str("email", target.Email).
-					Msg("training_reminder: send failed")
-				continue
-			}
-			sent++
-		}
-
-		log.Info().
-			Str("org_id", payload.OrgID).
-			Int("sent", sent).
-			Int("total", len(targets)).
-			Msg("training_reminder: reminders dispatched")
-
-		return nil
-	}
-}
-
 // handleControlOwnerReminder queries all controls whose due_date (from ck_tasks) is in
 // exactly 7 days, whose status is neither implemented nor not_applicable, and whose
 // soa_responsible looks like a valid e-mail address, then sends a plain-HTML reminder.
@@ -409,25 +317,6 @@ func handleAutoEnrollment(pool *pgxpool.Pool) asynq.HandlerFunc {
 			Str("trigger", payload.TriggerType).
 			Str("employee_id", payload.EmployeeID).
 			Msg("auto_enrollment: processed")
-		return nil
-	}
-}
-
-// handleORP3EvidenceSync processes aware:orp3_evidence_sync jobs.
-// It evaluates BSI ORP.3 compliance for the org and writes the result as evidence.
-func handleORP3EvidenceSync(pool *pgxpool.Pool) asynq.HandlerFunc {
-	return func(ctx context.Context, t *asynq.Task) error {
-		var payload struct {
-			OrgID string `json:"org_id"`
-		}
-		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
-			return fmt.Errorf("parse orp3_evidence_sync payload: %w", err)
-		}
-		svc := vaktaware.NewService(pool, vaktaware.SMTPConfig{})
-		if err := svc.RunORP3EvidenceSync(ctx, payload.OrgID); err != nil {
-			return fmt.Errorf("orp3_evidence_sync org=%s: %w", payload.OrgID, err)
-		}
-		log.Info().Str("org_id", payload.OrgID).Msg("orp3_evidence_sync: completed")
 		return nil
 	}
 }

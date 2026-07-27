@@ -97,6 +97,7 @@ func ensureYearPartition(ctx context.Context, db *pgxpool.Pool, year int) error 
 // dropPartitionsBefore detaches and drops audit_log_<year> for every year strictly
 // less than cutoff. The DEFAULT partition (audit_log_default) is never matched.
 func dropPartitionsBefore(ctx context.Context, db *pgxpool.Pool, cutoff int) error {
+	// orgid-lint: global — pg_catalog schema introspection (partition maintenance), not tenant data
 	rows, err := db.Query(ctx, `
 		SELECT c.relname
 		FROM pg_inherits i

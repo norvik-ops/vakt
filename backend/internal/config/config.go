@@ -263,6 +263,32 @@ func readEnvOrFile(envKey, fileKey string) (string, error) {
 	return os.Getenv(envKey), nil
 }
 
+// buildDBURLFromComponents assembles a postgres DSN from discrete parts when
+// no full VAKT_DB_URL/VAKT_DB_URL_FILE is set. This exists so the DB password
+// can be delivered via a Docker secret mount (VAKT_DB_PASSWORD_FILE) instead
+// of being interpolated into a plaintext VAKT_DB_URL — Compose has no way to
+// build a composed secret from another secret, so the composition has to
+// happen here (S13/G-04). Returns "" if VAKT_DB_PASSWORD/_FILE is unset, so
+// callers with neither a full URL nor a password component surface the
+// existing "VAKT_DB_URL is required" error from Validate().
+func buildDBURLFromComponents() (string, error) {
+	password, err := readEnvOrFile("VAKT_DB_PASSWORD", "VAKT_DB_PASSWORD_FILE")
+	if err != nil {
+		return "", err
+	}
+	if password == "" {
+		return "", nil
+	}
+	dsn := url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(getEnv("VAKT_DB_USER", "vakt"), password),
+		Host:     net.JoinHostPort(getEnv("VAKT_DB_HOST", "localhost"), getEnv("VAKT_DB_PORT", "5432")),
+		Path:     "/" + getEnv("VAKT_DB_NAME", "vakt"),
+		RawQuery: "sslmode=" + getEnv("VAKT_DB_SSLMODE", "disable"),
+	}
+	return dsn.String(), nil
+}
+
 // getEnvInt parst eine Integer-Env-Var; bei Fehler oder leerem Wert wird der
 // Default zurueckgegeben. Sprint 15 (S15-1/2/3) nutzt das fuer numerische
 // Rate-/Quota-/Cache-Konfiguration.
@@ -295,6 +321,12 @@ func Load() (*Config, error) {
 	dbURL, err := readEnvOrFile("VAKT_DB_URL", "VAKT_DB_URL_FILE")
 	if err != nil {
 		return nil, err
+	}
+	if dbURL == "" {
+		dbURL, err = buildDBURLFromComponents()
+		if err != nil {
+			return nil, err
+		}
 	}
 	secretKey, err := readEnvOrFile("VAKT_SECRET_KEY", "VAKT_SECRET_KEY_FILE")
 	if err != nil {

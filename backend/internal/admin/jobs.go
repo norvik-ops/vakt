@@ -9,10 +9,7 @@ import (
 	"github.com/hibiken/asynq"
 )
 
-const (
-	TaskDeleteOrg       = "admin:org:delete"
-	TaskSCIMTokenExpiry = "admin:scim:token_expiry"
-)
+const TaskSCIMTokenExpiry = "admin:scim:token_expiry"
 
 // NewSCIMTokenExpiryTask creates the daily SCIM token auto-revocation task.
 func NewSCIMTokenExpiryTask() *asynq.Task {

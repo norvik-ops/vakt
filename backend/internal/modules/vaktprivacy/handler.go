@@ -16,6 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/shared/audit"
+	"github.com/matharnica/vakt/internal/shared/httputil"
 	"github.com/matharnica/vakt/internal/shared/pagination"
 	"github.com/matharnica/vakt/internal/shared/safego"
 )
@@ -66,6 +67,14 @@ func orgID(c echo.Context) string {
 
 func errResp(c echo.Context, code int, msg, errCode string) error {
 	return c.JSON(code, map[string]string{"error": msg, "code": errCode})
+}
+
+// dbErr classifies a repository/service error at the 4xx-vs-5xx boundary (S4):
+// not-found → 404, unique → 409, check/not-null/fk → 422, malformed input → 400,
+// else the 500 fallback. A dangling processing_activity_id, for instance, hits an
+// FK violation (23503) → 422, not a 500.
+func dbErr(c echo.Context, err error, msg, errCode string) error {
+	return httputil.RespondError(c, err, msg, errCode)
 }
 
 // --- VVT ---
@@ -973,7 +982,7 @@ func (h *Handler) CreateOrUpdatePrivacyDesign(c echo.Context) error {
 	a, err := h.service.CreateOrUpdatePrivacyDesign(c.Request().Context(), orgID(c), c.Param("id"), in)
 	if err != nil {
 		log.Error().Err(err).Msg("upsert privacy design")
-		return errResp(c, http.StatusInternalServerError, "failed to save assessment", "PO_PD_UPSERT_FAILED")
+		return dbErr(c, err, "failed to save assessment", "PO_PD_UPSERT_FAILED")
 	}
 	return c.JSON(http.StatusOK, a)
 }

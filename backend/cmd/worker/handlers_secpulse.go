@@ -189,20 +189,36 @@ func handleEPSSEnrich(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc 
 }
 
 // handleSBOMGenerate handles vaktscan:sbom:generate jobs.
-// It calls RunSyftScan to generate a CycloneDX SBOM and persist it in the DB.
-func handleSBOMGenerate(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
+// It calls RunSyftScan to generate a CycloneDX SBOM and persist it in the DB, then
+// chains an EOL check for the freshly generated SBOM (SBOM→EOL chain, S5/W1).
+func handleSBOMGenerate(cfg *config.Config, pool *pgxpool.Pool, enqueueClient *asynq.Client) asynq.HandlerFunc {
 	return func(ctx context.Context, t *asynq.Task) error {
 		var payload vaktscan.SBOMGeneratePayload
 		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
 			return fmt.Errorf("parse sbom generate payload: %w", err)
 		}
 
-		if err := vaktscan.RunSyftScan(ctx, pool, payload.OrgID, payload.AssetID, payload.Target); err != nil {
+		sbomID, err := vaktscan.RunSyftScan(ctx, pool, payload.OrgID, payload.AssetID, payload.Target)
+		if err != nil {
 			log.Error().Err(err).
 				Str("org_id", payload.OrgID).
 				Str("asset_id", payload.AssetID).
 				Msg("syft SBOM scan failed")
 			return err
+		}
+
+		// Best-effort: a failed enqueue must not fail the SBOM job itself, the SBOM
+		// is already persisted. EOL status is refreshed on the next SBOM generation.
+		if enqueueClient != nil {
+			if err := vaktscan.EnqueueEOLCheck(enqueueClient, vaktscan.EOLCheckPayload{
+				OrgID:  payload.OrgID,
+				SBOMID: sbomID,
+			}); err != nil {
+				log.Warn().Err(err).
+					Str("org_id", payload.OrgID).
+					Str("sbom_id", sbomID).
+					Msg("eol check enqueue failed")
+			}
 		}
 		return nil
 	}

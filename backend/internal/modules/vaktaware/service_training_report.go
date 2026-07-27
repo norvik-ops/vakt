@@ -3,12 +3,10 @@ package vaktaware
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/go-pdf/fpdf"
-	"github.com/hibiken/asynq"
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/services/crossevidence"
@@ -152,61 +150,6 @@ func (s *Service) computeORP3Compliance(ctx context.Context, orgID string, from,
 		TotalCount:     len(reqs),
 		Requirements:   reqs,
 	}
-}
-
-// ── Asynq task names for new sprint-65 tasks ─────────────────────────────
-
-const TaskORP3EvidenceSync = "aware:orp3_evidence_sync"
-
-// ORP3EvidenceSyncPayload is the payload for the daily ORP.3 evidence job.
-type ORP3EvidenceSyncPayload struct {
-	OrgID string `json:"org_id"`
-}
-
-// RunORP3EvidenceSync evaluates ORP.3 for the org and writes evidence for
-// fulfilled requirements into vaktcomply (best-effort).
-func (s *Service) RunORP3EvidenceSync(ctx context.Context, orgID string) error {
-	to := time.Now().UTC()
-	from := to.AddDate(-1, 0, 0)
-	orp3 := s.computeORP3Compliance(ctx, orgID, from, to)
-	if s.asynqClient == nil {
-		return nil
-	}
-	for _, req := range orp3.Requirements {
-		if !req.Fulfilled {
-			continue
-		}
-		ev := events.CrossModuleEvent{
-			OrgID:        orgID,
-			Source:       events.SourceSecreflex,
-			ResourceType: "vakt-aware/bsi-orp3-evidence",
-			ResourceID:   req.ID,
-			Title:        fmt.Sprintf("BSI %s erfüllt: %s", req.ID, req.Title),
-			Description:  fmt.Sprintf("Vakt Aware erfüllt BSI IT-Grundschutz %s automatisch.", req.ID),
-			OccurredAt:   to,
-		}
-		if task, err := crossevidence.NewRecordEvidenceTask(ev); err == nil {
-			if _, enqErr := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(Queue)); enqErr != nil {
-				queuemetrics.RecordError(Queue)
-				log.Warn().Err(enqErr).Str("req_id", req.ID).Msg("orp3 evidence enqueue failed")
-			}
-		}
-	}
-	return nil
-}
-
-// EnqueueORP3EvidenceSync schedules the daily ORP.3 evidence sync for an org.
-func (s *Service) EnqueueORP3EvidenceSync(ctx context.Context, orgID string) error {
-	if s.asynqClient == nil {
-		return nil
-	}
-	data, _ := json.Marshal(ORP3EvidenceSyncPayload{OrgID: orgID})
-	task := asynq.NewTask(TaskORP3EvidenceSync, data)
-	if _, err := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(Queue)); err != nil {
-		queuemetrics.RecordError(Queue)
-		return err
-	}
-	return nil
 }
 
 // generateTrainingMatrixPDF renders the training matrix report as PDF using fpdf.

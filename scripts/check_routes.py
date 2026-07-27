@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-# S121-E1 (O2): FE↔BE route-reconciliation gate.
+# S121-E1 (O2), S16/G1 (G-02): FE↔BE route-reconciliation gate.
 #
 # The recurring "handler-without-route / path-drift / wrong-method" defect class
 # (v0.42.25/26/27 and the whole S121 audit) was only ever caught by manual
-# Playwright sweeps. This static gate closes it: it diffs every frontend
-# `apiFetch(...)` call against every backend `routes.go` registration and fails
-# when the frontend calls a (method, path) the backend never registers.
+# Playwright sweeps. This static gate closes it: it diffs every frontend call —
+# `apiFetch(...)`, raw `fetch('/api/v1/...')`, and raw fetch of a `${BASE}`
+# local-const template (all 3 FE idioms) — against every backend `routes.go`
+# registration and fails when the frontend calls a (method, path) the backend
+# never registers.
 #
 # It is a fast, dependency-free set-diff — no running stack, no DB. Because
 # backend route literals are group-relative (e.g. `/controls/bulk` mounted under
@@ -15,8 +17,18 @@
 # keeps false positives near zero (the gate's whole value is a quiet, trustworthy
 # signal) while still catching missing routes and method mismatches.
 #
+# G-02: a backend literal made ENTIRELY of `:p` wildcard segments (a bare
+# `/:id` registered on a group that is a function parameter the same-file
+# resolver cannot prefix) is NEVER treated as covering anything — it used to
+# match the trailing segment of any path under any method, which let every
+# PUT/DELETE call to ANY unregistered path pass silently as long as some
+# unrelated module had a bare `/:id` DELETE/PUT somewhere in the tree. The
+# handful of genuinely bare cross-file routes (webhooks, github integration,
+# session revoke-all) are curated in ALLOWLIST by name instead.
+#
 # Curated ALLOWLIST entries are frontend calls that legitimately have no
-# routes.go registration (dynamic dispatch, non-apiFetch endpoints, etc.).
+# routes.go registration (dynamic dispatch, non-apiFetch endpoints, etc.) or
+# whose registration is invisible to the same-file resolver (see above).
 
 import re
 import sys
@@ -44,12 +56,10 @@ ALLOWLIST = {
     # full literal never appears as a single string the parser can read.
     ("GET", "/vaktcomply/:p/:p/collab-tasks"),
     ("POST", "/vaktcomply/:p/:p/collab-tasks"),
-    # Managed-hosting multi-org admin (AdminTenantsPage): deliberately NOT built —
-    # gated on the EULA/AVV legal review (Sprints 104/111/118). The frontend stubs
-    # call endpoints that intentionally do not exist yet.
-    ("GET", "/admin/organizations"),
-    ("POST", "/admin/organizations"),
-    ("POST", "/admin/organizations/:p/impersonate"),
+    ("DELETE", "/webhooks/:p"),  # internal/shared/platform/webhooks/handler.go:37
+    ("PUT", "/webhooks/:p"),  # internal/shared/platform/webhooks/handler.go:36
+    ("DELETE", "/integrations/github/:p"),  # platform/integrations/github/handler.go:31
+    ("DELETE", "/auth/sessions"),  # internal/auth/session_routes.go:17 (RevokeAllOtherSessions)
 }
 
 
@@ -256,15 +266,21 @@ def _segs_match(be_segs, fe_segs):
     return True
 
 
-def suffix_covered(fe_path: str, be_paths: set, strict: bool = False) -> bool:
+def suffix_covered(fe_path: str, be_paths: set) -> bool:
     """True if some backend literal is a segment-aligned suffix of fe_path.
 
-    strict=True rejects a backend literal made ENTIRELY of `:p` wildcard segments
-    (e.g. `/:p` from a bare `g.GET("/:id")`): it matches the trailing segment of
-    ANY path (`.../export/xlsx` "matches" `/:p` on `xlsx`), masking genuinely
-    missing routes like CB-01. Use strict for `endpoint=` paths, whose terminal
-    segments are concrete resource names, not param values. The permissive mode
-    (default) keeps legitimate bare `/:id` routes (github/webhooks DELETE) green."""
+    Always rejects a backend literal made ENTIRELY of `:p` wildcard segments
+    (e.g. bare `/:p` from `g.DELETE("/:id", ...)` on a cross-file group
+    parameter the resolver could not prefix): such a literal matches the
+    trailing segment of ANY path (`.../export/xlsx` "matches" `/:p` on
+    `xlsx`), masking genuinely missing routes AND genuinely wrong methods —
+    a PUT/DELETE call to a path that has no PUT/DELETE route at all would
+    still pass because *some other* module's bare `/:id` DELETE collapsed to
+    the same wildcard-only literal (G-02: PUT/DELETE must not be permissive).
+    Legitimate cross-file bare-`/:id` routes (webhooks, github integration,
+    session revoke) are individually curated in ALLOWLIST instead — a few
+    named entries are a small price for a gate that cannot be silently
+    defeated by an unrelated route elsewhere in the tree."""
     fe_segs = fe_path.strip("/").split("/")
     for be in be_paths:
         if be in ("", "/"):
@@ -272,7 +288,7 @@ def suffix_covered(fe_path: str, be_paths: set, strict: bool = False) -> bool:
         be_segs = be.strip("/").split("/")
         if len(be_segs) > len(fe_segs):
             continue
-        if strict and all(s == ":p" for s in be_segs):
+        if all(s == ":p" for s in be_segs):
             continue
         if _segs_match(be_segs, fe_segs[len(fe_segs) - len(be_segs):]):
             return True
@@ -291,12 +307,11 @@ def main():
         if not suffix_covered(path, be.get(method, set())):
             missing.append((method, path))
 
-    # endpoint= props: existence under ANY method (method is component-specific),
-    # strict so a bare `/:p` route cannot spuriously satisfy a concrete export path.
+    # endpoint= props: existence under ANY method (method is component-specific).
     for path in sorted(fe_path_only):
         if ("*", path) in ALLOWLIST or ("GET", path) in ALLOWLIST:
             continue
-        if not suffix_covered(path, any_method_paths, strict=True):
+        if not suffix_covered(path, any_method_paths):
             missing.append(("(any)", path))
 
     if missing:
@@ -311,11 +326,18 @@ def main():
         sys.exit(1)
 
     # G2: report what the parser could NOT resolve, so "OK" is honest about its
-    # coverage instead of silently claiming success over a subset (D12).
+    # coverage instead of silently claiming success over a subset (D12). A
+    # skipped>0 run still exits 0 (unresolved != missing), but must not read as
+    # a clean "OK" — emit a GitHub Actions warning annotation (renders yellow,
+    # not red) so it stays visible in the checks UI instead of only in the log.
     skipped = len(SKIPPED)
     print(f"OK — {len(fe)} method-checked calls (apiFetch + raw fetch) and "
           f"{len(fe_path_only)} endpoint= paths all matched a backend route.")
+    print(f"skipped:{skipped}")
     if skipped:
+        print("::warning::check_routes.py — "
+              f"{skipped} frontend call(s) had a path the static parser could not "
+              "resolve and were NOT checked (see list below); coverage is a subset.")
         print(f"note: {skipped} call(s) had a path the static parser could not "
               f"resolve (dynamic/computed) and were not checked:")
         for s in sorted(set(SKIPPED)):

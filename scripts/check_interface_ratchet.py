@@ -77,19 +77,30 @@ def is_excluded(path: pathlib.Path) -> bool:
     return False
 
 
-def count() -> int:
+def count() -> tuple[int, int]:
     total = 0
+    scanned = 0
     for f in BACKEND.rglob("*.go"):
         if is_excluded(f):
             continue
+        scanned += 1
         text = code_only(f.read_text(encoding="utf-8", errors="ignore"))
         total += len(INTERFACE_RE.findall(text))
         total += len(ANY_RE.findall(text))
-    return total
+    return total, scanned
 
 
 def main() -> int:
-    n = count()
+    n, scanned = count()
+    # G-07: a "went down" or "OK" report over zero scanned files means BACKEND
+    # is unreachable from this working directory, not that untyped-interface
+    # debt vanished — fail loudly instead of printing a vacuous win.
+    if scanned == 0:
+        print(
+            f"Untyped-interface ratchet FAILED: scanned 0 Go files under {BACKEND} "
+            "(non-vacuity guard, G-07). Check the working directory / BACKEND path."
+        )
+        return 2
     if n > BASELINE:
         print(
             f"Untyped-interface ratchet FAILED: {n} occurrences of `interface{{}}`/`any` "
@@ -105,7 +116,10 @@ def main() -> int:
             f"Please lower BASELINE to {n} in scripts/check_interface_ratchet.py to lock in the win."
         )
         return 0
-    print(f"Untyped-interface ratchet OK: {n} occurrences (== baseline {BASELINE}).")
+    # Denominator on the success path as well — a green report that hides how many
+    # files it read is indistinguishable from one that read none.
+    print(f"Untyped-interface ratchet OK: {n} occurrences (== baseline {BASELINE}); "
+          f"scanned {scanned} Go file(s).")
     return 0
 
 

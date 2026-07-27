@@ -126,16 +126,19 @@ func runSeed(ctx context.Context, db *pgxpool.Pool, masterKeyHex, orgName, orgSl
 	adminHash, _ := bcrypt.GenerateFromPassword([]byte(adminPwd), 12)
 	analystHash, _ := bcrypt.GenerateFromPassword([]byte(analystPwd), 12)
 
+	// users.role mirrors the org_members role assigned below (D24-1): the admin
+	// seed is Admin ('admin'), the analyst is SecurityAnalyst ('editor'). Set
+	// explicitly — the default is 'viewer' since migration 249.
 	var analystID string
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO users (email, password_hash, display_name)
-		VALUES ($1, $2, 'Max Mustermann')
+		INSERT INTO users (email, password_hash, display_name, role)
+		VALUES ($1, $2, 'Max Mustermann', 'admin')
 		RETURNING id::text`, adminEmail, string(adminHash)).Scan(&adminID); err != nil {
 		return "", "", fmt.Errorf("demoseed: admin user: %w", err)
 	}
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO users (email, password_hash, display_name)
-		VALUES ($1, $2, 'Anna Analyst')
+		INSERT INTO users (email, password_hash, display_name, role)
+		VALUES ($1, $2, 'Anna Analyst', 'editor')
 		RETURNING id::text`, analystEmail, string(analystHash)).Scan(&analystID); err != nil {
 		return "", "", fmt.Errorf("demoseed: analyst user: %w", err)
 	}

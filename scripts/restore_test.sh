@@ -28,6 +28,10 @@ BEFORE_KEYS="$(find /tmp -maxdepth 1 -name 'vakt-restored-key-*' 2>/dev/null | w
 # ── Build a minimal valid archive ─────────────────────────────────────────
 STAGE="$(mktemp -d)"
 echo "dummy-pgdump-content" >"$STAGE/db.pgdump"
+printf '%s' "$TEST_PASSPHRASE" | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback \
+	--symmetric --cipher-algo AES256 \
+	--output "$STAGE/db.pgdump.gpg" "$STAGE/db.pgdump"
+rm "$STAGE/db.pgdump"
 printf '%s\n' "$TEST_SECRET_KEY" |
 	openssl enc -aes-256-cbc -pbkdf2 -pass "pass:${TEST_PASSPHRASE}" -out "$STAGE/secret.key.enc"
 echo '{"backup_date":"test","tool":"vakt-backup"}' >"$STAGE/manifest.json"

@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 	shareddb "github.com/matharnica/vakt/internal/shared/db"
 )
 
@@ -410,7 +411,7 @@ func (r *Repository) DeleteTargetGroup(ctx context.Context, orgID, groupID strin
 		return fmt.Errorf("delete target group: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("target group not found")
+		return fmt.Errorf("target group %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -424,7 +425,7 @@ func (r *Repository) DeleteTemplate(ctx context.Context, orgID, templateID strin
 		return fmt.Errorf("delete template: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("template not found")
+		return fmt.Errorf("template %w", apperr.ErrNotFound)
 	}
 	return nil
 }

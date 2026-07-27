@@ -12,6 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 const managementReviewSelectCols = `
@@ -142,7 +143,7 @@ WHERE org_id = $1 AND id = $2::uuid`
 	mr, err := scanManagementReview(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ManagementReview{}, fmt.Errorf("management review not found")
+			return ManagementReview{}, fmt.Errorf("management review %w", apperr.ErrNotFound)
 		}
 		return ManagementReview{}, fmt.Errorf("get management review: %w", err)
 	}
@@ -200,7 +201,7 @@ func (r *Repository) UpdateManagementReviewInputs(ctx context.Context, orgID, id
 	mr, err := scanManagementReview(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ManagementReview{}, fmt.Errorf("management review not found")
+			return ManagementReview{}, fmt.Errorf("management review %w", apperr.ErrNotFound)
 		}
 		return ManagementReview{}, fmt.Errorf("update management review inputs: %w", err)
 	}
@@ -233,7 +234,7 @@ func (r *Repository) UpdateManagementReviewOutputs(ctx context.Context, orgID, i
 	mr, err := scanManagementReview(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ManagementReview{}, fmt.Errorf("management review not found")
+			return ManagementReview{}, fmt.Errorf("management review %w", apperr.ErrNotFound)
 		}
 		return ManagementReview{}, fmt.Errorf("update management review outputs: %w", err)
 	}
@@ -255,7 +256,7 @@ func (r *Repository) ApproveManagementReview(ctx context.Context, orgID, id, app
 	mr, err := scanManagementReview(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ManagementReview{}, fmt.Errorf("management review not found")
+			return ManagementReview{}, fmt.Errorf("management review %w", apperr.ErrNotFound)
 		}
 		return ManagementReview{}, fmt.Errorf("approve management review: %w", err)
 	}

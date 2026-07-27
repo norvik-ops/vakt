@@ -156,7 +156,7 @@ func (h *Handler) SnapshotAccessConceptVersion(c echo.Context) error {
 	summary, err := h.Service.SnapshotVersion(c.Request().Context(), orgID(c), conceptID)
 	if err != nil {
 		log.Error().Err(err).Str("concept_id", conceptID).Msg("snapshot access concept version")
-		return errResp(c, http.StatusInternalServerError, "failed to snapshot version", "HR_SNAPSHOT_VERSION_FAILED")
+		return dbErr(c, err, "failed to snapshot version", "HR_SNAPSHOT_VERSION_FAILED")
 	}
 	return c.JSON(http.StatusCreated, summary)
 }

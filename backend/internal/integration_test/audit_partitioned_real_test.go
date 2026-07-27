@@ -34,6 +34,7 @@ func TestAuditLog_PartitionedAfterMigration(t *testing.T) {
 	// relkind is a single-char column (pg type "char"); cast to text so
 	// pgx can scan it into a Go string.
 	var relkind string
+	// orgid-lint: global — pg_catalog schema introspection, not tenant data
 	require.NoError(t, pool.QueryRow(ctx,
 		`SELECT relkind::text FROM pg_class WHERE relname='audit_log'`,
 	).Scan(&relkind))

@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/matharnica/vakt/internal/shared/apperr"
 	"github.com/matharnica/vakt/internal/shared/audit"
 )
 
@@ -67,6 +68,7 @@ func (s *Service) AcceptInvite(ctx context.Context, token string) (string, error
 	}
 
 	// Mark invite as accepted.
+	// orgid-lint: global — UPDATE by PK; inviteID was just resolved via the token-scoped lookup above
 	_, err = s.db.Exec(ctx, `
 		UPDATE auditor_invites SET accepted_at = NOW() WHERE id = $1::uuid`,
 		inviteID,
@@ -145,7 +147,7 @@ func (s *Service) RevokeSession(ctx context.Context, orgID, sessionID, revokedBy
 		return fmt.Errorf("delete auditor session: %w", err)
 	}
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("session not found")
+		return fmt.Errorf("session %w", apperr.ErrNotFound)
 	}
 
 	go audit.Write(ctx, s.db, audit.WriteEntry{
@@ -219,7 +221,7 @@ func (s *Service) RevokeInvite(ctx context.Context, orgID, id string) error {
 		return fmt.Errorf("delete auditor invite: %w", err)
 	}
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("invite not found")
+		return fmt.Errorf("invite %w", apperr.ErrNotFound)
 	}
 	return nil
 }

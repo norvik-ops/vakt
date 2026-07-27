@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 // Repository handles SecretOps data access. Projects / Environments / AccessLog
@@ -100,7 +101,7 @@ func (r *Repository) DeleteProject(ctx context.Context, orgID, projectID string)
 		return fmt.Errorf("delete project: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("project not found")
+		return fmt.Errorf("project not found: %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -236,7 +237,7 @@ func (r *Repository) DeleteSecret(ctx context.Context, orgID, envID, key string)
 		return fmt.Errorf("delete secret: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("secret not found")
+		return fmt.Errorf("secret %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -627,7 +628,7 @@ func (r *Repository) DismissScanResult(ctx context.Context, orgID, resultID, rea
 		return fmt.Errorf("dismiss scan result: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("scan result not found")
+		return fmt.Errorf("scan result %w", apperr.ErrNotFound)
 	}
 	return nil
 }

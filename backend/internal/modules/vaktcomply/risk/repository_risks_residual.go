@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 // UpdateRiskResidualFields sets the inherent and/or residual likelihood/impact columns for a risk.
@@ -32,7 +33,7 @@ func (r *Repository) UpdateRiskResidualFields(ctx context.Context, orgID, id str
 		return fmt.Errorf("update risk residual fields: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("risk not found")
+		return fmt.Errorf("risk %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -72,7 +73,7 @@ func (r *Repository) AcceptRisk(ctx context.Context, orgID, id, userID, justific
 		return fmt.Errorf("accept risk: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("risk not found")
+		return fmt.Errorf("risk %w", apperr.ErrNotFound)
 	}
 	return nil
 }

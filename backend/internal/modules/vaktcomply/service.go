@@ -16,6 +16,7 @@ import (
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/risk"
 	"github.com/matharnica/vakt/internal/services/ai"
 	"github.com/matharnica/vakt/internal/shared/dashboard"
+	sharedevents "github.com/matharnica/vakt/internal/shared/events"
 	"github.com/matharnica/vakt/internal/shared/notify"
 	"github.com/matharnica/vakt/internal/shared/platform/webhooks"
 	"github.com/matharnica/vakt/internal/shared/safego"
@@ -108,6 +109,16 @@ func (s *Service) WithAIClient(c *ai.AIClient) {
 // WithWebhooks sets the webhook service used to fire outgoing events.
 func (s *Service) WithWebhooks(svc *webhooks.WebhookService) {
 	s.webhookSvc = svc
+}
+
+// WithAssetProtectionLinker injects the vaktscan-backed writer for the reverse
+// protection_need_id link on vb_assets, so the PNA↔asset link never writes the
+// vb_ prefix from this package (module isolation, ADR-0079). Wired from cmd/api.
+func (s *Service) WithAssetProtectionLinker(l sharedevents.AssetProtectionLinker) *Service {
+	if s.Risk != nil {
+		s.Risk.WithAssetProtectionLinker(l)
+	}
+	return s
 }
 
 // triggerWebhook fires a webhook event in a background goroutine so the caller

@@ -107,8 +107,11 @@ func (h *Handler) TestForward(c echo.Context) error {
 
 	if err := h.svc.TestForward(c.Request().Context(), orgID); err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Msg("siem test forward failed")
-		return c.JSON(http.StatusBadGateway, map[string]string{
-			"error": err.Error(),
+		// SA14-06: an unreachable customer-configured SIEM target is a 422, not a
+		// 502 — and the raw dial error is never echoed (it can carry the resolved
+		// internal IP the SSRF guard rejected); the detail is in the log above.
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
+			"error": "SIEM-Ziel nicht erreichbar — Konfiguration prüfen (Details im Server-Log)",
 			"code":  "SIEM_TEST_FAILED",
 		})
 	}

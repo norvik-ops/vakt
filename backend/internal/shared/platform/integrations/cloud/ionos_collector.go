@@ -108,6 +108,44 @@ func (c *IONOSCollector) CountDatacenters(ctx context.Context, cfg IONOSConfig) 
 	return len(dcs), nil
 }
 
+// CountServers returns the total server count across all datacenters (used by GetIONOSStatus).
+func (c *IONOSCollector) CountServers(ctx context.Context, cfg IONOSConfig) (int, error) {
+	dcs, err := c.listDatacenters(ctx, cfg)
+	if err != nil {
+		return 0, err
+	}
+	total := 0
+	for _, dc := range dcs {
+		n, err := c.countItems(ctx, cfg, "/datacenters/"+dc.ID+"/servers")
+		if err != nil {
+			return total, err
+		}
+		total += n
+	}
+	return total, nil
+}
+
+// ionosItemsEnvelope is the shape every IONOS list endpoint returns. Counting
+// through it keeps CountServers free of another map[string]any traversal —
+// CLAUDE.md forbids untyped interface values where a struct will do, and here
+// one will: nothing about the items themselves is needed, only how many.
+type ionosItemsEnvelope struct {
+	Items []json.RawMessage `json:"items"`
+}
+
+// countItems returns the number of entries a list endpoint reports.
+func (c *IONOSCollector) countItems(ctx context.Context, cfg IONOSConfig, path string) (int, error) {
+	raw, err := c.doRequestRaw(ctx, cfg, path)
+	if err != nil {
+		return 0, err
+	}
+	var env ionosItemsEnvelope
+	if err := json.Unmarshal(raw, &env); err != nil {
+		return 0, fmt.Errorf("parse response: %w", err)
+	}
+	return len(env.Items), nil
+}
+
 func (c *IONOSCollector) doRequest(ctx context.Context, cfg IONOSConfig, path string) (map[string]any, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.base()+path, nil)
 	if err != nil {
@@ -144,6 +182,40 @@ func (c *IONOSCollector) doRequest(ctx context.Context, cfg IONOSConfig, path st
 		return nil, fmt.Errorf("parse response: %w", err)
 	}
 	return result, nil
+}
+
+// doRequestRaw is doRequest without the map[string]any decode, so callers that
+// have a typed shape for the payload can unmarshal straight into it.
+func (c *IONOSCollector) doRequestRaw(ctx context.Context, cfg IONOSConfig, path string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.base()+path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+
+	if cfg.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+cfg.Token)
+	} else if cfg.Username != "" {
+		req.SetBasicAuth(cfg.Username, cfg.Password)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("http get %s: %w", path, err)
+	}
+	defer resp.Body.Close()
+
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 4*1024*1024))
+	if err != nil {
+		return nil, fmt.Errorf("read response: %w", err)
+	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, fmt.Errorf("authentication failed (401)")
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("ionos api %s returned %d", path, resp.StatusCode)
+	}
+	return raw, nil
 }
 
 func (c *IONOSCollector) listDatacenters(ctx context.Context, cfg IONOSConfig) ([]ionosDatacenter, error) {

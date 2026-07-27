@@ -220,6 +220,60 @@ func (c *KeycloakCollector) getAllUsers(ctx context.Context, client *http.Client
 	return all, nil
 }
 
+// CountUsersMFA returns the total user count and MFA enrollment percentage for the
+// status endpoint (used by GetKeycloakStatus). Read-only variant of collectMFAStatus.
+func (c *KeycloakCollector) CountUsersMFA(ctx context.Context, cfg KeycloakConfig) (userCount int, mfaPct float64, err error) {
+	client := c.clientFor(cfg.AllowPrivateTarget)
+
+	token, err := c.authenticate(ctx, client, cfg)
+	if err != nil {
+		return 0, 0, err
+	}
+	baseURL := strings.TrimRight(cfg.KeycloakURL, "/") + "/admin/realms/" + cfg.Realm
+
+	users, err := c.getAllUsers(ctx, client, cfg, token)
+	if err != nil {
+		return 0, 0, err
+	}
+	total := len(users)
+	mfaEnabled := 0
+	for _, user := range users {
+		apiURL := fmt.Sprintf("%s/users/%s/credentials", baseURL, user.ID)
+		req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+		if reqErr != nil {
+			continue
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Accept", "application/json")
+
+		resp, respErr := client.Do(req)
+		if respErr != nil {
+			continue
+		}
+		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			continue
+		}
+		var creds []struct {
+			Type string `json:"type"`
+		}
+		if json.Unmarshal(raw, &creds) != nil {
+			continue
+		}
+		for _, cred := range creds {
+			if cred.Type == "otp" || cred.Type == "totp" {
+				mfaEnabled++
+				break
+			}
+		}
+	}
+	if total > 0 {
+		mfaPct = float64(mfaEnabled) / float64(total) * 100
+	}
+	return total, mfaPct, nil
+}
+
 // collectMFAStatus checks OTP credentials for each user.
 func (c *KeycloakCollector) collectMFAStatus(ctx context.Context, client *http.Client, orgID, baseURL, token string, users []keycloakUser, controls []ControlMatch) (int, error) {
 	total := len(users)

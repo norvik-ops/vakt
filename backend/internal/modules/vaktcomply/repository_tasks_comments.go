@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 func (r *Repository) GetMyTaskControls(ctx context.Context, orgID, ownerDisplayName string) ([]MyTask, error) {
@@ -145,7 +146,7 @@ func (r *Repository) UpdateTask(ctx context.Context, orgID, taskID string, in Up
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return Task{}, fmt.Errorf("task not found")
+			return Task{}, fmt.Errorf("task %w", apperr.ErrNotFound)
 		}
 		return Task{}, fmt.Errorf("update task: %w", err)
 	}
@@ -159,7 +160,7 @@ func (r *Repository) DeleteTask(ctx context.Context, orgID, taskID string) error
 		return fmt.Errorf("delete task: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("task not found")
+		return fmt.Errorf("task %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -230,7 +231,7 @@ func (r *Repository) DeleteComment(ctx context.Context, orgID, commentID string)
 		return fmt.Errorf("delete comment: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("comment not found")
+		return fmt.Errorf("comment %w", apperr.ErrNotFound)
 	}
 	return nil
 }

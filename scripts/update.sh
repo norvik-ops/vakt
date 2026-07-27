@@ -107,7 +107,7 @@ echo "    Services restarting..."
 echo ""
 echo "==> Step 5/5: Waiting for health check (${HEALTH_URL})..."
 for i in $(seq 1 "$HEALTH_RETRIES"); do
-	if curl -sf "$HEALTH_URL" >/dev/null 2>&1; then
+	if curl -sfL "$HEALTH_URL" >/dev/null 2>&1; then
 		echo "    Health check passed after $((i * HEALTH_WAIT))s."
 		echo ""
 		echo "Update complete! Vakt is running with the new version."

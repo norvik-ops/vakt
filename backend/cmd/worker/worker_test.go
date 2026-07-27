@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/matharnica/vakt/internal/admin"
 	"github.com/matharnica/vakt/internal/auth"
 	"github.com/matharnica/vakt/internal/modules/vaktaware"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
@@ -26,9 +25,11 @@ import (
 )
 
 func TestBuildServer_ReturnsNonNil(t *testing.T) {
-	srv, mux := buildServer(nil)
+	srv, mux, enqueueClient := buildServer(nil)
 	require.NotNil(t, srv, "asynq server must not be nil")
 	require.NotNil(t, mux, "asynq mux must not be nil")
+	require.NotNil(t, enqueueClient, "enqueue client must not be nil")
+	_ = enqueueClient.Close()
 }
 
 // TestWorkerConcurrency_Default verifies the default concurrency of 8 when env is unset.
@@ -82,13 +83,9 @@ func TestWorkerTaskConstantsRegistered(t *testing.T) {
 
 	// SecReflex.
 	assert.Equal(t, "vaktaware:send_campaign", vaktaware.TaskSendCampaign)
-	assert.Equal(t, "vaktaware:training_reminder", vaktaware.TaskTrainingReminder)
 
 	// SecVault.
 	assert.Equal(t, "vaktvault:git_scan", vaktvault.TaskGitScan)
-
-	// Admin.
-	assert.Equal(t, "admin:org:delete", admin.TaskDeleteOrg)
 
 	// SecPrivacy.
 	assert.Equal(t, "vaktprivacy:avv_expiry_check", vaktprivacy.TaskAVVExpiryCheck)

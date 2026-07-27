@@ -7,6 +7,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/httputil"
 )
 
 type Handler struct {
@@ -412,10 +414,9 @@ func (h *Handler) PublishPolicy(c echo.Context) error {
 	)
 	if err != nil {
 		log.Error().Err(err).Str("policy_id", policyID).Msg("publish policy failed")
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "failed to publish policy",
-			"code":  "TC_PUBLISH_POLICY_ERROR",
-		})
+		// S4: publishing a non-existent policy hits an FK violation (23503) → 422,
+		// not a 500.
+		return httputil.RespondError(c, err, "failed to publish policy", "TC_PUBLISH_POLICY_ERROR")
 	}
 	return c.JSON(http.StatusOK, map[string]string{"status": "published"})
 }

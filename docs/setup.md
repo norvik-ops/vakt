@@ -88,7 +88,26 @@ VAKT_DOMAIN=vakt.example.com
 
 Danach `docker compose up -d`. Caddy terminiert HTTPS auf Port 443 und leitet HTTP (Port 80) automatisch dorthin um. Voraussetzung: Ports **80 und 443** sind aus dem Internet erreichbar (für die ACME-Domain-Validierung) und die Domain zeigt per DNS auf den Server.
 
-Ohne `VAKT_DOMAIN` (Default `localhost`) serviert Caddy HTTPS mit einem lokal signierten Zertifikat — praktisch für Tests. Für den Betrieb hinter einem eigenen TLS-Terminator: `VAKT_DOMAIN=:80` setzen, dann serviert Caddy nur HTTP. Die Routing-Regeln stehen im `Caddyfile` im Projektverzeichnis.
+#### Fallback-Verhalten ohne `VAKT_DOMAIN` ⚠️
+
+Ohne `VAKT_DOMAIN` (Default `localhost`) antwortet Caddy **nur auf den Namen `localhost`** — die Site-Adresse ist ein Host-Matcher. Auf dem Rechner selbst ist das in Ordnung (Caddy nutzt seine interne CA, lokal vertrauenswürdig). **Auf einem Remote-Server erreicht dich niemand**, und zwar ohne brauchbare Fehlermeldung:
+
+- `http://<server-ip>` → **leeres `200`**: eine weiße Seite, kein Fehler, kein Statuscode, nach dem man suchen könnte (gemessen gegen `caddy:2`)
+- `https://<server-ip>` → für diese Adresse existiert kein Zertifikat, der **TLS-Handshake bricht ab** (`ERR_SSL_*`) — es gibt **keine** Zertifikatswarnung zum Wegklicken
+- Einziger Zugang: `https://localhost` auf dem Server selbst (nicht praktikabel)
+
+**Lösung:** `VAKT_DOMAIN` MUSS gesetzt sein, damit Caddy ein echtes Let's-Encrypt-Zertifikat holt. Die Domain ist dabei **nicht optional** — sie ist die Voraussetzung für einen Betrieb, der von außen erreichbar ist.
+
+#### Betrieb hinter eigenem TLS-Terminator
+
+Falls du bereits einen anderen HTTPS-Reverse-Proxy (nginx, HAProxy, Cloudflare, …) betreibst, der TLS terminiert, kann Caddy auf HTTP reduziert werden:
+
+```bash
+# In .env:
+VAKT_DOMAIN=:80
+```
+
+Danach serviert Caddy nur HTTP — der Upstream-Terminator kümmert sich um HTTPS. Die Routing-Regeln stehen im `Caddyfile` im Projektverzeichnis.
 
 ### Firewall einrichten (ufw)
 

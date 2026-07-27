@@ -22,6 +22,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	db "github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 	"github.com/matharnica/vakt/internal/shared/logsafe"
 	"github.com/matharnica/vakt/internal/shared/mailhdr"
 	"github.com/matharnica/vakt/internal/shared/safego"
@@ -555,7 +556,7 @@ func (r *Repository) GetRequestByTokenHash(ctx context.Context, tokenHash string
 	row, err := r.q.GetCKPolicyAcceptanceRequestByToken(ctx, tokenHash)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, "", "", fmt.Errorf("token not found")
+			return nil, "", "", fmt.Errorf("token %w", apperr.ErrNotFound)
 		}
 		return nil, "", "", fmt.Errorf("get request by token: %w", err)
 	}
@@ -589,7 +590,7 @@ func (r *Repository) GetAcceptancePublicInfo(ctx context.Context, tokenHash stri
 	row, err := r.q.GetCKPolicyAcceptancePublicInfo(ctx, tokenHash)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, fmt.Errorf("token not found")
+			return nil, fmt.Errorf("token %w", apperr.ErrNotFound)
 		}
 		return nil, fmt.Errorf("get acceptance public info: %w", err)
 	}

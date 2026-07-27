@@ -147,6 +147,25 @@ func (c *IntuneCollector) Collect(ctx context.Context, orgID string, cfg IntuneC
 	return total, nil
 }
 
+// CountDeviceCompliance returns the device compliance percentage for the status
+// endpoint (used by GetIntuneStatus). Read-only variant of Collect's posture computation.
+func (c *IntuneCollector) CountDeviceCompliance(ctx context.Context, cfg IntuneConfig) (float64, error) {
+	token, err := c.getAccessToken(ctx, cfg)
+	if err != nil {
+		return 0, err
+	}
+	apiURL := c.graphBaseURL + "/v1.0/deviceManagement/managedDevices?$select=deviceName,complianceState,operatingSystem,osVersion,isEncrypted,lastSyncDateTime&$top=200"
+	raw, err := c.graphGetRaw(ctx, token, apiURL)
+	if err != nil {
+		return 0, err
+	}
+	devices, err := parseManagedDevices(raw)
+	if err != nil {
+		return 0, err
+	}
+	return computePosture(devices).CompliancePct, nil
+}
+
 func (c *IntuneCollector) getAccessToken(ctx context.Context, cfg IntuneConfig) (string, error) {
 	tokenURL := fmt.Sprintf("%s/%s/oauth2/v2.0/token", c.loginBaseURL, cfg.TenantID)
 	body := url.Values{}

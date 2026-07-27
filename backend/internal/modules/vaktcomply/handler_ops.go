@@ -15,6 +15,7 @@ import (
 	"github.com/labstack/echo/v4"
 	auditmod "github.com/matharnica/vakt/internal/modules/vaktcomply/audit"
 	"github.com/matharnica/vakt/internal/shared/audit"
+	"github.com/matharnica/vakt/internal/shared/httputil"
 	"github.com/matharnica/vakt/internal/shared/pagination"
 	"github.com/rs/zerolog/log"
 )
@@ -734,7 +735,7 @@ func (h *Handler) reviewApproval(c echo.Context, approve bool) error {
 		approve, in.Comment,
 	); err != nil {
 		log.Error().Err(err).Msg("review approval")
-		return errResp(c, http.StatusInternalServerError, "failed to review approval", "CK_INTERNAL")
+		return dbErr(c, err, "failed to review approval", "CK_INTERNAL")
 	}
 
 	action := "reject_approval"
@@ -1067,8 +1068,13 @@ func (h *Handler) NIS2SubmitStage(c echo.Context) error {
 
 	report, err := h.service.SubmitNIS2Stage(c.Request().Context(), orgID(c), id, userID(c), stage, in)
 	if err != nil {
+		// :stage is a path segment, not a UUID — an unknown value is bad input
+		// (422), not a server error. The incident/rows cases fall through to dbErr.
+		if strings.Contains(err.Error(), "invalid stage") {
+			return errResp(c, http.StatusUnprocessableEntity, "invalid nis2 stage", "CK_NIS2_INVALID_STAGE")
+		}
 		log.Error().Err(err).Str("incident_id", id).Str("stage", stage).Msg("submit nis2 stage")
-		return errResp(c, http.StatusInternalServerError, "failed to submit nis2 stage", "CK_NIS2_SUBMIT_FAILED")
+		return dbErr(c, err, "failed to submit nis2 stage", "CK_NIS2_SUBMIT_FAILED")
 	}
 	return c.JSON(http.StatusOK, report)
 }
@@ -1089,10 +1095,15 @@ func (h *Handler) CreateAuthorityContact(c echo.Context) error {
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
+	// SA14-04: validate country/report_url/email before the INSERT so a bad value
+	// is a 422, not a check_violation 500.
+	if err := h.validate.Struct(in); err != nil {
+		return errResp(c, http.StatusUnprocessableEntity, httputil.HumanValidationError(err), "VALIDATION_ERROR")
+	}
 	contact, err := h.service.CreateAuthorityContact(c.Request().Context(), orgID(c), in)
 	if err != nil {
 		log.Error().Err(err).Msg("create authority contact")
-		return errResp(c, http.StatusInternalServerError, "failed to create authority contact", "CK_CREATE_AUTH_CONTACT_FAILED")
+		return dbErr(c, err, "failed to create authority contact", "CK_CREATE_AUTH_CONTACT_FAILED")
 	}
 	return c.JSON(http.StatusCreated, contact)
 }

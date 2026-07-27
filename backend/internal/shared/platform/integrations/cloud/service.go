@@ -465,6 +465,15 @@ func (s *Service) GetHetznerStatus(ctx context.Context, orgID string) (*HetznerS
 	}
 	count, _ := s.repo.CountEvidence(ctx, orgID, hetznerSource)
 	st.EvidenceCount = count
+
+	// S9/CZ-1: ServerCount was declared but never assigned — CountServers already
+	// existed for exactly this purpose (see HetznerCollector.CountServers) but was
+	// never called from the status path. Best-effort: leave at 0 on error/not-configured.
+	if cfg, cfgErr := s.getDecryptedHetznerConfig(ctx, orgID); cfgErr == nil && cfg != nil {
+		if n, err := NewHetznerCollector(s.db, s.evidence).CountServers(ctx, *cfg); err == nil {
+			st.ServerCount = n
+		}
+	}
 	return st, nil
 }
 
@@ -600,6 +609,17 @@ func (s *Service) GetIONOSStatus(ctx context.Context, orgID string) (*IONOSStatu
 	}
 	count, _ := s.repo.CountEvidence(ctx, orgID, ionosSource)
 	st.EvidenceCount = count
+
+	// S9/CZ-1: ServerCount/DatacenterCount were declared but never assigned.
+	if cfg, cfgErr := s.getDecryptedIONOSConfig(ctx, orgID); cfgErr == nil && cfg != nil {
+		collector := NewIONOSCollector(s.db, s.evidence)
+		if n, err := collector.CountDatacenters(ctx, *cfg); err == nil {
+			st.DatacenterCount = n
+		}
+		if n, err := collector.CountServers(ctx, *cfg); err == nil {
+			st.ServerCount = n
+		}
+	}
 	return st, nil
 }
 
@@ -736,6 +756,15 @@ func (s *Service) GetWazuhStatus(ctx context.Context, orgID string) (*WazuhStatu
 	}
 	count, _ := s.repo.CountEvidence(ctx, orgID, wazuhSource)
 	st.EvidenceCount = count
+
+	// S9/CZ-1: AgentCount/AgentsOffline were declared but never assigned — CountAgents
+	// already existed for exactly this purpose but was never called from the status path.
+	if cfg, cfgErr := s.getDecryptedWazuhConfig(ctx, orgID); cfgErr == nil && cfg != nil {
+		if total, offline, err := NewWazuhPullCollector(s.db, s.evidence).CountAgents(ctx, *cfg); err == nil {
+			st.AgentCount = total
+			st.AgentsOffline = offline
+		}
+	}
 	return st, nil
 }
 
@@ -863,6 +892,19 @@ func (s *Service) GetPrometheusStatus(ctx context.Context, orgID string) (*Prome
 	}
 	count, _ := s.repo.CountEvidence(ctx, orgID, prometheusSource)
 	st.EvidenceCount = count
+
+	// S9/CZ-1: TargetCount/ActiveAlertCount were declared but never assigned —
+	// CountTargets/CountActiveAlerts already existed for exactly this purpose but
+	// were never called from the status path.
+	if cfg, cfgErr := s.getDecryptedPrometheusConfig(ctx, orgID); cfgErr == nil && cfg != nil {
+		collector := NewPrometheusCollector(s.db, s.evidence)
+		if n, err := collector.CountTargets(ctx, *cfg); err == nil {
+			st.TargetCount = n
+		}
+		if n, err := collector.CountActiveAlerts(ctx, *cfg); err == nil {
+			st.ActiveAlertCount = n
+		}
+	}
 	return st, nil
 }
 
@@ -979,6 +1021,16 @@ func (s *Service) GetEntraIDStatus(ctx context.Context, orgID string) (*EntraIDS
 	}
 	count, _ := s.repo.CountEvidence(ctx, orgID, entraidSource)
 	st.EvidenceCount = count
+
+	// S9/CZ-1: MFAEnrollmentPct/RiskyUserCount/InactiveUserCount were declared but
+	// never assigned.
+	if cfg, cfgErr := s.getDecryptedEntraIDConfig(ctx, orgID); cfgErr == nil && cfg != nil {
+		if pct, risky, inactive, err := NewEntraIDCollector(s.db, s.evidence).CountMFARiskyInactive(ctx, *cfg); err == nil {
+			st.MFAEnrollmentPct = pct
+			st.RiskyUserCount = risky
+			st.InactiveUserCount = inactive
+		}
+	}
 	return st, nil
 }
 
@@ -1096,6 +1148,13 @@ func (s *Service) GetIntuneStatus(ctx context.Context, orgID string) (*IntuneSta
 	}
 	count, _ := s.repo.CountEvidence(ctx, orgID, intuneSource)
 	st.EvidenceCount = count
+
+	// S9/CZ-1: DeviceCompliancePct was declared but never assigned.
+	if cfg, cfgErr := s.getDecryptedIntuneConfig(ctx, orgID); cfgErr == nil && cfg != nil {
+		if pct, err := NewIntuneCollector(s.db, s.evidence).CountDeviceCompliance(ctx, *cfg); err == nil {
+			st.DeviceCompliancePct = pct
+		}
+	}
 	return st, nil
 }
 
@@ -1221,6 +1280,14 @@ func (s *Service) GetKeycloakStatus(ctx context.Context, orgID string) (*Keycloa
 	}
 	count, _ := s.repo.CountEvidence(ctx, orgID, keycloakSource)
 	st.EvidenceCount = count
+
+	// S9/CZ-1: UserCount/MFAEnrollmentPct were declared but never assigned.
+	if cfg, cfgErr := s.getDecryptedKeycloakConfig(ctx, orgID); cfgErr == nil && cfg != nil {
+		if users, pct, err := NewKeycloakCollector(s.db, s.evidence).CountUsersMFA(ctx, *cfg); err == nil {
+			st.UserCount = users
+			st.MFAEnrollmentPct = pct
+		}
+	}
 	return st, nil
 }
 
@@ -1392,6 +1459,15 @@ func (s *Service) GetLDAPStatus(ctx context.Context, orgID string) (*LDAPStatus,
 	}
 	count, _ := s.repo.CountEvidence(ctx, orgID, ldapSource)
 	st.EvidenceCount = count
+
+	// S9/CZ-1: UserCount/InactiveCount/PrivilegedCount were declared but never assigned.
+	if cfg, cfgErr := s.getDecryptedLDAPConfig(ctx, orgID); cfgErr == nil && cfg != nil {
+		if active, inactive, privileged, err := NewLDAPEvidenceCollector(s.db, s.evidence).CountUsers(ctx, *cfg); err == nil {
+			st.UserCount = active
+			st.InactiveCount = inactive
+			st.PrivilegedCount = privileged
+		}
+	}
 	return st, nil
 }
 
@@ -1514,6 +1590,16 @@ func (s *Service) GetGitLabStatus(ctx context.Context, orgID string) (*GitLabSta
 	}
 	count, _ := s.repo.CountEvidence(ctx, orgID, gitlabSource)
 	st.EvidenceCount = count
+
+	// S9/CZ-1: ProjectCount/UnprotectedBranchesCount were declared but never assigned —
+	// CountUnprotectedBranches already existed for exactly this purpose but was never
+	// called from the status path.
+	if cfg, cfgErr := s.getDecryptedGitLabConfig(ctx, orgID); cfgErr == nil && cfg != nil {
+		if projects, unprotected, err := NewGitLabCollector(s.db, s.evidence).CountUnprotectedBranches(ctx, *cfg); err == nil {
+			st.ProjectCount = projects
+			st.UnprotectedBranchesCount = unprotected
+		}
+	}
 	return st, nil
 }
 
@@ -1631,6 +1717,20 @@ func (s *Service) GetSonarQubeStatus(ctx context.Context, orgID string) (*SonarQ
 	}
 	count, _ := s.repo.CountEvidence(ctx, orgID, sonarqubeSource)
 	st.EvidenceCount = count
+
+	// S9/CZ-1: ProjectCount/QualityGateFailedCount/HotspotCount were declared but
+	// never assigned — CountQualityGateFailed already existed for exactly this
+	// purpose but was never called from the status path.
+	if cfg, cfgErr := s.getDecryptedSonarQubeConfig(ctx, orgID); cfgErr == nil && cfg != nil {
+		collector := NewSonarQubeCollector(s.db, s.evidence)
+		if projects, failed, err := collector.CountQualityGateFailed(ctx, *cfg); err == nil {
+			st.ProjectCount = projects
+			st.QualityGateFailedCount = failed
+		}
+		if n, err := collector.CountHotspots(ctx, *cfg); err == nil {
+			st.HotspotCount = n
+		}
+	}
 	return st, nil
 }
 
@@ -1740,6 +1840,25 @@ func (s *Service) GetPersonioStatus(ctx context.Context, orgID string) (*Personi
 		WHERE org_id = $1::uuid AND personio_employee_id IS NOT NULL`, orgID,
 	).Scan(&triggered)
 	st.OffboardingsTriggered = triggered
+
+	// S9/CZ-1: OffboardingsOnTime was declared but never assigned — count offboarding
+	// checklist runs triggered by Personio that finished on or before the employee's
+	// departure_date (the SLA an offboarding webhook exists to guarantee).
+	var onTime int
+	_ = s.db.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM hr_checklist_runs r
+		JOIN hr_checklists c ON c.id = r.checklist_id
+		JOIN hr_employees e ON e.id = r.employee_id
+		WHERE e.org_id = $1::uuid
+		  AND e.personio_employee_id IS NOT NULL
+		  AND c.type = 'offboarding'
+		  AND r.status = 'completed'
+		  AND r.completed_at IS NOT NULL
+		  AND e.departure_date IS NOT NULL
+		  AND r.completed_at::date <= e.departure_date`, orgID,
+	).Scan(&onTime)
+	st.OffboardingsOnTime = onTime
 
 	return st, nil
 }

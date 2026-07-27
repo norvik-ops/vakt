@@ -7,6 +7,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/apperr"
+	"github.com/matharnica/vakt/internal/shared/httputil"
 )
 
 var validate = validator.New()
@@ -130,8 +133,14 @@ func badRequest(c echo.Context, msg string) error {
 }
 
 func serverError(c echo.Context, err error) error {
-	log.Error().Err(err).Msg("github operation failed")
-	return c.JSON(http.StatusInternalServerError, errorResponse("internal server error", "INTERNAL_ERROR"))
+	// S4: classify at the 4xx-vs-5xx boundary — a Sync/operation against an
+	// integration that is not configured for this org surfaces as no-rows ("load
+	// integration: no rows in result set") and must be a 404, not a 500. Only
+	// genuine 500s are logged at error level.
+	if apperr.Status(err) == 0 {
+		log.Error().Err(err).Msg("github operation failed")
+	}
+	return httputil.RespondError(c, err, "internal server error", "INTERNAL_ERROR")
 }
 
 func validationError(c echo.Context, err error) error {

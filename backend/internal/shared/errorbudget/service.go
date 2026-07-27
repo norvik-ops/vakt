@@ -45,6 +45,7 @@ func WeeklyReport(ctx context.Context, db *pgxpool.Pool, cfg Config) error {
 	// Count total requests and failed requests (5xx) in last 7 days from audit_log.
 	// This is a proxy measure — in production, use a dedicated metrics store.
 	var total, failures int
+	// orgid-lint: global — platform-wide operational metric (self-hosted single instance), not per-org data
 	err := db.QueryRow(ctx, `
 		SELECT
 			COUNT(*) AS total,

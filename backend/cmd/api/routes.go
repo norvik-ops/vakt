@@ -446,6 +446,11 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		ckSvc.WithRedis(rdb)
 		ckSvc.WithNotifyService(notify.NewService(pool, cfg))
 		ckSvc.WithWebhooks(webhookSvc)
+		// Reverse protection_need_id link on vb_assets is owned by vaktscan
+		// (module isolation, ADR-0079); vaktcomply writes it via this linker
+		// instead of the vb_ prefix directly. Wired unconditionally — vb_assets
+		// exists regardless of whether vaktscan is enabled.
+		ckSvc.WithAssetProtectionLinker(vaktscan.NewAssetProtectionLinker(pool))
 		if cfg.AIProvider != "disabled" && cfg.AIProvider != "" && cfg.AIBaseURL != "" {
 			aiClient := ai.NewAIClient(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel)
 			if cfg.AIReportTimeoutSeconds > 0 {
@@ -570,6 +575,16 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 
 	if cfg.IsModuleEnabled("vaktprivacy") {
 		poSvc := vaktprivacy.NewService(pool, asynq.RedisClientOpt{Addr: redisOpt.Addr, Password: redisOpt.Password})
+		// Art. 17 erasure deletes hr_/sr_ PII through the owning modules' erasers,
+		// not by writing those prefixes from vaktprivacy (module isolation,
+		// ADR-0079). Order is IRRELEVANT here by design: the resolver below hands
+		// every cross-module identifier to the erasers up front, so reordering this
+		// line cannot cause a silent partial erasure (it used to).
+		// Wired unconditionally: the tables exist regardless of module toggles, and
+		// ExecuteErasure refuses to run unless an eraser for EVERY module holding
+		// subject PII is present.
+		poSvc.WithSubjectErasers(vaktaware.NewSubjectEraser(), vakthr.NewSubjectEraser())
+		poSvc.WithSubjectResolver(vakthr.NewSubjectResolver())
 		tiaSvc := vaktprivacy.NewTIAService(pool)
 		poHandler := vaktprivacy.NewHandler(poSvc).WithDB(pool).WithTIA(tiaSvc)
 		if alertSvc != nil {

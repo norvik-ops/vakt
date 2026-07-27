@@ -14,6 +14,7 @@ import (
 	"github.com/matharnica/vakt/internal/db"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 	"github.com/matharnica/vakt/internal/shared/audit"
+	"github.com/matharnica/vakt/internal/shared/httputil"
 	"github.com/matharnica/vakt/internal/shared/pagination"
 	"github.com/matharnica/vakt/internal/shared/platform/features"
 	"github.com/rs/zerolog/log"
@@ -62,6 +63,16 @@ func errResp(c echo.Context, code int, msg, errCode string) error {
 		"error": msg,
 		"code":  errCode,
 	})
+}
+
+// dbErr classifies a repository/service error at the 4xx-vs-5xx boundary (S4):
+// a not-found row → 404, a unique violation → 409, a check/not-null/fk violation
+// → 422, malformed input that reached Postgres → 400, and anything else → the
+// caller's 500 fallback (msg/errCode). Use it in the DB-error branch of a write
+// handler instead of a hardcoded errResp(500, …) so a duplicate or a constraint
+// violation is not leaked to the client as a server error.
+func dbErr(c echo.Context, err error, msg, errCode string) error {
+	return httputil.RespondError(c, err, msg, errCode)
 }
 
 func (h *Handler) BulkUpdateControls(c echo.Context) error {

@@ -14,6 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 	"github.com/rs/zerolog/log"
 )
 
@@ -222,7 +223,7 @@ func (r *Repository) DeleteCertificate(ctx context.Context, orgID, id string) er
 		return fmt.Errorf("delete certificate: %w", err)
 	}
 	if n.RowsAffected() == 0 {
-		return fmt.Errorf("certificate not found")
+		return fmt.Errorf("certificate %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -314,7 +315,7 @@ func scanCertRow(row rowScanner) (*Certificate, error) {
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("certificate not found")
+			return nil, fmt.Errorf("certificate %w", apperr.ErrNotFound)
 		}
 		return nil, fmt.Errorf("scan certificate row: %w", err)
 	}

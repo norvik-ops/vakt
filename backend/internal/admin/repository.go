@@ -275,6 +275,7 @@ func (r *Repository) CreateSCIMToken(ctx context.Context, orgID, name, tokenHash
 // RevokeExpiredSCIMTokens sets revoked_at = NOW() for all tokens that have
 // passed their expires_at timestamp. Returns the count of tokens revoked.
 func (r *Repository) RevokeExpiredSCIMTokens(ctx context.Context) (int64, error) {
+	// orgid-lint: global — background cleanup job, intentionally iterates all orgs' expired tokens
 	tag, err := r.db.Exec(ctx, `
 		UPDATE scim_tokens
 		SET revoked_at = NOW()
@@ -444,6 +445,7 @@ func (r *Repository) DisableOrgOIDCConfig(ctx context.Context, orgID string) err
 // Used by the /health endpoint to determine sso_enabled at runtime.
 func (r *Repository) OIDCEnabledExists(ctx context.Context) (bool, error) {
 	var exists bool
+	// orgid-lint: global — platform-wide boolean for /health (any org, not per-org data)
 	err := r.db.QueryRow(ctx,
 		`SELECT EXISTS(SELECT 1 FROM org_oidc_configs WHERE enabled = TRUE)`,
 	).Scan(&exists)

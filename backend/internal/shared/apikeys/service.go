@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 	"github.com/rs/zerolog/log"
 )
 
@@ -153,7 +154,7 @@ func (s *Service) Revoke(ctx context.Context, orgID, userID, keyID string) error
 }
 
 // ErrNotFound is returned when the key does not exist or does not belong to the caller.
-var ErrNotFound = fmt.Errorf("apikeys: key not found")
+var ErrNotFound = fmt.Errorf("apikeys: key %w", apperr.ErrNotFound)
 
 // APIKeyWithOwner is an API key plus the email of the user who created it, for
 // the admin org-wide view (S131-D15-08).

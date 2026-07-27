@@ -141,6 +141,15 @@ def main() -> int:
         for img in found:
             refs.setdefault(img, set()).add(rel)
 
+    # G-07: zero image references means none of SOURCES existed/matched — not
+    # that the stack has no images. That would otherwise fall through to a
+    # cheerful "✓ 0 Fremd-Images verifiziert" instead of flagging the gate itself
+    # as broken (wrong ROOT, moved/renamed compose files).
+    if not refs:
+        print("✗ FAIL — 0 image references found across all SOURCES "
+              "(non-vacuity guard, G-07). Check ROOT/SOURCES paths.")
+        return 2
+
     version = vakt_version()
     errors: list[str] = []
     unverifiable: list[str] = []

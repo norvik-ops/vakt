@@ -219,6 +219,8 @@ func (s *Service) ResetPassword(ctx context.Context, rawToken, newPassword strin
 	// been changed and pw_version incremented; any failure here is logged only.
 	revokeCtx, revokeCancel := context.WithTimeout(ctx, 3*time.Second)
 	defer revokeCancel()
+	// orgid-lint: global — scoped by user_id (global users table); password reset revokes
+	// every session for this user regardless of org, by design (AUTH-002)
 	rows, revokeErr := s.db.Query(revokeCtx,
 		`DELETE FROM refresh_sessions WHERE user_id = $1::uuid RETURNING token_hash`,
 		userID,

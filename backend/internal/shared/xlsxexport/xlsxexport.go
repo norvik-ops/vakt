@@ -295,6 +295,52 @@ func RenderRisiken(rows []RiskRow) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// RenderSimpleTable produces a single-sheet XLSX with a bold header row and
+// plain string rows underneath. Used by exports that don't need custom
+// styling/matrix sheets (controls, policies, findings).
+func RenderSimpleTable(sheetName string, headers []string, rows [][]string) ([]byte, error) {
+	f := excelize.NewFile()
+	defer f.Close()
+
+	if err := f.SetSheetName("Sheet1", sheetName); err != nil {
+		return nil, err
+	}
+
+	headerStyle, err := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Color: "FFFFFF"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"1E3A5F"}, Pattern: 1},
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+	})
+	if err != nil {
+		return nil, err
+	}
+	for i, h := range headers {
+		cell := colName(i+1) + "1"
+		_ = f.SetCellValue(sheetName, cell, h)
+		_ = f.SetCellStyle(sheetName, cell, cell, headerStyle)
+		_ = f.SetColWidth(sheetName, colName(i+1), colName(i+1), 22)
+	}
+	_ = f.SetRowHeight(sheetName, 1, 18)
+	if len(headers) > 0 {
+		lastCol := colName(len(headers))
+		_ = f.SetPanes(sheetName, &excelize.Panes{Freeze: true, YSplit: 1, TopLeftCell: "A2", ActivePane: "bottomLeft"})
+		_ = f.AutoFilter(sheetName, fmt.Sprintf("A1:%s1", lastCol), []excelize.AutoFilterOptions{})
+	}
+
+	for i, row := range rows {
+		r := i + 2
+		for j, v := range row {
+			_ = f.SetCellValue(sheetName, colName(j+1)+fmt.Sprint(r), v)
+		}
+	}
+
+	buf, err := f.WriteToBuffer()
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 // colName converts a 1-based column index to an Excel column name (A, B, ..., Z, AA, ...).
 func colName(col int) string {
 	name := ""

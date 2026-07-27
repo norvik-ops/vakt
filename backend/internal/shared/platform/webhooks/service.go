@@ -22,6 +22,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
+	"github.com/matharnica/vakt/internal/shared/apperr"
 	"github.com/matharnica/vakt/internal/shared/crypto"
 )
 
@@ -171,6 +172,7 @@ func (s *WebhookService) MigrateLegacyPlaintextSecrets(ctx context.Context) (int
 		// is intentional; we surface nothing here.
 		return 0, nil
 	}
+	// orgid-lint: global — one-time legacy-plaintext migration, iterates every org's webhooks by design (ADR-0043)
 	rows, err := s.db.Query(ctx, `
 		SELECT id::text, secret FROM webhooks
 		WHERE secret IS NOT NULL AND secret != ''
@@ -199,6 +201,7 @@ func (s *WebhookService) MigrateLegacyPlaintextSecrets(ctx context.Context) (int
 			log.Warn().Err(err).Str("webhook_id", r.id).Msg("webhooks: encrypt legacy secret failed — skipping")
 			continue
 		}
+		// orgid-lint: global — one-time legacy-plaintext migration (ADR-0043); r.id from the query above
 		if _, err := s.db.Exec(ctx, `UPDATE webhooks SET secret = $1 WHERE id = $2::uuid`, enc, r.id); err != nil {
 			log.Warn().Err(err).Str("webhook_id", r.id).Msg("webhooks: persist migrated secret failed — skipping")
 			continue
@@ -378,7 +381,7 @@ func (s *WebhookService) DeleteWebhook(ctx context.Context, id, orgID string) er
 		return fmt.Errorf("delete webhook: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("webhook not found")
+		return fmt.Errorf("webhook %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -521,6 +524,7 @@ func (s *WebhookService) recordDelivery(ctx context.Context, webhookID string, s
 	if statusCode != 0 {
 		codePtr = &statusCode
 	}
+	// orgid-lint: global — UPDATE by PK; webhookID is the already-resolved, org-verified webhook's own id
 	if _, err := s.db.Exec(ctx, `
 		UPDATE webhooks
 		SET last_triggered_at = NOW(), last_status_code = $2

@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 func scanCryptoKey(rows pgx.Rows) (CryptoKey, error) {
@@ -294,7 +295,7 @@ func (r *Repository) GetPentest(ctx context.Context, orgID, id string) (Pentest,
 	p, err := scanPentest(row)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return Pentest{}, fmt.Errorf("pentest not found")
+			return Pentest{}, fmt.Errorf("pentest %w", apperr.ErrNotFound)
 		}
 		return Pentest{}, fmt.Errorf("get pentest: %w", err)
 	}
@@ -382,7 +383,7 @@ func (r *Repository) UpdatePentest(ctx context.Context, orgID, id string, in Upd
 	p, err := scanPentest(row)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return Pentest{}, fmt.Errorf("pentest not found")
+			return Pentest{}, fmt.Errorf("pentest %w", apperr.ErrNotFound)
 		}
 		return Pentest{}, fmt.Errorf("update pentest: %w", err)
 	}
@@ -400,7 +401,7 @@ func (r *Repository) DeletePentest(ctx context.Context, orgID, id string) error 
 		return fmt.Errorf("delete pentest: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return fmt.Errorf("pentest not found")
+		return fmt.Errorf("pentest %w", apperr.ErrNotFound)
 	}
 	return nil
 }

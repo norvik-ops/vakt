@@ -133,6 +133,7 @@ func (h *Handler) ServeMetrics(c echo.Context) error {
 	fmt.Fprintln(w, "# HELP vakt_backup_age_hours Hours since last backup (999 if never)")
 	fmt.Fprintln(w, "# TYPE vakt_backup_age_hours gauge")
 	var backupAgeHours float64
+	// orgid-lint: global — platform-wide operational metric (self-hosted single instance), not per-org data
 	err = h.db.QueryRow(ctx, `
 		SELECT COALESCE(
 		    EXTRACT(EPOCH FROM (now() - MAX(backed_up_at))) / 3600,
@@ -218,6 +219,7 @@ func (h *Handler) ServeMetrics(c echo.Context) error {
 	fmt.Fprintln(w, "# HELP vakt_active_sessions_total Number of currently active user sessions")
 	fmt.Fprintln(w, "# TYPE vakt_active_sessions_total gauge")
 	var activeSessions int64
+	// orgid-lint: global — platform-wide operational metric (self-hosted single instance), not per-org data
 	err = h.db.QueryRow(ctx, `
 		SELECT COUNT(*) FROM sessions
 		WHERE expires_at > NOW() AND revoked_at IS NULL`).Scan(&activeSessions)

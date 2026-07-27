@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	bcm "github.com/matharnica/vakt/internal/modules/vaktcomply/bcm"
+	"github.com/matharnica/vakt/internal/shared/httputil"
 	"github.com/rs/zerolog/log"
 )
 
@@ -474,12 +475,17 @@ func (h *Handler) ClassifyAISystem(c echo.Context) error {
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
+	// Validate risk_class (oneof) before the service so a bad/empty value is a 422,
+	// not a service-layer error the generic branch would leak as 500.
+	if err := h.validate.Struct(in); err != nil {
+		return errResp(c, http.StatusUnprocessableEntity, httputil.HumanValidationError(err), "VALIDATION_ERROR")
+	}
 	if err := h.service.ClassifyAISystem(c.Request().Context(), orgID(c), id, in); err != nil {
 		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "AI system not found", "CK_NOT_FOUND")
 		}
 		log.Error().Err(err).Msg("classify ai system")
-		return errResp(c, http.StatusInternalServerError, "failed to classify AI system", "CK_CLASSIFY_AI_SYSTEM_FAILED")
+		return dbErr(c, err, "failed to classify AI system", "CK_CLASSIFY_AI_SYSTEM_FAILED")
 	}
 	return c.NoContent(http.StatusNoContent)
 }
@@ -511,7 +517,8 @@ func (h *Handler) SaveAIDocumentation(c echo.Context) error {
 	doc, err := h.service.SaveAIDocumentation(c.Request().Context(), orgID(c), id, in)
 	if err != nil {
 		log.Error().Err(err).Msg("save ai documentation")
-		return errResp(c, http.StatusInternalServerError, "failed to save documentation", "CK_SAVE_AI_DOC_FAILED")
+		// A dangling ai_system_id surfaces as an FK violation (23503) → 422, not 500.
+		return dbErr(c, err, "failed to save documentation", "CK_SAVE_AI_DOC_FAILED")
 	}
 	return c.JSON(http.StatusOK, doc)
 }

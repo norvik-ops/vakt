@@ -150,9 +150,14 @@ func (s *Service) CreateUser(ctx context.Context, orgID string, u SCIMUser) (*SC
 	}
 
 	var userID string
+	// role is set to 'viewer' explicitly (V24-a): SCIM-provisioned users get the
+	// Viewer org_members role below, so users.role — read by usermgmt.requireAdmin —
+	// must match. On re-provisioning (ON CONFLICT) role is left untouched: an admin
+	// may have promoted the user in-app since the last SCIM sync, and IdP-side role
+	// data is not part of this minimal SCIM core.
 	err = tx.QueryRow(ctx, `
-		INSERT INTO users (email, display_name, is_active, scim_external_id, scim_provisioned)
-		VALUES ($1, NULLIF($2,''), $3, NULLIF($4,''), TRUE)
+		INSERT INTO users (email, display_name, is_active, scim_external_id, scim_provisioned, role)
+		VALUES ($1, NULLIF($2,''), $3, NULLIF($4,''), TRUE, 'viewer')
 		ON CONFLICT (email) DO UPDATE
 		    SET display_name     = COALESCE(NULLIF($2,''), users.display_name),
 		        is_active        = $3,

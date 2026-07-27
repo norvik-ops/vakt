@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 // Repository provides reporting-domain database operations (CCM checks/results).
@@ -172,7 +173,7 @@ func (r *Repository) DeleteCCMCheck(ctx context.Context, orgID, id string) error
 		return fmt.Errorf("delete ccm check: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("ccm check not found")
+		return fmt.Errorf("ccm check %w", apperr.ErrNotFound)
 	}
 	return nil
 }

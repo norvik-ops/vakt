@@ -63,6 +63,7 @@ func TestHROffboardingRevokesAccessToken(t *testing.T) {
 	require.NoError(t, err)
 
 	// Refresh sessions gone.
+	// orgid-lint: global — scoped by user_id (global users table); asserts the RevokeAllSessions contract
 	var sessions int
 	require.NoError(t, pool.QueryRow(ctx,
 		`SELECT COUNT(*) FROM refresh_sessions WHERE user_id = $1::uuid`, userID).Scan(&sessions))

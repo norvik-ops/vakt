@@ -481,6 +481,7 @@ func updateApprovalDecision(ctx context.Context, db *pgxpool.Pool, runID, toolNa
 	if approved {
 		status = "approved"
 	}
+	// orgid-lint: global — scoped by run_id + tool_name, unique to this agent run
 	if _, err := db.Exec(ctx, `
 		UPDATE ai_pending_approvals
 		SET status = $1, decided_by = NULLIF($2, '')::uuid, decided_at = NOW()

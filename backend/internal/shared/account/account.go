@@ -94,14 +94,19 @@ func (s *Service) ExportUserData(ctx context.Context, userID, userEmail, orgID s
 
 	// 2-N. User-scoped tables — best effort: missing tables in the schema do
 	// not abort the export, they just write an empty array.
+	// orgid-lint: global — GDPR self-service export, every query below is scoped by
+	// user_id (the caller's own account, passed as the sole bind param via queryToJSON)
 	tableExports := []struct {
 		file  string
 		query string
 	}{
+		// orgid-lint: global — GDPR self-service export, scoped by user_id (own account)
 		{"sessions.json", `SELECT id::text, device_hint, created_at, last_used, expires_at, revoked_at
 		                    FROM refresh_sessions WHERE user_id = $1::uuid ORDER BY created_at`},
+		// orgid-lint: global — GDPR self-service export, scoped by created_by (own account)
 		{"api_keys.json", `SELECT id::text, name, key_prefix, scopes, last_used_at, expires_at, revoked_at, created_at
 		                    FROM api_keys WHERE created_by = $1::uuid ORDER BY created_at`},
+		// orgid-lint: global — GDPR self-service export, scoped by user_id (own account)
 		{"audit_log.json", `SELECT id::text, action, resource_type, resource_id, ip_address, created_at
 		                     FROM audit_log WHERE user_id = $1::uuid AND deleted_at IS NULL ORDER BY created_at`},
 		{"notification_preferences.json", `SELECT * FROM notification_preferences WHERE user_id = $1::uuid`},
@@ -267,17 +272,22 @@ func (s *Service) DeleteUserAccount(ctx context.Context, userID, suppliedPasswor
 	`, anonEmail, userID); err != nil {
 		return fmt.Errorf("anonymise user: %w", err)
 	}
-	// Revoke sessions + api keys. refresh_sessions carries no revoked_at column —
-	// the canonical revoke everywhere else (logout, password reset, service.go) is a
-	// DELETE, and no refresh path checks a revoked flag, so a soft-revoke would be a
-	// silent no-op. It also matters that this stays valid SQL: a 42703 here poisons
+	// Revoke sessions + api keys. refresh_sessions gained a revoked_at column
+	// (migration 251) so ExportUserData's sessions.json can be read without a
+	// 42703 — but it is NOT the revoke mechanism here. The canonical revoke
+	// everywhere else (logout, password reset, service.go) is a DELETE, and no
+	// refresh path checks a revoked flag, so a soft-revoke would be a silent
+	// no-op. It also matters that this stays valid SQL: a failure here poisons
 	// the whole tx and Commit below fails, so the account is never actually deleted.
+	// orgid-lint: global — scoped by user_id (global users table); own-account deletion revokes
+	// this user's sessions/keys everywhere, same pattern as logout/password-reset
 	if _, err := tx.Exec(ctx,
 		`DELETE FROM refresh_sessions WHERE user_id = $1::uuid`,
 		userID,
 	); err != nil {
 		log.Warn().Err(err).Msg("delete: revoke sessions")
 	}
+	// orgid-lint: global — scoped by created_by (global users table); own-account deletion
 	if _, err := tx.Exec(ctx,
 		`UPDATE api_keys SET revoked_at = NOW() WHERE created_by = $1::uuid AND revoked_at IS NULL`,
 		userID,

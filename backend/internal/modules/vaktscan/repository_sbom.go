@@ -261,15 +261,22 @@ func (r *Repository) BatchUpsertFindings(ctx context.Context, orgID string, find
 	br := r.db.SendBatch(ctx, batch)
 	defer br.Close()
 
-	var count int
+	// GB-2: the returned count must come from the DB (RowsAffected), not from the
+	// intent (a "row Exec returned no error" tally). pgx sends a batch inside one
+	// implicit transaction, so a single failing statement rolls the WHOLE batch
+	// back — the previous "log the row and keep counting" pattern reported success
+	// for data that never landed. So: sum the CommandTag RowsAffected on success,
+	// and on ANY row error return 0 + the error (nothing was committed).
+	var affected int64
 	for i := range findings {
-		if _, err := br.Exec(); err != nil {
-			log.Error().Err(err).Int("index", i).Msg("batch upsert finding: row failed")
-		} else {
-			count++
+		ct, err := br.Exec()
+		if err != nil {
+			log.Error().Err(err).Int("index", i).Msg("batch upsert finding: batch aborted")
+			return 0, fmt.Errorf("batch upsert findings (row %d): %w", i, err)
 		}
+		affected += ct.RowsAffected()
 	}
-	return count, nil
+	return int(affected), nil
 }
 
 // ---------------------------------------------------------------------------

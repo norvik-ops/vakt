@@ -237,6 +237,12 @@ function EnabledFrameworkCard({ framework, onDelete, onSwitchVariant }: {
         <div className="flex items-center justify-between text-sm text-secondary">
           <span>{framework.control_count != null ? `${framework.control_count} ${t('vaktcomply.controlDetailPage.controlsCount')} · ` : ''}{t('vaktcomply.controlDetailPage.activatedOn')} {enabledDate}</span>
           <div className="flex items-center gap-1">
+            <ExportButton
+              endpoint={`/api/v1/vaktcomply/controls/export/xlsx?framework_id=${framework.id}`}
+              filename={`controls-${framework.name}-${new Date().toISOString().slice(0, 10)}`}
+              label={t('common.exportControls')}
+              format="xlsx"
+            />
             {isDORA && onSwitchVariant && (
               <button
                 onClick={() => { onSwitchVariant(framework); }}
@@ -353,12 +359,6 @@ export default function FrameworksPage() {
         description={t('vaktcomply.frameworksPage.description')}
         actions={
           <div className="flex items-center gap-2">
-            <ExportButton
-              endpoint="/api/v1/vaktcomply/controls/export/xlsx"
-              filename={`controls-${new Date().toISOString().slice(0, 10)}`}
-              label={t('common.exportControls')}
-              format="xlsx"
-            />
             <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="w-3.5 h-3.5 mr-1" />
               {t('vaktcomply.frameworksPage.exportAuditPackage')}

@@ -726,7 +726,7 @@ func (h *Handler) TriggerCCMCheck(c echo.Context) error {
 	result, err := h.service.RunCCMCheck(c.Request().Context(), orgID(c), id)
 	if err != nil {
 		log.Error().Err(err).Str("id", id).Msg("trigger ccm check")
-		return errResp(c, http.StatusInternalServerError, "failed to run CCM check", "CCM_RUN_FAILED")
+		return dbErr(c, err, "failed to run CCM check", "CCM_RUN_FAILED")
 	}
 	return c.JSON(http.StatusOK, result)
 }

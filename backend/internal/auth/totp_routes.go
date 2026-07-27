@@ -21,7 +21,12 @@ import (
 func RegisterTOTP(g *echo.Group, db *pgxpool.Pool, masterKey []byte, authMiddleware echo.MiddlewareFunc, svc *Service, rateLimiter ...echo.MiddlewareFunc) {
 	h := NewTotpHandler(db, masterKey, svc)
 
-	middlewares := []echo.MiddlewareFunc{authMiddleware}
+	// S132-S11/D24-2: this group is mounted directly on api.Group("/auth"), NOT
+	// on the `protected` group in cmd/api/routes.go — so it does not inherit
+	// protected's CSRFMiddleware. Without this, all six write routes below
+	// (/setup, /confirm, /disable, /verify, /recovery, /recovery-codes/regenerate)
+	// reached their handlers without a valid X-CSRF-Token.
+	middlewares := []echo.MiddlewareFunc{authMiddleware, CSRFMiddleware()}
 	if len(rateLimiter) > 0 && rateLimiter[0] != nil {
 		middlewares = append(middlewares, rateLimiter[0])
 	}

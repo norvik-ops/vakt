@@ -108,10 +108,8 @@ func (h *Handler) Update(c echo.Context) error {
 	wh, err := h.svc.UpdateWebhook(c.Request().Context(), id, orgID, input)
 	if err != nil {
 		log.Error().Err(err).Str("webhook_id", id).Msg("update webhook failed")
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "failed to update webhook",
-			"code":  "WEBHOOK_UPDATE_ERROR",
-		})
+		// S4: a missing webhook is a 404, not a 500.
+		return httputil.RespondError(c, err, "failed to update webhook", "WEBHOOK_UPDATE_ERROR")
 	}
 	return c.JSON(http.StatusOK, wh)
 }

@@ -189,5 +189,5 @@ type UpdateManagementReviewOutputsInput struct {
 	ImprovementDecisions json.RawMessage `json:"improvement_decisions"`
 	ResourceDecisions    string          `json:"resource_decisions"`
 	ISMSChanges          string          `json:"isms_changes"`
-	NextReviewDate       *string         `json:"next_review_date,omitempty"`
+	NextReviewDate       *string         `json:"next_review_date,omitempty" validate:"omitempty,datetime=2006-01-02"`
 }

@@ -91,10 +91,15 @@ func asynqRedisOpt(redisURL string) asynq.RedisClientOpt {
 	return asynq.RedisClientOpt{Addr: redisURL}
 }
 
-func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
+func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux, *asynq.Client) {
 	cfg, _ := config.Load()
 
 	redisOpt := asynqRedisOpt(cfg.RedisUrl)
+
+	// enqueueClient lets a handful of worker handlers chain a follow-up job after
+	// their own job completes (e.g. SBOM generation → EOL check, S5/W1). Closed on
+	// worker shutdown in main().
+	enqueueClient := asynq.NewClient(redisOpt)
 
 	srv := asynq.NewServer(
 		redisOpt,
@@ -150,14 +155,8 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	// ── SecReflex campaign send ───────────────────────────────────────────────
 	mux.HandleFunc(vaktaware.TaskSendCampaign, handleSendCampaign(cfg, pool))
 
-	// ── SecReflex training reminder ───────────────────────────────────────────
-	mux.HandleFunc(vaktaware.TaskTrainingReminder, handleTrainingReminder(cfg, pool))
-
 	// ── SecReflex auto-enrollment (S65-2) ─────────────────────────────────────
 	mux.HandleFunc(vaktaware.TaskAutoEnrollment, handleAutoEnrollment(pool))
-
-	// ── SecReflex BSI ORP.3 evidence sync (S65-4) ────────────────────────────
-	mux.HandleFunc(vaktaware.TaskORP3EvidenceSync, handleORP3EvidenceSync(pool))
 
 	// ── SecVault git scanning ─────────────────────────────────────────────────
 	mux.HandleFunc(vaktvault.TaskGitScan, handleGitScan(cfg, pool))
@@ -178,7 +177,7 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	mux.HandleFunc(vaktscan.TaskAutoEvidence, handleAutoEvidence(cfg, pool))
 
 	// ── SecPulse SBOM generation (syft) ───────────────────────────────────────
-	mux.HandleFunc(vaktscan.TaskSBOMGenerate, handleSBOMGenerate(cfg, pool))
+	mux.HandleFunc(vaktscan.TaskSBOMGenerate, handleSBOMGenerate(cfg, pool, enqueueClient))
 
 	// ── SecPulse EOL check (endoflife.date) ───────────────────────────────────
 	mux.HandleFunc(vaktscan.TaskEOLCheck, handleEOLCheck(cfg, pool))
@@ -296,7 +295,7 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	// S88-2: daily backup-freshness check (ISO A.8.13 / DER.4 evidence + staleness)
 	mux.HandleFunc(vaktcomply.TaskBackupFreshnessCheck, handleBackupFreshnessCheck(pool))
 
-	return srv, mux
+	return srv, mux, enqueueClient
 }
 
 // handleScanJob returns an asynq handler that runs the appropriate scanner
@@ -359,7 +358,8 @@ func main() {
 		log.Info().Msg("EPSS enrichment disabled — set VAKT_EPSS_ENABLED=true to enable (sends CVE IDs to api.first.org)")
 	}
 
-	srv, mux := buildServer(pool)
+	srv, mux, enqueueClient := buildServer(pool)
+	defer func() { _ = enqueueClient.Close() }()
 	scheduler := buildScheduler(cfg)
 
 	quit := make(chan os.Signal, 1)

@@ -101,7 +101,9 @@ func (h *Handler) TestChannel(c echo.Context) error {
 	}
 	if err := h.svc.TestChannel(c.Request().Context(), orgID, c.Param("id")); err != nil {
 		log.Error().Err(err).Msg("test alert channel")
-		return alertErrResp(c, http.StatusBadGateway, "Testbenachrichtigung konnte nicht gesendet werden", "ALERTING_DELIVERY_FAILED")
+		// SA14-06: a failed test delivery to a customer-configured target is that
+		// config's problem, not our gateway's — 422, not 502.
+		return alertErrResp(c, http.StatusUnprocessableEntity, "Testbenachrichtigung konnte nicht gesendet werden", "ALERTING_DELIVERY_FAILED")
 	}
 	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 }

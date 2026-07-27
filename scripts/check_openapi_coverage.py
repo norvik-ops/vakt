@@ -420,6 +420,23 @@ def main() -> int:
     be = collect_backend_routes() - NOT_API
     spec = collect_spec_ops()
 
+    # G-07: zero backend operations means routes.go was unreadable (wrong cwd,
+    # moved file) — not that the API shrank to nothing. Left unchecked, an empty
+    # `be` makes `undocumented` empty too, so the gate would print a hollow
+    # "100%"/"OK" (or even report every baseline entry as "newly fixed").
+    # The guard applies to --update-baseline TOO, and most of all there: writing a
+    # baseline from a broken collection freezes emptiness as the new truth, and
+    # every real entry then reads as "newly fixed". That is the single most
+    # damaging vacuity case this gate has, so it must not be the one exempted.
+    if not be:
+        print(f"FAIL — collected ZERO backend operations from {ROUTES_GO} "
+              "(non-vacuity guard, G-07). Check the working directory / ROUTES_GO path.")
+        return 2
+    if not spec:
+        print(f"FAIL — parsed ZERO operations from {SPEC} "
+              "(non-vacuity guard, G-07). Check the working directory / SPEC path.")
+        return 2
+
     undocumented = set(be - spec)
     n = len(undocumented)
     covered = len(be) - n

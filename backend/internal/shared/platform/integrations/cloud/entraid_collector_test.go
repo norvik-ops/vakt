@@ -259,3 +259,51 @@ func TestEntraIDCollect_Pagination(t *testing.T) {
 
 // ensure json package is used in test
 var _ = json.Marshal
+
+// TestCountMFARiskyInactive_CountsAcrossPages is the S9/CZ-1 regression guard.
+//
+// CZ-1 promoted RiskyUserCount from an evidence-title ingredient to a KPI in the
+// API response. It was collected with graphGet, which returns ONE page — so the
+// count silently saturated at Graph's page size. An undercount of risky users is
+// wrong in the flattering direction, which is the worst way for a security
+// number to be wrong, and no test would have noticed: the pre-existing fixture
+// returns an empty list, where paged and unpaged agree.
+//
+// This fixture pages deliberately: 2 + 2 users across two pages must count 4.
+func TestCountMFARiskyInactive_CountsAcrossPages(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/testtenant/oauth2/v2.0/token", entraIDTokenHandler(t))
+	mux.HandleFunc("/v1.0/reports/credentialUserRegistrationDetails", entraIDEmptyValueHandler())
+	mux.HandleFunc("/v1.0/users", entraIDEmptyValueHandler())
+
+	var srv *httptest.Server
+	mux.HandleFunc("/v1.0/identityProtection/riskyUsers", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Query().Get("page") == "2" {
+			fmt.Fprint(w, `{"value":[{"id":"r3"},{"id":"r4"}]}`)
+			return
+		}
+		fmt.Fprintf(w, `{"value":[{"id":"r1"},{"id":"r2"}],
+			"@odata.nextLink":%q}`, srv.URL+"/v1.0/identityProtection/riskyUsers?page=2")
+	})
+
+	srv = httptest.NewServer(mux)
+	defer srv.Close()
+
+	collector := &EntraIDCollector{
+		evidence:     &mockEvidenceWriter{},
+		loginBaseURL: srv.URL,
+		graphBaseURL: srv.URL,
+		httpClient:   &http.Client{Timeout: 5 * time.Second},
+	}
+
+	_, risky, _, err := collector.CountMFARiskyInactive(context.Background(), EntraIDConfig{
+		TenantID:     "testtenant",
+		ClientID:     "client-1",
+		ClientSecret: "secret",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 4, risky,
+		"risky users must be counted across ALL pages — a first-page-only count "+
+			"silently caps the KPI at Graph's page size (S9/CZ-1)")
+}

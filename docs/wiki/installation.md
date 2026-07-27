@@ -159,7 +159,9 @@ Dann `docker compose up -d`. Caddy terminiert HTTPS auf Port 443, leitet Port 80
 
 ### Interne Installation / eigener TLS-Terminator
 
-Ohne `VAKT_DOMAIN` (Default `localhost`) serviert Caddy HTTPS mit einem lokal signierten Zertifikat — gut für Tests im Intranet. Terminierst du TLS an einem vorgelagerten Load-Balancer, setze `VAKT_DOMAIN=:80`, dann serviert Caddy nur HTTP.
+Ohne `VAKT_DOMAIN` (Default `localhost`) antwortet Caddy **nur auf den Namen `localhost`** — die Site-Adresse ist ein Host-Matcher. Für Tests **auf dem Rechner selbst** ist das in Ordnung (Caddy nutzt seine interne CA, lokal vertrauenswürdig). Für ein Intranet reicht es **nicht**: Wer den Server über seine IP oder seinen Hostnamen aufruft, trifft die Site gar nicht. Gemessen: Über HTTP kommt ein leeres `200` — eine **weiße Seite** ohne jede Fehlermeldung, also nichts, wonach man suchen könnte. Über HTTPS bricht der TLS-Handshake ab, weil für diese Adresse kein Zertifikat existiert. Es gibt keine Zertifikatswarnung zum Wegklicken. Setze auch intern einen Namen: `VAKT_DOMAIN=vakt.intern.example`.
+
+Terminierst du TLS an einem vorgelagerten Load-Balancer, setze `VAKT_DOMAIN=:80`, dann serviert Caddy nur HTTP.
 
 Anschließend `VAKT_FRONTEND_URL` auf die extern erreichbare URL setzen:
 

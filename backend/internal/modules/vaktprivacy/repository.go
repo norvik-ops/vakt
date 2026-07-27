@@ -4,7 +4,9 @@ package vaktprivacy
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/matharnica/vakt/internal/db"
 	shareddb "github.com/matharnica/vakt/internal/shared/db"
+	sharedevents "github.com/matharnica/vakt/internal/shared/events"
 )
 
 // Repository handles PrivacyOps data access. VVT uses sqlc (see ADR-0005 / the
@@ -20,11 +23,67 @@ import (
 type Repository struct {
 	db *pgxpool.Pool
 	q  *db.Queries
+	// subjectErasers erase module-owned PII (hr_/sr_ …) during an Art. 17 DSGVO
+	// erasure. vaktprivacy must not write those prefixes itself (module isolation,
+	// ADR-0079); each owner module implements the eraser over its own tables and
+	// is injected here from cmd/api. Order is IRRELEVANT — every cross-module
+	// identifier is pre-resolved into events.SubjectRef before any eraser runs.
+	subjectErasers []sharedevents.SubjectErasure
+	// subjectResolver resolves identifiers owned by another module (currently
+	// hr_employees ids) before the erasers run, so no eraser depends on another
+	// module's rows still existing.
+	subjectResolver sharedevents.SubjectResolver
 }
+
+// requiredEraserModules lists every module known to store data-subject PII. It
+// is the completeness contract for Art. 17: ExecuteErasure refuses to run
+// unless an eraser is wired for EACH of these.
+//
+// Checking "the list is non-empty" is not enough — the dangerous case is a
+// PARTIALLY wired erasure, which would delete one module's PII, leave another's
+// in place, and still stamp the DSR "completed". Adding a module that stores
+// subject PII means adding it here; the wiring test in erasure_note_test.go
+// fails otherwise.
+var requiredEraserModules = []string{"vaktaware", "vakthr"}
 
 // NewRepository creates a new PrivacyOps repository.
 func NewRepository(pool *pgxpool.Pool) *Repository {
 	return &Repository{db: pool, q: db.New(pool)}
+}
+
+// WithSubjectErasers injects the module-owned PII erasers used by ExecuteErasure
+// (Art. 17 DSGVO). Call order does NOT matter: cross-module identifiers are
+// resolved up front into events.SubjectRef, so no eraser depends on another
+// having run (or not yet run) first.
+//
+// Erasers are APPENDED, not replaced, and de-duplicated by module name. A second
+// call previously discarded the first silently — which, combined with the
+// completeness check, could have turned a wiring mistake into a partial erasure.
+// ExecuteErasure refuses to run unless every requiredEraserModules entry is
+// present: a partial Art. 17 erasure is a compliance failure, not a soft one.
+func (r *Repository) WithSubjectErasers(erasers ...sharedevents.SubjectErasure) *Repository {
+	for _, e := range erasers {
+		dup := false
+		for _, existing := range r.subjectErasers {
+			if existing.ModuleName() == e.ModuleName() {
+				dup = true
+				break
+			}
+		}
+		if !dup {
+			r.subjectErasers = append(r.subjectErasers, e)
+		}
+	}
+	return r
+}
+
+// WithSubjectResolver injects the resolver for identifiers owned by another
+// module (hr_employees ids). ExecuteErasure refuses to run without it: without
+// resolution the vaktaware enrollment delete would match nothing and silently
+// leave PII behind.
+func (r *Repository) WithSubjectResolver(res sharedevents.SubjectResolver) *Repository {
+	r.subjectResolver = res
+	return r
 }
 
 // optText collapses an empty string into a NULL pgtype.Text so that the
@@ -661,6 +720,10 @@ type dsrFields struct {
 	// path but never selected in any read → who resolved/extended a DSR was not
 	// retrievable via the API. Zero-value on reads that do not select them.
 	ResolvedBy, ExtensionReason pgtype.Text
+	// S9/CZ-2: channel + reference_id are accepted on create (CreateDSRInput) and
+	// assigned_to is written by AssignDSR, but no read mapper ever selected them —
+	// every DSR response showed an empty channel/reference and no assignee.
+	Channel, ReferenceID, AssignedTo pgtype.Text
 }
 
 func dsrFromFields(f dsrFields) DSR {
@@ -680,6 +743,9 @@ func dsrFromFields(f dsrFields) DSR {
 		UpdatedAt:       tsToTime(f.UpdatedAt),
 		ResolvedBy:      textPtr(f.ResolvedBy),
 		ExtensionReason: textOrEmpty(f.ExtensionReason),
+		Channel:         textOrEmpty(f.Channel),
+		ReferenceID:     textOrEmpty(f.ReferenceID),
+		AssignedTo:      textPtr(f.AssignedTo),
 	}
 }
 
@@ -713,7 +779,8 @@ func (r *Repository) ListDSRs(ctx context.Context, orgID string) ([]DSR, error) 
 	rows, err := r.db.Query(ctx,
 		`SELECT id, org_id, requester_name, requester_email, type, description,
 		        status, due_date, received_at, completed_at, notes,
-		        created_at, updated_at, resolved_by::text, extension_reason
+		        created_at, updated_at, resolved_by::text, extension_reason,
+		        channel, reference_id, assigned_to::text
 		 FROM po_dsr
 		 WHERE org_id = $1
 		 ORDER BY received_at DESC`, orgID)
@@ -726,7 +793,8 @@ func (r *Repository) ListDSRs(ctx context.Context, orgID string) ([]DSR, error) 
 		var f dsrFields
 		if err := rows.Scan(&f.ID, &f.OrgID, &f.RequesterName, &f.RequesterEmail, &f.Type, &f.Description,
 			&f.Status, &f.DueDate, &f.ReceivedAt, &f.CompletedAt, &f.Notes,
-			&f.CreatedAt, &f.UpdatedAt, &f.ResolvedBy, &f.ExtensionReason); err != nil {
+			&f.CreatedAt, &f.UpdatedAt, &f.ResolvedBy, &f.ExtensionReason,
+			&f.Channel, &f.ReferenceID, &f.AssignedTo); err != nil {
 			return nil, fmt.Errorf("scan dsr row: %w", err)
 		}
 		out = append(out, dsrFromFields(f))
@@ -736,27 +804,30 @@ func (r *Repository) ListDSRs(ctx context.Context, orgID string) ([]DSR, error) 
 
 // CreateDSR inserts a new data subject request and automatically sets due_date
 // to now + 30 calendar days, satisfying the Art. 12 Abs. 3 DSGVO response deadline.
+//
+// S9/CZ-2: raw INSERT (not the generated CreatePPDSR) because in.Channel and
+// in.ReferenceID are validated CreateDSRInput fields that the generated query
+// never wrote — every DSR silently dropped its intake channel and ticket
+// reference on create, regardless of what the caller sent.
 func (r *Repository) CreateDSR(ctx context.Context, orgID string, in CreateDSRInput) (*DSR, error) {
 	due := pgtype.Date{Time: time.Now().UTC().AddDate(0, 0, 30), Valid: true}
-	row, err := r.q.CreatePPDSR(ctx, db.CreatePPDSRParams{
-		OrgID:          orgID,
-		RequesterName:  in.RequesterName,
-		RequesterEmail: in.RequesterEmail,
-		Type:           in.Type,
-		Description:    optText(in.Description),
-		DueDate:        due,
-	})
+	var f dsrFields
+	err := r.db.QueryRow(ctx,
+		`INSERT INTO po_dsr (org_id, requester_name, requester_email, type, description, due_date, channel, reference_id)
+		 VALUES ($1, $2, $3, $4, NULLIF($5,''), $6, NULLIF($7,''), NULLIF($8,''))
+		 RETURNING id, org_id, requester_name, requester_email, type, description,
+		           status, due_date, received_at, completed_at, notes,
+		           created_at, updated_at, resolved_by::text, extension_reason,
+		           channel, reference_id, assigned_to::text`,
+		orgID, in.RequesterName, in.RequesterEmail, in.Type, in.Description, due, in.Channel, in.ReferenceID,
+	).Scan(&f.ID, &f.OrgID, &f.RequesterName, &f.RequesterEmail, &f.Type, &f.Description,
+		&f.Status, &f.DueDate, &f.ReceivedAt, &f.CompletedAt, &f.Notes,
+		&f.CreatedAt, &f.UpdatedAt, &f.ResolvedBy, &f.ExtensionReason,
+		&f.Channel, &f.ReferenceID, &f.AssignedTo)
 	if err != nil {
 		return nil, fmt.Errorf("create dsr: %w", err)
 	}
-	d := dsrFromFields(dsrFields{
-		ID: row.ID, OrgID: row.OrgID,
-		RequesterName: row.RequesterName, RequesterEmail: row.RequesterEmail,
-		Type: row.Type, Description: row.Description, Status: row.Status,
-		DueDate: row.DueDate, ReceivedAt: row.ReceivedAt,
-		CompletedAt: row.CompletedAt, Notes: row.Notes,
-		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
-	})
+	d := dsrFromFields(f)
 	return &d, nil
 }
 
@@ -807,20 +878,27 @@ func (r *Repository) AssignDSR(ctx context.Context, orgID, id, assignedTo string
 }
 
 // GetDSR returns a single DSR by ID, scoped to the organisation.
+//
+// S9/CZ-2: raw read (not the generated GetPPDSR), same reasoning as ListDSRs —
+// includes channel/reference_id/assigned_to so PATCH-then-GET and the erasure
+// flow (which reads requester_email off this same row) see the full record.
 func (r *Repository) GetDSR(ctx context.Context, orgID, id string) (*DSR, error) {
-	row, err := r.q.GetPPDSR(ctx, db.GetPPDSRParams{ID: id, OrgID: orgID})
+	var f dsrFields
+	err := r.db.QueryRow(ctx,
+		`SELECT id, org_id, requester_name, requester_email, type, description,
+		        status, due_date, received_at, completed_at, notes,
+		        created_at, updated_at, resolved_by::text, extension_reason,
+		        channel, reference_id, assigned_to::text
+		 FROM po_dsr
+		 WHERE id = $1 AND org_id = $2`, id, orgID,
+	).Scan(&f.ID, &f.OrgID, &f.RequesterName, &f.RequesterEmail, &f.Type, &f.Description,
+		&f.Status, &f.DueDate, &f.ReceivedAt, &f.CompletedAt, &f.Notes,
+		&f.CreatedAt, &f.UpdatedAt, &f.ResolvedBy, &f.ExtensionReason,
+		&f.Channel, &f.ReferenceID, &f.AssignedTo)
 	if err != nil {
 		return nil, fmt.Errorf("get dsr %s: %w", id, err)
 	}
-	d := dsrFromFields(dsrFields{
-		ID: row.ID, OrgID: row.OrgID,
-		RequesterName: row.RequesterName, RequesterEmail: row.RequesterEmail,
-		Type: row.Type, Description: row.Description, Status: row.Status,
-		DueDate: row.DueDate, ReceivedAt: row.ReceivedAt,
-		CompletedAt: row.CompletedAt, Notes: row.Notes,
-		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
-		ResolvedBy: row.ResolvedBy, ExtensionReason: row.ExtensionReason,
-	})
+	d := dsrFromFields(f)
 	return &d, nil
 }
 
@@ -828,13 +906,16 @@ func (r *Repository) GetDSR(ctx context.Context, orgID, id string) (*DSR, error)
 //
 //  1. Fetches the DSR to get the requester_email and verify it is an
 //     erasure-type request that has not already been completed (idempotency guard).
-//  2. Opens a transaction and deletes PII records identified by that email:
-//     - hr_employees rows (Vakt HR)
-//     - sr_targets rows  (Vakt Aware campaign targets)
+//  2. Opens a transaction and, via the injected module erasers, deletes PII
+//     records identified by that email in each owning module's own tables:
+//     - sr_campaign_enrollments / sr_events / sr_targets (Vakt Aware)
+//     - hr_employees (Vakt HR)
+//     vaktprivacy never writes those prefixes itself (module isolation, ADR-0079).
 //  3. Anonymises any matching users row in the same org (no hard-delete —
 //     see DeleteUserAccount in internal/shared/account for the rationale:
 //     audit-log rows stay intact, the human identity is replaced with
-//     "deleted-<uuid>@vakt.local" so foreign-key joins still work).
+//     "deleted-<uuid>@vakt.local" so foreign-key joins still work). users has no
+//     module prefix (platform-shared), so vaktprivacy owns this write.
 //  4. Appends an evidence note to the DSR's notes field documenting how many
 //     rows were affected in each table.
 //  5. Marks the DSR as completed and stamps completed_at — AFTER all deletions
@@ -856,6 +937,30 @@ func (r *Repository) ExecuteErasure(ctx context.Context, orgID, id string) (*DSR
 		return dsr, nil
 	}
 
+	// Refuse to run unless EVERY module known to hold subject PII has an eraser
+	// wired. Checking only for "none wired" would let a partially wired erasure
+	// through: it would delete one module's PII, leave another's in place, and
+	// still stamp the DSR "completed" — a silent partial Art. 17 erasure, which
+	// ADR-0079 classifies as a compliance violation rather than a soft failure.
+	wired := make(map[string]bool, len(r.subjectErasers))
+	for _, e := range r.subjectErasers {
+		wired[e.ModuleName()] = true
+	}
+	var missing []string
+	for _, m := range requiredEraserModules {
+		if !wired[m] {
+			missing = append(missing, m)
+		}
+	}
+	if len(missing) > 0 {
+		return nil, fmt.Errorf(
+			"execute erasure: no subject eraser wired for module(s) %v — refusing partial Art. 17 erasure",
+			missing)
+	}
+	if r.subjectResolver == nil {
+		return nil, fmt.Errorf("execute erasure: no subject resolver wired — refusing partial Art. 17 erasure")
+	}
+
 	requesterEmail := dsr.RequesterEmail
 
 	// 2. Open a transaction: all deletions + the DSR status update must be atomic.
@@ -865,56 +970,33 @@ func (r *Repository) ExecuteErasure(ctx context.Context, orgID, id string) (*DSR
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	// 3a-pre. Delete Aware campaign enrollment records (no FK cascade on hr_employees.id —
-	// employee_id is TEXT, so rows survive the hr_employees delete and retain PII).
-	enrollTag, err := tx.Exec(ctx, `
-		DELETE FROM sr_campaign_enrollments
-		WHERE org_id = $1 AND employee_id IN (
-			SELECT id::text FROM hr_employees
-			WHERE org_id = $1 AND lower(email) = lower($2)
-		)`, orgID, requesterEmail,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("execute erasure: delete sr_campaign_enrollments: %w", err)
+	// 3a. Resolve cross-module identifiers BEFORE any delete, while the owning
+	// rows still exist. This is what makes eraser order irrelevant: afterwards no
+	// eraser needs to read another module's tables (see events.SubjectRef).
+	employeeIDs, resolveErr := r.subjectResolver.ResolveEmployeeIDs(ctx, tx, orgID, requesterEmail)
+	if resolveErr != nil {
+		return nil, fmt.Errorf("execute erasure: resolve subject: %w", resolveErr)
 	}
-	enrollDeleted := enrollTag.RowsAffected()
+	subj := sharedevents.SubjectRef{
+		OrgID:       orgID,
+		Email:       requesterEmail,
+		EmployeeIDs: employeeIDs,
+	}
 
-	// 3a. Delete from hr_employees.
-	hrTag, err := tx.Exec(ctx,
-		`DELETE FROM hr_employees WHERE org_id = $1 AND lower(email) = lower($2)`,
-		orgID, requesterEmail,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("execute erasure: delete hr_employees: %w", err)
+	// 3b. Erase module-owned PII via the injected erasers (each writes only its
+	// own prefix on this tx). Order is irrelevant. Counts feed the evidence note;
+	// every required module contributes a line even when it deleted nothing, so
+	// an auditor can tell "nothing found" from "never looked".
+	tableCounts := sharedevents.ErasureCounts{}
+	for _, eraser := range r.subjectErasers {
+		counts, eraseErr := eraser.EraseSubjectPII(ctx, tx, subj)
+		if eraseErr != nil {
+			return nil, fmt.Errorf("execute erasure: %w", eraseErr)
+		}
+		for table, n := range counts {
+			tableCounts[table] += n
+		}
 	}
-	hrDeleted := hrTag.RowsAffected()
-
-	// 3b. Delete tracking events for the requester's targets BEFORE deleting
-	// sr_targets — the FK is ON DELETE SET NULL, so deleting targets first would
-	// null out target_id and leave IP addresses / user-agents orphaned in the table.
-	// Art. 17 DSGVO requires erasure of all personal data including phishing
-	// simulation telemetry (IP addresses, user agents) stored in sr_events.
-	srEventsTag, err := tx.Exec(ctx, `
-		DELETE FROM sr_events
-		WHERE target_id IN (
-			SELECT id FROM sr_targets
-			WHERE org_id = $1::uuid AND lower(email) = lower($2)
-		)`, orgID, requesterEmail,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("execute erasure: delete sr_events: %w", err)
-	}
-	srEventsDeleted := srEventsTag.RowsAffected()
-
-	// 3c. Delete from sr_targets (after events — see ordering note above).
-	srTag, err := tx.Exec(ctx,
-		`DELETE FROM sr_targets WHERE org_id = $1 AND lower(email) = lower($2)`,
-		orgID, requesterEmail,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("execute erasure: delete sr_targets: %w", err)
-	}
-	srDeleted := srTag.RowsAffected()
 
 	// 3d. Anonymise matching users row (same org), if any.
 	// We replace email with "deleted-<uuid>@vakt.local", wipe the password hash,
@@ -951,10 +1033,13 @@ func (r *Repository) ExecuteErasure(ctx context.Context, orgID, id string) (*DSR
 		// Revoke sessions + API keys. refresh_sessions has no revoked_at column and is
 		// revoked by DELETE everywhere else; a 42703 here would poison the tx and abort
 		// the entire erasure (Art. 17 would silently never run).
+		// orgid-lint: global — scoped by user_id (global users table); Art. 17 erasure revokes
+		// this user's sessions/keys everywhere, same pattern as logout/password-reset
 		_, _ = tx.Exec(ctx,
 			`DELETE FROM refresh_sessions WHERE user_id = $1::uuid`,
 			anonUserID,
 		)
+		// orgid-lint: global — scoped by created_by (global users table); Art. 17 erasure
 		_, _ = tx.Exec(ctx,
 			`UPDATE api_keys SET revoked_at = NOW() WHERE created_by = $1::uuid AND revoked_at IS NULL`,
 			anonUserID,
@@ -962,16 +1047,7 @@ func (r *Repository) ExecuteErasure(ctx context.Context, orgID, id string) (*DSR
 	}
 
 	// 4. Build evidence note summarising affected rows.
-	evidenceNote := fmt.Sprintf(
-		"Art. 17 DSGVO erasure executed at %s.\n"+
-			"sr_campaign_enrollments deleted: %d\n"+
-			"hr_employees deleted: %d\n"+
-			"sr_events deleted: %d\n"+
-			"sr_targets deleted: %d\n"+
-			"users anonymised: %d",
-		time.Now().UTC().Format(time.RFC3339),
-		enrollDeleted, hrDeleted, srEventsDeleted, srDeleted, usersAnonymised,
-	)
+	evidenceNote := buildErasureNote(tableCounts, usersAnonymised)
 
 	// 5. Mark the DSR as completed — AFTER all deletions, inside the same tx.
 	row, err := r.q.WithTx(tx).ExecutePPDSRErasure(ctx, db.ExecutePPDSRErasureParams{
@@ -996,6 +1072,26 @@ func (r *Repository) ExecuteErasure(ctx context.Context, orgID, id string) (*DSR
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	})
 	return &d, nil
+}
+
+// buildErasureNote renders the Art. 17 evidence note from the per-table deletion
+// counts reported by the module erasers plus the anonymised-users count. Table
+// names are sorted so the note is deterministic regardless of eraser order.
+func buildErasureNote(counts sharedevents.ErasureCounts, usersAnonymised int64) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "Art. 17 DSGVO erasure executed at %s.\n", time.Now().UTC().Format(time.RFC3339))
+
+	tables := make([]string, 0, len(counts))
+	for table := range counts {
+		tables = append(tables, table)
+	}
+	sort.Strings(tables)
+	for _, table := range tables {
+		fmt.Fprintf(&b, "%s deleted: %d\n", table, counts[table])
+	}
+
+	fmt.Fprintf(&b, "users anonymised: %d", usersAnonymised)
+	return b.String()
 }
 
 // --- DSR Portal (sqlc) ---
@@ -1129,7 +1225,8 @@ func (r *Repository) ListDSRsCursor(ctx context.Context, orgID string, cursorID 
 	args := []any{orgID}
 	q := `SELECT id, org_id, requester_name, requester_email, type, description,
 	             status, due_date, received_at, completed_at, notes,
-	             created_at, updated_at, resolved_by::text, extension_reason
+	             created_at, updated_at, resolved_by::text, extension_reason,
+	             channel, reference_id, assigned_to::text
 	      FROM po_dsr
 	      WHERE org_id = $1`
 	if !cursorTS.IsZero() {
@@ -1148,7 +1245,8 @@ func (r *Repository) ListDSRsCursor(ctx context.Context, orgID string, cursorID 
 		var f dsrFields
 		if err := rows.Scan(&f.ID, &f.OrgID, &f.RequesterName, &f.RequesterEmail, &f.Type, &f.Description,
 			&f.Status, &f.DueDate, &f.ReceivedAt, &f.CompletedAt, &f.Notes,
-			&f.CreatedAt, &f.UpdatedAt, &f.ResolvedBy, &f.ExtensionReason); err != nil {
+			&f.CreatedAt, &f.UpdatedAt, &f.ResolvedBy, &f.ExtensionReason,
+			&f.Channel, &f.ReferenceID, &f.AssignedTo); err != nil {
 			return nil, fmt.Errorf("scan dsr cursor row: %w", err)
 		}
 		out = append(out, dsrFromFields(f))

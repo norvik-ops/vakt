@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 // --- Risk Assessment (FR-CK12) ---
@@ -178,7 +179,7 @@ func (r *Repository) DeleteRisk(ctx context.Context, orgID, id string) error {
 		return fmt.Errorf("delete risk: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("risk not found")
+		return fmt.Errorf("risk %w", apperr.ErrNotFound)
 	}
 	return nil
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/matharnica/vakt/internal/shared/apperr"
 	"github.com/matharnica/vakt/internal/shared/mailhdr"
 	"github.com/matharnica/vakt/internal/shared/password"
 )
@@ -267,7 +268,7 @@ func (s *Service) RevokeInvitation(ctx context.Context, orgID, invitationID stri
 		return fmt.Errorf("revoke invitation: %w", err)
 	}
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("invitation not found")
+		return fmt.Errorf("invitation %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -372,6 +373,7 @@ func (s *Service) AcceptInvitation(ctx context.Context, in AcceptInviteInput) er
 	}
 
 	// Mark invitation as accepted.
+	// orgid-lint: global — UPDATE by PK; invID was verified via the org-scoped invite lookup earlier in this tx
 	_, err = tx.Exec(ctx, `
 		UPDATE user_invitations SET accepted_at = NOW()
 		WHERE id = $1::uuid`,

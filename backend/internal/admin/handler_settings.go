@@ -452,9 +452,11 @@ func (h *Handler) TestOrgLDAPConnection(c echo.Context) error {
 	users, err := syncer.ListUsers(c.Request().Context())
 	if err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Msg("ldap test: list users failed")
-		return c.JSON(http.StatusBadGateway, map[string]any{
+		// SA14-06: unreachable customer-configured directory → 422, not 502; the
+		// raw dial error is never echoed (may carry the SSRF-guard's resolved IP).
+		return c.JSON(http.StatusUnprocessableEntity, map[string]any{
 			"ok":    false,
-			"error": err.Error(),
+			"error": "LDAP-Verbindung fehlgeschlagen — Konfiguration prüfen (Details im Server-Log)",
 			"code":  "ADMIN_LDAP_TEST_FAILED",
 		})
 	}
@@ -477,8 +479,10 @@ func (h *Handler) SyncOrgLDAP(c echo.Context) error {
 	users, err := syncer.ListUsers(c.Request().Context())
 	if err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Msg("ldap sync: list users failed")
-		return c.JSON(http.StatusBadGateway, map[string]any{
-			"error": err.Error(),
+		// SA14-06: unreachable customer-configured directory → 422, not 502; the
+		// raw dial error is never echoed (may carry the SSRF-guard's resolved IP).
+		return c.JSON(http.StatusUnprocessableEntity, map[string]any{
+			"error": "LDAP-Sync fehlgeschlagen — Konfiguration prüfen (Details im Server-Log)",
 			"code":  "ADMIN_LDAP_SYNC_FAILED",
 		})
 	}

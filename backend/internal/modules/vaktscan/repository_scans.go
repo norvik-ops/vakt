@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 // ---------------------------------------------------------------------------
@@ -100,7 +101,7 @@ func (r *Repository) DeleteScanSchedule(ctx context.Context, orgID, scheduleID s
 		return fmt.Errorf("delete scan schedule: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("scan schedule not found")
+		return fmt.Errorf("scan schedule %w", apperr.ErrNotFound)
 	}
 	return nil
 }

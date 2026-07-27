@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 // rawChannel includes the url_encrypted field for internal use by the service.
@@ -80,7 +81,7 @@ func (r *Repository) DeleteChannel(ctx context.Context, orgID, id string) error 
 		return fmt.Errorf("delete channel: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return fmt.Errorf("channel not found")
+		return fmt.Errorf("channel %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -95,7 +96,7 @@ func (r *Repository) ToggleChannel(ctx context.Context, orgID, id string, enable
 		return fmt.Errorf("toggle channel: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return fmt.Errorf("channel not found")
+		return fmt.Errorf("channel %w", apperr.ErrNotFound)
 	}
 	return nil
 }

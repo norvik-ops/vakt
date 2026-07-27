@@ -73,6 +73,7 @@ func TestAuditChain_DetectsTamperedRow(t *testing.T) {
 		WHERE org_id = $1::uuid AND action = 'update'
 		ORDER BY created_at ASC LIMIT 1`, orgID).Scan(&targetID))
 
+	// orgid-lint: global — tamper-simulation fixture; targetID was already fetched via an org-scoped query above
 	_, err := pool.Exec(ctx, `
 		UPDATE audit_log SET action = 'EVIL'
 		WHERE id = $1::uuid`, targetID)
@@ -107,6 +108,7 @@ func TestAuditChain_DetectsDeletedRow(t *testing.T) {
 		SELECT id::text FROM audit_log WHERE org_id = $1::uuid AND action = 'c'`,
 		orgID).Scan(&nextID))
 
+	// orgid-lint: global — tamper-simulation fixture; targetID was already fetched via an org-scoped query above
 	_, err := pool.Exec(ctx, `DELETE FROM audit_log WHERE id = $1::uuid`, targetID)
 	require.NoError(t, err)
 

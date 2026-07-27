@@ -392,6 +392,7 @@ func (h *Handler) Me(c echo.Context) error {
 	if rolesAny, ok := c.Get("roles").([]string); ok && len(rolesAny) > 0 {
 		user.Roles = rolesAny
 	} else {
+		// orgid-lint: global — caller's own role list across their own org memberships (user_id from auth token)
 		rows, qErr := h.service.db.Query(ctx, `
 			SELECT r.name FROM org_members om
 			JOIN roles r ON r.id = om.role_id

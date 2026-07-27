@@ -29,7 +29,7 @@ type CreateEmployeeInput struct {
 	Email      string `json:"email"       validate:"required,email"`
 	Department string `json:"department"`
 	Role       string `json:"role"`
-	StartDate  string `json:"start_date"`
+	StartDate  string `json:"start_date" validate:"omitempty,datetime=2006-01-02"`
 	Notes      string `json:"notes"`
 }
 
@@ -39,7 +39,7 @@ type UpdateEmployeeInput struct {
 	LastName   string `json:"last_name"   validate:"required"`
 	Department string `json:"department"`
 	Role       string `json:"role"`
-	EndDate    string `json:"end_date"`
+	EndDate    string `json:"end_date" validate:"omitempty,datetime=2006-01-02"`
 	Status     string `json:"status"      validate:"required,oneof=active offboarding terminated"`
 	Notes      string `json:"notes"`
 }

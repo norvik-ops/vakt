@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	db "github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 func (r *Repository) CreateBIAProcess(ctx context.Context, orgID string, in CreateBIAProcessInput) (BIAProcess, error) {
@@ -84,7 +85,7 @@ func (r *Repository) DeleteBIAProcess(ctx context.Context, orgID, id string) err
 		return fmt.Errorf("delete bia process: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("bia process not found")
+		return fmt.Errorf("bia process %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -209,7 +210,7 @@ func (r *Repository) DeleteRecoveryPlan(ctx context.Context, orgID, id string) e
 		return fmt.Errorf("delete recovery plan: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("recovery plan not found")
+		return fmt.Errorf("recovery plan %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -256,7 +257,7 @@ func (r *Repository) DeleteEmergencyContact(ctx context.Context, orgID, id strin
 		return fmt.Errorf("delete emergency contact: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("emergency contact not found")
+		return fmt.Errorf("emergency contact %w", apperr.ErrNotFound)
 	}
 	return nil
 }

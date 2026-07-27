@@ -147,3 +147,28 @@ func TestGenerateCSRFToken_Unique(t *testing.T) {
 		seen[token] = true
 	}
 }
+
+// TestCSRFConstantsArePinned freezes the wire names of the double-submit CSRF
+// pair.
+//
+// internal/license duplicates these two strings (license/routes.go: csrfCookieName
+// / csrfHeaderName) because importing auth there would create a cycle — auth
+// already imports license. A copy without a parity check is the Variant-Miss
+// class from CLAUDE.md: renaming the header here would silently leave the
+// license route checking a header nobody sends, and the only symptom would be a
+// 403 nobody can explain — or a write route that quietly stops being protected.
+//
+// The cycle makes a direct cross-package comparison impossible, so the contract
+// is pinned here instead: change either side and this test names the other.
+func TestCSRFConstantsArePinned(t *testing.T) {
+	if CSRFCookieName != "csrf_token" {
+		t.Errorf("CSRFCookieName = %q, want %q — internal/license/routes.go duplicates "+
+			"this value (csrfCookieName); update it in the same commit",
+			CSRFCookieName, "csrf_token")
+	}
+	if CSRFHeaderName != "X-CSRF-Token" {
+		t.Errorf("CSRFHeaderName = %q, want %q — internal/license/routes.go duplicates "+
+			"this value (csrfHeaderName); update it in the same commit",
+			CSRFHeaderName, "X-CSRF-Token")
+	}
+}

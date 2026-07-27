@@ -3085,7 +3085,24 @@ paths:
   /auth/2fa/recovery-codes/regenerate:
     post:
       summary: Invalidate existing recovery codes and issue 8 new ones
+      description: >-
+        Requires a currently valid TOTP code (S132-S11/D24-2): regenerating
+        recovery codes invalidates every existing one, so possession of the
+        session alone must not be enough. The code is also consumed for replay
+        protection, i.e. it cannot be reused within its 90-second window.
       tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  description: Current 6-digit TOTP code from the authenticator app.
+                  example: "123456"
       responses:
         '200':
           description: New recovery codes
@@ -3099,7 +3116,9 @@ paths:
                     items:
                       type: string
         '400':
-          description: 2FA not enabled
+          description: 2FA not enabled, or `code` missing from the request body
+        '422':
+          description: TOTP code invalid (TOTP_INVALID_CODE) or already used (TOTP_CODE_REPLAYED)
 
   /auth/oidc/initiate:
     get:
@@ -3779,8 +3798,18 @@ paths:
 
   /vaktcomply/controls/export/xlsx:
     get:
-      summary: Export all controls as XLSX
+      summary: Export the controls of one framework as XLSX
+      description: >-
+        `framework_id` is REQUIRED (S134-S14/A20-2): an org can have several
+        frameworks enabled, and an unscoped export mixed them into one sheet.
+        Omitting it returns 400 CK_MISSING_PARAM.
       tags: [vaktcomply]
+      parameters:
+        - name: framework_id
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+          description: Framework whose controls to export.
       responses:
         '200':
           description: XLSX file
@@ -3789,6 +3818,8 @@ paths:
               schema:
                 type: string
                 format: binary
+        '400':
+          description: framework_id missing (CK_MISSING_PARAM)
 
   /vaktcomply/policies/export/xlsx:
     get:
@@ -8952,113 +8983,6 @@ paths:
               schema:
                 type: string
                 format: binary
-
-  # ── Supplier Portal (public, no auth) ─────────────────────────────────────
-
-  /supplier/{token}:
-    parameters:
-      - name: token
-        in: path
-        required: true
-        schema: { type: string }
-    get:
-      summary: Get supplier portal assessment by token (public)
-      operationId: portalGetAssessment
-      tags: [vaktcomply]
-      security: []
-      responses:
-        '200':
-          description: Supplier portal assessment data
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  supplier_name: { type: string }
-                  questionnaire_title: { type: string }
-                  expires_at: { type: string, format: date-time }
-                  questions: { type: array, items: { type: object } }
-                  answers: { type: array, items: { type: object } }
-
-  /supplier/{token}/save:
-    parameters:
-      - name: token
-        in: path
-        required: true
-        schema: { type: string }
-    post:
-      summary: Save (draft) supplier portal answers (public)
-      operationId: portalSaveAnswers
-      tags: [vaktcomply]
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                answers: { type: array, items: { type: object } }
-      responses:
-        '200':
-          description: Answers saved
-
-  /supplier/{token}/submit:
-    parameters:
-      - name: token
-        in: path
-        required: true
-        schema: { type: string }
-    post:
-      summary: Submit final supplier portal answers (public)
-      operationId: portalSubmitAssessment
-      tags: [vaktcomply]
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                answers: { type: array, items: { type: object } }
-      responses:
-        '200':
-          description: Assessment submitted
-
-  /supplier/{token}/upload:
-    parameters:
-      - name: token
-        in: path
-        required: true
-        schema: { type: string }
-    post:
-      summary: Upload a file in the supplier portal (public)
-      operationId: portalUploadFile
-      tags: [vaktcomply]
-      security: []
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required: [file]
-              properties:
-                file:
-                  type: string
-                  format: binary
-                question_id: { type: string, format: uuid }
-      responses:
-        '201':
-          description: File uploaded
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  file_id: { type: string, format: uuid }
-                  filename: { type: string }
 
   # ── Supplier Extended Routes (Sprint 35–37) ───────────────────────────────
 

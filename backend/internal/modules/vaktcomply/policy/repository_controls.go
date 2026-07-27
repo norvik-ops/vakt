@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 	shareddb "github.com/matharnica/vakt/internal/shared/db"
 )
 
@@ -341,7 +342,7 @@ func (r *Repository) DeleteControlTask(ctx context.Context, orgID, controlID, ta
 		return fmt.Errorf("delete control task: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("task not found")
+		return fmt.Errorf("task %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -532,7 +533,7 @@ func (r *Repository) DeleteMapping(ctx context.Context, orgID, mappingID string)
 		return fmt.Errorf("delete mapping: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("mapping not found")
+		return fmt.Errorf("mapping %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -676,7 +677,7 @@ func (r *Repository) UnlinkRiskControl(ctx context.Context, orgID, riskID, contr
 		return fmt.Errorf("unlink risk control: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("link not found")
+		return fmt.Errorf("link %w", apperr.ErrNotFound)
 	}
 	return nil
 }

@@ -47,6 +47,26 @@ type CreateUserResult struct {
 	UserID string `json:"user_id"`
 }
 
+// simpleUserRole maps a platform role name (roles.name — the value carried in
+// InviteInput.Role / CreateUserInput.Role, used for the org_members role_id
+// lookup) to the denormalised users.role value.
+//
+// users.role is a cache of the org_members role that usermgmt.requireAdmin reads;
+// its default is least-privilege 'viewer' (migration 249). Every insert site MUST
+// set it explicitly, otherwise a user's admin surface no longer matches the org
+// membership the same INSERT establishes — the D24-1 split-brain. This is the
+// inverse of usermgmt.platformRoleName; keep the two in sync.
+func simpleUserRole(platformRole string) string {
+	switch platformRole {
+	case "Admin":
+		return "admin"
+	case "SecurityAnalyst":
+		return "editor"
+	default: // Viewer, AuditorReadOnly, or anything the validator let through
+		return "viewer"
+	}
+}
+
 // OIDCConfigInput is the request body for PUT /admin/org/oidc-config.
 type OIDCConfigInput struct {
 	ProviderURL  string `json:"provider_url"  validate:"required,url"`
@@ -210,10 +230,10 @@ func (s *Service) InviteUser(ctx context.Context, orgID, invitedByID string, inp
 	// Upsert the invited user (may already exist in another org).
 	var userID string
 	err = tx.QueryRow(ctx, `
-		INSERT INTO users (email, is_active)
-		VALUES ($1, FALSE)
+		INSERT INTO users (email, is_active, role)
+		VALUES ($1, FALSE, $2)
 		ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
-		RETURNING id::text`, input.Email).Scan(&userID)
+		RETURNING id::text`, input.Email, simpleUserRole(input.Role)).Scan(&userID)
 	if err != nil {
 		return fmt.Errorf("upsert invited user: %w", err)
 	}
@@ -260,10 +280,10 @@ func (s *Service) CreateUser(ctx context.Context, orgID, createdByID string, inp
 
 	var userID string
 	err = tx.QueryRow(ctx, `
-		INSERT INTO users (email, password_hash, is_active)
-		VALUES ($1, $2, TRUE)
+		INSERT INTO users (email, password_hash, is_active, role)
+		VALUES ($1, $2, TRUE, $3)
 		RETURNING id::text`,
-		input.Email, string(hash),
+		input.Email, string(hash), simpleUserRole(input.Role),
 	).Scan(&userID)
 	if err != nil {
 		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {

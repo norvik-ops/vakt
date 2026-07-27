@@ -147,11 +147,14 @@ func (h *Handler) PostSetup(c echo.Context) error {
 		})
 	}
 
-	// Insert admin user.
+	// Insert admin user. role='admin' explicitly: this is the instance's founding
+	// admin (Admin org_members role below). The users.role default is 'viewer' since
+	// migration 249, so relying on it here would lock the very first admin out of the
+	// admin surface (usermgmt.requireAdmin reads users.role) — the D24-1 split-brain.
 	var userID string
 	err = tx.QueryRow(ctx, `
-		INSERT INTO users (email, password_hash, display_name)
-		VALUES ($1, $2, 'Admin')
+		INSERT INTO users (email, password_hash, display_name, role)
+		VALUES ($1, $2, 'Admin', 'admin')
 		RETURNING id::text`,
 		input.AdminEmail, string(hash),
 	).Scan(&userID)

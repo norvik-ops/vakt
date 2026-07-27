@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 func (r *Repository) CountEvidenceByControl(ctx context.Context, orgID, frameworkID string) (map[string]int, error) {
@@ -239,7 +240,7 @@ func (r *Repository) ReviewEvidence(ctx context.Context, orgID, evidenceID, revi
 		return fmt.Errorf("review evidence: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("evidence not found")
+		return fmt.Errorf("evidence %w", apperr.ErrNotFound)
 	}
 	return nil
 }

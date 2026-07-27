@@ -946,30 +946,6 @@ func (s *Service) RegeneratePhishToken(ctx context.Context, orgID string) (strin
 	return token, nil
 }
 
-// SendTrainingReminderEmail sends a single reminder email to an employee who has
-// not completed their training in the last 14 days. The email is built inline
-// and delivered through the service's configured mail transport.
-func (s *Service) SendTrainingReminderEmail(ctx context.Context, orgID, email, firstName string) error {
-	if s.smtpCfg.Host == "" {
-		return fmt.Errorf("SMTP not configured")
-	}
-
-	greeting := firstName
-	if greeting == "" {
-		greeting = email
-	}
-
-	subject := "Erinnerung: Bitte schließe dein Security-Awareness-Training ab"
-	htmlBody := fmt.Sprintf(`<p>Hallo %s,</p>
-<p>Du hast in den letzten 14 Tagen kein Security-Awareness-Training abgeschlossen.
-Bitte melde dich in der Vakt-Plattform an und schließe dein zugewiesenes Training ab.</p>
-<p>Dein IT-Sicherheitsteam</p>`, greeting)
-
-	msg := buildMIMEMessage("Security Awareness", s.smtpCfg.from(), email, subject, htmlBody, "", s.smtpCfg.AppURL, false)
-	_, err := s.mail.Send(ctx, []OutboundMail{{From: s.smtpCfg.from(), To: email, Body: msg}})
-	return err
-}
-
 // GetAssignmentCertificate generates a PDF training certificate for a completed assignment.
 // Returns (pdfBytes, filename, error). Returns an error if the assignment has no completion record.
 func (s *Service) GetAssignmentCertificate(ctx context.Context, orgID, assignmentID string) ([]byte, string, error) {

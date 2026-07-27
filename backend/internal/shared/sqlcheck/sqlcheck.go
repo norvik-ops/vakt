@@ -64,9 +64,17 @@ func (f Failure) String() string {
 		filepath.Base(f.File), f.Line, f.Err, Condense(f.SQL))
 }
 
-// sqlMethods are the pgx call names whose signature is (ctx, sql, args...). A
-// literal in argument position 1 of any of them is SQL.
-var sqlMethods = map[string]bool{"Query": true, "QueryRow": true, "Exec": true}
+// sqlMethods maps pgx call names that carry a SQL literal to the argument
+// index holding it. Query/QueryRow/Exec have signature (ctx, sql, args...) —
+// the literal is argument 1. pgx.Batch.Queue has signature (sql, args...) —
+// no context parameter — so the literal is argument 0. Without this entry,
+// batch.Queue(`INSERT ...`, args...) literals (vaktvault, vaktscan SBOM
+// batch-upsert, vaktcomply SoA-entry batch-insert) were invisible to every
+// extractor in this package: not counted as a Query, not counted as Skipped
+// either, because the old `sqlMethods[sel.Sel.Name]` boolean check returned
+// before Queue's receiver was ever looked at — GB-1/G-07's "silent skip"
+// class, living inside the gate itself.
+var sqlMethods = map[string]int{"Query": 1, "QueryRow": 1, "Exec": 1, "Queue": 0}
 
 // FromCallSites returns every backtick SQL literal passed as the second argument
 // to a Query/QueryRow/Exec call in the non-test .go files of the given dirs.
@@ -164,10 +172,14 @@ func callSitesIn(file string, res *Result) error {
 			return true
 		}
 		sel, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok || !sqlMethods[sel.Sel.Name] || len(call.Args) < 2 {
+		if !ok {
 			return true
 		}
-		lit, ok := call.Args[1].(*ast.BasicLit)
+		argIdx, known := sqlMethods[sel.Sel.Name]
+		if !known || len(call.Args) <= argIdx {
+			return true
+		}
+		lit, ok := call.Args[argIdx].(*ast.BasicLit)
 		if !ok || lit.Kind != token.STRING || !strings.HasPrefix(lit.Value, "`") {
 			// A Query/Exec call whose SQL is an identifier or an expression:
 			// either a sqlc const (covered by FromConsts) or SQL assembled at
@@ -190,7 +202,9 @@ func callSitesIn(file string, res *Result) error {
 // isSQLReceiver keeps the skip counter honest. Without it every `url.Query()`
 // and `r.Exec()` on a non-database receiver would inflate the count and the
 // number would stop meaning anything. The receivers that actually carry SQL in
-// this codebase are pools, connections, transactions and the sqlc Queries handle.
+// this codebase are pools, connections, transactions, the sqlc Queries handle,
+// and pgx.Batch (for Queue — a dynamic `batch.Queue(sqlVar, ...)` must count as
+// skipped, the same as a dynamic Query/Exec, not vanish silently).
 func isSQLReceiver(x ast.Expr) bool {
 	var name string
 	switch v := x.(type) {
@@ -202,7 +216,7 @@ func isSQLReceiver(x ast.Expr) bool {
 		return false
 	}
 	switch strings.ToLower(name) {
-	case "db", "pool", "conn", "tx", "q", "queries":
+	case "db", "pool", "conn", "tx", "q", "queries", "batch":
 		return true
 	}
 	return false

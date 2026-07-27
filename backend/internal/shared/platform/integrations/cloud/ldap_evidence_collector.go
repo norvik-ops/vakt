@@ -359,6 +359,74 @@ func (c *LDAPEvidenceCollector) collectActiveUserCount(ctx context.Context, orgI
 	return 1, nil
 }
 
+// CountUsers returns active/inactive/privileged user counts for the status endpoint
+// (used by GetLDAPStatus). Read-only variant of collectActiveUserCount/
+// collectInactiveUsers/collectPrivilegedGroups — opens its own bound connection.
+func (c *LDAPEvidenceCollector) CountUsers(ctx context.Context, cfg LDAPConfig) (active, inactive, privileged int, err error) {
+	conn, err := c.connect(cfg)
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("ldap connect: %w", err)
+	}
+	defer conn.Close()
+	if err := conn.Bind(cfg.BindDN, cfg.BindPassword); err != nil {
+		return 0, 0, 0, fmt.Errorf("ldap bind: %w", err)
+	}
+
+	var activeFilter, inactiveFilter string
+	if cfg.IsActiveDirectory {
+		activeFilter = "(&(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))"
+		windowsEpoch := time.Date(1601, 1, 1, 0, 0, 0, 0, time.UTC)
+		threshold := time.Now().UTC().AddDate(0, 0, -90)
+		ticks := threshold.Sub(windowsEpoch).Nanoseconds() / 100
+		inactiveFilter = fmt.Sprintf(
+			"(&(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2))(|(lastLogon=0)(lastLogon<=%d)))",
+			ticks,
+		)
+	} else {
+		activeFilter = "(&(objectClass=inetOrgPerson)(!(pwdAccountLockedTime=*)))"
+		thresholdDays := time.Now().UTC().AddDate(0, 0, -90).Unix() / 86400
+		inactiveFilter = fmt.Sprintf(
+			"(&(objectClass=inetOrgPerson)(|(!(shadowLastChange=*))(shadowLastChange<=%d)))",
+			thresholdDays,
+		)
+	}
+
+	countFilter := func(filter string) (int, error) {
+		req := ldaplib.NewSearchRequest(
+			cfg.BaseDN, ldaplib.ScopeWholeSubtree, ldaplib.NeverDerefAliases,
+			0, 0, false, filter, []string{"dn"}, nil,
+		)
+		result, searchErr := conn.SearchWithPaging(req, 500)
+		if searchErr != nil {
+			return 0, searchErr
+		}
+		return len(result.Entries), nil
+	}
+
+	if active, err = countFilter(activeFilter); err != nil {
+		return 0, 0, 0, fmt.Errorf("ldap count active users: %w", err)
+	}
+	if inactive, err = countFilter(inactiveFilter); err != nil {
+		return active, 0, 0, fmt.Errorf("ldap count inactive users: %w", err)
+	}
+
+	groups := cfg.PrivilegedGroups
+	if len(groups) == 0 {
+		groups = []string{"Domain Admins", "Administrators"}
+	}
+	for _, groupName := range groups {
+		filter := fmt.Sprintf("(&(objectClass=user)(memberOf=CN=%s,%s))", ldaplib.EscapeFilter(groupName), cfg.BaseDN)
+		n, groupErr := countFilter(filter)
+		if groupErr != nil {
+			log.Warn().Err(groupErr).Str("group", groupName).Msg("ldap_collector: privileged group count failed")
+			continue
+		}
+		privileged += n
+	}
+
+	return active, inactive, privileged, nil
+}
+
 func (c *LDAPEvidenceCollector) addEvidence(ctx context.Context, orgID, controlID, title string, details map[string]any) error {
 	data, _ := json.Marshal(details)
 	if controlID == "" {

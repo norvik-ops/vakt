@@ -18,6 +18,7 @@ import (
 
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/bsi"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 	"github.com/matharnica/vakt/internal/shared/notify"
 	"github.com/matharnica/vakt/internal/shared/veriniceimport"
 	"github.com/rs/zerolog/log"
@@ -504,7 +505,7 @@ func (s *Service) GetAssessment(ctx context.Context, orgID, id string) (*Assessm
 		return nil, fmt.Errorf("assessment not found: %w", err)
 	}
 	if a.OrgID != orgID {
-		return nil, fmt.Errorf("assessment not found")
+		return nil, fmt.Errorf("assessment %w", apperr.ErrNotFound)
 	}
 	return a, nil
 }
@@ -733,7 +734,7 @@ func (s *Service) LinkVVTToControl(ctx context.Context, orgID string, in LinkVVT
 		return nil, fmt.Errorf("verify control: %w", err)
 	}
 	if !owns {
-		return nil, fmt.Errorf("control not found")
+		return nil, fmt.Errorf("control %w", apperr.ErrNotFound)
 	}
 	var l VVTControlLink
 	err := s.db.QueryRow(ctx, `
@@ -756,7 +757,7 @@ func (s *Service) UnlinkVVTFromControl(ctx context.Context, orgID, id string) er
 		return fmt.Errorf("unlink vvt: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("link not found")
+		return fmt.Errorf("link %w", apperr.ErrNotFound)
 	}
 	return nil
 }

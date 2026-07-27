@@ -87,7 +87,7 @@ func TestUUIDParamGuardCoversEveryParameterisedRoute(t *testing.T) {
 
 			assert.NotEqual(t, http.StatusInternalServerError, rec.Code,
 				"%s antwortet auf einen kaputten Pfad-Param mit 500 — der Wert erreicht ungeprueft einen ::uuid-Cast "+
-					"(SQLSTATE 22P02). Entweder fehlt der Param-Name in uuidParamNames "+
+					"(SQLSTATE 22P02). Entweder steht der Param-Name faelschlich in nonUUIDParamNames "+
 					"(internal/shared/middleware/uuid_param.go), oder die Route haengt nicht hinter "+
 					"ValidateUUIDParams. Body: %s", key, strings.TrimSpace(rec.Body.String()))
 		})
@@ -100,6 +100,6 @@ func TestUUIDParamGuardCoversEveryParameterisedRoute(t *testing.T) {
 	// Fehlers: Wenn setupEcho() je einen leeren Baum liefert oder das Param-Muster
 	// nicht mehr passt, liefe die Schleife durch, faende null Routen und meldete
 	// gruen. Stille ist kein Beleg.
-	require.Greater(t, checked, 100,
+	require.Greater(t, checked, 400,
 		"der Test hat fast keine parametrisierten Routen gesehen — das ist ein Defekt AM TEST, nicht ein sauberes Ergebnis")
 }

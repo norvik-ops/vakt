@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 // enrichEnvironments fetches the environment column for a slice of assets via a
@@ -314,7 +315,7 @@ func (r *Repository) SoftDeleteAsset(ctx context.Context, orgID, assetID string)
 		return fmt.Errorf("soft delete asset: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("asset not found")
+		return fmt.Errorf("asset %w", apperr.ErrNotFound)
 	}
 	return nil
 }

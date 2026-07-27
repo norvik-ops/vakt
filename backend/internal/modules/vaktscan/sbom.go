@@ -27,16 +27,17 @@ type SBOMComponent struct {
 }
 
 // RunSyftScan executes syft against the given target, parses the CycloneDX JSON
-// output, and persists the SBOM and its components to the database.
-func RunSyftScan(ctx context.Context, db *pgxpool.Pool, orgID, assetID, target string) error {
+// output, and persists the SBOM and its components to the database. Returns the
+// newly created SBOM's ID so callers can chain follow-up jobs (e.g. EOL check).
+func RunSyftScan(ctx context.Context, db *pgxpool.Pool, orgID, assetID, target string) (string, error) {
 	// Verify syft is available before attempting the scan.
 	if _, err := exec.LookPath("syft"); err != nil {
-		return fmt.Errorf("syft not found in PATH: install syft (https://github.com/anchore/syft)")
+		return "", fmt.Errorf("syft not found in PATH: install syft (https://github.com/anchore/syft)")
 	}
 
 	// Reject argument-injection patterns in the target (same guard as RunTrivyScan/RunNucleiScan).
 	if strings.HasPrefix(target, "-") || strings.ContainsAny(target, `\`) {
-		return fmt.Errorf("syft: invalid scan target %q", target)
+		return "", fmt.Errorf("syft: invalid scan target %q", target)
 	}
 
 	log.Info().
@@ -47,23 +48,23 @@ func RunSyftScan(ctx context.Context, db *pgxpool.Pool, orgID, assetID, target s
 
 	// Same subprocess-memory concern as trivy/nuclei — share the scan slots.
 	if err := acquireScanSlot(ctx); err != nil {
-		return err
+		return "", err
 	}
 	out, err := exec.CommandContext(ctx, "syft", "packages", target, "-o", "cyclonedx-json", "--quiet").Output()
 	releaseScanSlot()
 	if err != nil {
-		return fmt.Errorf("syft exec: %w", err)
+		return "", fmt.Errorf("syft exec: %w", err)
 	}
 
 	var doc SBOMDocument
 	if err := json.Unmarshal(out, &doc); err != nil {
-		return fmt.Errorf("parse syft output: %w", err)
+		return "", fmt.Errorf("parse syft output: %w", err)
 	}
 
 	repo := NewRepository(db)
 	sbomID, err := repo.CreateSBOM(ctx, orgID, assetID, doc)
 	if err != nil {
-		return fmt.Errorf("persist SBOM: %w", err)
+		return "", fmt.Errorf("persist SBOM: %w", err)
 	}
 
 	log.Info().
@@ -71,5 +72,5 @@ func RunSyftScan(ctx context.Context, db *pgxpool.Pool, orgID, assetID, target s
 		Str("asset_id", assetID).
 		Int("components", len(doc.Components)).
 		Msg("syft SBOM scan complete")
-	return nil
+	return sbomID, nil
 }

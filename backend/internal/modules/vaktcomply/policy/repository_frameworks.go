@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 // --- Frameworks ---
@@ -64,7 +65,7 @@ func (r *Repository) DeleteFramework(ctx context.Context, orgID, frameworkID str
 		return fmt.Errorf("delete framework: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("framework not found")
+		return fmt.Errorf("framework %w", apperr.ErrNotFound)
 	}
 	return nil
 }

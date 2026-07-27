@@ -4,6 +4,31 @@ All notable user-facing changes to Vakt are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [Unreleased]
+
+Sprint 132–135: Remediation des Codeaudit v4.
+
+### Security
+- **Als Viewer angelegte Nutzer sind keine Administratoren mehr.** Wer über das Admin-Panel, per SSO-Erstanmeldung oder per SCIM angelegt wurde, bekam intern die Rolle „Administrator" — unabhängig davon, welche Rolle vergeben wurde. Betroffene Konten werden beim Update automatisch auf die tatsächlich zugewiesene Rolle korrigiert.
+- **Zwei-Faktor-Codes lassen sich bei einer Störung nicht mehr mehrfach verwenden.** Fällt der Zwischenspeicher aus, wird ein Code jetzt abgelehnt statt erneut akzeptiert.
+- **Sicherheitsrelevante 2FA- und Lizenz-Aktionen verlangen einen gültigen Anfrage-Token.** Sieben Schreib-Endpunkte waren davon ausgenommen.
+- **Neue Wiederherstellungscodes erfordern einen aktuellen Authenticator-Code.** Vorher genügte eine angemeldete Sitzung, obwohl der Vorgang alle bisherigen Codes ungültig macht.
+
+### Fixed
+- **Löschanträge nach Art. 17 DSGVO löschen wieder vollständig.** Unter bestimmten Umständen blieben Kampagnen-Zuordnungen eines Beschäftigten stehen, während der Antrag trotzdem als „abgeschlossen" protokolliert wurde. Ein unvollständig konfiguriertes System bricht den Vorgang jetzt hörbar ab, statt eine Teil-Löschung zu bestätigen.
+- **Fehlerhafte Eingaben liefern verständliche Meldungen statt „Serverfehler".** Doppelte Einträge melden jetzt einen Konflikt, ungültige Datumsangaben eine Eingabeprüfung, nicht gefundene Datensätze ein sauberes „nicht gefunden".
+- **Scans melden keinen Erfolg mehr, wenn nichts gespeichert wurde.** Schlug das Speichern der Ergebnisse fehl, stand der Scan trotzdem auf „abgeschlossen, 0 Funde".
+- **Unbekannte Adressen liefern wieder „nicht gefunden".** Kurzzeitig meldeten sie „ungültige ID".
+- **Ein Ausfall der 2FA-Prüfung wird als solcher gemeldet.** Vorher erschien er als „Code ungültig" — Betroffene suchten den Fehler bei der Uhrzeit ihres Authenticators.
+- **Kennzahlen aus Cloud-Anbindungen zeigen echte Werte.** 18 Statusfelder blieben dauerhaft auf 0; die Zahl riskanter Entra-ID-Konten war zudem auf eine Ergebnisseite begrenzt.
+- **Veraltete Komponenten werden wieder erkannt.** Die Prüfung auf abgekündigte Software lief nie an; sie folgt jetzt automatisch auf einen SBOM-Scan.
+- **Hochgeladene Nachweise überstehen ein Update.** Der Ablageort lag außerhalb des dauerhaften Speichers.
+- **Backups brechen bei einem Fehler ab, statt eine leere Datei zu behalten.**
+- **XLSX-Exporte sind jetzt echte XLSX-Dateien.** Mehrere Exporte (Controls, Policies, Risiken) lieferten CSV-Inhalt, deklarierten ihn aber als `.xlsx` — Tabellenprogramme, die den Dateityp prüfen statt zu raten, öffneten sie gar nicht oder mit falschen Spalten. Wer die Dateien bisher trotzdem verarbeiten konnte, bekommt ab sofort ein echtes Arbeitsblatt.
+- **Controls-Export braucht ein Framework.** Der Export erwartet jetzt eine Framework-Auswahl; ohne sie mischte er bei mehreren aktiven Frameworks alles in ein Blatt. Der Export-Knopf in der Framework-Übersicht gibt die Auswahl automatisch mit.
+- **Unvollständige Secret-Exporte werden benannt.** Konnten einzelne Secrets nicht entschlüsselt werden, fehlten sie stillschweigend in der `.env`-Ausgabe. Die Datei trägt jetzt eine Warnzeile mit der Anzahl der fehlenden Einträge.
+
+---
 ## [0.42.48] — 2026-07-23
 
 Sprint 131 Phase 3: die zuletzt offenen Zugriffs-/2FA-Härtungen aus dem Codeaudit v4.

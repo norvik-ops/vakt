@@ -149,16 +149,19 @@ type NIS2StageReport struct {
 
 // AuthorityContact represents an entry in the DACH authority directory.
 type AuthorityContact struct {
-	ID            string  `json:"id"`
-	OrgID         *string `json:"org_id,omitempty"`
-	Country       string  `json:"country"`
-	Sector        string  `json:"sector,omitempty"`
-	AuthorityName string  `json:"authority_name"`
-	ReportURL     string  `json:"report_url,omitempty"`
-	Email         string  `json:"email,omitempty"`
-	Phone         string  `json:"phone,omitempty"`
-	Notes         string  `json:"notes,omitempty"`
-	IsPrimary     bool    `json:"is_primary"`
-	IsBuiltin     bool    `json:"is_builtin"`
-	CreatedAt     string  `json:"created_at"`
+	ID    string  `json:"id"`
+	OrgID *string `json:"org_id,omitempty"`
+	// SA14-04: country is CHECK-constrained to ('de','at','ch','eu') in the DB
+	// (migration 175). Validate it at the handler so a bad value is a 422 before
+	// the INSERT, not a 500 from the check_violation.
+	Country       string `json:"country"        validate:"required,oneof=de at ch eu"`
+	Sector        string `json:"sector,omitempty"`
+	AuthorityName string `json:"authority_name" validate:"required"`
+	ReportURL     string `json:"report_url,omitempty" validate:"omitempty,url"`
+	Email         string `json:"email,omitempty"      validate:"omitempty,email"`
+	Phone         string `json:"phone,omitempty"`
+	Notes         string `json:"notes,omitempty"`
+	IsPrimary     bool   `json:"is_primary"`
+	IsBuiltin     bool   `json:"is_builtin"`
+	CreatedAt     string `json:"created_at"`
 }

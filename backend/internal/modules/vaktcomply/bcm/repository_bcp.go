@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	db "github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 // CreateBCPPlan inserts a new BCP plan for the given organisation.
@@ -83,7 +84,7 @@ func (r *Repository) DeleteBCPPlan(ctx context.Context, orgID, id string) error 
 		return fmt.Errorf("delete bcp plan: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("bcp plan not found")
+		return fmt.Errorf("bcp plan %w", apperr.ErrNotFound)
 	}
 	return nil
 }

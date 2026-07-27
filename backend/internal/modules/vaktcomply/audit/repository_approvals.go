@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 // Approval represents a pending or resolved control status change approval request.
@@ -114,7 +115,7 @@ func (r *Repository) GetApproval(ctx context.Context, orgID, approvalID string) 
 	row, err := r.q.GetCKApproval(ctx, db.GetCKApprovalParams{ID: approvalID, OrgID: orgID})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("approval not found")
+			return nil, fmt.Errorf("approval %w", apperr.ErrNotFound)
 		}
 		return nil, fmt.Errorf("get approval: %w", err)
 	}
@@ -152,7 +153,10 @@ func (r *Repository) ReviewApproval(
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("approval not found or already reviewed")
+			// Wrap the not-found sentinel so the handler maps this to 404, not 500
+			// (S4). The row is either absent or already in a terminal state; either
+			// way the review action is not applicable.
+			return fmt.Errorf("approval not found or already reviewed: %w", apperr.ErrNotFound)
 		}
 		return fmt.Errorf("update approval: %w", err)
 	}

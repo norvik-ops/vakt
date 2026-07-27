@@ -4,6 +4,9 @@
 package license
 
 import (
+	"crypto/subtle"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -39,9 +42,66 @@ func RegisterRoutes(api *echo.Group, lic *License, authMW echo.MiddlewareFunc, d
 
 	// GET /api/v1/license — returns current license status (requires auth)
 	api.GET("/license", h.Get, authMW)
-	// POST /api/v1/license/activate — validate and persist a Pro key (requires auth + Admin role + rate limit).
-	api.POST("/license/activate", h.Activate, authMW, requireAdminRole(), activateLimiter)
+	// POST /api/v1/license/activate — validate and persist a Pro key (requires auth
+	// + CSRF + Admin role + rate limit). This route is mounted on the bare `api`
+	// group (not `protected` in cmd/api/routes.go), so it does not inherit
+	// protected's auth.CSRFMiddleware — apply the equivalent check explicitly here
+	// (S132-S11/D24-2). requireCSRF() cannot simply call auth.CSRFMiddleware():
+	// internal/auth already imports internal/license (via shared/platform/features),
+	// so importing internal/auth back here would create an import cycle — same
+	// constraint documented on requireAdminRole() below.
+	api.POST("/license/activate", h.Activate, authMW, requireCSRF(), requireAdminRole(), activateLimiter)
 	return h
+}
+
+// csrfCookieName/csrfHeaderName duplicate internal/auth's CSRFCookieName/
+// CSRFHeaderName constants — see the import-cycle note on requireCSRF above
+// (auth already imports license, so this package cannot import auth back).
+//
+// "Keep in sync" as a comment is not enforcement, and a silently drifted copy
+// here means a write route that checks a header nobody sends. The pairing is
+// therefore pinned by TestCSRFConstantsArePinned in internal/auth/csrf_test.go,
+// which fails and names THIS file if either side changes.
+const (
+	csrfCookieName = "csrf_token"
+	csrfHeaderName = "X-CSRF-Token"
+)
+
+// requireCSRF enforces the double-submit-cookie CSRF pattern on
+// POST /license/activate — a duplicate of auth.CSRFMiddleware's unsafe-method
+// check (see the import-cycle note above). API-key callers (Bearer sk_/vakt_)
+// are exempt, matching auth.CSRFMiddleware, since they are not browser-driven.
+func requireCSRF() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			authHeader := c.Request().Header.Get("Authorization")
+			if strings.HasPrefix(authHeader, "Bearer sk_") || strings.HasPrefix(authHeader, "Bearer vakt_") {
+				return next(c)
+			}
+
+			cookie, err := c.Cookie(csrfCookieName)
+			if err != nil || cookie.Value == "" {
+				return c.JSON(http.StatusForbidden, map[string]string{
+					"error": "CSRF token missing",
+					"code":  "CSRF_MISSING",
+				})
+			}
+			header := c.Request().Header.Get(csrfHeaderName)
+			if header == "" {
+				return c.JSON(http.StatusForbidden, map[string]string{
+					"error": "CSRF header missing",
+					"code":  "CSRF_HEADER_MISSING",
+				})
+			}
+			if subtle.ConstantTimeCompare([]byte(cookie.Value), []byte(header)) != 1 {
+				return c.JSON(http.StatusForbidden, map[string]string{
+					"error": "CSRF token mismatch",
+					"code":  "CSRF_MISMATCH",
+				})
+			}
+			return next(c)
+		}
+	}
 }
 
 // requireAdminRole is a lightweight middleware that checks the "roles" context

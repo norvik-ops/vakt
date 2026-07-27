@@ -23,6 +23,7 @@ func NewCleanupLoginHistoryTask() *asynq.Task {
 
 // CleanupLoginHistory löscht alle Einträge älter als 90 Tage.
 func CleanupLoginHistory(ctx context.Context, pool *pgxpool.Pool) error {
+	// orgid-lint: global — background retention job, intentionally iterates all orgs
 	tag, err := pool.Exec(ctx, `
 		DELETE FROM login_history
 		WHERE ts < NOW() - INTERVAL '90 days'

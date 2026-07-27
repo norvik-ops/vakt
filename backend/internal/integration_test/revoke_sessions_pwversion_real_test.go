@@ -56,6 +56,7 @@ func TestRevokeAllSessionsBumpsPwVersion(t *testing.T) {
 	require.NoError(t, svc.RevokeAllSessions(ctx, userID))
 
 	// Refresh sessions gone.
+	// orgid-lint: global — scoped by user_id (global users table); asserts the RevokeAllSessions contract
 	var remaining int
 	require.NoError(t, pool.QueryRow(ctx,
 		`SELECT COUNT(*) FROM refresh_sessions WHERE user_id = $1::uuid`, userID).Scan(&remaining))

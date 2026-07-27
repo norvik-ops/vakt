@@ -1,8 +1,6 @@
 package vaktscan
 
 import (
-	"bytes"
-	"encoding/csv"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +14,7 @@ import (
 
 	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/pagination"
+	"github.com/matharnica/vakt/internal/shared/xlsxexport"
 )
 
 // Handler handles HTTP requests for VulnBoard.
@@ -672,9 +671,7 @@ func (h *Handler) GetEOLDashboard(c echo.Context) error {
 }
 
 // ExportFindingsXLSX handles GET /api/v1/vaktscan/findings/export/xlsx.
-// Returns all findings for the org as a CSV with an xlsx extension.
-// Excel opens CSV files served with the spreadsheet MIME type correctly.
-// No external dependencies needed — pure encoding/csv output.
+// Returns all findings for the org as a real XLSX workbook.
 func (h *Handler) ExportFindingsXLSX(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
 	filter := FindingFilter{
@@ -700,23 +697,23 @@ func (h *Handler) ExportFindingsXLSX(c echo.Context) error {
 		}
 	}
 
-	var buf bytes.Buffer
-	w := csv.NewWriter(&buf)
-	_ = w.Write([]string{"Title", "Severity", "Status", "Asset ID", "Created"})
-	for _, f := range findings {
-		_ = w.Write([]string{
-			f.Title,
-			f.Severity,
-			f.Status,
-			f.AssetID,
-			f.CreatedAt.Format(time.RFC3339),
+	rows := make([][]string, len(findings))
+	for i, f := range findings {
+		rows[i] = []string{f.Title, f.Severity, f.Status, f.AssetID, f.CreatedAt.Format(time.RFC3339)}
+	}
+
+	data, err := xlsxexport.RenderSimpleTable("Findings", []string{"Title", "Severity", "Status", "Asset ID", "Created"}, rows)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("export findings xlsx: render")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "export failed",
+			"code":  "VB_EXPORT_ERROR",
 		})
 	}
-	w.Flush()
 
-	c.Response().Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	const xlsxContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 	c.Response().Header().Set("Content-Disposition", `attachment; filename="findings.xlsx"`)
-	return c.Blob(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buf.Bytes())
+	return c.Blob(http.StatusOK, xlsxContentType, data)
 }
 
 // ExportFindings handles GET /api/v1/vaktscan/findings/export

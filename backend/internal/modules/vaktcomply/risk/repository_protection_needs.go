@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	db "github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 	shareddb "github.com/matharnica/vakt/internal/shared/db"
 )
 
@@ -83,7 +84,7 @@ func (r *Repository) DeleteProtectionNeedAssessment(ctx context.Context, orgID, 
 		return fmt.Errorf("delete protection need assessment: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("protection need assessment not found")
+		return fmt.Errorf("protection need assessment %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -112,8 +113,9 @@ func protectionNeedFromRow(row db.CkProtectionNeedAssessments) ProtectionNeedAss
 // PNA → pgx.ErrNoRows → 404); the reverse link (protection_need_id) on vb_assets is
 // best-effort and never blocks the response.
 func (r *Repository) LinkAssetToPNA(ctx context.Context, orgID, pnaID string, assetID *string) error {
-	// Update PNA side. Effect-checked: linking an asset to a non-existent assessment
-	// returned 200 for a phantom (R-H18/S131-A1); zero rows → pgx.ErrNoRows → 404.
+	// Update PNA side (ck_ prefix, this module's own table). Effect-checked:
+	// linking an asset to a non-existent assessment returned 200 for a phantom
+	// (R-H18/S131-A1); zero rows → pgx.ErrNoRows → 404.
 	tag, err := r.db.Exec(ctx,
 		`UPDATE ck_protection_need_assessments SET vb_asset_id = $1, updated_at = NOW()
 		 WHERE id = $2::uuid AND org_id = $3::uuid`,
@@ -123,13 +125,11 @@ func (r *Repository) LinkAssetToPNA(ctx context.Context, orgID, pnaID string, as
 		return err
 	}
 
-	// Update reverse link on vb_assets (best-effort, different module prefix).
+	// Reverse link on vb_assets is owned by vaktscan (module isolation, ADR-0079):
+	// delegate to the injected linker instead of writing the vb_ prefix here.
+	// Best-effort, matching the historic behaviour — never blocks the response.
 	if assetID != nil {
-		_, _ = r.db.Exec(ctx,
-			`UPDATE vb_assets SET protection_need_id = $1::uuid, updated_at = NOW()
-			 WHERE id = $2::uuid AND org_id = $3::uuid`,
-			pnaID, *assetID, orgID,
-		)
+		_ = r.assetLinker.SetAssetProtectionNeed(ctx, orgID, *assetID, pnaID)
 	}
 	return nil
 }

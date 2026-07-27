@@ -47,7 +47,7 @@ export default function AdminHubPage() {
     <div className="flex flex-col h-full">
       <PageHeader
         title="Administration"
-        description="System-Überblick, Mandanten, Sicherheit und Audit-Trail."
+        description="System-Überblick, Sicherheit und Audit-Trail."
       />
       <div className="flex-1 p-6 overflow-auto">
         <div className="max-w-5xl">

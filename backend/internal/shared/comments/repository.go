@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 // Comment is the canonical comment record returned to callers.
@@ -116,7 +117,7 @@ func (r *Repository) DeleteComment(
 		commentID, orgID,
 	).Scan(&authorID)
 	if err != nil {
-		return fmt.Errorf("comment not found")
+		return fmt.Errorf("comment %w", apperr.ErrNotFound)
 	}
 
 	if !isAdmin && authorID != callerID {

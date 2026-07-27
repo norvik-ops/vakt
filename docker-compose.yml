@@ -35,6 +35,22 @@ networks:
   # data stores (postgres, pgbouncer, redis) stay internal:true — no path out.
   egress: {}
 
+# Docker file-based secrets (S13/D24-4, G-04) — the master key and the DB
+# password no longer sit in any service's plaintext `environment:`, visible
+# via `docker inspect <container> --format '{{.Config.Env}}'`. `environment:`
+# here is the Compose-secrets source type (not a literal value): at `up`
+# time Compose reads the named var from the resolved .env/shell environment
+# (same source install.sh already writes VAKT_SECRET_KEY/POSTGRES_PASSWORD
+# into — no install.sh change needed) and mounts it as a 0444 file at
+# /run/secrets/<name> inside each service that lists it under `secrets:`,
+# instead of injecting it into the container's env array. Verified live with
+# `docker inspect --format '{{.Config.Env}}'`.
+secrets:
+  vakt_secret_key:
+    environment: VAKT_SECRET_KEY
+  postgres_password:
+    environment: POSTGRES_PASSWORD
+
 services:
   frontend:
     image: ghcr.io/norvik-ops/vakt-frontend:${VAKT_TAG:-latest}
@@ -43,6 +59,19 @@ services:
       dockerfile: Dockerfile
     # Self-serving SPA image (own nginx on :80). Caddy proxies to it —
     # no host port, no shared volume. Image ships its own HEALTHCHECK.
+    # S13/D24-4 (G-04): stock nginx:alpine has no built-in non-root user and
+    # the master creates+chowns /var/cache/nginx/* and /run/nginx.pid at every
+    # start (verified live) — full UID drop would need a Dockerfile change
+    # outside this sprint's file scope. Instead: stay root but shed every
+    # capability except the four the master actually uses (bind :80, then
+    # chown the just-created temp dirs and setuid/setgid to "nginx" for the
+    # workers, exactly like the unmodified image does) — verified to start
+    # and serve 200 with nothing more than these four.
+    user: "0:0"
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID, NET_BIND_SERVICE]
+    security_opt:
+      - no-new-privileges:true
     networks:
       - app-net
     logging: *default-logging
@@ -61,6 +90,21 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    # S13/D24-4 (G-04): caddy:2-alpine has no built-in non-root user (verified
+    # live — /etc/passwd has no caddy/nginx entry, id is uid=0) and needs to
+    # own /data (Let's-Encrypt / local-CA storage) and /config on a fresh
+    # named volume — full UID drop would need an init container to chown
+    # those volumes first, out of scope here. Stay root, but shed every
+    # capability except the one the process actually uses (bind :80/:443);
+    # root already owns anything it creates, so no CHOWN/SETUID needed
+    # (unlike frontend below, caddy never drops privilege internally).
+    # Verified live: starts, obtains the local-CA cert, serves the expected
+    # 308 HTTP->HTTPS redirect with just NET_BIND_SERVICE added back.
+    user: "0:0"
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt:
+      - no-new-privileges:true
     networks:
       - edge      # host ingress + egress for ACME
       - app-net   # reach frontend + api
@@ -121,9 +165,21 @@ services:
     networks:
       - db-net
     env_file: .env
+    secrets:
+      - postgres_password
     environment:
-      # Override the localhost URL from .env — containers reach postgres by service name, not localhost.
-      VAKT_DB_URL: "postgres://vakt:${POSTGRES_PASSWORD:?}@postgres:5432/vakt?sslmode=disable"
+      # .env's own VAKT_DB_URL/POSTGRES_PASSWORD/VAKT_SECRET_KEY (loaded
+      # plaintext via env_file above) are not what we want here — blank them
+      # so the password-file path below wins instead of a Klartext-Secret
+      # sitting in `docker inspect`'s Config.Env (S13/G-04). migrate doesn't
+      # use VAKT_SECRET_KEY at all; blanked purely to stop the env_file leak,
+      # no secret mount needed for it.
+      VAKT_DB_URL: ""
+      POSTGRES_PASSWORD: ""
+      VAKT_SECRET_KEY: ""
+      # Containers reach postgres by service name, not localhost.
+      VAKT_DB_HOST: postgres
+      VAKT_DB_PASSWORD_FILE: /run/secrets/postgres_password
     depends_on:
       postgres:
         condition: service_healthy
@@ -144,8 +200,22 @@ services:
       - db-net
       - egress   # opt-in licence renewal (token only) + guarded outbound (S131-A4)
     env_file: .env
+    secrets:
+      - vakt_secret_key
+      - postgres_password
     environment:
-      VAKT_DB_URL: "postgres://vakt:${POSTGRES_PASSWORD:?}@pgbouncer:5432/vakt?sslmode=disable"
+      # .env's own VAKT_SECRET_KEY/VAKT_DB_URL/POSTGRES_PASSWORD (loaded
+      # plaintext via env_file above) are not what we want here — blank them
+      # so the *_FILE paths below win instead of a Klartext-Secret sitting in
+      # `docker inspect`'s Config.Env (S13/G-04). Redis's password is out of
+      # this sprint's scope (VAKT_REDIS_URL below still carries it in-line —
+      # known, not fixed here).
+      VAKT_SECRET_KEY: ""
+      VAKT_SECRET_KEY_FILE: /run/secrets/vakt_secret_key
+      VAKT_DB_URL: ""
+      POSTGRES_PASSWORD: ""
+      VAKT_DB_HOST: pgbouncer
+      VAKT_DB_PASSWORD_FILE: /run/secrets/postgres_password
       # Derive the Redis URL from REDIS_PASSWORD so both stay in sync — a
       # stale VAKT_REDIS_URL in .env would otherwise fail Redis auth (S120-7).
       VAKT_REDIS_URL: "redis://:${REDIS_PASSWORD:?}@redis:6379"
@@ -198,8 +268,17 @@ services:
       - db-net
       - egress   # EPSS/CERT-Bund enrichment, scanner DB updates, campaign SMTP (S131-A4)
     env_file: .env
+    secrets:
+      - vakt_secret_key
+      - postgres_password
     environment:
-      VAKT_DB_URL: "postgres://vakt:${POSTGRES_PASSWORD:?}@pgbouncer:5432/vakt?sslmode=disable"
+      # See api's environment block above for why these are blanked (S13/G-04).
+      VAKT_SECRET_KEY: ""
+      VAKT_SECRET_KEY_FILE: /run/secrets/vakt_secret_key
+      VAKT_DB_URL: ""
+      POSTGRES_PASSWORD: ""
+      VAKT_DB_HOST: pgbouncer
+      VAKT_DB_PASSWORD_FILE: /run/secrets/postgres_password
       VAKT_REDIS_URL: "redis://:${REDIS_PASSWORD:?}@redis:6379"
     restart: unless-stopped
     stop_grace_period: 30s
@@ -235,10 +314,14 @@ services:
     image: postgres:16-alpine
     networks:
       - db-net
+    secrets:
+      - postgres_password
     environment:
       POSTGRES_DB: vakt
       POSTGRES_USER: vakt
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?err: POSTGRES_PASSWORD not set — run install.sh}"
+      # POSTGRES_PASSWORD_FILE is natively supported by the official image
+      # (verified live) — keeps the password out of Config.Env (S13/G-04).
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
     command: >
       postgres
       -c shared_buffers=128MB
@@ -270,6 +353,13 @@ services:
     image: edoburu/pgbouncer:1.22.1-p0
     networks:
       - db-net
+    # S13/D24-4 (G-04): edoburu/pgbouncer's entrypoint only understands
+    # DATABASE_URL or a literal DB_PASSWORD — no `_FILE` convention (verified
+    # live against its entrypoint.sh; it even says so itself: "Notice that
+    # `docker inspect` will show unencrypted env variables"). Unlike
+    # postgres/api/worker/migrate above, this one residual Klartext-Passwort
+    # can't be closed without forking the image — documented, not silently
+    # left unfixed.
     environment:
       DB_USER: vakt
       DB_PASSWORD: "${POSTGRES_PASSWORD:?err: POSTGRES_PASSWORD not set}"
@@ -343,6 +433,18 @@ services:
   # Deaktivieren: VAKT_AI_PROVIDER=disabled in .env setzen.
   ollama:
     image: ollama/ollama:${OLLAMA_TAG:-0.31.2}
+    # S13/D24-4 (G-04): the official image has no non-root user at all
+    # (verified live — /etc/passwd has no ollama entry) and its home dir
+    # /root (mode 700) is where the model volume mounts; a UID change would
+    # need re-homing the volume, a breaking path change for anyone who
+    # already pulled the ~4.5 GB default model. Stays root, but unlike caddy
+    # it binds no privileged port (11434) and does no internal privilege
+    # drop, so it needs zero capabilities back — verified live: starts,
+    # lists models, serves 200 with a bare cap_drop: [ALL].
+    user: "0:0"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
     networks:
       - app-net
       - egress   # pulls the model from registry.ollama.ai (no customer data) (S131-A4)

@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
+	"github.com/matharnica/vakt/internal/shared/apperr"
 	"github.com/matharnica/vakt/internal/shared/mailhdr"
 )
 
@@ -202,7 +203,7 @@ func (s *Service) Delete(ctx context.Context, id, orgID string) error {
 		return fmt.Errorf("delete scheduled report: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("scheduled report not found")
+		return fmt.Errorf("scheduled report %w", apperr.ErrNotFound)
 	}
 	return nil
 }
@@ -308,6 +309,7 @@ func (s *Service) ProcessDue(ctx context.Context) error {
 			log.Error().Err(runErr).Str("report_id", r.ID).Msg("scheduled_reports: run failed")
 		}
 		nextRun := ComputeNextRun(r.Schedule)
+		// orgid-lint: global — UPDATE by PK; r.ID is the already-fetched, org-scoped due report's own id
 		if _, err := s.db.Exec(ctx, `
 			UPDATE scheduled_reports
 			SET last_run_at = NOW(), next_run_at = $2

@@ -6,6 +6,7 @@ package vaktvault
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -17,7 +18,9 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
+	"github.com/matharnica/vakt/internal/shared/apperr"
 	"github.com/matharnica/vakt/internal/shared/audit"
+	"github.com/matharnica/vakt/internal/shared/httputil"
 	"github.com/matharnica/vakt/internal/shared/pagination"
 	"github.com/matharnica/vakt/internal/shared/safego"
 )
@@ -525,10 +528,27 @@ func (h *Handler) ExportSecrets(c echo.Context) error {
 	}
 
 	orgID := mustString(c, "org_id")
-	content, err := h.service.ExportSecrets(c.Request().Context(), orgID, c.Param("project_id"), c.Param("env_id"))
+	content, failedCount, err := h.service.ExportSecrets(c.Request().Context(), orgID, c.Param("project_id"), c.Param("env_id"))
 	if err != nil {
 		log.Error().Err(err).Msg("ExportSecrets failed")
 		return serverError(c, err)
+	}
+	if failedCount > 0 {
+		log.Warn().Str("org_id", orgID).Str("env_id", c.Param("env_id")).Int("failed_count", failedCount).
+			Msg("ExportSecrets: partial export, some secrets could not be decrypted")
+		c.Response().Header().Set("X-Vakt-Export-Partial", "true")
+		c.Response().Header().Set("X-Vakt-Export-Failed-Count", strconv.Itoa(failedCount))
+
+		// The headers alone do not reach the user: this endpoint's documented use
+		// is `eval $(curl …)`, and a shell discards headers. Without a marker in
+		// the BODY, a partial export is indistinguishable from a complete one —
+		// the caller silently ends up with fewer secrets than they asked for, and
+		// finds out when something downstream fails for an unrelated-looking
+		// reason. A dotenv comment is ignored by the shell and visible to a human.
+		content = fmt.Sprintf(
+			"# WARNING: partial export — %d secret(s) could not be decrypted and are MISSING below.\n"+
+				"# Check the server log for details; do not treat this file as complete.\n%s",
+			failedCount, content)
 	}
 	c.Response().Header().Set("Content-Type", "text/plain")
 	return c.String(http.StatusOK, content)
@@ -666,9 +686,15 @@ func notFound(c echo.Context, msg string) error {
 }
 
 func serverError(c echo.Context, err error) error {
-	// Log the real error internally but never expose it in the API response.
-	c.Logger().Error(err)
-	return c.JSON(http.StatusInternalServerError, errorResponse("internal server error", "INTERNAL_ERROR"))
+	// S4: classify the error at the 4xx-vs-5xx boundary. A not-found row, a
+	// unique/check/not-null violation or a malformed input is a client error
+	// (404/409/422/400), not a 500 — DeleteProject's "project not found" (D24-5)
+	// is one such case. Only genuine 500s are logged at error level; the real
+	// error is never exposed in the response.
+	if apperr.Status(err) == 0 {
+		c.Logger().Error(err)
+	}
+	return httputil.RespondError(c, err, "internal server error", "INTERNAL_ERROR")
 }
 
 func validationError(c echo.Context, err error) error {

@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -207,6 +208,15 @@ func (h *TotpHandler) Confirm(c echo.Context) error {
 		})
 	}
 	if err := h.checkAndMarkTOTPCode(ctx, userID, body.Code); err != nil {
+		// An outage is not a user error: telling someone with a valid
+		// authenticator "already used" sends them chasing clock drift while the
+		// logs stay silent (ADR-0044).
+		if errors.Is(err, ErrTOTPReplayCheckUnavailable) {
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{
+				"error": "Zwei-Faktor-Prüfung vorübergehend nicht verfügbar. Bitte in Kürze erneut versuchen.",
+				"code":  "TOTP_REPLAY_CHECK_UNAVAILABLE",
+			})
+		}
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
 			"error": "TOTP code already used",
 			"code":  "TOTP_CODE_REPLAYED",
@@ -315,6 +325,15 @@ func (h *TotpHandler) Disable(c echo.Context) error {
 		})
 	}
 	if err := h.checkAndMarkTOTPCode(ctx, userID, body.Code); err != nil {
+		// An outage is not a user error: telling someone with a valid
+		// authenticator "already used" sends them chasing clock drift while the
+		// logs stay silent (ADR-0044).
+		if errors.Is(err, ErrTOTPReplayCheckUnavailable) {
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{
+				"error": "Zwei-Faktor-Prüfung vorübergehend nicht verfügbar. Bitte in Kürze erneut versuchen.",
+				"code":  "TOTP_REPLAY_CHECK_UNAVAILABLE",
+			})
+		}
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
 			"error": "TOTP code already used",
 			"code":  "TOTP_CODE_REPLAYED",
@@ -374,6 +393,16 @@ func (h *TotpHandler) LoginVerify(c echo.Context) error {
 
 	ctx := c.Request().Context()
 	if err := h.validateSecondFactor(ctx, userID, body.Code, body.BackupCode); err != nil {
+		// This is the path every MFA login goes through. Reporting a Redis outage
+		// as "invalid code" here is the worst of the four sites: the user blames
+		// their authenticator's clock and retries forever, while the operator sees
+		// only an invalid-code spike and nothing in the logs (ADR-0044).
+		if errors.Is(err, ErrTOTPReplayCheckUnavailable) {
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{
+				"error": "Zwei-Faktor-Prüfung vorübergehend nicht verfügbar. Bitte in Kürze erneut versuchen.",
+				"code":  "TOTP_REPLAY_CHECK_UNAVAILABLE",
+			})
+		}
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
 			"error": "invalid code", "code": "TOTP_INVALID_CODE",
 		})
@@ -436,7 +465,9 @@ func (h *TotpHandler) validateSecondFactor(ctx context.Context, userID, code, ba
 		return fmt.Errorf("invalid TOTP code")
 	}
 	if err := h.checkAndMarkTOTPCode(ctx, userID, code); err != nil {
-		return fmt.Errorf("TOTP code replayed")
+		// Preserve the class so LoginVerify can tell an outage (503) from a real
+		// replay (422) — flattening it here is what made both look identical.
+		return err
 	}
 	return nil
 }
@@ -524,6 +555,15 @@ func (h *TotpHandler) Verify(c echo.Context) error {
 		})
 	}
 	if err := h.checkAndMarkTOTPCode(ctx, userID, body.Code); err != nil {
+		// An outage is not a user error: telling someone with a valid
+		// authenticator "already used" sends them chasing clock drift while the
+		// logs stay silent (ADR-0044).
+		if errors.Is(err, ErrTOTPReplayCheckUnavailable) {
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{
+				"error": "Zwei-Faktor-Prüfung vorübergehend nicht verfügbar. Bitte in Kürze erneut versuchen.",
+				"code":  "TOTP_REPLAY_CHECK_UNAVAILABLE",
+			})
+		}
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
 			"error": "TOTP code already used",
 			"code":  "TOTP_CODE_REPLAYED",
@@ -533,20 +573,54 @@ func (h *TotpHandler) Verify(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"status": "verified"})
 }
 
+// ErrTOTPReplayCheckUnavailable signals that replay protection could not be
+// consulted because Redis is unreachable — an INFRASTRUCTURE outage, not a bad
+// code from the user.
+//
+// It exists because the two conditions must not share a channel. Folding them
+// together tells a user with a perfectly good authenticator "invalid code",
+// which they can only read as clock drift; they retry forever, and the operator
+// sees a replay/invalid-code spike — a plausible but wrong signal — with nothing
+// in the logs. Callers map this to 503 + a retry hint, mirroring the lockout
+// path (ADR-0044, ErrLockoutCheckUnavailable).
+var ErrTOTPReplayCheckUnavailable = errors.New("auth: totp replay check unavailable (redis outage)")
+
+// ErrTOTPCodeReplayed signals that this code was already spent inside its window.
+var ErrTOTPCodeReplayed = errors.New("auth: TOTP code already used")
+
 // checkAndMarkTOTPCode uses Redis SetNX to ensure a TOTP code cannot be replayed
-// within its valid window (90 seconds). Returns an error if the code was already used.
-// Fails open on Redis errors to avoid locking users out during transient downtime.
+// within its valid window (90 seconds).
+//
+// Fails CLOSED on a Redis outage — without replay-protection storage the
+// single-use guarantee cannot be enforced, so the code is refused — UNLESS the
+// operator has explicitly opted into fail-open via
+// VAKT_AUTH_FAIL_OPEN_ON_REDIS_OUTAGE. That switch is documented as governing
+// auth behaviour during a Redis outage; ignoring it here would mean the
+// documented opt-out silently does not apply to the one path users hit on every
+// MFA login.
 func (h *TotpHandler) checkAndMarkTOTPCode(ctx context.Context, userID, code string) error {
 	if h.svc == nil || h.svc.redis == nil {
-		return nil
+		if h.svc != nil && h.svc.failOpenOnRedisOutage {
+			log.Warn().Str("user_id", userID).Bool("fail_open", true).
+				Msg("totp replay protection unavailable (no redis client) — allowing per VAKT_AUTH_FAIL_OPEN_ON_REDIS_OUTAGE")
+			return nil
+		}
+		return ErrTOTPReplayCheckUnavailable
 	}
 	key := "totp_used:" + userID + ":" + code
 	set, err := h.svc.redis.SetNX(ctx, key, "1", 90*time.Second).Result()
 	if err != nil {
-		return nil // fail open on Redis error
+		if h.svc.failOpenOnRedisOutage {
+			log.Warn().Err(err).Str("user_id", userID).Bool("fail_open", true).
+				Msg("totp replay protection check failed — allowing per VAKT_AUTH_FAIL_OPEN_ON_REDIS_OUTAGE")
+			return nil
+		}
+		log.Error().Err(err).Str("user_id", userID).Bool("fail_open", false).
+			Msg("totp replay protection check failed — refusing code (fail-closed)")
+		return fmt.Errorf("%w: %v", ErrTOTPReplayCheckUnavailable, err)
 	}
 	if !set {
-		return fmt.Errorf("TOTP code already used")
+		return ErrTOTPCodeReplayed
 	}
 	return nil
 }
@@ -638,25 +712,70 @@ func (h *TotpHandler) RecoveryLogin(c echo.Context) error {
 // ─── Regenerate Recovery Codes ────────────────────────────────────────────────
 
 // RegenerateRecoveryCodes handles POST /auth/2fa/recovery-codes/regenerate.
-// Requires an authenticated user with 2FA already enabled.
-// Invalidates all existing recovery codes and issues 8 fresh ones.
+// Requires an authenticated user with 2FA already enabled AND the current
+// TOTP code (S132-S11/D24-2) — otherwise a hijacked session (or a CSRF-less
+// request, before this sprint's fix) could invalidate every existing recovery
+// code without ever proving possession of the authenticator.
 func (h *TotpHandler) RegenerateRecoveryCodes(c echo.Context) error {
 	userID, ok := requireUserID(c)
 	if !ok {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
 
+	var body struct {
+		Code string `json:"code"`
+	}
+	if err := c.Bind(&body); err != nil || body.Code == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "code is required",
+			"code":  "TOTP_BAD_REQUEST",
+		})
+	}
+
 	ctx := c.Request().Context()
 
 	// Verify that 2FA is enabled for this user.
+	var encryptedSecret string
 	var enabled bool
 	err := h.db.QueryRow(ctx,
-		`SELECT enabled FROM totp_secrets WHERE user_id = $1::uuid`, userID,
-	).Scan(&enabled)
+		`SELECT secret, enabled FROM totp_secrets WHERE user_id = $1::uuid`, userID,
+	).Scan(&encryptedSecret, &enabled)
 	if err != nil || !enabled {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "2FA is not enabled",
 			"code":  "TOTP_NOT_ENABLED",
+		})
+	}
+
+	secret, err := h.decryptSecret(encryptedSecret)
+	if err != nil {
+		log.Error().Err(err).Msg("regenerate recovery codes: decrypt failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to decrypt 2FA secret",
+			"code":  "TOTP_DECRYPT_FAILED",
+		})
+	}
+
+	if !ValidateTOTP(secret, body.Code) {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
+			"error": "invalid TOTP code",
+			"code":  "TOTP_INVALID_CODE",
+		})
+	}
+	if err := h.checkAndMarkTOTPCode(ctx, userID, body.Code); err != nil {
+		// Same split as the other call sites (ADR-0044): a Redis outage is not a
+		// user error. This site arrived with S11 while S12 fixed the other four,
+		// so the two branches were each green and their merge was not — git had
+		// no reason to flag it, the edits are in different parts of the file.
+		if errors.Is(err, ErrTOTPReplayCheckUnavailable) {
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{
+				"error": "Zwei-Faktor-Prüfung vorübergehend nicht verfügbar. Bitte in Kürze erneut versuchen.",
+				"code":  "TOTP_REPLAY_CHECK_UNAVAILABLE",
+			})
+		}
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
+			"error": "TOTP code already used",
+			"code":  "TOTP_CODE_REPLAYED",
 		})
 	}
 

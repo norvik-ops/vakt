@@ -22,10 +22,13 @@ const source = "package p\n" + `
 
 import "context"
 
-func f(ctx context.Context, db, url any) {
+func f(ctx context.Context, db, url, batch any) {
 	db.Query(ctx, ` + "`SELECT id FROM sr_targets WHERE org_id = $1`" + `, org)
 	db.QueryRow(ctx, ` + "`SELECT count(*) FROM sr_modules WHERE org_id = $1`" + `).Scan(&n)
 	tx.Exec(ctx, ` + "`DELETE FROM sr_assignments WHERE org_id = $1 AND id = $2`" + `, id)
+
+	// pgx.Batch.Queue: no ctx, SQL literal is argument 0, not 1.
+	batch.Queue(` + "`INSERT INTO sr_events (org_id, campaign_id) VALUES ($1, $2)`" + `, org, campaign)
 
 	// Built at runtime: unreadable statically, must be COUNTED, not dropped.
 	db.Query(ctx, "SELECT "+cols+" FROM t")
@@ -33,9 +36,19 @@ func f(ctx context.Context, db, url any) {
 	// A sqlc const executed by identifier — invisible here, covered by FromConsts.
 	q.Query(ctx, listTargets, org)
 
+	// A dynamic batch.Queue (local var, not a literal) — must be COUNTED as
+	// skipped too, not silently dropped like it was before "batch" was added
+	// to isSQLReceiver.
+	batch.Queue(dynamicSQL, org)
+
 	// Not SQL at all: a Query() on a non-database receiver must not inflate the
 	// skip counter, or the number stops meaning anything.
 	url.Query()
+
+	// Not SQL at all either: Exec() with zero args (pgx.BatchResults.Exec()
+	// reads a batch result, it does not submit one) must not be treated as a
+	// SQL call just because the method name matches.
+	br.Exec()
 }
 `
 
@@ -61,14 +74,16 @@ func TestFromCallSites(t *testing.T) {
 	res, err := sqlcheck.FromCallSites(dir)
 	require.NoError(t, err)
 
-	require.Len(t, res.Queries, 3, "the three backtick literals, and only those")
+	require.Len(t, res.Queries, 4, "the four backtick literals, and only those")
 	assert.Contains(t, res.Queries[0].SQL, "FROM sr_targets")
 	assert.Contains(t, res.Queries[1].SQL, "FROM sr_modules")
 	assert.Contains(t, res.Queries[2].SQL, "DELETE FROM sr_assignments")
+	assert.Contains(t, res.Queries[3].SQL, "INSERT INTO sr_events", "batch.Queue's SQL is argument 0, not 1 — must still be found")
 	assert.NotZero(t, res.Queries[0].Line, "a failure must point at a line")
 
-	assert.Equal(t, 2, res.Skipped,
-		"the concatenated query and the sqlc-const call are skipped; url.Query() is not SQL and must not be counted")
+	assert.Equal(t, 3, res.Skipped,
+		"the concatenated query, the sqlc-const call, and the dynamic batch.Queue are skipped; "+
+			"url.Query() and br.Exec() are not SQL and must not be counted")
 }
 
 func TestFromConsts(t *testing.T) {

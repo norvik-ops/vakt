@@ -44,6 +44,19 @@ if [ -z "$DB_URL" ] && [ "$DRY_RUN" = false ]; then
 	exit 1
 fi
 
+# Same resolution as backup.sh: the uploads volume the running stack actually
+# mounts is prefixed with the Compose project name (default: the invoking
+# directory's basename), not the bare "uploads_data" key from the YAML.
+# Restoring into the wrong (unprefixed) volume would leave evidence files
+# invisible to the running vakt-api/vakt-worker containers (SA06-D2).
+resolve_uploads_volume() {
+	local project="${COMPOSE_PROJECT_NAME:-}"
+	if [ -z "$project" ]; then
+		project=$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')
+	fi
+	printf '%s' "${project}_uploads_data"
+}
+
 # S89-1: single cleanup trap covering EVERY exit path (success, error, abort).
 # Securely shreds the recovered-key file if one was written, and removes the
 # work dir. KEY_FILE/WORK_DIR start empty so the trap is safe before they exist.
@@ -140,12 +153,13 @@ fi
 pg_restore --clean --if-exists -d "$DB_URL" "$WORK_DIR/db.pgdump"
 
 if [ -f "$WORK_DIR/uploads.tar.gz" ]; then
-	echo "→ Restoring uploads volume (evidence attachments)..."
-	if ! docker volume inspect uploads_data >/dev/null 2>&1; then
-		docker volume create uploads_data
+	UPLOADS_VOLUME=$(resolve_uploads_volume)
+	echo "→ Restoring uploads volume (evidence attachments) into ${UPLOADS_VOLUME}..."
+	if ! docker volume inspect "$UPLOADS_VOLUME" >/dev/null 2>&1; then
+		docker volume create "$UPLOADS_VOLUME"
 	fi
 	docker run --rm \
-		-v uploads_data:/data \
+		-v "${UPLOADS_VOLUME}:/data" \
 		-v "$WORK_DIR":/backup:ro \
 		alpine:latest sh -c "cd /data && tar xzf /backup/uploads.tar.gz"
 	echo "✓ Uploads volume restored"

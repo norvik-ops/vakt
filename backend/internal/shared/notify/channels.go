@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 	"time"
 )
 
@@ -94,7 +95,7 @@ func (s *Service) DeleteNotificationChannel(ctx context.Context, orgID, channelI
 		return fmt.Errorf("delete notification channel: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("notification channel not found")
+		return fmt.Errorf("notification channel %w", apperr.ErrNotFound)
 	}
 	return nil
 }

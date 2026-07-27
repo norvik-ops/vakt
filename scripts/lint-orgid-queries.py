@@ -190,26 +190,89 @@ def has_org_id(body: str) -> bool:
     return any(p.search(body) for p in ORG_ID_PATTERNS)
 
 
-# Multi-tenant table prefixes — queries touching these without org_id need review.
-TENANT_TABLE_RE = re.compile(
-    r'\b(ck_|vb_|so_|sr_|po_|hr_)\w+',
+# ── G-01: schema-driven tenant-table detection ──────────────────────────────
+#
+# The previous version of this gate recognised a "multi-tenant table" only by
+# a hardcoded (ck_|vb_|so_|sr_|po_|hr_) prefix regex. That is a GATE_BLIND
+# bug, not a design choice: ~50 org-scoped tables outside those 6 module
+# prefixes (notifications, api_keys, webhooks, sessions, license_keys,
+# cloud_integrations, refresh_sessions, org_members, ...) carry a real org_id
+# column and were silently exempt from the raw-SQL org_id check below — not
+# flagged, not counted as skipped, simply invisible to TENANT_TABLE_RE.search().
+#
+# Fix: derive the tenant-table set from the schema itself. Every CREATE TABLE
+# in db/migrations/*.up.sql that declares an org_id column (directly, or via
+# a later ALTER TABLE ... RENAME TO that carries the org_id-ness of a renamed
+# table, e.g. migration 122's pg_* -> sr_* rename) is a tenant table — no
+# prefix list to keep in sync by hand.
+_CREATE_TABLE_RE = re.compile(
+    r'CREATE TABLE\s+(?:IF NOT EXISTS\s+)?"?(\w+)"?\s*\(',
     re.IGNORECASE,
 )
+_ALTER_RENAME_TABLE_RE = re.compile(
+    r'ALTER TABLE\s+"?(\w+)"?\s+RENAME TO\s+"?(\w+)"?',
+    re.IGNORECASE,
+)
+
+
+def _table_bodies(sql: str):
+    """Yield (table_name, balanced-paren body) for every CREATE TABLE statement."""
+    for m in _CREATE_TABLE_RE.finditer(sql):
+        name = m.group(1)
+        start = m.end() - 1  # position of the opening '('
+        depth = 0
+        i = start
+        while i < len(sql):
+            if sql[i] == '(':
+                depth += 1
+            elif sql[i] == ')':
+                depth -= 1
+                if depth == 0:
+                    i += 1
+                    break
+            i += 1
+        yield name, sql[start:i]
+
+
+def derive_tenant_tables(migrations_dir: Path) -> set[str]:
+    """Return every table name that carries an org_id column, per the schema."""
+    tables: set[str] = set()
+    for f in sorted(migrations_dir.glob("*.up.sql")):
+        content = f.read_text()
+        for name, body in _table_bodies(content):
+            if re.search(r'\borg_id\b', body, re.IGNORECASE):
+                tables.add(name)
+        for old, new in _ALTER_RENAME_TABLE_RE.findall(content):
+            if old in tables:
+                tables.discard(old)
+                tables.add(new)
+    return tables
+
+
+def build_tenant_table_re(table_names) -> re.Pattern:
+    alts = "|".join(re.escape(t) for t in sorted(table_names))
+    return re.compile(rf'\b(?:{alts})\b', re.IGNORECASE)
+
+
+def build_join_tenant_re(table_names) -> re.Pattern:
+    """
+    Matches: [LEFT|RIGHT|INNER|CROSS]? JOIN <tenant_table> [alias] ON ...
+    Captures the ON clause up to the next SQL keyword or end-of-string.
+    """
+    alts = "|".join(re.escape(t) for t in sorted(table_names))
+    return re.compile(
+        rf'\bJOIN\s+(?:{alts})\b\s*(?:\w+\s+)?ON\s+([^;]+?)(?=\b(?:LEFT|RIGHT|INNER|CROSS|FULL|JOIN|WHERE|GROUP|ORDER|HAVING|LIMIT|UNION|EXCEPT|INTERSECT|$))',
+        re.IGNORECASE | re.DOTALL,
+    )
+
 
 # Inline opt-out comment for raw Go SQL: // orgid-lint: global — <reason>
 GO_LINT_SKIP_RE = re.compile(r'orgid-lint:\s*global', re.IGNORECASE)
 # Inline opt-out for an unscoped JOIN: // orgid-lint: join-ok — <reason>
 GO_LINT_JOIN_OK_RE = re.compile(r'orgid-lint:\s*join-ok', re.IGNORECASE)
 
-# Matches: [LEFT|RIGHT|INNER|CROSS]? JOIN <tenant_table> [alias] ON ...
-# Captures the ON clause up to the next SQL keyword or end-of-string.
-JOIN_TENANT_RE = re.compile(
-    r'\bJOIN\s+(ck_|vb_|so_|sr_|po_|hr_)\w+\s*(?:\w+\s+)?ON\s+([^;]+?)(?=\b(?:LEFT|RIGHT|INNER|CROSS|FULL|JOIN|WHERE|GROUP|ORDER|HAVING|LIMIT|UNION|EXCEPT|INTERSECT|$))',
-    re.IGNORECASE | re.DOTALL,
-)
 
-
-def unscoped_joins(sql: str) -> list[str]:
+def unscoped_joins(sql: str, join_re: re.Pattern) -> list[str]:
     """
     Return a list of JOIN ON clauses that reference a tenant-prefixed table
     and are dangerous: they do not scope org_id AND they join on a non-UUID
@@ -226,8 +289,8 @@ def unscoped_joins(sql: str) -> list[str]:
     Use `// orgid-lint: join-ok — <reason>` to suppress a remaining flag.
     """
     bad = []
-    for m in JOIN_TENANT_RE.finditer(sql):
-        on_clause = m.group(2)
+    for m in join_re.finditer(sql):
+        on_clause = m.group(1)
         if re.search(r'\borg_id\b', on_clause, re.IGNORECASE):
             continue  # explicitly org-scoped in ON clause — safe
         # UUID PK joins (.id field) are globally unique — no cross-org leak.
@@ -237,19 +300,23 @@ def unscoped_joins(sql: str) -> list[str]:
     return bad
 
 
-def scan_go_raw_sql(go_dir: Path):
+def scan_go_raw_sql(go_dir: Path, tenant_re: re.Pattern, join_re: re.Pattern):
     """
     Scan backtick SQL strings in .go files for missing org_id filters.
 
     Two checks are performed:
     1. The query body must contain org_id somewhere (existing check).
-    2. Every JOIN on a tenant-prefixed table must have org_id in its ON clause
-       (catches the S78-2 cross-org JOIN pattern even when the WHERE clause
-       does scope to org_id).
+    2. Every JOIN on a tenant table must have org_id in its ON clause (catches
+       the S78-2 cross-org JOIN pattern even when the WHERE clause does scope
+       to org_id).
+
+    tenant_re/join_re are schema-derived (see derive_tenant_tables, G-01) —
+    every table with an org_id column, not just the 6 module prefixes.
 
     Returns list of (file, approx_line, snippet, dml, detail) violation tuples.
     """
     violations = []
+    skipped = 0
     total = 0
 
     for go_file in sorted(go_dir.rglob("*.go")):
@@ -275,7 +342,7 @@ def scan_go_raw_sql(go_dir: Path):
             i += 1  # skip closing backtick
 
             # Only care about strings that look like SQL touching tenant tables.
-            if not TENANT_TABLE_RE.search(snippet):
+            if not tenant_re.search(snippet):
                 continue
             dml = leading_dml(snippet)
             if dml not in NEEDS_FILTER:
@@ -291,6 +358,12 @@ def scan_go_raw_sql(go_dir: Path):
             skip_join = GO_LINT_JOIN_OK_RE.search(context_line) or GO_LINT_JOIN_OK_RE.search(preceding)
 
             if skip_global:
+                # A suppressed statement was NOT checked. Counting it in `total`
+                # and reporting skipped=0 is the class this gate exists to kill
+                # (a gate that reports OK for work it did not do), so it moves
+                # from the checked column into the skipped one.
+                total -= 1
+                skipped += 1
                 continue
 
             short = snippet.strip().splitlines()[0][:120]
@@ -304,14 +377,14 @@ def scan_go_raw_sql(go_dir: Path):
 
             # Check 2: every JOIN on a tenant table must scope org_id in ON clause.
             if not skip_join:
-                bad_joins = unscoped_joins(snippet)
+                bad_joins = unscoped_joins(snippet, join_re)
                 for join_clause in bad_joins:
                     violations.append((str(go_file.relative_to(go_dir.parent.parent
                                            if go_dir.name != "backend" else go_dir.parent)),
                                         start_line, join_clause, dml,
                                         "JOIN on tenant table without org_id in ON clause (S78-2 pattern)"))
 
-    return violations, total
+    return violations, total, skipped
 
 
 def main():
@@ -324,12 +397,30 @@ def main():
                         help="Also scan backtick SQL literals in Go source files")
     parser.add_argument("--go-dir", default="backend",
                         help="Root directory to scan for Go files (used with --raw-sql)")
+    parser.add_argument("--migrations-dir", default="backend/db/migrations",
+                        help="Directory containing golang-migrate *.up.sql files "
+                             "(source of truth for the schema-derived tenant-table set, G-01)")
     args = parser.parse_args()
 
     query_dir = Path(args.query_dir)
     if not query_dir.exists():
         print(f"ERROR: query dir {query_dir} not found", file=sys.stderr)
         sys.exit(1)
+
+    # G-01: schema-derived tenant-table set, used by Pass 2 (raw Go SQL) below.
+    # A gate whose own detection input is empty is not "0 violations", it is
+    # blind — same SA-03 rule as every other gate in this repo.
+    migrations_dir = Path(args.migrations_dir)
+    tenant_tables = set()
+    if args.raw_sql:
+        if not migrations_dir.exists():
+            print(f"ERROR: migrations dir {migrations_dir} not found", file=sys.stderr)
+            sys.exit(1)
+        tenant_tables = derive_tenant_tables(migrations_dir)
+        if not tenant_tables:
+            print("org_id query lint: VAKUAER — 0 org_id-bearing tables derived from "
+                  f"{migrations_dir} (schema parser broken, or migrations dir empty)")
+            sys.exit(2)
 
     violations = []
     total = 0
@@ -361,14 +452,27 @@ def main():
         print()
         sys.exit(1)
 
+    # G-07: zero queries parsed is not a passing result — it means --query-dir
+    # pointed nowhere useful or the *.sql glob stopped matching, not that every
+    # query is safe. A gate that reports "OK (0 queries checked)" is a silent
+    # no-op wearing a green checkmark.
+    if total == 0:
+        print(f"FAIL — parsed ZERO queries from {query_dir} (non-vacuity guard, G-07). "
+              "Check --query-dir and the *.sql glob.", file=sys.stderr)
+        sys.exit(2)
+
     # ── Pass 2: raw Go backtick SQL (opt-in via --raw-sql) ───────────────────
     if args.raw_sql:
         go_dir = Path(args.go_dir)
         if not go_dir.exists():
             print(f"ERROR: go dir {go_dir} not found", file=sys.stderr)
             sys.exit(1)
-        raw_violations, raw_total = scan_go_raw_sql(go_dir)
+        tenant_re = build_tenant_table_re(tenant_tables)
+        join_re = build_join_tenant_re(tenant_tables)
+        raw_violations, raw_total, raw_skipped = scan_go_raw_sql(go_dir, tenant_re, join_re)
         total += raw_total
+        print(f"NENNER: tenant_tables={len(tenant_tables)} (schema-derived from "
+              f"{migrations_dir}, org_id column) | raw_sql_checked={raw_total} | skipped={raw_skipped}")
         if raw_violations:
             print(f"\norg_id query lint (raw SQL): {len(raw_violations)} violation(s) found\n")
             print("  Backtick SQL in .go files references multi-tenant tables without org_id.")
@@ -379,6 +483,13 @@ def main():
                 print(f"  FAIL  {fpath}:{lineno}  ({dml})  [{detail}]  {snippet!r:.80}")
             print()
             sys.exit(1)
+        # G-07: --raw-sql is opt-in specifically to scan backend/**/*.go — zero
+        # tenant-table hits there means the walk found no .go files at all
+        # (wrong --go-dir, empty checkout), not that the whole backend is clean.
+        if raw_total == 0:
+            print(f"FAIL — --raw-sql scanned {go_dir} and found ZERO tenant-table SQL "
+                  "literals (non-vacuity guard, G-07). Check --go-dir.", file=sys.stderr)
+            sys.exit(2)
         print(f"org_id query lint: OK ({total} queries checked, 0 violations; raw-SQL pass included)")
     else:
         print(f"org_id query lint: OK ({total} queries checked, 0 violations)")
