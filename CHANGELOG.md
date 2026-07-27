@@ -4,7 +4,7 @@ All notable user-facing changes to Vakt are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
-## [Unreleased]
+## [0.42.49] — 2026-07-27
 
 Sprint 132–135: Remediation des Codeaudit v4.
 
